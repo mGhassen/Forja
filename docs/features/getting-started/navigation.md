@@ -8,7 +8,7 @@ Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asia
 
 ## How to open it
 
-The tab bar is always visible after the app finishes loading. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
+The tab bar is always visible after the app finishes loading. On first sign-in, hub tabs (Home, Anime, …) appear once catalog packs finish installing — IPTV stays available immediately because it is app-owned. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
 
 ## What you can do
 

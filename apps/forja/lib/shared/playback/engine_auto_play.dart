@@ -184,7 +184,8 @@ Future<void> runEngineAutoPlay({
   /// Resume: last play URL from watch history — probed before re-extract.
   String? savedStreamUrl,
 
-  /// When set (movie details chips), race only these. Null → same prefs as panel.
+  /// When set (e.g. provider-scoped episode id), race only these.
+  /// Null → all enabled plugins in the panel category (not Sources chip prefs).
   Set<String>? selectedPluginIds,
   List<EnginePack>? packs,
 
@@ -306,20 +307,17 @@ Future<void> runEngineAutoPlay({
       packs: loadedPacks,
       categories: EngineCategories.defaultsForPanelCategory(category),
     );
+    // Green Play races the full category pool. Sources chip selection is
+    // panel-only (prefs) and must not narrow this race.
     final selected = selectedPluginIds != null
         ? filterEngineSelectedPluginIds(
             savedIds: selectedPluginIds,
             enabledIds: enabledIds,
           )
-        : EngineCategories.scopeSelectionIfFullAll(
-            selected: await EngineService.instance.loadSourcesSelectedPluginIds(
-              enabledIds: enabledIds,
-              panelCategory: category,
-              selectAllScopeIds: scope,
-            ),
-            enabledIds: enabledIds,
-            scope: scope,
-          );
+        : {
+            for (final id in scope)
+              if (enabledIds.contains(id)) id,
+          };
 
     final orderedIds = orderedEnginePluginIds(loadedPacks);
     var pluginIds = [

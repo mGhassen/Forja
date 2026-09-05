@@ -8,6 +8,7 @@ import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav_destination.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,6 +30,9 @@ abstract final class PluginNavRegistry {
   static Map<String, String> _tabPluginIds = {};
   static bool _seeded = false;
   static bool _testNavLocked = false;
+  /// Set when [refresh] skips an empty-hub prefs wipe because packs are still
+  /// hydrating — next successful hub scan restores platform-default visibility.
+  static bool _deferredEmptyHubNavSync = false;
 
   static Map<String, NavDestination> get destinations {
     _ensureSeeded();
@@ -62,6 +66,7 @@ abstract final class PluginNavRegistry {
   /// installed packs are scanned. Seed Live Sports so the tab exists before the
   /// hub pack refresh (RFC-071).
   static void seedBuiltIns() {
+    _deferredEmptyHubNavSync = false;
     _destinations = {
       'live_matches': const NavDestination(
         id: 'live_matches',
@@ -93,6 +98,7 @@ abstract final class PluginNavRegistry {
     Map<String, String>? tabPluginIds,
   }) {
     _testNavLocked = true;
+    _deferredEmptyHubNavSync = false;
     _destinations = destinations ??
         {
           'test_hub_a': const NavDestination(
@@ -299,6 +305,27 @@ abstract final class PluginNavRegistry {
     } catch (_) {}
   }
 
+  /// True while hub `nav` cannot be scanned yet — lean stubs, splash download,
+  /// or empty pack index before cloud sync. Must not [syncActiveHubNavIds]
+  /// with an empty active set (that permanently strips Features defaults).
+  static Future<bool> _hubNavHydrationPending() async {
+    final coordinator = PluginInstallCoordinator.instance;
+    if (coordinator.isBootWarm || coordinator.isInstalling) return true;
+
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    if (packs.isEmpty) {
+      // First boot / pre-sync: index not ready. After splash with a real empty
+      // install, allow the empty-hub wipe.
+      return !ShellBus.splashDismissed.value;
+    }
+    for (final pack in packs) {
+      if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
+      // Cloud lean rows are URL-only until full install fills plugins + nav.
+      if (pack.plugins.isEmpty) return true;
+    }
+    return false;
+  }
+
   static Future<bool> refresh() async {
     _ensureSeeded();
     if (!_testNavLocked && _destinations.isEmpty && _tabPluginIds.isEmpty) {
@@ -314,6 +341,11 @@ abstract final class PluginNavRegistry {
     };
 
     if (installed.isEmpty) {
+      if (await _hubNavHydrationPending()) {
+        // Keep seed/cache + saved Features visibility until packs contribute nav.
+        _deferredEmptyHubNavSync = true;
+        return false;
+      }
       final hadHubs = previousDestKeys.isNotEmpty;
       _destinations = {};
       _accents = {};
@@ -393,6 +425,12 @@ abstract final class PluginNavRegistry {
     if (dests.isNotEmpty || extras.isNotEmpty) {
       await SettingsService().ensureNavIdsKnown(
         allHubIds: dests.keys.toList(),
+      );
+    }
+    if (_deferredEmptyHubNavSync && dests.isNotEmpty) {
+      _deferredEmptyHubNavSync = false;
+      await SettingsService().ensureActiveDefaultHubsVisible(
+        activeHubIds: dests.keys.toSet(),
       );
     }
     await SettingsService().syncActiveHubNavIds(

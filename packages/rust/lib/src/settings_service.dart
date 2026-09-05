@@ -1585,6 +1585,34 @@ class SettingsService {
     }
   }
 
+  /// Re-insert platform-default hub tabs that are active but missing from the
+  /// visible navbar — recovery after a premature empty-hub sync during lean boot.
+  ///
+  /// No-op if any [activeHubIds] tab is already visible (intentional Features
+  /// hide / partial config — not a full strip to IPTV-only).
+  Future<void> ensureActiveDefaultHubsVisible({
+    required Set<String> activeHubIds,
+  }) async {
+    if (activeHubIds.isEmpty) return;
+    if (!await kvHasKey(_navbarConfigKey)) return;
+    final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
+    if (visible.any(activeHubIds.contains)) return;
+
+    final defaults = defaultVisibleNavIds;
+    final next = <String>[];
+    for (final id in defaults) {
+      if (activeHubIds.contains(id) || visible.contains(id)) {
+        next.add(id);
+      }
+    }
+    for (final id in visible) {
+      if (!next.contains(id)) next.add(id);
+    }
+    if (listEquals(visible, next)) return;
+    await kvSetStringList(_navbarConfigKey, next);
+    navbarChangeNotifier.value++;
+  }
+
   /// Drop hub tabs whose pack/plugin is off from the visible navbar.
   ///
   /// [knownHubIds] = all catalog hub tab ids the shell knows about.

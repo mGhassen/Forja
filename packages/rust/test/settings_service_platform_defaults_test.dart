@@ -570,4 +570,36 @@ void main() {
     ]);
     expect(await service.getNavbarConfig(), ['iptv']);
   });
+
+  test('ensureActiveDefaultHubsVisible restores stripped defaults', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(const ['iptv']);
+
+    await service.ensureActiveDefaultHubsVisible(
+      activeHubIds: const {'home', 'anime', 'asian_drama', 'live_matches', 'mylist'},
+    );
+
+    expect(await service.getNavbarConfig(), [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'live_matches',
+      'mylist',
+    ]);
+  });
+
+  test('ensureActiveDefaultHubsVisible no-op when a hub already visible',
+      () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(const ['iptv', 'home']);
+
+    await service.ensureActiveDefaultHubsVisible(
+      activeHubIds: const {'home', 'anime'},
+    );
+
+    expect(await service.getNavbarConfig(), ['iptv', 'home']);
+  });
 }

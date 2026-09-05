@@ -48,15 +48,28 @@ build_android() {
     return 1
   fi
   export ANDROID_NDK_HOME="$ndk"
-  local prebuilt
+  local prebuilt sysroot ndk_toolchain wrap
   prebuilt="$(ls -d "$ndk/toolchains/llvm/prebuilt/"* 2>/dev/null | head -1)"
-  unset CC CXX AR CFLAGS CXXFLAGS || true
+  sysroot="$prebuilt/sysroot"
+  ndk_toolchain="$ndk/build/cmake/android.toolchain.cmake"
+  wrap="$ROOT/crates/target/forja-ndk-cmake/arm64-v8a/android.toolchain.cmake"
+  mkdir -p "$(dirname "$wrap")"
+  cat >"$wrap" <<EOF
+set(ANDROID_ABI arm64-v8a CACHE STRING "" FORCE)
+set(ANDROID_PLATFORM android-21 CACHE STRING "" FORCE)
+set(ANDROID_STL c++_shared CACHE STRING "" FORCE)
+include("${ndk_toolchain}")
+EOF
+  # Same as build_rust_mobile.sh: wrappers for cc-rs + CMAKE_TOOLCHAIN_FILE so
+  # btls-sys does not inject CC into cmake (always_configure compiler flip).
+  unset CC CXX AR CFLAGS CXXFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET CMAKE_TOOLCHAIN_FILE || true
   export CC_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang"
   export CXX_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang++"
   export AR_aarch64_linux_android="$prebuilt/bin/llvm-ar"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$AR_aarch64_linux_android"
-  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--sysroot=$prebuilt/sysroot"
+  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--sysroot=$sysroot"
+  export CMAKE_TOOLCHAIN_FILE_aarch64_linux_android="$wrap"
   rustup target add aarch64-linux-android >/dev/null 2>&1 || true
   cargo build -p ffi --target aarch64-linux-android "--$PROFILE" --features "$FEATURES"
 }
