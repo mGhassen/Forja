@@ -152,6 +152,7 @@ class _SettingsForjaPacksSectionState
             padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
             child: ForjaPackChoiceCards(
               compact: true,
+              settingsTvFocus: true,
               communitySubtitle: PlatformInfo.isAndroidTv
                   ? 'Copy catalog URL for your phone'
                   : 'Browse packs on the web',
