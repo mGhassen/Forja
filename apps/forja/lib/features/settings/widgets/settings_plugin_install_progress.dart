@@ -81,7 +81,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       sourceUrl,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
