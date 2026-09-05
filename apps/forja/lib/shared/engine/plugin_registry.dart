@@ -894,13 +894,12 @@ class PluginRegistry {
     }
 
     try {
-      await PluginInstallValidator.validateBeforeCommit(
+      PluginInstallValidator.validateBeforeCommit(
         manifestUrl: manifestUrl,
         manifest: map,
         pack: pack,
         scripts: scripts,
         preludes: preludes,
-        skipSmokeLoad: localCheckout,
       );
     } on FormatException catch (e) {
       throw Exception('install validation failed: ${e.message}');

@@ -76,18 +76,29 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       );
       return;
     }
-    // Fullscreen first — Escape must leave OS fullscreen, not the player.
+    // Overlay → hide chrome → leave fullscreen → arm → leave player.
     unawaited(_escapeLeaveFullscreenOrContinue());
   }
 
   Future<void> _escapeLeaveFullscreenOrContinue() async {
     final osFull = DesktopWindowGeometry.isDesktop &&
         await windowManager.isFullScreen();
+    final inFullscreen = osFull || _s._isFullscreen;
     debugPrint(
       '[DesktopPlayer] Escape ladder armed=${_s._escapeExitArmed} '
       'chrome=${_s._showControls} fs=${_s._isFullscreen} osFull=$osFull',
     );
-    if (osFull || _s._isFullscreen) {
+    // Fullscreen: chrome first, then leave OS fullscreen — never the player.
+    if (_s._showControls) {
+      debugPrint(
+        '[DesktopPlayer] Escape → hide chrome (no arm) '
+        'fs=$inFullscreen wasArmed=${_s._escapeExitArmed}',
+      );
+      _hideChromeIntentional(armEscape: false);
+      debugPrint('[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}');
+      return;
+    }
+    if (inFullscreen) {
       debugPrint(
         '[DesktopPlayer] Escape → exit fullscreen (stay) armed=${_s._escapeExitArmed}',
       );
@@ -98,15 +109,6 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
         _s._escapeExitArmed = false;
       });
       debugPrint('[DesktopPlayer] Escape fullscreen done armed=${_s._escapeExitArmed}');
-      return;
-    }
-    if (_s._showControls) {
-      // Hide only — do not arm. Next Escape arms; then confirm exits.
-      debugPrint(
-        '[DesktopPlayer] Escape → hide chrome (no arm) wasArmed=${_s._escapeExitArmed}',
-      );
-      _hideChromeIntentional(armEscape: false);
-      debugPrint('[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}');
       return;
     }
     if (!_s._escapeExitArmed) {

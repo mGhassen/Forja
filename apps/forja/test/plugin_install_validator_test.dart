@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,12 +16,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    PluginInstallValidator.debugSkipSmokeLoad = false;
-  });
-
   group('PluginInstallValidator', () {
-    test('rejects cross-origin absolute script URL on remote manifest', () async {
+    test('rejects cross-origin absolute script URL on remote manifest', () {
       const manifestUrl = 'https://cdn.example/pack/manifest.json';
       final pack = EnginePack.fromJson(
         {
@@ -39,8 +36,8 @@ void main() {
         },
         sourceUrl: manifestUrl,
       );
-      await expectLater(
-        PluginInstallValidator.validateBeforeCommit(
+      expect(
+        () => PluginInstallValidator.validateBeforeCommit(
           manifestUrl: manifestUrl,
           manifest: pack.toJson(),
           pack: pack,
@@ -57,7 +54,7 @@ void main() {
       );
     });
 
-    test('rejects script larger than per-file limit', () async {
+    test('rejects script larger than per-file limit', () {
       const manifestUrl = 'https://cdn.example/pack/manifest.json';
       final pack = EnginePack.fromJson(
         {
@@ -76,9 +73,10 @@ void main() {
         },
         sourceUrl: manifestUrl,
       );
-      final huge = 'function extract() { return []; }${' ' * (PluginInstallValidator.maxScriptBytes + 1)}';
-      await expectLater(
-        PluginInstallValidator.validateBeforeCommit(
+      final huge =
+          'function extract() { return []; }${' ' * (PluginInstallValidator.maxScriptBytes + 1)}';
+      expect(
+        () => PluginInstallValidator.validateBeforeCommit(
           manifestUrl: manifestUrl,
           manifest: pack.toJson(),
           pack: pack,
@@ -123,44 +121,7 @@ void main() {
       );
     });
 
-    test('smoke load rejects syntactically invalid JS', () async {
-      const manifestUrl = 'https://cdn.example/pack/manifest.json';
-      final pack = EnginePack.fromJson(
-        {
-          'schema': 1,
-          'id': 'x',
-          'name': 'X',
-          'version': '1.0.0',
-          'plugins': [
-            {
-              'id': 'bad',
-              'name': 'Bad',
-              'entry': 'bad.js',
-              'kind': 'http',
-            },
-          ],
-        },
-        sourceUrl: manifestUrl,
-      );
-      await expectLater(
-        PluginInstallValidator.validateBeforeCommit(
-          manifestUrl: manifestUrl,
-          manifest: pack.toJson(),
-          pack: pack,
-          scripts: const {'bad': 'function extract( {'},
-          preludes: const {},
-        ),
-        throwsA(
-          isA<FormatException>().having(
-            (e) => e.message,
-            'message',
-            contains('failed JS load'),
-          ),
-        ),
-      );
-    });
-
-    test('optional integrity sha256 must match fetched body', () async {
+    test('optional integrity sha256 must match fetched body', () {
       const manifestUrl = 'https://cdn.example/pack/manifest.json';
       const body = 'function extract() { return []; }';
       final digest =
@@ -188,19 +149,18 @@ void main() {
           'scripts': {'p1': digest},
         },
       };
-      PluginInstallValidator.debugSkipSmokeLoad = true;
-      await expectLater(
-        PluginInstallValidator.validateBeforeCommit(
+      expect(
+        () => PluginInstallValidator.validateBeforeCommit(
           manifestUrl: manifestUrl,
           manifest: manifest,
           pack: pack,
           scripts: const {'p1': body},
           preludes: const {},
         ),
-        completes,
+        returnsNormally,
       );
-      await expectLater(
-        PluginInstallValidator.validateBeforeCommit(
+      expect(
+        () => PluginInstallValidator.validateBeforeCommit(
           manifestUrl: manifestUrl,
           manifest: manifest,
           pack: pack,
@@ -220,21 +180,28 @@ void main() {
 
   group('PluginRegistry install validation', () {
     late PluginRegistry registry;
+    late Directory diskRoot;
 
-    setUp(() {
+    setUp(() async {
       registry = PluginRegistry.instance;
       registry.debugHttpClient = null;
+      diskRoot = await Directory.systemTemp.createTemp('install_valid_');
+      PluginScriptDiskStore.debugRoot = diskRoot;
       SharedPreferences.setMockInitialValues({
         'engine_js_packs_v2_migrated': true,
         'engine_js_scripts_disk_v3_migrated': true,
       });
     });
 
-    tearDown(() {
+    tearDown(() async {
       registry.debugHttpClient = null;
+      PluginScriptDiskStore.resetForTest();
+      if (await diskRoot.exists()) {
+        await diskRoot.delete(recursive: true);
+      }
     });
 
-    test('refuses install before disk write when JS is invalid', () async {
+    test('commits pack even when a script body is syntactically invalid', () async {
       const url = 'https://cdn.example/bad-pack/manifest.json';
       registry.debugHttpClient = MockClient((req) async {
         final u = req.url.toString();
@@ -264,22 +231,14 @@ void main() {
         return http.Response('not found', 404);
       });
 
-      await expectLater(
-        registry.install(url),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('install validation failed'),
-          ),
-        ),
-      );
+      final pack = await registry.install(url);
+      expect(pack.plugins, hasLength(1));
       expect(
         await PluginScriptDiskStore.loadEngineScript(
           sourceUrl: url,
           pluginId: 'broken',
         ),
-        isNull,
+        'function extract( {',
       );
     });
   });

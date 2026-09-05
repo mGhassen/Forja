@@ -1,13 +1,14 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/runtime.dart';
 
 /// Pre-disk install checks — manifest shape is validated earlier via
 /// [PluginContract.validateManifest].
+///
+/// Does **not** eval JS in a VM. Broken scripts fail at first extract for that
+/// plugin only — install still commits the pack.
 abstract final class PluginInstallValidator {
   /// Per script / prelude body (UTF-8 bytes).
   static const maxScriptBytes = 1024 * 1024;
@@ -15,18 +16,13 @@ abstract final class PluginInstallValidator {
   /// Sum of all fetched JS bodies in one pack install.
   static const maxPackScriptBytes = 8 * 1024 * 1024;
 
-  /// Skip JS VM smoke load (unit tests only).
-  @visibleForTesting
-  static bool debugSkipSmokeLoad = false;
-
-  static Future<void> validateBeforeCommit({
+  static void validateBeforeCommit({
     required String manifestUrl,
     required Map<String, dynamic> manifest,
     required EnginePack pack,
     required Map<String, String> scripts,
     required Map<String, String> preludes,
-    bool skipSmokeLoad = false,
-  }) async {
+  }) {
     _validateScriptRefs(manifestUrl: manifestUrl, pack: pack);
     _validateCatalogVersions(pack);
     _validateSizes(scripts: scripts, preludes: preludes);
@@ -35,13 +31,6 @@ abstract final class PluginInstallValidator {
       scripts: scripts,
       preludes: preludes,
     );
-    if (!debugSkipSmokeLoad && !skipSmokeLoad) {
-      await _smokeLoadScripts(
-        pack: pack,
-        scripts: scripts,
-        preludes: preludes,
-      );
-    }
   }
 
   static void _validateScriptRefs({
@@ -205,41 +194,5 @@ abstract final class PluginInstallValidator {
     if (actual != normalized) {
       throw FormatException('$label: integrity mismatch');
     }
-  }
-
-  static Future<void> _smokeLoadScripts({
-    required EnginePack pack,
-    required Map<String, String> scripts,
-    required Map<String, String> preludes,
-  }) async {
-    final rt = EngineRuntime.fork();
-    try {
-      for (final plugin in pack.plugins) {
-        if (!plugin.needsScript) continue;
-        final entry = scripts[plugin.id];
-        if (entry == null || entry.isEmpty) continue;
-        final preludeKey = _preludeKey(pack: pack, plugin: plugin);
-        final prelude = preludeKey == null ? '' : (preludes[preludeKey] ?? '');
-        final code = prelude.isEmpty ? entry : '$prelude\n$entry';
-        try {
-          await rt.loadPlugin(pluginId: '__install_${plugin.id}', code: code);
-        } catch (e) {
-          throw FormatException(
-            'plugin ${plugin.id} failed JS load: $e',
-          );
-        }
-      }
-    } finally {
-      rt.dispose();
-    }
-  }
-
-  static String? _preludeKey({
-    required EnginePack pack,
-    required EnginePlugin plugin,
-  }) {
-    if (plugin.prelude.trim().isNotEmpty) return plugin.prelude.trim();
-    if (pack.prelude.trim().isNotEmpty) return pack.prelude.trim();
-    return null;
   }
 }
