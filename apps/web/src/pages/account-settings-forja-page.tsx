@@ -157,8 +157,8 @@ export function AccountSettingsForjaPage() {
   return (
     <>
       <AccountSettingsShell
-        title="Forja plugins"
-        description="Plugin packs on your profile sync to the app when signed in."
+      title="Plugins"
+        description="Forja pack manifests on this profile — same as Settings → Forja Packs in the app. Hub packs contribute tabs under Features after sync."
         footer={
           <SettingsAutosaveFooter
             isSaving={isSaving}

@@ -48,9 +48,9 @@ You do not re-enter a code per title. Direct HTTP Stremio/Nuvio streams still pl
 
 If you turn on Direct torrent / Stremio / Nuvio and have not acknowledged P2P on this TV, Forja shows the **P2P streaming** disclaimer in **Playback**. Cancel leaves that source off.
 
-## Android TV — local torrent (optional)
+## Android TV — local torrent (admin)
 
-**Allow local torrent on this device** uses the on-box engine instead of the desktop. Leave **off** for the normal LAN setup.
+**Allow local torrent on this device** (admin accounts only — green sparkles) uses the on-box engine instead of the desktop. Leave **off** for the normal LAN setup.
 
 ## Security
 

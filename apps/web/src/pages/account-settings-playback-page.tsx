@@ -48,7 +48,7 @@ export function AccountSettingsPlaybackPage() {
   return (
     <AccountSettingsShell
       title="Playback"
-      description="Cross-device playback preferences. Built-in engine and per-device player choices stay in the app."
+      description="Addons → Playback — quality, audio, auto-play, and play sources. Same prefs as Settings → Addons → Playback in the app."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}

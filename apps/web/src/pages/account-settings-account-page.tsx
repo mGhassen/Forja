@@ -169,7 +169,7 @@ export function AccountSettingsAccountPage() {
     <AccountSettingsShell
       section="account"
       title="Your account"
-      description="Manage the Forja cloud account used for sync. Profile settings (IPTV, playback, navigation, Stremio) stay under Profile in the sidebar."
+      description="Manage the Forja cloud account used for sync. Profile settings (Addons, Features, Plugins) stay under Profile in the sidebar."
     >
       <SettingsSection
         label="Signed in"

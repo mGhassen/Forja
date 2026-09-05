@@ -7,5 +7,5 @@ export function AccountSettingsPage() {
     return <Outlet />
   }
 
-  return <Navigate to="/account/settings/playback" replace />
+  return <Navigate to="/account/settings/addons" replace />
 }

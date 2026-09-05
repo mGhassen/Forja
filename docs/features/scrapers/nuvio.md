@@ -14,7 +14,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 
 1. Enable **Nuvio** under **Play sources** in **Settings → Playback**
 2. Open a title → white **Play** / **Sources** → **Nuvio** tab
-3. Or manage addons under **Settings → Providers & Addons → Nuvio Addons** (hidden when Nuvio play source is off), or on the web portal under **Profile → Nuvio addons** (also hidden when Nuvio play source is off)
+3. Or manage addons under **Settings → Addons → Nuvio**, or on the web portal under **Profile → Addons → Nuvio** (hidden when Nuvio play source is off)
 
 ## What you can do
 

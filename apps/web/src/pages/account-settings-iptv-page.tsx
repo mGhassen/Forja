@@ -544,6 +544,9 @@ export function AccountSettingsIptvPage() {
 
   return (
     <AccountSettingsShell
+      title="IPTV"
+      description="Addons → IPTV — assign Xtream portals for this profile. Turn the IPTV tab on from the Addons hub."
+      wide
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}

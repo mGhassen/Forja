@@ -551,10 +551,10 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
             onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
             borderRadius: 20,
             scaleOnFocus: 1.0,
-            // Circular control — soft rounded fill only, never the green left rail.
+            // Circular control: soft rounded fill + hairline — never green left rail.
             showFocusRail: false,
-            showFocusFill: false,
-            showFocusBorder: false,
+            showFocusFill: true,
+            showFocusBorder: true,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
             child: const Padding(
@@ -1465,8 +1465,8 @@ class SettingsTextAction extends StatelessWidget {
       borderRadius: 8,
       scaleOnFocus: 1.0,
       showFocusRail: false,
-      showFocusFill: false,
-      showFocusBorder: false,
+      showFocusFill: true,
+      showFocusBorder: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,

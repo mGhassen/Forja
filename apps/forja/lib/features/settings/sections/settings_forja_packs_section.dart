@@ -610,7 +610,7 @@ class _SettingsForjaPacksSectionState
   }
 }
 
-class _EnginePackActions extends StatelessWidget {
+class _EnginePackActions extends StatefulWidget {
   const _EnginePackActions({
     required this.packEnabled,
     required this.onTogglePack,
@@ -628,13 +628,26 @@ class _EnginePackActions extends StatelessWidget {
   final EnginePackUpdateInfo? update;
 
   @override
+  State<_EnginePackActions> createState() => _EnginePackActionsState();
+}
+
+class _EnginePackActionsState extends State<_EnginePackActions> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _chromeActive => _focused || _hovered;
+
+  @override
   Widget build(BuildContext context) {
-    final hasUpdate = update != null;
+    final hasUpdate = widget.update != null;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final packSwitch = ForjaSwitch(
-      value: packEnabled,
-      scale: ForjaSwitch.settingsScale,
-      onChanged: onTogglePack,
+    final packSwitch = IgnorePointer(
+      child: ForjaSwitch(
+        value: widget.packEnabled,
+        scale: ForjaSwitch.settingsScale,
+        onChanged: (_) {},
+        emphasized: _chromeActive,
+      ),
     );
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -642,8 +655,8 @@ class _EnginePackActions extends StatelessWidget {
         if (tv)
           shellFocusableTap(
             context: context,
-            onTap: () => onTogglePack(!packEnabled),
-            borderRadius: 8,
+            onTap: () => widget.onTogglePack(!widget.packEnabled),
+            borderRadius: 20,
             scaleOnFocus: 1.0,
             showFocusRail: false,
             showFocusFill: false,
@@ -651,11 +664,34 @@ class _EnginePackActions extends StatelessWidget {
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
             ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-            child: ExcludeFocus(child: packSwitch),
+            onFocusChange: (f) {
+              if (_focused == f) return;
+              setState(() => _focused = f);
+            },
+            onHoverChange: (h) {
+              if (_hovered == h) return;
+              setState(() => _hovered = h);
+            },
+            child: packSwitch,
           )
         else
-          packSwitch,
-        if (showOfficialBadge)
+          MouseRegion(
+            onEnter: (_) {
+              if (_hovered) return;
+              setState(() => _hovered = true);
+            },
+            onExit: (_) {
+              if (!_hovered) return;
+              setState(() => _hovered = false);
+            },
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => widget.onTogglePack(!widget.packEnabled),
+              child: packSwitch,
+            ),
+          ),
+        if (widget.showOfficialBadge)
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Text(
@@ -670,15 +706,15 @@ class _EnginePackActions extends StatelessWidget {
         _settingsTvIconButton(
           context,
           tooltip: hasUpdate
-              ? 'Update to v${update!.remoteVersion}'
+              ? 'Update to v${widget.update!.remoteVersion}'
               : 'Refresh',
           icon: hasUpdate ? Icons.system_update_rounded : Icons.refresh_rounded,
-          onPressed: onRefresh,
+          onPressed: widget.onRefresh,
           color: hasUpdate
               ? ForjaShellColors.brandGreen
               : ForjaShellColors.textPrimary,
         ),
-        _AddonRemoveActions(onRemove: onRemove),
+        _AddonRemoveActions(onRemove: widget.onRemove),
       ],
     );
   }
@@ -700,8 +736,8 @@ Widget _settingsTvIconButton(
       borderRadius: 8,
       scaleOnFocus: 1.0,
       showFocusRail: false,
-      showFocusFill: false,
-      showFocusBorder: false,
+      showFocusFill: true,
+      showFocusBorder: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),

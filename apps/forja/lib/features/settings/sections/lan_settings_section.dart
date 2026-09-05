@@ -10,6 +10,7 @@ import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -180,8 +181,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
-        showFocusFill: false,
-        showFocusBorder: false,
+        showFocusFill: true,
+        showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
@@ -199,8 +200,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
-        showFocusFill: false,
-        showFocusBorder: false,
+        showFocusFill: true,
+        showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: const Padding(
@@ -229,8 +230,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         showFocusRail: false,
-        showFocusFill: false,
-        showFocusBorder: false,
+        showFocusFill: true,
+        showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: Padding(
@@ -418,6 +419,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(accountFeaturesProvider);
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.all(16),
@@ -1114,7 +1116,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           ),
         ),
       ],
-      if (defaultTargetPlatform == TargetPlatform.android) ...[
+      if (defaultTargetPlatform == TargetPlatform.android &&
+          AccountFeatures.instance.isAdmin) ...[
         const SizedBox(height: 20),
         const Divider(),
         SettingsToggleRow(
@@ -1122,6 +1125,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           subtitle:
               'Advanced — use the on-device engine instead of the desktop. Leave off for TV.',
           value: _allowLocalTorrent,
+          adminOnly: true,
           onChanged: (v) async {
             await LanPrefs.instance.setAllowLocalTorrentOnDevice(v);
             setState(() => _allowLocalTorrent = v);

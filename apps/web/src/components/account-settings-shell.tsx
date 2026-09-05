@@ -2,23 +2,19 @@ import type { ReactNode } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  Blocks,
   Check,
   ChevronDown,
-  Code2,
   LayoutList,
   LogOut,
   MonitorSmartphone,
   Package,
-  PlayCircle,
-  Puzzle,
-  Radio,
   UserRound,
 } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { RequireAuth } from '@/components/require-auth'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
-import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import {
   DropdownMenu,
@@ -30,18 +26,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-const profileCategoriesBase = [
+/** Nested under Addons hub — keep sidebar highlight on Addons. */
+const ADDONS_NESTED_PREFIXES = [
+  '/account/settings/playback',
+  '/account/settings/iptv',
+  '/account/settings/stremio',
+  '/account/settings/nuvio',
+] as const
+
+const profileCategories = [
   {
-    href: '/account/settings/iptv',
-    title: 'IPTV',
-    subtitle: 'Xtream portals',
-    icon: Radio,
-  },
-  {
-    href: '/account/settings/playback',
-    title: 'Playback',
-    subtitle: 'Sources, quality, auto-play',
-    icon: PlayCircle,
+    href: '/account/settings/addons',
+    title: 'Addons',
+    subtitle: 'Playback, IPTV, sources',
+    icon: Blocks,
   },
   {
     href: '/account/settings/navigation',
@@ -51,23 +49,9 @@ const profileCategoriesBase = [
   },
   {
     href: '/account/settings/forja',
-    title: 'Forja plugins',
-    subtitle: 'Synced pack manifests',
+    title: 'Plugins',
+    subtitle: 'Forja pack manifests',
     icon: Package,
-  },
-  {
-    href: '/account/settings/stremio',
-    title: 'Stremio addons',
-    subtitle: 'Synced manifest URLs',
-    icon: Puzzle,
-    requiresStremio: true as const,
-  },
-  {
-    href: '/account/settings/nuvio',
-    title: 'Nuvio addons',
-    subtitle: 'Synced scraper manifests',
-    icon: Code2,
-    requiresNuvio: true as const,
   },
 ] as const
 
@@ -119,6 +103,16 @@ function NavGroup({
   )
 }
 
+function isProfileNavSelected(href: string, pathname: string): boolean {
+  if (href === '/account/settings/addons') {
+    if (pathname === href || pathname.startsWith(`${href}/`)) return true
+    return ADDONS_NESTED_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`),
+    )
+  }
+  return pathname === href
+}
+
 function NavLink({
   href,
   title,
@@ -129,7 +123,7 @@ function NavLink({
   href: string
   title: string
   subtitle: string
-  icon: typeof Radio
+  icon: typeof Blocks
   selected: boolean
 }) {
   return (
@@ -171,18 +165,6 @@ export function AccountSettingsShell({
   const { user, signOut } = useAuth()
   const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
     useProfiles()
-  const { data: playbackData } = usePlaybackSetting()
-  const stremioOn = playbackData?.payload.play_source_stremio_enabled ?? true
-  const nuvioOn = playbackData?.payload.play_source_nuvio_enabled ?? true
-  const profileCategories = profileCategoriesBase.filter((category) => {
-    if ('requiresStremio' in category && category.requiresStremio) {
-      return stremioOn
-    }
-    if ('requiresNuvio' in category && category.requiresNuvio) {
-      return nuvioOn
-    }
-    return true
-  })
 
   async function onSignOut() {
     // Local only — keep the desktop app session alive.
@@ -315,13 +297,13 @@ export function AccountSettingsShell({
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <NavGroup
                 label="Profile"
-                hint="Settings that sync with the active profile only"
+                hint="Same split as the app — Addons, Features, Plugins"
               >
                 {profileCategories.map((category) => (
                   <NavLink
                     key={category.href}
                     {...category}
-                    selected={pathname === category.href}
+                    selected={isProfileNavSelected(category.href, pathname)}
                   />
                 ))}
               </NavGroup>

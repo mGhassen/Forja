@@ -56,8 +56,8 @@ export function AccountSettingsNuvioPage() {
 
   return (
     <AccountSettingsShell
-      title="Nuvio addons"
-      description="Manifest URLs for Nuvio scrapers. The app installs these on sync — same list as Settings → Providers & Addons → Nuvio."
+      title="Nuvio"
+      description="Addons → Nuvio — scraper manifest URLs. Same list as Settings → Addons → Nuvio in the app."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}

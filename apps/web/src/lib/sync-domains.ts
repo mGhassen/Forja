@@ -315,7 +315,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv'
+  key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv' | 'addons'
   title: string
   description: string
   href: string
@@ -323,17 +323,24 @@ export type RemoteSettingSection = {
 
 export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   {
-    key: 'iptv',
-    title: 'IPTV',
+    key: 'addons',
+    title: 'Addons',
     description:
-      'Assign Xtream portals for this profile (user_iptv_portals).',
+      'Host product surfaces (Playback, IPTV, Live Sports, torrent, Stremio, Nuvio). Detail routes under /addons.',
+    href: '/account/settings/addons',
+  },
+  {
+    key: 'iptv',
+    title: 'IPTV portals',
+    description:
+      'Assign Xtream portals for this profile (user_iptv_portals). Open from Addons → IPTV.',
     href: '/account/settings/iptv',
   },
   {
     key: 'playback',
     title: 'Playback',
     description:
-      'Play sources (torrent / Stremio / Nuvio / web), auto next, audio language, and quality cap.',
+      'Play sources, auto next, audio language, quality cap — Addons → Playback.',
     href: '/account/settings/playback',
   },
   {
@@ -344,20 +351,20 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   },
   {
     key: 'forja',
-    title: 'Forja plugins',
-    description: 'Engine plugin pack manifest URLs installed on your account.',
+    title: 'Plugins',
+    description: 'Engine plugin pack manifest URLs (Settings → Forja Packs in the app).',
     href: '/account/settings/forja',
   },
   {
     key: 'stremio',
     title: 'Stremio addons',
-    description: 'Addon manifest URLs installed on your account.',
+    description: 'Addon manifest URLs — Addons → Stremio.',
     href: '/account/settings/stremio',
   },
   {
     key: 'nuvio',
-    title: 'Nuvio addons',
-    description: 'Nuvio scraper manifest URLs installed on your account.',
+    title: 'Nuvio scrapers',
+    description: 'Nuvio scraper manifest URLs — Addons → Nuvio.',
     href: '/account/settings/nuvio',
   },
 ]

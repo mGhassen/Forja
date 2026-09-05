@@ -93,8 +93,8 @@ export function AccountSettingsStremioPage() {
 
   return (
     <AccountSettingsShell
-      title="Stremio addons"
-      description="Manifest URLs for Stremio addons. Assign each to Sources and/or Live Matches — same list as Settings → Sources in the app."
+      title="Stremio"
+      description="Addons → Stremio — manifest URLs for Sources and/or Live Matches. Same list as Settings → Addons → Stremio in the app."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}

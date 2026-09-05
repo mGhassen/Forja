@@ -6,12 +6,17 @@ import 'package:forja/shared/design/src/forja_shell_colors.dart';
 /// Prefer this over raw [Switch] / [SwitchListTile] color overrides. App theme
 /// [forjaSwitchThemeData] mirrors the same tokens so Material list tiles inherit
 /// the look when they do not override colors.
+///
+/// Hover/focus feedback is the thumb turning white (no halo). When the switch
+/// is wrapped in [IgnorePointer] (TV focus stop), pass [emphasized] from the
+/// outer hover/focus instead.
 class ForjaSwitch extends StatelessWidget {
   const ForjaSwitch({
     super.key,
     required this.value,
     required this.onChanged,
     this.scale = 1.0,
+    this.emphasized = false,
   });
 
   /// Compact scale used by settings toggle rows.
@@ -23,12 +28,17 @@ class ForjaSwitch extends StatelessWidget {
   /// Visual scale (e.g. [settingsScale] in dense settings lists).
   final double scale;
 
+  /// Force the hover/focus thumb (white) — for wrappers that own pointer/focus.
+  final bool emphasized;
+
   @override
   Widget build(BuildContext context) {
     final child = Switch(
       value: value,
       onChanged: onChanged,
-      thumbColor: forjaSwitchThumbColor,
+      thumbColor: emphasized
+          ? const WidgetStatePropertyAll(Colors.white)
+          : forjaSwitchThumbColor,
       trackColor: forjaSwitchTrackColor,
       trackOutlineColor: forjaSwitchTrackOutlineColor,
       overlayColor: forjaSwitchOverlayColor,

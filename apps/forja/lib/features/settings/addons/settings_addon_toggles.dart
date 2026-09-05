@@ -23,10 +23,18 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
     super.key,
     required this.addonId,
     required this.visibility,
+    this.focusNode,
+    this.onLeftEdge,
   });
 
   final String addonId;
   final SettingsVisibility visibility;
+
+  /// TV: owned by the parent row so → / ← can move row ↔ switch.
+  final FocusNode? focusNode;
+
+  /// TV: ← from the switch returns to the addon row.
+  final VoidCallback? onLeftEdge;
 
   @override
   ConsumerState<AddonMasterToggle> createState() => _AddonMasterToggleState();
@@ -145,33 +153,23 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final enabled = _isEnabled(snap);
     void flip() => unawaited(_toggle(!enabled));
-    // Match ForjaSwitch hover/focus: white thumb only — no row rail / ink box.
+    // IgnorePointer so the row/focus wrapper owns taps — pass [emphasized]
+    // because Theme cannot override ForjaSwitch's hardcoded thumbColor.
     final switchVisual = IgnorePointer(
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          switchTheme: SwitchThemeData(
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            thumbColor: WidgetStatePropertyAll(
-              _chromeActive ? Colors.white : ForjaShellColors.surfaceElevated,
-            ),
-            trackColor: forjaSwitchTrackColor,
-            trackOutlineColor: forjaSwitchTrackOutlineColor,
-            overlayColor: forjaSwitchOverlayColor,
-          ),
-        ),
-        child: ForjaSwitch(
-          value: enabled,
-          onChanged: (_) {},
-          scale: ForjaSwitch.settingsScale,
-        ),
+      child: ForjaSwitch(
+        value: enabled,
+        onChanged: (_) {},
+        scale: ForjaSwitch.settingsScale,
+        emphasized: _chromeActive,
       ),
     );
-    // TV: own focus stop so → from the addon row lands here; OK flips.
-    // Touch/desktop: opaque tap on the switch only (row opens detail).
+    // Desktop hybrid + TV: focus stop so → from the addon row lands here.
+    // Pure touch: opaque tap on the switch only (row opens detail).
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (tv) {
       return shellFocusableTap(
         context: context,
+        focusNode: widget.focusNode,
         onTap: flip,
         borderRadius: 20,
         scaleOnFocus: 1.0,
@@ -181,6 +179,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onLeftEdge: widget.onLeftEdge,
         onFocusChange: (f) {
           if (_focused == f) return;
           setState(() => _focused = f);
@@ -189,7 +188,12 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           if (_hovered == h) return;
           setState(() => _hovered = h);
         },
-        child: switchVisual,
+        // Stable focus rect — tiny scaled Switch alone loses spatial →.
+        child: SizedBox(
+          width: 52,
+          height: 40,
+          child: Center(child: switchVisual),
+        ),
       );
     }
     return MouseRegion(

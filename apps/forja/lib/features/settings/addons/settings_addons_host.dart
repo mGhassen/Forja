@@ -194,7 +194,7 @@ class _AddonListPane extends ConsumerWidget {
   }
 }
 
-class _AddonRow extends ConsumerWidget {
+class _AddonRow extends ConsumerStatefulWidget {
   const _AddonRow({
     required this.meta,
     required this.visibility,
@@ -206,7 +206,27 @@ class _AddonRow extends ConsumerWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AddonRow> createState() => _AddonRowState();
+}
+
+class _AddonRowState extends ConsumerState<_AddonRow> {
+  late final FocusNode _rowFocus =
+      FocusNode(debugLabel: 'addon-row-${widget.meta.id}');
+  late final FocusNode _toggleFocus =
+      FocusNode(debugLabel: 'addon-toggle-${widget.meta.id}');
+
+  @override
+  void dispose() {
+    _rowFocus.dispose();
+    _toggleFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = widget.meta;
+    final visibility = widget.visibility;
+    final onTap = widget.onTap;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final titles = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +257,8 @@ class _AddonRow extends ConsumerWidget {
       size: 20,
     );
 
-    final leading = Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
+    final leading =
+        Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
     // TV + activate switch: two focus stops — OK opens detail; → then OK flips.
     if (tv && meta.hasToggle) {
       return Row(
@@ -245,6 +266,7 @@ class _AddonRow extends ConsumerWidget {
           Expanded(
             child: shellFocusableTap(
               context: context,
+              focusNode: _rowFocus,
               onTap: onTap,
               borderRadius: SettingsTokens.categoryTileRadius,
               scaleOnFocus: 1.0,
@@ -252,8 +274,14 @@ class _AddonRow extends ConsumerWidget {
               tvTabId: 'settings',
               tvZone: ShellTvZone.settings,
               ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+              onRightEdge: () {
+                if (_toggleFocus.canRequestFocus) {
+                  _toggleFocus.requestFocus();
+                }
+              },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
                 child: Row(
                   children: [
                     leading,
@@ -269,6 +297,12 @@ class _AddonRow extends ConsumerWidget {
           AddonMasterToggle(
             addonId: meta.id,
             visibility: visibility,
+            focusNode: _toggleFocus,
+            onLeftEdge: () {
+              if (_rowFocus.canRequestFocus) {
+                _rowFocus.requestFocus();
+              }
+            },
           ),
           const SizedBox(width: 4),
         ],
@@ -277,6 +311,7 @@ class _AddonRow extends ConsumerWidget {
 
     return shellFocusableTap(
       context: context,
+      focusNode: _rowFocus,
       onTap: onTap,
       borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
