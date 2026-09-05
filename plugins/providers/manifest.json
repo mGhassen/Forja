@@ -886,9 +886,6 @@
       "name": "Dailymotion",
       "entry": "dailymotion.js",
       "types": [
-        "movie",
-        "tv",
-        "anime",
         "drama"
       ],
       "kind": "http",
