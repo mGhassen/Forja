@@ -261,6 +261,12 @@ void main() {
     );
     expect(
       peakstormFmp4HlsAvoidHardSeek(
+        'https://vod3.cf.dmcdn.net/sec2(x)/video/fmp4/1/h264_aac_hd/2/manifest.m3u8#cell=cf3',
+      ),
+      isTrue,
+    );
+    expect(
+      peakstormFmp4HlsAvoidHardSeek(
         'https://example.com/vod/index.m3u8',
       ),
       isFalse,

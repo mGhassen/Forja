@@ -47,15 +47,26 @@ bool isVideasyCdnStreamUrl(String url) {
   return host.contains('peakstorm');
 }
 
+/// Dailymotion playable HLS on dmcdn — fMP4 media playlists (not cdndirector).
+bool isDailymotionDmcdnHlsUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return false;
+  final host = uri.host.toLowerCase();
+  if (!host.contains('dmcdn.net')) return false;
+  final path = uri.path.toLowerCase();
+  return path.contains('.m3u8');
+}
+
 /// User seeks on peakstorm fMP4 must remount — [Player.seek] corrupts segments.
 const Duration kPeakstormRemountSeekMinDelta = Duration(seconds: 3);
 
-/// Peakstorm fMP4 HLS (Videasy, VidCore, …) — mpv `start` only.
-/// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black screen).
+/// fMP4 HLS (peakstorm / Videasy / Dailymotion dmcdn) — mpv `start` / remount only.
+/// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black / stall).
 bool peakstormFmp4HlsAvoidHardSeek(String url) {
   final u = url.trim();
   if (u.isEmpty) return false;
   if (isVideasyCdnStreamUrl(u)) return true;
+  if (isDailymotionDmcdnHlsUrl(u)) return true;
   final nested = Uri.tryParse(u)?.queryParameters['url'];
   if (nested != null && nested.isNotEmpty) {
     return peakstormFmp4HlsAvoidHardSeek(nested);
