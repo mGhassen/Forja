@@ -9,6 +9,7 @@ import 'package:forja/shell/shell_bus.dart';
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
   static bool Function()? _tryConsumePlayerOverlay;
+  static VoidCallback? _forceExitPlayer;
   static bool _listening = false;
   static DateTime? _lastStayAt;
   static bool _exitCommitted = false;
@@ -34,6 +35,7 @@ abstract final class PlayerBackExitGate {
       if (!ShellBus.playerSurfaceActive.value) {
         _tryFocusBack = null;
         _tryConsumePlayerOverlay = null;
+        _forceExitPlayer = null;
         exitReady = false;
         _lastStayAt = null;
         _exitCommitted = false;
@@ -47,6 +49,26 @@ abstract final class PlayerBackExitGate {
   static void setTryFocusBack(bool Function()? callback) {
     _ensureSurfaceListener();
     _tryFocusBack = callback;
+  }
+
+  /// Desktop film player: mouse Back / trackpad leave immediately.
+  static void setForceExitPlayer(VoidCallback? callback) {
+    _ensureSurfaceListener();
+    _forceExitPlayer = callback;
+  }
+
+  /// Returns `true` when a force-exit callback ran (player left).
+  static bool tryForceExitPlayer() {
+    _ensureSurfaceListener();
+    final cb = _forceExitPlayer;
+    if (cb == null) return false;
+    try {
+      cb();
+      return true;
+    } catch (e, st) {
+      debugPrint('[PlayerBackExitGate] forceExitPlayer failed: $e\n$st');
+      return false;
+    }
   }
 
   /// Multi-step overlays that own Back before the exit ladder (e.g. IPTV
@@ -113,6 +135,20 @@ abstract final class PlayerBackExitGate {
     _exitCommitted = false;
   }
 
+  /// True when a stay step stamped within this key pulse (~50ms).
+  /// Used so DismissIntent arm + PopScope maybePop on the same Escape
+  /// cannot arm then leave. Intentional second Escape is later.
+  static bool wasStayThisKeyPulse() {
+    if (_lastStayAt == null) return false;
+    return DateTime.now().difference(_lastStayAt!) < _escapeHandledPulse;
+  }
+
+  /// True when [markStay] / a stay step ran within the TV twin window.
+  static bool wasRecentStay() {
+    if (_lastStayAt == null) return false;
+    return DateTime.now().difference(_lastStayAt!) < _stayTwinWindow;
+  }
+
   /// Desktop film player handled Escape in [HardwareKeyboard] — Shortcuts
   /// must ignore the same key (otherwise arm + pop happen on one press).
   static void notePlayerEscapeHandled() {
@@ -153,6 +189,7 @@ abstract final class PlayerBackExitGate {
   static void resetForTest() {
     _tryFocusBack = null;
     _tryConsumePlayerOverlay = null;
+    _forceExitPlayer = null;
     exitReady = false;
     _lastStayAt = null;
     _exitCommitted = false;

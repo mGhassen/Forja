@@ -136,13 +136,35 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
       );
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        unawaited(_s._exitPlayer());
+    return Actions(
+      actions: {
+        // Flutter WidgetsApp maps Escape → DismissIntent → maybePop. Own it
+        // so the arm ladder in PopScope runs instead of a bare dismiss.
+        DismissIntent: CallbackAction<DismissIntent>(
+          onInvoke: (_) {
+            // Stay steps only — never exit from DismissIntent. Confirming
+            // Escape exits via PopScope maybePop so a twin cannot arm+leave.
+            if (_s._bypassEscapeArm) return null;
+            _s._consumeEscapePopAsStay();
+            return null;
+          },
+        ),
       },
-      child: body,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (_s._bypassEscapeArm) {
+            unawaited(_s._exitPlayer());
+            return;
+          }
+          if (_s._consumeEscapePopAsStay()) return;
+          // DismissIntent may have armed earlier in this same Escape pulse.
+          if (PlayerBackExitGate.wasStayThisKeyPulse()) return;
+          unawaited(_s._exitPlayer());
+        },
+        child: body,
+      ),
     );
   }
 
@@ -162,7 +184,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           onTogglePlay: () {
             _s._player.playOrPause();
           },
-          onClose: () => unawaited(_s._exitPlayer()),
+            onClose: _s._forceLeavePlayer,
           onSeekBack: () {
             final pos =
                 _s._positionNotifier.value - const Duration(seconds: 15);
@@ -232,9 +254,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     onStream: hasStreamPicker ? _s._showStreamMenu : null,
                   )
                 : null,
-            // Must go through [_exitPlayer] - a direct pop skipped silence/stop
-            // and left mpv audio playing (issue 059).
-            onBack: () => unawaited(_s._exitPlayer()),
+            // Must go through [_forceLeavePlayer] - a direct pop skipped silence/stop
+            // and left mpv audio playing (issue 059). Escape arm must not apply.
+            onBack: _s._forceLeavePlayer,
             trailing: PlayerTopBarActions(
               showPlayer: widget.onSwitchPlayer != null,
               onPlayer: widget.onSwitchPlayer != null

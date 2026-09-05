@@ -3,12 +3,12 @@ import 'dart:io' show Platform;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/desktop_swipe_back_indicator.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/navigation/navigation_back_handler.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -206,6 +206,8 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     if (dismissAnyPlayerChromeOverlay()) return true;
     switch (ShellNavigationLevels.resolveBackTarget()) {
       case ShellNavLevel.player:
+        // Mouse Back / trackpad — leave immediately (no Escape arm ladder).
+        if (PlayerBackExitGate.tryForceExitPlayer()) return true;
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
@@ -242,17 +244,18 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       ShellTvFocusCoordinator.handleShellExitKey();
       return;
     }
-    // Escape while a player route is up: if the player HardwareKeyboard
-    // handler already consumed this key, do nothing (otherwise one Escape
-    // arms then Shortcuts pops). Otherwise run the arm ladder here.
+    // Escape while a player is up: never [_onBack] (that force-pops). Route
+    // Escape through maybePop so the player's PopScope arm ladder runs.
+    // If HardwareKeyboard already maybePop'd this pulse, skip.
     if (ShellBus.playerSurfaceActive.value) {
       if (PlayerBackExitGate.playerEscapeHandledThisPulse()) return;
       if (dismissAnyPlayerChromeOverlay()) {
         PlayerBackExitGate.markStay();
         return;
       }
-      if (PlayerBackExitGate.tryFocusBackStay()) return;
-      _onBack();
+      final ctx = shellOverlayNavigatorKey.currentContext ?? context;
+      final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+      rootNav?.maybePop();
       return;
     }
     _onBack();

@@ -24,12 +24,10 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
   void _armEscapeExit() {
     _s._escapeExitArmed = true;
-    _s._escapeArmedAt = DateTime.now();
   }
 
   void _revealChrome() {
     _s._escapeExitArmed = false;
-    _s._escapeArmedAt = null;
     if (!_s._showControls) {
       setState(() => _s._showControls = true);
     }
@@ -47,10 +45,37 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     _s._lastHoverPos = null;
     if (!armEscape) {
       _s._escapeExitArmed = false;
-      _s._escapeArmedAt = null;
     }
     if (!_s._showControls) return;
     setState(() => _s._showControls = false);
+  }
+
+  /// Escape / DismissIntent / maybePop ladder. Return `true` to keep the
+  /// player open. Back icon sets [_bypassEscapeArm] and bypasses this.
+  bool _consumeEscapePopAsStay() {
+    if (dismissAnyPlayerChromeOverlay()) {
+      PlayerBackExitGate.markStay();
+      return true;
+    }
+    if (_s._showControls) {
+      _hideChromeIntentional(armEscape: true);
+      _armEscapeExit();
+      PlayerBackExitGate.markStay();
+      return true;
+    }
+    if (!_s._escapeExitArmed) {
+      _armEscapeExit();
+      PlayerBackExitGate.markStay();
+      return true;
+    }
+    _s._escapeExitArmed = false;
+    return false;
+  }
+
+  void _requestEscapeMaybePop() {
+    PlayerBackExitGate.notePlayerEscapeHandled();
+    final nav = Navigator.of(context, rootNavigator: true);
+    nav.maybePop();
   }
 
   void _syncChromeHideTimer() {
@@ -147,7 +172,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     // pop throws Bad state: No element / !_debugLocked.
     if (_s._exitInProgress || _s._disposed) return;
     // First Back closes an open panel/menu; second exits (mobile parity).
-    if (dismissAnyPlayerChromeOverlay()) return;
+    // Escape uses PopScope arm ladder — do not treat overlay dismiss as
+    // "armed" when the Back icon / mouse Back force-exits.
+    if (!_s._bypassEscapeArm && dismissAnyPlayerChromeOverlay()) return;
+    _s._bypassEscapeArm = false;
+    _s._escapeExitArmed = false;
     _s._exitInProgress = true;
     // Capture before awaits - State may unmount during stop; dismiss must still run.
     final nav = Navigator.of(context, rootNavigator: true);
@@ -166,6 +195,12 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     }
   }
 
+  /// Back icon / mouse Back / trackpad — leave immediately (no Escape arm).
+  void _forceLeavePlayer() {
+    _s._bypassEscapeArm = true;
+    unawaited(_exitPlayer());
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   //  KEYBOARD SHORTCUTS
   // ─────────────────────────────────────────────────────────────────────────
@@ -177,7 +212,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     // spinner). Other shortcuts wait until controls are ready.
     if (!_s._playerReady) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
-        unawaited(_exitPlayer());
+        _forceLeavePlayer();
         return true;
       }
       return false;
@@ -192,31 +227,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return true;
     }
 
-    // Escape: panels → hide chrome → arm → confirm exit (local ladder).
-    // [notePlayerEscapeHandled] stops Shortcuts from popping on the same key.
-    // Same-pulse arm (Shortcuts twin) must not confirm-exit.
+    // Escape → maybePop only. PopScope owns panels → hide → arm → exit.
+    // Never _exitPlayer here — Flutter DismissIntent also maybePops; one
+    // ladder in PopScope prevents one Escape from leaving when chrome is down.
     if (key == LogicalKeyboardKey.escape) {
-      PlayerBackExitGate.notePlayerEscapeHandled();
-      if (dismissAnyPlayerChromeOverlay()) return true;
-      if (_s._showControls) {
-        _hideChromeIntentional(armEscape: true);
-        _armEscapeExit();
-        return true;
-      }
-      if (!_s._escapeExitArmed) {
-        _armEscapeExit();
-        return true;
-      }
-      final armedAt = _s._escapeArmedAt;
-      if (armedAt != null &&
-          DateTime.now().difference(armedAt) <
-              const Duration(milliseconds: 50)) {
-        // Armed earlier in this same key pulse — stay.
-        return true;
-      }
-      _s._escapeExitArmed = false;
-      _s._escapeArmedAt = null;
-      unawaited(_exitPlayer());
+      _requestEscapeMaybePop();
       return true;
     }
 

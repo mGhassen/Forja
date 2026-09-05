@@ -31,12 +31,10 @@ mixin _DesktopPlayerLifecycle
         chromeVisible: _s._showControls,
         armed: _s._escapeExitArmed,
         hideChrome: () => _s._hideChromeIntentional(armEscape: true),
-        setArmed: (v) {
-          _s._escapeExitArmed = v;
-          _s._escapeArmedAt = v ? DateTime.now() : null;
-        },
+        setArmed: (v) => _s._escapeExitArmed = v,
       );
     });
+    PlayerBackExitGate.setForceExitPlayer(_s._forceLeavePlayer);
     _s._ownedProviderSourcesCache =
         ValueNotifier<Map<String, List<StreamSource>>>({});
 

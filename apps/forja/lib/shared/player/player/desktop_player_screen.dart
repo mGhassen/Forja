@@ -197,9 +197,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// First Escape hid chrome (or armed while hidden) — next Escape exits.
   bool _escapeExitArmed = false;
 
-  /// When [_escapeExitArmed] was set — same-pulse Shortcuts twin must not
-  /// treat arm + confirm as one Escape.
-  DateTime? _escapeArmedAt;
+  /// When true, [PopScope] skips the Escape arm ladder (Back icon / mouse Back).
+  bool _bypassEscapeArm = false;
+
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =
@@ -557,6 +557,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
+    PlayerBackExitGate.setForceExitPlayer(null);
     windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     playerChromeOnOverlayDismissed = null;
