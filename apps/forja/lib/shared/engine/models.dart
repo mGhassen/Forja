@@ -591,7 +591,7 @@ bool enginePluginHasStreams(
 ) => streams.any((s) => engineStreamBelongsToPlugin(s, pluginId));
 
 /// Fetched markers with no rows — used when expanding All / forcing refetch of
-/// empty chips.
+/// empty chips, and when green Play must not treat empties as terminal.
 Set<String> engineStaleFetchedPluginIds({
   required Set<String> fetchedIds,
   required Set<String> selectedIds,

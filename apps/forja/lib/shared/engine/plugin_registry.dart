@@ -12,6 +12,8 @@ import 'package:forja/shared/engine/plugin_contract.dart';
 import 'package:forja/shared/engine/plugin_install_validator.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/remote_pack_intent_store.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/player_stream_extract_cache.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -992,10 +994,17 @@ class PluginRegistry {
     if (pack.packId == 'forjahq-hubs') {
       CatalogCache.instance.wipeAll();
     }
+    // Green Play / Sources RAM + resume extracts must not keep pre-update empties.
+    _invalidatePlaybackCachesAfterPackChange();
     _clearOfficialInstallError();
     _scriptRepairAttempted.remove(manifestUrl);
     notifyChanged();
     return pack;
+  }
+
+  void _invalidatePlaybackCachesAfterPackChange() {
+    CatalogSourcesSessionCache.clearAll();
+    unawaited(PlayerStreamExtractCache.clearAll());
   }
 
   /// Local checkout only — remote packs never download here (ask first).
@@ -1038,8 +1047,15 @@ class PluginRegistry {
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
     for (final pack in victim) {
       await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
+      for (final p in pack.plugins) {
+        CatalogCache.instance.wipePlugin(p.id);
+      }
     }
     await _savePacks(all);
+    if (victim.isNotEmpty) {
+      _invalidatePlaybackCachesAfterPackChange();
+      notifyChanged();
+    }
   }
 
   Future<void> setPluginEnabled({
@@ -1380,6 +1396,7 @@ class PluginRegistry {
     if (prev == null) return;
     debugPrint('[engine] $id script changed — invalidating caches');
     CatalogCache.instance.wipePlugin(id);
+    _invalidatePlaybackCachesAfterPackChange();
     notifyChanged();
   }
 

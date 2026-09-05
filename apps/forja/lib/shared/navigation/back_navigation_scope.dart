@@ -244,18 +244,14 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       ShellTvFocusCoordinator.handleShellExitKey();
       return;
     }
-    // Escape while a player is up: never [_onBack] (that force-pops). Route
-    // Escape through maybePop so the player's PopScope arm ladder runs.
-    // If HardwareKeyboard already maybePop'd this pulse, skip.
+    // Escape while a player is up: do not maybePop / [_onBack]. The film
+    // player's HardwareKeyboard Escape ladder owns hide → arm → exit.
+    // maybePop here was arming then leaving on the same key.
     if (ShellBus.playerSurfaceActive.value) {
       if (PlayerBackExitGate.playerEscapeHandledThisPulse()) return;
-      if (dismissAnyPlayerChromeOverlay()) {
-        PlayerBackExitGate.markStay();
-        return;
-      }
-      final ctx = shellOverlayNavigatorKey.currentContext ?? context;
-      final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
-      rootNav?.maybePop();
+      if (dismissAnyPlayerChromeOverlay()) return;
+      // No desktop HW handler (e.g. IPTV) — stay put rather than force-pop.
+      // IPTV / TV Back still use PopScope + PlayerBackExitGate.
       return;
     }
     _onBack();

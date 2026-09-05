@@ -1254,6 +1254,51 @@ function extract(ctx) {
     }
 
     #[tokio::test]
+    async fn dailymotion_http_provider_finds_streams() {
+        let http = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../plugins/providers/dailymotion.js"
+        ))
+        .expect("http script");
+        let hop = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../plugins/providers/hops/dailymotion.js"
+        ))
+        .expect("hop script");
+        let r = extract(ExtractRequest {
+            plugin_id: "dailymotion".into(),
+            code: http,
+            ctx: serde_json::json!({
+                "tmdbId": "299952",
+                "type": "drama",
+                "season": 1,
+                "episode": 1,
+                "title": "The Early Spring",
+                "config": {}
+            }),
+            timeout_ms: 60_000,
+            allow_host_fallback: false,
+            hops: vec![HopScript {
+                id: "hop-dailymotion".into(),
+                hosts: vec![
+                    "dailymotion.com".into(),
+                    "dai.ly".into(),
+                    "geo.dailymotion.com".into(),
+                ],
+                code: hop,
+            }],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert!(!r.streams.is_empty(), "expected streams, got {r:?}");
+        for s in &r.streams {
+            let u = s.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(!u.contains("cdndirector.dailymotion.com"), "{u}");
+        }
+    }
+
+    #[tokio::test]
     async fn dailymotion_hop_expands_cdndirector_to_dmcdn() {
         let code = std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),

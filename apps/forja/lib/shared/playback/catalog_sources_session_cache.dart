@@ -385,6 +385,16 @@ class CatalogSourcesSessionCache {
     }
   }
 
+  /// Drop every title session — pack install / local script edits must not leave
+  /// green Play trusting empty `fetchedPluginIds` from the previous pack.
+  static void clearAll() {
+    _torrents.clear();
+    _stremio.clear();
+    _nuvio.clear();
+    _engine.clear();
+    _ui.clear();
+  }
+
   static void _trim<T>(Map<String, T> map) {
     while (map.length > _maxEntriesPerKind) {
       map.remove(map.keys.first);

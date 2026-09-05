@@ -408,6 +408,15 @@ Future<void> runEngineAutoPlay({
         wantAudio,
       );
       fetchedIds = Set<String>.from(cached.fetchedPluginIds);
+      // Empty fetches are terminal for Sources reopen — not for green Play.
+      // Drop them so pack updates / flaky upstreams get a fresh extract race.
+      fetchedIds.removeAll(
+        engineStaleFetchedPluginIds(
+          fetchedIds: fetchedIds,
+          selectedIds: pluginIds.toSet(),
+          streams: streams,
+        ),
+      );
       onCacheUpdated?.call(
         List<Map<String, dynamic>>.from(streams),
         Set<String>.from(fetchedIds),

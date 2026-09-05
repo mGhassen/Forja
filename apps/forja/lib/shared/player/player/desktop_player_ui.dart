@@ -28,6 +28,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
   void _revealChrome() {
     _s._escapeExitArmed = false;
+    _s._escapeHandledAt = null;
     if (!_s._showControls) {
       setState(() => _s._showControls = true);
     }
@@ -50,32 +51,39 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     setState(() => _s._showControls = false);
   }
 
-  /// Escape / DismissIntent / maybePop ladder. Return `true` to keep the
-  /// player open. Back icon sets [_bypassEscapeArm] and bypasses this.
-  bool _consumeEscapePopAsStay() {
+  /// Single Escape ladder for HW / DismissIntent / Shortcuts. Same-pulse
+  /// re-entry is a no-op so one key cannot arm then leave.
+  void _handleEscapeKey() {
+    final handledAt = _s._escapeHandledAt;
+    if (handledAt != null &&
+        DateTime.now().difference(handledAt) <
+            const Duration(milliseconds: 80)) {
+      debugPrint(
+        '[DesktopPlayer] Escape ignored (same pulse, armed=${_s._escapeExitArmed} chrome=${_s._showControls})',
+      );
+      return;
+    }
+    _s._escapeHandledAt = DateTime.now();
+    PlayerBackExitGate.notePlayerEscapeHandled();
+
     if (dismissAnyPlayerChromeOverlay()) {
-      PlayerBackExitGate.markStay();
-      return true;
+      debugPrint('[DesktopPlayer] Escape → dismiss overlay (stay)');
+      return;
     }
     if (_s._showControls) {
+      debugPrint('[DesktopPlayer] Escape → hide chrome + arm (stay)');
       _hideChromeIntentional(armEscape: true);
       _armEscapeExit();
-      PlayerBackExitGate.markStay();
-      return true;
+      return;
     }
     if (!_s._escapeExitArmed) {
+      debugPrint('[DesktopPlayer] Escape → arm only (stay)');
       _armEscapeExit();
-      PlayerBackExitGate.markStay();
-      return true;
+      return;
     }
+    debugPrint('[DesktopPlayer] Escape → confirm exit');
     _s._escapeExitArmed = false;
-    return false;
-  }
-
-  void _requestEscapeMaybePop() {
-    PlayerBackExitGate.notePlayerEscapeHandled();
-    final nav = Navigator.of(context, rootNavigator: true);
-    nav.maybePop();
+    unawaited(_exitPlayer());
   }
 
   void _syncChromeHideTimer() {
@@ -172,11 +180,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     // pop throws Bad state: No element / !_debugLocked.
     if (_s._exitInProgress || _s._disposed) return;
     // First Back closes an open panel/menu; second exits (mobile parity).
-    // Escape uses PopScope arm ladder — do not treat overlay dismiss as
-    // "armed" when the Back icon / mouse Back force-exits.
+    // Escape uses local [_handleEscapeKey] — force path skips overlay-only return.
     if (!_s._bypassEscapeArm && dismissAnyPlayerChromeOverlay()) return;
     _s._bypassEscapeArm = false;
     _s._escapeExitArmed = false;
+    _s._escapeHandledAt = null;
     _s._exitInProgress = true;
     // Capture before awaits - State may unmount during stop; dismiss must still run.
     final nav = Navigator.of(context, rootNavigator: true);
@@ -227,11 +235,10 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return true;
     }
 
-    // Escape → maybePop only. PopScope owns panels → hide → arm → exit.
-    // Never _exitPlayer here — Flutter DismissIntent also maybePops; one
-    // ladder in PopScope prevents one Escape from leaving when chrome is down.
+    // Escape: one local ladder. Never maybePop — Flutter DismissIntent and
+    // Shortcuts also see Escape; maybePop let a twin arm then leave.
     if (key == LogicalKeyboardKey.escape) {
-      _requestEscapeMaybePop();
+      _handleEscapeKey();
       return true;
     }
 

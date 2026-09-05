@@ -197,6 +197,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// First Escape hid chrome (or armed while hidden) — next Escape exits.
   bool _escapeExitArmed = false;
 
+  /// When [_handleEscapeKey] last ran — ignore twin HW/DismissIntent/Shortcuts.
+  DateTime? _escapeHandledAt;
+
   /// When true, [PopScope] skips the Escape arm ladder (Back icon / mouse Back).
   bool _bypassEscapeArm = false;
 

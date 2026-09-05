@@ -440,6 +440,23 @@ void main() {
       CatalogSourcesSessionCache.invalidate(key);
     });
 
+    test('clearAll drops every kind after pack update', () {
+      const key = 'movie:42';
+      CatalogSourcesSessionCache.writeEngine(
+        key,
+        const [],
+        fetchedPluginIds: const {'videasy', 'dailymotion'},
+      );
+      CatalogSourcesSessionCache.writeStremio(key, [
+        {'url': 'https://example.com/s'},
+      ]);
+      expect(CatalogSourcesSessionCache.readEngine(key), isNotNull);
+      expect(CatalogSourcesSessionCache.readStremio(key), isNotNull);
+      CatalogSourcesSessionCache.clearAll();
+      expect(CatalogSourcesSessionCache.readEngine(key), isNull);
+      expect(CatalogSourcesSessionCache.readStremio(key), isNull);
+    });
+
     test('hub cacheKey prefers catalogOpen over TMDB mediaType flip', () {
       expect(
         CatalogSourcesSessionCache.cacheKey(

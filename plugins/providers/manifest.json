@@ -4,7 +4,7 @@
   "name": "ForjaHQ Providers",
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
-  "version": "1.5.31",
+  "version": "1.5.32",
   "tags": ["providers", "anime", "arabic", "drama", "movies", "tv"],
   "plugins": [
     {

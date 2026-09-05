@@ -138,14 +138,11 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
 
     return Actions(
       actions: {
-        // Flutter WidgetsApp maps Escape → DismissIntent → maybePop. Own it
-        // so the arm ladder in PopScope runs instead of a bare dismiss.
+        // Swallow Flutter's Escape → DismissIntent → maybePop. The player
+        // HardwareKeyboard handler owns the hide/arm/exit ladder.
         DismissIntent: CallbackAction<DismissIntent>(
           onInvoke: (_) {
-            // Stay steps only — never exit from DismissIntent. Confirming
-            // Escape exits via PopScope maybePop so a twin cannot arm+leave.
-            if (_s._bypassEscapeArm) return null;
-            _s._consumeEscapePopAsStay();
+            _s._handleEscapeKey();
             return null;
           },
         ),
@@ -154,14 +151,16 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
+          // Back icon / mouse Back set [_bypassEscapeArm]. Escape must never
+          // leave through maybePop — only [_handleEscapeKey] confirms exit.
           if (_s._bypassEscapeArm) {
             unawaited(_s._exitPlayer());
             return;
           }
-          if (_s._consumeEscapePopAsStay()) return;
-          // DismissIntent may have armed earlier in this same Escape pulse.
-          if (PlayerBackExitGate.wasStayThisKeyPulse()) return;
-          unawaited(_s._exitPlayer());
+          debugPrint(
+            '[DesktopPlayer] PopScope maybePop ignored (Escape arm ladder)',
+          );
+          _s._handleEscapeKey();
         },
         child: body,
       ),
