@@ -24,7 +24,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "pluginCount": 1,
       "tags": [
         "aflem",
@@ -170,7 +170,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.9.2",
+      "version": "1.9.3",
       "pluginCount": 6,
       "tags": [
         "live",
@@ -185,8 +185,8 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.5.28",
-      "pluginCount": 86,
+      "version": "1.5.32",
+      "pluginCount": 88,
       "tags": [
         "anime",
         "arabic",
@@ -204,7 +204,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.6",
+      "version": "1.0.7",
       "pluginCount": 9,
       "tags": [
         "torrent"

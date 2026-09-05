@@ -31,7 +31,7 @@
         "label": "Arabic",
         "order": 40,
         "icon": "icons/nav.png",
-        "accent": "#7BA737",
+        "accent": "#7BA737"
       },
       "enabled": true,
       "config": {
