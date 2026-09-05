@@ -107,6 +107,52 @@ function packDescription(manifest) {
   return count > 0 ? `${count} plugins` : ''
 }
 
+/** Topic tags for web catalog filters (anime, arabic, kids, …). */
+const TOPIC_TYPES = new Set(['anime', 'arabic', 'drama'])
+
+function normalizeTag(raw) {
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-')
+    .replace(/\s+/g, '-')
+}
+
+/**
+ * Prefer explicit `manifest.tags`. Else derive from nav.tabId + topic `types`.
+ * @param {Record<string, unknown>} manifest
+ * @returns {string[]}
+ */
+function packTags(manifest) {
+  const explicit = Array.isArray(manifest.tags) ? manifest.tags : null
+  if (explicit && explicit.length > 0) {
+    return [
+      ...new Set(
+        explicit
+          .map((t) => (typeof t === 'string' ? normalizeTag(t) : ''))
+          .filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b))
+  }
+
+  const tags = new Set()
+  const plugins = Array.isArray(manifest.plugins) ? manifest.plugins : []
+  for (const plugin of plugins) {
+    if (!plugin || typeof plugin !== 'object') continue
+    const tabId = plugin.nav?.tabId
+    if (typeof tabId === 'string' && tabId.trim()) {
+      tags.add(normalizeTag(tabId))
+    }
+    const types = Array.isArray(plugin.types) ? plugin.types : []
+    for (const type of types) {
+      if (typeof type !== 'string') continue
+      const key = type.trim().toLowerCase()
+      if (TOPIC_TYPES.has(key)) tags.add(normalizeTag(key))
+    }
+  }
+  return [...tags].sort((a, b) => a.localeCompare(b))
+}
+
 function readManifest(relativePath) {
   const abs = join(pluginsRoot, relativePath)
   const raw = readFileSync(abs, 'utf8')
@@ -140,6 +186,7 @@ function build() {
     const pluginCount = Array.isArray(manifest.plugins)
       ? manifest.plugins.length
       : undefined
+    const tags = packTags(manifest)
 
     return {
       id,
@@ -151,6 +198,7 @@ function build() {
       ...(author ? { author } : {}),
       ...(version ? { version } : {}),
       ...(pluginCount != null ? { pluginCount } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
     }
   })
 

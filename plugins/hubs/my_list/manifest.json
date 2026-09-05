@@ -5,6 +5,7 @@
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
   "version": "1.0.0",
+  "tags": ["lists"],
   "plugins": [
     {
       "id": "my-list-hub",

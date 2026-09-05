@@ -5,6 +5,7 @@
   "description": "Live Matches per-site stream resolve (Forja Live).",
   "author": "ForjaHQ",
   "version": "1.9.2",
+  "tags": ["live", "sports"],
   "plugins": [
     {
       "id": "live-streamed",

@@ -11,6 +11,13 @@
     "id": { "type": "string", "minLength": 1 },
     "name": { "type": "string", "minLength": 1 },
     "version": { "type": "string", "minLength": 1 },
+    "author": { "type": "string" },
+    "description": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "description": "Catalog topic tags for web Community Packs filters (e.g. anime, arabic, kids). When omitted, the catalog generator derives tags from nav.tabId and topic types.",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "enabled": { "type": "boolean" },
     "prelude": {
       "type": "string",

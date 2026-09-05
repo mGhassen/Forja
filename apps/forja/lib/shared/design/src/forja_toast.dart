@@ -332,6 +332,17 @@ class _ForjaToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = _styleFor(entry.kind);
 
+    void runActionSafe(VoidCallback? action, {required bool dismiss}) {
+      final id = entry.id;
+      // Never mutate the overlay tree (dismiss / open dialogs) inside the
+      // button's pointer-up — that trips mouse_tracker on desktop.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (dismiss) ForjaToast.controller.dismiss(id);
+        if (action == null) return;
+        SchedulerBinding.instance.addPostFrameCallback((_) => action());
+      });
+    }
+
     Widget actionButton() {
       final label = Text(
         entry.actionLabel!,
@@ -341,10 +352,7 @@ class _ForjaToastCard extends StatelessWidget {
           color: tvFocus ? ForjaShellColors.brandGreen : style.accent,
         ),
       );
-      void onTap() {
-        entry.onAction!();
-        ForjaToast.controller.dismiss(entry.id);
-      }
+      void onTap() => runActionSafe(entry.onAction, dismiss: true);
 
       if (!tvFocus) {
         return TextButton(
@@ -377,7 +385,7 @@ class _ForjaToastCard extends StatelessWidget {
         size: 16,
         color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
       );
-      void onTap() => ForjaToast.controller.dismiss(entry.id);
+      void onTap() => runActionSafe(null, dismiss: true);
 
       if (!tvFocus) {
         return IconButton(

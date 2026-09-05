@@ -84,7 +84,8 @@ export function PluginBatchInstallDialog({
         pack.name.toLowerCase().includes(q) ||
         pack.description.toLowerCase().includes(q) ||
         packAuthorLabel(pack)?.toLowerCase().includes(q) ||
-        pluginKindLabel(pack.kind).toLowerCase().includes(q),
+        pluginKindLabel(pack.kind).toLowerCase().includes(q) ||
+        (pack.tags ?? []).some((tag) => tag.toLowerCase().includes(q)),
     )
   }, [packs, query])
 

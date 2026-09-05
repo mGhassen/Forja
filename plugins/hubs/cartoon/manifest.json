@@ -5,6 +5,7 @@
   "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
   "author": "ForjaHQ",
   "version": "1.0.5",
+  "tags": ["cartoon", "arabic"],
   "plugins": [
     {
       "id": "dimatoon-hub",

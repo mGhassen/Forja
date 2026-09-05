@@ -11,6 +11,8 @@ export type ForjaPluginCatalogEntry = {
   author?: string
   version?: string
   pluginCount?: number
+  /** Topic tags for filters (anime, arabic, kids, …). */
+  tags?: string[]
 }
 
 export type ForjaPluginCatalog = {
@@ -31,9 +33,30 @@ export function pluginKindLabel(kind: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+export function pluginTagLabel(tag: string): string {
+  return pluginKindLabel(tag)
+}
+
 export function pluginKindsFromPacks(packs: ForjaPluginPackLive[]): string[] {
   const kinds = [...new Set(packs.map((pack) => pack.kind.trim()).filter(Boolean))]
   return kinds.sort((a, b) => pluginKindLabel(a).localeCompare(pluginKindLabel(b)))
+}
+
+export function pluginTagsFromPacks(packs: ForjaPluginPackLive[]): string[] {
+  const tags = new Set<string>()
+  for (const pack of packs) {
+    for (const tag of pack.tags ?? []) {
+      const trimmed = tag.trim()
+      if (trimmed) tags.add(trimmed)
+    }
+  }
+  return [...tags].sort((a, b) => pluginTagLabel(a).localeCompare(pluginTagLabel(b)))
+}
+
+export function packHasTag(pack: ForjaPluginPackLive, tag: string): boolean {
+  const want = tag.trim().toLowerCase()
+  if (!want) return false
+  return (pack.tags ?? []).some((t) => t.trim().toLowerCase() === want)
 }
 
 export function isOfficialPluginPack(pack: ForjaPluginPackLive): boolean {

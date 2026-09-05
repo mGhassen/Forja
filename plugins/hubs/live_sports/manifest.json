@@ -5,6 +5,7 @@
   "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
   "author": "ForjaHQ",
   "version": "1.0.0",
+  "tags": ["sports", "live"],
   "plugins": [
     {
       "id": "live-sports-hub",

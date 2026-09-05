@@ -18,8 +18,11 @@ import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
 import {
   isOfficialPluginPack,
   packAuthorLabel,
+  packHasTag,
   pluginKindLabel,
   pluginKindsFromPacks,
+  pluginTagLabel,
+  pluginTagsFromPacks,
 } from '@/lib/forja-plugin-catalog'
 import {
   isPackInstalled,
@@ -27,7 +30,9 @@ import {
 } from '@/lib/forja-plugin-install'
 import { cn } from '@/lib/utils'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
+/** Desktop detail panel — fixed, does not stretch with the list. */
+const DETAIL_PANEL_HEIGHT_CLASS = 'h-[min(28rem,70vh)]'
 
 function paginate<T>(items: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
@@ -112,7 +117,7 @@ function PluginDetailPanel({
             <button
               type="button"
               onClick={onClose}
-              className="flex size-8 items-center justify-center rounded-lg text-[rgba(237,230,218,0.5)] hover:bg-white/8 hover:text-[#EDE6DA] lg:hidden"
+              className="flex size-8 items-center justify-center rounded-lg text-[rgba(237,230,218,0.5)] hover:bg-white/8 hover:text-[#EDE6DA]"
               aria-label="Close details"
             >
               <X className="size-4" />
@@ -125,6 +130,19 @@ function PluginDetailPanel({
         <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.62)]">
           {pack.description}
         </p>
+
+        {(pack.tags?.length ?? 0) > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {pack.tags!.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.55)]"
+              >
+                {pluginTagLabel(tag)}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <dl className="grid grid-cols-2 gap-3 text-sm">
           {pack.pluginCount != null ? (
@@ -229,6 +247,11 @@ function PluginListRow({
         <p className="truncate text-sm font-medium text-[#EDE6DA]">
           {pack.name}
         </p>
+        {(pack.tags?.length ?? 0) > 0 ? (
+          <p className="mt-0.5 truncate font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
+            {pack.tags!.map((t) => pluginTagLabel(t)).join(' · ')}
+          </p>
+        ) : null}
       </div>
       {pack.version ? (
         <span className="shrink-0 font-mono-ui text-[10px] text-[rgba(237,230,218,0.35)]">
@@ -256,8 +279,10 @@ export function PluginCatalogBrowser({
 }: PluginCatalogBrowserProps) {
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<string | 'all'>('all')
+  const [tagFilter, setTagFilter] = useState<string | 'all'>('all')
   const [page, setPage] = useState(1)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** Detail panel — only set by plain row click; cleared on multi-select. */
+  const [detailId, setDetailId] = useState<string | null>(null)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set())
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const anchorIdRef = useRef<string | null>(null)
@@ -273,6 +298,9 @@ export function PluginCatalogBrowser({
     if (kindFilter !== 'all') {
       list = list.filter((p) => p.kind === kindFilter)
     }
+    if (tagFilter !== 'all') {
+      list = list.filter((p) => packHasTag(p, tagFilter))
+    }
     const q = query.trim().toLowerCase()
     if (q) {
       list = list.filter(
@@ -281,21 +309,26 @@ export function PluginCatalogBrowser({
           p.description.toLowerCase().includes(q) ||
           p.author?.toLowerCase().includes(q) ||
           pluginKindLabel(p.kind).toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q),
+          p.id.toLowerCase().includes(q) ||
+          (p.tags ?? []).some(
+            (tag) =>
+              tag.toLowerCase().includes(q) ||
+              pluginTagLabel(tag).toLowerCase().includes(q),
+          ),
       )
     }
     return list.sort((a, b) => a.name.localeCompare(b.name))
-  }, [packs, kindFilter, query])
+  }, [packs, kindFilter, tagFilter, query])
 
   const pageSlice = useMemo(
     () => paginate(filtered, page),
     [filtered, page],
   )
 
-  const selected =
-    filtered.find((p) => p.id === selectedId) ??
-    filtered[0] ??
-    null
+  const detail =
+    detailId != null
+      ? (filtered.find((p) => p.id === detailId) ?? null)
+      : null
 
   const checkedPacks = useMemo(
     () => filtered.filter((pack) => checkedIds.has(pack.id)),
@@ -304,14 +337,23 @@ export function PluginCatalogBrowser({
 
   const showMultiAdd = checkedIds.size >= 2
   const multiSelectMode = checkedIds.size >= 2
+  const showDetail = Boolean(detail) && !multiSelectMode
+
+  function closeDetail() {
+    setDetailId(null)
+    setMobileDetailOpen(false)
+  }
 
   useEffect(() => {
-    if (multiSelectMode) setMobileDetailOpen(false)
+    if (multiSelectMode) {
+      setDetailId(null)
+      setMobileDetailOpen(false)
+    }
   }, [multiSelectMode])
 
   useEffect(() => {
     setPage(1)
-  }, [query, kindFilter])
+  }, [query, kindFilter, tagFilter])
 
   useEffect(() => {
     if (page > pageSlice.totalPages) {
@@ -321,13 +363,14 @@ export function PluginCatalogBrowser({
 
   useEffect(() => {
     if (filtered.length === 0) {
-      setSelectedId(null)
+      setDetailId(null)
       setCheckedIds(new Set())
       setMobileDetailOpen(false)
       return
     }
-    if (!selectedId || !filtered.some((p) => p.id === selectedId)) {
-      setSelectedId(filtered[0]!.id)
+    if (detailId && !filtered.some((p) => p.id === detailId)) {
+      setDetailId(null)
+      setMobileDetailOpen(false)
     }
     setCheckedIds((prev) => {
       const next = new Set<string>()
@@ -336,25 +379,40 @@ export function PluginCatalogBrowser({
       }
       return next
     })
-  }, [filtered, selectedId])
+  }, [filtered, detailId])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && checkedIds.size > 0) {
+      if (e.key !== 'Escape') return
+      if (checkedIds.size > 0) {
         setCheckedIds(new Set())
         anchorIdRef.current = null
       }
+      closeDetail()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [checkedIds.size])
 
   const kindOptions = useMemo(() => pluginKindsFromPacks(packs), [packs])
+  const tagOptions = useMemo(() => pluginTagsFromPacks(packs), [packs])
 
   const kindCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const pack of packs) {
       counts.set(pack.kind, (counts.get(pack.kind) ?? 0) + 1)
+    }
+    return counts
+  }, [packs])
+
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const pack of packs) {
+      for (const tag of pack.tags ?? []) {
+        const key = tag.trim()
+        if (!key) continue
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
     }
     return counts
   }, [packs])
@@ -388,14 +446,12 @@ export function PluginCatalogBrowser({
       return next
     })
     anchorIdRef.current = packId
-    setSelectedId(packId)
-    setMobileDetailOpen(false)
+    closeDetail()
   }
 
   function handleRowClick(packId: string, event: MouseEvent<HTMLElement>) {
     if (event.shiftKey) {
-      setSelectedId(packId)
-      setMobileDetailOpen(false)
+      closeDetail()
       selectRange(packId)
       return
     }
@@ -405,8 +461,8 @@ export function PluginCatalogBrowser({
       return
     }
 
-    // Plain click: focus + detail (clear multi-select)
-    setSelectedId(packId)
+    // Plain click: open detail (clear multi-select)
+    setDetailId(packId)
     setMobileDetailOpen(true)
     anchorIdRef.current = packId
     setCheckedIds(new Set())
@@ -473,38 +529,59 @@ export function PluginCatalogBrowser({
           </p>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <FilterChip
-            active={kindFilter === 'all'}
-            onClick={() => setKindFilter('all')}
-            label="All"
-            count={packs.length}
-          />
-          {kindOptions.map((kind) => (
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <FilterChip
-              key={kind}
-              active={kindFilter === kind}
-              onClick={() => setKindFilter(kind)}
-              label={pluginKindLabel(kind)}
-              count={kindCounts.get(kind)}
+              active={kindFilter === 'all'}
+              onClick={() => setKindFilter('all')}
+              label="All"
+              count={packs.length}
             />
-          ))}
+            {kindOptions.map((kind) => (
+              <FilterChip
+                key={kind}
+                active={kindFilter === kind}
+                onClick={() => setKindFilter(kind)}
+                label={pluginKindLabel(kind)}
+                count={kindCounts.get(kind)}
+              />
+            ))}
+          </div>
+          {tagOptions.length > 0 ? (
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <FilterChip
+                active={tagFilter === 'all'}
+                onClick={() => setTagFilter('all')}
+                label="Topics"
+                count={packs.filter((p) => (p.tags?.length ?? 0) > 0).length}
+              />
+              {tagOptions.map((tag) => (
+                <FilterChip
+                  key={tag}
+                  active={tagFilter === tag}
+                  onClick={() => setTagFilter(tag)}
+                  label={pluginTagLabel(tag)}
+                  count={tagCounts.get(tag)}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
           <div
             className={cn(
-              'grid min-h-[min(70vh,640px)]',
-              multiSelectMode
-                ? 'lg:grid-cols-1'
-                : 'lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]',
+              'grid items-start',
+              showDetail
+                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]'
+                : 'lg:grid-cols-1',
             )}
           >
             <div
               className={cn(
-                'flex flex-col border-white/10',
-                !multiSelectMode && 'lg:border-r',
-                mobileDetailOpen && !multiSelectMode ? 'hidden lg:flex' : 'flex',
+                'flex min-w-0 flex-col border-white/10',
+                showDetail && 'lg:border-r',
+                mobileDetailOpen && showDetail ? 'hidden lg:flex' : 'flex',
               )}
             >
               {showMultiAdd ? (
@@ -529,12 +606,12 @@ export function PluginCatalogBrowser({
               ) : (
                 <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
-                    Packs · checkbox or Shift+click to select multiple
+                    Packs · click for details · checkbox or Shift+click to select
                   </p>
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="overflow-y-auto">
                 {isLoading ? (
                   <ListSkeleton />
                 ) : filtered.length === 0 ? (
@@ -546,7 +623,7 @@ export function PluginCatalogBrowser({
                     <PluginListRow
                       key={pack.id}
                       pack={pack}
-                      focused={!multiSelectMode && selected?.id === pack.id}
+                      focused={showDetail && detail?.id === pack.id}
                       checked={checkedIds.has(pack.id)}
                       onRowClick={(event) => handleRowClick(pack.id, event)}
                       onToggleCheck={() => toggleCheck(pack.id)}
@@ -555,7 +632,7 @@ export function PluginCatalogBrowser({
                 )}
               </div>
 
-              {!isLoading && filtered.length > PAGE_SIZE ? (
+              {!isLoading && pageSlice.totalPages > 1 ? (
                 <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
                   <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
                     Page {pageSlice.page} of {pageSlice.totalPages}
@@ -588,31 +665,29 @@ export function PluginCatalogBrowser({
               ) : null}
             </div>
 
-            {!multiSelectMode ? (
-              <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
-                {selected ? (
-                  <PluginDetailPanel pack={selected} />
-                ) : (
-                  <EmptyDetail />
+            {showDetail && detail ? (
+              <div
+                className={cn(
+                  'hidden flex-col overflow-hidden border-white/10 bg-[#0f0e0d] lg:flex',
+                  DETAIL_PANEL_HEIGHT_CLASS,
                 )}
+              >
+                <PluginDetailPanel pack={detail} onClose={closeDetail} />
               </div>
             ) : null}
           </div>
         </div>
 
-        {mobileDetailOpen && selected && !multiSelectMode ? (
+        {mobileDetailOpen && detail && showDetail ? (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               aria-label="Close details"
-              onClick={() => setMobileDetailOpen(false)}
+              onClick={closeDetail}
             />
             <div className="absolute inset-x-0 bottom-0 top-[18%] flex flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121110] shadow-2xl">
-              <PluginDetailPanel
-                pack={selected}
-                onClose={() => setMobileDetailOpen(false)}
-              />
+              <PluginDetailPanel pack={detail} onClose={closeDetail} />
             </div>
           </div>
         ) : null}
@@ -660,16 +735,6 @@ function FilterChip({
         </span>
       ) : null}
     </button>
-  )
-}
-
-function EmptyDetail() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <p className="text-sm text-[rgba(237,230,218,0.45)]">
-        Select a pack to see details and install.
-      </p>
-    </div>
   )
 }
 

@@ -118,6 +118,7 @@ Top-level fields:
 | `version` | yes | Semver string (`major.minor.patch`) |
 | `plugins` | yes | Array of plugin objects |
 | `enabled` | no | Pack master switch (default `true`) |
+| `tags` | no | Catalog topic tags for web Community Packs filters (`anime`, `arabic`, `kids`, …). When omitted, the catalog generator derives tags from `nav.tabId` and topic `types` |
 
 Each **plugin** object:
 

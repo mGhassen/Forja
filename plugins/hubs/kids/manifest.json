@@ -5,6 +5,7 @@
   "description": "Dimakids Arabic kids cartoons and movies hub.",
   "author": "ForjaHQ",
   "version": "1.0.0",
+  "tags": ["kids", "arabic"],
   "plugins": [
     {
       "id": "dimakids-hub",

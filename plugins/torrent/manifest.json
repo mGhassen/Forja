@@ -6,6 +6,7 @@
   "author": "ForjaHQ",
   "version": "1.0.6",
   "prelude": "_torrent_common.js",
+  "tags": ["torrent"],
   "plugins": [
     {
       "id": "knaben",

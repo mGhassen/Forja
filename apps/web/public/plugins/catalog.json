@@ -10,7 +10,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.9.2",
-      "pluginCount": 9
+      "pluginCount": 9,
+      "tags": [
+        "live",
+        "sports"
+      ]
     },
     {
       "id": "aflem",
@@ -21,7 +25,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.5",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "aflem",
+        "arabic"
+      ]
     },
     {
       "id": "anime",
@@ -32,7 +40,10 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.12",
-      "pluginCount": 2
+      "pluginCount": 2,
+      "tags": [
+        "anime"
+      ]
     },
     {
       "id": "arabic",
@@ -42,7 +53,10 @@
       "accent": "flame",
       "official": true,
       "version": "1.4.2",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "arabic"
+      ]
     },
     {
       "id": "asian-drama",
@@ -53,7 +67,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.9",
-      "pluginCount": 2
+      "pluginCount": 2,
+      "tags": [
+        "asian-drama",
+        "drama"
+      ]
     },
     {
       "id": "cartoon",
@@ -64,7 +82,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.5",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "arabic",
+        "cartoon"
+      ]
     },
     {
       "id": "home",
@@ -75,7 +97,12 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.12",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "home",
+        "movies",
+        "tv"
+      ]
     },
     {
       "id": "kids",
@@ -86,7 +113,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.0",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "arabic",
+        "kids"
+      ]
     },
     {
       "id": "live-sports",
@@ -97,7 +128,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.0",
-      "pluginCount": 1
+      "pluginCount": 1,
+      "tags": [
+        "live",
+        "sports"
+      ]
     },
     {
       "id": "my-list",
@@ -108,7 +143,10 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.0",
-      "pluginCount": 2
+      "pluginCount": 2,
+      "tags": [
+        "lists"
+      ]
     },
     {
       "id": "iptv-vod",
@@ -119,7 +157,10 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.0",
-      "pluginCount": 2
+      "pluginCount": 2,
+      "tags": [
+        "iptv"
+      ]
     },
     {
       "id": "live",
@@ -130,7 +171,11 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.9.2",
-      "pluginCount": 6
+      "pluginCount": 6,
+      "tags": [
+        "live",
+        "sports"
+      ]
     },
     {
       "id": "providers",
@@ -141,7 +186,15 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.5.28",
-      "pluginCount": 86
+      "pluginCount": 86,
+      "tags": [
+        "anime",
+        "arabic",
+        "drama",
+        "movies",
+        "providers",
+        "tv"
+      ]
     },
     {
       "id": "torrent",
@@ -152,7 +205,10 @@
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.6",
-      "pluginCount": 9
+      "pluginCount": 9,
+      "tags": [
+        "torrent"
+      ]
     }
   ]
 }

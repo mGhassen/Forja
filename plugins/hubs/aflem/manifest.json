@@ -5,6 +5,7 @@
   "description": "Aflem Arabic series hub (Brstej upstream).",
   "author": "ForjaHQ",
   "version": "1.0.5",
+  "tags": ["aflem", "arabic"],
   "plugins": [
     {
       "id": "aflem-hub",

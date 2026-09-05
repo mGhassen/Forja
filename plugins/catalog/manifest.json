@@ -5,6 +5,7 @@
   "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
   "author": "ForjaHQ",
   "version": "1.9.2",
+  "tags": ["sports", "live"],
   "plugins": [
     {
       "id": "catalog-streamed",

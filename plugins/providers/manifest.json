@@ -5,6 +5,7 @@
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
   "version": "1.5.28",
+  "tags": ["providers", "anime", "arabic", "drama", "movies", "tv"],
   "plugins": [
     {
       "id": "videasy",

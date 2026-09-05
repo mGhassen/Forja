@@ -20,21 +20,25 @@ class PluginPackUpdateOverlay extends StatelessWidget {
     return TvOverlayScope(
       debugLabel: 'plugin-pack-update',
       onDismiss: onDismiss,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const ModalBarrier(
-            dismissible: false,
-            color: Color(0x9E000000),
-          ),
-          Center(
-            child: _PluginPackUpdateBody(
-              updates: updates,
-              onCancel: onDismiss,
-              onDone: onDismiss,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ModalBarrier(
+              dismissible: false,
+              color: Colors.black.withValues(alpha: 0.62),
+              onDismiss: onDismiss,
             ),
-          ),
-        ],
+            Center(
+              child: _PluginPackUpdateBody(
+                updates: updates,
+                onCancel: onDismiss,
+                onDone: onDismiss,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -103,104 +107,114 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
     final title = count == 1
         ? 'Update plugin pack?'
         : 'Update $count plugin packs?';
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
 
-    return AlertDialog(
-      backgroundColor: ForjaShellColors.cinematic.menuSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: ForjaShellColors.borderSubtle),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: ForjaShellColors.textPrimary,
-          fontWeight: FontWeight.w700,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: Material(
+        color: ForjaShellColors.cinematic.menuSurface,
+        elevation: 12,
+        shadowColor: Colors.black54,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: ForjaShellColors.borderSubtle),
         ),
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              count == 1
-                  ? 'Download and install the newer version of this pack.'
-                  : 'Download and install newer versions of these packs.',
-              style: const TextStyle(
-                color: ForjaShellColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ForjaShellColors.borderSubtle),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
                 ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: widget.updates.length,
-                  separatorBuilder: (_, _) => const Divider(
-                    height: 1,
-                    color: ForjaShellColors.borderSubtle,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                count == 1
+                    ? 'Download and install the newer version of this pack.'
+                    : 'Download and install newer versions of these packs.',
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: ForjaShellColors.borderSubtle),
                   ),
-                  itemBuilder: (context, i) {
-                    final u = widget.updates[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              u.packName,
-                              style: const TextStyle(
-                                color: ForjaShellColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: widget.updates.length,
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      color: ForjaShellColors.borderSubtle,
+                    ),
+                    itemBuilder: (context, i) {
+                      final u = widget.updates[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                u.packName,
+                                style: const TextStyle(
+                                  color: ForjaShellColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                          ),
-                          Text(
-                            'v${u.installedVersion} → v${u.remoteVersion}',
-                            style: const TextStyle(
-                              color: ForjaShellColors.textSecondary,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
+                            Text(
+                              'v${u.installedVersion} → v${u.remoteVersion}',
+                              style: const TextStyle(
+                                color: ForjaShellColors.textSecondary,
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            ForjaButton.primary(
-              label: _busy ? 'Updating…' : (count == 1 ? 'Update' : 'Update all'),
-              expand: true,
-              autofocus: true,
-              focusNode: _confirmFocus,
-              activateOnKeyUp: true,
-              onPressed: _busy ? null : _submit,
-            ),
-            const SizedBox(height: 4),
-            Center(
-              child: ForjaGhostButton(
-                label: 'Cancel',
-                focusNode: _cancelFocus,
-                onTap: _busy ? null : widget.onCancel,
+              const SizedBox(height: 24),
+              ForjaButton.primary(
+                label:
+                    _busy ? 'Updating…' : (count == 1 ? 'Update' : 'Update all'),
+                expand: true,
+                autofocus: tv,
+                focusNode: _confirmFocus,
+                activateOnKeyUp: tv,
+                onPressed: _busy ? null : _submit,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Center(
+                child: ForjaGhostButton(
+                  label: 'Cancel',
+                  focusNode: _cancelFocus,
+                  onTap: _busy ? null : widget.onCancel,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
