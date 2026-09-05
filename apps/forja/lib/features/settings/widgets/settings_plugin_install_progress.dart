@@ -56,112 +56,95 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
     final detail = active
         ? progress!.label
         : null;
+    // Flat row — same chrome as installed ExpansionTile headers (no card).
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: active
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-                : ForjaShellColors.borderSubtle,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  _PhaseIcon(phase: phase),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          packName,
-                          style: const TextStyle(
-                            color: ForjaShellColors.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          sourceUrl,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: ForjaShellColors.textSecondary,
-                          ),
-                        ),
-                        if (detail != null &&
-                            detail.toLowerCase() != status.toLowerCase()) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: ForjaShellColors.brandGreen
-                                  .withValues(alpha: 0.95),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    status,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: active
-                          ? ForjaShellColors.brandGreen
-                          : ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                  if (onAction != null && !active)
-                    _PendingActionIcon(
-                      tooltip: actionTooltip ?? 'Download',
-                      icon: actionIcon,
-                      onPressed: onAction!,
-                      color: actionIcon == Icons.delete_outline
-                          ? const Color(0xFFF87171)
-                          : ForjaShellColors.brandGreen,
-                    ),
-                ],
-              ),
-              if (active &&
-                  progress != null &&
-                  progress!.phase != PluginInstallPhase.ready) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value:
-                          progress!.totalSteps > 0 ? progress!.fraction : null,
-                      minHeight: 3,
-                      backgroundColor: ForjaShellColors.borderSubtle,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        ForjaShellColors.brandGreen,
+              _PhaseIcon(phase: phase),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      packName,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sourceUrl,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ForjaShellColors.textSecondary,
+                      ),
+                    ),
+                    if (detail != null &&
+                        detail.toLowerCase() != status.toLowerCase()) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: ForjaShellColors.brandGreen
+                              .withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                status,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: active
+                      ? ForjaShellColors.brandGreen
+                      : ForjaShellColors.textSecondary,
+                ),
+              ),
+              if (onAction != null && !active)
+                _PendingActionIcon(
+                  tooltip: actionTooltip ?? 'Download',
+                  icon: actionIcon,
+                  onPressed: onAction!,
+                  color: actionIcon == Icons.delete_outline
+                      ? const Color(0xFFF87171)
+                      : ForjaShellColors.brandGreen,
+                ),
             ],
           ),
-        ),
+          if (active &&
+              progress != null &&
+              progress!.phase != PluginInstallPhase.ready) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress!.totalSteps > 0 ? progress!.fraction : null,
+                minHeight: 3,
+                backgroundColor: ForjaShellColors.borderSubtle,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  ForjaShellColors.brandGreen,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
