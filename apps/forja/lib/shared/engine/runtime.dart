@@ -667,6 +667,7 @@ class EngineRuntime {
     String? imdbId,
     int? season,
     int? episode,
+    Map<String, String> ids = const {},
     Map<String, dynamic> config = const {},
     Duration timeout = const Duration(seconds: 20),
     bool Function()? isCancelled,
@@ -688,6 +689,7 @@ class EngineRuntime {
         imdbId: imdbId,
         season: season,
         episode: episode,
+        ids: ids,
         config: config,
         timeout: timeout,
         isCancelled: isCancelled,
@@ -702,6 +704,7 @@ class EngineRuntime {
     String? imdbId,
     int? season,
     int? episode,
+    Map<String, String> ids = const {},
     Map<String, dynamic> config = const {},
     required Duration timeout,
     bool Function()? isCancelled,
@@ -719,6 +722,7 @@ class EngineRuntime {
         'imdbId': imdbId ?? '',
         'season': season ?? 0,
         'episode': episode ?? 0,
+        'ids': ids,
         'config': config,
       });
       final pluginLabel = (pluginName != null && pluginName.trim().isNotEmpty)
@@ -740,6 +744,7 @@ class EngineRuntime {
     imdbId: String(meta.imdbId || ''),
     season: meta.season || 0,
     episode: meta.episode || 0,
+    ids: meta.ids || {},
     config: meta.config || {},
     log: function(msg) {
       console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg));

@@ -8,6 +8,8 @@ When you open a movie or series in torrent mode, Forja searches the **enabled** 
 
 **Hub packs:** set `open.torrentEp: true` when releases are named by episode number (`Title 05`) instead of western `SxxExx`. Anime and Asian Drama packs do this. When enrich matched TMDB with an IMDb id, Torrentio runs as usual.
 
+**IDs:** Sources maps catalog `meta.ids` (and pack extract ctx) into torrent search — title query for most indexers, `imdbId` for Torrentio. Indexers declare `searchInputs` in the torrent pack manifest (`query` vs `imdbId`).
+
 ## How to open it
 
 Automatic on [TMDB details](../movies-tv/tmdb-details.md) when you view torrent results.

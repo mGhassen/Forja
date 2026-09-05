@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
+import 'package:forja/shared/catalog/kit/sources/sources_request_context.dart';
+import 'package:forja/shared/catalog/kit/sources/stremio_stream_id.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -70,6 +73,7 @@ class PlayerSourcesPanel {
     String? preferredKind,
     String? currentAddonBaseUrl,
     CatalogOpen? catalogOpen,
+    CatalogMetaItem? catalogMeta,
     int? malId,
     String? episodeVideoId,
 
@@ -112,6 +116,7 @@ class PlayerSourcesPanel {
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
           catalogOpen: catalogOpen,
+          catalogMeta: catalogMeta,
           malId: malId,
           episodeVideoId: episodeVideoId,
           engineCategory: engineCategory,
@@ -145,6 +150,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
+    this.catalogMeta,
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
@@ -163,6 +169,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
+  final CatalogMetaItem? catalogMeta;
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
@@ -213,6 +220,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           catalogOpen: widget.catalogOpen,
+          catalogMeta: widget.catalogMeta,
           malId: widget.malId,
           episodeVideoId: widget.episodeVideoId,
           engineCategory: widget.engineCategory,
@@ -242,6 +250,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
+    this.catalogMeta,
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
@@ -259,6 +268,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
+  final CatalogMetaItem? catalogMeta;
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
@@ -2178,13 +2188,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     int gen, {
     List<String>? enabledProviders,
   }) async {
-    final query = _year.isNotEmpty
-        ? '${widget.movie.title} $_year'
-        : widget.movie.title;
+    final slice = _sourcesCtx.torrent;
+    if (slice == null) return;
     var closed = false;
     final raw = await Engine.searchTorrentsProgressive(
-      query,
-      imdbId: widget.movie.imdbId,
+      slice.query,
+      imdbId: slice.imdbId,
+      ids: slice.ids,
       enabledProviders: enabledProviders,
       isCancelled: () => !mounted || gen != _searchGen || closed,
       onProviderDone: _onTorrentProviderDone(gen, hitsNeeded: 1),
@@ -2205,13 +2215,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int episode,
     List<String>? enabledProviders,
   }) async {
+    final ctx = _sourcesCtx;
     final passes = tvTorrentSearchPasses(
-      title: widget.movie.title,
+      title: ctx.title,
       season: season,
       episode: episode,
       torrentEp: _torrentEp,
     );
     if (passes.isEmpty) return;
+    final bagIds = ctx.ids;
+    final imdb = ctx.torrent?.imdbId;
 
     var closed = false;
     var paintSeq = 0;
@@ -2244,7 +2257,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final pass = passes[i];
       await Engine.searchTorrentsProgressive(
         pass.query,
-        imdbId: widget.movie.imdbId,
+        imdbId: imdb,
+        ids: bagIds,
         season: pass.season,
         episode: pass.episode,
         enabledProviders: enabledProviders,
@@ -2273,16 +2287,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }) async {
     if (!_showsStremio) return;
 
-    final customBase = widget.catalogOpen?.extraString('stremioAddonBaseUrl');
-    final customId = widget.catalogOpen?.extraString('stremioId') ??
-        widget.catalogOpen?.id;
-    if (customBase != null &&
-        customBase.isNotEmpty &&
-        customId != null &&
-        customId.isNotEmpty) {
+    final bag = _sourcesCtx.stremioBag;
+    if (bag != null && bag.hasCustomAddon) {
       await _fetchStremioStreamsForCustomAddon(
-        baseUrl: customBase,
-        stremioId: customId,
+        baseUrl: bag.customAddonBaseUrl!,
+        stremioId: bag.customStremioId!,
         reset: reset,
         refresh: refresh,
       );
@@ -2291,14 +2300,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     if (_streamAddons.isEmpty) return;
     if (_selectedSourceId.isEmpty) return;
-    final imdb = widget.movie.imdbId ?? '';
-    if (imdb.isEmpty) {
-      setState(() {
-        _stremioFetching = false;
-        if (!_showsTorrents) _error = 'No IMDb id for Stremio streams';
-      });
-      return;
-    }
 
     Map<String, dynamic>? addon;
     for (final a in _streamAddons) {
@@ -2310,6 +2311,28 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (addon == null) return;
     final baseUrl = addon['baseUrl'] as String;
     final addonName = addon['name'] ?? 'Unknown';
+    final manifest = addon['manifest'] is Map
+        ? Map<String, dynamic>.from(addon['manifest'] as Map)
+        : null;
+    final stremioId = resolveStremioStreamIdFromBag(
+      bag: bag ??
+          StremioBagSlice(
+            ids: _sourcesCtx.ids,
+            mediaType: widget.movie.mediaType,
+            season: widget.season,
+            episode: widget.episode,
+          ),
+      addonManifest: manifest,
+    );
+    if (stremioId == null || stremioId.isEmpty) {
+      setState(() {
+        _stremioFetching = false;
+        if (!_showsTorrents) {
+          _error = 'No matching id for this Stremio addon';
+        }
+      });
+      return;
+    }
 
     if (_stremioFetching && !reset && !refresh) {
       _stremioGen++;
@@ -2335,11 +2358,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
     });
 
-    var stremioId = imdb;
-    if (widget.movie.mediaType == 'tv') {
-      stremioId = '$imdb:${widget.season ?? 1}:${widget.episode ?? 1}';
-    }
-    final type = widget.movie.mediaType == 'tv' ? 'series' : 'movie';
+    final type = (bag?.mediaType == 'tv' || widget.movie.mediaType == 'tv')
+        ? 'series'
+        : 'movie';
     try {
       final streams = await _stremio.getStreams(
         baseUrl: baseUrl,
@@ -2514,14 +2535,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required String type,
     required int gen,
   }) async {
+    final nuvio = _sourcesCtx.nuvio;
+    if (nuvio == null) {
+      if (mounted && gen == _nuvioFetchGen) {
+        setState(() {
+          _nuvioFetchedScraperIds.add(scraperId);
+          _nuvioInFlightScraperIds.remove(scraperId);
+        });
+      }
+      return;
+    }
     NuvioScraperResult? batch;
     try {
       batch = await NuvioService.instance.runSourcesScraper(
         scraperId: scraperId,
-        tmdbId: widget.movie.id.toString(),
-        type: type,
-        season: widget.movie.mediaType == 'tv' ? widget.season : null,
-        episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
+        tmdbId: nuvio.tmdbId,
+        type: nuvio.type,
+        season: nuvio.season,
+        episode: nuvio.episode,
       );
     } catch (e) {
       debugPrint('[Nuvio] scraper $scraperId failed: $e');
@@ -2622,8 +2653,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool reset = false,
     bool refresh = false,
   }) async {
-    if (_nuvioAddons.isEmpty || widget.movie.id == 0) return;
-    final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
+    if (_nuvioAddons.isEmpty) return;
+    final nuvio = _sourcesCtx.nuvio;
+    if (nuvio == null) {
+      if (mounted) {
+        setState(() {
+          _nuvioFetching = false;
+          _error = 'No TMDB id for Nuvio streams';
+        });
+      }
+      return;
+    }
+    final type = nuvio.type;
     if (_nuvioFetching && !reset && !refresh) {
       if (_nuvioPoolTasks.isNotEmpty || _pendingNuvioScraperIds.isEmpty) {
         _nuvioFillPool(gen: _nuvioFetchGen, type: type);
@@ -2700,12 +2741,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required String type,
     required int gen,
   }) async {
+    final engine = _sourcesCtx.engine;
     EngineExtractResult? batch;
     try {
       batch = await EngineService.instance.runPluginIsolated(
         pluginId: pluginId,
-        tmdbId: widget.movie.id.toString(),
-        type: type,
+        tmdbId: engine?.tmdbId ?? '',
+        type: engine?.resolveType ?? type,
         season: _engineNeedsEpisode ? widget.season : null,
         episode: _engineNeedsEpisode ? widget.episode : null,
         title: widget.movie.title,
@@ -2884,6 +2926,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final d = widget.movie.releaseDate;
     return d.length >= 4 ? d.substring(0, 4) : '';
   }
+
+  CatalogMetaItem? get _resolvedCatalogMeta =>
+      widget.catalogMeta ?? catalogMetaItemForMovie(widget.movie);
+
+  SourcesRequestContext get _sourcesCtx => buildSourcesRequestContext(
+        movie: widget.movie,
+        catalogMeta: _resolvedCatalogMeta,
+        catalogOpen: widget.catalogOpen,
+        season: widget.season,
+        episode: widget.episode,
+        episodeVideoId: widget.episodeVideoId,
+        panelCategoryHint: widget.engineCategory,
+      );
 
   bool get _torrentEp => catalogOpenTorrentEp(widget.catalogOpen);
 

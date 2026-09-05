@@ -464,6 +464,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         currentProvider: _s._currentProvider,
       ),
       catalogOpen: session?.effectiveOpen,
+      catalogMeta: session?.catalogMeta,
       malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
       engineCategory: session != null

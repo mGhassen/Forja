@@ -187,6 +187,7 @@ abstract final class Engine {
     String? imdbId,
     int? season,
     int? episode,
+    Map<String, String>? ids,
     List<String>? enabledProviders,
   }) async {
     final handler = TorrentSearchBridge.handler;
@@ -198,6 +199,7 @@ abstract final class Engine {
       imdbId: imdbId,
       season: season,
       episode: episode,
+      ids: ids,
       enabledProviders: enabledProviders,
     );
   }
@@ -210,6 +212,7 @@ abstract final class Engine {
     String? imdbId,
     int? season,
     int? episode,
+    Map<String, String>? ids,
     List<String>? enabledProviders,
     void Function(List<Map<String, dynamic>> soFar)? onPartial,
     void Function(String providerId)? onProviderDone,
@@ -224,6 +227,7 @@ abstract final class Engine {
       imdbId: imdbId,
       season: season,
       episode: episode,
+      ids: ids,
       enabledProviders: enabledProviders,
       onPartial: onPartial,
       onProviderDone: onProviderDone,

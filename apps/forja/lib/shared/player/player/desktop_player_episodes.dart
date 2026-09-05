@@ -730,6 +730,7 @@ mixin _DesktopPlayerEpisodes
         currentProvider: _s._currentProvider,
       ),
       catalogOpen: session?.effectiveOpen,
+      catalogMeta: session?.catalogMeta,
       malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
       engineCategory: session != null

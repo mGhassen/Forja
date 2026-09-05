@@ -4,31 +4,31 @@ overview: Introduce a single host middleware that maps opaque catalog outputs (`
 todos:
   - id: rfc-sources-ids
     content: Draft/extend RFC for SourcesRequestContext middleware (components + acceptance); link from RFC-054
-    status: pending
+    status: completed
   - id: middleware-module
     content: Add SourcesRequestContext + buildSourcesRequestContext in shared/catalog/kit/sources (or shared/engine)
-    status: pending
+    status: completed
   - id: wire-engine
     content: Route Sources Forja extract through middleware (merge ids into extract ctx; never pass hub open.id as tmdbId)
-    status: pending
+    status: completed
   - id: wire-torrent
     content: Route torrent search through middleware (query + imdb + opaque ids map on JS ctx)
-    status: pending
+    status: completed
   - id: wire-stremio
     content: "Stremio projector: per-addon idPrefixes + bag → stream id; custom open extras; skip addon when no match"
-    status: pending
+    status: completed
   - id: wire-nuvio
     content: "Nuvio: host-fixed tmdb (not scraper manifest); skip when ids.tmdb absent — never AniList/KissKh/synthetic"
-    status: pending
+    status: completed
   - id: panel-catalog-meta
     content: Pass CatalogMetaItem into PlayerSourcesPanel from hub play + catalogMetaItemForMovie fallback
-    status: pending
+    status: completed
   - id: pack-imdb-enrich
     content: "Pack follow-up: hubApplyTmdbHit sets ids.imdb from TMDB external_ids (anime + drama _kit)"
-    status: pending
+    status: completed
   - id: tests-docs
     content: Synthetic host tests + feature/changelog docs; capability flags for empty kinds
-    status: pending
+    status: completed
 isProject: false
 ---
 

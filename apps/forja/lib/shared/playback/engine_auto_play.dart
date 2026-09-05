@@ -12,6 +12,7 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 
 export 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+import 'package:forja/shared/catalog/kit/sources/sources_request_context.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -44,6 +45,32 @@ String? enginePluginIdFromProgress(Map<String, dynamic>? progress) {
 bool isEngineSavedProgress(Map<String, dynamic>? progress) =>
     enginePluginIdFromProgress(progress) != null;
 
+/// Prefer explicit [stremioId], else bag `imdb` from Sources middleware.
+String? stremioIdFromSourcesBag({
+  required Movie movie,
+  CatalogPlaySession? session,
+  String? stremioId,
+  int? season,
+  int? episode,
+}) {
+  final explicit = stremioId?.trim();
+  if (explicit != null && explicit.isNotEmpty) return explicit;
+  final bag = buildSourcesRequestContext(
+    movie: movie,
+    catalogMeta: session?.catalogMeta,
+    catalogOpen: session?.effectiveOpen,
+    season: season,
+    episode: episode,
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+  ).stremioBag;
+  if (bag != null && bag.hasCustomAddon) {
+    return bag.customStremioId!.trim();
+  }
+  final imdb = bag?.ids['imdb']?.trim();
+  if (imdb != null && imdb.isNotEmpty) return imdb;
+  return movie.imdbId;
+}
+
 /// In-player next/prev / Episodes pick while on a Forja Engine session —
 /// same race + loading overlay as green Play / Sources → Forja.
 Future<void> switchEpisodeViaEngineAutoPlay({
@@ -71,7 +98,13 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     episode: episode,
     malId: extract.intVal('malId') ?? s?.malId,
     audioCategory: s?.audioCategory,
-    stremioId: stremioId ?? movie.imdbId,
+    stremioId: stremioIdFromSourcesBag(
+      movie: movie,
+      session: s,
+      stremioId: stremioId,
+      season: season,
+      episode: episode,
+    ),
     loadingSubtitle: s?.hasCatalogContext == true
         ? 'EP $episode'
         : 'Season $season · Episode $episode',
@@ -511,12 +544,21 @@ Future<void> runEngineAutoPlay({
       final year = movie.releaseDate.length >= 4
           ? movie.releaseDate.substring(0, 4)
           : null;
+      final src = buildSourcesRequestContext(
+        movie: movie,
+        catalogMeta: activeSession.catalogMeta,
+        catalogOpen: activeSession.effectiveOpen,
+        season: season,
+        episode: episode,
+        episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+        panelCategoryHint: resolveType,
+      );
       EngineExtractResult? batch;
       try {
         batch = await EngineService.instance.runPluginIsolated(
           pluginId: pluginId,
-          tmdbId: movie.id > 0 ? movie.id.toString() : '0',
-          type: resolveType,
+          tmdbId: src.engine?.tmdbId ?? '',
+          type: src.engine?.resolveType ?? resolveType,
           season: season,
           episode: episode,
           title: movie.title,
@@ -649,7 +691,13 @@ Future<void> runEngineAutoPlay({
         season: season,
         episode: episode,
         startPosition: startPosition,
-        stremioId: stremioId ?? movie.imdbId,
+        stremioId: stremioIdFromSourcesBag(
+          movie: movie,
+          session: activeSession,
+          stremioId: stremioId,
+          season: season,
+          episode: episode,
+        ),
         enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
@@ -690,7 +738,13 @@ Future<void> runEngineAutoPlay({
         startPosition: startPosition,
         settings: settings,
         profile: profile,
-        stremioId: stremioId ?? movie.imdbId,
+        stremioId: stremioIdFromSourcesBag(
+          movie: movie,
+          session: activeSession,
+          stremioId: stremioId,
+          season: season,
+          episode: episode,
+        ),
         enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,

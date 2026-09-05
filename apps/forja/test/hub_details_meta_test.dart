@@ -24,15 +24,54 @@ void main() {
       expect(hubMetaIsUpcoming(meta, videos: const []), isTrue);
     });
 
-    test('future premiere with episodes is not show-level upcoming', () {
+    test('all future episode stubs is show-level upcoming', () {
       final meta = CatalogMetaItem(
         id: 'test:3',
         type: 'drama',
         name: 'Weekly',
         premiereDate: '2099-06-14',
+        releaseInfo: '2025',
       );
       const videos = [
-        CatalogVideo(id: '1', title: 'Ep 1', episode: 1, airDate: '2099-06-14'),
+        CatalogVideo(
+          id: '1',
+          title: 'Ep 1',
+          episode: 1,
+          airDate: '2099-06-14',
+          aired: false,
+        ),
+        CatalogVideo(
+          id: '2',
+          title: 'Ep 2',
+          episode: 2,
+          airDate: '2099-06-21',
+          aired: false,
+        ),
+      ];
+      expect(hubMetaIsUpcoming(meta, videos: videos), isTrue);
+    });
+
+    test('mixed aired and future episodes is not show-level upcoming', () {
+      const meta = CatalogMetaItem(
+        id: 'test:4',
+        type: 'drama',
+        name: 'Airing',
+      );
+      const videos = [
+        CatalogVideo(
+          id: '1',
+          title: 'Ep 1',
+          episode: 1,
+          airDate: '2020-01-01',
+          aired: true,
+        ),
+        CatalogVideo(
+          id: '2',
+          title: 'Ep 2',
+          episode: 2,
+          airDate: '2099-06-14',
+          aired: false,
+        ),
       ];
       expect(hubMetaIsUpcoming(meta, videos: videos), isFalse);
     });
@@ -61,12 +100,29 @@ void main() {
   group('hubMetaPremiereDateLabel', () {
     test('formats ISO premiere for hero notice', () {
       const meta = CatalogMetaItem(
-        id: 'test:4',
+        id: 'test:5',
         type: 'drama',
         name: 'Premiere',
         premiereDate: '2026-06-14',
       );
       expect(hubMetaPremiereDateLabel(meta), 'Jun 14, 2026');
+    });
+
+    test('falls back to earliest episode air date', () {
+      const meta = CatalogMetaItem(
+        id: 'test:6',
+        type: 'drama',
+        name: 'Stubs',
+        releaseInfo: '2025',
+      );
+      const videos = [
+        CatalogVideo(id: '2', title: 'Ep 2', episode: 2, airDate: '2099-06-21'),
+        CatalogVideo(id: '1', title: 'Ep 1', episode: 1, airDate: '2099-06-14'),
+      ];
+      expect(
+        hubMetaPremiereDateLabel(meta, videos: videos),
+        'Jun 14, 2099',
+      );
     });
   });
 }

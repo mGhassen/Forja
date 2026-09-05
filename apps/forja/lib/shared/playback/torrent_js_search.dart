@@ -53,6 +53,7 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
   String? imdbId,
   int? season,
   int? episode,
+  Map<String, String> ids = const {},
   bool Function()? isCancelled,
   void Function(List<Map<String, dynamic>> soFar)? onPartial,
   void Function(String providerId)? onProviderDone,
@@ -77,6 +78,7 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
           imdbId: resolvedImdb,
           season: season,
           episode: episode,
+          ids: ids,
           isCancelled: isCancelled,
           runtime: rt,
         );
@@ -102,6 +104,7 @@ Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
   String? imdbId,
   int? season,
   int? episode,
+  Map<String, String>? ids,
   List<String>? enabledProviders,
 }) async {
   await syncTorrentSearchCatalog();
@@ -120,6 +123,7 @@ Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
     imdbId: imdbId,
     season: season,
     episode: episode,
+    ids: ids ?? const {},
   );
 }
 
@@ -128,6 +132,7 @@ Future<List<Map<String, dynamic>>> searchTorrentsProgressiveViaPlugins(
   String? imdbId,
   int? season,
   int? episode,
+  Map<String, String>? ids,
   List<String>? enabledProviders,
   void Function(List<Map<String, dynamic>> soFar)? onPartial,
   void Function(String providerId)? onProviderDone,
@@ -149,6 +154,7 @@ Future<List<Map<String, dynamic>>> searchTorrentsProgressiveViaPlugins(
     imdbId: imdbId,
     season: season,
     episode: episode,
+    ids: ids ?? const {},
     isCancelled: isCancelled,
     onPartial: onPartial,
     onProviderDone: onProviderDone,

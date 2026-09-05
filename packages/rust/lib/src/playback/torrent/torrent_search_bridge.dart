@@ -3,6 +3,7 @@ typedef TorrentSearchHandler = Future<List<Map<String, dynamic>>> Function(
   String? imdbId,
   int? season,
   int? episode,
+  Map<String, String>? ids,
   List<String>? enabledProviders,
 });
 
@@ -12,6 +13,7 @@ typedef TorrentSearchProgressiveHandler =
   String? imdbId,
   int? season,
   int? episode,
+  Map<String, String>? ids,
   List<String>? enabledProviders,
   void Function(List<Map<String, dynamic>> soFar)? onPartial,
   void Function(String providerId)? onProviderDone,

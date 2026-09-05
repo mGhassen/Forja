@@ -92,6 +92,11 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "searchInputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Torrent plugins: declared search inputs (query, imdbId, …)"
+        },
         "ctxConfigMap": {
           "type": "object",
           "additionalProperties": { "type": "string" }

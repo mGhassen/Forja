@@ -51,6 +51,7 @@ Future<void> openHubCatalogSources({
   int? season,
   int? episode,
   CatalogOpen? catalogOpen,
+  CatalogMetaItem? catalogMeta,
   int? malId,
   String? audioCategory,
   String? episodeVideoId,
@@ -68,6 +69,7 @@ Future<void> openHubCatalogSources({
     catalogPlaySession: catalogPlaySession,
   );
   final session = catalogPlaySession;
+  final meta = catalogMeta ?? session?.catalogMeta;
   final epVid = (episodeVideoId ?? session?.episodeVideoIdFor(episode ?? 1))
       ?.trim();
   final preferredPlugin = preferredEnginePluginId?.trim().isNotEmpty == true
@@ -82,6 +84,7 @@ Future<void> openHubCatalogSources({
     season: season,
     episode: episode,
     catalogOpen: catalogOpen,
+    catalogMeta: meta,
     malId: malId,
     episodeVideoId: (epVid != null && epVid.isNotEmpty) ? epVid : null,
     engineCategory: engineCategory ??

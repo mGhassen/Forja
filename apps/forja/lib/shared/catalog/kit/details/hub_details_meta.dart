@@ -41,22 +41,53 @@ String? hubMetaPremiereIso(CatalogMetaItem item) {
   return null;
 }
 
-String? hubMetaPremiereDateLabel(CatalogMetaItem item) {
-  final iso = hubMetaPremiereIso(item);
+String? hubEarliestVideoAirIso(Iterable<CatalogVideo> videos) {
+  String? best;
+  for (final v in videos) {
+    final raw = v.airDate.trim();
+    if (raw.length < 10 || !_looksLikeIsoDate(raw)) continue;
+    final day = raw.substring(0, 10);
+    if (best == null || day.compareTo(best) < 0) best = day;
+  }
+  return best;
+}
+
+String? hubMetaPremiereDateLabel(
+  CatalogMetaItem item, {
+  Iterable<CatalogVideo> videos = const [],
+}) {
+  final iso = hubMetaPremiereIso(item) ?? hubEarliestVideoAirIso(videos);
   if (iso == null) return null;
   return formatEpisodeDisplayDate(iso);
 }
 
+bool _hubVideoHasAirSignal(CatalogVideo video) =>
+    video.aired == false || video.airDate.trim().isNotEmpty;
+
+/// Show-level “Coming soon” — no Play / Sources on the hero.
+///
+/// TV packs often list future episode stubs before premiere. Those must not
+/// unlock Play just because [videos] is non-empty; only once at least one
+/// dated episode has aired (or meta has no future signal).
 bool hubMetaIsUpcoming(
   CatalogMetaItem item, {
   Iterable<CatalogVideo> videos = const [],
 }) {
   final status = (item.status ?? '').trim().toUpperCase();
   if (status == 'NOT_YET_RELEASED') return true;
+
+  final list = List<CatalogVideo>.of(videos);
+  if (!hubMetaIsMovie(item) && list.isNotEmpty) {
+    final dated = list.where(_hubVideoHasAirSignal).toList(growable: false);
+    if (dated.isNotEmpty && dated.every(hubVideoNotAiredYet)) {
+      return true;
+    }
+  }
+
   final iso = hubMetaPremiereIso(item);
   if (iso == null || !isFutureIsoDate(iso)) return false;
   if (hubMetaIsMovie(item)) return true;
-  return videos.isEmpty;
+  return list.isEmpty;
 }
 
 bool hubVideoNotAiredYet(CatalogVideo video) =>

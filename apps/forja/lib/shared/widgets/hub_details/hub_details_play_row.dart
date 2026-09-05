@@ -169,24 +169,26 @@ class HubDetailsPlayRow extends StatelessWidget {
       tvRowId: tv ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tv ? tvItemIndex : null,
     );
-    if (onOpenSources == null) return play;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        play,
-        const SizedBox(width: 10),
-        HeroPillPlayButton(
-          label: label,
-          icon: Icons.link_rounded,
-          tone: HeroPillPlayTone.streaming,
-          onTap: enabled ? onOpenSources : null,
-          onUpEdge: tv ? onUpEdge : null,
-          tvTabId: tv ? tvTabId : null,
-          tvRowId: tv ? MediaDetailsTv.heroRowId : null,
-          tvItemIndex: tv ? tvSourcesItemIndex : null,
-        ),
-      ],
-    );
+    final row = onOpenSources == null
+        ? play
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              play,
+              const SizedBox(width: 10),
+              HeroPillPlayButton(
+                label: label,
+                icon: Icons.link_rounded,
+                tone: HeroPillPlayTone.streaming,
+                onTap: enabled ? onOpenSources : null,
+                onUpEdge: tv ? onUpEdge : null,
+                tvTabId: tv ? tvTabId : null,
+                tvRowId: tv ? MediaDetailsTv.heroRowId : null,
+                tvItemIndex: tv ? tvSourcesItemIndex : null,
+              ),
+            ],
+          );
+    if (enabled) return row;
+    return Opacity(opacity: 0.42, child: row);
   }
 }

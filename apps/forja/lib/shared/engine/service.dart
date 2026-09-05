@@ -493,6 +493,7 @@ class EngineService {
     String? imdbId,
     int? season,
     int? episode,
+    Map<String, String> ids = const {},
     bool Function()? isCancelled,
     EngineRuntime? runtime,
   }) async {
@@ -549,6 +550,7 @@ class EngineService {
         imdbId: imdbId,
         season: season,
         episode: episode,
+        ids: ids,
         config: config,
         isCancelled: isCancelled,
         timeout: timeout,
@@ -1238,6 +1240,10 @@ class EngineService {
     final extractCtx = Map<String, dynamic>.from(resolved.ctx);
     if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
       extractCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
+    }
+    final tid = tmdbId.trim();
+    if (tid.isNotEmpty) {
+      extractCtx.putIfAbsent('tmdbId', () => tid);
     }
     applyAudioCategoryToExtractCtx(extractCtx, audioCategory);
 

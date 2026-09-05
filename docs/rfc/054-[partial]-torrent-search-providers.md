@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **14 / 15** acceptance |
+| **Progress** | **9 / 9** components · **15 / 16** acceptance |
 | **Current slice** | Anime + Asian Drama `open.torrentEp` + IMDb enrich — desktop smoke R54-A06 remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -57,6 +57,7 @@
 | 13 | R54-A13 | Packs may set `open.torrentEp` so Sources searches `Title 05` / `Title - 05` | ✅ |
 | 14 | R54-A14 | Hub `Movie.imdbId` carries enrich IMDb so Torrentio can run | ✅ |
 | 15 | R54-A15 | Asian Drama pack sets `open.torrentEp` + enrich `ids.imdb` | ✅ |
+| 16 | R54-A16 | Torrent Sources search consumes [RFC-079](079-[open]-sources-id-middleware.md) id bag (`imdb` + opaque `ids`) | ✅ |
 
 ---
 
@@ -87,6 +88,7 @@ Expand Forja’s fixed 3-scraper torrent search into a checkable multi-provider 
 
 ## Related
 
+- [RFC-079](079-[open]-sources-id-middleware.md) — Sources id bag middleware (torrent consumes shared mapper)
 - [Torrent scrapers](../features/scrapers/torrent.md)
 - [Torrent settings](../features/settings/torrent-settings.md)
 - [Issue 216](../issues/fixed/216-[fixed]-anime-hub-torrent-search-empty.md) — anime empty torrents

@@ -689,7 +689,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final trailers = _trailers;
     final hasTrailers = trailers.isNotEmpty;
     final isUpcoming = hubMetaIsUpcoming(show, videos: videos);
-    final premiereLabel = hubMetaPremiereDateLabel(show);
+    final premiereLabel = hubMetaPremiereDateLabel(show, videos: videos);
     final selectedVideo = _selectedVideo();
     final selectedUnaired =
         selectedVideo != null && hubVideoNotAiredYet(selectedVideo);

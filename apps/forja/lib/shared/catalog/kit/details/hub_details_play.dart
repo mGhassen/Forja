@@ -57,6 +57,7 @@ Future<void> openHubSourcesFromContext({
     season: ctx.season,
     episode: ctx.episode,
     catalogOpen: ctx.effectiveOpen,
+    catalogMeta: ctx.catalogMeta,
     malId: ctx.malId,
     audioCategory: ctx.audioCategory,
     episodeVideoId: ctx.episode != null

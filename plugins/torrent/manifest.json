@@ -4,7 +4,7 @@
   "name": "ForjaHQ Torrent",
   "description": "Built-in torrent indexer search for movies and series.",
   "author": "ForjaHQ",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "prelude": "_torrent_common.js",
   "tags": ["torrent"],
   "plugins": [
@@ -13,6 +13,7 @@
       "name": "Knaben",
       "entry": "knaben.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "Knaben" }
     },
     {
@@ -20,6 +21,7 @@
       "name": "The Pirate Bay",
       "entry": "pirate_bay.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "ThePirateBay" }
     },
     {
@@ -27,6 +29,7 @@
       "name": "UIndex",
       "entry": "uindex.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "UIndex" }
     },
     {
@@ -34,6 +37,7 @@
       "name": "Torrents CSV",
       "entry": "torrents_csv.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "Torrents CSV" }
     },
     {
@@ -41,6 +45,7 @@
       "name": "Nyaa",
       "entry": "nyaa.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "Nyaa" }
     },
     {
@@ -48,6 +53,7 @@
       "name": "YTS",
       "entry": "yts.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "YTS" }
     },
     {
@@ -55,6 +61,7 @@
       "name": "SolidTorrents",
       "entry": "solid_torrents.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "SolidTorrents" }
     },
     {
@@ -62,6 +69,7 @@
       "name": "TheRARBG",
       "entry": "therarbg.js",
       "kind": "torrent",
+      "searchInputs": ["query"],
       "config": { "source": "TheRARBG" }
     },
     {
@@ -69,6 +77,7 @@
       "name": "Torrentio",
       "entry": "torrentio.js",
       "kind": "torrent",
+      "searchInputs": ["imdbId"],
       "config": { "source": "Torrentio" }
     }
   ]
