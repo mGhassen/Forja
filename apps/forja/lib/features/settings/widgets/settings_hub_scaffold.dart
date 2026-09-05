@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/settings_addons_host.dart';
@@ -5,6 +7,7 @@ import 'package:forja/features/settings/pages/settings_category_bodies.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -60,9 +63,14 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   @override
   void didUpdateWidget(covariant SettingsHubScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedId != widget.selectedId &&
-        widget.selectedId != SettingsCategoryId.sources) {
-      SettingsAddonDrill.close();
+    if (oldWidget.selectedId != widget.selectedId) {
+      if (widget.selectedId != SettingsCategoryId.sources) {
+        SettingsAddonDrill.close();
+      }
+      if (widget.selectedId != SettingsCategoryId.forjaPacks &&
+          SettingsPackPromptDrill.isOpen) {
+        unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+      }
     }
   }
 
@@ -167,6 +175,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       return true;
     }
 
+    if (SettingsPackPromptDrill.isOpen) {
+      unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+      return true;
+    }
+
     if (_detailScope.hasFocus) {
       if (_detailEnterToken != 0) {
         setState(() => _detailEnterToken = 0);
@@ -250,6 +263,12 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                         if (id != SettingsCategoryId.sources) {
                           SettingsAddonDrill.close();
                         }
+                        if (id != SettingsCategoryId.forjaPacks &&
+                            SettingsPackPromptDrill.isOpen) {
+                          unawaited(
+                            SettingsPackPromptDrill.dismissWithoutApply(),
+                          );
+                        }
                         widget.onSelect(id);
                       },
                       firstTileFocusNode: widget.firstTileFocusNode,
@@ -278,6 +297,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                                 child: SettingsAddonsAwareScaffold(
                                   categoryTitle:
                                       selectedMeta?.title ?? 'Settings',
+                                  categoryId: widget.selectedId,
                                   categoryAdminOnly:
                                       selectedMeta?.adminOnly ?? false,
                                   scrollable:
@@ -294,6 +314,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                       )
                     : SettingsAddonsAwareScaffold(
                         categoryTitle: selectedMeta?.title ?? 'Settings',
+                        categoryId: widget.selectedId,
                         categoryAdminOnly: selectedMeta?.adminOnly ?? false,
                         scrollable: !(selectedMeta?.fillViewport ?? false),
                         child: buildSettingsCategoryBody(

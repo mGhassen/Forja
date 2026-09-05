@@ -117,18 +117,7 @@ Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
     return OfficialPackPromptOutcome.alreadyInstalled;
   }
 
-  if (candidates.length == 1) {
-    final only = candidates.first;
-    ShellBus.enqueuePluginInstall(
-      PluginInstallPrompt(
-        manifestUrl: only.manifestUrl,
-        displayName: only.displayName,
-        source: PluginInstallSource.settings,
-      ),
-    );
-    return OfficialPackPromptOutcome.prompted;
-  }
-
+  // Always batch (even one pack) so Settings shows the right-pane picker.
   ShellBus.pendingPluginBatchInstall.value =
       PluginBatchInstallPrompt(candidates: candidates);
   return OfficialPackPromptOutcome.prompted;

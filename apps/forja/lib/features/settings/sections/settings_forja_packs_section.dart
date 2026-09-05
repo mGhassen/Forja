@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/widgets/forja_pack_choice_cards.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -40,6 +41,7 @@ class _SettingsForjaPacksSectionState
   void initState() {
     super.initState();
     PluginInstallCoordinator.instance.progress.addListener(_onPluginInstallProgress);
+    SettingsPackPromptDrill.current.addListener(_onPackPromptDrill);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(enginePackUpdatesProvider.notifier).refresh();
@@ -50,17 +52,30 @@ class _SettingsForjaPacksSectionState
     if (mounted) setState(() {});
   }
 
+  void _onPackPromptDrill() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     PluginInstallCoordinator.instance.progress.removeListener(
       _onPluginInstallProgress,
     );
+    SettingsPackPromptDrill.current.removeListener(_onPackPromptDrill);
     _engineController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final packPrompt = SettingsPackPromptDrill.current.value;
+    if (packPrompt != null) {
+      return SettingsPackPromptPane(
+        prompt: packPrompt,
+        onDismiss: SettingsPackPromptDrill.close,
+      );
+    }
+
     final enginePacks =
         ref.watch(enginePacksProvider).valueOrNull ?? const [];
     final packUpdates = ref.watch(enginePackUpdatesProvider);

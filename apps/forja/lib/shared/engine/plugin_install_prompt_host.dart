@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
+import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/plugin_batch_install_prompt_dialog.dart';
-import 'package:forja/shared/engine/plugin_install_prompt_dialog.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Listens for plugin install prompts (single deep link + batch profile sync).
 ///
+/// Opens the picker in Settings → Forja Packs (right pane) — never a modal.
 /// Pack membership is **profile**-scoped. Prompts stay queued until
 /// [ShellBus.splashDismissed] so they never cover account, Who's watching,
 /// packs onboarding, or boot / profile splash.
@@ -22,9 +22,6 @@ class PluginInstallPromptHost extends StatefulWidget {
 
 class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   bool _busy = false;
-  PluginInstallPrompt? _prompt;
-  PluginBatchInstallPrompt? _batchPrompt;
-  bool _alreadyInstalled = false;
 
   @override
   void initState() {
@@ -33,6 +30,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     ShellBus.pendingPluginInstallQueue.addListener(_onPending);
     ShellBus.pendingPluginBatchInstall.addListener(_onPending);
     ShellBus.splashDismissed.addListener(_onSplashDismissed);
+    SettingsPackPromptDrill.current.addListener(_onDrillChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
@@ -42,7 +40,13 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     ShellBus.pendingPluginInstallQueue.removeListener(_onPending);
     ShellBus.pendingPluginBatchInstall.removeListener(_onPending);
     ShellBus.splashDismissed.removeListener(_onSplashDismissed);
+    SettingsPackPromptDrill.current.removeListener(_onDrillChanged);
     super.dispose();
+  }
+
+  void _onDrillChanged() {
+    if (SettingsPackPromptDrill.isOpen) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
   void _onPending() {
@@ -60,8 +64,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   }
 
   Future<void> _maybeShow() async {
-    if (!mounted || _busy || _prompt != null || _batchPrompt != null) return;
-    // Keep queued until a profile is active and splash chrome is gone.
+    if (!mounted || _busy || SettingsPackPromptDrill.isOpen) return;
     if (!ShellBus.splashDismissed.value) return;
 
     final batch = ShellBus.takePendingPluginBatchInstall();
@@ -74,31 +77,9 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
         );
         await WidgetsBinding.instance.endOfFrame;
         if (!mounted) return;
-        final packs = await PluginRegistry.instance.listPacksRaw();
-        if (!mounted) return;
-        final byUrl = {for (final p in packs) p.sourceUrl.trim(): p};
-        final installedUrls = <String>{};
-        for (final p in packs) {
-          if (p.plugins.isEmpty) continue;
-          if (await PluginRegistry.instance.packNeedsDiskInstall(p)) continue;
-          installedUrls.add(p.sourceUrl.trim());
-        }
-        if (!mounted) return;
-        final refreshed = PluginBatchInstallPrompt(
-          candidates: [
-            for (final c in batch.candidates)
-              PluginInstallCandidate(
-                manifestUrl: c.manifestUrl,
-                displayName: c.displayName,
-                kind: c.kind,
-                fromRemoteProfile: c.fromRemoteProfile,
-                alreadyInstalled: c.kind == PluginPackPromptKind.uninstall
-                    ? !byUrl.containsKey(c.manifestUrl.trim())
-                    : installedUrls.contains(c.manifestUrl.trim()),
-              ),
-          ],
-        );
-        setState(() => _batchPrompt = refreshed);
+        final refreshed = await _refreshBatch(batch);
+        if (!mounted || refreshed == null) return;
+        SettingsPackPromptDrill.open(refreshed);
       } finally {
         if (mounted) _busy = false;
       }
@@ -115,66 +96,73 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
       );
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
-      final packs = await PluginRegistry.instance.listPacksRaw();
-      if (!mounted) return;
-      EnginePack? match;
-      for (final p in packs) {
-        if (p.sourceUrl.trim() == prompt.manifestUrl.trim()) {
-          match = p;
-          break;
-        }
-      }
-      var already = false;
-      if (prompt.kind == PluginPackPromptKind.uninstall) {
-        already = match == null;
-      } else if (match != null) {
-        already = !await PluginRegistry.instance.packNeedsDiskInstall(match);
-      }
-      if (!mounted) return;
-      setState(() {
-        _prompt = prompt;
-        _alreadyInstalled = already;
-      });
+      final candidate = await _refreshSingle(prompt);
+      if (!mounted || candidate == null) return;
+      SettingsPackPromptDrill.open(
+        PluginBatchInstallPrompt(candidates: [candidate]),
+      );
     } finally {
       if (mounted) _busy = false;
     }
   }
 
-  void _dismissSingle() {
-    if (_prompt == null) return;
-    setState(() {
-      _prompt = null;
-      _alreadyInstalled = false;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
-  }
-
-  void _dismissBatch() {
-    if (_batchPrompt == null) return;
-    setState(() => _batchPrompt = null);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final prompt = _prompt;
-    final batch = _batchPrompt;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        widget.child,
-        if (batch != null)
-          PluginBatchInstallPromptOverlay(
-            prompt: batch,
-            onDismiss: _dismissBatch,
-          ),
-        if (prompt != null)
-          PluginInstallPromptOverlay(
-            prompt: prompt,
-            alreadyInstalled: _alreadyInstalled,
-            onDismiss: _dismissSingle,
+  Future<PluginBatchInstallPrompt?> _refreshBatch(
+    PluginBatchInstallPrompt batch,
+  ) async {
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    if (!mounted) return null;
+    final byUrl = {for (final p in packs) p.sourceUrl.trim(): p};
+    final installedUrls = <String>{};
+    for (final p in packs) {
+      if (p.plugins.isEmpty) continue;
+      if (await PluginRegistry.instance.packNeedsDiskInstall(p)) continue;
+      installedUrls.add(p.sourceUrl.trim());
+    }
+    if (!mounted) return null;
+    return PluginBatchInstallPrompt(
+      candidates: [
+        for (final c in batch.candidates)
+          PluginInstallCandidate(
+            manifestUrl: c.manifestUrl,
+            displayName: c.displayName,
+            kind: c.kind,
+            fromRemoteProfile: c.fromRemoteProfile,
+            alreadyInstalled: c.kind == PluginPackPromptKind.uninstall
+                ? !byUrl.containsKey(c.manifestUrl.trim())
+                : installedUrls.contains(c.manifestUrl.trim()),
           ),
       ],
     );
   }
+
+  Future<PluginInstallCandidate?> _refreshSingle(
+    PluginInstallPrompt prompt,
+  ) async {
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    if (!mounted) return null;
+    EnginePack? match;
+    for (final p in packs) {
+      if (p.sourceUrl.trim() == prompt.manifestUrl.trim()) {
+        match = p;
+        break;
+      }
+    }
+    var already = false;
+    if (prompt.kind == PluginPackPromptKind.uninstall) {
+      already = match == null;
+    } else if (match != null) {
+      already = !await PluginRegistry.instance.packNeedsDiskInstall(match);
+    }
+    if (!mounted) return null;
+    return PluginInstallCandidate(
+      manifestUrl: prompt.manifestUrl,
+      displayName: prompt.displayName,
+      kind: prompt.kind,
+      fromRemoteProfile: prompt.source == PluginInstallSource.remoteProfile,
+      alreadyInstalled: already,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

@@ -191,12 +191,12 @@ void main() {
     expect(await service.isP2pStreamingAcknowledged(), isFalse);
   });
 
-  test('fresh phone install seeds phone nav defaults', () async {
+  test('fresh phone install seeds empty nav defaults', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
 
     final nav = await service.getNavbarConfig();
-    expect(nav, ['iptv']);
+    expect(nav, isEmpty);
     expect(await service.getSubSize(), 24);
     expect(await service.getTorrentDiskCacheGb(), 1);
   });
@@ -206,7 +206,7 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.desktop);
 
     expect(await service.getSubSize(), 44);
-    expect(await service.getNavbarConfig(), PlatformDefaults.phoneNavIds);
+    expect(await service.getNavbarConfig(), isEmpty);
     expect(await service.getPlayInBackground(), isTrue);
     expect(await service.getTorrentDiskCacheGb(), 2);
   });
@@ -586,7 +586,6 @@ void main() {
         'home',
         'anime',
         'asian_drama',
-        'live_matches',
         'mylist',
       },
     );
@@ -596,7 +595,6 @@ void main() {
       'home',
       'anime',
       'asian_drama',
-      'live_matches',
       'mylist',
     ]);
   });
@@ -617,23 +615,22 @@ void main() {
   test('ensureNavIdsKnown auto-shows first-seen hub tabs', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    expect(await service.getNavbarConfig(), ['iptv']);
+    expect(await service.getNavbarConfig(), isEmpty);
 
     await service.ensureNavIdsKnown(
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
 
     expect(await service.getNavbarConfig(), [
-      'iptv',
       'hub_alpha',
       'hub_beta',
     ]);
 
-    await service.setNavbarConfig(const ['iptv']);
+    await service.setNavbarConfig(const []);
     await service.ensureNavIdsKnown(
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
     // Already known — must not force-show again after user hide.
-    expect(await service.getNavbarConfig(), ['iptv']);
+    expect(await service.getNavbarConfig(), isEmpty);
   });
 }

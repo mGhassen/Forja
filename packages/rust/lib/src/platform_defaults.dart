@@ -3,10 +3,10 @@ import 'platform_profile.dart';
 
 /// Per-platform first-run defaults and getter fallbacks.
 ///
-/// [visibleNavIds] is **host-owned tabs** for a fresh install (today: IPTV).
-/// [live_matches] is also host-core ([PluginNavRegistry.coreShellNavIds]) but
-/// visibility is Addons / Features — not baked here (RFC-084). Catalog VOD hubs
-/// (`home`, `anime`, …) come from packs via [SettingsService.ensureNavIdsKnown].
+/// [visibleNavIds] is empty on a fresh install — host-core tabs (`iptv`,
+/// `live_matches`) stay off until Settings → Addons / Features (RFC-084).
+/// Catalog VOD hubs (`home`, `anime`, …) come from packs via
+/// [SettingsService.ensureNavIdsKnown].
 class PlatformDefaults {
   const PlatformDefaults({
     required this.visibleNavIds,
@@ -42,10 +42,8 @@ class PlatformDefaults {
   /// Desktop keeps audio/video when the window blurs; phone/TV pause (process stays warm).
   final bool playInBackground;
 
-  /// Host-owned shell tabs for a fresh install. Hub packs add their own tabs.
-  static const List<String> defaultNavIds = [
-    'iptv',
-  ];
+  /// Fresh install: no feature tabs on. Addons / Features / packs turn them on.
+  static const List<String> defaultNavIds = <String>[];
   static const List<String> phoneNavIds = defaultNavIds;
   static const List<String> androidTvNavIds = defaultNavIds;
 

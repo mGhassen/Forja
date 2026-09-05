@@ -7,6 +7,62 @@ import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 void main() {
   tearDown(clearMyListEnrichCache);
 
+  group('overlayMyListEnrichFields', () {
+    test('keeps cached poster when live row has empty posterPath', () {
+      final out = overlayMyListEnrichFields(
+        {
+          'uniqueId': 'tmdb_tv_1',
+          'tmdbId': 1,
+          'title': 'Cached',
+          'posterPath': '/cached.jpg',
+          'voteAverage': 8.1,
+          'listStatus': 'plantowatch',
+        },
+        {
+          'uniqueId': 'tmdb_tv_1',
+          'tmdbId': 1,
+          'title': 'Live',
+          'posterPath': '',
+          'voteAverage': 0,
+          'listStatus': 'watching',
+        },
+      );
+      expect(out['posterPath'], '/cached.jpg');
+      expect(out['voteAverage'], 8.1);
+      expect(out['title'], 'Live');
+      expect(out['listStatus'], 'watching');
+    });
+  });
+
+  group('myListRowStillNeedsEnrich', () {
+    test('anime with anilist + tmdb and empty poster still needs enrich', () {
+      expect(
+        myListRowStillNeedsEnrich({
+          'anilistId': 42,
+          'tmdbId': 99,
+          'mediaType': 'anime',
+          'title': 'Test',
+          'posterPath': '',
+          'voteAverage': 0,
+          'catalogOpen': {'surface': 'anime', 'id': '42'},
+        }),
+        isTrue,
+      );
+    });
+
+    test('complete row does not need enrich', () {
+      expect(
+        myListRowStillNeedsEnrich({
+          'tmdbId': 1,
+          'title': 'A',
+          'posterPath': '/a.jpg',
+          'voteAverage': 7.5,
+        }),
+        isFalse,
+      );
+    });
+  });
+
   group('enrichMyListRowsWithCache', () {
     test('reuses cache so status-only rebuilds skip enrich', () async {
       var enrichCalls = 0;
@@ -16,7 +72,11 @@ void main() {
         enrichCalls++;
         return [
           for (final row in items)
-            {...row, 'posterPath': 'https://cdn.example/${row['uniqueId']}.jpg'},
+            {
+              ...row,
+              'posterPath': 'https://cdn.example/${row['uniqueId']}.jpg',
+              'voteAverage': 7.0,
+            },
         ];
       }
 
@@ -43,6 +103,8 @@ void main() {
             'mediaType': 'movie',
             'listStatus': 'completed',
             'title': 'A',
+            'posterPath': '',
+            'voteAverage': 0,
           },
         ],
         enrich: enrich,
@@ -60,7 +122,10 @@ void main() {
         for (final row in items) {
           enrichedIds.add(row['uniqueId']?.toString() ?? '');
         }
-        return [for (final row in items) {...row, 'enriched': true}];
+        return [
+          for (final row in items)
+            {...row, 'enriched': true, 'posterPath': '/x.jpg', 'voteAverage': 1},
+        ];
       }
 
       await enrichMyListRowsWithCache(
@@ -70,6 +135,7 @@ void main() {
             'mediaType': 'movie',
             'title': 'A',
             'listStatus': 'watching',
+            'tmdbId': 1,
           },
         ],
         enrich: enrich,
@@ -81,12 +147,14 @@ void main() {
             'mediaType': 'movie',
             'title': 'A',
             'listStatus': 'watching',
+            'tmdbId': 1,
           },
           {
             'uniqueId': 'b',
             'mediaType': 'movie',
             'title': 'B',
             'listStatus': 'watching',
+            'tmdbId': 2,
           },
         ],
         enrich: enrich,
@@ -94,6 +162,40 @@ void main() {
       expect(enrichedIds, ['a', 'b']);
       expect(mixed.map((e) => e['uniqueId']), ['a', 'b']);
       expect(mixed.every((e) => e['enriched'] == true), isTrue);
+    });
+
+    test('applyMyListEnrichCacheSync does not wipe cached poster', () async {
+      await enrichMyListRowsWithCache(
+        [
+          {
+            'uniqueId': 'simkl_anime_1',
+            'anilistId': 7,
+            'tmdbId': 99,
+            'mediaType': 'anime',
+            'title': 'Anime',
+            'posterPath': '',
+            'voteAverage': 0,
+          },
+        ],
+        enrich: (items) async => [
+          for (final row in items)
+            {...row, 'posterPath': '/from-tmdb.jpg', 'voteAverage': 8.2},
+        ],
+      );
+      final synced = applyMyListEnrichCacheSync([
+        {
+          'uniqueId': 'simkl_anime_1',
+          'anilistId': 7,
+          'tmdbId': 99,
+          'mediaType': 'anime',
+          'title': 'Anime',
+          'posterPath': '',
+          'voteAverage': 0,
+          'listStatus': 'plantowatch',
+        },
+      ]);
+      expect(synced.single['posterPath'], '/from-tmdb.jpg');
+      expect(synced.single['voteAverage'], 8.2);
     });
   });
 

@@ -6,7 +6,7 @@
 
 Customize which sections appear in the bottom nav (mobile) or side rail (desktop) and in what order. **Settings** always stays visible and cannot be removed. On desktop its pinned rail control is rendered as the active profile avatar (or Guest).
 
-On a fresh install, only **IPTV** (and always-visible **Settings**) are host-default. **Live Sports** is a host core tab that appears when you enable **Addons → Live Sports** (or Features). Other hub tabs appear under Features when their packs install — **on** the first time the host sees each tab. Star a visible tab to choose startup (Home is common after the official packs bundle).
+On a fresh install, only **Settings** is visible — no Addons (IPTV, Live Sports, torrent, …) are on. Turn on **Addons → IPTV** or **Live Sports** (or Features) when you want those tabs. Other hub tabs appear under Features when their packs install — **on** the first time the host sees each tab. Star a visible tab to choose startup (Home is common after the official packs bundle).
 
 ## How to open it
 

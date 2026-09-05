@@ -36,24 +36,58 @@ String myListEnrichCacheKey(Map<String, dynamic> row) {
   return 'title:$mt:$title';
 }
 
-Map<String, dynamic> _overlayListFields(
+/// True when TMDB enrich can still fill missing art/meta on [row].
+@visibleForTesting
+bool myListRowStillNeedsEnrich(Map<String, dynamic> row) {
+  final tmdb = myListAsInt(row['tmdbId']);
+  if (tmdb == null || tmdb <= 0) return false;
+  final poster = row['posterPath']?.toString().trim() ?? '';
+  if (poster.isEmpty) return true;
+  final title = row['title']?.toString().trim() ?? '';
+  if (title.isEmpty) return true;
+  final vote = row['voteAverage'];
+  if (vote == null) return true;
+  if (vote is num && vote == 0) return true;
+  return false;
+}
+
+bool _myListEnrichFieldUsable(dynamic v) {
+  if (v == null) return false;
+  if (v is String) return v.trim().isNotEmpty;
+  if (v is num) return v != 0;
+  return true;
+}
+
+/// Merge cached enrich onto a live list row without wiping art with empties.
+@visibleForTesting
+Map<String, dynamic> overlayMyListEnrichFields(
   Map<String, dynamic> cached,
   Map<String, dynamic> current,
 ) {
   final out = Map<String, dynamic>.from(cached);
+  // Live list / identity — always prefer current when set.
   for (final key in const [
     'listStatus',
     'uniqueId',
-    'title',
-    'posterPath',
-    'voteAverage',
-    'releaseDate',
+    'anilistId',
+    'kisskhId',
     'tmdbId',
     'pluginId',
     'catalogOpen',
   ]) {
     final v = current[key];
     if (v != null) out[key] = v;
+  }
+  // Enrich fields — never replace a filled cache value with '' / 0 from Simkl.
+  for (final key in const [
+    'title',
+    'posterPath',
+    'backdropPath',
+    'voteAverage',
+    'releaseDate',
+  ]) {
+    final v = current[key];
+    if (_myListEnrichFieldUsable(v)) out[key] = v;
   }
   return out;
 }
@@ -67,7 +101,7 @@ List<Map<String, dynamic>> applyMyListEnrichCacheSync(
   return [
     for (final row in merged)
       if (_myListEnrichCache[myListEnrichCacheKey(row)] case final cached?)
-        _overlayListFields(cached, row)
+        overlayMyListEnrichFields(cached, row)
       else
         Map<String, dynamic>.from(row),
   ];
@@ -91,7 +125,7 @@ Future<List<Map<String, dynamic>>> enrichMyListRowsWithCache(
     final key = myListEnrichCacheKey(row);
     final cached = _myListEnrichCache[key];
     if (cached != null) {
-      out[i] = _overlayListFields(cached, row);
+      out[i] = overlayMyListEnrichFields(cached, row);
     } else {
       missIndexes.add(i);
       missItems.add(row);
@@ -136,6 +170,11 @@ class MyListEnrichEpochNotifier extends Notifier<int> {
     for (final row in merged) {
       final key = myListEnrichCacheKey(row);
       if (_myListEnrichCache.containsKey(key)) continue;
+      if (!myListRowStillNeedsEnrich(row)) {
+        // Already complete (or no TMDB id) — cache as-is, skip engine.
+        _myListEnrichCache[key] = Map<String, dynamic>.from(row);
+        continue;
+      }
       if (!_myListEnrichInflight.add(key)) continue;
       misses.add(row);
     }

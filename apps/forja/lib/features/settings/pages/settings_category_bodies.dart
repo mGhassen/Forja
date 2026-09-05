@@ -80,6 +80,7 @@ class SettingsCategoryPage extends ConsumerWidget {
             policy: ReadingOrderTraversalPolicy(),
             child: SettingsAddonsAwareScaffold(
               categoryTitle: meta?.title ?? 'Settings',
+              categoryId: categoryId,
               categoryAdminOnly: meta?.adminOnly ?? false,
               categoryBack: true,
               scrollable: !(meta?.fillViewport ?? false),

@@ -115,6 +115,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     ),
                   ),
 
+                if (!pipMode && _s._escapeExitArmed)
+                  const PlayerEscapeExitHint(),
+
                 // ── PiP chrome (drag + throw snap + hover controls) ─────
                 if (pipMode) _buildPipRevertOverlay(),
 

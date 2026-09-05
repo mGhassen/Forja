@@ -3,12 +3,12 @@
 
 function myListNeedsEnrich(row) {
   if (!row || typeof row !== 'object') return false;
-  if (row.catalogOpen) return false;
-  if (row.anilistId != null || row.kisskhId != null) return false;
   var tmdbId = Number(row.tmdbId);
   if (!(tmdbId > 0)) return false;
-  var poster = String(row.posterPath || '');
-  var title = String(row.title || '');
+  // Hydrate missing art/meta even when anilistId / kisskhId / catalogOpen
+  // are set — those skip only blocked TMDB poster fill before.
+  var poster = String(row.posterPath || '').trim();
+  var title = String(row.title || '').trim();
   var vote = row.voteAverage;
   return (
     !poster ||
@@ -21,7 +21,20 @@ function myListNeedsEnrich(row) {
 function myListMediaType(row) {
   var kind = String(row._simklType || '');
   var mt = String(row.mediaType || 'movie');
-  if (kind === 'shows' || mt === 'tv' || mt === 'series') return 'tv';
+  var tmdbMt = String(row.tmdbMediaType || '').trim();
+  if (tmdbMt === 'tv' || tmdbMt === 'movie') return tmdbMt;
+  // Anime / drama / Simkl shows map to TMDB tv.
+  if (
+    kind === 'anime' ||
+    kind === 'shows' ||
+    mt === 'anime' ||
+    mt === 'tv' ||
+    mt === 'series' ||
+    mt === 'asian_drama' ||
+    mt === 'drama'
+  ) {
+    return 'tv';
+  }
   return 'movie';
 }
 

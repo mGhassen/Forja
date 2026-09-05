@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **2 / 2** components · **4 / 4** acceptance |
-| **Current slice** | Host-only `PlatformDefaults` + pack-driven hub first-seen show |
+| **Progress** | **Complete** · **2 / 2** components · **6 / 6** acceptance |
+| **Current slice** | Empty fresh-install nav — no Addons on until user enables |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,16 +35,27 @@
 
 ---
 
+## Acceptance (empty Addons default)
+
+Supersedes R81-A01 for **new** installs only — existing seeded layouts unchanged.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 5 | R81-A05 | Fresh install navbar seeds `[]` — IPTV / Live Sports off until Addons or Features | ✅ |
+| 6 | R81-A06 | Hub recovery / first-seen never force-on Addons-gated core tabs (`iptv`, `live_matches`) | ✅ |
+
+---
+
 ## Summary
 
-`PlatformDefaults` and `PluginNavRegistry.seedBuiltIns` must not name catalog hub packs (`anime`, `asian_drama`, `live-sports-hub`, …). The host owns IPTV (+ Settings). Hub tabs appear when packs contribute `nav` and `ensureNavIdsKnown` first-sees them (same contract as Features auto-on).
+`PlatformDefaults` and `PluginNavRegistry.seedBuiltIns` must not name catalog hub packs (`anime`, `asian_drama`, `live-sports-hub`, …). Fresh installs start with **no** feature tabs — Settings only. Host-core **IPTV** and **Live Sports** turn on via **Settings → Addons** (or Features). Hub tabs appear when packs contribute `nav` and `ensureNavIdsKnown` first-sees them (same contract as Features auto-on).
 
-**Supersedes for new installs:** RFC-028 R28-A28 (baked Home / Anime / Asian Drama / Live / My List into platform defaults). That row stays frozen ✅ as historical; this RFC is the new source of truth.
+**Supersedes for new installs:** RFC-028 R28-A28 (baked Home / Anime / Asian Drama / Live / My List into platform defaults). That row stays frozen ✅ as historical; this RFC is the new source of truth. R81-A01 (`['iptv']`) stays frozen ✅ as the first host-only slice; R81-A05 is the empty-addons follow-up.
 
 ### Goals
 
 - Pack-agnostic host defaults
-- Fresh guest / post-login onboarding: IPTV immediate; hubs after packs install
+- Fresh guest / post-login onboarding: empty rail until Addons / Features / packs
 - Existing custom / untouched pack-seeded layouts unchanged by upgrade migrations
 
 ### Related

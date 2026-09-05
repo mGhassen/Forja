@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/addons/settings_addon_detail.dart';
 import 'package:forja/features/settings/addons/settings_addon_toggles.dart';
+import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -21,12 +26,13 @@ class SettingsAddonDrill {
   static void close() => current.value = null;
 }
 
-/// Category page chrome that swaps title to the open addon (single header).
+/// Category page chrome that swaps title for addon detail or pack install picker.
 class SettingsAddonsAwareScaffold extends StatelessWidget {
   const SettingsAddonsAwareScaffold({
     super.key,
     required this.categoryTitle,
     required this.child,
+    this.categoryId,
     this.categoryAdminOnly = false,
     this.scrollable = true,
     this.categoryBack = false,
@@ -34,6 +40,7 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
 
   final String categoryTitle;
   final Widget child;
+  final String? categoryId;
   final bool categoryAdminOnly;
   final bool scrollable;
   final bool categoryBack;
@@ -43,15 +50,33 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
     return ValueListenableBuilder<SettingsAddonMeta?>(
       valueListenable: SettingsAddonDrill.current,
       builder: (context, addon, _) {
-        return SettingsPageScaffold(
-          title: addon?.title ?? categoryTitle,
-          adminOnly: addon?.adminOnly ?? categoryAdminOnly,
-          showBack: addon != null || categoryBack,
-          onBack: addon != null
-              ? SettingsAddonDrill.close
-              : () => Navigator.of(context).maybePop(),
-          scrollable: scrollable,
-          child: child,
+        return ValueListenableBuilder<PluginBatchInstallPrompt?>(
+          valueListenable: SettingsPackPromptDrill.current,
+          builder: (context, packPrompt, _) {
+            final packOpen = packPrompt != null &&
+                categoryId == SettingsCategoryId.forjaPacks;
+            final title = packOpen
+                ? SettingsPackPromptDrill.titleFor(packPrompt)
+                : (addon?.title ?? categoryTitle);
+            return SettingsPageScaffold(
+              title: title,
+              adminOnly: packOpen
+                  ? false
+                  : (addon?.adminOnly ?? categoryAdminOnly),
+              showBack: packOpen || addon != null || categoryBack,
+              onBack: packOpen
+                  ? () {
+                      unawaited(
+                        SettingsPackPromptDrill.dismissWithoutApply(),
+                      );
+                    }
+                  : addon != null
+                      ? SettingsAddonDrill.close
+                      : () => Navigator.of(context).maybePop(),
+              scrollable: scrollable,
+              child: child,
+            );
+          },
         );
       },
     );

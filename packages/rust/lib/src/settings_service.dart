@@ -1604,7 +1604,8 @@ class SettingsService {
   /// a premature empty-hub sync during lean boot.
   ///
   /// No-op if any [activeHubIds] tab is already visible (intentional Features
-  /// hide / partial config — not a full strip to IPTV-only).
+  /// hide / partial config — not a full strip). Callers pass VOD hub ids only
+  /// (not Addons-gated `iptv` / `live_matches`).
   Future<void> ensureActiveDefaultHubsVisible({
     required Set<String> activeHubIds,
   }) async {
@@ -1613,15 +1614,12 @@ class SettingsService {
     final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
     if (visible.any(activeHubIds.contains)) return;
 
-    // Host defaults first, then active hubs, then any other stored tabs.
+    // Keep any stored host tabs, then restore stripped VOD hubs, then the rest.
     final ordered = <String>[
-      for (final id in defaultVisibleNavIds)
-        if (visible.contains(id) || activeHubIds.contains(id)) id,
-      for (final id in activeHubIds)
-        if (!defaultVisibleNavIds.contains(id)) id,
       for (final id in visible)
-        if (!defaultVisibleNavIds.contains(id) && !activeHubIds.contains(id))
-          id,
+        if (!activeHubIds.contains(id)) id,
+      for (final id in activeHubIds)
+        if (!visible.contains(id)) id,
     ];
     if (listEquals(visible, ordered)) return;
     await kvSetStringList(_navbarConfigKey, ordered);

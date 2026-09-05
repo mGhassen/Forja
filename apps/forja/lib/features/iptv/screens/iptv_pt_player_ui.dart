@@ -797,7 +797,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
     if (!_s._escapeExitArmed) {
       debugPrint('[IptvPlayer] Escape → arm only');
-      _s._escapeExitArmed = true;
+      setState(() => _s._escapeExitArmed = true);
       return;
     }
     debugPrint('[IptvPlayer] Escape → confirm exit');
@@ -1119,6 +1119,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     ),
                   // Reconnect/switch always; Buffering… only when picture stalled.
                   if (!pipMode && _s._showPlaybackBanner) _buildBanner(),
+                  if (!pipMode && _s._escapeExitArmed)
+                    const PlayerEscapeExitHint(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP is active - replaced by the
                   // floating revert button below on desktop.

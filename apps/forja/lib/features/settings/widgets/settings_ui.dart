@@ -799,6 +799,7 @@ class SettingsToggleRow extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       onTap: enabled ? () => onChanged(!value) : null,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
@@ -961,6 +962,7 @@ class SettingsSelectRow extends StatelessWidget {
               return KeyEventResult.ignored;
             }
           : null,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
@@ -1250,6 +1252,8 @@ class SettingsActionRow extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       onTap: busy ? null : onTap,
+      // Flat green left-bar + ink (same as category rail) — no rounded card.
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',

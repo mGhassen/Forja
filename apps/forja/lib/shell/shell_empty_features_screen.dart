@@ -8,16 +8,18 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Shown when every shell feature tab is hidden — guides users to Features
-/// and plugin install instead of landing on an empty Settings body.
+/// Shown when every shell feature tab is hidden — guides users to Addons,
+/// Features, and plugin install instead of landing on an empty Settings body.
 class ShellEmptyFeaturesScreen extends ConsumerStatefulWidget {
   const ShellEmptyFeaturesScreen({
     super.key,
     required this.onOpenFeatures,
+    this.onOpenAddons,
     this.onInstallPlugins,
   });
 
   final VoidCallback onOpenFeatures;
+  final VoidCallback? onOpenAddons;
   final VoidCallback? onInstallPlugins;
 
   @override
@@ -27,7 +29,8 @@ class ShellEmptyFeaturesScreen extends ConsumerStatefulWidget {
 
 class _ShellEmptyFeaturesScreenState
     extends ConsumerState<ShellEmptyFeaturesScreen> {
-  final FocusNode _featuresFocus = FocusNode(debugLabel: 'empty-features-cta');
+  final FocusNode _primaryCtaFocus =
+      FocusNode(debugLabel: 'empty-shell-primary-cta');
 
   @override
   void initState() {
@@ -35,15 +38,15 @@ class _ShellEmptyFeaturesScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!ShellScope.metricsOf(context).usesTvDensity) return;
-      if (_featuresFocus.canRequestFocus) {
-        _featuresFocus.requestFocus();
+      if (_primaryCtaFocus.canRequestFocus) {
+        _primaryCtaFocus.requestFocus();
       }
     });
   }
 
   @override
   void dispose() {
-    _featuresFocus.dispose();
+    _primaryCtaFocus.dispose();
     super.dispose();
   }
 
@@ -53,6 +56,7 @@ class _ShellEmptyFeaturesScreenState
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final visibility = ref.watch(settingsVisibilityProvider).valueOrNull;
     final showPlugins = visibility?.showSourcesCategory ?? true;
+    final showAddons = showPlugins && widget.onOpenAddons != null;
     final profile = ShellScope.profileOf(context);
     final logoHeight = metrics.usesTvDensity
         ? 96.0
@@ -89,9 +93,9 @@ class _ShellEmptyFeaturesScreenState
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Forja is built from plugins. Enable tabs you want in '
-                    'Settings → Features, or install catalog and stream packs '
-                    'for a fuller experience.',
+                    'Forja is built from plugins. Enable Addons and Features '
+                    'in Settings, or install catalog and stream packs for a '
+                    'fuller experience.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       color: ForjaShellColors.textSecondary.withValues(
@@ -102,6 +106,20 @@ class _ShellEmptyFeaturesScreenState
                     ),
                   ),
                   const SizedBox(height: 28),
+                  if (showAddons) ...[
+                    _HintCard(
+                      icon: Icons.extension_rounded,
+                      title: 'Addons',
+                      body:
+                          'Turn on IPTV, Live Sports, torrent, Stremio, Nuvio, and other playback surfaces.',
+                      actionLabel: 'Open Addons',
+                      onAction: widget.onOpenAddons!,
+                      tvFocus: tvFocus,
+                      autofocus: tvFocus,
+                      focusNode: _primaryCtaFocus,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _HintCard(
                     icon: Icons.tab_rounded,
                     title: 'Features',
@@ -110,13 +128,13 @@ class _ShellEmptyFeaturesScreenState
                     actionLabel: 'Open Features',
                     onAction: widget.onOpenFeatures,
                     tvFocus: tvFocus,
-                    autofocus: tvFocus,
-                    focusNode: _featuresFocus,
+                    autofocus: tvFocus && !showAddons,
+                    focusNode: showAddons ? null : _primaryCtaFocus,
                   ),
                   if (showPlugins && widget.onInstallPlugins != null) ...[
                     const SizedBox(height: 12),
                     _HintCard(
-                      icon: Icons.extension_rounded,
+                      icon: Icons.inventory_2_outlined,
                       title: 'Plugins',
                       body:
                           'Install hub and stream packs from a manifest URL, or sync packs from your profile.',

@@ -3,9 +3,9 @@ import 'package:rust/rust.dart';
 
 void main() {
   group('PlatformDefaults', () {
-    test('android TV nav tabs are host-only', () {
+    test('android TV nav tabs start empty', () {
       final tv = PlatformDefaults.forProfile(PlatformProfile.androidTv);
-      expect(tv.visibleNavIds, ['iptv']);
+      expect(tv.visibleNavIds, isEmpty);
     });
 
     test('android TV player defaults', () {
@@ -23,10 +23,10 @@ void main() {
       expect(tv.playInBackground, isFalse);
     });
 
-    test('phone defaults host-only nav', () {
+    test('phone defaults empty nav', () {
       final phone = PlatformDefaults.forProfile(PlatformProfile.phone);
       expect(phone.visibleNavIds, PlatformDefaults.phoneNavIds);
-      expect(phone.visibleNavIds, ['iptv']);
+      expect(phone.visibleNavIds, isEmpty);
       expect(phone.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(phone.subSize, 24);
       expect(phone.torrentDiskCacheGb, 1);

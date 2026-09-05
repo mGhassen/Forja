@@ -42,6 +42,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';

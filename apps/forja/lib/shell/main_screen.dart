@@ -528,6 +528,16 @@ class _MainScreenState extends ConsumerState<MainScreen>
     );
   }
 
+  void _openAddonsFromEmptyState() {
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return;
+    final tv = ShellScope.metricsOf(ctx).usesTvDensity;
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.addons,
+      enterDetail: tv,
+    );
+  }
+
   void _openPluginsFromEmptyState() {
     final ctx = _shellScopedContext;
     if (ctx == null || !ctx.mounted) return;
@@ -545,6 +555,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   Widget _shellTabFor(String id) {
     if (id == 'settings' && _showEmptyFeaturesGate) {
       return ShellEmptyFeaturesScreen(
+        onOpenAddons: _openAddonsFromEmptyState,
         onOpenFeatures: _openFeaturesFromEmptyState,
         onInstallPlugins: _openPluginsFromEmptyState,
       );

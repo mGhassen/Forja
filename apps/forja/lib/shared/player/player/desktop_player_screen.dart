@@ -64,6 +64,7 @@ import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';

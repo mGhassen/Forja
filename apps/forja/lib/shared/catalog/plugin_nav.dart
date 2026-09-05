@@ -406,14 +406,18 @@ abstract final class PluginNavRegistry {
       SettingsService.registerExtraNavIds(extras);
     }
     if (dests.isNotEmpty || extras.isNotEmpty) {
+      // Pack hub tabs only — never auto-show Addons-gated core (`iptv` / `live_matches`).
       await SettingsService().ensureNavIdsKnown(
-        allHubIds: dests.keys.toList(),
+        allHubIds: dests.keys
+            .where((id) => !coreShellNavIds.contains(id))
+            .toList(),
       );
     }
     if (_deferredEmptyHubNavSync && dests.isNotEmpty) {
       _deferredEmptyHubNavSync = false;
+      // VOD hubs only — never force-on Addons-gated core tabs (iptv / live_matches).
       await SettingsService().ensureActiveDefaultHubsVisible(
-        activeHubIds: dests.keys.toSet(),
+        activeHubIds: dests.keys.toSet().difference(coreShellNavIds),
       );
     }
     await SettingsService().syncActiveHubNavIds(

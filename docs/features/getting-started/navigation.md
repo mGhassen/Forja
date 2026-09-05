@@ -4,11 +4,11 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Fresh install (host-owned):** IPTV and Settings. **Live Sports** is also host-owned (core tab) but stays off until **Settings → Addons → Live Sports** (or Features). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and Features turns it **on** the first time the host sees it. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** are host-owned core tabs that stay off until **Settings → Addons** (or Features). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and Features turns it **on** the first time the host sees it. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
-The tab bar is always visible after the app finishes loading. On first sign-in, hub tabs (Home, Anime, …) appear once catalog packs finish installing — IPTV stays available immediately because it is app-owned. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
+The tab bar is always visible after the app finishes loading. On first sign-in, hub tabs (Home, Anime, …) appear once catalog packs finish installing. Turn on **IPTV** or **Live Sports** from Settings → Addons when you want those tabs. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
 
 ## What you can do
 
@@ -54,7 +54,7 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 
 ## Available tabs
 
-**Default (fresh install):** IPTV · Settings. **After hub packs install:** those tabs turn on in Features the first time Forja sees them (typical official bundle: Home · Asian Drama · Anime · Live Sports · My List, plus optional Arabic / Aflem / كرتون / Kids).
+**Default (fresh install):** Settings only. **Addons:** turn on IPTV / Live Sports when you want them. **After hub packs install:** those tabs turn on in Features the first time Forja sees them (typical official bundle: Home · Asian Drama · Anime · My List, plus optional Arabic / Aflem / كرتون / Kids).
 
 Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 
@@ -62,7 +62,7 @@ Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كر�
 
 ## Tips
 
-- If every feature tab is off, the shell shows a get-started screen — **Open Features** goes to Settings → Features; **Install plugins** opens Settings → Forja Packs (and a download picker when profile packs still need installing). Tap the Forja logo in the sidebar to return here
+- If every feature tab is off, the shell shows a get-started screen — **Open Addons**, **Open Features**, and **Install plugins** (Forja Packs). Tap the Forja logo in the sidebar to return here
 - Hide tabs you never use to reduce clutter — among the tabs listed in Settings → Features
 - Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache; torrent / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there

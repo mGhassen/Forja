@@ -23,7 +23,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   }
 
   void _armEscapeExit() {
-    _s._escapeExitArmed = true;
+    if (!mounted) return;
+    setState(() => _s._escapeExitArmed = true);
   }
 
   void _revealChrome() {
