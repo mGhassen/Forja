@@ -633,4 +633,13 @@ void main() {
     // Already known — must not force-show again after user hide.
     expect(await service.getNavbarConfig(), isEmpty);
   });
+
+  test('ensureNavIdsKnown bumps navbar notifier when visible changes', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    final before = SettingsService.navbarChangeNotifier.value;
+    await service.ensureNavIdsKnown(allHubIds: const ['hub_notify']);
+    expect(SettingsService.navbarChangeNotifier.value, greaterThan(before));
+    expect(await service.getNavbarConfig(), contains('hub_notify'));
+  });
 }

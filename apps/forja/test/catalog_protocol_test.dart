@@ -724,6 +724,10 @@ void main() {
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
       expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
+      expect(
+        PluginNavRegistry.featureTabIds(),
+        containsAll(['iptv', 'live_matches']),
+      );
     });
 
     test('nav icons are pack-relative or forja://asset — never assets/', () {

@@ -38,20 +38,20 @@ const profileCategories = [
   {
     href: '/account/settings/addons',
     title: 'Addons',
-    subtitle: 'Playback, IPTV, sources',
+    subtitle: 'Playback, IPTV, torrent, Stremio, Nuvio',
     icon: Blocks,
+  },
+  {
+    href: '/account/settings/forja',
+    title: 'Forja Packs',
+    subtitle: 'Install and manage Forja plugin packs',
+    icon: Package,
   },
   {
     href: '/account/settings/navigation',
     title: 'Features',
-    subtitle: 'Tabs and default menu',
+    subtitle: 'Tabs, order, default menu',
     icon: LayoutList,
-  },
-  {
-    href: '/account/settings/forja',
-    title: 'Plugins',
-    subtitle: 'Forja pack manifests',
-    icon: Package,
   },
 ] as const
 
@@ -297,7 +297,7 @@ export function AccountSettingsShell({
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <NavGroup
                 label="Profile"
-                hint="Same split as the app — Addons, Features, Plugins"
+                hint="Same split as the app — Addons, Forja Packs, Features"
               >
                 {profileCategories.map((category) => (
                   <NavLink

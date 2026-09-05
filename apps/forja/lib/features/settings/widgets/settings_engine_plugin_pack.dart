@@ -115,67 +115,71 @@ class SettingsEnginePackExpansion extends StatelessWidget {
           SettingsEngineMiniLabel(miniLabel),
           const SizedBox(height: 4),
         ],
-        Theme(
-          data: settingsExpansionTheme(context),
-          child: ExpansionTile(
-            shape: settingsExpansionShape,
-            collapsedShape: settingsExpansionShape,
-            tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-            leading: Icon(
-              update != null
-                  ? Icons.system_update_rounded
-                  : Icons.bolt_rounded,
-              color: update != null
-                  ? ForjaShellColors.brandGreen
-                  : ForjaShellColors.iconActive,
-            ),
-            title: Text(
-              pack.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: ForjaShellColors.textPrimary,
+        settingsExpansionSideActions(
+          context: context,
+          trailing: trailing,
+          tile: Theme(
+            data: settingsExpansionTheme(context),
+            child: ExpansionTile(
+              shape: settingsExpansionShape,
+              collapsedShape: settingsExpansionShape,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+              childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+              leading: Icon(
+                update != null
+                    ? Icons.system_update_rounded
+                    : Icons.bolt_rounded,
+                color: update != null
+                    ? ForjaShellColors.brandGreen
+                    : ForjaShellColors.iconActive,
               ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pack.sourceUrl,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: ForjaShellColors.textSecondary,
+              title: Text(
+                pack.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: ForjaShellColors.textPrimary,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pack.sourceUrl,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ForjaShellColors.textSecondary,
+                    ),
                   ),
-                ),
-                SettingsEnginePackVersionLine(
-                  meta:
-                      '${PluginRegistry.packKindInfo(pack)} · '
-                      '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-                      'v${pack.version}',
-                ),
-                SettingsEnginePackInstallStatus(
-                  sourceUrl: pack.sourceUrl,
-                  progress: installProgress,
-                  update: update,
-                ),
-              ],
-            ),
-            trailing: settingsExpansionTrailing(context, trailing),
-            children: settingsExpansionChildren(
-              context,
-              trailing: trailing,
-              children: [
-                SettingsEnginePluginGroupList(
-                  sourceUrl: pack.sourceUrl,
-                  byGroup: grouped.byGroup,
-                  orderedGroups: grouped.orderedGroups,
-                  groupLabel: groupLabel,
-                  tabRowId: tabsId,
-                ),
-              ],
+                  SettingsEnginePackVersionLine(
+                    meta:
+                        '${PluginRegistry.packKindInfo(pack)} · '
+                        '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                        'v${pack.version}',
+                  ),
+                  SettingsEnginePackInstallStatus(
+                    sourceUrl: pack.sourceUrl,
+                    progress: installProgress,
+                    update: update,
+                  ),
+                ],
+              ),
+              trailing: settingsExpansionTrailing(context, trailing),
+              children: settingsExpansionChildren(
+                context,
+                trailing: trailing,
+                children: [
+                  SettingsEnginePluginGroupList(
+                    sourceUrl: pack.sourceUrl,
+                    byGroup: grouped.byGroup,
+                    orderedGroups: grouped.orderedGroups,
+                    groupLabel: groupLabel,
+                    tabRowId: tabsId,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -311,64 +315,68 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
   Widget build(BuildContext context) {
     if (plugins.isEmpty) return const SizedBox.shrink();
 
-    return Theme(
-      data: settingsExpansionTheme(context),
-      child: ExpansionTile(
-        shape: settingsExpansionShape,
-        collapsedShape: settingsExpansionShape,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-        leading: Icon(
-          update != null
-              ? Icons.system_update_rounded
-              : Icons.bolt_rounded,
-          color: update != null
-              ? ForjaShellColors.brandGreen
-              : ForjaShellColors.iconActive,
-        ),
-        title: Text(
-          pack.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: ForjaShellColors.textPrimary,
+    return settingsExpansionSideActions(
+      context: context,
+      trailing: trailing,
+      tile: Theme(
+        data: settingsExpansionTheme(context),
+        child: ExpansionTile(
+          shape: settingsExpansionShape,
+          collapsedShape: settingsExpansionShape,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+          leading: Icon(
+            update != null
+                ? Icons.system_update_rounded
+                : Icons.bolt_rounded,
+            color: update != null
+                ? ForjaShellColors.brandGreen
+                : ForjaShellColors.iconActive,
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              pack.sourceUrl,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: ForjaShellColors.textSecondary,
+          title: Text(
+            pack.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: ForjaShellColors.textPrimary,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                pack.sourceUrl,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: ForjaShellColors.textSecondary,
+                ),
               ),
-            ),
-            SettingsEnginePackVersionLine(
-              meta:
-                  '${PluginRegistry.packKindInfo(pack)} · '
-                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-                  'v${pack.version}',
-            ),
-            SettingsEnginePackInstallStatus(
-              sourceUrl: pack.sourceUrl,
-              update: update,
-            ),
-          ],
-        ),
-        trailing: settingsExpansionTrailing(context, trailing),
-        children: settingsExpansionChildren(
-          context,
-          trailing: trailing,
-          children: [
-            SettingsLiveSportCapabilityTabs(
-              sourceUrl: pack.sourceUrl,
-              plugins: plugins,
-              tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
-            ),
-          ],
+              SettingsEnginePackVersionLine(
+                meta:
+                    '${PluginRegistry.packKindInfo(pack)} · '
+                    '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                    'v${pack.version}',
+              ),
+              SettingsEnginePackInstallStatus(
+                sourceUrl: pack.sourceUrl,
+                update: update,
+              ),
+            ],
+          ),
+          trailing: settingsExpansionTrailing(context, trailing),
+          children: settingsExpansionChildren(
+            context,
+            trailing: trailing,
+            children: [
+              SettingsLiveSportCapabilityTabs(
+                sourceUrl: pack.sourceUrl,
+                plugins: plugins,
+                tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
+              ),
+            ],
+          ),
         ),
       ),
     );

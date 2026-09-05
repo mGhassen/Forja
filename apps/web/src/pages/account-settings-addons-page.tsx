@@ -196,7 +196,7 @@ export function AccountSettingsAddonsPage() {
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Hub catalogs install under Plugins, then show under Features."
+      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Hub catalogs install under Forja Packs, then show under Features."
       footer={
         <SettingsAutosaveFooter
           isSaving={footerSaving}
@@ -259,7 +259,7 @@ export function AccountSettingsAddonsPage() {
         />
         <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
           Debrid, Connected services, and LAN stay in the app. Pack hubs install
-          under Plugins, then appear under Features.
+          under Forja Packs, then appear under Features.
         </p>
       </SettingsSection>
     </AccountSettingsShell>

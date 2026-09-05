@@ -443,19 +443,34 @@ class SettingsNavigationNotifier
   @override
   Future<SettingsNavigationSnapshot> build() async {
     ref.watch(navbarRevisionProvider);
+    final n = EngineService.changeNotifier;
+    void onPacks() => ref.invalidateSelf();
+    n.addListener(onPacks);
+    ref.onDispose(() => n.removeListener(onPacks));
     return _load();
   }
 
   Future<SettingsNavigationSnapshot> _load() async {
+    // Pack install can finish while Features is open — scan hub `nav` before
+    // building the list so Home / Anime / … appear (issue 222).
+    await PluginNavRegistry.refresh();
     final s = SettingsService();
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);
     navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
+    final contributed = PluginNavRegistry.featureTabIds()
+        .where((id) => !archivedNavIds.contains(id))
+        .toList();
+    final contributedSet = contributed.toSet();
     var navOrder = (await s.getNavbarTabOrder())
         .where((id) => !archivedNavIds.contains(id))
-        .where(PluginNavRegistry.isContributed)
+        .where(contributedSet.contains)
         .toList();
+    // Prefs / `_extraNavIds` can lag pack refresh — always surface contributed.
+    for (final id in contributed) {
+      if (!navOrder.contains(id)) navOrder.add(id);
+    }
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       navOrder = navOrder
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))

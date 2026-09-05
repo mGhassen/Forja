@@ -41,7 +41,7 @@ profile is known — another profile’s settings are never shown first.
   create your
   first one (name + avatar); default synced settings are attached then. After
   that, choose a profile on **Who's watching?**, then open **Remote settings**.
-  The sidebar splits **Profile** (**Addons** / **Features** / **Plugins** —
+  The sidebar splits **Profile** (**Addons** / **Forja Packs** / **Features** —
   same as the app) from **Account** (email, passkeys, delete) and **Connections** (every
   active session — where, since, last active — revoke one or sign out all). Back
   returns to Who's watching. Switch profiles from the header menu. **Log out**
@@ -58,7 +58,7 @@ Per profile:
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language. Web **Profile → Addons** (hub + Playback detail). |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features**. Empty list means no feature tabs (Settings only). The portal lists **IPTV** / **Live Sports** (host) plus whatever hub tab ids the app synced from packs — it does not invent Home/Anime/… |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs — web **Addons → Stremio** |
-| **`profile_settings` → Forja** | Forja plugin pack **membership** (manifest URLs) plus **`onboarded`** (packs onboarding completed — Install or Skip). Synced with the app and web **Profile → Plugins** / Community Packs. Devices compute local install state; mid-session add/remove opens **Settings → Forja Packs** with one batch confirm list before download or uninstall (after splash / profile select — not during Who's watching or boot splash, and not pack-by-pack). |
+| **`profile_settings` → Forja** | Forja plugin pack **membership** (manifest URLs) plus **`onboarded`** (packs onboarding completed — Install or Skip). Synced with the app and web **Profile → Forja Packs** / Community Packs. Devices compute local install state; mid-session add/remove opens **Settings → Forja Packs** with one batch confirm list before download or uninstall (after splash / profile select — not during Who's watching or boot splash, and not pack-by-pack). |
 | **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs — web **Addons → Nuvio** |
 
 ## What stays local

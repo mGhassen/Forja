@@ -232,6 +232,21 @@ abstract final class PluginNavRegistry {
     return _destinations.containsKey(tabId);
   }
 
+  /// Tab ids that belong in Settings → Features (host-core + enabled hubs).
+  ///
+  /// Always includes Addons-gated core (`iptv`, `live_matches`) so Features is
+  /// never an empty list when packs are still hydrating. Omits `settings`
+  /// (hardcoded "Always visible" row). Callers still strip [archivedNavIds].
+  static List<String> featureTabIds() {
+    _ensureSeeded();
+    return [
+      for (final id in coreShellNavIds)
+        if (id != 'settings') id,
+      for (final id in _destinations.keys)
+        if (id != 'settings' && !coreShellNavIds.contains(id)) id,
+    ];
+  }
+
   static Future<List<EnginePlugin>> listHubPlugins({
     bool requireEnabled = true,
   }) async {
@@ -258,7 +273,8 @@ abstract final class PluginNavRegistry {
       for (final pl in pack.plugins) {
         if (!pl.isHubCatalog) continue;
         if (requireEnabled && !pl.enabled) continue;
-        if (!pl.hasCapability('nav')) continue;
+        // Valid `nav` block is enough — older stored packs sometimes omit the
+        // `nav` capability string and would leave Features empty after install.
         final spec = CatalogNavSpec.fromPluginNav(
           pl.nav,
           pluginId: pl.id,

@@ -215,9 +215,9 @@ class SettingsCategoryTile extends StatelessWidget {
 }
 
 /// Leanback TV: [ExpansionTile.trailing] sits beside the header and steals ↓
-/// into a horizontal strip. Omit [trailing] on leanback only and render it at
-/// the top of [children] after expand. Desktop hybrid keeps [useFocusableMoodChips]
-/// but still shows trailing in the header (mouse + arrow keys).
+/// into a horizontal strip. Omit [trailing] from the tile header on leanback —
+/// callers place actions with [settingsExpansionSideActions] instead. Desktop
+/// hybrid keeps trailing in the header (mouse + arrow keys).
 Widget? settingsExpansionTrailing(BuildContext context, Widget? trailing) {
   if (trailing == null) return null;
   if (ShellScope.inputPolicyOf(context).leanbackOnly) return null;
@@ -237,21 +237,38 @@ ThemeData settingsExpansionTheme(BuildContext context) {
 /// [ExpansionTile.shape] / [collapsedShape] for flat settings headers.
 const Border settingsExpansionShape = Border();
 
+/// Leanback: keep [trailing] visible to the right of [tile] (switch / refresh /
+/// remove). Desktop keeps actions in [ExpansionTile.trailing] via
+/// [settingsExpansionTrailing]. Wrap the pack list in
+/// [ShellTvDisableLinearFocus] so ↓ walks packs and → reaches the actions.
+Widget settingsExpansionSideActions({
+  required BuildContext context,
+  required Widget tile,
+  Widget? trailing,
+}) {
+  if (trailing == null || !ShellScope.inputPolicyOf(context).leanbackOnly) {
+    return tile;
+  }
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(child: tile),
+      Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: trailing,
+      ),
+    ],
+  );
+}
+
 List<Widget> settingsExpansionChildren(
   BuildContext context, {
   Widget? trailing,
   required List<Widget> children,
 }) {
-  if (trailing == null || !ShellScope.inputPolicyOf(context).leanbackOnly) {
-    return children;
-  }
-  return [
-    Padding(
-      padding: const EdgeInsets.only(left: 4, right: 2, bottom: 10),
-      child: Align(alignment: Alignment.centerRight, child: trailing),
-    ),
-    ...children,
-  ];
+  // Actions live in the header (desktop) or beside the tile (leanback via
+  // [settingsExpansionSideActions]) — never duplicated inside the expansion.
+  return children;
 }
 
 /// Flat labeled section of settings rows - no card box, hairline row dividers.

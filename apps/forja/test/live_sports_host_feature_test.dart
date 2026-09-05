@@ -20,6 +20,20 @@ void main() {
     expect(navDestinations['live_matches']?.label, 'Live Sports');
   });
 
+  test('Features inventory always lists host-core tabs', () {
+    final ids = PluginNavRegistry.featureTabIds();
+    expect(ids, containsAll(['iptv', 'live_matches']));
+    expect(ids, isNot(contains('settings')));
+    expect(ids, isNot(contains('home')));
+  });
+
+  test('Features inventory includes contributed hub tabs', () {
+    PluginNavRegistry.seedTestHubNav();
+    final ids = PluginNavRegistry.featureTabIds();
+    expect(ids, containsAll(['iptv', 'live_matches', 'test_hub_a']));
+    expect(ids, isNot(contains('settings')));
+  });
+
   test('host-default layout is live_schedule list (RFC-084)', () {
     expect(
       LiveSportsKitPage.matchesLayout(kLiveSportsHostDefaultLayout),

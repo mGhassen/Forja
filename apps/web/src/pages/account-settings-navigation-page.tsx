@@ -108,7 +108,7 @@ export function AccountSettingsNavigationPage() {
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Turn IPTV / Live Sports on from Addons (or here). Hub tabs appear after Plugins sync packs that contribute them."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Turn IPTV / Live Sports on from Addons (or here). Hub tabs appear after Forja Packs sync packs that contribute them."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}

@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/widgets/forja_pack_choice_cards.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -236,10 +237,16 @@ class _SettingsForjaPacksSectionState
                   ? 'Pending downloads'
                   : 'Installed packs',
             ),
-            ..._buildEnginePacksByKind(
-              packs,
-              installProgress: installProgress,
-              packUpdates: packUpdates,
+            // Spatial focus: ↓ walks packs; → reaches enable / refresh / remove.
+            ShellTvDisableLinearFocus(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _buildEnginePacksByKind(
+                  packs,
+                  installProgress: installProgress,
+                  packUpdates: packUpdates,
+                ),
+              ),
             ),
           ],
         ],

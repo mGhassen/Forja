@@ -71,6 +71,6 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 | `/login`, `/signup` | Public — email/password auth (Turnstile when configured) |
 | `/account` | Authenticated — redirects into settings |
 | `/account/profiles` | Authenticated — Who's watching / manage profiles |
-| `/account/settings/*` | Authenticated — Profile **Addons** / **Features** / **Plugins** + Account |
+| `/account/settings/*` | Authenticated — Profile **Addons** / **Forja Packs** / **Features** + Account |
 
 File routes live under `src/routes/`. Page UI stays in `src/pages/`.

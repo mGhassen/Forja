@@ -351,7 +351,7 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
   },
   {
     key: 'forja',
-    title: 'Plugins',
+    title: 'Forja Packs',
     description: 'Engine plugin pack manifest URLs (Settings → Forja Packs in the app).',
     href: '/account/settings/forja',
   },

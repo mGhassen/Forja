@@ -392,38 +392,44 @@ class _SettingsForjaAddonsSectionState
                   },
                 );
               }).toList();
-              return Theme(
+              return KeyedSubtree(
                 key: ValueKey(addon.manifestUrl),
-                data: settingsExpansionTheme(context),
-                child: ExpansionTile(
-                  shape: settingsExpansionShape,
-                  collapsedShape: settingsExpansionShape,
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                  leading: const Icon(
-                    Icons.code_rounded,
-                    color: ForjaShellColors.iconActive,
-                  ),
-                  title: Text(
-                    builtIn ? '${addon.name} (Built-in)' : addon.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: ForjaShellColors.textPrimary,
+                child: settingsExpansionSideActions(
+                  context: context,
+                  trailing: trailing,
+                  tile: Theme(
+                    data: settingsExpansionTheme(context),
+                    child: ExpansionTile(
+                      shape: settingsExpansionShape,
+                      collapsedShape: settingsExpansionShape,
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                      leading: const Icon(
+                        Icons.code_rounded,
+                        color: ForjaShellColors.iconActive,
+                      ),
+                      title: Text(
+                        builtIn ? '${addon.name} (Built-in)' : addon.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: ForjaShellColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: ForjaShellColors.textSecondary,
+                        ),
+                      ),
+                      trailing: settingsExpansionTrailing(context, trailing),
+                      children: settingsExpansionChildren(
+                        context,
+                        trailing: trailing,
+                        children: scraperRows,
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                  trailing: settingsExpansionTrailing(context, trailing),
-                  children: settingsExpansionChildren(
-                    context,
-                    trailing: trailing,
-                    children: scraperRows,
                   ),
                 ),
               );

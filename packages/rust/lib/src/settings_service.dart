@@ -1603,7 +1603,13 @@ class SettingsService {
       ...allNavIds,
     }.toList());
     if (await kvHasKey(_navbarConfigKey)) {
+      final prev = await kvGetStringList(_navbarConfigKey, fallback: const []);
       await kvSetStringList(_navbarConfigKey, visible);
+      // Features / rail watch this — without a bump, pack install can leave
+      // Settings → Features stuck on Settings-only until a manual reopen.
+      if (!listEquals(prev, visible)) {
+        navbarChangeNotifier.value++;
+      }
     }
   }
 
