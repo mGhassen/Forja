@@ -166,9 +166,9 @@ export type NavigationPayload = {
   defaultTab?: string
 }
 
-/** Shell tabs editable on web / synced — mirrors Flutter PlatformDefaults.defaultNavIds. */
+/** Shell tabs editable on web / synced — mirrors in-scope Flutter Features tabs.
+ * Search and other archived host tabs are not listed (see Flutter `archivedNavIds`). */
 export const SYNCABLE_NAV_TABS = [
-  { id: 'search', label: 'Search' },
   { id: 'home', label: 'Home' },
   { id: 'asian_drama', label: 'Asian Drama' },
   { id: 'anime', label: 'Anime' },
@@ -181,7 +181,8 @@ export const DEFAULT_NAV_VISIBLE_IDS: string[] = SYNCABLE_NAV_TABS.map(
   (t) => t.id,
 )
 
-export const DEFAULT_NAV_TAB = 'home'
+/** Startup when no feature tab is visible — matches Flutter Features empty state. */
+export const DEFAULT_NAV_TAB = 'settings'
 
 const SYNCABLE_NAV_ID_SET = new Set<string>(DEFAULT_NAV_VISIBLE_IDS)
 
@@ -332,7 +333,8 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
 
 export function emptyNavigationPayload(): Required<NavigationPayload> {
   return {
-    visibleIds: [...DEFAULT_NAV_VISIBLE_IDS],
+    // Match Flutter PlatformDefaults — fresh profile = no feature tabs on.
+    visibleIds: [],
     tabOrder: [...DEFAULT_NAV_VISIBLE_IDS],
     defaultTab: DEFAULT_NAV_TAB,
   }
@@ -355,7 +357,8 @@ function mergeNavTabOrder(stored: string[], allIds: string[]): string[] {
   return out
 }
 
-/** Normalize cloud/UI nav: only syncable tabs; Settings is always on-device, never stored. */
+/** Normalize cloud/UI nav: only syncable tabs; Settings is always on-device, never stored.
+ * Empty `visibleIds` is intentional (all Features off) — never coerce to all-on. */
 export function normalizeNavigationPayload(
   n: NavigationPayload | undefined,
 ): Required<NavigationPayload> {
@@ -367,12 +370,10 @@ export function normalizeNavigationPayload(
     seen.add(id)
     ordered.push(id)
   }
-  const visibleIds = ordered.length ? ordered : [...DEFAULT_NAV_VISIBLE_IDS]
+  const visibleIds = ordered
   let defaultTab = (n?.defaultTab ?? DEFAULT_NAV_TAB).trim() || DEFAULT_NAV_TAB
   if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
-    defaultTab = visibleIds.includes(DEFAULT_NAV_TAB)
-      ? DEFAULT_NAV_TAB
-      : (visibleIds[0] ?? DEFAULT_NAV_TAB)
+    defaultTab = visibleIds.length > 0 ? visibleIds[0]! : 'settings'
   }
   const storedTabOrder = (n?.tabOrder ?? []).filter((id) =>
     SYNCABLE_NAV_ID_SET.has(id),

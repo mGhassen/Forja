@@ -68,4 +68,55 @@ void main() {
       );
     });
   });
+
+  group('navigationWouldShrinkLocal', () {
+    test('false when local has no tabs', () {
+      expect(
+        SyncDomainBridge.navigationWouldShrinkLocal(
+          {'visibleIds': <String>[]},
+          {
+            'visibleIds': ['home'],
+          },
+        ),
+        isFalse,
+      );
+    });
+
+    test('true when cloud empty but local has home', () {
+      expect(
+        SyncDomainBridge.navigationWouldShrinkLocal(
+          {
+            'visibleIds': ['home'],
+          },
+          {
+            'visibleIds': <String>[],
+          },
+        ),
+        isTrue,
+      );
+      expect(
+        SyncDomainBridge.navigationWouldShrinkLocal(
+          {
+            'visibleIds': ['home'],
+          },
+          null,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false when cloud keeps every local tab', () {
+      expect(
+        SyncDomainBridge.navigationWouldShrinkLocal(
+          {
+            'visibleIds': ['home'],
+          },
+          {
+            'visibleIds': ['home', 'anime'],
+          },
+        ),
+        isFalse,
+      );
+    });
+  });
 }

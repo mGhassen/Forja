@@ -240,7 +240,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [218-[fixed]-…](fixed/218-[fixed]-dimatoon-green-play-probe-false-fail.md) | كرتون green Play fails; Sources stream plays | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [219-[fixed]-…](fixed/219-[fixed]-plugin-update-green-play-stale-session-cache.md) | Green Play fails after every plugin pack update | P1 | High | fixed | Complete · 4/4 · A 2/3 | — |
 | [220-[open]-…](220-[open]-live-sports-addon-nav-without-hub-pack.md) | Live Sports Addons ON but no navbar tab | P1 | High | open | 4/4 · A 3/3 | — |
-| [221-[open]-…](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) | Features Home toggle reverts after cloud sync | P0 | Critical | open | 2/2 · A 0/2 | — |
+| [221-[open]-…](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) | Features Home toggle reverts after cloud sync | P0 | Critical | open | 7/7 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

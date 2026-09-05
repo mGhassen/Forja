@@ -75,9 +75,9 @@ export function useProfileSettings() {
           forja:
             patch.connectedServices?.forja ?? current.connectedServices?.forja,
         },
-        navigation: patch.navigation
-          ? { ...current.navigation, ...patch.navigation }
-          : current.navigation,
+        // Replace Features wholesale — shallow merge kept stale visibleIds when
+        // clearing tabs (empty array must win; issue 221).
+        navigation: patch.navigation ?? current.navigation,
       }
       await saveMutation.mutateAsync(next)
       return expandProfileSettingsPayload(compactProfileSettingsPayload(next))

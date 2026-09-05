@@ -564,6 +564,7 @@ class _SettingsForjaPacksSectionState
       await EngineService.instance.removePack(sourceUrl);
       await PendingRemotePurgeStore.clear(sourceUrl);
       if (!mounted) return;
+      scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);
       ForjaToast.success('Pack uninstalled');
     } catch (e) {

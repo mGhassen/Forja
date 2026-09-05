@@ -268,7 +268,8 @@ class SyncDomainBridge {
     if (nav.contains('iptv')) {
       await _pullAndApplyUserIptvPortals();
     } else {
-      debugPrint('[Sync] IPTV pull skip (iptv tab not visible)');
+      // No IPTV tab — skip portal pull; clear stale portals for this profile.
+      // (Not a Features/Home failure — Home lives in navigation.visibleIds.)
       await wipeLocalIptvInventoryForProfileBoundary();
     }
     // Empty `{}` insert left cloud hollow - backfill settings once (not IPTV).
@@ -363,8 +364,22 @@ class SyncDomainBridge {
 
   void schedulePush(String domain) {
     if (!SyncService.instance.isSignedIn) return;
-    if (domain == _domainNavigation) {
-      _navigationLocalGen++;
+    // Features nav + Forja pack membership: push immediately so soft pulls and
+    // the web portal see the edit (issue 221 — empty Features / pack deletes).
+    if (domain == _domainNavigation || domain == _domainForja) {
+      if (domain == _domainNavigation) {
+        _navigationLocalGen++;
+      }
+      _pushTimers.remove(domain)?.cancel();
+      unawaited(
+        pushAllLocal(
+          pushIptvIfLocalEmpty: false,
+          allowIptvShrink: false,
+          allowEmptyForjaWipe: domain == _domainForja,
+          overlayDomains: {domain},
+        ),
+      );
+      return;
     }
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
@@ -412,6 +427,20 @@ class SyncDomainBridge {
     if (remoteIds.isEmpty) return false;
     final localSet = _navVisibleIds(localNav).toSet();
     return remoteIds.any((id) => !localSet.contains(id));
+  }
+
+  /// True when [remoteNav] drops any tab id that [localNav] still has.
+  /// Kept for unit tests / diagnostics. Soft pulls do **not** use this to
+  /// block cloud apply — that fought intentional web Features clears (221).
+  @visibleForTesting
+  static bool navigationWouldShrinkLocal(
+    Map<String, dynamic> localNav,
+    Map<String, dynamic>? remoteNav,
+  ) {
+    final localIds = _navVisibleIds(localNav);
+    if (localIds.isEmpty) return false;
+    final remoteSet = _navVisibleIds(remoteNav).toSet();
+    return localIds.any((id) => !remoteSet.contains(id));
   }
 
   static List<String> _navVisibleIds(Map<String, dynamic>? nav) {
@@ -623,6 +652,9 @@ class SyncDomainBridge {
         '[Sync] skip navigation apply — local Features edit not synced yet',
       );
     } else if (navigation is Map) {
+      // Cloud is master once local Features edits are pushed. Do not refuse
+      // shrink here — that re-pushed local tabs over intentional web clears
+      // (issue 221).
       await _importNavigation(Map<String, dynamic>.from(navigation));
     } else if (resetLocalFirst) {
       // Reset left platform-default nav without notifying; publish once.
