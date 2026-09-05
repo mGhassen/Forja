@@ -410,14 +410,15 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                   // No toasts over intro splash — queue until dismissed
                   // (also avoids mouse_tracker assert when toast buttons mount).
                   allowDisplay: ShellBus.splashDismissed,
-                  child: AppUpdateProgressBannerHost(
-                    child: PluginInstallProgressBannerHost(
-                      child: PluginPackUpdatePromptHost(
-                        child: PluginInstallPromptHost(
-                          child: BackNavigationScope(
-                            child: child ?? const SizedBox.shrink(),
-                          ),
-                        ),
+                  // One column: progress banners + toasts (not overlapping).
+                  stackAbove: const [
+                    AppUpdateProgressBanner(),
+                    PluginInstallProgressBanner(),
+                  ],
+                  child: PluginPackUpdatePromptHost(
+                    child: PluginInstallPromptHost(
+                      child: BackNavigationScope(
+                        child: child ?? const SizedBox.shrink(),
                       ),
                     ),
                   ),

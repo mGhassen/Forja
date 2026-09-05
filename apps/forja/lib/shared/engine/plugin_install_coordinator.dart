@@ -86,7 +86,7 @@ class PluginInstallCoordinator {
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
 
-  /// When true, [PluginInstallProgressBannerHost] stays hidden — splash /
+  /// When true, [PluginInstallProgressBanner] stays hidden — splash /
   /// profile warm own the bottom status text instead of a card.
   final ValueNotifier<bool> suppressBanner = ValueNotifier<bool>(false);
 

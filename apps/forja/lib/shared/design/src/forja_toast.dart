@@ -235,12 +235,17 @@ class ForjaToastHost extends StatefulWidget {
     super.key,
     required this.child,
     this.allowDisplay,
+    this.stackAbove = const [],
   });
 
   final Widget child;
 
   /// When false, toasts are queued (not painted). Defaults to always allow.
   final ValueListenable<bool>? allowDisplay;
+
+  /// Progress banners etc. stacked above toast cards in the same column.
+  /// Each child should return [SizedBox.shrink] when hidden.
+  final List<Widget> stackAbove;
 
   @override
   State<ForjaToastHost> createState() => _ForjaToastHostState();
@@ -290,12 +295,15 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
               listenable: ForjaToast.controller,
               builder: (context, _) {
                 final entries = ForjaToast.controller.entries;
-                if (entries.isEmpty) return const SizedBox.shrink();
+                if (entries.isEmpty && widget.stackAbove.isEmpty) {
+                  return const SizedBox.shrink();
+                }
 
                 final cards = Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    ...widget.stackAbove,
                     for (final entry in entries)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -428,11 +436,10 @@ class _ForjaToastCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(style.icon, size: 18, color: style.accent),
               const SizedBox(width: 10),
-              Flexible(
+              Expanded(
                 child: Text(
                   entry.message,
                   style: const TextStyle(

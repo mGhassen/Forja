@@ -4,7 +4,7 @@
   "name": "ForjaHQ Providers",
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
-  "version": "1.5.29",
+  "version": "1.5.30",
   "tags": ["providers", "anime", "arabic", "drama", "movies", "tv"],
   "plugins": [
     {
@@ -91,6 +91,24 @@
           "ipcloud",
           "v6:Hindi"
         ]
+      }
+    },
+    {
+      "id": "dailymotion",
+      "name": "Dailymotion",
+      "entry": "dailymotion.js",
+      "types": [
+        "movie",
+        "tv",
+        "anime",
+        "drama"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.dailymotion.com",
+        "origin": "https://www.dailymotion.com",
+        "searchLimit": 12,
+        "maxResolve": 6
       }
     },
     {
@@ -1208,8 +1226,7 @@
       "types": [
         "movie",
         "tv",
-        "anime",
-        "drama"
+        "anime"
       ],
       "kind": "hop",
       "hosts": [
@@ -1223,7 +1240,9 @@
       "entry": "hops/dailymotion.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "anime",
+        "drama"
       ],
       "kind": "hop",
       "hosts": [

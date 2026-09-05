@@ -3,13 +3,10 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shell/shell_bus.dart';
 
-/// Sticky top-right progress toast for background desktop update downloads.
-/// Hidden while any fullscreen video player surface is active, and only while
-/// the user has not dismissed it.
-class AppUpdateProgressBannerHost extends StatelessWidget {
-  const AppUpdateProgressBannerHost({super.key, required this.child});
-
-  final Widget child;
+/// Sticky progress card for background desktop update downloads.
+/// Place in [ForjaToastHost.stackAbove] — not a separate overlay.
+class AppUpdateProgressBanner extends StatelessWidget {
+  const AppUpdateProgressBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,39 +17,28 @@ class AppUpdateProgressBannerHost extends StatelessWidget {
       ShellBus.playerSurfaceActive,
     ]);
 
-    return Stack(
-      children: [
-        child,
-        Positioned(
-          top: 16,
-          right: 16,
-          child: SafeArea(
-            child: ListenableBuilder(
-              listenable: listenable,
-              builder: (context, _) {
-                if (ShellBus.playerSurfaceActive.value) {
-                  return const SizedBox.shrink();
-                }
-                if (!download.shouldShowProgressBanner) {
-                  return const SizedBox.shrink();
-                }
-                final current = download.state.value;
-                final version = current.updateInfo?.latestVersion;
-                final percent = (current.progress * 100).clamp(0, 100).round();
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 360),
-                  child: _UpdateProgressBanner(
-                    version: version,
-                    percent: percent,
-                    progress: current.progress,
-                    onClose: download.dismissProgressBanner,
-                  ),
-                );
-              },
-            ),
+    return ListenableBuilder(
+      listenable: listenable,
+      builder: (context, _) {
+        if (ShellBus.playerSurfaceActive.value) {
+          return const SizedBox.shrink();
+        }
+        if (!download.shouldShowProgressBanner) {
+          return const SizedBox.shrink();
+        }
+        final current = download.state.value;
+        final version = current.updateInfo?.latestVersion;
+        final percent = (current.progress * 100).clamp(0, 100).round();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _UpdateProgressBanner(
+            version: version,
+            percent: percent,
+            progress: current.progress,
+            onClose: download.dismissProgressBanner,
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
