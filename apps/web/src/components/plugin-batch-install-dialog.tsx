@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Puzzle, Search, X } from 'lucide-react'
+import { Check, Loader2, Puzzle, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LiquidGlass } from '@/components/liquid-glass'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
@@ -253,24 +253,38 @@ export function PluginBatchInstallDialog({
 
                   return (
                     <li key={pack.id}>
-                      <label
+                      <button
+                        type="button"
+                        aria-pressed={checked}
+                        aria-disabled={installed || busy}
+                        onClick={() => {
+                          if (installed || busy) return
+                          toggle(pack.manifestUrl, installed)
+                        }}
                         className={cn(
-                          'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                          installed
-                            ? 'cursor-default opacity-70'
-                            : 'hover:bg-white/4',
+                          'flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
+                          installed || busy
+                            ? 'cursor-default'
+                            : 'cursor-pointer hover:bg-white/4',
+                          installed && 'opacity-70',
                           checked &&
                             !installed &&
                             'bg-forja-green/6',
                         )}
                       >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={installed || busy}
-                          onChange={() => toggle(pack.manifestUrl, installed)}
-                          className="mt-0.5 size-4 shrink-0 accent-forja-green"
-                        />
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border transition-colors',
+                            checked
+                              ? 'border-forja-green bg-forja-green text-[#0B0A0A]'
+                              : 'border-white/25 bg-transparent',
+                          )}
+                        >
+                          {checked ? (
+                            <Check className="size-3 stroke-3" />
+                          ) : null}
+                        </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-medium text-[#EDE6DA]">
@@ -293,7 +307,7 @@ export function PluginBatchInstallDialog({
                             {pack.version ? ` · v${pack.version}` : ''}
                           </p>
                         </div>
-                      </label>
+                      </button>
                     </li>
                   )
                 })}

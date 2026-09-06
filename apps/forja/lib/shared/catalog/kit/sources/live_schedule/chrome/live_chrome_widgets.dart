@@ -243,6 +243,142 @@ class _LiveMatchesCatalogProgressChip extends StatelessWidget {
   }
 }
 
+const _kLiveMatchSearchCollapsed = 40.0;
+const _kLiveMatchSearchExpanded = 240.0;
+
+/// Top-bar match search — icon expands to a field (desktop + TV browse field).
+class _LiveMatchesSearchTopBarControl extends StatelessWidget {
+  const _LiveMatchesSearchTopBarControl({
+    required this.open,
+    required this.controller,
+    required this.iconFocusNode,
+    required this.fieldFocusNode,
+    required this.tvItemIndex,
+    required this.onOpen,
+    required this.onChanged,
+    required this.onClose,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+  });
+
+  final bool open;
+  final TextEditingController controller;
+  final FocusNode iconFocusNode;
+  final FocusNode fieldFocusNode;
+  final int tvItemIndex;
+  final VoidCallback onOpen;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClose;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!open) {
+      if (!tv) {
+        return IconButton(
+          tooltip: 'Search matches',
+          icon: const Icon(Icons.search_rounded, color: Colors.white70),
+          onPressed: onOpen,
+        );
+      }
+      return shellFocusableTap(
+        context: context,
+        onTap: onOpen,
+        borderRadius: 24,
+        scaleOnFocus: 1.0,
+        suppressInkHover: true,
+        focusNode: iconFocusNode,
+        tvTabId: _LiveSportsHubPageState._tabId,
+        tvRowId: _LiveSportsHubPageState._topBarRowId,
+        tvItemIndex: tvItemIndex,
+        tvZone: ShellTvZone.topBar,
+        onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge ?? () {},
+        child: const Tooltip(
+          message: 'Search matches',
+          child: Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(Icons.search_rounded, color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: _kLiveMatchSearchExpanded,
+      height: _kLiveMatchSearchCollapsed,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(_kLiveMatchSearchCollapsed / 2),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 10),
+            const Icon(Icons.search_rounded, color: Colors.white70, size: 18),
+            const SizedBox(width: 6),
+            Expanded(
+              child: tv
+                  ? TvBrowseTextField(
+                      controller: controller,
+                      focusNode: fieldFocusNode,
+                      onChanged: onChanged,
+                      onEscape: onClose,
+                      onSubmitted: (_) => fieldFocusNode.unfocus(),
+                      browsePlaceholder: 'Search matches…',
+                      browseHintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.38),
+                        fontSize: 13,
+                      ),
+                      caretHeight: 16,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    )
+                  : TextField(
+                      controller: controller,
+                      focusNode: fieldFocusNode,
+                      onChanged: onChanged,
+                      onSubmitted: (_) => fieldFocusNode.unfocus(),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      cursorColor: ForjaShellColors.sectionAccent,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: 'Search matches…',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.38),
+                          fontSize: 13,
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+            ),
+            IconButton(
+              tooltip: 'Close search',
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+              onPressed: onClose,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Catalog picker sheet ───────────────────────────────────────────────────
 
 class _LiveMatchesCatalogSheet extends StatefulWidget {
@@ -1374,12 +1510,30 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   }
 
   Future<bool> _liveHoverProbe() async {
-    final probeUrl = iptvLiveSourceProbeUrl(source);
-    // Skip before cache — stale red from a prior JWT probe must not stick.
-    if (probeUrl == null) return iptvLiveSourceProbeSkipped(source);
     final probed = healthProbe.healthFor(_probeKey);
     if (probed != null) return probed;
-    return healthProbe.checkNow(_probeKey, probeUrl);
+
+    final bare = iptvLiveSourceProbeUrl(source);
+    if (bare != null) {
+      return healthProbe.checkNow(_probeKey, bare);
+    }
+
+    // Signed Streamed / WatchFooty HLS — bare alive-check false-fails without
+    // Referer; probe the same way Sources panel does (headers + Referer).
+    final url = source.url.trim();
+    if (!iptvLiveEnginePlayUrlReady(url)) {
+      return true;
+    }
+    final headers = LiveGoatUnlock.withWftyPlaybackReferer(
+      url,
+      Map<String, String>.from(source.headers),
+    );
+    final ok = await probeStreamSourceUrl(
+      url,
+      headers.isEmpty ? null : headers,
+    );
+    healthProbe.remember(_probeKey, ok);
+    return ok;
   }
 
   String? _liveQualityBadge(IptvPlaySource source) {
@@ -1452,72 +1606,65 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final listenables = <Listenable>[healthProbe];
-    final ctrl = iptvCtrl;
-    if (ctrl != null) listenables.add(ctrl);
-    return ListenableBuilder(
-      listenable: Listenable.merge(listenables),
-      builder: (context, _) {
-        final cachedHealth = _isPortalIptvRow
-            ? _portalCatalogHealth()
-            : (iptvLiveSourceProbeUrl(source) == null
-                ? null
-                : healthProbe.healthFor(_probeKey));
-        if (_isLivePluginRow) {
-          final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
-              ? source.liveProviderBadge!.trim()
-              : (source.pickerSubtitle ?? '').trim();
-          final qualityBadge = _liveQualityBadge(source);
-          final viewers = source.liveViewerCount;
-          final host = _liveEmbedHost(source);
-          final canProbe = iptvLiveSourceProbeUrl(source) != null;
-          return SourcesPanelChannelTile(
-            title: source.pickerTitle,
-            provider: provider.isEmpty ? null : provider,
-            footer: host == null
-                ? null
-                : Text(
-                    host,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: ForjaShellColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-            badges: [
-              ?qualityBadge,
-            ],
-            viewerCount: viewers > 0 ? viewers : null,
-            onPlay: onTap,
-            tvItemIndex: tvItemIndex,
-            tvTabId: tvTabId,
-            tvRowId: tvRowId,
-            onUpEdge: onUpEdge,
-            onLeftEdge: onLeftEdge,
-            onHoverProbe: canProbe ? _liveHoverProbe : null,
-            probeHealthCache: canProbe ? cachedHealth : null,
-          );
-        }
-        final subtitle =
-            hideCategorySubtitle ? null : source.pickerSubtitle;
-        return SourcesPanelChannelTile(
-          title: source.pickerTitle,
-          provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
-          leading: _logo(context),
-          footer: _epgFooter(),
-          badges: const [],
-          onPlay: onTap,
-          tvItemIndex: tvItemIndex,
-          tvTabId: tvTabId,
-          tvRowId: tvRowId,
-          onUpEdge: onUpEdge,
-          onLeftEdge: onLeftEdge,
-          onHoverProbe:
-              _isPortalIptvRow ? _portalHoverProbe : _hoverProbe,
-          probeHealthCache: cachedHealth,
-        );
-      },
+    // Do not ListenableBuilder(healthProbe / iptvCtrl) around the tile —
+    // mid-hover notifyListeners remounts MouseRegion and the status strip
+    // never settles. Tile state + probeHealthCache seed are enough.
+    final canHoverProbe = iptvLiveSourceCanHoverProbe(source);
+    final cachedHealth = _isPortalIptvRow
+        ? _portalCatalogHealth()
+        : (canHoverProbe ? healthProbe.healthFor(_probeKey) : null);
+    if (_isLivePluginRow) {
+      final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
+          ? source.liveProviderBadge!.trim()
+          : (source.pickerSubtitle ?? '').trim();
+      final qualityBadge = _liveQualityBadge(source);
+      final viewers = source.liveViewerCount;
+      final host = _liveEmbedHost(source);
+      return SourcesPanelChannelTile(
+        key: ValueKey('live-probe-$_probeKey'),
+        title: source.pickerTitle,
+        provider: provider.isEmpty ? null : provider,
+        footer: host == null
+            ? null
+            : Text(
+                host,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+        badges: [
+          ?qualityBadge,
+        ],
+        viewerCount: viewers > 0 ? viewers : null,
+        onPlay: onTap,
+        tvItemIndex: tvItemIndex,
+        tvTabId: tvTabId,
+        tvRowId: tvRowId,
+        onUpEdge: onUpEdge,
+        onLeftEdge: onLeftEdge,
+        onHoverProbe: canHoverProbe ? _liveHoverProbe : null,
+        probeHealthCache: canHoverProbe ? cachedHealth : null,
+      );
+    }
+    final subtitle = hideCategorySubtitle ? null : source.pickerSubtitle;
+    return SourcesPanelChannelTile(
+      key: ValueKey('live-probe-$_probeKey'),
+      title: source.pickerTitle,
+      provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
+      leading: _logo(context),
+      footer: _epgFooter(),
+      badges: const [],
+      onPlay: onTap,
+      tvItemIndex: tvItemIndex,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
+      onUpEdge: onUpEdge,
+      onLeftEdge: onLeftEdge,
+      onHoverProbe: _isPortalIptvRow ? _portalHoverProbe : _hoverProbe,
+      probeHealthCache: cachedHealth,
     );
   }
 }

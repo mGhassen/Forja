@@ -63,6 +63,33 @@ Future<List<EnginePlugin>> loadAllForjaHqPlugins() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('EngineService.liveResolveUrlPlayable', () {
+    test('accepts HLS / mp4 / local proxy only', () {
+      expect(
+        EngineService.liveResolveUrlPlayable(
+          'https://sportsembed.su/embed/sigma/foo/1/1',
+        ),
+        isFalse,
+      );
+      expect(
+        EngineService.liveResolveUrlPlayable('https://embed.st/embed/admin/x/1'),
+        isFalse,
+      );
+      expect(
+        EngineService.liveResolveUrlPlayable(
+          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        EngineService.liveResolveUrlPlayable(
+          'http://127.0.0.1:8787/hls-proxy?url=x',
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('EnginePack.parse', () {
     test('reads a multi-plugin pack', () {
       final pack = EnginePack.fromJson({

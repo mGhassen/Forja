@@ -175,10 +175,10 @@ mixin _LiveMatchesData
       _focusTopBarItem(_topBarPortalFocusIndex);
       return;
     }
-    if (!_topBarCatalogWorkInProgress) {
-      _focusTopBarItem(_s._topBarRefreshIndex);
-    }
+    _focusTopBarItem(_s._topBarSearchIndex);
   }
+
+  void _focusTopBarSearch() => _focusTopBarItem(_s._topBarSearchIndex);
 
   Widget _catalogTopBarButton() {
     return _LiveMatchesTopBarActionButton(
@@ -217,7 +217,13 @@ mixin _LiveMatchesData
             ? _s._topBarCatalogIndex
             : _s._topBarRefreshIndex,
       ),
-      onRightEdge: _focusTopBarTrailing,
+      onRightEdge: () {
+        if (_topBarCatalogWorkInProgress) {
+          _focusTopBarSearch();
+          return;
+        }
+        _focusTopBarItem(_s._topBarRefreshIndex);
+      },
       onDownEdge: _topBarDownEdge,
     );
   }
@@ -229,13 +235,13 @@ mixin _LiveMatchesData
       tvTabId: _LiveSportsHubPageState._tabId,
       tvRowId: _LiveSportsHubPageState._topBarRowId,
       tvItemIndex: _topBarPortalFocusIndex,
-      onLeftEdge: () => _focusTopBarItem(
-        _s._showTimeTopBar
-            ? _s._topBarTimeIndex
-            : _s._showCatalogTopBar
-                ? _s._topBarCatalogIndex
-                : _topBarPortalFocusIndex,
-      ),
+      onLeftEdge: () {
+        if (_topBarCatalogWorkInProgress) {
+          _focusTopBarSearch();
+          return;
+        }
+        _focusTopBarSearch();
+      },
       onRightEdge: () {},
       onDownEdge: _topBarDownEdge,
     );

@@ -335,6 +335,29 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     return merged;
   }
 
+  List<_LiveMatchGridEntry> get _visibleGridEntries {
+    final q = _s._matchListQuery.trim().toLowerCase();
+    final all = _allGridEntries;
+    if (q.isEmpty) return all;
+    return [
+      for (final e in all)
+        if (_gridEntryMatchesQuery(e, q)) e,
+    ];
+  }
+
+  bool _gridEntryMatchesQuery(_LiveMatchGridEntry entry, String q) {
+    final hay = switch (entry) {
+      _LiveMatchGridEntryIframeCatalog(:final stream) =>
+        '${stream.name} ${stream.categoryName}',
+      _LiveMatchGridEntryStreamed(:final match) =>
+        '${_denseMatchTitle(match)} ${match.categoryLabel} ${match.title}',
+      _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed) =>
+        '${_denseMatchTitle(streamed)} ${streamed.categoryLabel} '
+        '${iframeCatalog.name} ${iframeCatalog.categoryName}',
+    }.toLowerCase();
+    return hay.contains(q);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tabVisible =
@@ -534,13 +557,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     final forjaLive = this as _LiveMatchesForjaLive;
     final topBarItemCount = tvFocus
         ? (_s._showIptvPortalTopBar
-            ? _s._topBarPortalFocusIndex + 1
-            : (catalogBusy
-                ? _s._topBarRefreshIndex
-                : _s._topBarRefreshIndex + 1))
+            ? (_s._topBarCatalogWorkInProgress
+                ? _s._topBarSearchIndex + 1
+                : _s._topBarPortalIndex + 1)
+            : _s._topBarSearchIndex + 1)
         : (_LiveSportsHubPageState._timelineViewEnabled
             ? _s._topBarViewIndex + 1
-            : _s._topBarRefreshIndex + 1);
+            : _s._topBarSearchIndex + 1);
 
     final Widget refreshSlot;
     if (catalogBusy) {
@@ -560,9 +583,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
                   ? _s._topBarCatalogIndex
                   : _s._topBarRefreshIndex,
         ),
-        onRightEdge: _s._showIptvPortalTopBar
-            ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
-            : () {},
+        onRightEdge: () => _s._focusTopBarSearch(),
       );
     } else {
       refreshSlot = IconButton(
@@ -571,6 +592,34 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         onPressed: _s._load,
       );
     }
+
+    final searchSlot = _LiveMatchesSearchTopBarControl(
+      open: _s._matchSearchOpen,
+      controller: _s._matchSearchCtrl,
+      iconFocusNode: _s._searchIconFocusNode,
+      fieldFocusNode: _s._matchSearchFocusNode,
+      tvItemIndex: _s._topBarSearchIndex,
+      onOpen: _s._openMatchSearch,
+      onChanged: _s._onMatchSearchChanged,
+      onClose: () => _s._closeMatchSearch(clearQuery: true),
+      onDownEdge: _s._topBarDownEdge,
+      onLeftEdge: () {
+        if (catalogBusy) {
+          _s._focusTopBarItem(
+            _s._showTimeTopBar
+                ? _s._topBarTimeIndex
+                : _s._showCatalogTopBar
+                    ? _s._topBarCatalogIndex
+                    : _s._topBarSearchIndex,
+          );
+          return;
+        }
+        _s._focusTopBarItem(_s._topBarRefreshIndex);
+      },
+      onRightEdge: _s._showIptvPortalTopBar
+          ? () => _s._focusTopBarItem(_s._topBarPortalFocusIndex)
+          : () {},
+    );
 
     final header = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -588,6 +637,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           if (_s._showTimeTopBar) _s._timeTopBarButton(),
           const Spacer(),
           refreshSlot,
+          const SizedBox(width: 4),
+          searchSlot,
           if (!_liveMatchesLeanbackOnly(context) &&
               _LiveSportsHubPageState._timelineViewEnabled) ...[
             const SizedBox(width: 4),
@@ -736,10 +787,27 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   }
 
   Widget _buildAllBody() {
-    final entries = _allGridEntries;
+    final entries = _visibleGridEntries;
     if (entries.isEmpty) {
-      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
+      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy &&
+          _allGridEntries.isEmpty) {
         return _buildForjaLiveCatalogProgress();
+      }
+      final q = _s._matchListQuery.trim();
+      if (q.isNotEmpty && _allGridEntries.isNotEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'No matches for "$q"',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        );
       }
       final forjaLive = this as _LiveMatchesForjaLive;
       final emptyMsg = kLiveMatchesCatalogFiltersHidden
@@ -1064,8 +1132,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
 }
 
-/// Dense match row — settings list chrome: inkHover fill + brand-green left rail
-/// on selected / hover / focus (no flat grey slab).
+/// Dense match row — gray hover/focus fill; green selected chrome (fill + rail
+/// + title/chevron) while the streams panel is open for that match.
 class _DenseLiveMatchListTile extends StatefulWidget {
   const _DenseLiveMatchListTile({
     required this.title,
@@ -1103,15 +1171,12 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
   bool _hovered = false;
 
   bool get _chrome => _focused || _hovered;
-  bool get _lit => widget.selected || _chrome;
 
   Color get _fill {
     if (widget.selected) {
       return ForjaShellColors.brandGreen.withValues(alpha: 0.18);
     }
-    if (_chrome) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.10);
-    }
+    if (_chrome) return ForjaShellColors.inkHover;
     return Colors.transparent;
   }
 
@@ -1119,17 +1184,22 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
   Widget build(BuildContext context) {
     final titleColor = !widget.playable
         ? Colors.white54
-        : _chrome
+        : widget.selected
             ? ForjaShellColors.brandGreen
             : ForjaShellColors.textPrimary;
     final titleWeight =
         widget.selected || _chrome ? FontWeight.w700 : FontWeight.w600;
+    final accent = widget.selected
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.iconMuted;
     final row = DecoratedBox(
       decoration: BoxDecoration(
         color: _fill,
         border: Border(
           left: BorderSide(
-            color: _lit ? ForjaShellColors.brandGreen : Colors.transparent,
+            color: widget.selected
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
             width: 3,
           ),
         ),
@@ -1186,8 +1256,10 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
                 child: Text(
                   '${widget.viewers}',
                   style: TextStyle(
-                    color:
-                        ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                    color: widget.selected
+                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+                        : ForjaShellColors.textSecondary
+                            .withValues(alpha: 0.85),
                     fontSize: 12,
                   ),
                 ),
@@ -1197,9 +1269,7 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
                 padding: const EdgeInsets.only(left: 8),
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  color: _lit
-                      ? ForjaShellColors.brandGreen
-                      : ForjaShellColors.iconMuted,
+                  color: accent,
                   size: 20,
                 ),
               ),

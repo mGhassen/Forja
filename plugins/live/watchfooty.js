@@ -120,30 +120,16 @@ async function resolveWatchfootyMatch(ctx, mid) {
     if (s.source) label += ' ' + s.source;
     if (s.quality) label += ' ' + s.quality;
     var resolved = await resolveWatchfootyEmbed(ctx, embed);
-    if (resolved.length) {
-      for (var j = 0; j < resolved.length; j++) {
-        var row = resolved[j];
-        out.push({
-          url: row.url,
-          name: label,
-          headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
-          directPlayback: row.directPlayback === true,
-        });
-      }
-      continue;
+    if (!resolved.length) continue;
+    for (var j = 0; j < resolved.length; j++) {
+      var row = resolved[j];
+      out.push({
+        url: row.url,
+        name: label,
+        headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
+        directPlayback: row.directPlayback === true,
+      });
     }
-    // Unlock failed — list embed for unlock-on-tap only when host will re-resolve.
-    // Host rejects non-m3u8 open; keep row so user can retry after CDN recovers.
-    out.push({
-      url: embed,
-      name: label,
-      headers: {
-        Referer: embed,
-        Origin: 'https://sportsembed.su',
-        'User-Agent': ua(),
-      },
-      directPlayback: false,
-    });
   }
   return out;
 }
@@ -154,8 +140,8 @@ async function extract(ctx) {
 
   var embed = String(ctx.embedUrl || ctx.url || '').trim();
   if (embed) {
-    var fromEmbed = await resolveWatchfootyEmbed(ctx, embed);
-    if (fromEmbed.length) return fromEmbed;
+    // Unlock-on-tap: never fall through to full match (that padded 15 junk rows).
+    return resolveWatchfootyEmbed(ctx, embed);
   }
 
   var mid = String(ctx.matchId || '').replace(/^wf_/, '');

@@ -21,6 +21,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/player/player/utils.dart' show probeStreamSourceUrl;
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
@@ -250,7 +251,7 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     return index;
   }
 
-  /// [Catalog] → [Time] → Refresh → [Portals] → [View].
+  /// [Catalog] → [Time] → Refresh → Search → [Portals] → [View].
   int get _topBarRefreshIndex {
     var index = 0;
     if (_showCatalogTopBar) index++;
@@ -258,17 +259,30 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     return index;
   }
 
-  int get _topBarPortalIndex => _topBarRefreshIndex + 1;
+  int get _topBarSearchIndex => _topBarRefreshIndex + 1;
+
+  int get _topBarPortalIndex => _topBarSearchIndex + 1;
 
   int get _topBarViewIndex =>
-      _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarRefreshIndex + 1;
+      _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarSearchIndex + 1;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
   );
+  final FocusNode _searchIconFocusNode = FocusNode(
+    debugLabel: 'live-matches-search-icon',
+  );
+  final FocusNode _matchSearchFocusNode = FocusNode(
+    debugLabel: 'live-matches-search-field',
+  );
+  final TextEditingController _matchSearchCtrl = TextEditingController();
   final FocusNode _viewFocusNode = FocusNode(
     debugLabel: 'live-matches-view-toggle',
   );
+
+  /// Match list text filter (top-bar search).
+  String _matchListQuery = '';
+  bool _matchSearchOpen = false;
 
   /// Legacy flag from top-bar Refresh restore — cleared on schedule restore.
   bool _restoreRefreshFocus = false;
@@ -430,12 +444,44 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     _IptvSportsChannelsPanel.dismiss();
     _timelineLiveTick?.cancel();
     _refreshFocusNode.dispose();
+    _searchIconFocusNode.dispose();
+    _matchSearchFocusNode.dispose();
+    _matchSearchCtrl.dispose();
     _viewFocusNode.dispose();
     _timelineScrollController.dispose();
     TvHeroActions.unbind(_tabId);
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _openMatchSearch() {
+    if (_matchSearchOpen) {
+      _matchSearchFocusNode.requestFocus();
+      return;
+    }
+    setState(() => _matchSearchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _matchSearchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeMatchSearch({bool clearQuery = true}) {
+    if (!_matchSearchOpen && _matchListQuery.isEmpty) return;
+    setState(() {
+      _matchSearchOpen = false;
+      if (clearQuery) {
+        _matchListQuery = '';
+        _matchSearchCtrl.clear();
+      }
+    });
+  }
+
+  void _onMatchSearchChanged(String value) {
+    final next = value.trim();
+    if (next == _matchListQuery) return;
+    setState(() => _matchListQuery = next);
   }
 
   void _resetTimelineLazyState() {

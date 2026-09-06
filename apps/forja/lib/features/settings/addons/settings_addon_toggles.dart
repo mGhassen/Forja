@@ -144,17 +144,21 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       }
       // IPTV / Live Sports are navbar tabs — must push `_domainNavigation` or
       // cloud pull restores the old visibleIds (issue 126 shrink guard).
+      // Do not await the upsert here: a slow merge pull blocked the UI and
+      // raced soft pulls; gen bumps synchronously at schedulePush start (224).
       if (widget.addonId == SettingsAddonId.iptv ||
           widget.addonId == SettingsAddonId.liveSports) {
-        scheduleNavigationSyncPush();
+        unawaited(scheduleNavigationSyncPush());
         if (widget.addonId == SettingsAddonId.iptv) {
           schedulePreferencesSyncPush();
         }
       } else {
         schedulePreferencesSyncPush();
       }
-      ref.invalidate(settingsVisibilityProvider);
-    } catch (_) {
+      // Navbar notifier already bumped by setNavbarConfig — avoid invalidate
+      // flash that remounts this switch mid-toggle.
+    } catch (e, st) {
+      debugPrint('[AddonToggle] ${widget.addonId} failed: $e\n$st');
       if (mounted) setState(() => _optimisticEnabled = null);
       rethrow;
     } finally {
@@ -167,8 +171,11 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final updated = val
         ? [...nav, if (!nav.contains(navId)) navId]
         : nav.where((id) => id != navId).toList();
+    debugPrint(
+      '[AddonToggle] navbar $navId → $val (was ${nav.contains(navId)}; '
+      'next=$updated)',
+    );
     await _settings.setNavbarConfig(updated);
-    ref.invalidate(settingsVisibilityProvider);
   }
 
   @override
@@ -196,43 +203,59 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       });
     }
     final enabled = _optimisticEnabled ?? computed;
-    void flip() => unawaited(_toggle(!enabled));
+    void flip() {
+      debugPrint(
+        '[AddonToggle] flip ${widget.addonId} ${enabled ? "ON→OFF" : "OFF→ON"}',
+      );
+      unawaited(_toggle(!enabled));
+    }
 
     // Leanback: separate D-pad focus stop (→ from row). Visible chrome so →
-    // is obvious; IgnorePointer so Material Switch does not steal OK.
+    // is obvious. Switch is display-only (onChanged null) so Material
+    // ActivateIntent cannot swallow Select as a no-op (224).
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     if (leanback) {
-      return shellFocusableTap(
-        context: context,
-        focusNode: widget.focusNode,
-        onTap: flip,
-        borderRadius: 20,
-        scaleOnFocus: 1.0,
-        showFocusRail: false,
-        showFocusFill: true,
-        showFocusBorder: true,
-        tvTabId: 'settings',
-        tvZone: ShellTvZone.settings,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        onLeftEdge: widget.onLeftEdge,
-        onFocusChange: (f) {
-          if (_focused == f) return;
-          setState(() => _focused = f);
+      return Actions(
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              flip();
+              return null;
+            },
+          ),
         },
-        onHoverChange: (h) {
-          if (_hovered == h) return;
-          setState(() => _hovered = h);
-        },
-        child: SizedBox(
-          width: 56,
-          height: 44,
-          child: Center(
-            child: IgnorePointer(
-              child: ForjaSwitch(
-                value: enabled,
-                onChanged: (_) {},
-                scale: ForjaSwitch.settingsScale,
-                emphasized: _chromeActive,
+        child: shellFocusableTap(
+          context: context,
+          focusNode: widget.focusNode,
+          onTap: flip,
+          borderRadius: 20,
+          scaleOnFocus: 1.0,
+          showFocusRail: false,
+          showFocusFill: true,
+          showFocusBorder: true,
+          tvTabId: 'settings',
+          tvZone: ShellTvZone.settings,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+          onLeftEdge: widget.onLeftEdge,
+          onFocusChange: (f) {
+            if (_focused == f) return;
+            setState(() => _focused = f);
+          },
+          onHoverChange: (h) {
+            if (_hovered == h) return;
+            setState(() => _hovered = h);
+          },
+          child: SizedBox(
+            width: 56,
+            height: 44,
+            child: Center(
+              child: IgnorePointer(
+                child: ForjaSwitch(
+                  value: enabled,
+                  onChanged: null,
+                  scale: ForjaSwitch.settingsScale,
+                  emphasized: _chromeActive,
+                ),
               ),
             ),
           ),

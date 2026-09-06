@@ -279,20 +279,8 @@ class LiveGoatUnlock {
           if (row.quality.isNotEmpty) row.quality,
         ].join(' ');
         final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
-        if (u != null) {
-          out.add((url: u.url, name: label, headers: u.headers));
-          continue;
-        }
-        // Keep every API mirror visible — unlock again on tap.
-        out.add((
-          url: row.embed,
-          name: label,
-          headers: {
-            'Referer': row.embed,
-            'Origin': _sportsEmbedOrigin,
-            'User-Agent': _ua,
-          },
-        ));
+        if (u == null) continue;
+        out.add((url: u.url, name: label, headers: u.headers));
       }
       return out;
     } catch (e) {

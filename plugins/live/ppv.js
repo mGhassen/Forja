@@ -46,6 +46,15 @@ function ppvPlayableUrl(data) {
 async function unlockPpvEmbed(ctx, iframe, cfg, headers) {
   var raw = String(iframe || '').trim();
   if (!raw) return null;
+  // Direct HLS from the detail API is handled above; embed pages must unlock
+  // to a native URL — never hand iframe HTML to the player.
+  if (/\.m3u8|\.mp4/i.test(raw)) {
+    return {
+      url: raw,
+      headers: headers || ppvHeaders(cfg),
+      directPlayback: true,
+    };
+  }
   try {
     if (isEmbedIndiaUrl(raw)) {
       var embedIndia = await resolveEmbedIndia(ctx, raw, cfg);
@@ -55,12 +64,26 @@ async function unlockPpvEmbed(ctx, iframe, cfg, headers) {
       var embedResolved = await resolveGoatEmbed(ctx, raw, cfg);
       if (embedResolved && embedResolved.length) return embedResolved[0];
     }
+    if (isSportsEmbedUrl(raw) && ctx.live && typeof ctx.live.sportsEmbedUnlock === 'function') {
+      var unlockedUrl = await ctx.live.sportsEmbedUnlock(raw);
+      if (unlockedUrl) {
+        var origin = '';
+        try {
+          origin = new URL(raw).origin;
+        } catch (_) {}
+        return {
+          url: String(unlockedUrl),
+          headers: {
+            Referer: raw,
+            Origin: origin || 'https://sportsembed.su',
+            'User-Agent': ua(),
+          },
+          directPlayback: preferDirectPlayback(unlockedUrl),
+        };
+      }
+    }
   } catch (_) {}
-  return {
-    url: raw,
-    headers: headers || ppvHeaders(cfg),
-    directPlayback: false,
-  };
+  return null;
 }
 
 async function resolvePpv(ctx, cfg) {

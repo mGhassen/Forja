@@ -210,6 +210,9 @@ class SyncDomainBridge {
       try {
         final pending = Set<String>.from(_pushTimers.keys);
         cancelPendingPushes();
+        // Do NOT auto-flush dirty navigation here — a thin/empty ATV cache
+        // with intentional overlay would wipe richer cloud Features (224).
+        // [_applyLeanPayload] takes cloud when dirty local would shrink it.
         if (pending.isNotEmpty) {
           await pushAllLocal(
             pushIptvIfLocalEmpty: false,
@@ -240,6 +243,9 @@ class SyncDomainBridge {
       AccountFeatures.instance.clear();
       return;
     }
+    // Snapshot so a Features/Addons edit mid-pull cannot be overwritten by
+    // the stale remote payload we are about to apply (224).
+    final navGenAtFetch = _navigationLocalGen;
     // Profile switch: wipe IPTV first so a failed/slow settings pull cannot
     // leave profile A's portals visible under profile B (issue 217).
     if (resetLocalFirst) {
@@ -261,7 +267,11 @@ class SyncDomainBridge {
       await seedNewProfileDefaults();
       return;
     }
-    await _applyLeanPayload(remote, resetLocalFirst: resetLocalFirst);
+    await _applyLeanPayload(
+      remote,
+      resetLocalFirst: resetLocalFirst,
+      navGenAtFetch: navGenAtFetch,
+    );
     // Lazy IPTV: only pull portals when this profile shows the IPTV tab.
     // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
     final nav = await _settings.getNavbarConfig();
@@ -272,8 +282,9 @@ class SyncDomainBridge {
       // (Not a Features/Home failure — Home lives in navigation.visibleIds.)
       await wipeLocalIptvInventoryForProfileBoundary();
     }
-    // Empty `{}` insert left cloud hollow - backfill settings once (not IPTV).
-    if (remote.isEmpty) {
+    // Empty `{}` insert left cloud hollow - backfill settings only when this
+    // soft pull did not leave a newer local Features edit unsynced.
+    if (remote.isEmpty && _navigationLocalGen == _navigationSyncedGen) {
       await pushAllLocal(pushIptvIfLocalEmpty: false);
     }
   }
@@ -362,7 +373,11 @@ class SyncDomainBridge {
     );
   }
 
-  void schedulePush(String domain) {
+  /// Schedules (or immediately runs) a domain overlay push.
+  ///
+  /// Navigation / Forja return after the upsert finishes so callers can await
+  /// before a soft pull (Addons / Features — issue 221 / 224).
+  Future<void> schedulePush(String domain) async {
     if (!SyncService.instance.isSignedIn) return;
     // Features nav + Forja pack membership: push immediately so soft pulls and
     // the web portal see the edit (issue 221 — empty Features / pack deletes).
@@ -371,13 +386,11 @@ class SyncDomainBridge {
         _navigationLocalGen++;
       }
       _pushTimers.remove(domain)?.cancel();
-      unawaited(
-        pushAllLocal(
-          pushIptvIfLocalEmpty: false,
-          allowIptvShrink: false,
-          allowEmptyForjaWipe: domain == _domainForja,
-          overlayDomains: {domain},
-        ),
+      await pushAllLocal(
+        pushIptvIfLocalEmpty: false,
+        allowIptvShrink: false,
+        allowEmptyForjaWipe: domain == _domainForja,
+        overlayDomains: {domain},
       );
       return;
     }
@@ -607,6 +620,7 @@ class SyncDomainBridge {
   Future<void> _applyLeanPayload(
     Map<String, dynamic> payload, {
     required bool resetLocalFirst,
+    int? navGenAtFetch,
   }) async {
     // Profile switch: wipe first so missing lean keys cannot keep prior profile.
     // Focus/resume refresh: apply cloud over the current cache — do not flash
@@ -645,12 +659,34 @@ class SyncDomainBridge {
     }
 
     final navigation = payload['navigation'];
+    final editedDuringPull = !resetLocalFirst &&
+        navGenAtFetch != null &&
+        _navigationLocalGen != navGenAtFetch;
     final navPending =
         !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
-    if (navPending) {
+    if (editedDuringPull) {
       debugPrint(
-        '[Sync] skip navigation apply — local Features edit not synced yet',
+        '[Sync] skip navigation apply — local edit during cloud pull',
       );
+    } else if (navPending) {
+      final localNav = await _exportNavigationCompact();
+      final remoteNav = navigation is Map
+          ? Map<String, dynamic>.from(navigation)
+          : null;
+      // Dirty empty/thin local must not block richer cloud Features (224).
+      if (navigationWouldShrinkCloud(remoteNav, localNav)) {
+        debugPrint(
+          '[Sync] apply cloud nav — dirty local would shrink Features',
+        );
+        _navigationLocalGen = _navigationSyncedGen;
+        if (navigation is Map) {
+          await _importNavigation(Map<String, dynamic>.from(navigation));
+        }
+      } else {
+        debugPrint(
+          '[Sync] skip navigation apply — local Features edit not synced yet',
+        );
+      }
     } else if (navigation is Map) {
       // Cloud is master once local Features edits are pushed. Do not refuse
       // shrink here — that re-pushed local tabs over intentional web clears
@@ -1239,5 +1275,5 @@ void scheduleForjaSyncPush() =>
 void scheduleForjaOnboardedSyncPush() =>
     SyncDomainBridge.instance.scheduleOnboardedPush();
 
-void scheduleNavigationSyncPush() =>
+Future<void> scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);

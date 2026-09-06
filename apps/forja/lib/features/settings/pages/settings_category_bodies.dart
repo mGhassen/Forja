@@ -65,7 +65,10 @@ class SettingsCategoryPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final visibility = ref.watch(settingsVisibilityProvider).valueOrNull;
+    final visibilityAsync = ref.watch(settingsVisibilityProvider);
+    // Keep last visibility while reloading — blanking the body remounts Addons
+    // mid-toggle and drops optimistic switch state (224).
+    final visibility = visibilityAsync.value;
     if (visibility == null) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
@@ -394,7 +397,7 @@ class _SettingsNavigationPageBodyState
     // flush a pending navigation overlay that still reads the old empty
     // visibleIds and snap Features toggles back off (issue 221).
     await _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
-    scheduleNavigationSyncPush();
+    await scheduleNavigationSyncPush();
     final startupOptions = _startupTabOptions();
     if (!startupOptions.contains(_defaultNavTab)) {
       final resolved = startupOptions.isNotEmpty
@@ -402,14 +405,14 @@ class _SettingsNavigationPageBodyState
           : 'settings';
       if (mounted) setState(() => _defaultNavTab = resolved);
       await _settings.setDefaultNavTab(resolved);
-      scheduleNavigationSyncPush();
+      await scheduleNavigationSyncPush();
     }
   }
 
   Future<void> _setDefaultNavTab(String id) async {
     setState(() => _defaultNavTab = id);
     await _settings.setDefaultNavTab(id);
-    scheduleNavigationSyncPush();
+    await scheduleNavigationSyncPush();
   }
 
   void _toggleNavbarVisible(String id) {

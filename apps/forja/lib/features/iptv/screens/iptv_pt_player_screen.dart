@@ -335,6 +335,17 @@ bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }
 
+/// Live Sports Providers hover: ready HLS/MP4 (with or without Referer headers).
+/// Stremio / pending / embed catalog pages stay off — bare checks false-fail.
+bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
+  if (src.liveSourceKind == IptvLiveSourceKind.stremio) return false;
+  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
+    return true;
+  }
+  return iptvLiveEnginePlayUrlReady(src.url.trim());
+}
+
 typedef IptvLiveEngineResolveSource =
     Future<IptvPlaySource?> Function(
       IptvPlaySource catalogSource, {

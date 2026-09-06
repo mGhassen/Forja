@@ -219,8 +219,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   /// Android TV DPAD_CENTER often delivers KeyDown Select **and** a click.
   /// Coalesce so toggles / activate handlers do not run twice (ON→OFF).
+  /// Leanback also skips [GestureDetector.onTap] (keys only) — see build.
   DateTime? _lastActivateAt;
-  static const _activateCoalesce = Duration(milliseconds: 450);
+  static const _activateCoalesce = Duration(milliseconds: 800);
 
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
@@ -542,9 +543,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           );
         },
         cursor: SystemMouseCursors.click,
+        // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
+        // already ran onTap — a second pointer activate flips switches off
+        // (Addons IPTV / Live Sports looked dead on Android TV).
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap == null ? null : () => _invokeOnTap(),
+          onTap: widget.onTap == null || policy.leanbackOnly
+              ? null
+              : () => _invokeOnTap(),
           child: _buildFocusedChild(context),
         ),
       ),

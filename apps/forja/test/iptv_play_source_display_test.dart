@@ -97,6 +97,7 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(streamedDirect), isNull);
     expect(iptvLiveSourceProbeSkipped(streamedDirect), isTrue);
+    expect(iptvLiveSourceCanHoverProbe(streamedDirect), isTrue);
 
     const watchfootyDirect = IptvPlaySource(
       url:
@@ -107,6 +108,7 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(watchfootyDirect), isNull);
     expect(iptvLiveSourceProbeSkipped(watchfootyDirect), isTrue);
+    expect(iptvLiveSourceCanHoverProbe(watchfootyDirect), isTrue);
 
     const stremioFlixnest = IptvPlaySource(
       url:
@@ -116,6 +118,7 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(stremioFlixnest), isNull);
     expect(iptvLiveSourceProbeSkipped(stremioFlixnest), isTrue);
+    expect(iptvLiveSourceCanHoverProbe(stremioFlixnest), isFalse);
 
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
@@ -124,6 +127,15 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(portal), isNull);
     expect(iptvLiveSourceProbeSkipped(portal), isTrue);
+    expect(iptvLiveSourceCanHoverProbe(portal), isTrue);
+
+    const pending = IptvPlaySource(
+      url: 'pending:match:stream:1',
+      label: 'Stream 1',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveEngineEmbedUrl: 'https://streamed.pk/embed/abc',
+    );
+    expect(iptvLiveSourceCanHoverProbe(pending), isFalse);
 
     const legacy = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',

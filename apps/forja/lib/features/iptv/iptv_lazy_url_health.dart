@@ -26,6 +26,22 @@ class IptvLazyUrlHealthProbe extends ChangeNotifier {
 
   bool? healthFor(String key) => _health[key] ?? _sessionHealth[key];
 
+  /// Cache a probe result from a header-aware check (no URL re-fetch).
+  void remember(String key, bool ok) {
+    if (_disposed) return;
+    final k = key.trim();
+    if (k.isEmpty) return;
+    if (ok) {
+      _health[k] = true;
+      _sessionHealth[k] = true;
+    } else {
+      _health[k] = false;
+      _sessionHealth.remove(k);
+    }
+    notifyListeners();
+    onResult?.call(k, ok);
+  }
+
   /// Immediate probe for Sources-panel hover check (skips dwell debounce).
   Future<bool> checkNow(String key, String url) async {
     final cached = healthFor(key);
@@ -37,22 +53,11 @@ class IptvLazyUrlHealthProbe extends ChangeNotifier {
     try {
       final ok = await IptvAliveChecker.checkOne(trimmed);
       if (_disposed) return ok;
-      if (ok) {
-        _health[key] = true;
-        _sessionHealth[key] = true;
-      } else {
-        _health[key] = false;
-        _sessionHealth.remove(key);
-      }
-      notifyListeners();
-      onResult?.call(key, ok);
+      remember(key, ok);
       return ok;
     } catch (_) {
       if (_disposed) return false;
-      _health[key] = false;
-      _sessionHealth.remove(key);
-      notifyListeners();
-      onResult?.call(key, false);
+      remember(key, false);
       return false;
     }
   }

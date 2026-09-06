@@ -177,19 +177,8 @@ async function resolveStreamfreeTop(ctx, cfg) {
     });
   }
 
-  if (out.length) return out;
-
-  // Keep an embed listed so the host can retry on tap.
-  var fallbackEmbed = origin + '/embed/' + cat + '/' + sid;
-  return [
-    {
-      url: fallbackEmbed,
-      name: 'StreamFree',
-      headers: { Referer: fallbackEmbed, Origin: origin, 'User-Agent': ua() },
-      directPlayback: false,
-      viewers: viewers,
-    },
-  ];
+  // Unlock miss — omit (host catalog may still list the embed for unlock-on-tap).
+  return out;
 }
 
 async function resolveStream(ctx, cfg) {

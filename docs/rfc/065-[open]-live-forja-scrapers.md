@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **20 / 24** acceptance · **2 / 2** Android WebView unlock 🔄 |
-| **Current slice** | WatchFooty `wfty.st` playback Referer + `/hls-proxy`; Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
+| **Progress** | **7 / 7** components · **21 / 25** acceptance · **2 / 2** Android WebView unlock 🔄 |
+| **Current slice** | EngineJS live resolve falls back when rows are embed HTML only; Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,6 +57,7 @@
 | 22 | R65-A22 | Legacy `catalog-*` / `live-*` prefs migrate to unified ids + capability prefs | ✅ |
 | 23 | R65-A23 | Host tests + feature docs + changelog for unified live sport plugins | ✅ |
 | 24 | R65-A24 | WatchFooty `wfty.st` plays with sportsembed **player page** Referer via `/hls-proxy` (not origin-root / MediaKit direct) | ✅ |
+| 25 | R65-A25 | EngineJS live resolve with only embed HTML (no m3u8) falls back to flutter_js unlock bridges; WatchFooty/PPV/StreamFree omit unlock-failed iframe rows | ✅ |
 
 ---
 

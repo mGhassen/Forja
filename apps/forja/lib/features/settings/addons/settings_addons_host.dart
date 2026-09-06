@@ -170,9 +170,10 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
   void initState() {
     super.initState();
     // Soft pull so web/cloud Features + play-source edits land while this
-    // pane is open (debounced 15s inside syncFromCloud).
+    // pane is open. Force: opening Addons is an intentional refresh (224) —
+    // 15s debounce otherwise leaves cloud-enabled IPTV / Live Sports off.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(SyncDomainBridge.instance.syncFromCloud());
+      unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
     });
   }
 

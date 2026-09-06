@@ -955,13 +955,20 @@ class EngineService {
       generation: () => _extractGeneration,
     );
     if (viaRust != null) {
-      if (viaRust.isNotEmpty) {
-        return _postProcessLivePluginRows(viaRust);
-      }
+      // EngineJS has no ctx.live.goatUnlock / sportsEmbedUnlock bridges.
+      // Plugins that skip crack and return sportsembed/embed.st HTML look
+      // "successful" (raw=N) but nothing is native-playable — fall back so
+      // flutter_js can unlock (WatchFooty / Streamed / PPV).
+      final processed = await _postProcessLivePluginRows(viaRust);
+      final playable = _liveResolvePlayableRows(processed);
+      if (playable.isNotEmpty) return playable;
       // Cancel may have emptied the list after gen bump — never stampede JSC.
       if (gen != _extractGeneration) return [];
       debugPrint(
-        '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback',
+        viaRust.isEmpty
+            ? '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback'
+            : '[engine] ${plugin.id} enginejs live resolve no playable urls '
+                '(${viaRust.length}) — flutter_js fallback',
       );
     }
     if (gen != _extractGeneration) return [];
@@ -982,10 +989,32 @@ class EngineService {
         isCancelled: () => gen != _extractGeneration,
       );
       if (gen != _extractGeneration) return [];
-      return _postProcessLivePluginRows(raw);
+      return _liveResolvePlayableRows(await _postProcessLivePluginRows(raw));
     } finally {
       runtime.dispose();
     }
+  }
+
+  /// Native-playable live resolve handoff (HLS / mp4 / local proxy) — not
+  /// catalog embed HTML pages.
+  static bool liveResolveUrlPlayable(String url) {
+    final u = url.trim().toLowerCase();
+    if (u.isEmpty) return false;
+    if (u.contains('127.0.0.1') || u.contains('/hls-proxy')) return true;
+    return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
+  }
+
+  static List<Map<String, dynamic>> _liveResolvePlayableRows(
+    List<Map<String, dynamic>> rows,
+  ) {
+    final out = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      if (row['webviewOnly'] == true) continue;
+      final url = (row['url'] ?? '').toString().trim();
+      if (!liveResolveUrlPlayable(url)) continue;
+      out.add(row);
+    }
+    return out;
   }
 
   /// Run one live sport plugin catalog action.
