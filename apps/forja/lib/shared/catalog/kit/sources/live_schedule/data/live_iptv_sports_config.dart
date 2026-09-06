@@ -36,6 +36,7 @@ class LiveMatchesIptvSportsConfig {
   const LiveMatchesIptvSportsConfig({
     this.enabled = true,
     this.forjaLiveEnabled = true,
+    this.mergeMatchingEvents = false,
     this.portalKey = '',
     this.timezone = '',
     this.leagues = allLeagues,
@@ -45,6 +46,9 @@ class LiveMatchesIptvSportsConfig {
   final bool enabled;
   /// Live Matches → **Forja Live** server (engine catalogs + resolve).
   final bool forjaLiveEnabled;
+  /// Collapse the same game across catalogs + ESPN enrich merge.
+  /// Default off — soft matching is expensive on large schedules.
+  final bool mergeMatchingEvents;
   /// [VerifiedPortal.key] of the chosen Xtream/Stalker portal.
   /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
   final String portalKey;
@@ -256,6 +260,7 @@ class LiveMatchesIptvSportsConfig {
   LiveMatchesIptvSportsConfig copyWith({
     bool? enabled,
     bool? forjaLiveEnabled,
+    bool? mergeMatchingEvents,
     String? portalKey,
     String? timezone,
     List<String>? leagues,
@@ -264,6 +269,7 @@ class LiveMatchesIptvSportsConfig {
     return LiveMatchesIptvSportsConfig(
       enabled: enabled ?? this.enabled,
       forjaLiveEnabled: forjaLiveEnabled ?? this.forjaLiveEnabled,
+      mergeMatchingEvents: mergeMatchingEvents ?? this.mergeMatchingEvents,
       portalKey: portalKey ?? this.portalKey,
       timezone: timezone ?? this.timezone,
       leagues: leagues ?? this.leagues,
@@ -274,6 +280,7 @@ class LiveMatchesIptvSportsConfig {
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
         'forjaLiveEnabled': forjaLiveEnabled,
+        'mergeMatchingEvents': mergeMatchingEvents,
         'portalKey': portalKey,
         'timezone': timezone,
         'leagues': leagues,
@@ -335,6 +342,7 @@ class LiveMatchesIptvSportsConfig {
     return LiveMatchesIptvSportsConfig(
       enabled: j['enabled'] == true,
       forjaLiveEnabled: j['forjaLiveEnabled'] != false,
+      mergeMatchingEvents: j['mergeMatchingEvents'] == true,
       portalKey: (j['portalKey'] ?? '').toString(),
       timezone: (j['timezone'] ?? '').toString(),
       leagues: leagues,

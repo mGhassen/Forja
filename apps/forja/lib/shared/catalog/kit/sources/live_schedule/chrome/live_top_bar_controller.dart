@@ -429,8 +429,15 @@ mixin _LiveMatchesData
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
     final iptvConfig = await LiveMatchesIptvSportsConfig.load();
-    if (_s._iptvSportsEnabled != iptvConfig.enabled) {
-      setState(() => _s._iptvSportsEnabled = iptvConfig.enabled);
+    final mergeChanged = _s._mergeMatchingEvents != iptvConfig.mergeMatchingEvents;
+    if (_s._iptvSportsEnabled != iptvConfig.enabled || mergeChanged) {
+      setState(() {
+        _s._iptvSportsEnabled = iptvConfig.enabled;
+        _s._mergeMatchingEvents = iptvConfig.mergeMatchingEvents;
+        if (mergeChanged) {
+          (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
+        }
+      });
     }
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
@@ -581,6 +588,7 @@ mixin _LiveMatchesData
   List<_StreamedMatch> get _filteredStreamed =>
       _mergeStreamedCatalogRows(
         _sortStreamedLiveFirst(_streamedMatchesSportAndTimeFiltered()),
+        mergeMatching: _s._mergeMatchingEvents,
       );
 
 }

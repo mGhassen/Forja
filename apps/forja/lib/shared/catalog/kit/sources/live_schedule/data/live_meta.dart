@@ -780,15 +780,22 @@ bool _liveCatalogRowMatchesFilter(_StreamedMatch row, String filter) {
 /// cross-catalog siblings merged into another plugin's card).
 List<_StreamedMatch> _streamedMatchesForCatalogGrid(
   List<_StreamedMatch> pool,
-  String catalogFilter,
-) {
+  String catalogFilter, {
+  bool mergeMatching = false,
+}) {
   if (catalogFilter == 'all' || catalogFilter.isEmpty) {
-    return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(pool));
+    return _mergeStreamedCatalogRows(
+      _sortStreamedLiveFirst(pool),
+      mergeMatching: mergeMatching,
+    );
   }
   if (_isStremioCatalogFilter(catalogFilter)) {
     final scoped =
         pool.where((m) => _liveCatalogRowMatchesFilter(m, catalogFilter)).toList();
-    return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(scoped));
+    return _mergeStreamedCatalogRows(
+      _sortStreamedLiveFirst(scoped),
+      mergeMatching: mergeMatching,
+    );
   }
   final norm = EngineService.normalizeLiveSportPluginId(catalogFilter);
   final scoped = pool
@@ -796,7 +803,10 @@ List<_StreamedMatch> _streamedMatchesForCatalogGrid(
         (m) => EngineService.normalizeLiveSportPluginId(m.livePluginId) == norm,
       )
       .toList();
-  return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(scoped));
+  return _mergeStreamedCatalogRows(
+    _sortStreamedLiveFirst(scoped),
+    mergeMatching: mergeMatching,
+  );
 }
 
 /// When a pack declares `scheduleHorizon: fullDay`, widen display for its rows.
@@ -1258,8 +1268,11 @@ List<_StreamedMatch> _stripEspnMergedScheduleRows(List<_StreamedMatch> matches) 
     ];
 
 /// One card per event — catalog rows from different Forja Live plugins collapse here.
-List<_StreamedMatch> _mergeStreamedCatalogRows(List<_StreamedMatch> matches) {
-  if (matches.length < 2) return matches;
+List<_StreamedMatch> _mergeStreamedCatalogRows(
+  List<_StreamedMatch> matches, {
+  bool mergeMatching = false,
+}) {
+  if (!mergeMatching || matches.length < 2) return matches;
   final out = <_StreamedMatch>[];
   final buckets = <String, List<int>>{};
   for (final m in matches) {
@@ -1518,7 +1531,15 @@ List<_StreamedMatch> _stremioSessionSoftHits(
 List<_LiveMatchGridEntry> _mergeIframeAndScheduleEntries({
   required List<_IframeCatalogStream> iframeCatalog,
   required List<_StreamedMatch> streamed,
+  bool mergeMatching = false,
 }) {
+  if (!mergeMatching) {
+    return _sortGridEntriesLiveFirst([
+      for (final stream in iframeCatalog)
+        _LiveMatchGridEntry.iframeCatalog(stream),
+      for (final match in streamed) _LiveMatchGridEntry.streamed(match),
+    ]);
+  }
   final mergedIframe = _mergeIframeCatalogRows(iframeCatalog);
   final remainingStreamed = [...streamed];
   final entries = <_LiveMatchGridEntry>[];

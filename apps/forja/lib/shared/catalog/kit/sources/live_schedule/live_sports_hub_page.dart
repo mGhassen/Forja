@@ -144,6 +144,9 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   TabController? _tabController;
   bool _iptvSportsEnabled = false;
 
+  /// Settings → Live Sports → Merge matching events (default off).
+  bool _mergeMatchingEvents = false;
+
   /// False until browse prefs hydrate — avoids fetching before catalog filter/horizon apply.
   bool _browseHydrated = false;
   List<_IframeCatalogStream> _iframeCatalogStreams = [];
@@ -491,6 +494,7 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     final config = await LiveMatchesIptvSportsConfig.load();
     final forjaLiveEnabled = config.forjaLiveEnabled;
     final iptvSportsEnabled = config.enabled;
+    final mergeMatching = config.mergeMatchingEvents;
     final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
     if (!mounted) {
       return (
@@ -499,9 +503,17 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         stremioLiveEnabled: stremioLiveEnabled,
       );
     }
-    if (_iptvSportsEnabled != iptvSportsEnabled) {
-      setState(() => _iptvSportsEnabled = iptvSportsEnabled);
-      if (reload) await _load();
+    final mergeChanged = _mergeMatchingEvents != mergeMatching;
+    final iptvChanged = _iptvSportsEnabled != iptvSportsEnabled;
+    if (mergeChanged || iptvChanged) {
+      setState(() {
+        _iptvSportsEnabled = iptvSportsEnabled;
+        _mergeMatchingEvents = mergeMatching;
+        if (mergeChanged) {
+          (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
+        }
+      });
+      if (reload && iptvChanged) await _load();
     }
     return (
       forjaLiveEnabled: forjaLiveEnabled,
@@ -516,11 +528,12 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         ._restoreForjaLiveCatalogFilterPreference();
     await (this as _LiveMatchesForjaLive)._restoreTimeWindowPreference();
     if (!mounted) return;
-    final iptvEnabled = (await LiveMatchesIptvSportsConfig.load()).enabled;
+    final config = await LiveMatchesIptvSportsConfig.load();
     if (!mounted) return;
     setState(() {
       _browseHydrated = true;
-      _iptvSportsEnabled = iptvEnabled;
+      _iptvSportsEnabled = config.enabled;
+      _mergeMatchingEvents = config.mergeMatchingEvents;
     });
     if (_iptvSportsEnabled) {
       final ctrl = ref.read(iptvControllerProvider);
@@ -534,7 +547,10 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   Future<void> _restoreBrowsePrefs() async {
     final config = await LiveMatchesIptvSportsConfig.load();
     if (!mounted) return;
-    setState(() => _iptvSportsEnabled = config.enabled);
+    setState(() {
+      _iptvSportsEnabled = config.enabled;
+      _mergeMatchingEvents = config.mergeMatchingEvents;
+    });
     unawaited(LivePrefs.clearRetiredModePrefs());
   }
 

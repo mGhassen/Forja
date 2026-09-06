@@ -217,12 +217,29 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   late Animation<double> _scale;
   FocusNode? _ownedNode;
 
+  /// Android TV DPAD_CENTER often delivers KeyDown Select **and** a click.
+  /// Coalesce so toggles / activate handlers do not run twice (ON→OFF).
+  DateTime? _lastActivateAt;
+  static const _activateCoalesce = Duration(milliseconds: 450);
+
   FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
 
   String _tvDebugLabel(ShellTvFocusMeta? meta) {
     if (meta == null || meta.rowId == null) return 'focusable-control';
     final idx = meta.itemIndex;
     return 'tv-${meta.tabId}-${meta.rowId}${idx != null ? '-$idx' : ''}';
+  }
+
+  bool _invokeOnTap() {
+    if (widget.onTap == null) return false;
+    final now = DateTime.now();
+    if (_lastActivateAt != null &&
+        now.difference(_lastActivateAt!) < _activateCoalesce) {
+      return true; // swallow duplicate
+    }
+    _lastActivateAt = now;
+    widget.onTap!();
+    return true;
   }
 
   @override
@@ -492,8 +509,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         }
         final arrow = _handleArrow(event);
         if (arrow == KeyEventResult.handled) return arrow;
-        if (widget.onTap != null && shellTvIsActivateKey(event)) {
-          widget.onTap!();
+        if (shellTvIsActivateKey(event) && _invokeOnTap()) {
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -528,7 +544,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
+          onTap: widget.onTap == null ? null : () => _invokeOnTap(),
           child: _buildFocusedChild(context),
         ),
       ),

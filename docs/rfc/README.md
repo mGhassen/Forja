@@ -104,7 +104,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **6 / 6** | — |
 | [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **3 / 5** · **6 / 10** | — |
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
-| [084-[open]-…](084-[open]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | open | **5 / 5** · **9 / 9** | — |
+| [084-[open]-…](084-[open]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | open | **5 / 5** · **11 / 11** | — |
 
 ## Related
 

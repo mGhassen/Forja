@@ -22,7 +22,7 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 - Use the **reload** control next to Close in the streams panel header to force a fresh Providers / Live TV search — bypasses the ~30 minute source cache. Installing or removing a Stremio addon also invalidates that cache automatically.
 - Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream** — the player does not open an embed page or reconnect forever on HTML.
 - Stremio Live TV rows (e.g. flixnest signed playlists) do **not** show a green/red hover status bar — a bare HTTP check false-fails while the player still opens after a few retries.
-- Use **Catalog** / **Schedule** in the top bar (and **Portals** when Forja Sports is enabled). **Portals** overlays the match list and the streams panel. While catalogs are still loading or merging, **Refresh** is replaced by a short progress line (current catalog + count, or **Merging catalogs…**). **Refresh** returns when the schedule is ready.
+- Use **Catalog** / **Schedule** in the top bar (and **Portals** when Forja Sports is enabled). **Portals** overlays the match list and the streams panel. While catalogs are still loading, **Refresh** is replaced by a short progress line (current catalog + count). With **Settings → Addons → Live Sports → Merge matching events** on, you may also see **Merging catalogs…**. **Refresh** returns when the schedule is ready.
 - Filter by sport chips when more than one sport is in the schedule; **24/7** covers always-on channels. The chip row shows only what fits at full size and scrolls horizontally for the rest (no shrinking).
 - On phone, the streams panel is a near-full-width sheet; on desktop/TV it takes **40%** of the width and pushes the match list (not the category chips).
 
@@ -31,6 +31,7 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 - Streams are third-party — availability changes with broadcasts and region. Streamic may list fewer mirrors than the website: Forja only keeps ones it can unlock to native HLS (e.g. DLHD/DaddyLive), and skips iframe-only dead ends.
 - Escape / Back closes the streams panel, then leaves the player and stops audio
 - Pack layout with `style: grid` can restore a card browse if a hub pack declares it
+- **Merge matching events** (Settings → Addons → Live Sports) is **off** by default — leave it off for large schedules; turn it on only if you want the same game collapsed across catalogs
 
 ## Related
 

@@ -217,7 +217,7 @@ mixin _LiveMatchesForjaLive
   }
 
   bool _forjaLiveMatchPlayable(_StreamedMatch match) {
-    return !_forjaLiveAnyLoading && match.isLive;
+    return match.isLive;
   }
 
   List<_StreamedMatch> _catalogScopedStreamedMatches() {
@@ -225,9 +225,16 @@ mixin _LiveMatchesForjaLive
         (this as _LiveMatchesData)._streamedMatchesSportAndTimeFiltered();
     if (!_showForjaLiveCatalogChrome ||
         _activeForjaLiveCatalogFilter == 'all') {
-      return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(raw));
+      return _mergeStreamedCatalogRows(
+        _sortStreamedLiveFirst(raw),
+        mergeMatching: _s._mergeMatchingEvents,
+      );
     }
-    return _streamedMatchesForCatalogGrid(raw, _activeForjaLiveCatalogFilter);
+    return _streamedMatchesForCatalogGrid(
+      raw,
+      _activeForjaLiveCatalogFilter,
+      mergeMatching: _s._mergeMatchingEvents,
+    );
   }
 
   List<_StreamedMatch> get _displayStreamedMatches {
@@ -270,7 +277,11 @@ mixin _LiveMatchesForjaLive
     }
     return (
       iframeCatalog: [],
-      streamed: _streamedMatchesForCatalogGrid(_s._streamedMatches, filter),
+      streamed: _streamedMatchesForCatalogGrid(
+        _s._streamedMatches,
+        filter,
+        mergeMatching: _s._mergeMatchingEvents,
+      ),
     );
   }
 
@@ -713,6 +724,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _applyScheduleEnrichMerge() async {
     if (!_usesForjaLiveLazyCatalog) return;
     if (!mounted) return;
+    if (!_s._mergeMatchingEvents) return;
     if (!_shouldRunScheduleEnrichMerge()) return;
     if (_forjaLiveAnyLoading) {
       return;
@@ -1141,25 +1153,27 @@ mixin _LiveMatchesForjaLive
               m.isLive &&
               m.viewers == 0 &&
               m.isForjaLive &&
-              m.sources.isNotEmpty,
+              m.sources.isNotEmpty &&
+              !_s._eventStreamViewerTotals.containsKey(_liveEventViewerKey(m)),
         )
         .toList();
     if (targets.isEmpty) return;
     unawaited(() async {
+      final updates = <String, int>{};
       for (final seed in targets) {
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
+        final key = _liveEventViewerKey(seed);
+        if (_s._eventStreamViewerTotals.containsKey(key) ||
+            updates.containsKey(key)) {
+          continue;
+        }
         final total = await _streamedMatchViewerTotalFromSources(seed);
         if (total <= 0 || !mounted || gen != _s._forjaLiveLoadGen) continue;
-        setState(() {
-          _invalidateLiveMatchesGridCache();
-          final key = _liveEventViewerKey(seed);
-          _s._eventStreamViewerTotals[key] = total;
-          _s._streamedMatches = _s._streamedMatches.map((m) {
-            if (!_sameStreamedEvent(m, seed) || m.viewers > 0) return m;
-            return m.withViewerCount(total);
-          }).toList();
-        });
+        updates[key] = total;
       }
+      if (!mounted || gen != _s._forjaLiveLoadGen || updates.isEmpty) return;
+      // Patch totals map only — do not invalidate grid merge cache or remap matches.
+      setState(() => _s._eventStreamViewerTotals.addAll(updates));
     }());
   }
 
@@ -1245,7 +1259,6 @@ mixin _LiveMatchesForjaLive
         if (mounted && gen == _s._forjaLiveLoadGen) {
           _rebuildSportTabsFromCurrentMatches();
           _syncCatalogHydratingState();
-          _kickStreamedViewerHydration(_s._streamedMatches, gen);
           (this as _LiveMatchesData)
               ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
         }

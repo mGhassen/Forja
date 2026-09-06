@@ -152,7 +152,7 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
   }
 }
 
-class _AddonListPane extends ConsumerWidget {
+class _AddonListPane extends ConsumerStatefulWidget {
   const _AddonListPane({
     required this.visibility,
     required this.onOpen,
@@ -162,7 +162,22 @@ class _AddonListPane extends ConsumerWidget {
   final ValueChanged<String> onOpen;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AddonListPane> createState() => _AddonListPaneState();
+}
+
+class _AddonListPaneState extends ConsumerState<_AddonListPane> {
+  @override
+  void initState() {
+    super.initState();
+    // Soft pull so web/cloud Features + play-source edits land while this
+    // pane is open (debounced 15s inside syncFromCloud).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(SyncDomainBridge.instance.syncFromCloud());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(accountFeaturesProvider);
     final addons = settingsAddons();
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -184,8 +199,8 @@ class _AddonListPane extends ConsumerWidget {
         final addon = addons[index];
         return _AddonRow(
           meta: addon,
-          visibility: visibility,
-          onTap: () => onOpen(addon.id),
+          visibility: widget.visibility,
+          onTap: () => widget.onOpen(addon.id),
         );
       },
     );

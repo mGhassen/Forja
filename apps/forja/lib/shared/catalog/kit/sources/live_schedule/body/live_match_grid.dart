@@ -328,6 +328,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     final merged = _mergeIframeAndScheduleEntries(
       iframeCatalog: sources.iframeCatalog,
       streamed: sources.streamed,
+      mergeMatching: _s._mergeMatchingEvents,
     );
     _s._cachedLiveMatchesGridEntries = merged;
     _s._liveMatchesGridEntriesCachedAtRevision = rev;
@@ -824,10 +825,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       ),
       itemBuilder: (context, i) {
         final entry = entries[i];
-        return _denseMatchListTile(
-          entry: entry,
-          index: i,
-          tvFocus: tvFocus,
+        return KeyedSubtree(
+          key: ValueKey(_denseMatchEntryKey(entry)),
+          child: _denseMatchListTile(
+            entry: entry,
+            index: i,
+            tvFocus: tvFocus,
+          ),
         );
       },
     );
@@ -899,7 +903,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         playable = live;
         viewers = _s._eventStreamViewerTotals[_liveEventViewerKey(streamed)] ??
             (iframeCatalog.viewers +
-                _catalogViewersForEvent(streamed, _s._streamedMatches));
+                (_s._mergeMatchingEvents
+                    ? _catalogViewersForEvent(streamed, _s._streamedMatches)
+                    : streamed.viewers));
         onTap = playable
             ? () => _s._openMergedMatch(iframeCatalog, streamed)
             : null;
@@ -992,7 +998,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           viewersOverride: _s._eventStreamViewerTotals[
                   _liveEventViewerKey(streamed)] ??
               (iframeCatalog.viewers +
-                  _catalogViewersForEvent(streamed, _s._streamedMatches)),
+                  (_s._mergeMatchingEvents
+                      ? _catalogViewersForEvent(streamed, _s._streamedMatches)
+                      : streamed.viewers)),
           gridIndex: i,
           gridColumns: crossCount,
           onUpEdge: upEdge,
@@ -1017,8 +1025,20 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       (n, s) => n + (s.viewers > 0 ? s.viewers : 0),
     );
     if (inline > 0) return inline;
+    if (!_s._mergeMatchingEvents) {
+      return match.viewers;
+    }
     final catalog = _catalogViewersForEvent(match, _s._streamedMatches);
     return catalog > 0 ? catalog : match.viewers;
+  }
+
+  String _denseMatchEntryKey(_LiveMatchGridEntry entry) {
+    return switch (entry) {
+      _LiveMatchGridEntryIframeCatalog(:final stream) => 'if:${stream.id}',
+      _LiveMatchGridEntryStreamed(:final match) => 'st:${match.id}',
+      _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed) =>
+        'mg:${iframeCatalog.id}:${streamed.id}',
+    };
   }
 
   Widget _buildForjaLiveCatalogProgress() {
@@ -1104,9 +1124,7 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
             : ForjaShellColors.textPrimary;
     final titleWeight =
         widget.selected || _chrome ? FontWeight.w700 : FontWeight.w600;
-    final row = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    final row = DecoratedBox(
       decoration: BoxDecoration(
         color: _fill,
         border: Border(
@@ -1116,73 +1134,77 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          if (widget.live)
-            Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF22C55E),
-                shape: BoxShape.circle,
-              ),
-            )
-          else
-            const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 14,
-                    fontWeight: titleWeight,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            if (widget.live)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF22C55E),
+                  shape: BoxShape.circle,
                 ),
-                if (widget.meta.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      widget.meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: 12,
-                      ),
+              )
+            else
+              const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 14,
+                      fontWeight: titleWeight,
                     ),
                   ),
-              ],
+                  if (widget.meta.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        widget.meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (widget.viewers > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                '${widget.viewers}',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                  fontSize: 12,
+            if (widget.viewers > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Text(
+                  '${widget.viewers}',
+                  style: TextStyle(
+                    color:
+                        ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-          if (widget.playable)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                color: _lit
-                    ? ForjaShellColors.brandGreen
-                    : ForjaShellColors.iconMuted,
-                size: 20,
+            if (widget.playable)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: _lit
+                      ? ForjaShellColors.brandGreen
+                      : ForjaShellColors.iconMuted,
+                  size: 20,
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
 

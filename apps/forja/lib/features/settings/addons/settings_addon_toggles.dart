@@ -45,6 +45,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   bool _lanEnabled = false;
   bool _focused = false;
   bool _hovered = false;
+  bool _busy = false;
 
   /// Holds the last user flip until providers catch up. Without this, invalidating
   /// [settingsVisibilityProvider] / playback reload flashes [AsyncLoading] and the
@@ -95,6 +96,8 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   }
 
   Future<void> _toggle(bool val) async {
+    if (_busy) return;
+    _busy = true;
     setState(() => _optimisticEnabled = val);
     final notifier = ref.read(settingsPlaybackProvider.notifier);
 
@@ -154,6 +157,8 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     } catch (_) {
       if (mounted) setState(() => _optimisticEnabled = null);
       rethrow;
+    } finally {
+      _busy = false;
     }
   }
 

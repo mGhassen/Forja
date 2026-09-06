@@ -303,6 +303,15 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               onChanged: (v) => _persist(_config.copyWith(forjaLiveEnabled: v)),
             ),
             SettingsToggleRow(
+              title: 'Merge matching events',
+              subtitle:
+                  'Combine the same game across catalogs and run ESPN enrich. '
+                  'Off is faster with large schedules (default).',
+              value: _config.mergeMatchingEvents,
+              onChanged: (v) =>
+                  _persist(_config.copyWith(mergeMatchingEvents: v)),
+            ),
+            SettingsToggleRow(
               title: 'Enable Forja Sports',
               subtitle: 'Show the Forja Sports server in Live Matches',
               value: _config.enabled,

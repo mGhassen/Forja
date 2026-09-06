@@ -654,6 +654,14 @@ void main() {
       expect(File(url!).existsSync(), isTrue);
     });
 
+    test('devLiveManifestUrl finds plugins/live from checkout walk', () {
+      final url = PluginRegistry.devLiveManifestUrl();
+      // null outside Forja tree / non-debug; when present must be live manifest
+      if (url == null) return;
+      expect(url, endsWith('plugins/live/manifest.json'));
+      expect(File(url).existsSync(), isTrue);
+    });
+
     test(
       'ensureOfficialInstalled does not reinstall removed local torrent pack',
       () async {

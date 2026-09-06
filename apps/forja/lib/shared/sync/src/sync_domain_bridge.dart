@@ -1112,6 +1112,9 @@ class SyncDomainBridge {
       final existing = localByBase[baseUrl];
       if (existing != null && _stremioHasManifestResources(existing)) {
         // Keep hydrated local manifest; overlay synced feature targets + meta.
+        // Only persist + notify when cloud lean fields actually differ — every
+        // resume sync used to flip `changed` and remount Live Providers.
+        final before = _stremioLeanFingerprint(existing);
         if (syncedFeatures != null) {
           existing['features'] = syncedFeatures;
         }
@@ -1126,6 +1129,7 @@ class SyncDomainBridge {
         if (description != null && description.isNotEmpty) {
           existing['description'] = description;
         }
+        if (before == _stremioLeanFingerprint(existing)) continue;
         await _settings.saveStremioAddon(existing, notify: false);
         changed = true;
         continue;
@@ -1135,11 +1139,34 @@ class SyncDomainBridge {
       if (lean.containsKey('enabled')) {
         lean['enabled'] = StremioAddonFeatures.normalizeEnabled(lean['enabled']);
       }
+      // New lean row or unhydrated stub — skip notify churn if identical stub.
+      final prior = localByBase[baseUrl];
+      if (prior != null &&
+          _stremioLeanFingerprint(prior) == _stremioLeanFingerprint(lean)) {
+        continue;
+      }
       await _settings.saveStremioAddon(lean, notify: false);
       changed = true;
     }
 
     if (changed) SettingsService.addonChangeNotifier.value++;
+  }
+
+  /// Cloud lean fields that affect Live Providers / Stremio UI — not full manifest.
+  static String _stremioLeanFingerprint(Map<String, dynamic> addon) {
+    final features = addon['features'];
+    final feat = features is List
+        ? StremioAddonFeatures.normalize(features).join(',')
+        : '';
+    final enabled = addon.containsKey('enabled')
+        ? StremioAddonFeatures.normalizeEnabled(addon['enabled']).toString()
+        : '';
+    final name = (addon['name'] ?? '').toString().trim();
+    final description = (addon['description'] ?? '').toString().trim();
+    final base = SettingsService.normalizeStremioAddonBaseUrl(
+      addon['baseUrl']?.toString() ?? '',
+    );
+    return '$base|$enabled|$name|$description|$feat';
   }
 
   static bool _stremioHasManifestResources(Map<String, dynamic> addon) {

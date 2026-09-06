@@ -418,9 +418,9 @@ class _SettingsTvExpandableSideRowState
                 onTap: _toggle,
                 borderRadius: SettingsTokens.categoryTileRadius,
                 scaleOnFocus: 1.0,
-                showFocusRail: false,
-                showFocusFill: true,
-                showFocusBorder: false,
+                // Same settings list chrome as Addons rows (green rail + ink).
+                // showFocusFill alone does nothing without rail or border.
+                showFocusRail: true,
                 tvTabId: 'settings',
                 tvZone: ShellTvZone.settings,
                 ensureVisibleMode: ShellTvEnsureVisibleMode.item,

@@ -675,6 +675,39 @@ class PluginRegistry {
     return '$normalized/plugins/torrent/manifest.json';
   }
 
+  /// Debug checkout: local `plugins/live/manifest.json` for [loadScript] only.
+  @visibleForTesting
+  static String? devLiveManifestUrl() {
+    if (!kDebugMode) return null;
+    var explicit =
+        const String.fromEnvironment('FORJA_HQ_LIVE_MANIFEST_URL').trim();
+    if (explicit.isEmpty) {
+      explicit =
+          Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
+    }
+    if (explicit.isNotEmpty) return explicit;
+
+    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
+    if (root.isEmpty) {
+      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
+    }
+    if (root.isNotEmpty) {
+      final normalized =
+          root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+      return '$normalized/plugins/live/manifest.json';
+    }
+
+    var dir = Directory.current;
+    for (var i = 0; i < 8; i++) {
+      final candidate = File('${dir.path}/plugins/live/manifest.json');
+      if (candidate.existsSync()) return candidate.path;
+      final parent = dir.parent;
+      if (parent.path == dir.path) break;
+      dir = parent;
+    }
+    return null;
+  }
+
   /// Hydrate lean stubs and refresh remote packs when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     if (_officialEnsureFuture != null) {
@@ -1290,12 +1323,18 @@ class PluginRegistry {
         (plugin.isTorrent ||
             plugin.isHubCatalog ||
             plugin.id.startsWith('catalog-') ||
-            plugin.supportsLiveBroadcast)) {
-      final devUrl = plugin.isTorrent
-          ? devTorrentManifestUrl()
-          : (plugin.isHubCatalog
-              ? _asLocalFile(sourceUrl)?.path
-              : devCatalogManifestUrl());
+            plugin.supportsLiveBroadcast ||
+            plugin.isLiveResolve)) {
+      final String? devUrl;
+      if (plugin.isTorrent) {
+        devUrl = devTorrentManifestUrl();
+      } else if (plugin.isLiveResolve) {
+        devUrl = devLiveManifestUrl();
+      } else if (plugin.isHubCatalog) {
+        devUrl = _asLocalFile(sourceUrl)?.path;
+      } else {
+        devUrl = devCatalogManifestUrl();
+      }
       if (devUrl != null) {
         final fromCheckout = await _loadScriptFromLocalManifest(
           manifestUrl: devUrl,

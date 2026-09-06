@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 9** acceptance |
-| **Current slice** | Core tab + list/panel standard kit UX; pack layout override; TV D-pad on list/panel |
+| **Progress** | **5 / 5** components · **11 / 11** acceptance |
+| **Current slice** | Core tab + list/panel; merge opt-in + list load perf |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -40,6 +40,8 @@
 | 7 | R84-A07 | Disabling hub pack does not strip `live_matches` from navbar when user kept it visible | ✅ |
 | 8 | R84-A08 | Feature doc + changelog describe host feature + list/panel | ✅ |
 | 9 | R84-A09 | TV: D-pad walks dense match list + side streams panel (chrome, tabs, cats, cards); ←/→ between list and panel | ✅ |
+| 10 | R84-A10 | Settings → Merge matching events default off; soft/ESPN merge skipped until enabled | ✅ |
+| 11 | R84-A11 | Viewer hydrate batches into totals map without invalidating grid merge cache / remapping all matches | ✅ |
 
 ---
 
