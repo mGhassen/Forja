@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -10,18 +11,69 @@ import {
   expandProfileSettingsPayload,
 } from '@/lib/sync-domains'
 
+type ProfileSettingsRow = {
+  payload: ProfileSettingsPayload
+  updated_at: string | null
+}
+
+function profileSettingsKey(userId: string | undefined, profileId: string | undefined) {
+  return ['profile_settings', userId, profileId] as const
+}
+
+function mergeProfilePatch(
+  current: ProfileSettingsPayload,
+  patch: Partial<ProfileSettingsPayload>,
+): ProfileSettingsPayload {
+  return {
+    ...current,
+    ...patch,
+    playback: patch.playback
+      ? {
+          ...current.playback,
+          ...patch.playback,
+          addon_feature_iptv:
+            patch.playback.addon_feature_iptv !== undefined
+              ? patch.playback.addon_feature_iptv
+              : current.playback?.addon_feature_iptv,
+          addon_feature_live_matches:
+            patch.playback.addon_feature_live_matches !== undefined
+              ? patch.playback.addon_feature_live_matches
+              : current.playback?.addon_feature_live_matches,
+        }
+      : current.playback,
+    connectedServices: {
+      ...current.connectedServices,
+      ...patch.connectedServices,
+      stremio:
+        patch.connectedServices?.stremio ?? current.connectedServices?.stremio,
+      nuvio:
+        patch.connectedServices?.nuvio ?? current.connectedServices?.nuvio,
+      forja:
+        patch.connectedServices?.forja ?? current.connectedServices?.forja,
+    },
+    // Replace Features wholesale — shallow merge kept stale visibleIds when
+    // clearing tabs (empty array must win; issue 221).
+    navigation: patch.navigation ?? current.navigation,
+  }
+}
+
 export function useProfileSettings() {
   const { user } = useAuth()
   const { activeProfile } = useProfiles()
   const queryClient = useQueryClient()
+  const patchChain = useRef(Promise.resolve<void>(undefined))
+
+  const queryKey = profileSettingsKey(user?.id, activeProfile?.id)
 
   const query = useQuery({
-    queryKey: ['profile_settings', user?.id, activeProfile?.id],
+    queryKey,
     enabled: Boolean(user?.id && activeProfile?.id && supabaseConfigured),
-    queryFn: async (): Promise<{
-      payload: ProfileSettingsPayload
-      updated_at: string | null
-    }> => {
+    // Soft-pull parity with the app: refetch when the tab is focused / remounted
+    // so app → web Features land without a hard reload.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    queryFn: async (): Promise<ProfileSettingsRow> => {
       const { data, error } = await supabase
         .from('profile_settings')
         .select('payload, updated_at')
@@ -35,6 +87,42 @@ export function useProfileSettings() {
       }
     },
   })
+
+  // Visibility soft-pull + Realtime (async cloud → web).
+  useEffect(() => {
+    const userId = user?.id
+    const profileId = activeProfile?.id
+    if (!userId || !profileId || !supabaseConfigured) return
+
+    const key = profileSettingsKey(userId, profileId)
+    const softPull = () => {
+      void queryClient.invalidateQueries({ queryKey: key })
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') softPull()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    const channel = supabase
+      .channel(`profile_settings:${profileId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profile_settings',
+          filter: `profile_id=eq.${profileId}`,
+        },
+        () => softPull(),
+      )
+      .subscribe()
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      void supabase.removeChannel(channel)
+    }
+  }, [user?.id, activeProfile?.id, queryClient])
 
   const saveMutation = useMutation({
     mutationFn: async (payload: ProfileSettingsPayload) => {
@@ -52,53 +140,31 @@ export function useProfileSettings() {
       return { payload: expandProfileSettingsPayload(lean), updated_at: now }
     },
     onSuccess: (row) => {
-      queryClient.setQueryData(
-        ['profile_settings', user?.id, activeProfile?.id],
-        row,
-      )
+      queryClient.setQueryData(queryKey, row)
     },
   })
 
   const patchMutation = useMutation({
     mutationFn: async (patch: Partial<ProfileSettingsPayload>) => {
-      const current = query.data?.payload ?? emptyProfileSettingsPayload()
-      const next: ProfileSettingsPayload = {
-        ...current,
-        ...patch,
-        playback: patch.playback
-          ? {
-              ...current.playback,
-              ...patch.playback,
-              // Intentionally omit flags from a Playback-only draft must not
-              // wipe Addons unlocks (RFC-086). Use undefined-check — `??`
-              // would treat `false` as missing and keep cloud true.
-              addon_feature_iptv:
-                patch.playback.addon_feature_iptv !== undefined
-                  ? patch.playback.addon_feature_iptv
-                  : current.playback?.addon_feature_iptv,
-              addon_feature_live_matches:
-                patch.playback.addon_feature_live_matches !== undefined
-                  ? patch.playback.addon_feature_live_matches
-                  : current.playback?.addon_feature_live_matches,
-            }
-          : current.playback,
-        connectedServices: {
-          ...current.connectedServices,
-          ...patch.connectedServices,
-          stremio:
-            patch.connectedServices?.stremio ??
-            current.connectedServices?.stremio,
-          nuvio:
-            patch.connectedServices?.nuvio ?? current.connectedServices?.nuvio,
-          forja:
-            patch.connectedServices?.forja ?? current.connectedServices?.forja,
-        },
-        // Replace Features wholesale — shallow merge kept stale visibleIds when
-        // clearing tabs (empty array must win; issue 221).
-        navigation: patch.navigation ?? current.navigation,
-      }
-      await saveMutation.mutateAsync(next)
-      return expandProfileSettingsPayload(compactProfileSettingsPayload(next))
+      // Serialize patches — parallel commits were merging from a stale
+      // query.data and wiping the previous toggle (web looked “not async”).
+      const run = patchChain.current.then(async () => {
+        const cached = queryClient.getQueryData<ProfileSettingsRow>(queryKey)
+        const current = cached?.payload ?? emptyProfileSettingsPayload()
+        const next = mergeProfilePatch(current, patch)
+        // Optimistic cache so UI / sibling hooks see the edit immediately.
+        queryClient.setQueryData<ProfileSettingsRow>(queryKey, {
+          payload: next,
+          updated_at: cached?.updated_at ?? new Date().toISOString(),
+        })
+        const saved = await saveMutation.mutateAsync(next)
+        return saved.payload
+      })
+      patchChain.current = run.then(
+        () => undefined,
+        () => undefined,
+      )
+      return run
     },
   })
 

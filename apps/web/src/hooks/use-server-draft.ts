@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
  * Hydrates only when `profileId` or `updatedAt` changes — never on every
  * render / loading flicker. That prevents toggles and fields from snapping
  * back while the user is editing.
+ *
+ * [hydratePaused] skips soft-pull remounts while a local commit is in flight.
  */
 export function useServerDraft<T>(
   profileId: string | null,
@@ -14,6 +16,7 @@ export function useServerDraft<T>(
   serverValue: unknown,
   mapServer: (value: unknown) => T,
   makeEmpty: () => T,
+  hydratePaused = false,
 ): [T, Dispatch<SetStateAction<T>>] {
   const [draft, setDraft] = useState(makeEmpty)
   const mapRef = useRef(mapServer)
@@ -29,11 +32,12 @@ export function useServerDraft<T>(
 
   useEffect(() => {
     if (!profileId || !isReady) return
+    if (hydratePaused) return
     const key = `${profileId}:${updatedAt ?? 'null'}`
     if (hydratedKeyRef.current === key) return
     hydratedKeyRef.current = key
     setDraft(mapRef.current(serverValue))
-  }, [profileId, isReady, updatedAt, serverValue])
+  }, [profileId, isReady, updatedAt, serverValue, hydratePaused])
 
   return [draft, setDraft]
 }

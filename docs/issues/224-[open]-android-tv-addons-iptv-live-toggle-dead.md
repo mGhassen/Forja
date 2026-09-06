@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **40 / 40** fix · **0 / 4** acceptance |
+| **Progress** | **41 / 41** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -59,6 +59,7 @@
 | 38 | I224-T38 | Soft pull skips `addon_feature_*` while nav dirty (stale cloud false no longer strips Live Sports alone); session memory for Addons unlock flags | ✅ |
 | 39 | I224-T39 | Push then soft-pull crush: 8s nav-push grace; no Features-open soft-pull; no dirty heal-repush; await Features nav upsert; preserve hub ids in `tabOrder` export; loud `pushProfileSettings` logs | ✅ |
 | 40 | I224-T40 | Push overlays onto cached cloud payload — no pull-before-upsert RMW | ✅ |
+| 41 | I224-T41 | Web Profile: soft-pull on focus/visibility + realtime; serialize optimistic patches; pause draft hydrate while saves in flight | ✅ |
 
 ---
 
