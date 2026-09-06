@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **14 / 14** acceptance |
-| **Current slice** | Web Addons atomic flag+nav patch (no stale Features prune) |
+| **Progress** | **Complete** · **4 / 4** components · **16 / 16** acceptance |
+| **Current slice** | Web pack install → Features rail default-on |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -67,6 +67,8 @@ Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
 | 12 | R86-A12 | Ordinary prefs push merges playback but omits `addon_feature_*`; only intentional Addons push overlays those keys | ✅ |
 | 13 | R86-A13 | Pack remove prunes hub ids from cloud `tabOrder` / `visibleIds`; Addons OFF drops host ids from Features list | ✅ |
 | 14 | R86-A14 | Web Addons IPTV / Live: single `patch({ playback, navigation })` using nextAvailable — no parallel commit prune race | ✅ |
+| 15 | R86-A15 | Web Features inventory/hydrate uses cloud playback + packs (not empty playDraft); never-stored available ids default-on | ✅ |
+| 16 | R86-A16 | Web Forja pack add/remove updates navigation via `navigationAfterForjaPacksChange`; Features does not prune-on-hydrate | ✅ |
 
 ---
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
@@ -15,6 +15,7 @@ import {
   emptyForjaPayload,
   emptyPreferencesPayload,
   navTabLabel,
+  normalizeNavigationPayload,
   pruneNavigationToAvailable,
   type ForjaPayload,
   type NavigationPayload,
@@ -37,6 +38,32 @@ function emptyNavDraft(): NavDraft {
     order: [],
     visible: new Set(),
     defaultTab: DEFAULT_NAV_TAB,
+  }
+}
+
+/** Inventory from cloud slices — never empty playDraft on first hydrate. */
+function availableFromServer(
+  playbackPayloadValue: unknown,
+  forjaPayloadValue: unknown,
+): string[] {
+  const play = playbackPayloadValue as PreferencesPayload | undefined
+  const packs =
+    (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
+  return availableFeatureTabIds({
+    addonFeatureIptv: play?.addon_feature_iptv,
+    addonFeatureLiveMatches: play?.addon_feature_live_matches,
+    packs,
+  })
+}
+
+function navDraftFromServer(value: unknown): NavDraft {
+  // Do not prune against inventory here — drafts are empty on the first effect
+  // tick and would strip Addons/pack-enabled tabs (issue 224).
+  const n = normalizeNavigationPayload(value as NavigationPayload | undefined)
+  return {
+    order: n.tabOrder,
+    visible: new Set(n.visibleIds),
+    defaultTab: n.defaultTab,
   }
 }
 
@@ -71,16 +98,17 @@ export function AccountSettingsNavigationPage() {
     save: forja.save,
   })
 
+  // Cloud playback/packs first — drafts start empty until effects run.
   const availableIds = useMemo(
     () =>
-      availableFeatureTabIds({
-        addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-        addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
-        packs: packsDraft.draft.packs,
-      }),
+      availableFromServer(
+        playback.data?.payload ?? playDraft.draft,
+        forja.data?.payload ?? { packs: packsDraft.draft.packs },
+      ),
     [
-      playDraft.draft.addon_feature_iptv,
-      playDraft.draft.addon_feature_live_matches,
+      playback.data?.payload,
+      forja.data?.payload,
+      playDraft.draft,
       packsDraft.draft.packs,
     ],
   )
@@ -97,21 +125,7 @@ export function AccountSettingsNavigationPage() {
     updatedAt: navigation.data?.updated_at,
     isReady: Boolean(navigation.data) && !navigation.isLoading,
     serverValue: navigation.data?.payload,
-    mapServer: (value: unknown) => {
-      const pruned = pruneNavigationToAvailable(
-        value as NavigationPayload | undefined,
-        availableFeatureTabIds({
-          addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-          addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
-          packs: packsDraft.draft.packs,
-        }),
-      )
-      return {
-        order: pruned.tabOrder,
-        visible: new Set(pruned.visibleIds),
-        defaultTab: pruned.defaultTab,
-      }
-    },
+    mapServer: navDraftFromServer,
     makeEmpty: emptyNavDraft,
     save: navigation.save,
     toPayload: (d) =>
@@ -124,6 +138,23 @@ export function AccountSettingsNavigationPage() {
         availableIds,
       ),
   })
+
+  // Pack / Addons unlock can land while Features is open (or hydrate before
+  // inventory is known). Default-on any available id not yet in draft order
+  // and persist so the app rail matches.
+  useEffect(() => {
+    void commit((prev) => {
+      const stillMissing = availableIds.filter((id) => !prev.order.includes(id))
+      if (stillMissing.length === 0) return prev
+      const visible = new Set(prev.visible)
+      for (const id of stillMissing) visible.add(id)
+      return {
+        ...prev,
+        order: [...prev.order, ...stillMissing],
+        visible,
+      }
+    })
+  }, [availableIds, commit])
 
   /** Derived inventory ordered by draft.order, then any new available ids. */
   const featureOrder = useMemo(() => {

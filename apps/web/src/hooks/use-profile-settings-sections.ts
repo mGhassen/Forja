@@ -8,8 +8,7 @@ import type {
   NavigationPayload,
 } from '@/lib/sync-domains'
 import {
-  availableFeatureTabIds,
-  pruneNavigationToAvailable,
+  navigationAfterForjaPacksChange,
 } from '@/lib/sync-domains'
 
 /**
@@ -115,33 +114,19 @@ export function useForjaSetting() {
     data,
     save: async (payload: ForjaPayload) => {
       const current = settings.data?.payload
-      const prevPacks = current?.connectedServices?.forja?.packs ?? []
-      const prevAvailable = availableFeatureTabIds({
+      const navigation = navigationAfterForjaPacksChange({
+        navigation: current?.navigation,
+        prevPacks: current?.connectedServices?.forja?.packs ?? [],
+        nextPacks: payload.packs ?? [],
         addonFeatureIptv: current?.playback?.addon_feature_iptv,
         addonFeatureLiveMatches: current?.playback?.addon_feature_live_matches,
-        packs: prevPacks,
       })
-      const available = availableFeatureTabIds({
-        addonFeatureIptv: current?.playback?.addon_feature_iptv,
-        addonFeatureLiveMatches: current?.playback?.addon_feature_live_matches,
-        packs: payload.packs ?? [],
-      })
-      const prevSet = new Set(prevAvailable)
-      const newlyAvailable = available.filter((id) => !prevSet.has(id))
-      const pruned = pruneNavigationToAvailable(current?.navigation, available)
-      const visibleIds = [
-        ...new Set([...pruned.visibleIds, ...newlyAvailable]),
-      ]
       await settings.patch({
         connectedServices: {
           ...current?.connectedServices,
           forja: payload,
         },
-        navigation: {
-          ...pruned,
-          visibleIds,
-          tabOrder: pruned.tabOrder,
-        },
+        navigation,
       })
     },
   }

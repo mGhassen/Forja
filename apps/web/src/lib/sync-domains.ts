@@ -493,6 +493,69 @@ export function pruneNavigationToAvailable(
   return { visibleIds, tabOrder, defaultTab }
 }
 
+/**
+ * Prune to [availableIds], and default-on any available id that was never
+ * stored in cloud nav (Addons unlock / first hub sight — R86-A07).
+ * Ids already in tabOrder/visibleIds keep their Features on/off choice.
+ */
+export function pruneNavigationDefaultOnNew(
+  n: NavigationPayload | undefined,
+  availableIds: Iterable<string>,
+): Required<NavigationPayload> {
+  const available = [...availableIds].filter((id) => isPersistedNavId(id))
+  const raw = normalizeNavigationPayload(n)
+  const everStored = new Set([...raw.tabOrder, ...raw.visibleIds])
+  const pruned = pruneNavigationToAvailable(n, available)
+  const visibleIds = [...pruned.visibleIds]
+  for (const id of available) {
+    if (!everStored.has(id) && !visibleIds.includes(id)) {
+      visibleIds.push(id)
+    }
+  }
+  let defaultTab = pruned.defaultTab
+  if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
+    defaultTab = visibleIds.length > 0 ? visibleIds[0]! : DEFAULT_NAV_TAB
+  }
+  return {
+    visibleIds,
+    tabOrder: pruned.tabOrder,
+    defaultTab,
+  }
+}
+
+/**
+ * After Forja pack membership changes: prune to new inventory and default-on
+ * every hub id that just became available (same as app pack enable → rail on).
+ */
+export function navigationAfterForjaPacksChange(opts: {
+  navigation: NavigationPayload | undefined
+  prevPacks: ForjaPackRow[]
+  nextPacks: ForjaPackRow[]
+  addonFeatureIptv?: boolean
+  addonFeatureLiveMatches?: boolean
+}): Required<NavigationPayload> {
+  const flags = {
+    addonFeatureIptv: opts.addonFeatureIptv,
+    addonFeatureLiveMatches: opts.addonFeatureLiveMatches,
+  }
+  const prevAvailable = availableFeatureTabIds({
+    ...flags,
+    packs: opts.prevPacks,
+  })
+  const nextAvailable = availableFeatureTabIds({
+    ...flags,
+    packs: opts.nextPacks,
+  })
+  const prevSet = new Set(prevAvailable)
+  const newlyAvailable = nextAvailable.filter((id) => !prevSet.has(id))
+  const pruned = pruneNavigationToAvailable(opts.navigation, nextAvailable)
+  return {
+    visibleIds: [...new Set([...pruned.visibleIds, ...newlyAvailable])],
+    tabOrder: mergeNavTabOrder(pruned.tabOrder, newlyAvailable),
+    defaultTab: pruned.defaultTab,
+  }
+}
+
 export function emptyPreferencesPayload(): PreferencesPayload {
   return {
     play_source_torrent_enabled: true,

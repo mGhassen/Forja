@@ -218,8 +218,10 @@ export function AccountSettingsAddonsPage() {
     void (async () => {
       const flagKey =
         navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
+      const prevPlay = playDraft.draft
+      const prevNav = navDraft.draft
       const nextPlayback: PreferencesPayload = {
-        ...playDraft.draft,
+        ...prevPlay,
         [flagKey]: on,
         ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
       }
@@ -228,22 +230,30 @@ export function AccountSettingsAddonsPage() {
         addonFeatureLiveMatches: nextPlayback.addon_feature_live_matches,
         packs: packsDraft.draft.packs,
       })
-      const visible = new Set(navDraft.draft.visible)
+      const visible = new Set(prevNav.visible)
       if (on) visible.add(navId)
       else visible.delete(navId)
-      const order = navDraft.draft.order.includes(navId)
-        ? navDraft.draft.order
+      const order = prevNav.order.includes(navId)
+        ? prevNav.order
         : on
-          ? [...navDraft.draft.order, navId]
-          : navDraft.draft.order
+          ? [...prevNav.order, navId]
+          : prevNav.order
       const nextNav = pruneNavigationToAvailable(
         {
           visibleIds: order.filter((id) => visible.has(id)),
           tabOrder: order,
-          defaultTab: navDraft.draft.defaultTab,
+          defaultTab: prevNav.defaultTab,
         },
         nextAvailable,
       )
+
+      playDraft.setDraft(nextPlayback)
+      navDraft.setDraft({
+        order: nextNav.tabOrder,
+        visible: new Set(nextNav.visibleIds),
+        defaultTab: nextNav.defaultTab,
+      })
+      availableIdsRef.current = nextAvailable
 
       setHostBusy(true)
       setHostError(null)
@@ -252,16 +262,11 @@ export function AccountSettingsAddonsPage() {
           playback: nextPlayback,
           navigation: nextNav,
         })
-        playDraft.setDraft(nextPlayback)
-        navDraft.setDraft({
-          order: nextNav.tabOrder,
-          visible: new Set(nextNav.visibleIds),
-          defaultTab: nextNav.defaultTab,
-        })
-        availableIdsRef.current = nextAvailable
         setHostFlash(true)
         window.setTimeout(() => setHostFlash(false), 2000)
       } catch (e) {
+        playDraft.setDraft(prevPlay)
+        navDraft.setDraft(prevNav)
         setHostError(e instanceof Error ? e : new Error('Save failed'))
       } finally {
         setHostBusy(false)

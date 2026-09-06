@@ -49,12 +49,13 @@ export function useProfileSettings() {
         updated_by: user.id,
       })
       if (error) throw error
-      return now
+      return { payload: expandProfileSettingsPayload(lean), updated_at: now }
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['profile_settings', user?.id, activeProfile?.id],
-      })
+    onSuccess: (row) => {
+      queryClient.setQueryData(
+        ['profile_settings', user?.id, activeProfile?.id],
+        row,
+      )
     },
   })
 
@@ -69,13 +70,16 @@ export function useProfileSettings() {
               ...current.playback,
               ...patch.playback,
               // Intentionally omit flags from a Playback-only draft must not
-              // wipe Addons unlocks (RFC-086).
+              // wipe Addons unlocks (RFC-086). Use undefined-check — `??`
+              // would treat `false` as missing and keep cloud true.
               addon_feature_iptv:
-                patch.playback.addon_feature_iptv ??
-                current.playback?.addon_feature_iptv,
+                patch.playback.addon_feature_iptv !== undefined
+                  ? patch.playback.addon_feature_iptv
+                  : current.playback?.addon_feature_iptv,
               addon_feature_live_matches:
-                patch.playback.addon_feature_live_matches ??
-                current.playback?.addon_feature_live_matches,
+                patch.playback.addon_feature_live_matches !== undefined
+                  ? patch.playback.addon_feature_live_matches
+                  : current.playback?.addon_feature_live_matches,
             }
           : current.playback,
         connectedServices: {
