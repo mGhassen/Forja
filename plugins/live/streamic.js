@@ -233,17 +233,8 @@ async function resolveUrl(ctx, url, name, cfg) {
   var unlocked = await unlockEmbed(ctx, raw, cfg);
   if (unlocked) return withName(unlocked, name || 'Streamic');
 
-  // Always list every mirror — host unlocks again on tap.
-  return {
-    url: raw,
-    name: name || 'Streamic',
-    headers: {
-      Referer: ref,
-      Origin: streamicOrigin(cfg),
-      'User-Agent': ua(),
-    },
-    directPlayback: false,
-  };
+  // Unlock failed — omit (never hand embed HTML to native player).
+  return null;
 }
 
 async function mapWithConcurrency(items, limit, fn) {

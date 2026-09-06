@@ -494,6 +494,11 @@ class LiveMatchesEngine {
     }
     final url = (first['url'] ?? '').toString().trim();
     if (url.isEmpty) return null;
+    // Embed HTML pages are not native-playable (no-embed-playback).
+    final ready = url.toLowerCase().contains('127.0.0.1') ||
+        url.toLowerCase().contains('/hls-proxy') ||
+        RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)', caseSensitive: false).hasMatch(url);
+    if (!ready) return null;
     final headers = <String, String>{};
     final h = first['headers'];
     if (h is Map) {

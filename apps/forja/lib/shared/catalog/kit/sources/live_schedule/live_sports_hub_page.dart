@@ -161,6 +161,9 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   /// Lazy catalog scrape in flight (before plugin rows mark `loading`).
   bool _forjaLiveCatalogHydrating = false;
 
+  /// ESPN / schedule enrich merge after catalogs settle.
+  bool _forjaLiveCatalogMerging = false;
+
   /// Single-flight guard — duplicate kicks stacked engine catalog jobs.
   Future<void>? _forjaLiveGridCatalogInflight;
   int _forjaLiveGridCatalogInflightSerial = 0;
@@ -207,6 +210,10 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     setState(() {
       _streamsPanelMatch = null;
       _streamsPanelIframeAnchor = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      (this as _LiveMatchesData)._restoreLiveMatchesTvFocus();
     });
   }
 

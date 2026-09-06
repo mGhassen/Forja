@@ -201,6 +201,13 @@ pub fn streamed_matches() -> String {
     ok_items(by_id.into_values().collect())
 }
 
+fn is_streamed_pk_goat_source(source: &str) -> bool {
+    matches!(
+        source.trim().to_ascii_lowercase().as_str(),
+        "admin" | "delta" | "golf" | "ppv" | "bravo"
+    )
+}
+
 pub fn streamed_streams(source: &str, id: &str) -> String {
     let url = format!("{STREAMED_BASE}/api/stream/{source}/{id}");
     let list = http_get(&url, &streamed_headers(), 12)
@@ -215,7 +222,12 @@ pub fn streamed_streams(source: &str, id: &str) -> String {
                 .is_some_and(|u| !u.is_empty())
         })
         .collect();
-    if items.is_empty() && !source.is_empty() && !id.is_empty() {
+    // Only invent embed.st for real GOAT slots — never for streamic/watchfooty ids.
+    if items.is_empty()
+        && !source.is_empty()
+        && !id.is_empty()
+        && is_streamed_pk_goat_source(source)
+    {
         items.push(json!({
             "id": id,
             "streamNo": 1,
@@ -531,6 +543,14 @@ mod tests {
             items[0]["embedUrl"],
             "https://embed.st/embed/delta/live-event_indycar-test/1"
         );
+    }
+
+    #[test]
+    fn streamed_streams_no_fake_embed_for_foreign_source() {
+        let raw = streamed_streams("streamic", "ENP2Kbxp");
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        let items = parsed["items"].as_array().unwrap();
+        assert!(items.is_empty(), "must not invent embed.st for streamic ids");
     }
 
 

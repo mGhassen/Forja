@@ -592,10 +592,8 @@ mixin _LiveMatchesPlayback
   /// (cross-provider rotate is movie-Sources-hostile).
   Future<void> openPanelLiveEngineSource(IptvPlaySource picked) async {
     final url = picked.url.trim();
-    final ready = iptvLiveEnginePlayUrlReady(url) ||
-        (picked.liveEngineResolveParams == null &&
-            (url.startsWith('http://') || url.startsWith('https://')) &&
-            !(url.startsWith('pending:')));
+    // Native play only — never treat a catalog embed page as ready.
+    final ready = iptvLiveEnginePlayUrlReady(url);
     if (ready) {
       await _openEngineNativeSources(
         title: picked.pickerTitle,
@@ -617,10 +615,7 @@ mixin _LiveMatchesPlayback
     if (!ok) return;
     final handoff = resolved;
     final handoffUrl = handoff?.url.trim() ?? '';
-    if (handoff == null ||
-        !(iptvLiveEnginePlayUrlReady(handoffUrl) ||
-            handoffUrl.startsWith('http://') ||
-            handoffUrl.startsWith('https://'))) {
+    if (handoff == null || !iptvLiveEnginePlayUrlReady(handoffUrl)) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
@@ -1344,7 +1339,9 @@ mixin _LiveMatchesPlayback
         },
       );
     }
-    if (result == null || !result.playable) {
+    if (result == null ||
+        !result.playable ||
+        !iptvLiveEnginePlayUrlReady(result.url)) {
       if (allowSourceRefFallback && match.isForjaLive) {
         return _unlockForjaLiveSourceRef(
           match,

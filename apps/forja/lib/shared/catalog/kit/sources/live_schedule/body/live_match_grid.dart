@@ -911,87 +911,17 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
             (entry is _LiveMatchGridEntryMerged &&
                 entry.streamed.id == selectedId));
 
-    final row = Container(
-      color: selected
-          ? ForjaShellColors.chipSelectedBg.withValues(alpha: 0.35)
-          : Colors.transparent,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          if (live)
-            Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF22C55E),
-                shape: BoxShape.circle,
-              ),
-            )
-          else
-            const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: playable ? Colors.white : Colors.white54,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (meta.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (viewers > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                '$viewers',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          if (playable)
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(Icons.chevron_right_rounded,
-                  color: Colors.white38, size: 20),
-            ),
-        ],
-      ),
-    );
-
-    return shellFocusableTap(
-      context: context,
+    return _DenseLiveMatchListTile(
+      title: title,
+      meta: meta,
+      live: live,
+      playable: playable,
+      viewers: viewers,
+      selected: selected,
+      index: index,
+      tvFocus: tvFocus,
       onTap: onTap,
-      borderRadius: 0,
-      scaleOnFocus: 1.0,
-      showFocusFill: true,
-      listIndex: index,
-      tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
-      tvRowId: tvFocus ? LiveSportsHubPageState._gridRowId : null,
-      tvZone: ShellTvZone.grid,
-      tvItemIndex: tvFocus ? index : null,
+      onUpEdge: tvFocus ? _s._gridUpEdge(context, index, 1) : null,
       onRightEdge: tvFocus && _s._streamsPanelMatch != null
           ? () => ShellTvFocusCoordinator.focusRowItem(
                 LiveSportsHubPageState._tabId,
@@ -999,7 +929,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
                 0,
               )
           : null,
-      child: row,
     );
   }
 
@@ -1113,4 +1042,155 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     );
   }
 
+}
+
+/// Dense match row — settings list chrome: inkHover fill + brand-green left rail
+/// on selected / hover / focus (no flat grey slab).
+class _DenseLiveMatchListTile extends StatefulWidget {
+  const _DenseLiveMatchListTile({
+    required this.title,
+    required this.meta,
+    required this.live,
+    required this.playable,
+    required this.viewers,
+    required this.selected,
+    required this.index,
+    required this.tvFocus,
+    required this.onTap,
+    this.onUpEdge,
+    this.onRightEdge,
+  });
+
+  final String title;
+  final String meta;
+  final bool live;
+  final bool playable;
+  final int viewers;
+  final bool selected;
+  final int index;
+  final bool tvFocus;
+  final VoidCallback? onTap;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  State<_DenseLiveMatchListTile> createState() =>
+      _DenseLiveMatchListTileState();
+}
+
+class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _lit => widget.selected || _focused || _hovered;
+
+  @override
+  Widget build(BuildContext context) {
+    final titleWeight = _lit ? FontWeight.w700 : FontWeight.w600;
+    final row = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _lit ? ForjaShellColors.inkHover : Colors.transparent,
+        border: Border(
+          left: BorderSide(
+            color: _lit ? ForjaShellColors.brandGreen : Colors.transparent,
+            width: 2.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (widget.live)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFF22C55E),
+                shape: BoxShape.circle,
+              ),
+            )
+          else
+            const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: widget.playable
+                        ? ForjaShellColors.textPrimary
+                        : Colors.white54,
+                    fontSize: 14,
+                    fontWeight: titleWeight,
+                  ),
+                ),
+                if (widget.meta.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      widget.meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (widget.viewers > 0)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                '${widget.viewers}',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          if (widget.playable)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: ForjaShellColors.iconMuted,
+                size: 20,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 0,
+      scaleOnFocus: 1.0,
+      showFocusFill: false,
+      showFocusBorder: false,
+      showFocusRail: false,
+      suppressInkHover: true,
+      listIndex: widget.index,
+      gridIndex: widget.tvFocus ? widget.index : null,
+      gridColumns: widget.tvFocus ? 1 : null,
+      tvTabId: widget.tvFocus ? LiveSportsHubPageState._tabId : null,
+      tvRowId: widget.tvFocus ? LiveSportsHubPageState._gridRowId : null,
+      tvZone: widget.tvFocus ? ShellTvZone.grid : null,
+      tvItemIndex: widget.tvFocus ? widget.index : null,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onUpEdge: widget.onUpEdge,
+      onRightEdge: widget.onRightEdge,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
+      child: row,
+    );
+  }
 }

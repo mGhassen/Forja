@@ -215,7 +215,7 @@ class _StreamedMatch {
     this.livePluginId = '',
   });
 
-  bool get isMut => catalog == 'mut' || inlineStreams.isNotEmpty;
+  bool get isMut => catalog == 'mut';
 
   bool get isStremio => stremioBaseUrl.isNotEmpty;
 
@@ -426,6 +426,20 @@ int _sheetTotalViewers(Iterable<_StreamedStreamChoice> choices) {
   return total;
 }
 
+/// streamed.pk `/api/stream/{source}/{id}` GOAT slots only — not Streamic/etc.
+bool _isStreamedPkGoatSource(String source) {
+  switch (source.trim().toLowerCase()) {
+    case 'admin':
+    case 'delta':
+    case 'golf':
+    case 'ppv':
+    case 'bravo':
+      return true;
+    default:
+      return false;
+  }
+}
+
 /// Mirror rows for one catalog source ref — inline catalog streams or streamed.pk API.
 Future<List<_StreamedStream>> _catalogStreamsForSourceRef(
   _StreamedMatch match,
@@ -439,6 +453,8 @@ Future<List<_StreamedStream>> _catalogStreamsForSourceRef(
         .toList();
     if (inline.isNotEmpty) return inline;
   }
+  // Never invent embed.st URLs for Streamic / WatchFooty / TimStreams ids.
+  if (!_isStreamedPkGoatSource(token)) return const [];
   return _fetchStreamedStreams(sourceRef, allowFallback: allowFallback);
 }
 
@@ -1559,6 +1575,7 @@ List<_StreamedStream> _streamedEmbedFallbackStreams(_StreamedSourceRef sourceRef
   final source = sourceRef.source.trim();
   final id = sourceRef.id.trim();
   if (source.isEmpty || id.isEmpty) return const [];
+  if (!_isStreamedPkGoatSource(source)) return const [];
   if (source.toLowerCase() == 'echo') return const [];
   return [
     _StreamedStream(

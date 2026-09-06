@@ -17,11 +17,12 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 
 ## What you can do
 
-- Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout. On **Android TV**, D-pad walks the list; **→** opens into the streams panel when a match is selected.
+- Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout. Hover / D-pad focus uses the same green left-bar highlight as Settings list rows; the open match stays lit while the streams panel is open. On **Android TV**, D-pad walks the list; **→** opens into the streams panel when a match is selected.
 - Tap a **live** match to open a **right panel** (~40% width on desktop/TV) with **Providers** (Forja Live + Stremio) and **Live TV** (Xtream-matched channels). Channel cards are **one per row** (full panel width). The panel sits under the sport category bar and shrinks only the match list — categories stay full width. There is no separate details page on the standard path. On TV, D-pad moves Reload / Close → Providers / Live TV → stream cards (and Live TV categories); **←** returns to the match list.
 - Use the **reload** control next to Close in the streams panel header to force a fresh Providers / Live TV search — bypasses the ~30 minute source cache. Installing or removing a Stremio addon also invalidates that cache automatically.
-- Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live).
-- Use **Catalog** / **Schedule** in the top bar (and **Portals** when Forja Sports is enabled). **Portals** overlays the match list and the streams panel. While catalogs are still loading or merging, **Refresh** is replaced by a short progress line (current catalog + count). **Refresh** returns when the schedule is ready.
+- Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream** — the player does not open an embed page or reconnect forever on HTML.
+- Stremio Live TV rows (e.g. flixnest signed playlists) do **not** show a green/red hover status bar — a bare HTTP check false-fails while the player still opens after a few retries.
+- Use **Catalog** / **Schedule** in the top bar (and **Portals** when Forja Sports is enabled). **Portals** overlays the match list and the streams panel. While catalogs are still loading or merging, **Refresh** is replaced by a short progress line (current catalog + count, or **Merging catalogs…**). **Refresh** returns when the schedule is ready.
 - Filter by sport chips when more than one sport is in the schedule; **24/7** covers always-on channels. The chip row shows only what fits at full size and scrolls horizontally for the rest (no shrinking).
 - On phone, the streams panel is a near-full-width sheet; on desktop/TV it takes **40%** of the width and pushes the match list (not the category chips).
 

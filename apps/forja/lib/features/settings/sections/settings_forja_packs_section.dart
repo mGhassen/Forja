@@ -647,19 +647,11 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
   @override
   Widget build(BuildContext context) {
     final hasUpdate = widget.update != null;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final packSwitch = IgnorePointer(
-      child: ForjaSwitch(
-        value: widget.packEnabled,
-        scale: ForjaSwitch.settingsScale,
-        onChanged: (_) {},
-        emphasized: _chromeActive,
-      ),
-    );
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (tv)
+        if (leanback)
           shellFocusableTap(
             context: context,
             onTap: () => widget.onTogglePack(!widget.packEnabled),
@@ -686,7 +678,14 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
               if (_hovered == h) return;
               setState(() => _hovered = h);
             },
-            child: packSwitch,
+            child: IgnorePointer(
+              child: ForjaSwitch(
+                value: widget.packEnabled,
+                scale: ForjaSwitch.settingsScale,
+                onChanged: (_) {},
+                emphasized: _chromeActive,
+              ),
+            ),
           )
         else
           MouseRegion(
@@ -699,10 +698,11 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
               setState(() => _hovered = false);
             },
             cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => widget.onTogglePack(!widget.packEnabled),
-              child: packSwitch,
+            child: ForjaSwitch(
+              value: widget.packEnabled,
+              scale: ForjaSwitch.settingsScale,
+              onChanged: (v) => widget.onTogglePack(v),
+              emphasized: _chromeActive,
             ),
           ),
         if (widget.showOfficialBadge)

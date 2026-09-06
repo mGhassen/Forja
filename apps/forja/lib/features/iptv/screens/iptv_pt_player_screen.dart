@@ -296,19 +296,22 @@ String iptvLiveSourceProbeKey(IptvPlaySource src) {
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
 String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
   if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+      // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
+      // retries (same cold-open flake as "Failed to open" → healthy streak).
+      src.liveSourceKind == IptvLiveSourceKind.stremio) {
     return null;
   }
   final url = src.url.trim();
-    if (iptvLiveEnginePlayUrlReady(url)) {
-      // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
-      // engine probe false-negatives while Exo/MediaKit play fine with headers.
-      if (src.liveSourceKind == IptvLiveSourceKind.liveEngine &&
-          (LiveGoatUnlock.preferDirectEnginePlayback(url) ||
-              (Uri.tryParse(url)?.host.toLowerCase().contains('wfty.st') ??
-                  false))) {
-        return null;
-      }
+  if (iptvLiveEnginePlayUrlReady(url)) {
+    // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
+    // engine probe false-negatives while Exo/MediaKit play fine with headers.
+    if (src.liveSourceKind == IptvLiveSourceKind.liveEngine &&
+        (LiveGoatUnlock.preferDirectEnginePlayback(url) ||
+            (Uri.tryParse(url)?.host.toLowerCase().contains('wfty.st') ??
+                false))) {
+      return null;
+    }
     if (src.headers.isNotEmpty) return null;
     return url;
   }
@@ -325,8 +328,9 @@ String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
 }
 
 /// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
-/// Covers embed pages, portal Live TV, signed Streamed/WatchFooty HLS (Referer),
-/// and direct-playback rows that drop [IptvPlaySource.liveEngineEmbedUrl].
+/// Covers embed pages, portal Live TV, Stremio Live TV (signed flixnest JWT),
+/// signed Streamed/WatchFooty HLS (Referer), and direct-playback rows that
+/// drop [IptvPlaySource.liveEngineEmbedUrl].
 bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }

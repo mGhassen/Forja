@@ -665,7 +665,11 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         _s._bufferingClearAt ??= DateTime.now();
         // Do not fake [_lastPosChange] here — that made empty-cache format
         // fails look "working" and skipped recovery until native crash.
-        if (!_playbackStarted && _livePlaybackProfile) {
+        // Cold open: mpv can leave buffering then emit "Failed to open"
+        // (flixnest). Only treat as painted when demuxer already has cushion.
+        if (!_playbackStarted &&
+            _livePlaybackProfile &&
+            _s._cacheAheadSecs > 0) {
           _noteVideoFrame(reason: 'buffering done');
           return;
         }

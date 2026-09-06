@@ -108,6 +108,15 @@ void main() {
     expect(iptvLiveSourceProbeUrl(watchfootyDirect), isNull);
     expect(iptvLiveSourceProbeSkipped(watchfootyDirect), isTrue);
 
+    const stremioFlixnest = IptvPlaySource(
+      url:
+          'https://free.flixnest.app/dlstreams/stream/dlstreams%3Achannel%3A365.m3u8?t=eyJhbGciOiJIUzI1NiJ9.sig',
+      label: 'DL Streams',
+      liveSourceKind: IptvLiveSourceKind.stremio,
+    );
+    expect(iptvLiveSourceProbeUrl(stremioFlixnest), isNull);
+    expect(iptvLiveSourceProbeSkipped(stremioFlixnest), isTrue);
+
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
       label: 'Golf',

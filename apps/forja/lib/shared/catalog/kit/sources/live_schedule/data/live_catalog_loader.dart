@@ -119,10 +119,13 @@ mixin _LiveMatchesForjaLive
 
   bool get _forjaLiveCatalogBusy =>
       _usesForjaLiveLazyCatalog &&
-      (_s._forjaLiveCatalogHydrating || _forjaLiveAnyLoading);
+      (_s._forjaLiveCatalogHydrating ||
+          _forjaLiveAnyLoading ||
+          _s._forjaLiveCatalogMerging);
 
   /// Top-bar / empty-body copy while catalogs scrape or merge into the grid.
   String get _forjaLiveCatalogProgressLabel {
+    if (_s._forjaLiveCatalogMerging) return 'Merging catalogs…';
     final scoped = _gridScopedPluginLoads.toList();
     if (scoped.isEmpty) return 'Loading catalogs…';
     final total = scoped.length;
@@ -138,7 +141,7 @@ mixin _LiveMatchesForjaLive
       return 'Loading $name… $progress';
     }
     if (_s._forjaLiveCatalogHydrating) return 'Loading catalogs…';
-    return 'Merging catalogs…';
+    return 'Loading catalogs…';
   }
 
   void _setForjaLiveCatalogHydrating(bool value) {
@@ -277,6 +280,7 @@ mixin _LiveMatchesForjaLive
   }) {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
+    _s._forjaLiveCatalogMerging = false;
     _invalidateLiveMatchesGridCache();
     // Schedule Refresh / catalog reset — always drop Providers + Live TV caches.
     _clearProvidersResultsCache();
@@ -713,26 +717,38 @@ mixin _LiveMatchesForjaLive
     if (_forjaLiveAnyLoading) {
       return;
     }
-    if (!await _isScheduleEnrichCatalogEnabled()) return;
+    if (_s._forjaLiveCatalogMerging) return;
 
-    var enrichGames = _s._espnGames;
-    if (enrichGames.isEmpty) {
-      enrichGames = await _IptvSportsMatchService.fetchEspnGames();
+    setState(() => _s._forjaLiveCatalogMerging = true);
+    try {
+      if (!await _isScheduleEnrichCatalogEnabled()) return;
+      if (!mounted) return;
+
+      var enrichGames = _s._espnGames;
+      if (enrichGames.isEmpty) {
+        enrichGames = await _IptvSportsMatchService.fetchEspnGames();
+      }
+      if (!mounted) return;
+
+      final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
+      final merged = _IptvSportsMatchService.mergeWithEspn(
+        base,
+        enrichGames,
+        appendUnmatched: false,
+      );
+      setState(() {
+        _invalidateLiveMatchesGridCache();
+        _s._streamedMatches = merged.streamed;
+        _s._espnGames = merged.espnGames;
+      });
+      _maybeRebuildSportTabsFromCurrentMatches();
+    } finally {
+      if (mounted) {
+        setState(() => _s._forjaLiveCatalogMerging = false);
+      } else {
+        _s._forjaLiveCatalogMerging = false;
+      }
     }
-    if (!mounted) return;
-
-    final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
-    final merged = _IptvSportsMatchService.mergeWithEspn(
-      base,
-      enrichGames,
-      appendUnmatched: false,
-    );
-    setState(() {
-      _invalidateLiveMatchesGridCache();
-      _s._streamedMatches = merged.streamed;
-      _s._espnGames = merged.espnGames;
-    });
-    _maybeRebuildSportTabsFromCurrentMatches();
   }
 
   Future<Map<String, dynamic>> _liveCatalogExtraConfig(

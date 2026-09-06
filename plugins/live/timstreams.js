@@ -114,13 +114,8 @@ async function resolveUrl(ctx, url, name, cfg) {
   var unlocked = await unlockEmbed(ctx, raw, cfg || {});
   if (unlocked) return withName(unlocked, name || 'TimStreams');
 
-  // Always surface the mirror — host re-unlocks on tap (never drop / webviewOnly).
-  return {
-    url: raw,
-    name: name || 'TimStreams',
-    headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() },
-    directPlayback: false,
-  };
+  // Unlock failed — omit (never hand embed HTML to native player).
+  return null;
 }
 
 async function resolveByEvent(ctx, cfg) {

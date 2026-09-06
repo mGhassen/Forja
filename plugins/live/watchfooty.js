@@ -132,7 +132,8 @@ async function resolveWatchfootyMatch(ctx, mid) {
       }
       continue;
     }
-    // Always list every API mirror — host unlocks again on tap.
+    // Unlock failed — list embed for unlock-on-tap only when host will re-resolve.
+    // Host rejects non-m3u8 open; keep row so user can retry after CDN recovers.
     out.push({
       url: embed,
       name: label,

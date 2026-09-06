@@ -1374,10 +1374,11 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   }
 
   Future<bool> _liveHoverProbe() async {
+    final probeUrl = iptvLiveSourceProbeUrl(source);
+    // Skip before cache — stale red from a prior JWT probe must not stick.
+    if (probeUrl == null) return iptvLiveSourceProbeSkipped(source);
     final probed = healthProbe.healthFor(_probeKey);
     if (probed != null) return probed;
-    final probeUrl = iptvLiveSourceProbeUrl(source);
-    if (probeUrl == null) return iptvLiveSourceProbeSkipped(source);
     return healthProbe.checkNow(_probeKey, probeUrl);
   }
 
@@ -1459,7 +1460,9 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       builder: (context, _) {
         final cachedHealth = _isPortalIptvRow
             ? _portalCatalogHealth()
-            : healthProbe.healthFor(_probeKey);
+            : (iptvLiveSourceProbeUrl(source) == null
+                ? null
+                : healthProbe.healthFor(_probeKey));
         if (_isLivePluginRow) {
           final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
               ? source.liveProviderBadge!.trim()
@@ -1467,6 +1470,7 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
           final qualityBadge = _liveQualityBadge(source);
           final viewers = source.liveViewerCount;
           final host = _liveEmbedHost(source);
+          final canProbe = iptvLiveSourceProbeUrl(source) != null;
           return SourcesPanelChannelTile(
             title: source.pickerTitle,
             provider: provider.isEmpty ? null : provider,
@@ -1491,8 +1495,8 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
             tvRowId: tvRowId,
             onUpEdge: onUpEdge,
             onLeftEdge: onLeftEdge,
-            onHoverProbe: _liveHoverProbe,
-            probeHealthCache: cachedHealth,
+            onHoverProbe: canProbe ? _liveHoverProbe : null,
+            probeHealthCache: canProbe ? cachedHealth : null,
           );
         }
         final subtitle =

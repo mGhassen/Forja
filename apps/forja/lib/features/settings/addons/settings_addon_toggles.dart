@@ -71,15 +71,18 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     return true;
   }
 
-  bool _isEnabled(SettingsPlaybackSnapshot? snap) {
+  bool _isEnabled({
+    required SettingsPlaybackSnapshot? snap,
+    required SettingsVisibility visibility,
+    required bool debridEnabled,
+  }) {
     return switch (widget.addonId) {
       SettingsAddonId.torrent => snap?.playSourceTorrent ?? false,
       SettingsAddonId.stremio => snap?.playSourceStremio ?? false,
       SettingsAddonId.nuvio => snap?.playSourceNuvio ?? false,
-      SettingsAddonId.debrid =>
-        ref.read(settingsDebridProvider).valueOrNull?.useDebrid ?? false,
-      SettingsAddonId.iptv => widget.visibility.iptvNav,
-      SettingsAddonId.liveSports => widget.visibility.liveMatchesNav,
+      SettingsAddonId.debrid => debridEnabled,
+      SettingsAddonId.iptv => visibility.iptvNav,
+      SettingsAddonId.liveSports => visibility.liveMatchesNav,
       SettingsAddonId.lan => _lanEnabled,
       _ => false,
     };
@@ -151,26 +154,28 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   @override
   Widget build(BuildContext context) {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    final enabled = _isEnabled(snap);
-    void flip() => unawaited(_toggle(!enabled));
-    // IgnorePointer so the row/focus wrapper owns taps — pass [emphasized]
-    // because Theme cannot override ForjaSwitch's hardcoded thumbColor.
-    final switchVisual = IgnorePointer(
-      child: ForjaSwitch(
-        value: enabled,
-        onChanged: (_) {},
-        scale: ForjaSwitch.settingsScale,
-        emphasized: _chromeActive,
-      ),
+    // Live visibility / debrid — not the stale host prop (IPTV/Live Sports /
+    // Debrid would otherwise look stuck after a successful write).
+    final visibility =
+        ref.watch(settingsVisibilityProvider).valueOrNull ?? widget.visibility;
+    final debridEnabled =
+        ref.watch(settingsDebridProvider).valueOrNull?.useDebrid ?? false;
+    final enabled = _isEnabled(
+      snap: snap,
+      visibility: visibility,
+      debridEnabled: debridEnabled,
     );
-    // Desktop hybrid + TV: focus stop so → from the addon row lands here.
-    // Pure touch: opaque tap on the switch only (row opens detail).
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
+    void flip([bool? next]) => unawaited(_toggle(next ?? !enabled));
+
+    // Leanback only: IgnorePointer + shellFocusableTap (D-pad OK / →).
+    // Desktop hybrid also has useFocusableMoodChips — native Switch must own
+    // the mouse click (FocusableControl + IgnorePointer was eating taps).
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+    if (leanback) {
       return shellFocusableTap(
         context: context,
         focusNode: widget.focusNode,
-        onTap: flip,
+        onTap: () => flip(),
         borderRadius: 20,
         scaleOnFocus: 1.0,
         showFocusRail: false,
@@ -188,14 +193,23 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           if (_hovered == h) return;
           setState(() => _hovered = h);
         },
-        // Stable focus rect — tiny scaled Switch alone loses spatial →.
         child: SizedBox(
           width: 52,
           height: 40,
-          child: Center(child: switchVisual),
+          child: Center(
+            child: IgnorePointer(
+              child: ForjaSwitch(
+                value: enabled,
+                onChanged: (_) {},
+                scale: ForjaSwitch.settingsScale,
+                emphasized: _chromeActive,
+              ),
+            ),
+          ),
         ),
       );
     }
+
     return MouseRegion(
       onEnter: (_) {
         if (_hovered) return;
@@ -206,10 +220,11 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
         setState(() => _hovered = false);
       },
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: flip,
-        child: switchVisual,
+      child: ForjaSwitch(
+        value: enabled,
+        onChanged: (v) => flip(v),
+        scale: ForjaSwitch.settingsScale,
+        emphasized: _chromeActive,
       ),
     );
   }

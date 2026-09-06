@@ -356,15 +356,8 @@ class _SettingsForjaAddonsSectionState
                 children: [
                   Builder(
                     builder: (context) {
-                      final tv =
-                          ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-                      final switchBody = IgnorePointer(
-                        child: ForjaSwitch(
-                          value: allOn,
-                          scale: ForjaSwitch.settingsScale,
-                          onChanged: (_) {},
-                        ),
-                      );
+                      final leanback =
+                          ShellScope.inputPolicyOf(context).leanbackOnly;
                       void toggle(bool val) {
                         if (addon.scrapers.isEmpty) return;
                         unawaited(
@@ -375,7 +368,7 @@ class _SettingsForjaAddonsSectionState
                         );
                       }
 
-                      if (!tv) {
+                      if (!leanback) {
                         return ForjaSwitch(
                           value: allOn,
                           scale: ForjaSwitch.settingsScale,
@@ -400,7 +393,13 @@ class _SettingsForjaAddonsSectionState
                             context,
                           )?.call();
                         },
-                        child: switchBody,
+                        child: IgnorePointer(
+                          child: ForjaSwitch(
+                            value: allOn,
+                            scale: ForjaSwitch.settingsScale,
+                            onChanged: (_) {},
+                          ),
+                        ),
                       );
                     },
                   ),

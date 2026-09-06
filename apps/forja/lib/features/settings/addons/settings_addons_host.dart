@@ -259,8 +259,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
 
     final leading =
         Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
-    // TV + activate switch: two focus stops — OK opens detail; → then OK flips.
-    if (tv && meta.hasToggle) {
+    // Desktop + TV: keep switch outside the row tap so click/OK on the
+    // label opens detail and the switch only flips activation.
+    if (meta.hasToggle) {
       return Row(
         children: [
           Expanded(
@@ -274,11 +275,13 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
               tvTabId: 'settings',
               tvZone: ShellTvZone.settings,
               ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-              onRightEdge: () {
-                if (_toggleFocus.canRequestFocus) {
-                  _toggleFocus.requestFocus();
-                }
-              },
+              onRightEdge: tv
+                  ? () {
+                      if (_toggleFocus.canRequestFocus) {
+                        _toggleFocus.requestFocus();
+                      }
+                    }
+                  : null,
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
@@ -297,12 +300,14 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
           AddonMasterToggle(
             addonId: meta.id,
             visibility: visibility,
-            focusNode: _toggleFocus,
-            onLeftEdge: () {
-              if (_rowFocus.canRequestFocus) {
-                _rowFocus.requestFocus();
-              }
-            },
+            focusNode: tv ? _toggleFocus : null,
+            onLeftEdge: tv
+                ? () {
+                    if (_rowFocus.canRequestFocus) {
+                      _rowFocus.requestFocus();
+                    }
+                  }
+                : null,
           ),
           const SizedBox(width: 4),
         ],
@@ -326,11 +331,6 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
             leading,
             const SizedBox(width: 12),
             Expanded(child: titles),
-            if (meta.hasToggle)
-              AddonMasterToggle(
-                addonId: meta.id,
-                visibility: visibility,
-              ),
             const SizedBox(width: 4),
             chevron,
           ],

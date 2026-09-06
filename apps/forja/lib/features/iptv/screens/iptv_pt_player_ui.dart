@@ -2588,6 +2588,7 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
 
   PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
     if (index == widget.selectedIndex) return PlayerSourceStatus.active;
+    if (iptvLiveSourceProbeUrl(src) == null) return null;
     final key = iptvLiveSourceProbeKey(src);
     final health = _healthProbe.healthFor(key);
     if (health == null) return null;
