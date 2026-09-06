@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/addons/settings_addon_detail.dart';
 import 'package:forja/features/settings/addons/settings_addon_toggles.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
+import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -234,13 +237,69 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       FocusNode(debugLabel: 'addon-row-${widget.meta.id}');
   late final FocusNode _detailsFocus =
       FocusNode(debugLabel: 'addon-details-${widget.meta.id}');
-  VoidCallback? _flip;
+  bool? _optimisticEnabled;
+  bool _lanEnabled = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.meta.id == SettingsAddonId.lan) {
+      unawaited(_hydrateLan());
+    }
+  }
+
+  Future<void> _hydrateLan() async {
+    _lanEnabled = await LanPrefs.instance.isLanServerEnabled();
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
     _rowFocus.dispose();
     _detailsFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _activateRow() async {
+    if (_busy || !widget.meta.hasToggle) return;
+    final snap = ref.read(settingsPlaybackProvider).valueOrNull;
+    final visAsync = ref.read(settingsVisibilityProvider);
+    final visibility = visAsync.hasValue
+        ? visAsync.requireValue
+        : widget.visibility;
+    final debridAsync = ref.read(settingsDebridProvider);
+    final debridEnabled =
+        debridAsync.hasValue ? debridAsync.requireValue.useDebrid : false;
+    final enabled = addonMasterEnabled(
+      addonId: widget.meta.id,
+      snap: snap,
+      visibility: visibility,
+      debridEnabled: debridEnabled,
+      lanEnabled: _lanEnabled,
+    );
+    final next = !enabled;
+    debugPrint(
+      '[AddonToggle] flip ${widget.meta.id} ${enabled ? "ON→OFF" : "OFF→ON"}',
+    );
+    _busy = true;
+    setState(() => _optimisticEnabled = next);
+    try {
+      await setAddonMasterEnabled(
+        ref,
+        context,
+        addonId: widget.meta.id,
+        val: next,
+      );
+      if (widget.meta.id == SettingsAddonId.lan && mounted) {
+        setState(() => _lanEnabled = next);
+      }
+    } catch (e, st) {
+      debugPrint('[AddonToggle] row ${widget.meta.id} failed: $e\n$st');
+      if (mounted) setState(() => _optimisticEnabled = null);
+    } finally {
+      _busy = false;
+    }
   }
 
   @override
@@ -250,6 +309,31 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final rowId = 'addon-${meta.id}';
+
+    // Keep switch in sync with providers when parent optimistic catches up.
+    if (meta.hasToggle) {
+      final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
+      final visAsync = ref.watch(settingsVisibilityProvider);
+      final vis = visAsync.hasValue ? visAsync.requireValue : visibility;
+      final debridAsync = ref.watch(settingsDebridProvider);
+      final debridEnabled =
+          debridAsync.hasValue ? debridAsync.requireValue.useDebrid : false;
+      final computed = addonMasterEnabled(
+        addonId: meta.id,
+        snap: snap,
+        visibility: vis,
+        debridEnabled: debridEnabled,
+        lanEnabled: _lanEnabled,
+      );
+      if (_optimisticEnabled != null && _optimisticEnabled == computed) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _optimisticEnabled == computed) {
+            setState(() => _optimisticEnabled = null);
+          }
+        });
+      }
+    }
+
     final titles = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,8 +401,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
             child: shellFocusableTap(
               context: context,
               focusNode: _rowFocus,
-              // OK / click activates; chevron opens details.
-              onTap: () => _flip?.call(),
+              onTap: () => unawaited(_activateRow()),
               borderRadius: SettingsTokens.categoryTileRadius,
               scaleOnFocus: 1.0,
               showFocusRail: true,
@@ -344,7 +427,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                       addonId: meta.id,
                       visibility: visibility,
                       chromeOnly: true,
-                      onProvideFlip: (flip) => _flip = flip,
+                      optimisticEnabled: _optimisticEnabled,
                     ),
                   ],
                 ),

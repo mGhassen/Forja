@@ -696,10 +696,22 @@ class SyncDomainBridge {
         );
       }
     } else if (navigation is Map) {
-      // Cloud is master once local Features edits are pushed. Do not refuse
-      // shrink here — that re-pushed local tabs over intentional web clears
-      // (issue 221).
-      await _importNavigation(Map<String, dynamic>.from(navigation));
+      // Soft pull: never drop local tabs for a thinner cloud row — that wiped
+      // Addons/Features enables right after OK (224). Profile switch
+      // (resetLocalFirst) still applies cloud as master.
+      final localNav = await _exportNavigationCompact();
+      final remoteNav = Map<String, dynamic>.from(navigation);
+      if (!resetLocalFirst &&
+          navigationWouldShrinkLocal(localNav, remoteNav)) {
+        debugPrint(
+          '[Sync] skip cloud nav shrink on soft pull — keep local '
+          '${_navVisibleIds(localNav).length} tab(s)',
+        );
+        // Heal hollow cloud so the next soft pull matches the device.
+        unawaited(schedulePush(_domainNavigation));
+      } else {
+        await _importNavigation(remoteNav);
+      }
     } else if (resetLocalFirst) {
       // Reset left platform-default nav without notifying; publish once.
       SettingsService.navbarChangeNotifier.value++;

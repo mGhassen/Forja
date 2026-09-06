@@ -15,9 +15,103 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
-/// Master on/off switch for an addon in the Addons list.
+/// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).
+bool addonMasterEnabled({
+  required String addonId,
+  required SettingsPlaybackSnapshot? snap,
+  required SettingsVisibility visibility,
+  required bool debridEnabled,
+  required bool lanEnabled,
+}) {
+  return switch (addonId) {
+    SettingsAddonId.torrent => snap?.playSourceTorrent ?? false,
+    SettingsAddonId.stremio => snap?.playSourceStremio ?? false,
+    SettingsAddonId.nuvio => snap?.playSourceNuvio ?? false,
+    SettingsAddonId.debrid => debridEnabled,
+    SettingsAddonId.iptv => visibility.iptvNav,
+    SettingsAddonId.liveSports => visibility.liveMatchesNav,
+    SettingsAddonId.lan => lanEnabled,
+    _ => false,
+  };
+}
+
+/// Writes Addons master enable — call from the row OK / click (not via a
+/// mid-build flip callback; that left `_flip` null and silent no-ops).
+Future<void> setAddonMasterEnabled(
+  WidgetRef ref,
+  BuildContext context, {
+  required String addonId,
+  required bool val,
+}) async {
+  final settings = SettingsService();
+  final notifier = ref.read(settingsPlaybackProvider.notifier);
+
+  debugPrint(
+    '[AddonToggle] set $addonId → $val',
+  );
+
+  if (val &&
+      (addonId == SettingsAddonId.torrent ||
+          addonId == SettingsAddonId.stremio ||
+          addonId == SettingsAddonId.nuvio)) {
+    final snap = ref.read(settingsPlaybackProvider).valueOrNull;
+    if (snap?.p2pAcknowledged != true) {
+      final ok = await ensureP2pStreamingAcknowledged(context);
+      if (!ok || !context.mounted) return;
+      await notifier.patch((s) => s.copyWith(p2pAcknowledged: true));
+    }
+  }
+
+  switch (addonId) {
+    case SettingsAddonId.torrent:
+      await settings.setPlaySourceTorrentEnabled(val);
+      await notifier.patch((s) => s.copyWith(playSourceTorrent: val));
+    case SettingsAddonId.stremio:
+      await settings.setPlaySourceStremioEnabled(val);
+      await notifier.patch((s) => s.copyWith(playSourceStremio: val));
+    case SettingsAddonId.nuvio:
+      await settings.setPlaySourceNuvioEnabled(val);
+      await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
+    case SettingsAddonId.debrid:
+      await settings.setUseDebridForStreams(val);
+      ref
+          .read(settingsDebridProvider.notifier)
+          .patch((s) => s.copyWith(useDebrid: val));
+    case SettingsAddonId.iptv:
+      noteNavigationDirty();
+      final updated = await settings.setNavbarTabVisible('iptv', val);
+      debugPrint('[AddonToggle] navbar iptv → $val (next=$updated)');
+      if (!val) {
+        await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+      }
+    case SettingsAddonId.liveSports:
+      noteNavigationDirty();
+      final updated = await settings.setNavbarTabVisible('live_matches', val);
+      debugPrint('[AddonToggle] navbar live_matches → $val (next=$updated)');
+    case SettingsAddonId.lan:
+      await LanPrefs.instance.setLanServerEnabled(val);
+  }
+
+  if (!val) {
+    await deactivateAddonChildren(addonId);
+  }
+
+  if (addonId == SettingsAddonId.iptv ||
+      addonId == SettingsAddonId.liveSports) {
+    // Await so a soft pull cannot apply empty cloud before the upsert lands.
+    await scheduleNavigationSyncPush();
+    if (addonId == SettingsAddonId.iptv) {
+      schedulePreferencesSyncPush();
+    }
+  } else {
+    schedulePreferencesSyncPush();
+  }
+}
+
+/// Master on/off chrome for an addon in the Addons list.
 ///
-/// Reads/writes the same prefs as the old Sources / category toggles.
+/// Prefer [setAddonMasterEnabled] from the row; this widget displays state
+/// (and optional leanback / desktop direct flip when not [chromeOnly]).
 class AddonMasterToggle extends ConsumerStatefulWidget {
   const AddonMasterToggle({
     super.key,
@@ -26,7 +120,7 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
     this.focusNode,
     this.onLeftEdge,
     this.chromeOnly = false,
-    this.onProvideFlip,
+    this.optimisticEnabled,
   });
 
   final String addonId;
@@ -38,26 +132,21 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
   /// TV: ← from the switch returns to the addon row.
   final VoidCallback? onLeftEdge;
 
-  /// Visual switch only — parent row / OK owns activation ([onProvideFlip]).
+  /// Visual switch only — parent row owns activation.
   final bool chromeOnly;
 
-  /// Registers the flip callback so the row can OK-activate the addon.
-  final ValueChanged<VoidCallback>? onProvideFlip;
+  /// Parent-held optimistic value while a row flip is in flight.
+  final bool? optimisticEnabled;
 
   @override
   ConsumerState<AddonMasterToggle> createState() => _AddonMasterToggleState();
 }
 
 class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
-  final SettingsService _settings = SettingsService();
   bool _lanEnabled = false;
   bool _focused = false;
   bool _hovered = false;
   bool _busy = false;
-
-  /// Holds the last user flip until providers catch up. Without this, invalidating
-  /// [settingsVisibilityProvider] / playback reload flashes [AsyncLoading] and the
-  /// switch falls back to a stale host [widget.visibility] — looks like OK did nothing.
   bool? _optimisticEnabled;
 
   bool get _chromeActive => _focused || _hovered;
@@ -70,101 +159,34 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant AddonMasterToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.optimisticEnabled != oldWidget.optimisticEnabled &&
+        widget.optimisticEnabled != null) {
+      _optimisticEnabled = widget.optimisticEnabled;
+    }
+  }
+
   Future<void> _hydrateLan() async {
     _lanEnabled = await LanPrefs.instance.isLanServerEnabled();
     if (mounted) setState(() {});
   }
 
-  Future<bool> _confirmP2pIfNeeded() async {
-    final snap = ref.read(settingsPlaybackProvider).valueOrNull;
-    if (snap?.p2pAcknowledged == true) return true;
-    final ok = await ensureP2pStreamingAcknowledged(context);
-    if (!ok || !mounted) return false;
-    await ref
-        .read(settingsPlaybackProvider.notifier)
-        .patch((s) => s.copyWith(p2pAcknowledged: true));
-    return true;
-  }
-
-  bool _isEnabled({
-    required SettingsPlaybackSnapshot? snap,
-    required SettingsVisibility visibility,
-    required bool debridEnabled,
-  }) {
-    return switch (widget.addonId) {
-      SettingsAddonId.torrent => snap?.playSourceTorrent ?? false,
-      SettingsAddonId.stremio => snap?.playSourceStremio ?? false,
-      SettingsAddonId.nuvio => snap?.playSourceNuvio ?? false,
-      SettingsAddonId.debrid => debridEnabled,
-      SettingsAddonId.iptv => visibility.iptvNav,
-      SettingsAddonId.liveSports => visibility.liveMatchesNav,
-      SettingsAddonId.lan => _lanEnabled,
-      _ => false,
-    };
-  }
-
-  Future<void> _toggle(bool val) async {
+  Future<void> _flipTo(bool val) async {
     if (_busy) return;
     _busy = true;
     setState(() => _optimisticEnabled = val);
-    final notifier = ref.read(settingsPlaybackProvider.notifier);
-
     try {
-      if (val &&
-          (widget.addonId == SettingsAddonId.torrent ||
-              widget.addonId == SettingsAddonId.stremio ||
-              widget.addonId == SettingsAddonId.nuvio)) {
-        final ok = await _confirmP2pIfNeeded();
-        if (!ok || !mounted) {
-          setState(() => _optimisticEnabled = null);
-          return;
-        }
+      await setAddonMasterEnabled(
+        ref,
+        context,
+        addonId: widget.addonId,
+        val: val,
+      );
+      if (widget.addonId == SettingsAddonId.lan && mounted) {
+        setState(() => _lanEnabled = val);
       }
-
-      switch (widget.addonId) {
-        case SettingsAddonId.torrent:
-          await _settings.setPlaySourceTorrentEnabled(val);
-          await notifier.patch((s) => s.copyWith(playSourceTorrent: val));
-        case SettingsAddonId.stremio:
-          await _settings.setPlaySourceStremioEnabled(val);
-          await notifier.patch((s) => s.copyWith(playSourceStremio: val));
-        case SettingsAddonId.nuvio:
-          await _settings.setPlaySourceNuvioEnabled(val);
-          await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
-        case SettingsAddonId.debrid:
-          await _settings.setUseDebridForStreams(val);
-          ref
-              .read(settingsDebridProvider.notifier)
-              .patch((s) => s.copyWith(useDebrid: val));
-        case SettingsAddonId.iptv:
-          await _toggleNavTab('iptv', val);
-          if (!val) {
-            await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
-          }
-        case SettingsAddonId.liveSports:
-          await _toggleNavTab('live_matches', val);
-        case SettingsAddonId.lan:
-          await LanPrefs.instance.setLanServerEnabled(val);
-          if (mounted) setState(() => _lanEnabled = val);
-      }
-      if (!val) {
-        await deactivateAddonChildren(widget.addonId);
-      }
-      // IPTV / Live Sports are navbar tabs — must push `_domainNavigation` or
-      // cloud pull restores the old visibleIds (issue 126 shrink guard).
-      // Do not await the upsert here: a slow merge pull blocked the UI and
-      // raced soft pulls; gen bumps synchronously at schedulePush start (224).
-      if (widget.addonId == SettingsAddonId.iptv ||
-          widget.addonId == SettingsAddonId.liveSports) {
-        unawaited(scheduleNavigationSyncPush());
-        if (widget.addonId == SettingsAddonId.iptv) {
-          schedulePreferencesSyncPush();
-        }
-      } else {
-        schedulePreferencesSyncPush();
-      }
-      // Navbar notifier already bumped by setNavbarConfig — avoid invalidate
-      // flash that remounts this switch mid-toggle.
     } catch (e, st) {
       debugPrint('[AddonToggle] ${widget.addonId} failed: $e\n$st');
       if (mounted) setState(() => _optimisticEnabled = null);
@@ -174,22 +196,10 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     }
   }
 
-  Future<void> _toggleNavTab(String navId, bool val) async {
-    // Dirty before KV so Addons soft-pull cannot apply empty cloud mid-write.
-    noteNavigationDirty();
-    // Exclusive RMW — rapid ATV OK on IPTV then Live Sports must not both
-    // read empty and write past each other (issue 224).
-    final updated = await _settings.setNavbarTabVisible(navId, val);
-    debugPrint(
-      '[AddonToggle] navbar $navId → $val (next=$updated)',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final visAsync = ref.watch(settingsVisibilityProvider);
-    // Prefer last resolved data across reload flashes (invalidate → loading).
     final visibility = visAsync.hasValue
         ? visAsync.requireValue
         : widget.visibility;
@@ -197,27 +207,23 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final debridEnabled = debridAsync.hasValue
         ? (debridAsync.requireValue.useDebrid)
         : false;
-    final computed = _isEnabled(
+    final computed = addonMasterEnabled(
+      addonId: widget.addonId,
       snap: snap,
       visibility: visibility,
       debridEnabled: debridEnabled,
+      lanEnabled: _lanEnabled,
     );
-    if (_optimisticEnabled != null && _optimisticEnabled == computed) {
+    final optimistic = widget.optimisticEnabled ?? _optimisticEnabled;
+    if (optimistic != null && optimistic == computed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _optimisticEnabled == computed) {
+        if (mounted &&
+            (widget.optimisticEnabled ?? _optimisticEnabled) == computed) {
           setState(() => _optimisticEnabled = null);
         }
       });
     }
-    final enabled = _optimisticEnabled ?? computed;
-    void flip() {
-      debugPrint(
-        '[AddonToggle] flip ${widget.addonId} ${enabled ? "ON→OFF" : "OFF→ON"}',
-      );
-      unawaited(_toggle(!enabled));
-    }
-
-    widget.onProvideFlip?.call(flip);
+    final enabled = optimistic ?? computed;
 
     final switchChrome = ForjaSwitch(
       value: enabled,
@@ -226,7 +232,6 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       emphasized: _chromeActive,
     );
 
-    // Row owns OK — switch is display-only (Addons list parity with Features).
     if (widget.chromeOnly) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -234,15 +239,13 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       );
     }
 
-    // Leanback: separate D-pad focus stop (legacy). Switch is display-only
-    // (onChanged null) so Material ActivateIntent cannot swallow Select (224).
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     if (leanback) {
       return Actions(
         actions: <Type, Action<Intent>>{
           ActivateIntent: CallbackAction<ActivateIntent>(
             onInvoke: (_) {
-              flip();
+              unawaited(_flipTo(!enabled));
               return null;
             },
           ),
@@ -250,7 +253,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
         child: shellFocusableTap(
           context: context,
           focusNode: widget.focusNode,
-          onTap: flip,
+          onTap: () => unawaited(_flipTo(!enabled)),
           borderRadius: 20,
           scaleOnFocus: 1.0,
           showFocusRail: false,
@@ -289,7 +292,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       cursor: SystemMouseCursors.click,
       child: ForjaSwitch(
         value: enabled,
-        onChanged: (v) => unawaited(_toggle(v)),
+        onChanged: (v) => unawaited(_flipTo(v)),
         scale: ForjaSwitch.settingsScale,
         emphasized: _chromeActive,
       ),
