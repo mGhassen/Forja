@@ -189,7 +189,7 @@ function PluginDetailPanel({
             {pack.tags!.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.55)]"
+                className="rounded-md border border-white/10 bg-white/3 px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.55)]"
               >
                 {pluginTagLabel(tag)}
               </span>
@@ -258,13 +258,13 @@ function PluginListRow({
         }
       }}
       className={cn(
-        'flex w-full shrink-0 cursor-pointer items-center gap-3 border-b border-white/[0.06] px-3 text-left transition-colors sm:px-4',
+        'flex w-full shrink-0 cursor-pointer items-center gap-3 border-b border-white/6 px-3 text-left transition-colors sm:px-4',
         rich ? LIST_ROW_RICH_HEIGHT_CLASS : LIST_ROW_HEIGHT_CLASS,
         checked
           ? 'bg-forja-green/15'
           : focused
             ? 'bg-forja-green/10'
-            : 'hover:bg-white/[0.04]',
+            : 'hover:bg-white/4',
       )}
     >
       <button
@@ -283,7 +283,7 @@ function PluginListRow({
             : 'border-white/25 bg-transparent hover:border-forja-green/60',
         )}
       >
-        {checked ? <Check className="size-3 stroke-[3]" /> : null}
+        {checked ? <Check className="size-3 stroke-3" /> : null}
       </button>
       <Puzzle
         className={cn(
@@ -601,7 +601,7 @@ export function PluginCatalogBrowser({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search packs…"
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/4 pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
             />
           </div>
           <p className="shrink-0 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
@@ -614,7 +614,7 @@ export function PluginCatalogBrowser({
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] scrollbar-none [&::-webkit-scrollbar]:hidden">
             <FilterChip
               active={kindFilter === 'all'}
               onClick={() => setKindFilter('all')}
@@ -632,7 +632,7 @@ export function PluginCatalogBrowser({
             ))}
           </div>
           {tagOptions.length > 0 ? (
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] scrollbar-none [&::-webkit-scrollbar]:hidden">
               <FilterChip
                 active={tagFilter === 'all'}
                 onClick={() => setTagFilter('all')}
@@ -689,7 +689,7 @@ export function PluginCatalogBrowser({
                   </button>
                 </div>
               ) : (
-                <div className="flex h-9 shrink-0 items-center border-b border-white/[0.06] px-3 sm:px-4">
+                <div className="flex h-9 shrink-0 items-center border-b border-white/6 px-3 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
                     {tvBrowse
                       ? 'Packs · select to add · OK toggles selection'
@@ -725,7 +725,7 @@ export function PluginCatalogBrowser({
                 )}
               </div>
 
-              <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-t border-white/[0.06] px-3 sm:px-4">
+              <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-t border-white/6 px-3 sm:px-4">
                 {!isLoading && pageSlice.totalPages > 1 ? (
                   <>
                     <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
@@ -839,7 +839,7 @@ function ListSkeleton({ rich = false }: { rich?: boolean }) {
         <div
           key={i}
           className={cn(
-            'flex items-center gap-3 border-b border-white/[0.06] px-4',
+            'flex items-center gap-3 border-b border-white/6 px-4',
             rich ? LIST_ROW_RICH_HEIGHT_CLASS : LIST_ROW_HEIGHT_CLASS,
           )}
         >

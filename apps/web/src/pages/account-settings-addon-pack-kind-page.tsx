@@ -197,7 +197,7 @@ export function AccountSettingsAddonPackKindPage({
                 return (
                   <li
                     key={pack.manifestUrl}
-                    className="flex min-h-[58px] items-center justify-between gap-3 px-0.5 py-3"
+                    className="flex min-h-14.5 items-center justify-between gap-3 px-0.5 py-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-forja-text">

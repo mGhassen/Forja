@@ -206,7 +206,7 @@ export function PluginBatchInstallDialog({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter packs…"
-                className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
+                className="h-9 w-full rounded-lg border border-white/10 bg-white/4 pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -241,7 +241,7 @@ export function PluginBatchInstallDialog({
                 No packs match your filter.
               </p>
             ) : (
-              <ul className="divide-y divide-white/[0.06]">
+              <ul className="divide-y divide-white/6">
                 {filtered.map((pack) => {
                   const installed = isPackInstalled(
                     installedPacks,
@@ -258,10 +258,10 @@ export function PluginBatchInstallDialog({
                           'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
                           installed
                             ? 'cursor-default opacity-70'
-                            : 'hover:bg-white/[0.04]',
+                            : 'hover:bg-white/4',
                           checked &&
                             !installed &&
-                            'bg-forja-green/[0.06]',
+                            'bg-forja-green/6',
                         )}
                       >
                         <input

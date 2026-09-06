@@ -138,7 +138,7 @@ function NavLink({
       }`}
     >
       <Icon
-        className={`size-[22px] shrink-0 ${
+        className={`size-5.5 shrink-0 ${
           selected ? 'text-forja-green' : 'text-forja-muted'
         }`}
       />
@@ -204,7 +204,7 @@ export function AccountSettingsShell({
                 <DropdownMenuTrigger
                   aria-label="Active profile"
                   disabled={profilesLoading || profiles.length === 0}
-                  className="group inline-flex min-w-[15.5rem] items-center gap-3 rounded-2xl border border-[rgba(237,230,218,0.16)] bg-[#121110] py-2 pl-2 pr-3 text-left outline-none transition duration-200 hover:border-forja-green/45 hover:bg-[#161412] focus-visible:ring-2 focus-visible:ring-forja-green/60 disabled:opacity-50 data-[state=open]:border-forja-green/50 data-[state=open]:bg-[#161412]"
+                  className="group inline-flex min-w-62 items-center gap-3 rounded-2xl border border-[rgba(237,230,218,0.16)] bg-[#121110] py-2 pl-2 pr-3 text-left outline-none transition duration-200 hover:border-forja-green/45 hover:bg-[#161412] focus-visible:ring-2 focus-visible:ring-forja-green/60 disabled:opacity-50 data-[state=open]:border-forja-green/50 data-[state=open]:bg-[#161412]"
                 >
                   {activeProfile ? (
                     <ProfileAvatar
@@ -228,7 +228,7 @@ export function AccountSettingsShell({
                 <DropdownMenuContent
                   align="end"
                   sideOffset={10}
-                  className="w-[19rem] rounded-2xl border-[rgba(237,230,218,0.14)] bg-[#121110] p-2 shadow-[0_28px_80px_-28px_rgba(0,0,0,0.9)]"
+                  className="w-76 rounded-2xl border-forja-border bg-[#121110] p-2 shadow-[0_28px_80px_-28px_rgba(0,0,0,0.9)]"
                 >
                   <DropdownMenuLabel className="px-3 pb-1 pt-2 font-mono-ui text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
                     Switch profile
@@ -239,7 +239,7 @@ export function AccountSettingsShell({
                     </p>
                   ) : null}
                   <DropdownMenuSeparator className="mx-1 bg-[rgba(237,230,218,0.1)]" />
-                  <div className="max-h-[22rem] space-y-1 overflow-y-auto py-1">
+                  <div className="max-h-88 space-y-1 overflow-y-auto py-1">
                     {profiles.map((profile) => {
                       const selected = profile.id === activeProfile?.id
                       return (
@@ -250,13 +250,13 @@ export function AccountSettingsShell({
                             'cursor-pointer gap-3 rounded-xl px-2.5 py-2.5',
                             selected
                               ? 'bg-forja-green/10 text-[#EDE6DA] focus:bg-forja-green/14'
-                              : 'focus:bg-white/[0.06]',
+                              : 'focus:bg-white/6',
                           )}
                         >
                           <ProfileAvatar
                             avatarKey={profile.avatar_key}
                             name={profile.name}
-                            className="size-12 shrink-0 rounded-[12px] ring-1 ring-white/10"
+                            className="size-12 shrink-0 rounded-xl ring-1 ring-white/10"
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-disp text-base uppercase tracking-tight">
@@ -295,7 +295,7 @@ export function AccountSettingsShell({
             </div>
           </div>
 
-          <div className="grid min-h-[620px] lg:grid-cols-[310px_1fr]">
+          <div className="grid min-h-155 lg:grid-cols-[310px_1fr]">
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <NavGroup
                 label="Profile"
@@ -325,7 +325,7 @@ export function AccountSettingsShell({
                   onClick={() => void onSignOut()}
                   className="relative flex min-h-16 w-full items-center gap-4 border-l-[3px] border-transparent px-3 py-3 text-left text-red-400 hover:bg-red-500/10 hover:text-red-300"
                 >
-                  <LogOut className="size-[22px] shrink-0" />
+                  <LogOut className="size-5.5 shrink-0" />
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">Log out</span>
                     <span className="mt-0.5 block truncate text-xs text-red-400/70">

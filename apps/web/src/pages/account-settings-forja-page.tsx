@@ -302,7 +302,7 @@ export function AccountSettingsForjaPage() {
             disabled={controlsLocked || isSaving || officialMissing.length === 0}
             onClick={() => setOfficialOpen(true)}
             className={cn(
-              'flex items-start gap-3 rounded-none border border-forja-border bg-white/[0.03] px-4 py-4 text-left transition',
+              'flex items-start gap-3 rounded-none border border-forja-border bg-white/3 px-4 py-4 text-left transition',
               'hover:border-forja-green/40 hover:bg-forja-green/5',
               'disabled:cursor-not-allowed disabled:opacity-50',
             )}
@@ -322,7 +322,7 @@ export function AccountSettingsForjaPage() {
           <Link
             to="/plugins"
             className={cn(
-              'flex items-start gap-3 rounded-none border border-forja-border bg-white/[0.03] px-4 py-4 text-left transition',
+              'flex items-start gap-3 rounded-none border border-forja-border bg-white/3 px-4 py-4 text-left transition',
               'hover:border-forja-green/40 hover:bg-forja-green/5',
             )}
           >
@@ -360,7 +360,7 @@ export function AccountSettingsForjaPage() {
                       return (
                         <li
                           key={pack.manifestUrl}
-                          className="flex min-h-[58px] items-center justify-between gap-3 px-0.5 py-3"
+                          className="flex min-h-14.5 items-center justify-between gap-3 px-0.5 py-3"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-forja-text">

@@ -128,7 +128,7 @@ export function AccountSettingsNavigationPage() {
             return (
               <li
                 key={id}
-                className="flex min-h-[58px] items-center gap-3 px-0.5 py-2"
+                className="flex min-h-14.5 items-center gap-3 px-0.5 py-2"
               >
                 <div className="flex shrink-0 flex-col gap-0.5">
                   <button
@@ -205,7 +205,7 @@ export function AccountSettingsNavigationPage() {
               </li>
             )
           })}
-          <li className="flex min-h-[58px] items-center gap-3 px-0.5 py-2">
+          <li className="flex min-h-14.5 items-center gap-3 px-0.5 py-2">
             <span className="w-5 shrink-0" />
             <span className="min-w-0 flex-1 text-sm font-semibold text-forja-green">
               Settings
@@ -244,7 +244,7 @@ export function AccountSettingsNavigationPage() {
       </SettingsSection>
 
       <SettingsSection label="Default tab">
-        <div className="flex min-h-[58px] items-center justify-between gap-5 px-0.5 py-3">
+        <div className="flex min-h-14.5 items-center justify-between gap-5 px-0.5 py-3">
           <span className="text-sm font-medium">Opens after sync / profile switch</span>
           <select
             className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"

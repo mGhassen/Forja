@@ -77,7 +77,7 @@ export function AccountSettingsNuvioPage() {
             {draft.addons.map((addon) => (
               <li
                 key={addon.manifestUrl}
-                className="flex min-h-[58px] items-center justify-between gap-3 px-0.5 py-3"
+                className="flex min-h-14.5 items-center justify-between gap-3 px-0.5 py-3"
               >
                 <div className="min-w-0">
                   <p className="font-medium">{addon.name || 'Addon'}</p>

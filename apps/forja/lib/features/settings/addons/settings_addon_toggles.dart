@@ -46,7 +46,13 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   bool _focused = false;
   bool _hovered = false;
 
+  /// Holds the last user flip until providers catch up. Without this, invalidating
+  /// [settingsVisibilityProvider] / playback reload flashes [AsyncLoading] and the
+  /// switch falls back to a stale host [widget.visibility] — looks like OK did nothing.
+  bool? _optimisticEnabled;
+
   bool get _chromeActive => _focused || _hovered;
+
   @override
   void initState() {
     super.initState();
@@ -89,57 +95,66 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   }
 
   Future<void> _toggle(bool val) async {
+    setState(() => _optimisticEnabled = val);
     final notifier = ref.read(settingsPlaybackProvider.notifier);
 
-    if (val &&
-        (widget.addonId == SettingsAddonId.torrent ||
-            widget.addonId == SettingsAddonId.stremio ||
-            widget.addonId == SettingsAddonId.nuvio)) {
-      final ok = await _confirmP2pIfNeeded();
-      if (!ok || !mounted) return;
-    }
-
-    switch (widget.addonId) {
-      case SettingsAddonId.torrent:
-        await _settings.setPlaySourceTorrentEnabled(val);
-        await notifier.patch((s) => s.copyWith(playSourceTorrent: val));
-      case SettingsAddonId.stremio:
-        await _settings.setPlaySourceStremioEnabled(val);
-        await notifier.patch((s) => s.copyWith(playSourceStremio: val));
-      case SettingsAddonId.nuvio:
-        await _settings.setPlaySourceNuvioEnabled(val);
-        await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
-      case SettingsAddonId.debrid:
-        await _settings.setUseDebridForStreams(val);
-        ref
-            .read(settingsDebridProvider.notifier)
-            .patch((s) => s.copyWith(useDebrid: val));
-      case SettingsAddonId.iptv:
-        await _toggleNavTab('iptv', val);
-        if (!val) {
-          await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+    try {
+      if (val &&
+          (widget.addonId == SettingsAddonId.torrent ||
+              widget.addonId == SettingsAddonId.stremio ||
+              widget.addonId == SettingsAddonId.nuvio)) {
+        final ok = await _confirmP2pIfNeeded();
+        if (!ok || !mounted) {
+          setState(() => _optimisticEnabled = null);
+          return;
         }
-      case SettingsAddonId.liveSports:
-        await _toggleNavTab('live_matches', val);
-      case SettingsAddonId.lan:
-        await LanPrefs.instance.setLanServerEnabled(val);
-        setState(() => _lanEnabled = val);
-    }
-    if (!val) {
-      await deactivateAddonChildren(widget.addonId);
-    }
-    // IPTV / Live Sports are navbar tabs — must push `_domainNavigation` or
-    // cloud pull restores the old visibleIds (issue 126 shrink guard).
-    if (widget.addonId == SettingsAddonId.iptv ||
-        widget.addonId == SettingsAddonId.liveSports) {
-      scheduleNavigationSyncPush();
-      if (widget.addonId == SettingsAddonId.iptv) {
+      }
+
+      switch (widget.addonId) {
+        case SettingsAddonId.torrent:
+          await _settings.setPlaySourceTorrentEnabled(val);
+          await notifier.patch((s) => s.copyWith(playSourceTorrent: val));
+        case SettingsAddonId.stremio:
+          await _settings.setPlaySourceStremioEnabled(val);
+          await notifier.patch((s) => s.copyWith(playSourceStremio: val));
+        case SettingsAddonId.nuvio:
+          await _settings.setPlaySourceNuvioEnabled(val);
+          await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
+        case SettingsAddonId.debrid:
+          await _settings.setUseDebridForStreams(val);
+          ref
+              .read(settingsDebridProvider.notifier)
+              .patch((s) => s.copyWith(useDebrid: val));
+        case SettingsAddonId.iptv:
+          await _toggleNavTab('iptv', val);
+          if (!val) {
+            await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+          }
+        case SettingsAddonId.liveSports:
+          await _toggleNavTab('live_matches', val);
+        case SettingsAddonId.lan:
+          await LanPrefs.instance.setLanServerEnabled(val);
+          if (mounted) setState(() => _lanEnabled = val);
+      }
+      if (!val) {
+        await deactivateAddonChildren(widget.addonId);
+      }
+      // IPTV / Live Sports are navbar tabs — must push `_domainNavigation` or
+      // cloud pull restores the old visibleIds (issue 126 shrink guard).
+      if (widget.addonId == SettingsAddonId.iptv ||
+          widget.addonId == SettingsAddonId.liveSports) {
+        scheduleNavigationSyncPush();
+        if (widget.addonId == SettingsAddonId.iptv) {
+          schedulePreferencesSyncPush();
+        }
+      } else {
         schedulePreferencesSyncPush();
       }
-    } else {
-      schedulePreferencesSyncPush();
+      ref.invalidate(settingsVisibilityProvider);
+    } catch (_) {
+      if (mounted) setState(() => _optimisticEnabled = null);
+      rethrow;
     }
-    ref.invalidate(settingsVisibilityProvider);
   }
 
   Future<void> _toggleNavTab(String navId, bool val) async {
@@ -154,33 +169,43 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   @override
   Widget build(BuildContext context) {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    // Live visibility / debrid — not the stale host prop (IPTV/Live Sports /
-    // Debrid would otherwise look stuck after a successful write).
-    final visibility =
-        ref.watch(settingsVisibilityProvider).valueOrNull ?? widget.visibility;
-    final debridEnabled =
-        ref.watch(settingsDebridProvider).valueOrNull?.useDebrid ?? false;
-    final enabled = _isEnabled(
+    final visAsync = ref.watch(settingsVisibilityProvider);
+    // Prefer last resolved data across reload flashes (invalidate → loading).
+    final visibility = visAsync.hasValue
+        ? visAsync.requireValue
+        : widget.visibility;
+    final debridAsync = ref.watch(settingsDebridProvider);
+    final debridEnabled = debridAsync.hasValue
+        ? (debridAsync.requireValue.useDebrid)
+        : false;
+    final computed = _isEnabled(
       snap: snap,
       visibility: visibility,
       debridEnabled: debridEnabled,
     );
-    void flip([bool? next]) => unawaited(_toggle(next ?? !enabled));
+    if (_optimisticEnabled != null && _optimisticEnabled == computed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _optimisticEnabled == computed) {
+          setState(() => _optimisticEnabled = null);
+        }
+      });
+    }
+    final enabled = _optimisticEnabled ?? computed;
+    void flip() => unawaited(_toggle(!enabled));
 
-    // Leanback only: IgnorePointer + shellFocusableTap (D-pad OK / →).
-    // Desktop hybrid also has useFocusableMoodChips — native Switch must own
-    // the mouse click (FocusableControl + IgnorePointer was eating taps).
+    // Leanback: separate D-pad focus stop (→ from row). Visible chrome so →
+    // is obvious; IgnorePointer so Material Switch does not steal OK.
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     if (leanback) {
       return shellFocusableTap(
         context: context,
         focusNode: widget.focusNode,
-        onTap: () => flip(),
+        onTap: flip,
         borderRadius: 20,
         scaleOnFocus: 1.0,
         showFocusRail: false,
-        showFocusFill: false,
-        showFocusBorder: false,
+        showFocusFill: true,
+        showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
@@ -194,8 +219,8 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           setState(() => _hovered = h);
         },
         child: SizedBox(
-          width: 52,
-          height: 40,
+          width: 56,
+          height: 44,
           child: Center(
             child: IgnorePointer(
               child: ForjaSwitch(
@@ -222,7 +247,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       cursor: SystemMouseCursors.click,
       child: ForjaSwitch(
         value: enabled,
-        onChanged: (v) => flip(v),
+        onChanged: (v) => unawaited(_toggle(v)),
         scale: ForjaSwitch.settingsScale,
         emphasized: _chromeActive,
       ),

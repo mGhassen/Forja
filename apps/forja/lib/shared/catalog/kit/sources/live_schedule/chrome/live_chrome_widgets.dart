@@ -108,8 +108,8 @@ class _LiveMatchesTopBarActionButtonState
       suppressInkHover: true,
       showFocusFill: false,
       listIndex: widget.tvItemIndex,
-      tvTabId: LiveSportsHubPageState._tabId,
-      tvRowId: LiveSportsHubPageState._topBarRowId,
+      tvTabId: _LiveSportsHubPageState._tabId,
+      tvRowId: _LiveSportsHubPageState._topBarRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,
@@ -166,8 +166,8 @@ class _LiveMatchesRefreshTopBarButtonState
       scaleOnFocus: 1.0,
       suppressInkHover: true,
       focusNode: widget.focusNode,
-      tvTabId: LiveSportsHubPageState._tabId,
-      tvRowId: LiveSportsHubPageState._topBarRowId,
+      tvTabId: _LiveSportsHubPageState._tabId,
+      tvRowId: _LiveSportsHubPageState._topBarRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.topBar,
       onDownEdge: widget.onDownEdge,
@@ -177,7 +177,7 @@ class _LiveMatchesRefreshTopBarButtonState
         setState(() => _focused = focused);
         if (focused) {
           ShellTvFocusCoordinator.saveFocus(
-            LiveSportsHubPageState._tabId,
+            _LiveSportsHubPageState._tabId,
             ShellTvFocusMemory(
               zone: ShellTvZone.topBar,
               node: widget.focusNode,

@@ -35,7 +35,7 @@ class _ForjaLivePluginLoad {
 mixin _LiveMatchesForjaLive
     on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
   @override
-  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
+  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
 
   bool get _usesForjaLiveLazyCatalog => true;
 
@@ -328,7 +328,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _restoreForjaLiveCatalogFilterPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(
-      LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
+      _LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
     );
     if (saved == null || saved.isEmpty) return;
     if (!mounted) return;
@@ -338,7 +338,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
+      _LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
       filter,
     );
   }
@@ -360,8 +360,8 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _restoreTimeWindowPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(LiveSportsHubPageState._schedulePreferenceKey) ??
-        prefs.getString(LiveSportsHubPageState._timeWindowPreferenceKeyLegacy);
+    final raw = prefs.getString(_LiveSportsHubPageState._schedulePreferenceKey) ??
+        prefs.getString(_LiveSportsHubPageState._timeWindowPreferenceKeyLegacy);
     final saved = _liveMatchesScheduleFromPref(raw);
     if (saved == null) return;
     if (!mounted) return;
@@ -384,7 +384,7 @@ mixin _LiveMatchesForjaLive
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      LiveSportsHubPageState._schedulePreferenceKey,
+      _LiveSportsHubPageState._schedulePreferenceKey,
       _liveMatchesSchedulePref(status: status, horizon: horizon),
     );
   }

@@ -2,7 +2,7 @@ part of '../live_sports_hub_page.dart';
 
 mixin _LiveMatchesData
     on ConsumerState<LiveSportsHubPage>, ShellTabRefresh<LiveSportsHubPage> {
-  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
+  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
 
   bool get _tvFocusEnabled =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -15,11 +15,11 @@ mixin _LiveMatchesData
 
     void attempt() {
       if (!mounted) return;
-      if (ShellTvFocus.currentNavTabId != LiveSportsHubPageState._tabId) {
+      if (ShellTvFocus.currentNavTabId != _LiveSportsHubPageState._tabId) {
         return;
       }
       if (ShellTvFocusCoordinator.tabHasAttachedFocus(
-        LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._tabId,
       )) {
         return;
       }
@@ -38,8 +38,8 @@ mixin _LiveMatchesData
         (_s._showTimeTopBar && index == _s._topBarTimeIndex) ||
         (_s._showIptvPortalTopBar && index == portalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
-        LiveSportsHubPageState._tabId,
-        LiveSportsHubPageState._topBarRowId,
+        _LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._topBarRowId,
         index,
       );
       return;
@@ -53,7 +53,7 @@ mixin _LiveMatchesData
     if (!node.canRequestFocus) return;
     node.requestFocus();
     ShellTvFocusCoordinator.saveFocus(
-      LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._tabId,
       ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
     );
   }
@@ -226,8 +226,8 @@ mixin _LiveMatchesData
     return IptvPortalsTopBarButton(
       ctrl: ctrl,
       onTogglePanel: _toggleIptvPortalPanel,
-      tvTabId: LiveSportsHubPageState._tabId,
-      tvRowId: LiveSportsHubPageState._topBarRowId,
+      tvTabId: _LiveSportsHubPageState._tabId,
+      tvRowId: _LiveSportsHubPageState._topBarRowId,
       tvItemIndex: _topBarPortalFocusIndex,
       onLeftEdge: () => _focusTopBarItem(
         _s._showTimeTopBar
@@ -244,14 +244,14 @@ mixin _LiveMatchesData
   void _topBarDownEdge() {
     if (_s._hasSportChips) {
       final chip = ShellTvFocusCoordinator.rowHandle(
-        LiveSportsHubPageState._tabId,
-        LiveSportsHubPageState._chipRowId,
+        _LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._chipRowId,
       );
       if (chip != null && chip.itemCount > 0) {
         final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
         ShellTvFocusCoordinator.focusRowItem(
-          LiveSportsHubPageState._tabId,
-          LiveSportsHubPageState._chipRowId,
+          _LiveSportsHubPageState._tabId,
+          _LiveSportsHubPageState._chipRowId,
           idx,
         );
         return;
@@ -263,14 +263,14 @@ mixin _LiveMatchesData
   /// Sport chips ↑ → top-bar Servers / Catalog / Time (never a picker sheet row).
   void _focusFromSportChipsUp() {
     final top = ShellTvFocusCoordinator.rowHandle(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._topBarRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._topBarRowId,
     );
     if (top != null && top.itemCount > 0) {
       final idx = top.lastFocusedIndex.clamp(0, top.itemCount - 1);
       if (ShellTvFocusCoordinator.focusRowItem(
-        LiveSportsHubPageState._tabId,
-        LiveSportsHubPageState._topBarRowId,
+        _LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._topBarRowId,
         idx,
       )) {
         return;
@@ -296,8 +296,8 @@ mixin _LiveMatchesData
   void _gridFocusUp() {
     if (_s._hasSportChips) {
       ShellTvFocusCoordinator.focusFromResultsRowUp(
-        tabId: LiveSportsHubPageState._tabId,
-        chipRowId: LiveSportsHubPageState._chipRowId,
+        tabId: _LiveSportsHubPageState._tabId,
+        chipRowId: _LiveSportsHubPageState._chipRowId,
       );
       return;
     }
@@ -316,14 +316,14 @@ mixin _LiveMatchesData
 
   bool _focusGridItem(int index) {
     final handle = ShellTvFocusCoordinator.rowHandle(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._gridRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._gridRowId,
     );
     if (handle == null || handle.itemCount <= 0) return false;
     final idx = index.clamp(0, handle.itemCount - 1);
     return ShellTvFocusCoordinator.focusRowItem(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._gridRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._gridRowId,
       idx,
     );
   }
@@ -331,8 +331,8 @@ mixin _LiveMatchesData
   bool _restoreLiveMatchesTvFocus() {
     bool tryFocus() {
       final grid = ShellTvFocusCoordinator.rowHandle(
-        LiveSportsHubPageState._tabId,
-        LiveSportsHubPageState._gridRowId,
+        _LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._gridRowId,
       );
       if (grid != null && grid.itemCount > 0) {
         final idx = grid.lastFocusedIndex.clamp(0, grid.itemCount - 1);
@@ -340,13 +340,13 @@ mixin _LiveMatchesData
       }
       for (final rowId in _s._timelineTvRowIds) {
         final handle = ShellTvFocusCoordinator.rowHandle(
-          LiveSportsHubPageState._tabId,
+          _LiveSportsHubPageState._tabId,
           rowId,
         );
         if (handle == null || handle.itemCount <= 0) continue;
         final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
         return ShellTvFocusCoordinator.focusRowItem(
-          LiveSportsHubPageState._tabId,
+          _LiveSportsHubPageState._tabId,
           rowId,
           idx,
         );
@@ -357,7 +357,7 @@ mixin _LiveMatchesData
     if (tryFocus()) return true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
-          ShellTvFocus.currentNavTabId != LiveSportsHubPageState._tabId) {
+          ShellTvFocus.currentNavTabId != _LiveSportsHubPageState._tabId) {
         return;
       }
       tryFocus();
@@ -375,7 +375,7 @@ mixin _LiveMatchesData
       return;
     }
     if (!ShellTvFocusCoordinator.tabHasAttachedFocus(
-      LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._tabId,
     )) {
       return;
     }
@@ -404,7 +404,7 @@ mixin _LiveMatchesData
       if (node.canRequestFocus && !node.hasFocus) {
         node.requestFocus();
         ShellTvFocusCoordinator.saveFocus(
-          LiveSportsHubPageState._tabId,
+          _LiveSportsHubPageState._tabId,
           ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
         );
       }

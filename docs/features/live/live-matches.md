@@ -17,7 +17,7 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 
 ## What you can do
 
-- Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout. Hover / D-pad focus uses the same green left-bar highlight as Settings list rows; the open match stays lit while the streams panel is open. On **Android TV**, D-pad walks the list; **→** opens into the streams panel when a match is selected.
+- Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout. Hover / D-pad focus use a green tint fill + left rail (same idea as the IPTV channel guide); the open match stays lit while the streams panel is open. On **Android TV**, D-pad walks the list; **→** opens into the streams panel when a match is selected.
 - Tap a **live** match to open a **right panel** (~40% width on desktop/TV) with **Providers** (Forja Live + Stremio) and **Live TV** (Xtream-matched channels). Channel cards are **one per row** (full panel width). The panel sits under the sport category bar and shrinks only the match list — categories stay full width. There is no separate details page on the standard path. On TV, D-pad moves Reload / Close → Providers / Live TV → stream cards (and Live TV categories); **←** returns to the match list.
 - Use the **reload** control next to Close in the streams panel header to force a fresh Providers / Live TV search — bypasses the ~30 minute source cache. Installing or removing a Stremio addon also invalidates that cache automatically.
 - Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream** — the player does not open an embed page or reconnect forever on HTML.

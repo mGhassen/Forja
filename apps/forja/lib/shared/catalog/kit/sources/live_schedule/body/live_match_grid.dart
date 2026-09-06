@@ -1,7 +1,7 @@
 part of '../live_sports_hub_page.dart';
 
 mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
-  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
+  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
 
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -258,8 +258,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       accent: meta.accent,
       selected: selected,
       listIndex: index,
-      tvTabId: LiveSportsHubPageState._tabId,
-      tvRowId: LiveSportsHubPageState._chipRowId,
+      tvTabId: _LiveSportsHubPageState._tabId,
+      tvRowId: _LiveSportsHubPageState._chipRowId,
       onTap: () {
         if (index != _s._tabController!.index) {
           _s._tabController!.animateTo(index);
@@ -397,7 +397,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         : _buildIptvPortalStack(context, iptvCtrl, withStreams);
 
     return TvFocusGraph(
-      tabId: LiveSportsHubPageState._tabId,
+      tabId: _LiveSportsHubPageState._tabId,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,7 +537,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
             : (catalogBusy
                 ? _s._topBarRefreshIndex
                 : _s._topBarRefreshIndex + 1))
-        : (LiveSportsHubPageState._timelineViewEnabled
+        : (_LiveSportsHubPageState._timelineViewEnabled
             ? _s._topBarViewIndex + 1
             : _s._topBarRefreshIndex + 1);
 
@@ -588,7 +588,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           const Spacer(),
           refreshSlot,
           if (!_liveMatchesLeanbackOnly(context) &&
-              LiveSportsHubPageState._timelineViewEnabled) ...[
+              _LiveSportsHubPageState._timelineViewEnabled) ...[
             const SizedBox(width: 4),
             _buildViewToggle(),
           ],
@@ -602,8 +602,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
     if (!tvFocus) return header;
     return TvCatalogRow(
-      tabId: LiveSportsHubPageState._tabId,
-      rowId: LiveSportsHubPageState._topBarRowId,
+      tabId: _LiveSportsHubPageState._tabId,
+      rowId: _LiveSportsHubPageState._topBarRowId,
       sortOrder: 0,
       itemCount: topBarItemCount,
       child: header,
@@ -631,7 +631,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
     final itemCount = _s._sports.length + 1;
     final tvFocus = _tvFocus(context);
-    final resultsRowId = LiveSportsHubPageState._gridRowId;
+    final resultsRowId = _LiveSportsHubPageState._gridRowId;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -683,8 +683,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
           if (tvFocus) {
             return TvChipStrip(
-              tabId: LiveSportsHubPageState._tabId,
-              rowId: LiveSportsHubPageState._chipRowId,
+              tabId: _LiveSportsHubPageState._tabId,
+              rowId: _LiveSportsHubPageState._chipRowId,
               sortOrder: _chipSortOrder,
               itemCount: itemCount,
               resultsRowId: resultsRowId,
@@ -798,8 +798,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         );
         if (!tvFocus) return grid;
         return TvGrid(
-          tabId: LiveSportsHubPageState._tabId,
-          rowId: LiveSportsHubPageState._gridRowId,
+          tabId: _LiveSportsHubPageState._tabId,
+          rowId: _LiveSportsHubPageState._gridRowId,
           sortOrder: _gridSortOrder,
           itemCount: entries.length,
           columns: crossCount,
@@ -833,8 +833,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     );
     if (!tvFocus) return list;
     return TvGrid(
-      tabId: LiveSportsHubPageState._tabId,
-      rowId: LiveSportsHubPageState._gridRowId,
+      tabId: _LiveSportsHubPageState._tabId,
+      rowId: _LiveSportsHubPageState._gridRowId,
       sortOrder: _gridSortOrder,
       itemCount: entries.length,
       columns: 1,
@@ -924,8 +924,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       onUpEdge: tvFocus ? _s._gridUpEdge(context, index, 1) : null,
       onRightEdge: tvFocus && _s._streamsPanelMatch != null
           ? () => ShellTvFocusCoordinator.focusRowItem(
-                LiveSportsHubPageState._tabId,
-                LiveSportsHubPageState._streamsTabsRowId,
+                _LiveSportsHubPageState._tabId,
+                _LiveSportsHubPageState._streamsTabsRowId,
                 0,
               )
           : null,
@@ -1082,20 +1082,37 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _lit => widget.selected || _focused || _hovered;
+  bool get _chrome => _focused || _hovered;
+  bool get _lit => widget.selected || _chrome;
+
+  Color get _fill {
+    if (widget.selected) {
+      return ForjaShellColors.brandGreen.withValues(alpha: 0.18);
+    }
+    if (_chrome) {
+      return ForjaShellColors.brandGreen.withValues(alpha: 0.10);
+    }
+    return Colors.transparent;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final titleWeight = _lit ? FontWeight.w700 : FontWeight.w600;
+    final titleColor = !widget.playable
+        ? Colors.white54
+        : _chrome
+            ? ForjaShellColors.brandGreen
+            : ForjaShellColors.textPrimary;
+    final titleWeight =
+        widget.selected || _chrome ? FontWeight.w700 : FontWeight.w600;
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _lit ? ForjaShellColors.inkHover : Colors.transparent,
+        color: _fill,
         border: Border(
           left: BorderSide(
             color: _lit ? ForjaShellColors.brandGreen : Colors.transparent,
-            width: 2.5,
+            width: 3,
           ),
         ),
       ),
@@ -1122,9 +1139,7 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: widget.playable
-                        ? ForjaShellColors.textPrimary
-                        : Colors.white54,
+                    color: titleColor,
                     fontSize: 14,
                     fontWeight: titleWeight,
                   ),
@@ -1157,11 +1172,13 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
               ),
             ),
           if (widget.playable)
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
               child: Icon(
                 Icons.chevron_right_rounded,
-                color: ForjaShellColors.iconMuted,
+                color: _lit
+                    ? ForjaShellColors.brandGreen
+                    : ForjaShellColors.iconMuted,
                 size: 20,
               ),
             ),
@@ -1181,8 +1198,8 @@ class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
       listIndex: widget.index,
       gridIndex: widget.tvFocus ? widget.index : null,
       gridColumns: widget.tvFocus ? 1 : null,
-      tvTabId: widget.tvFocus ? LiveSportsHubPageState._tabId : null,
-      tvRowId: widget.tvFocus ? LiveSportsHubPageState._gridRowId : null,
+      tvTabId: widget.tvFocus ? _LiveSportsHubPageState._tabId : null,
+      tvRowId: widget.tvFocus ? _LiveSportsHubPageState._gridRowId : null,
       tvZone: widget.tvFocus ? ShellTvZone.grid : null,
       tvItemIndex: widget.tvFocus ? widget.index : null,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,

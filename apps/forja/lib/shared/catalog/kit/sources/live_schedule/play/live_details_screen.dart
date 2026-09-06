@@ -149,22 +149,22 @@ class _LiveMatchDetailsScreenState
     if (!widget.asSidePanel) return;
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
     ShellTvFocusCoordinator.focusRowItem(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._streamsTabsRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._streamsTabsRowId,
       0,
     );
   }
 
   void _focusMatchListFromPanel() {
     final grid = ShellTvFocusCoordinator.rowHandle(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._gridRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._gridRowId,
     );
     if (grid == null || grid.itemCount <= 0) return;
     final idx = grid.lastFocusedIndex.clamp(0, grid.itemCount - 1);
     ShellTvFocusCoordinator.focusRowItem(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._gridRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._gridRowId,
       idx,
     );
   }
@@ -173,21 +173,21 @@ class _LiveMatchDetailsScreenState
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
     if (_listTab == _LiveMatchListTab.liveTv) {
       final cats = ShellTvFocusCoordinator.rowHandle(
-        LiveSportsHubPageState._tabId,
-        LiveSportsHubPageState._streamsCatsRowId,
+        _LiveSportsHubPageState._tabId,
+        _LiveSportsHubPageState._streamsCatsRowId,
       );
       if (cats != null && cats.itemCount > 0) {
         ShellTvFocusCoordinator.focusRowItem(
-          LiveSportsHubPageState._tabId,
-          LiveSportsHubPageState._streamsCatsRowId,
+          _LiveSportsHubPageState._tabId,
+          _LiveSportsHubPageState._streamsCatsRowId,
           0,
         );
         return;
       }
     }
     ShellTvFocusCoordinator.focusRowItem(
-      LiveSportsHubPageState._tabId,
-      LiveSportsHubPageState._streamsListRowId,
+      _LiveSportsHubPageState._tabId,
+      _LiveSportsHubPageState._streamsListRowId,
       0,
     );
   }
@@ -404,13 +404,13 @@ class _LiveMatchDetailsScreenState
     final showLiveTvSearch = _listTab == _LiveMatchListTab.liveTv;
     final side = widget.asSidePanel;
     final tabId = side
-        ? LiveSportsHubPageState._tabId
+        ? _LiveSportsHubPageState._tabId
         : MediaDetailsTv.tabId;
     final rowId = side
-        ? LiveSportsHubPageState._streamsTabsRowId
+        ? _LiveSportsHubPageState._streamsTabsRowId
         : MediaDetailsTv.heroRowId;
     final sort = side
-        ? LiveSportsHubPageState._streamsTabsSort
+        ? _LiveSportsHubPageState._streamsTabsSort
         : MediaDetailsTv.heroRowSortOrder;
 
     Widget pills = HeroPillSegmentedChoice<_LiveMatchListTab>(
@@ -431,8 +431,8 @@ class _LiveMatchDetailsScreenState
       onUpEdge: tvFocus
           ? (side
               ? () => ShellTvFocusCoordinator.focusRowItem(
-                    LiveSportsHubPageState._tabId,
-                    LiveSportsHubPageState._streamsChromeRowId,
+                    _LiveSportsHubPageState._tabId,
+                    _LiveSportsHubPageState._streamsChromeRowId,
                     0,
                   )
               : _focusBack)
@@ -452,8 +452,8 @@ class _LiveMatchDetailsScreenState
               sortOrder: sort,
               itemCount: 2,
               onFocusUp: () => ShellTvFocusCoordinator.focusRowItem(
-                LiveSportsHubPageState._tabId,
-                LiveSportsHubPageState._streamsChromeRowId,
+                _LiveSportsHubPageState._tabId,
+                _LiveSportsHubPageState._streamsChromeRowId,
                 0,
               ),
               onFocusDown: _focusStreamsListFromTabs,
@@ -651,20 +651,20 @@ class _LiveMatchDetailsScreenState
             ? _liveTvChannelQuery
             : '',
         tvTabId: widget.asSidePanel && tvFocus
-            ? LiveSportsHubPageState._tabId
+            ? _LiveSportsHubPageState._tabId
             : null,
         tvListRowId: widget.asSidePanel && tvFocus
-            ? LiveSportsHubPageState._streamsListRowId
+            ? _LiveSportsHubPageState._streamsListRowId
             : null,
         tvCatsRowId: widget.asSidePanel && tvFocus
-            ? LiveSportsHubPageState._streamsCatsRowId
+            ? _LiveSportsHubPageState._streamsCatsRowId
             : null,
         onLeftToMatchList:
             widget.asSidePanel && tvFocus ? _focusMatchListFromPanel : null,
         onUpToTabs: widget.asSidePanel && tvFocus
             ? () => ShellTvFocusCoordinator.focusRowItem(
-                  LiveSportsHubPageState._tabId,
-                  LiveSportsHubPageState._streamsTabsRowId,
+                  _LiveSportsHubPageState._tabId,
+                  _LiveSportsHubPageState._streamsTabsRowId,
                   0,
                 )
             : null,
@@ -792,15 +792,15 @@ class _LiveMatchDetailsScreenState
                 borderRadius: 16,
                 scaleOnFocus: 1.0,
                 listIndex: 0,
-                tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
+                tvTabId: tvFocus ? _LiveSportsHubPageState._tabId : null,
                 tvRowId:
-                    tvFocus ? LiveSportsHubPageState._streamsChromeRowId : null,
+                    tvFocus ? _LiveSportsHubPageState._streamsChromeRowId : null,
                 tvItemIndex: tvFocus ? 0 : null,
                 onLeftEdge: tvFocus ? _focusMatchListFromPanel : null,
                 onDownEdge: tvFocus
                     ? () => ShellTvFocusCoordinator.focusRowItem(
-                          LiveSportsHubPageState._tabId,
-                          LiveSportsHubPageState._streamsTabsRowId,
+                          _LiveSportsHubPageState._tabId,
+                          _LiveSportsHubPageState._streamsTabsRowId,
                           0,
                         )
                     : null,
@@ -823,14 +823,14 @@ class _LiveMatchDetailsScreenState
             borderRadius: 16,
             scaleOnFocus: 1.0,
             listIndex: 1,
-            tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
+            tvTabId: tvFocus ? _LiveSportsHubPageState._tabId : null,
             tvRowId:
-                tvFocus ? LiveSportsHubPageState._streamsChromeRowId : null,
+                tvFocus ? _LiveSportsHubPageState._streamsChromeRowId : null,
             tvItemIndex: tvFocus ? 1 : null,
             onDownEdge: tvFocus
                 ? () => ShellTvFocusCoordinator.focusRowItem(
-                      LiveSportsHubPageState._tabId,
-                      LiveSportsHubPageState._streamsTabsRowId,
+                      _LiveSportsHubPageState._tabId,
+                      _LiveSportsHubPageState._streamsTabsRowId,
                       0,
                     )
                 : null,
@@ -843,13 +843,13 @@ class _LiveMatchDetailsScreenState
       );
       if (tvFocus) {
         chrome = TvCatalogRow(
-          tabId: LiveSportsHubPageState._tabId,
-          rowId: LiveSportsHubPageState._streamsChromeRowId,
-          sortOrder: LiveSportsHubPageState._streamsChromeSort,
+          tabId: _LiveSportsHubPageState._tabId,
+          rowId: _LiveSportsHubPageState._streamsChromeRowId,
+          sortOrder: _LiveSportsHubPageState._streamsChromeSort,
           itemCount: 2,
           onFocusDown: () => ShellTvFocusCoordinator.focusRowItem(
-            LiveSportsHubPageState._tabId,
-            LiveSportsHubPageState._streamsTabsRowId,
+            _LiveSportsHubPageState._tabId,
+            _LiveSportsHubPageState._streamsTabsRowId,
             0,
           ),
           child: chrome,
@@ -1457,9 +1457,9 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
           onUpEdge: i == 0 ? widget.onUpToTabs : null,
           onRightEdge: widget.tvFocus
               ? () => ShellTvFocusCoordinator.focusRowItem(
-                    widget.tvTabId ?? LiveSportsHubPageState._tabId,
+                    widget.tvTabId ?? _LiveSportsHubPageState._tabId,
                     widget.tvListRowId ??
-                        LiveSportsHubPageState._streamsListRowId,
+                        _LiveSportsHubPageState._streamsListRowId,
                     0,
                   )
               : null,
@@ -1476,7 +1476,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     return TvCatalogRow(
       tabId: tabId,
       rowId: rowId,
-      sortOrder: LiveSportsHubPageState._streamsCatsSort,
+      sortOrder: _LiveSportsHubPageState._streamsCatsSort,
       itemCount: rows.length,
       orientation: ShellTvRowOrientation.vertical,
       onFocusUp: widget.onUpToTabs,
@@ -1603,7 +1603,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
         return TvGrid(
           tabId: tabId,
           rowId: rowId,
-          sortOrder: LiveSportsHubPageState._streamsListSort,
+          sortOrder: _LiveSportsHubPageState._streamsListSort,
           itemCount: sources.length,
           columns: crossCount,
           onFocusUp: widget.onUpToTabs,
@@ -1644,7 +1644,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
         ? null
         : (widget.browseByCategory && widget.tvCatsRowId != null
             ? () => ShellTvFocusCoordinator.focusRowItem(
-                  widget.tvTabId ?? LiveSportsHubPageState._tabId,
+                  widget.tvTabId ?? _LiveSportsHubPageState._tabId,
                   widget.tvCatsRowId!,
                   0,
                 )

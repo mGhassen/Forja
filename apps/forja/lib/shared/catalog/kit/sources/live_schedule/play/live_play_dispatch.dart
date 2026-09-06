@@ -68,7 +68,7 @@ void _clearProvidersResultsCache() {
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
   @override
-  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
+  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
 
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(

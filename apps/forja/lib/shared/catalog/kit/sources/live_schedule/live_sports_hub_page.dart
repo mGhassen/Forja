@@ -72,6 +72,8 @@ class LiveSportsHubPage extends ConsumerStatefulWidget {
     this.refreshEpoch = 0,
   });
 
+  static const tabId = 'live_matches';
+
   /// Pack `layout` tree (`kit.list` + `source: live_schedule`). Unused for
   /// chrome — host owns browse UI; kept for shell/mount identity.
   final List<Map<String, dynamic>> layoutWidgets;
@@ -83,10 +85,10 @@ class LiveSportsHubPage extends ConsumerStatefulWidget {
   final int refreshEpoch;
 
   @override
-  ConsumerState<LiveSportsHubPage> createState() => LiveSportsHubPageState();
+  ConsumerState<LiveSportsHubPage> createState() => _LiveSportsHubPageState();
 }
 
-class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
+class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     with
         TickerProviderStateMixin,
         ShellTabRefresh<LiveSportsHubPage>,
@@ -95,8 +97,7 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         _LiveMatchesBuild,
         _LiveMatchesPlayback
     implements _LiveSportsPlayHost {
-  static const tabId = 'live_matches';
-  static const _tabId = tabId;
+  static const _tabId = LiveSportsHubPage.tabId;
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';

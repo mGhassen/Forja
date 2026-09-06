@@ -21,6 +21,6 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
 /// Core shell builder for [live_matches] — kit mount without a pack plugin id.
 Widget liveSportsCoreTabBuilder() => const LiveSportsKitPage(
       pluginId: '',
-      tabId: LiveSportsHubPageState.tabId,
+      tabId: LiveSportsHubPage.tabId,
       layoutWidgets: kLiveSportsHostDefaultLayout,
     );

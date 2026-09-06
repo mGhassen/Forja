@@ -227,7 +227,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     final meta = widget.meta;
     final visibility = widget.visibility;
     final onTap = widget.onTap;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     final titles = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -259,8 +259,8 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
 
     final leading =
         Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
-    // Desktop + TV: keep switch outside the row tap so click/OK on the
-    // label opens detail and the switch only flips activation.
+    // Keep switch outside the row tap: OK on label opens detail; → / click
+    // on the switch flips activation.
     if (meta.hasToggle) {
       return Row(
         children: [
@@ -275,11 +275,11 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
               tvTabId: 'settings',
               tvZone: ShellTvZone.settings,
               ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-              onRightEdge: tv
+              onRightEdge: leanback
                   ? () {
-                      if (_toggleFocus.canRequestFocus) {
-                        _toggleFocus.requestFocus();
-                      }
+                      // Force focus onto the activate switch (spatial → is
+                      // unreliable with a tall row + tiny switch).
+                      _toggleFocus.requestFocus();
                     }
                   : null,
               child: Padding(
@@ -300,12 +300,10 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
           AddonMasterToggle(
             addonId: meta.id,
             visibility: visibility,
-            focusNode: tv ? _toggleFocus : null,
-            onLeftEdge: tv
+            focusNode: leanback ? _toggleFocus : null,
+            onLeftEdge: leanback
                 ? () {
-                    if (_rowFocus.canRequestFocus) {
-                      _rowFocus.requestFocus();
-                    }
+                    _rowFocus.requestFocus();
                   }
                 : null,
           ),
