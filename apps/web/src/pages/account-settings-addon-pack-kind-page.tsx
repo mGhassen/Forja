@@ -241,7 +241,7 @@ export function AccountSettingsAddonPackKindPage({
               onClick={() => setOfficialOpen(true)}
             >
               {officialMissing.length === 0
-                ? 'Official packs installed'
+                ? 'Official packs on profile'
                 : `Add official (${officialMissing.length})`}
             </Button>
             <Button type="button" variant="ghost" asChild>

@@ -287,7 +287,7 @@ export function AccountSettingsForjaPage() {
     <>
       <AccountSettingsShell
         title="Forja Packs"
-        description="Forja pack manifests on this profile — same as Settings → Forja Packs in the app. Hub packs contribute tabs under Features after sync. IPTV portals stay under Addons → IPTV."
+        description="Add pack manifests to this profile. The Forja app downloads and installs the scripts. Hub packs unlock tabs under Features. IPTV portals stay under Addons → IPTV."
         footer={
           <SettingsAutosaveFooter
             isSaving={isSaving}
@@ -339,11 +339,11 @@ export function AccountSettingsForjaPage() {
         </div>
 
         <SettingsSection
-          label="Installed packs"
-          description="Same groups as the app (Providers, Live, Catalog, IPTV, Hubs…). Remove drops the pack from this profile on the next device sync."
+          label="Packs on this profile"
+          description="Same groups as the app (Providers, Live, Catalog, IPTV, Hubs…). Adding here only updates membership — open Forja on a device to download scripts. Remove drops the pack from this profile; devices uninstall on the next sync."
         >
           {draft.packs.length === 0 ? (
-            <p className="text-sm text-forja-muted">No packs yet.</p>
+            <p className="text-sm text-forja-muted">No packs on this profile yet.</p>
           ) : (
             <div className="space-y-6">
               {grouped.map((group) => (
@@ -420,7 +420,7 @@ export function AccountSettingsForjaPage() {
               onClick={addPack}
               disabled={controlsLocked || !url.trim()}
             >
-              Install
+              Add to profile
             </Button>
           </div>
         </SettingsSection>

@@ -6,7 +6,7 @@
 
 Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts the catalog **kit** with a host-default layout: a dense **match list** and a **right streams panel** (Providers / Live TV). An optional ForjaHQ Live Sports hub pack can replace that layout via kit `layout`; browse and play stay host-owned.
 
-Schedules and streams come from **Forja Live** engine catalogs (Streamed, PPV, StreamFree by default; TimStreams, ESPN, … optional), installed **Stremio** sport addons, and **Forja Sports** (catalog schedule matched to your Xtream portal).
+Schedules and streams come from **Forja Live** engine catalogs (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional), installed **Stremio** sport addons, and **Forja Sports** (catalog schedule matched to your Xtream portal).
 
 ## How to open it
 
@@ -29,7 +29,7 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 
 ## Tips
 
-- Streams are third-party — availability changes with broadcasts and region. Streamic may list fewer mirrors than the website: Forja only keeps ones it can unlock to native HLS (e.g. DLHD/DaddyLive), and skips iframe-only dead ends.
+- Streams are third-party — availability changes with broadcasts and region. Streamic may list fewer mirrors than the website: Forja only keeps ones it can unlock to native HLS (e.g. DLHD/DaddyLive), and skips iframe-only dead ends. MobiKora only lists fixtures that already have a channel link on the site.
 - Escape / Back closes the streams panel, then leaves the player and stops audio
 - Pack layout with `style: grid` can restore a card browse if a hub pack declares it
 - **Merge matching events** (Settings → Addons → Live Sports) is **off** by default — leave it off for large schedules; turn it on only if you want the same game collapsed across catalogs

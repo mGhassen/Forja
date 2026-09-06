@@ -203,7 +203,7 @@ export function AccountSettingsNavigationPage() {
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons; hub tabs appear when their Forja Packs are on this profile."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons; hub tabs appear when those packs are on this profile (the app downloads hub scripts)."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
@@ -214,12 +214,13 @@ export function AccountSettingsNavigationPage() {
     >
       <SettingsSection
         label="Tabs"
-        description="Star sets the default tab after launch or profile switch. Only unlocked Addons and installed hub packs are listed."
+        description="Star sets the default tab after launch or profile switch. Only unlocked Addons and hub packs on this profile are listed."
       >
         <ul className="divide-y divide-forja-border/60">
           {featureOrder.length === 0 ? (
             <li className="px-0.5 py-4 text-sm text-forja-muted">
-              No feature tabs yet. Turn on Addons or install hub packs.
+              No feature tabs yet. Turn on Addons or add hub packs to this
+              profile.
             </li>
           ) : null}
           {featureOrder.map((id, index) => {

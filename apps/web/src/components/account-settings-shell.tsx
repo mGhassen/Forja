@@ -299,7 +299,7 @@ export function AccountSettingsShell({
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <NavGroup
                 label="Profile"
-                hint="Same split as the app — Addons, Forja Packs, Features"
+                hint="Addons, packs on the profile, Features — the app downloads packs"
               >
                 {profileCategories.map((category) => (
                   <NavLink

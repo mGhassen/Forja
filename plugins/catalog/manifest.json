@@ -4,7 +4,7 @@
   "name": "ForjaHQ Catalog",
   "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
   "author": "ForjaHQ",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "tags": [
     "sports",
     "live"
@@ -193,6 +193,27 @@
         "catalogTimeoutSec": 90,
         "airingOnlyLive": true
       }
+    },
+    {
+      "id": "catalog-mobikora",
+      "name": "MobiKora",
+      "description": "mobikora.live Arabic football schedule",
+      "entry": "mobikora.js",
+      "types": [
+        "catalog"
+      ],
+      "kind": "http",
+      "config": {
+        "providerId": "live-mobikora",
+        "matchIdPrefix": "mk_",
+        "origin": "https://mobikora.live",
+        "pages": [
+          "/",
+          "/matches-today/",
+          "/matches-tomorrow/"
+        ],
+        "tzOffset": "+03:00"
+      }
     }
   ],
   "bundle": [
@@ -204,6 +225,7 @@
     "streamic.js",
     "espn.js",
     "liveonsat.js",
-    "livesoccertv.js"
+    "livesoccertv.js",
+    "mobikora.js"
   ]
 }

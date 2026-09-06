@@ -290,7 +290,7 @@ export function AccountSettingsAddonsPage() {
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Hub catalogs install under Forja Packs, then show under Features."
+      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Hub catalogs are added under Forja Packs (app downloads scripts), then show under Features."
       footer={
         <SettingsAutosaveFooter
           isSaving={footerSaving}
@@ -356,9 +356,10 @@ export function AccountSettingsAddonsPage() {
           disabled={busy}
         />
         <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
-          Debrid, Connected services, and LAN stay in the app. Hub packs install
-          under Forja Packs, then appear under Features. Live Sports / Direct
-          torrent Plugins manage those Forja packs on this profile.
+          Debrid, Connected services, and LAN stay in the app. Hub packs are
+          added under Forja Packs on this profile; the app downloads and
+          installs them. Live Sports / Direct torrent Plugins manage those
+          Forja packs on this profile.
         </p>
       </SettingsSection>
     </AccountSettingsShell>

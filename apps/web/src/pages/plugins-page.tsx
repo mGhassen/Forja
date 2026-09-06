@@ -39,7 +39,7 @@ const STEPS = [
   {
     n: '02',
     title: 'Add to your profile',
-    copy: 'Confirm in the Forja app. Sync installs the pack on every device you use.',
+    copy: 'Add it to your profile on the web. Open Forja on a device to download and install.',
     accent: 'flame' as const,
   },
   {
@@ -239,7 +239,8 @@ export function PluginsPage() {
                   <p className="mt-4 text-[rgba(237,230,218,0.55)]">
                     Curated official packs from the Forja repo — the same
                     manifests anyone can fork, remix, and host. Search, pick a
-                    pack, add it to your profile; the app installs on sync.
+                    pack, add it to your profile; the app downloads and installs
+                    the scripts.
                   </p>
                 </div>
               </Reveal>

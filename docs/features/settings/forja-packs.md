@@ -25,7 +25,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
-**Community Packs** (web): browse packs by name — install URLs are not shown. Filter by pack kind (Hubs, Providers, …) and topic tags (Anime, Arabic, Kids, …). Recommended ForjaHQ packs float to the top with a flame **Recommended** badge. The list shows **10 packs per page** with pagination. On desktop, click a pack for a fixed-height detail panel (closes / stays hidden while multi-selecting). On Android TV / leanback browsers there is **no** detail panel — rows show the description inline and OK / click toggles selection; use **Add N to Forja** from the selection bar. **Add to Forja** opens the app on this device. When signed in, the cloud icon adds the pack to your profile; trash removes it. Other signed-in devices show one batch confirm mid-session (after splash and a profile is active) in **Settings → Forja Packs** before download or uninstall — never pack-by-pack, and never over Who's watching or boot splash. Closing the picker (**Not now** / Back) leaves those packs in **Settings → Forja Packs** as **Install later** or **Removed from profile** until you Install / Uninstall now. Boot / splash still hydrates and purges missing packs silently.
+**Community Packs** (web): browse packs by name — install URLs are not shown. Filter by pack kind (Hubs, Providers, …) and topic tags (Anime, Arabic, Kids, …). Recommended ForjaHQ packs float to the top with a flame **Recommended** badge. The list shows **10 packs per page** with pagination. On desktop, click a pack for a fixed-height detail panel (closes / stays hidden while multi-selecting). On Android TV / leanback browsers there is **no** detail panel — rows show the description inline and OK / click toggles selection; use **Add N to Forja** from the selection bar. **Add to Forja** opens the app on this device. When signed in, the cloud icon **adds the pack to your profile** (membership only); trash removes it. The **app** downloads and installs scripts — other signed-in devices show one batch confirm mid-session (after splash and a profile is active) in **Settings → Forja Packs** before download or uninstall — never pack-by-pack, and never over Who's watching or boot splash. Closing the picker (**Not now** / Back) leaves those packs in **Settings → Forja Packs** as **Install later** or **Removed from profile** until you Install / Uninstall now. Boot / splash still hydrates and purges missing packs silently.
 
 **Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens **Settings → Forja Packs** with a checkable install list in the detail pane. Packs download only after you confirm. Play / Sources / catalog never start downloads; version bumps only via Settings update toast / **Update**.
 
@@ -35,7 +35,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 ## Related
 
-- [Cloud sync](cloud-sync.md) — profile pack membership + onboarded
+- [Cloud sync](cloud-sync.md) — profile pack membership + onboarded (web/cloud adds packs; app downloads/installs)
 - [Link Android TV](../accounts/tv-connect.md) — cold-start packs step
 - [Sources settings](torrent-settings.md) — Forja addons (torrent / Stremio / Nuvio)
 - [Playback settings](playback-settings.md)

@@ -20,7 +20,7 @@
       "id": "arabic",
       "kind": "hubs",
       "name": "ForjaHQ Arabic",
-      "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs).",
+      "description": "Larozaa Arabic movies and TV hub.",
       "accent": "flame",
       "official": true,
       "recommended": true,
@@ -55,8 +55,8 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.9.2",
-      "pluginCount": 9,
+      "version": "1.9.3",
+      "pluginCount": 10,
       "tags": [
         "live",
         "sports"
@@ -88,8 +88,8 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.9.3",
-      "pluginCount": 6,
+      "version": "1.9.6",
+      "pluginCount": 7,
       "tags": [
         "live",
         "sports"

@@ -171,7 +171,7 @@ export function PluginBatchInstallDialog({
               </div>
               <div className="min-w-0">
                 <p className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
-                  Batch install
+                  Add to profile
                 </p>
                 <h2
                   id="plugin-batch-install-title"
@@ -180,8 +180,8 @@ export function PluginBatchInstallDialog({
                   Add packs to your profile
                 </h2>
                 <p className="mt-1 text-xs text-[rgba(237,230,218,0.5)]">
-                  Choose which packs to sync — the app installs them on next
-                  sign-in.
+                  Cloud stores membership only. Open Forja on a device to
+                  download and install the scripts.
                 </p>
               </div>
             </div>

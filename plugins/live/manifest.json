@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live",
   "description": "Live Matches per-site stream resolve (Forja Live).",
   "author": "ForjaHQ",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "tags": [
     "live",
     "sports"
@@ -113,6 +113,21 @@
           "https://api.ppv.cx/api/streams"
         ]
       }
+    },
+    {
+      "id": "live-mobikora",
+      "name": "MobiKora",
+      "description": "mobikora.live stream resolve",
+      "entry": "mobikora.js",
+      "types": [
+        "live"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://mobikora.live",
+        "matchIdPrefix": "mk_"
+      }
     }
   ],
   "bundle": [
@@ -122,6 +137,7 @@
     "streamfree.js",
     "timstreams.js",
     "watchfooty.js",
-    "streamic.js"
+    "streamic.js",
+    "mobikora.js"
   ]
 }

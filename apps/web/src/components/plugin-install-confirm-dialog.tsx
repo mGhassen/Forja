@@ -70,14 +70,14 @@ export function PluginInstallConfirmDialog({
       : 'Not on profile'
     : alreadyInstalled
       ? 'Already added'
-      : 'Install plugin pack'
+      : 'Add to profile'
   const body = removing
     ? alreadyInstalled
-      ? 'Removes this pack from your profile. Signed-in devices uninstall it on the next sync.'
+      ? 'Removes this pack from your profile. The Forja app uninstalls it on each device after sync.'
       : 'This pack is not on your profile.'
     : alreadyInstalled
-      ? 'This pack is already on your profile. Open Forja on any device — it asks before downloading.'
-      : 'Add this pack to your Forja profile? Other devices will ask before downloading.'
+      ? 'This pack is already on your profile. Open Forja on a device to download and install the scripts if they are not there yet.'
+      : 'Adds this pack to your profile. Open Forja on a device to download and install the scripts.'
 
   return (
     <div
