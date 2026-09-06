@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **21 / 21** fix · **0 / 3** acceptance |
+| **Progress** | **23 / 23** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,8 @@
 | 19 | I224-T19 | RFC-086: packs `ensureNavIdsKnown` known-only (no first-seen auto-insert into navbar) | ✅ |
 | 20 | I224-T20 | Soft pull skips `addon_feature_*` while local dirty; prefs push immediate for pending Addons enable (cloud false no longer snaps IPTV/Live off) | ✅ |
 | 21 | I224-T21 | Web Addons writes `addon_feature_*` + rail; app heals legacy nav-only cloud; Features lists IPTV/Live only when unlocked | ✅ |
+| 22 | I224-T22 | Derived Features inventory (flags ∪ pack hubs); stop HOST_CORE bake-in; prune nav on pack remove | ✅ |
+| 23 | I224-T23 | Prefs overlay omits `addon_feature_*` unless intentional Addons push; remove dirty-gen / soft-pull skip / heal stack | ✅ |
 
 ---
 
@@ -55,7 +57,7 @@
 
 ## Summary
 
-**Symptom:** On Android TV, OK on Addons IPTV / Live Sports switches did not leave them on. Features lacked those tabs. Cloud Profile could show them on while the app stayed off.
+**Symptom:** On Android TV, OK on Addons IPTV / Live Sports switches did not leave them on. Features lacked those tabs. Cloud Profile could show them on while the app stayed off. Web Features listed IPTV / Live / hub tabs when Addons were off and Packs empty.
 
 **Root cause:**
 
@@ -63,18 +65,19 @@
 2. Soft pull on Addons open could overwrite a mid-pull local enable, or a dirty empty local gen could skip / fight cloud Features.
 3. Early “flush dirty nav before pull” would intentionally overlay thin local and wipe richer cloud.
 4. Rapid OK on IPTV then Live Sports raced `getNavbarConfig` → mutate → `setNavbarConfig` — both reads saw `[]`, second write left only `live_matches` (logs: `next=[iptv]` then `next=[live_matches]`).
-5. After RFC-086, Addons writes `addon_feature_*` in **preferences** (3s debounce) while opening Addons force soft-pulls playback — stale cloud `false` demoted the flag, emptied Features, and snapped the switch off (even when nav dirty-gen was correct).
+5. After RFC-086, Addons writes `addon_feature_*` in **preferences** while opening Addons force soft-pulls playback — a full local playback replace on any prefs push uploaded `addon_feature_*=false` and wiped richer cloud.
 6. Web Profile → Addons IPTV / Live only mutated `navigation.visibleIds` — never `addon_feature_*` — so cloud “ON” never unlocked the app switch / Features inventory.
+7. Web `normalizeNavigationPayload` always injected HOST_CORE into `tabOrder`, so Features listed IPTV / Live even when unlocked flags were false; stale hub ids stayed after packs were cleared.
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled` (no mid-build flip callback); soft pull skips stale nav apply when gen moved and refuses cloud nav that shrinks local tabs; soft pull also skips `addon_feature_*` while Addons enable is unsynced and prefs push for those flags is immediate (224 — cloud `false` no longer snaps the switch off); thin dirty local yields to richer cloud; Addons force-pulls on open; navbar RMW is serialized; Addons/Features/Packs share row-activate + details-chevron; Features D-pad keeps column via `TvCatalogRow`.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
 ## Verify
 
 1. **Hot restart** ATV / desktop (`R` is not enough if isolate stale — prefer full stop/run).
-2. Settings → Addons → focus IPTV row → OK once. Log must show `[AddonToggle] set iptv → true`. Soft pull must log `skip addon_feature_* apply` if it races before prefs push finishes.
+2. Settings → Addons → focus IPTV row → OK once. Log must show `[AddonToggle] set iptv → true`.
 3. Switch stays green; Features lists IPTV / Live Sports; rail shows tabs by default.
-4. OK again turns off and stays off; Features drops the row.
-5. Soft pull must log `skip cloud nav shrink` when cloud is thinner — not wipe local enables.
-6. On web, turn IPTV/Live on under Profile → Addons (writes `addon_feature_*` + rail) → open Addons on ATV → switches and Features match. Legacy nav-only cloud heals flags on soft pull (`heal addon_feature_* from legacy cloud nav`).
+4. OK again turns off and stays off; Features drops the row (not merely toggle off).
+5. Web: Addons OFF + Packs empty → Features shows Settings only (no IPTV / Live / Asian Drama rows).
+6. Web IPTV ON → open Addons on ATV → switch on. Changing EPG / quality on ATV must not clear cloud IPTV unlock.

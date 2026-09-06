@@ -5,22 +5,24 @@ import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
 import {
+  useForjaSetting,
   useNavigationSetting,
   usePlaybackSetting,
 } from '@/hooks/use-user-setting'
 import {
+  availableFeatureTabIds,
   DEFAULT_NAV_TAB,
-  HOST_CORE_NAV_IDS,
+  emptyForjaPayload,
   emptyPreferencesPayload,
-  normalizeNavigationPayload,
   navTabLabel,
+  pruneNavigationToAvailable,
+  type ForjaPayload,
   type NavigationPayload,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
 type NavDraft = {
-  /** Full order for Settings → Features (visible + hidden). */
   order: string[]
   visible: Set<string>
   defaultTab: string
@@ -30,31 +32,9 @@ function labelFor(id: string): string {
   return navTabLabel(id)
 }
 
-function draftFromPayload(payload: NavigationPayload | undefined): NavDraft {
-  const n = normalizeNavigationPayload(payload)
-  return {
-    order: n.tabOrder,
-    visible: new Set(n.visibleIds),
-    defaultTab: n.defaultTab,
-  }
-}
-
-function payloadFromDraft(draft: NavDraft): NavigationPayload {
-  const visibleIds = draft.order.filter((id) => draft.visible.has(id))
-  return normalizeNavigationPayload({
-    visibleIds,
-    tabOrder: draft.order,
-    defaultTab: draft.defaultTab,
-  })
-}
-
-function navigationFromServer(value: unknown): NavDraft {
-  return draftFromPayload(value as NavigationPayload | undefined)
-}
-
 function emptyNavDraft(): NavDraft {
   return {
-    order: [...HOST_CORE_NAV_IDS],
+    order: [],
     visible: new Set(),
     defaultTab: DEFAULT_NAV_TAB,
   }
@@ -63,23 +43,7 @@ function emptyNavDraft(): NavDraft {
 export function AccountSettingsNavigationPage() {
   const navigation = useNavigationSetting()
   const playback = usePlaybackSetting()
-  const {
-    draft,
-    commit,
-    controlsLocked,
-    isSaving,
-    savedFlash,
-    saveError,
-  } = useCommitDraft({
-    profileId: navigation.profileId,
-    updatedAt: navigation.data?.updated_at,
-    isReady: Boolean(navigation.data) && !navigation.isLoading,
-    serverValue: navigation.data?.payload,
-    mapServer: navigationFromServer,
-    makeEmpty: emptyNavDraft,
-    save: navigation.save,
-    toPayload: payloadFromDraft,
-  })
+  const forja = useForjaSetting()
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -94,24 +58,82 @@ export function AccountSettingsNavigationPage() {
     save: playback.save,
   })
 
-  /** RFC-086: IPTV / Live Sports only after Addons unlocks them. */
+  const packsDraft = useCommitDraft({
+    profileId: forja.profileId,
+    updatedAt: forja.data?.updated_at,
+    isReady: Boolean(forja.data) && !forja.isLoading,
+    serverValue: forja.data?.payload,
+    mapServer: (value: unknown) => ({
+      packs: (value as ForjaPayload | undefined)?.packs ?? [],
+      onboarded: (value as ForjaPayload | undefined)?.onboarded,
+    }),
+    makeEmpty: emptyForjaPayload,
+    save: forja.save,
+  })
+
+  const availableIds = useMemo(
+    () =>
+      availableFeatureTabIds({
+        addonFeatureIptv: playDraft.draft.addon_feature_iptv,
+        addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
+        packs: packsDraft.draft.packs,
+      }),
+    [
+      playDraft.draft.addon_feature_iptv,
+      playDraft.draft.addon_feature_live_matches,
+      packsDraft.draft.packs,
+    ],
+  )
+
+  const {
+    draft,
+    commit,
+    controlsLocked,
+    isSaving,
+    savedFlash,
+    saveError,
+  } = useCommitDraft({
+    profileId: navigation.profileId,
+    updatedAt: navigation.data?.updated_at,
+    isReady: Boolean(navigation.data) && !navigation.isLoading,
+    serverValue: navigation.data?.payload,
+    mapServer: (value: unknown) => {
+      const pruned = pruneNavigationToAvailable(
+        value as NavigationPayload | undefined,
+        availableFeatureTabIds({
+          addonFeatureIptv: playDraft.draft.addon_feature_iptv,
+          addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
+          packs: packsDraft.draft.packs,
+        }),
+      )
+      return {
+        order: pruned.tabOrder,
+        visible: new Set(pruned.visibleIds),
+        defaultTab: pruned.defaultTab,
+      }
+    },
+    makeEmpty: emptyNavDraft,
+    save: navigation.save,
+    toPayload: (d) =>
+      pruneNavigationToAvailable(
+        {
+          visibleIds: d.order.filter((id) => d.visible.has(id)),
+          tabOrder: d.order,
+          defaultTab: d.defaultTab,
+        },
+        availableIds,
+      ),
+  })
+
+  /** Derived inventory ordered by draft.order, then any new available ids. */
   const featureOrder = useMemo(() => {
-    const iptvOn =
-      playDraft.draft.addon_feature_iptv ?? draft.visible.has('iptv')
-    const liveOn =
-      playDraft.draft.addon_feature_live_matches ??
-      draft.visible.has('live_matches')
-    return draft.order.filter((id) => {
-      if (id === 'iptv') return Boolean(iptvOn)
-      if (id === 'live_matches') return Boolean(liveOn)
-      return true
-    })
-  }, [
-    draft.order,
-    draft.visible,
-    playDraft.draft.addon_feature_iptv,
-    playDraft.draft.addon_feature_live_matches,
-  ])
+    const available = new Set(availableIds)
+    const ordered = draft.order.filter((id) => available.has(id))
+    for (const id of availableIds) {
+      if (!ordered.includes(id)) ordered.push(id)
+    }
+    return ordered
+  }, [draft.order, availableIds])
 
   const startupOptions = useMemo(() => {
     const opts = featureOrder.filter((id) => draft.visible.has(id))
@@ -123,15 +145,11 @@ export function AccountSettingsNavigationPage() {
     const id = featureOrder[index]
     if (!id) return
     void commit((prev) => {
-      const fullIndex = prev.order.indexOf(id)
-      if (fullIndex < 0) return prev
-      const targetId = featureOrder[index + dir]
-      if (!targetId) return prev
-      const target = prev.order.indexOf(targetId)
-      if (target < 0) return prev
-      const next = [...prev.order]
-      ;[next[fullIndex], next[target]] = [next[target], next[fullIndex]]
-      return { ...prev, order: next }
+      const full = [...featureOrder]
+      const target = index + dir
+      if (target < 0 || target >= full.length) return prev
+      ;[full[index], full[target]] = [full[target]!, full[index]!]
+      return { ...prev, order: full }
     })
   }
 
@@ -142,35 +160,37 @@ export function AccountSettingsNavigationPage() {
       else visible.delete(id)
       let defaultTab = prev.defaultTab
       if (!on && defaultTab === id && defaultTab !== 'settings') {
-        const still = prev.order.filter((x) => visible.has(x))
+        const still = featureOrder.filter((x) => visible.has(x))
         defaultTab = still[0] ?? 'settings'
       }
       return { ...prev, visible, defaultTab }
     })
   }
 
-  const footerSaving = isSaving || playDraft.isSaving
-  const footerFlash = savedFlash || playDraft.savedFlash
-  const footerError = saveError ?? playDraft.saveError
-  const locked = controlsLocked || playDraft.controlsLocked || footerSaving
+  const locked = controlsLocked || isSaving
 
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons first. Hub tabs appear after Forja Packs sync packs that contribute them."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons; hub tabs appear when their Forja Packs are on this profile."
       footer={
         <SettingsAutosaveFooter
-          isSaving={footerSaving}
-          savedFlash={footerFlash}
-          error={footerError}
+          isSaving={isSaving}
+          savedFlash={savedFlash}
+          error={saveError}
         />
       }
     >
       <SettingsSection
         label="Tabs"
-        description="Star sets the default tab after launch or profile switch. Hub names come from installed packs — not a fixed catalog on the portal."
+        description="Star sets the default tab after launch or profile switch. Only unlocked Addons and installed hub packs are listed."
       >
         <ul className="divide-y divide-forja-border/60">
+          {featureOrder.length === 0 ? (
+            <li className="px-0.5 py-4 text-sm text-forja-muted">
+              No feature tabs yet. Turn on Addons or install hub packs.
+            </li>
+          ) : null}
           {featureOrder.map((id, index) => {
             const on = draft.visible.has(id)
             const isDefault = draft.defaultTab === id
@@ -192,9 +212,7 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} down`}
-                    disabled={
-                      locked || index === featureOrder.length - 1
-                    }
+                    disabled={locked || index === featureOrder.length - 1}
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -222,7 +240,9 @@ export function AccountSettingsNavigationPage() {
                   }
                   className={cn(
                     'shrink-0 disabled:opacity-30',
-                    isDefault ? 'text-forja-green' : 'text-forja-muted hover:text-forja-text',
+                    isDefault
+                      ? 'text-forja-green'
+                      : 'text-forja-muted hover:text-forja-text',
                   )}
                 >
                   <Star
@@ -277,7 +297,9 @@ export function AccountSettingsNavigationPage() {
             >
               <Star
                 className="size-5"
-                fill={draft.defaultTab === 'settings' ? 'currentColor' : 'none'}
+                fill={
+                  draft.defaultTab === 'settings' ? 'currentColor' : 'none'
+                }
               />
             </button>
             <span
@@ -292,7 +314,9 @@ export function AccountSettingsNavigationPage() {
 
       <SettingsSection label="Default tab">
         <div className="flex min-h-14.5 items-center justify-between gap-5 px-0.5 py-3">
-          <span className="text-sm font-medium">Opens after sync / profile switch</span>
+          <span className="text-sm font-medium">
+            Opens after sync / profile switch
+          </span>
           <select
             className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
             value={

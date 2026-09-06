@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **10 / 10** acceptance |
-| **Current slice** | Two-layer flags shipped — web portal writes same prefs keys |
+| **Progress** | **Complete** · **4 / 4** components · **13 / 13** acceptance |
+| **Current slice** | Derived Features inventory + intentional addon_feature sync |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -59,6 +59,16 @@ Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
 
 ---
 
+## Acceptance (derived inventory + clean sync)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 11 | R86-A11 | Features inventory = addon flags ∪ hub tabs from packs — never HOST_CORE / stale `tabOrder` alone | ✅ |
+| 12 | R86-A12 | Ordinary prefs push merges playback but omits `addon_feature_*`; only intentional Addons push overlays those keys | ✅ |
+| 13 | R86-A13 | Pack remove prunes hub ids from cloud `tabOrder` / `visibleIds`; Addons OFF drops host ids from Features list | ✅ |
+
+---
+
 ## Summary
 
 Split **feature availability** from **navbar visibility**.
@@ -68,6 +78,8 @@ Split **feature availability** from **navbar visibility**.
 | **Addons** | IPTV / Live Sports system exists | Defaults Features rail **on** |
 | **Packs** | Hub feature exists | Defaults Features rail **on** (first-seen / enable) |
 | **Features** | Show on rail / order / star | User hide/reorder after defaults |
+
+**Availability** is derived (`addon_feature_*` + pack hub tab ids). `navigation.tabOrder` / `visibleIds` only order and show among available ids — they must not invent IPTV / Live / Asian Drama when Addons/packs are off.
 
 Addon / pack **OFF** removes the feature from Features and the rail.
 

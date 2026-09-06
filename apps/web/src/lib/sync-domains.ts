@@ -388,8 +388,7 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
 export function emptyNavigationPayload(): Required<NavigationPayload> {
   return {
     visibleIds: [],
-    // Host-core rows only — hub tabs appear when the app syncs pack `nav` ids.
-    tabOrder: [...HOST_CORE_NAV_IDS],
+    tabOrder: [],
     defaultTab: DEFAULT_NAV_TAB,
   }
 }
@@ -405,9 +404,54 @@ function mergeNavTabOrder(stored: string[], extras: string[]): string[] {
   return out
 }
 
-/** Normalize cloud/UI nav. Empty `visibleIds` is intentional. Pack hub tab ids
- * pass through opaquely; only archived host ids are stripped. Settings is
- * never stored. */
+/**
+ * Hub shell tab from a pack manifest URL (`…/hubs/<slot>/manifest.json`).
+ * Non-hub packs (providers, live, torrent, …) return null.
+ */
+export function hubTabIdFromPackManifestUrl(manifestUrl: string): string | null {
+  const raw = manifestUrl.trim()
+  if (!raw) return null
+  try {
+    const path = new URL(raw).pathname
+    const parts = path.split('/').filter(Boolean)
+    const hubsIdx = parts.findIndex((p) => p === 'hubs')
+    const slot = hubsIdx >= 0 ? parts[hubsIdx + 1] : undefined
+    if (!slot || slot === 'manifest.json') return null
+    const id = slot.replace(/-/g, '_')
+    if (!isPersistedNavId(id)) return null
+    if ((HOST_CORE_NAV_IDS as string[]).includes(id)) return null
+    return id
+  } catch {
+    return null
+  }
+}
+
+export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const pack of packs) {
+    const id = hubTabIdFromPackManifestUrl(pack.manifestUrl ?? '')
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+/** RFC-086 derived Features inventory — not `tabOrder` alone. */
+export function availableFeatureTabIds(opts: {
+  addonFeatureIptv?: boolean
+  addonFeatureLiveMatches?: boolean
+  packs: ForjaPackRow[]
+}): string[] {
+  const ids: string[] = []
+  if (opts.addonFeatureIptv === true) ids.push('iptv')
+  if (opts.addonFeatureLiveMatches === true) ids.push('live_matches')
+  ids.push(...hubTabIdsFromForjaPacks(opts.packs))
+  return ids
+}
+
+/** Normalize cloud/UI nav. Does **not** invent IPTV/Live into tabOrder. */
 export function normalizeNavigationPayload(
   n: NavigationPayload | undefined,
 ): Required<NavigationPayload> {
@@ -424,14 +468,32 @@ export function normalizeNavigationPayload(
     defaultTab = visibleIds.length > 0 ? visibleIds[0]! : 'settings'
   }
   const storedTabOrder = (n?.tabOrder ?? []).filter(isPersistedNavId)
-  const tabOrder = mergeNavTabOrder(storedTabOrder, [
-    ...visibleIds,
-    ...HOST_CORE_NAV_IDS,
-  ])
+  const tabOrder = mergeNavTabOrder(storedTabOrder, visibleIds)
   return { visibleIds, tabOrder, defaultTab }
 }
 
-export function emptyPreferencesPayload(): Required<PreferencesPayload> {
+/** Keep order/visibility only among currently available feature ids. */
+export function pruneNavigationToAvailable(
+  n: NavigationPayload | undefined,
+  availableIds: Iterable<string>,
+): Required<NavigationPayload> {
+  const available = new Set(
+    [...availableIds].filter((id) => isPersistedNavId(id)),
+  )
+  const base = normalizeNavigationPayload(n)
+  const visibleIds = base.visibleIds.filter((id) => available.has(id))
+  const tabOrder = mergeNavTabOrder(
+    base.tabOrder.filter((id) => available.has(id)),
+    [...available],
+  )
+  let defaultTab = base.defaultTab
+  if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
+    defaultTab = visibleIds.length > 0 ? visibleIds[0]! : DEFAULT_NAV_TAB
+  }
+  return { visibleIds, tabOrder, defaultTab }
+}
+
+export function emptyPreferencesPayload(): PreferencesPayload {
   return {
     play_source_torrent_enabled: true,
     play_source_stremio_enabled: true,
@@ -444,8 +506,6 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
     auto_skip_intro: false,
     iptv_epg_enabled: true,
     max_playback_height: 2160,
-    addon_feature_iptv: false,
-    addon_feature_live_matches: false,
   }
 }
 
@@ -461,11 +521,22 @@ export function emptyForjaPayload(): ForjaPayload {
   return { packs: [] }
 }
 
-/** Persist full playback prefs (incl. play_source_* modes) — never strip to empty. */
+/** Persist playback prefs. Never invent `addon_feature_* = false` when absent. */
 function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload | undefined {
   if (!p) return undefined
   const d = emptyPreferencesPayload()
-  return { ...d, ...p }
+  const out: PreferencesPayload = { ...d, ...p }
+  if (p.addon_feature_iptv === undefined) {
+    delete out.addon_feature_iptv
+  } else {
+    out.addon_feature_iptv = p.addon_feature_iptv
+  }
+  if (p.addon_feature_live_matches === undefined) {
+    delete out.addon_feature_live_matches
+  } else {
+    out.addon_feature_live_matches = p.addon_feature_live_matches
+  }
+  return out
 }
 
 function compactStremio(s: StremioPayload | undefined): StremioPayload | undefined {

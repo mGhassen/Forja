@@ -64,6 +64,20 @@ export function useProfileSettings() {
       const next: ProfileSettingsPayload = {
         ...current,
         ...patch,
+        playback: patch.playback
+          ? {
+              ...current.playback,
+              ...patch.playback,
+              // Intentionally omit flags from a Playback-only draft must not
+              // wipe Addons unlocks (RFC-086).
+              addon_feature_iptv:
+                patch.playback.addon_feature_iptv ??
+                current.playback?.addon_feature_iptv,
+              addon_feature_live_matches:
+                patch.playback.addon_feature_live_matches ??
+                current.playback?.addon_feature_live_matches,
+            }
+          : current.playback,
         connectedServices: {
           ...current.connectedServices,
           ...patch.connectedServices,

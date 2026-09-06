@@ -388,7 +388,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
       final currentId = _selectedIndex < _visibleIds.length
           ? _visibleIds[_selectedIndex]
           : null;
-      if (visible.isNotEmpty) {
+      final hadFeatureTabs = _visibleIds.any((id) => id != 'settings');
+      // Stay in real Settings when the last feature tab is unchecked while
+      // already there. Do not clear dismissed mid-edit (that flashed the
+      // get-started empty shell over Settings). Cold empty + logo return
+      // still use dismissed=false.
+      if (visible.isEmpty && currentId == 'settings' && hadFeatureTabs) {
+        _emptyFeaturesBodyDismissed = true;
+      } else if (visible.isNotEmpty && currentId != 'settings') {
         _emptyFeaturesBodyDismissed = false;
       }
       _visibleIds = [...visible, 'settings'];

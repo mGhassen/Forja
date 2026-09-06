@@ -7,6 +7,10 @@ import type {
   ForjaPayload,
   NavigationPayload,
 } from '@/lib/sync-domains'
+import {
+  availableFeatureTabIds,
+  pruneNavigationToAvailable,
+} from '@/lib/sync-domains'
 
 /**
  * Slice `profile_settings` into per-page hooks.
@@ -110,10 +114,33 @@ export function useForjaSetting() {
     ...settings,
     data,
     save: async (payload: ForjaPayload) => {
+      const current = settings.data?.payload
+      const prevPacks = current?.connectedServices?.forja?.packs ?? []
+      const prevAvailable = availableFeatureTabIds({
+        addonFeatureIptv: current?.playback?.addon_feature_iptv,
+        addonFeatureLiveMatches: current?.playback?.addon_feature_live_matches,
+        packs: prevPacks,
+      })
+      const available = availableFeatureTabIds({
+        addonFeatureIptv: current?.playback?.addon_feature_iptv,
+        addonFeatureLiveMatches: current?.playback?.addon_feature_live_matches,
+        packs: payload.packs ?? [],
+      })
+      const prevSet = new Set(prevAvailable)
+      const newlyAvailable = available.filter((id) => !prevSet.has(id))
+      const pruned = pruneNavigationToAvailable(current?.navigation, available)
+      const visibleIds = [
+        ...new Set([...pruned.visibleIds, ...newlyAvailable]),
+      ]
       await settings.patch({
         connectedServices: {
-          ...settings.data?.payload.connectedServices,
+          ...current?.connectedServices,
           forja: payload,
+        },
+        navigation: {
+          ...pruned,
+          visibleIds,
+          tabOrder: pruned.tabOrder,
         },
       })
     },

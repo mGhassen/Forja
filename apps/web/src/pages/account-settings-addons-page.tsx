@@ -5,14 +5,17 @@ import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
 import {
+  useForjaSetting,
   useNavigationSetting,
   usePlaybackSetting,
 } from '@/hooks/use-user-setting'
 import {
+  availableFeatureTabIds,
+  emptyForjaPayload,
   emptyPreferencesPayload,
   DEFAULT_NAV_TAB,
-  HOST_CORE_NAV_IDS,
-  normalizeNavigationPayload,
+  pruneNavigationToAvailable,
+  type ForjaPayload,
   type NavigationPayload,
   type PreferencesPayload,
 } from '@/lib/sync-domains'
@@ -103,28 +106,34 @@ function AddonRow({
 }
 
 function navFromServer(value: unknown): NavDraft {
-  const n = normalizeNavigationPayload(value as NavigationPayload | undefined)
+  const n = value as NavigationPayload | undefined
   return {
-    order: n.tabOrder,
-    visible: new Set(n.visibleIds),
-    defaultTab: n.defaultTab,
+    order: [...(n?.tabOrder ?? [])],
+    visible: new Set(n?.visibleIds ?? []),
+    defaultTab: n?.defaultTab ?? DEFAULT_NAV_TAB,
   }
 }
 
 function emptyNavDraft(): NavDraft {
   return {
-    order: [...HOST_CORE_NAV_IDS],
+    order: [],
     visible: new Set(),
     defaultTab: DEFAULT_NAV_TAB,
   }
 }
 
-function navToPayload(draft: NavDraft): NavigationPayload {
-  return normalizeNavigationPayload({
-    visibleIds: draft.order.filter((id) => draft.visible.has(id)),
-    tabOrder: draft.order,
-    defaultTab: draft.defaultTab,
-  })
+function navToPayload(
+  draft: NavDraft,
+  availableIds: string[],
+): NavigationPayload {
+  return pruneNavigationToAvailable(
+    {
+      visibleIds: draft.order.filter((id) => draft.visible.has(id)),
+      tabOrder: draft.order,
+      defaultTab: draft.defaultTab,
+    },
+    availableIds,
+  )
 }
 
 function playbackFromServer(value: unknown): PreferencesPayload {
@@ -142,6 +151,7 @@ function playbackFromServer(value: unknown): PreferencesPayload {
 export function AccountSettingsAddonsPage() {
   const playback = usePlaybackSetting()
   const navigation = useNavigationSetting()
+  const forja = useForjaSetting()
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -153,6 +163,25 @@ export function AccountSettingsAddonsPage() {
     save: playback.save,
   })
 
+  const packsDraft = useCommitDraft({
+    profileId: forja.profileId,
+    updatedAt: forja.data?.updated_at,
+    isReady: Boolean(forja.data) && !forja.isLoading,
+    serverValue: forja.data?.payload,
+    mapServer: (value: unknown) => ({
+      packs: (value as ForjaPayload | undefined)?.packs ?? [],
+      onboarded: (value as ForjaPayload | undefined)?.onboarded,
+    }),
+    makeEmpty: emptyForjaPayload,
+    save: forja.save,
+  })
+
+  const availableIds = availableFeatureTabIds({
+    addonFeatureIptv: playDraft.draft.addon_feature_iptv,
+    addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
+    packs: packsDraft.draft.packs,
+  })
+
   const navDraft = useCommitDraft({
     profileId: navigation.profileId,
     updatedAt: navigation.data?.updated_at,
@@ -161,47 +190,65 @@ export function AccountSettingsAddonsPage() {
     mapServer: navFromServer,
     makeEmpty: emptyNavDraft,
     save: navigation.save,
-    toPayload: navToPayload,
+    toPayload: (draft) => navToPayload(draft, availableIds),
   })
 
   const busy =
     playDraft.controlsLocked ||
     playDraft.isSaving ||
     navDraft.controlsLocked ||
-    navDraft.isSaving
+    navDraft.isSaving ||
+    packsDraft.controlsLocked
 
   const setPlayBool = (key: keyof PreferencesPayload, value: boolean) => {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  const setNavTab = (id: string, on: boolean) => {
-    void navDraft.commit((prev) => {
-      const visible = new Set(prev.visible)
-      if (on) visible.add(id)
-      else visible.delete(id)
-      const order = prev.order.includes(id) ? prev.order : [...prev.order, id]
-      let defaultTab = prev.defaultTab
-      if (!on && defaultTab === id) {
-        const still = order.filter((x) => visible.has(x))
-        defaultTab = still[0] ?? DEFAULT_NAV_TAB
-      }
-      return { ...prev, order, visible, defaultTab }
-    })
-  }
-
-  /** RFC-086: unlock via playback flag + default Features rail on (same as app). */
-  const setHostAddon = (
-    navId: 'iptv' | 'live_matches',
-    on: boolean,
-  ) => {
+  /** Unlock flag + default rail on; prune nav to derived availability. */
+  const setHostAddon = (navId: 'iptv' | 'live_matches', on: boolean) => {
     const flagKey =
       navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
+    const nextFlags = {
+      addon_feature_iptv:
+        navId === 'iptv' ? on : playDraft.draft.addon_feature_iptv,
+      addon_feature_live_matches:
+        navId === 'live_matches'
+          ? on
+          : playDraft.draft.addon_feature_live_matches,
+    }
     void playDraft.commit((prev) => ({
       ...prev,
       [flagKey]: on,
       ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
     }))
-    setNavTab(navId, on)
+    const nextAvailable = availableFeatureTabIds({
+      addonFeatureIptv: nextFlags.addon_feature_iptv,
+      addonFeatureLiveMatches: nextFlags.addon_feature_live_matches,
+      packs: packsDraft.draft.packs,
+    })
+    void navDraft.commit((prev) => {
+      const visible = new Set(prev.visible)
+      if (on) visible.add(navId)
+      else visible.delete(navId)
+      const order = prev.order.includes(navId)
+        ? prev.order
+        : on
+          ? [...prev.order, navId]
+          : prev.order
+      const pruned = pruneNavigationToAvailable(
+        {
+          visibleIds: order.filter((id) => visible.has(id)),
+          tabOrder: order,
+          defaultTab: prev.defaultTab,
+        },
+        nextAvailable,
+      )
+      return {
+        order: pruned.tabOrder,
+        visible: new Set(pruned.visibleIds),
+        defaultTab: pruned.defaultTab,
+      }
+    })
   }
 
   const hostAddonOn = (navId: 'iptv' | 'live_matches'): boolean => {
@@ -209,9 +256,7 @@ export function AccountSettingsAddonsPage() {
       navId === 'iptv'
         ? playDraft.draft.addon_feature_iptv
         : playDraft.draft.addon_feature_live_matches
-    // Legacy cloud: web used to write nav only — treat rail membership as on.
-    if (flag === undefined) return navDraft.draft.visible.has(navId)
-    return flag
+    return flag === true
   }
 
   const footerSaving = playDraft.isSaving || navDraft.isSaving

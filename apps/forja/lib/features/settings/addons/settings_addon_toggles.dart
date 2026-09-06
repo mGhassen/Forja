@@ -83,8 +83,6 @@ Future<void> setAddonMasterEnabled(
           .patch((s) => s.copyWith(useDebrid: val));
     case SettingsAddonId.iptv:
     case SettingsAddonId.liveSports:
-      // Dirty before KV so Addons soft-pull cannot demote from stale cloud.
-      noteAddonFeaturesDirty();
       noteNavigationDirty();
       await settings.setAddonFeatureEnabled(featureNavId!, val);
       await settings.setNavbarTabVisible(featureNavId, val);
@@ -100,9 +98,7 @@ Future<void> setAddonMasterEnabled(
   }
 
   if (featureNavId != null) {
-    // Await both: prefs hold addon_feature_*; nav holds rail. Debounced prefs
-    // alone let soft pull re-apply cloud false (224).
-    await schedulePreferencesSyncPush();
+    await scheduleAddonFeaturesSyncPush();
     await scheduleNavigationSyncPush();
   } else {
     schedulePreferencesSyncPush();
