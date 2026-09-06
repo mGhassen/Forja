@@ -98,8 +98,7 @@ Future<void> setAddonMasterEnabled(
   }
 
   if (featureNavId != null) {
-    await scheduleAddonFeaturesSyncPush();
-    await scheduleNavigationSyncPush();
+    await scheduleAddonFeatureAndNavSyncPush();
   } else {
     schedulePreferencesSyncPush();
   }

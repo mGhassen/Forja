@@ -1,9 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
+import { useProfileSettings } from '@/hooks/use-profile-settings'
 import {
   useForjaSetting,
   useNavigationSetting,
@@ -149,9 +151,13 @@ function playbackFromServer(value: unknown): PreferencesPayload {
  * Stremio/Nuvio manifests). Hub packs are Plugins, not Addons.
  */
 export function AccountSettingsAddonsPage() {
+  const settings = useProfileSettings()
   const playback = usePlaybackSetting()
   const navigation = useNavigationSetting()
   const forja = useForjaSetting()
+  const [hostBusy, setHostBusy] = useState(false)
+  const [hostError, setHostError] = useState<Error | null>(null)
+  const [hostFlash, setHostFlash] = useState(false)
 
   const playDraft = useCommitDraft({
     profileId: playback.profileId,
@@ -181,6 +187,8 @@ export function AccountSettingsAddonsPage() {
     addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
     packs: packsDraft.draft.packs,
   })
+  const availableIdsRef = useRef(availableIds)
+  availableIdsRef.current = availableIds
 
   const navDraft = useCommitDraft({
     profileId: navigation.profileId,
@@ -190,10 +198,11 @@ export function AccountSettingsAddonsPage() {
     mapServer: navFromServer,
     makeEmpty: emptyNavDraft,
     save: navigation.save,
-    toPayload: (draft) => navToPayload(draft, availableIds),
+    toPayload: (draft) => navToPayload(draft, availableIdsRef.current),
   })
 
   const busy =
+    hostBusy ||
     playDraft.controlsLocked ||
     playDraft.isSaving ||
     navDraft.controlsLocked ||
@@ -204,51 +213,60 @@ export function AccountSettingsAddonsPage() {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** Unlock flag + default rail on; prune nav to derived availability. */
+  /** One cloud write: unlock flag + default Features rail (no stale prune race). */
   const setHostAddon = (navId: 'iptv' | 'live_matches', on: boolean) => {
-    const flagKey =
-      navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
-    const nextFlags = {
-      addon_feature_iptv:
-        navId === 'iptv' ? on : playDraft.draft.addon_feature_iptv,
-      addon_feature_live_matches:
-        navId === 'live_matches'
-          ? on
-          : playDraft.draft.addon_feature_live_matches,
-    }
-    void playDraft.commit((prev) => ({
-      ...prev,
-      [flagKey]: on,
-      ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
-    }))
-    const nextAvailable = availableFeatureTabIds({
-      addonFeatureIptv: nextFlags.addon_feature_iptv,
-      addonFeatureLiveMatches: nextFlags.addon_feature_live_matches,
-      packs: packsDraft.draft.packs,
-    })
-    void navDraft.commit((prev) => {
-      const visible = new Set(prev.visible)
+    void (async () => {
+      const flagKey =
+        navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
+      const nextPlayback: PreferencesPayload = {
+        ...playDraft.draft,
+        [flagKey]: on,
+        ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
+      }
+      const nextAvailable = availableFeatureTabIds({
+        addonFeatureIptv: nextPlayback.addon_feature_iptv,
+        addonFeatureLiveMatches: nextPlayback.addon_feature_live_matches,
+        packs: packsDraft.draft.packs,
+      })
+      const visible = new Set(navDraft.draft.visible)
       if (on) visible.add(navId)
       else visible.delete(navId)
-      const order = prev.order.includes(navId)
-        ? prev.order
+      const order = navDraft.draft.order.includes(navId)
+        ? navDraft.draft.order
         : on
-          ? [...prev.order, navId]
-          : prev.order
-      const pruned = pruneNavigationToAvailable(
+          ? [...navDraft.draft.order, navId]
+          : navDraft.draft.order
+      const nextNav = pruneNavigationToAvailable(
         {
           visibleIds: order.filter((id) => visible.has(id)),
           tabOrder: order,
-          defaultTab: prev.defaultTab,
+          defaultTab: navDraft.draft.defaultTab,
         },
         nextAvailable,
       )
-      return {
-        order: pruned.tabOrder,
-        visible: new Set(pruned.visibleIds),
-        defaultTab: pruned.defaultTab,
+
+      setHostBusy(true)
+      setHostError(null)
+      try {
+        await settings.patch({
+          playback: nextPlayback,
+          navigation: nextNav,
+        })
+        playDraft.setDraft(nextPlayback)
+        navDraft.setDraft({
+          order: nextNav.tabOrder,
+          visible: new Set(nextNav.visibleIds),
+          defaultTab: nextNav.defaultTab,
+        })
+        availableIdsRef.current = nextAvailable
+        setHostFlash(true)
+        window.setTimeout(() => setHostFlash(false), 2000)
+      } catch (e) {
+        setHostError(e instanceof Error ? e : new Error('Save failed'))
+      } finally {
+        setHostBusy(false)
       }
-    })
+    })()
   }
 
   const hostAddonOn = (navId: 'iptv' | 'live_matches'): boolean => {
@@ -259,9 +277,10 @@ export function AccountSettingsAddonsPage() {
     return flag === true
   }
 
-  const footerSaving = playDraft.isSaving || navDraft.isSaving
-  const footerFlash = playDraft.savedFlash || navDraft.savedFlash
-  const footerError = playDraft.saveError ?? navDraft.saveError
+  const footerSaving = hostBusy || playDraft.isSaving || navDraft.isSaving
+  const footerFlash = hostFlash || playDraft.savedFlash || navDraft.savedFlash
+  const footerError =
+    hostError ?? playDraft.saveError ?? navDraft.saveError
 
   return (
     <AccountSettingsShell

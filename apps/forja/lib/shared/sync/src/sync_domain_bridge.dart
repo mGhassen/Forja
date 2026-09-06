@@ -430,14 +430,16 @@ class SyncDomainBridge {
     });
   }
 
-  /// Immediate prefs push that includes `addon_feature_*` (Addons IPTV / Live).
-  Future<void> scheduleAddonFeaturesSyncPush() async {
+  /// Immediate prefs + navigation for Addons IPTV / Live (flags + rail together).
+  Future<void> scheduleAddonFeatureAndNavSyncPush() async {
     if (!SyncService.instance.isSignedIn) return;
+    noteNavigationDirty();
     _pushTimers.remove(_domainPreferences)?.cancel();
+    _pushTimers.remove(_domainNavigation)?.cancel();
     await pushAllLocal(
       pushIptvIfLocalEmpty: false,
       allowIptvShrink: false,
-      overlayDomains: {_domainPreferences},
+      overlayDomains: {_domainPreferences, _domainNavigation},
       overlayAddonFeatures: true,
     );
   }
@@ -706,6 +708,16 @@ class SyncDomainBridge {
       debugPrint(
         '[Sync] skip navigation apply — local edit during cloud pull',
       );
+      final localNav = await _exportNavigationCompact();
+      final remoteNav = navigation is Map
+          ? Map<String, dynamic>.from(navigation)
+          : null;
+      if (navigationWouldShrinkLocal(localNav, remoteNav)) {
+        debugPrint(
+          '[Sync] heal cloud nav — local richer during mid-pull edit',
+        );
+        await schedulePush(_domainNavigation);
+      }
     } else if (navPending) {
       final localNav = await _exportNavigationCompact();
       final remoteNav = navigation is Map
@@ -730,6 +742,10 @@ class SyncDomainBridge {
           '[Sync] skip navigation apply — local Features edit not synced yet '
           '(local ${localIds.length} tab(s))',
         );
+        // Push richer local so web Features rail matches the device (224).
+        if (navigationWouldShrinkLocal(localNav, remoteNav)) {
+          await schedulePush(_domainNavigation);
+        }
       }
     } else if (navigation is Map) {
       // Soft pull: never drop local tabs for a thinner cloud row — that wiped
@@ -741,10 +757,9 @@ class SyncDomainBridge {
           navigationWouldShrinkLocal(localNav, remoteNav)) {
         debugPrint(
           '[Sync] skip cloud nav shrink on soft pull — keep local '
-          '${_navVisibleIds(localNav).length} tab(s)',
+          '${_navVisibleIds(localNav).length} tab(s); heal cloud',
         );
-        // Heal hollow cloud so the next soft pull matches the device.
-        unawaited(schedulePush(_domainNavigation));
+        await schedulePush(_domainNavigation);
       } else {
         await _importNavigation(remoteNav);
       }
@@ -1329,9 +1344,13 @@ void scheduleIptvSyncPush() =>
 Future<void> schedulePreferencesSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainPreferences);
 
-/// Immediate prefs push including `addon_feature_*` (Addons IPTV / Live).
+/// Immediate prefs + nav push for Addons IPTV / Live (unlock + rail together).
+Future<void> scheduleAddonFeatureAndNavSyncPush() =>
+    SyncDomainBridge.instance.scheduleAddonFeatureAndNavSyncPush();
+
+/// Immediate prefs push including `addon_feature_*` only.
 Future<void> scheduleAddonFeaturesSyncPush() =>
-    SyncDomainBridge.instance.scheduleAddonFeaturesSyncPush();
+    SyncDomainBridge.instance.scheduleAddonFeatureAndNavSyncPush();
 
 void scheduleProvidersSyncPush() {
   // Provider order is device-local - do not push to cloud.

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **23 / 23** fix · **0 / 3** acceptance |
+| **Progress** | **25 / 25** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -42,6 +42,8 @@
 | 21 | I224-T21 | Web Addons writes `addon_feature_*` + rail; app heals legacy nav-only cloud; Features lists IPTV/Live only when unlocked | ✅ |
 | 22 | I224-T22 | Derived Features inventory (flags ∪ pack hubs); stop HOST_CORE bake-in; prune nav on pack remove | ✅ |
 | 23 | I224-T23 | Prefs overlay omits `addon_feature_*` unless intentional Addons push; remove dirty-gen / soft-pull skip / heal stack | ✅ |
+| 24 | I224-T24 | Soft pull awaits nav heal when local rail is richer; Addons push flags + nav in one overlay (web Features rail matches app) | ✅ |
+| 25 | I224-T25 | Web Addons IPTV / Live: one `profile_settings` patch (playback flags + nav) so Features prune cannot drop the just-enabled tab | ✅ |
 
 ---
 
@@ -68,8 +70,9 @@
 5. After RFC-086, Addons writes `addon_feature_*` in **preferences** while opening Addons force soft-pulls playback — a full local playback replace on any prefs push uploaded `addon_feature_*=false` and wiped richer cloud.
 6. Web Profile → Addons IPTV / Live only mutated `navigation.visibleIds` — never `addon_feature_*` — so cloud “ON” never unlocked the app switch / Features inventory.
 7. Web `normalizeNavigationPayload` always injected HOST_CORE into `tabOrder`, so Features listed IPTV / Live even when unlocked flags were false; stale hub ids stayed after packs were cleared.
+8. Web Addons toggled flag + nav via two parallel commits; nav `toPayload` pruned with **old** `availableIds` (flags still false) and stripped the tab just enabled.
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 

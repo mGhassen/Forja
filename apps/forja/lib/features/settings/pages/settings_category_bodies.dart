@@ -347,6 +347,17 @@ class _SettingsNavigationPageBodyState
   Future<void> _saveChain = Future<void>.value();
 
   bool get _featuresWriteInFlight => _writesInFlight > 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Soft pull + await nav heal when this device’s rail is richer than cloud
+    // (app Features ON / web OFF — 224).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
+    });
+  }
+
   @override
   void dispose() {
     _firstTabFocus.dispose();

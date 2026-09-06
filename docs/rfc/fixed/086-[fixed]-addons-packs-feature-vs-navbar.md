@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **13 / 13** acceptance |
-| **Current slice** | Derived Features inventory + intentional addon_feature sync |
+| **Progress** | **Complete** · **4 / 4** components · **14 / 14** acceptance |
+| **Current slice** | Web Addons atomic flag+nav patch (no stale Features prune) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -66,6 +66,7 @@ Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
 | 11 | R86-A11 | Features inventory = addon flags ∪ hub tabs from packs — never HOST_CORE / stale `tabOrder` alone | ✅ |
 | 12 | R86-A12 | Ordinary prefs push merges playback but omits `addon_feature_*`; only intentional Addons push overlays those keys | ✅ |
 | 13 | R86-A13 | Pack remove prunes hub ids from cloud `tabOrder` / `visibleIds`; Addons OFF drops host ids from Features list | ✅ |
+| 14 | R86-A14 | Web Addons IPTV / Live: single `patch({ playback, navigation })` using nextAvailable — no parallel commit prune race | ✅ |
 
 ---
 
