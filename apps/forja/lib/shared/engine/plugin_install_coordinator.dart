@@ -91,7 +91,8 @@ class PluginInstallCoordinator {
   final ValueNotifier<bool> suppressBanner = ValueNotifier<bool>(false);
 
   Future<void>? _inFlight;
-  Future<EnginePack>? _manualInstall;
+  /// In-flight manual installs keyed by manifest URL (sequential batch safe).
+  final Map<String, Future<EnginePack>> _manualByUrl = {};
   bool _bootWarm = false;
 
   /// True while splash / [ensureAllInstalled] owns hydrate + silent purge.
@@ -102,6 +103,9 @@ class PluginInstallCoordinator {
   bool isInstallingUrl(String url) => progress.value?.matchesUrl(url) ?? false;
 
   /// Settings → Add plugin (or refresh one pack) with visible download progress.
+  ///
+  /// Concurrent calls for **different** URLs run one-after-another via the
+  /// registry install lock. Same URL joins the in-flight future.
   Future<EnginePack> installManifest(
     String manifestUrl, {
     bool isUpdate = false,
@@ -110,18 +114,32 @@ class PluginInstallCoordinator {
     if (url.isEmpty) {
       return Future.error(ArgumentError('manifest URL is empty'));
     }
-    return _manualInstall ??= _installManifestSingle(url, isUpdate: isUpdate)
-        .whenComplete(() => _manualInstall = null);
+    final existing = _manualByUrl[url];
+    if (existing != null) return existing;
+    final started = _installManifestSingle(url, isUpdate: isUpdate);
+    _manualByUrl[url] = started;
+    return started.whenComplete(() {
+      if (identical(_manualByUrl[url], started)) {
+        _manualByUrl.remove(url);
+      }
+    });
   }
 
   Future<EnginePack> _installManifestSingle(
     String manifestUrl, {
     required bool isUpdate,
   }) async {
+    debugPrint(
+      '[PluginInstall] ${isUpdate ? 'update' : 'install'} $manifestUrl',
+    );
     try {
       final pack = await _fetchPackWithProgress(
         manifestUrl: manifestUrl,
         isUpdate: isUpdate,
+      );
+      debugPrint(
+        '[PluginInstall] ready ${pack.name} '
+        '(${pack.plugins.length} plugins) $manifestUrl',
       );
       _setProgress(
         PluginInstallProgress(
@@ -136,6 +154,9 @@ class PluginInstallCoordinator {
       await Future<void>.delayed(readyDwell);
       await DeferredRemoteInstallStore.clear(manifestUrl);
       return pack;
+    } catch (e) {
+      debugPrint('[PluginInstall] failed $manifestUrl: $e');
+      rethrow;
     } finally {
       progress.value = null;
     }
@@ -148,7 +169,9 @@ class PluginInstallCoordinator {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
     if (_inFlight != null) await _inFlight;
-    if (_manualInstall != null) await _manualInstall;
+    if (_manualByUrl.isNotEmpty) {
+      await Future.wait(_manualByUrl.values);
+    }
 
     final hit = PluginRegistry.packPluginFromPacks(
       await PluginRegistry.instance.listPacksRaw(),

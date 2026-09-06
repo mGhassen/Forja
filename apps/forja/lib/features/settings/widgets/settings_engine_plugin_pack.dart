@@ -79,6 +79,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     this.miniLabel = 'Forja plugins',
     this.tabRowId,
     this.trailing,
+    this.onHeaderActivate,
     this.showMiniLabel = false,
     this.installProgress,
     this.update,
@@ -93,6 +94,8 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   /// Unique per pack so TV chip strips do not share one focus-graph row.
   final String? tabRowId;
   final Widget? trailing;
+  /// Leanback: OK on row toggles pack enable; details chevron expands.
+  final VoidCallback? onHeaderActivate;
   final bool showMiniLabel;
   final PluginInstallProgress? installProgress;
   final EnginePackUpdateInfo? update;
@@ -118,6 +121,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
         settingsExpandableWithSideActions(
           context: context,
           trailing: trailing,
+          onHeaderActivate: onHeaderActivate,
           leading: Icon(
             update != null
                 ? Icons.system_update_rounded
@@ -289,12 +293,14 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
     required this.pack,
     required this.plugins,
     this.trailing,
+    this.onHeaderActivate,
     this.update,
   });
 
   final EnginePack pack;
   final List<EnginePlugin> plugins;
   final Widget? trailing;
+  final VoidCallback? onHeaderActivate;
   final EnginePackUpdateInfo? update;
 
   @override
@@ -304,6 +310,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
     return settingsExpandableWithSideActions(
       context: context,
       trailing: trailing,
+      onHeaderActivate: onHeaderActivate,
       leading: Icon(
         update != null
             ? Icons.system_update_rounded

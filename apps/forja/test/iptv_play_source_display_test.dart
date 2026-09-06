@@ -64,6 +64,8 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(embed), isNull);
     expect(iptvLiveSourceProbeSkipped(embed), isTrue);
+    // Pre-9e66afdf: every Providers row wires hover status (embed → green skip).
+    expect(iptvLiveSourceCanHoverProbe(embed), isTrue);
 
     const handoff = IptvPlaySource(
       url: 'https://cdn.example/live/index.m3u8',
@@ -151,7 +153,7 @@ void main() {
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveEngineEmbedUrl: 'https://streamed.pk/embed/abc',
     );
-    expect(iptvLiveSourceCanHoverProbe(pending), isFalse);
+    expect(iptvLiveSourceCanHoverProbe(pending), isTrue);
 
     const legacy = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',

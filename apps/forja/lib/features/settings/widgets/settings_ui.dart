@@ -266,6 +266,9 @@ Widget settingsExpansionSideActions({
 
 /// Desktop: [ExpansionTile] with optional [trailing] in the header.
 /// Leanback: focusable header + side actions — → lands on switch / icons.
+///
+/// When [onHeaderActivate] is set (Forja Packs), OK on the row toggles enable
+/// and a details chevron expands — same pattern as Addons.
 Widget settingsExpandableWithSideActions({
   required BuildContext context,
   required Widget leading,
@@ -273,6 +276,7 @@ Widget settingsExpandableWithSideActions({
   Widget? subtitle,
   required List<Widget> children,
   Widget? trailing,
+  VoidCallback? onHeaderActivate,
   EdgeInsetsGeometry tilePadding = const EdgeInsets.symmetric(horizontal: 2),
   EdgeInsetsGeometry childrenPadding = const EdgeInsets.fromLTRB(8, 0, 2, 8),
 }) {
@@ -301,6 +305,7 @@ Widget settingsExpandableWithSideActions({
     title: title,
     subtitle: subtitle,
     trailing: trailing,
+    onHeaderActivate: onHeaderActivate,
     tilePadding: tilePadding,
     childrenPadding: childrenPadding,
     children: children,
@@ -315,6 +320,7 @@ class _SettingsTvExpandableSideRow extends StatefulWidget {
     this.subtitle,
     required this.children,
     this.trailing,
+    this.onHeaderActivate,
     required this.tilePadding,
     required this.childrenPadding,
   });
@@ -324,6 +330,7 @@ class _SettingsTvExpandableSideRow extends StatefulWidget {
   final Widget? subtitle;
   final List<Widget> children;
   final Widget? trailing;
+  final VoidCallback? onHeaderActivate;
   final EdgeInsetsGeometry tilePadding;
   final EdgeInsetsGeometry childrenPadding;
 
@@ -337,14 +344,17 @@ class _SettingsTvExpandableSideRowState
   bool _expanded = false;
   late final FocusNode _headerFocus =
       FocusNode(debugLabel: 'settings-pack-header');
+  late final FocusNode _detailsFocus =
+      FocusNode(debugLabel: 'settings-pack-details');
 
   @override
   void dispose() {
     _headerFocus.dispose();
+    _detailsFocus.dispose();
     super.dispose();
   }
 
-  void _toggle() => setState(() => _expanded = !_expanded);
+  void _toggleExpand() => setState(() => _expanded = !_expanded);
 
   void _focusHeader() {
     if (_headerFocus.canRequestFocus) _headerFocus.requestFocus();
@@ -352,6 +362,9 @@ class _SettingsTvExpandableSideRowState
 
   @override
   Widget build(BuildContext context) {
+    final activate = widget.onHeaderActivate;
+    final expandOnHeader = activate == null;
+
     final header = Padding(
       padding: widget.tilePadding,
       child: Row(
@@ -384,15 +397,16 @@ class _SettingsTvExpandableSideRowState
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Icon(
-              _expanded
-                  ? Icons.expand_less_rounded
-                  : Icons.expand_more_rounded,
-              color: ForjaShellColors.iconMuted,
+          if (expandOnHeader)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Icon(
+                _expanded
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                color: ForjaShellColors.iconMuted,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -405,6 +419,38 @@ class _SettingsTvExpandableSideRowState
       );
     }
 
+    final detailsBtn = activate == null
+        ? null
+        : shellFocusableTap(
+            context: context,
+            focusNode: _detailsFocus,
+            onTap: _toggleExpand,
+            borderRadius: 8,
+            scaleOnFocus: 1.0,
+            showFocusRail: false,
+            showFocusFill: true,
+            showFocusBorder: true,
+            tvTabId: 'settings',
+            tvZone: ShellTvZone.settings,
+            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            onLeftEdge: () {
+              _headerFocus.requestFocus();
+            },
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Center(
+                child: Icon(
+                  _expanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  size: 22,
+                ),
+              ),
+            ),
+          );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -415,18 +461,27 @@ class _SettingsTvExpandableSideRowState
               child: shellFocusableTap(
                 context: context,
                 focusNode: _headerFocus,
-                onTap: _toggle,
+                onTap: activate ?? _toggleExpand,
                 borderRadius: SettingsTokens.categoryTileRadius,
                 scaleOnFocus: 1.0,
                 // Same settings list chrome as Addons rows (green rail + ink).
-                // showFocusFill alone does nothing without rail or border.
                 showFocusRail: true,
                 tvTabId: 'settings',
                 tvZone: ShellTvZone.settings,
                 ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                onRightEdge: detailsBtn != null
+                    ? () {
+                        _detailsFocus.requestFocus();
+                      }
+                    : null,
                 child: header,
               ),
             ),
+            if (detailsBtn != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: detailsBtn,
+              ),
             if (trailing != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6),

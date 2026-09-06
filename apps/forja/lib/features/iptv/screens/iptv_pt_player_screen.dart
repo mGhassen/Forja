@@ -335,22 +335,17 @@ bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }
 
-/// Live Sports Providers hover: portal rows, ready HLS/MP4, and Stremio http(s)
-/// play URLs. Embed / `pending:` catalog pages stay off. Stremio and signed
-/// Streamed/WatchFooty rows probe with headers in `_liveHoverProbe` (not bare
-/// [IptvAliveChecker] — that false-fails JWT / Referer CDNs).
+/// Live Sports Providers hover — always wire the status strip (pre-9e66afdf).
+/// Real alive-check when a bare or header probe can run; embed / `pending:`
+/// rows still light green as selectable (not dead). Portals resolve then check.
 bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
   if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+      src.liveSourceKind == IptvLiveSourceKind.liveEngine ||
+      src.liveSourceKind == IptvLiveSourceKind.stremio) {
     return true;
   }
-  final url = src.url.trim();
-  if (url.isEmpty || url.startsWith('pending:')) return false;
-  if (src.liveSourceKind == IptvLiveSourceKind.stremio) {
-    final lower = url.toLowerCase();
-    return lower.startsWith('http://') || lower.startsWith('https://');
-  }
-  return iptvLiveEnginePlayUrlReady(url);
+  return iptvLiveEnginePlayUrlReady(src.url.trim());
 }
 
 typedef IptvLiveEngineResolveSource =

@@ -31,6 +31,7 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
@@ -398,6 +399,8 @@ class _SettingsNavigationPageBodyState
     final visible = _navbarOrder
         .where((id) => _navbarVisible.contains(id))
         .toList();
+    // Dirty before KV so soft pull cannot wipe a mid-edit enable (224).
+    noteNavigationDirty();
     // Await KV write before scheduling push — otherwise syncFromCloud can
     // flush a pending navigation overlay that still reads the old empty
     // visibleIds and snap Features toggles back off (issue 221).
@@ -447,7 +450,8 @@ class _SettingsNavigationPageBodyState
     String id, {
     required bool enabled,
     required bool tv,
-    int? tvItemIndex,
+    required String tvRowId,
+    required int tvItemIndex,
   }) {
     final isDefault = _defaultNavTab == id;
     final icon = Icon(
@@ -476,9 +480,10 @@ class _SettingsNavigationPageBodyState
       showFocusFill: true,
       showFocusBorder: true,
       tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      tvRowId: 'features-star',
-      tvItemIndex: tvItemIndex ?? 0,
+      tvZone: ShellTvZone.row,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
     );
   }
@@ -488,6 +493,7 @@ class _SettingsNavigationPageBodyState
     required IconData icon,
     required bool enabled,
     required VoidCallback? onTap,
+    required String tvRowId,
     required int tvItemIndex,
   }) {
     return shellFocusableTap(
@@ -499,9 +505,10 @@ class _SettingsNavigationPageBodyState
       showFocusFill: true,
       showFocusBorder: true,
       tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      tvRowId: 'features-move',
+      tvZone: ShellTvZone.row,
+      tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: SizedBox(
         width: 28,
         height: 36,
@@ -548,7 +555,7 @@ class _SettingsNavigationPageBodyState
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             leanback
-                ? 'OK toggles a tab. Star sets the default menu. ↑/↓ reorder. Settings stays visible.'
+                ? 'OK toggles a tab. Star sets the default menu. ↑/↓ on arrows reorder. ↓ stays in the same column.'
                 : 'Show, hide, and reorder tabs. Drag to reorder. Settings stays visible.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
@@ -559,148 +566,176 @@ class _SettingsNavigationPageBodyState
         ),
         SettingsGroup(
           children: [
-            ReorderableListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              itemCount: _navbarOrder.length,
-              proxyDecorator: (child, index, animation) {
-                return Material(color: Colors.transparent, child: child);
-              },
-              onReorderItem: (oldIndex, newIndex) {
-                setState(() {
-                  final item = _navbarOrder.removeAt(oldIndex);
-                  _navbarOrder.insert(newIndex, item);
-                });
-                unawaited(_saveNavbarConfig());
-              },
-              itemBuilder: (context, index) {
-                final id = _navbarOrder[index];
-                final dest = navDestinations[id];
-                if (dest == null) {
-                  return SizedBox.shrink(key: ValueKey('nav-missing-$id'));
-                }
-                final isVisible = _navbarVisible.contains(id);
+            Builder(
+              builder: (context) {
+                final list = ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: _navbarOrder.length,
+                  proxyDecorator: (child, index, animation) {
+                    return Material(color: Colors.transparent, child: child);
+                  },
+                  onReorderItem: (oldIndex, newIndex) {
+                    setState(() {
+                      final item = _navbarOrder.removeAt(oldIndex);
+                      _navbarOrder.insert(newIndex, item);
+                    });
+                    unawaited(_saveNavbarConfig());
+                  },
+                  itemBuilder: (context, index) {
+                    final id = _navbarOrder[index];
+                    final dest = navDestinations[id];
+                    if (dest == null) {
+                      return SizedBox.shrink(key: ValueKey('nav-missing-$id'));
+                    }
+                    final isVisible = _navbarVisible.contains(id);
+                    final rowId = 'feat-$id';
+                    // Columns: 0=tab, 1=star, 2=up, 3=down — ↓ keeps column.
+                    final itemCount = leanback ? 4 : (tv ? 2 : 0);
 
-                // Star / ↑↓ are siblings of the row tap — not nested inside it —
-                // so D-pad can reach them (same idea as provider scoring chips).
-                final controls = Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _defaultNavStar(
-                      context,
-                      id,
-                      enabled: isVisible,
-                      tv: tv,
-                      tvItemIndex: index,
-                    ),
-                    // Switch is pointer/desktop; on TV OK on the label toggles.
-                    ExcludeFocus(
-                      excluding: leanback,
-                      child: ForjaSwitch(
-                        value: isVisible,
-                        scale: ForjaSwitch.settingsScale,
-                        onChanged: (val) {
-                          setState(() {
-                            if (val) {
-                              _navbarVisible.add(id);
-                            } else {
-                              _navbarVisible.remove(id);
-                            }
-                          });
-                          unawaited(_saveNavbarConfig());
-                        },
-                      ),
-                    ),
-                    if (leanback)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _navMoveChip(
-                            context,
-                            icon: Icons.keyboard_arrow_up_rounded,
-                            enabled: index > 0,
-                            onTap: () => _moveNavbarItem(index, index - 1),
-                            tvItemIndex: index * 2,
-                          ),
-                          _navMoveChip(
-                            context,
-                            icon: Icons.keyboard_arrow_down_rounded,
-                            enabled: index < _navbarOrder.length - 1,
-                            onTap: () => _moveNavbarItem(index, index + 1),
-                            tvItemIndex: index * 2 + 1,
-                          ),
-                        ],
-                      )
-                    else
-                      ReorderableDragStartListener(
-                        index: index,
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Icon(
-                            Icons.drag_handle,
-                            color: ForjaShellColors.iconMuted,
-                            size: 20,
+                    final controls = Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _defaultNavStar(
+                          context,
+                          id,
+                          enabled: isVisible,
+                          tv: tv,
+                          tvRowId: rowId,
+                          tvItemIndex: 1,
+                        ),
+                        // Switch is pointer/desktop; on TV OK on the label toggles.
+                        ExcludeFocus(
+                          excluding: leanback,
+                          child: ForjaSwitch(
+                            value: isVisible,
+                            scale: ForjaSwitch.settingsScale,
+                            onChanged: (val) {
+                              setState(() {
+                                if (val) {
+                                  _navbarVisible.add(id);
+                                } else {
+                                  _navbarVisible.remove(id);
+                                }
+                              });
+                              unawaited(_saveNavbarConfig());
+                            },
                           ),
                         ),
-                      ),
-                  ],
-                );
-
-                return Container(
-                  key: ValueKey(id),
-                  color: Colors.transparent,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: shellFocusableTap(
-                            context: context,
-                            focusNode: index == 0 ? _firstTabFocus : null,
-                            onTap: () => _toggleNavbarVisible(id),
-                            borderRadius: SettingsTokens.categoryTileRadius,
-                            scaleOnFocus: 1.0,
-                            showFocusRail: true,
-                            tvTabId: 'settings',
-                            tvZone: ShellTvZone.settings,
-                            tvRowId: 'features-tab',
-                            tvItemIndex: index,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: Row(
-                                children: [
-                                  NavDestinationIcon(
-                                    destination: dest,
-                                    selected: isVisible,
-                                    color: isVisible
-                                        ? ForjaShellColors.textPrimary
-                                        : ForjaShellColors.iconMuted,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      dest.label,
-                                      style: TextStyle(
-                                        color: isVisible
-                                            ? ForjaShellColors.textPrimary
-                                            : ForjaShellColors.textSecondary,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                        if (leanback)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _navMoveChip(
+                                context,
+                                icon: Icons.keyboard_arrow_up_rounded,
+                                enabled: index > 0,
+                                onTap: () =>
+                                    _moveNavbarItem(index, index - 1),
+                                tvRowId: rowId,
+                                tvItemIndex: 2,
+                              ),
+                              _navMoveChip(
+                                context,
+                                icon: Icons.keyboard_arrow_down_rounded,
+                                enabled: index < _navbarOrder.length - 1,
+                                onTap: () =>
+                                    _moveNavbarItem(index, index + 1),
+                                tvRowId: rowId,
+                                tvItemIndex: 3,
+                              ),
+                            ],
+                          )
+                        else
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(
+                                Icons.drag_handle,
+                                color: ForjaShellColors.iconMuted,
+                                size: 20,
                               ),
                             ),
                           ),
-                        ),
-                        controls,
                       ],
-                    ),
-                  ),
+                    );
+
+                    Widget row = Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: shellFocusableTap(
+                              context: context,
+                              focusNode: index == 0 ? _firstTabFocus : null,
+                              onTap: () => _toggleNavbarVisible(id),
+                              borderRadius: SettingsTokens.categoryTileRadius,
+                              scaleOnFocus: 1.0,
+                              showFocusRail: true,
+                              tvTabId: 'settings',
+                              tvZone: ShellTvZone.row,
+                              tvRowId: rowId,
+                              tvItemIndex: 0,
+                              ensureVisibleMode:
+                                  ShellTvEnsureVisibleMode.item,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: Row(
+                                  children: [
+                                    NavDestinationIcon(
+                                      destination: dest,
+                                      selected: isVisible,
+                                      color: isVisible
+                                          ? ForjaShellColors.textPrimary
+                                          : ForjaShellColors.iconMuted,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        dest.label,
+                                        style: TextStyle(
+                                          color: isVisible
+                                              ? ForjaShellColors.textPrimary
+                                              : ForjaShellColors
+                                                    .textSecondary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          controls,
+                        ],
+                      ),
+                    );
+
+                    if (tv && itemCount > 0) {
+                      row = TvCatalogRow(
+                        tabId: 'settings',
+                        rowId: rowId,
+                        sortOrder: index,
+                        itemCount: itemCount,
+                        child: row,
+                      );
+                    }
+
+                    return Container(
+                      key: ValueKey(id),
+                      color: Colors.transparent,
+                      child: row,
+                    );
+                  },
                 );
+                if (!tv) return list;
+                return ShellTvDisableLinearFocus(child: list);
               },
             ),
             Padding(
@@ -728,7 +763,8 @@ class _SettingsNavigationPageBodyState
                     'settings',
                     enabled: true,
                     tv: tv,
-                    tvItemIndex: _navbarOrder.length,
+                    tvRowId: 'feat-settings',
+                    tvItemIndex: 0,
                   ),
                   Icon(
                     Icons.lock_outline,

@@ -373,6 +373,14 @@ class SyncDomainBridge {
     );
   }
 
+  /// Mark Features/Addons nav dirty before KV write finishes so a concurrent
+  /// soft pull cannot apply empty cloud over a just-enabled IPTV tab (224).
+  void noteNavigationDirty() {
+    if (_navigationLocalGen == _navigationSyncedGen) {
+      _navigationLocalGen++;
+    }
+  }
+
   /// Schedules (or immediately runs) a domain overlay push.
   ///
   /// Navigation / Forja return after the upsert finishes so callers can await
@@ -383,7 +391,7 @@ class SyncDomainBridge {
     // the web portal see the edit (issue 221 — empty Features / pack deletes).
     if (domain == _domainNavigation || domain == _domainForja) {
       if (domain == _domainNavigation) {
-        _navigationLocalGen++;
+        noteNavigationDirty();
       }
       _pushTimers.remove(domain)?.cancel();
       await pushAllLocal(
@@ -1277,3 +1285,7 @@ void scheduleForjaOnboardedSyncPush() =>
 
 Future<void> scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);
+
+/// Call before writing navbar so soft pulls cannot wipe a mid-edit enable.
+void noteNavigationDirty() =>
+    SyncDomainBridge.instance.noteNavigationDirty();

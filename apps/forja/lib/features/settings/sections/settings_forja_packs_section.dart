@@ -326,6 +326,9 @@ class _SettingsForjaPacksSectionState
                       pack: pack,
                       plugins: liveSportPlugins,
                       update: update,
+                      onHeaderActivate: () => unawaited(
+                        _togglePackEnabled(pack, enabled: !pack.enabled),
+                      ),
                       trailing: _EnginePackActions(
                         packEnabled: pack.enabled,
                         update: update,
@@ -346,6 +349,9 @@ class _SettingsForjaPacksSectionState
                       groupOrder: EngineCategories.groupOrderFor(panelPlugins),
                       installProgress: installProgress,
                       update: update,
+                      onHeaderActivate: () => unawaited(
+                        _togglePackEnabled(pack, enabled: !pack.enabled),
+                      ),
                       trailing: _EnginePackActions(
                         packEnabled: pack.enabled,
                         update: update,
@@ -433,6 +439,7 @@ class _SettingsForjaPacksSectionState
         sourceUrl,
         isUpdate: true,
       );
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       ref.read(enginePackUpdatesProvider.notifier).clearFor(sourceUrl);
       ref.invalidate(enginePacksProvider);
@@ -495,6 +502,7 @@ class _SettingsForjaPacksSectionState
           ForjaToast.error('${pack.name} download failed: $e');
         }
       }
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);
@@ -615,6 +623,7 @@ class _SettingsForjaPacksSectionState
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(url);
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       _engineController.clear();
       scheduleForjaSyncPush();
@@ -668,10 +677,9 @@ class _EnginePackActions extends StatefulWidget {
 }
 
 class _EnginePackActionsState extends State<_EnginePackActions> {
-  bool _focused = false;
   bool _hovered = false;
 
-  bool get _chromeActive => _focused || _hovered;
+  bool get _chromeActive => _hovered;
 
   @override
   Widget build(BuildContext context) {
@@ -681,38 +689,15 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (leanback)
-          shellFocusableTap(
-            context: context,
-            onTap: () => widget.onTogglePack(!widget.packEnabled),
-            borderRadius: 20,
-            scaleOnFocus: 1.0,
-            showFocusRail: false,
-            showFocusFill: false,
-            showFocusBorder: false,
-            tvTabId: 'settings',
-            tvZone: ShellTvZone.settings,
-            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-            onLeftEdge: () {
-              final focusHeader =
-                  SettingsExpandHeaderFocus.maybeFocusHeaderOf(context);
-              if (focusHeader != null) {
-                focusHeader();
-              }
-            },
-            onFocusChange: (f) {
-              if (_focused == f) return;
-              setState(() => _focused = f);
-            },
-            onHoverChange: (h) {
-              if (_hovered == h) return;
-              setState(() => _hovered = h);
-            },
+          // Header OK toggles enable — switch is chrome only.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: IgnorePointer(
               child: ForjaSwitch(
                 value: widget.packEnabled,
                 scale: ForjaSwitch.settingsScale,
-                onChanged: (_) {},
-                emphasized: _chromeActive,
+                onChanged: null,
+                emphasized: false,
               ),
             ),
           )

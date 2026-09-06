@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 2** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,8 @@
 | 6 | I224-T06 | Leanback Addons switch: `onChanged: null` + `ActivateIntent` → flip (Material Switch was swallowing Select as no-op) | ✅ |
 | 7 | I224-T07 | Keep Settings visibility across reload so Addons body is not remounted mid-toggle | ✅ |
 | 8 | I224-T08 | Serialize navbar RMW (`setNavbarTabVisible`) so rapid IPTV then Live Sports OK cannot wipe the first write | ✅ |
+| 9 | I224-T09 | `noteNavigationDirty()` before navbar KV write so Addons soft-pull cannot apply empty cloud mid-enable | ✅ |
+| 10 | I224-T10 | Addons/Features/Packs: row OK activates; details chevron on the right; Features D-pad uses per-row `TvCatalogRow` columns | ✅ |
 
 ---
 
@@ -34,7 +36,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I224-A01 | ATV: Addons → focus IPTV / Live Sports switch → OK once → switch stays on; Features lists them; rail shows tabs | ⬜ |
+| 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports row once → switch stays on; chevron opens details; Features lists them; rail shows tabs | ⬜ |
 | 2 | I224-A02 | Enable IPTV + Live Sports on web Profile → Features / Addons → open Addons on ATV → switches show on without local re-toggle | ⬜ |
 
 ---
@@ -50,13 +52,14 @@
 3. Early “flush dirty nav before pull” would intentionally overlay thin local and wipe richer cloud.
 4. Rapid OK on IPTV then Live Sports raced `getNavbarConfig` → mutate → `setNavbarConfig` — both reads saw `[]`, second write left only `live_matches` (logs: `next=[iptv]` then `next=[live_matches]`).
 
-**After:** Leanback switch is display-only; `ActivateIntent` + key activate flip nav; soft pull skips stale apply when gen moved; thin dirty local yields to cloud; Addons force-pulls on open; navbar RMW is serialized via `SettingsService.setNavbarTabVisible`.
+**After:** Leanback switch is display-only; row OK / `ActivateIntent` flips nav; soft pull skips stale apply when gen moved (dirty before KV write); thin dirty local yields to cloud; Addons force-pulls on open; navbar RMW is serialized via `SettingsService.setNavbarTabVisible`; Addons/Features/Packs share row-activate + details-chevron; Features D-pad keeps column via `TvCatalogRow`.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
 ## Verify
 
 1. **Hot restart** ATV (`R` is not enough if isolate stale — prefer full stop/run).
-2. Settings → Addons → → onto IPTV switch → OK once. Log should show `[AddonToggle] flip iptv OFF→ON` then `navbar iptv → true`.
-3. Switch stays green; Features lists IPTV / Live Sports; rail shows tabs.
-4. On web, turn them on → open Addons on ATV → switches match cloud.
+2. Settings → Addons → focus IPTV row → OK once. Log should show `[AddonToggle] flip iptv OFF→ON` then `navbar iptv → true`.
+3. Switch stays green; → chevron → OK opens details; Features lists IPTV / Live Sports; rail shows tabs.
+4. Features: ↓ on a tab label moves to the next tab; ↓ on star moves to the next row’s star.
+5. On web, turn them on → open Addons on ATV → switches match cloud.

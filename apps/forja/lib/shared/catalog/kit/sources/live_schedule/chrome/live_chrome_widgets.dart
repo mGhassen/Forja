@@ -1518,25 +1518,27 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       return healthProbe.checkNow(_probeKey, bare);
     }
 
-    // Signed Streamed / WatchFooty / Stremio (Highfly, flixnest, …) — bare
-    // alive-check false-fails without addon Referer; use Sources-panel probe.
+    // Signed Streamed / WatchFooty / Stremio — bare alive-check false-fails
+    // without Referer; probe the same way Sources panel does.
     final url = source.url.trim();
     final stremioHttp = source.liveSourceKind == IptvLiveSourceKind.stremio &&
         (url.toLowerCase().startsWith('http://') ||
             url.toLowerCase().startsWith('https://'));
-    if (!iptvLiveEnginePlayUrlReady(url) && !stremioHttp) {
-      return true;
+    if (iptvLiveEnginePlayUrlReady(url) || stremioHttp) {
+      final headers = LiveGoatUnlock.withWftyPlaybackReferer(
+        url,
+        Map<String, String>.from(source.headers),
+      );
+      final ok = await probeStreamSourceUrl(
+        url,
+        headers.isEmpty ? null : headers,
+      );
+      healthProbe.remember(_probeKey, ok);
+      return ok;
     }
-    final headers = LiveGoatUnlock.withWftyPlaybackReferer(
-      url,
-      Map<String, String>.from(source.headers),
-    );
-    final ok = await probeStreamSourceUrl(
-      url,
-      headers.isEmpty ? null : headers,
-    );
-    healthProbe.remember(_probeKey, ok);
-    return ok;
+
+    // Embed / pending catalog pages — pre-9e66afdf: selectable, not dead.
+    return iptvLiveSourceProbeSkipped(source);
   }
 
   String? _liveQualityBadge(IptvPlaySource source) {
@@ -1612,10 +1614,9 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     // Do not ListenableBuilder(healthProbe / iptvCtrl) around the tile —
     // mid-hover notifyListeners remounts MouseRegion and the status strip
     // never settles. Tile state + probeHealthCache seed are enough.
-    final canHoverProbe = iptvLiveSourceCanHoverProbe(source);
     final cachedHealth = _isPortalIptvRow
         ? _portalCatalogHealth()
-        : (canHoverProbe ? healthProbe.healthFor(_probeKey) : null);
+        : healthProbe.healthFor(_probeKey);
     if (_isLivePluginRow) {
       final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
           ? source.liveProviderBadge!.trim()
@@ -1648,8 +1649,9 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
         tvRowId: tvRowId,
         onUpEdge: onUpEdge,
         onLeftEdge: onLeftEdge,
-        onHoverProbe: canHoverProbe ? _liveHoverProbe : null,
-        probeHealthCache: canHoverProbe ? cachedHealth : null,
+        // Always wire — embed/pending light green; ready URLs real-check.
+        onHoverProbe: _liveHoverProbe,
+        probeHealthCache: cachedHealth,
       );
     }
     final subtitle = hideCategorySubtitle ? null : source.pickerSubtitle;

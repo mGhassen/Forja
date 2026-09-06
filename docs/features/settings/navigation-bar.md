@@ -14,7 +14,7 @@ On a fresh install, only **Settings** is visible on the rail — no Addons (IPTV
 
 ## What you can do
 
-- Show, hide, and reorder tabs. On **TV**: OK toggles, star sets default, ↑/↓ reorder. On desktop/phone: drag to reorder. Settings stays visible.
+- Show, hide, and reorder tabs. On **TV**: **OK** on the tab row toggles visibility; star sets default; ↑/↓ on the reorder arrows move the tab. **↓** from a tab goes to the next tab; **↓** from star / reorder stays on that action for the next row. On desktop/phone: drag to reorder. Settings stays visible.
 - Toggle visibility for each available tab (Home, Asian Drama, Anime, IPTV, Live Sports, My List). **VOD hub tabs** appear only while their `kind: catalog` pack+plugin is **enabled** under Forja Packs. **Live Sports** stays available whenever Addons / Features keeps it on.
 - **Plugin on/off** (Settings → Sources → Forja → Hubs) controls whether a hub exists at all. Turn it off and it disappears from Features and the nav rail. Among enabled hubs, Features show/hide still controls rail visibility.
 - Select the **star** beside a visible tab (or Settings) to choose the menu that opens at launch (and after you switch to this profile). Works with mouse and with **OK** on TV.

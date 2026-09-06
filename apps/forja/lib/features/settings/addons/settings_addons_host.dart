@@ -13,6 +13,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -182,8 +183,8 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
     ref.watch(accountFeaturesProvider);
     final addons = settingsAddons();
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    // Spatial ←/→ so Right moves row → activate switch (linear scope would
-    // treat → as “next row” and bury the toggle).
+    // Spatial rows: OK activates; → details. Linear scope would walk columns
+    // as one reading-order line.
     final list = ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -201,7 +202,8 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
         return _AddonRow(
           meta: addon,
           visibility: widget.visibility,
-          onTap: () => widget.onOpen(addon.id),
+          sortOrder: index,
+          onOpen: () => widget.onOpen(addon.id),
         );
       },
     );
@@ -214,12 +216,14 @@ class _AddonRow extends ConsumerStatefulWidget {
   const _AddonRow({
     required this.meta,
     required this.visibility,
-    required this.onTap,
+    required this.sortOrder,
+    required this.onOpen,
   });
 
   final SettingsAddonMeta meta;
   final SettingsVisibility visibility;
-  final VoidCallback onTap;
+  final int sortOrder;
+  final VoidCallback onOpen;
 
   @override
   ConsumerState<_AddonRow> createState() => _AddonRowState();
@@ -228,13 +232,14 @@ class _AddonRow extends ConsumerStatefulWidget {
 class _AddonRowState extends ConsumerState<_AddonRow> {
   late final FocusNode _rowFocus =
       FocusNode(debugLabel: 'addon-row-${widget.meta.id}');
-  late final FocusNode _toggleFocus =
-      FocusNode(debugLabel: 'addon-toggle-${widget.meta.id}');
+  late final FocusNode _detailsFocus =
+      FocusNode(debugLabel: 'addon-details-${widget.meta.id}');
+  VoidCallback? _flip;
 
   @override
   void dispose() {
     _rowFocus.dispose();
-    _toggleFocus.dispose();
+    _detailsFocus.dispose();
     super.dispose();
   }
 
@@ -242,8 +247,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
   Widget build(BuildContext context) {
     final meta = widget.meta;
     final visibility = widget.visibility;
-    final onTap = widget.onTap;
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final rowId = 'addon-${meta.id}';
     final titles = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -267,35 +273,63 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         ),
       ],
     );
-    final chevron = const Icon(
-      Icons.chevron_right_rounded,
-      color: ForjaShellColors.iconMuted,
-      size: 20,
-    );
 
     final leading =
         Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
-    // Keep switch outside the row tap: OK on label opens detail; → / click
-    // on the switch flips activation.
+
+    final detailsBtn = shellFocusableTap(
+      context: context,
+      focusNode: _detailsFocus,
+      onTap: widget.onOpen,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusRail: false,
+      showFocusFill: true,
+      showFocusBorder: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.row,
+      tvRowId: rowId,
+      tvItemIndex: meta.hasToggle ? 1 : 0,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onLeftEdge: leanback && meta.hasToggle
+          ? () {
+              _rowFocus.requestFocus();
+            }
+          : null,
+      child: const SizedBox(
+        width: 40,
+        height: 40,
+        child: Center(
+          child: Icon(
+            Icons.chevron_right_rounded,
+            color: ForjaShellColors.iconMuted,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+
+    Widget body;
     if (meta.hasToggle) {
-      return Row(
+      body = Row(
         children: [
           Expanded(
             child: shellFocusableTap(
               context: context,
               focusNode: _rowFocus,
-              onTap: onTap,
+              // OK / click activates; chevron opens details.
+              onTap: () => _flip?.call(),
               borderRadius: SettingsTokens.categoryTileRadius,
               scaleOnFocus: 1.0,
               showFocusRail: true,
               tvTabId: 'settings',
-              tvZone: ShellTvZone.settings,
+              tvZone: ShellTvZone.row,
+              tvRowId: rowId,
+              tvItemIndex: 0,
               ensureVisibleMode: ShellTvEnsureVisibleMode.item,
               onRightEdge: leanback
                   ? () {
-                      // Force focus onto the activate switch (spatial → is
-                      // unreliable with a tall row + tiny switch).
-                      _toggleFocus.requestFocus();
+                      _detailsFocus.requestFocus();
                     }
                   : null,
               child: Padding(
@@ -306,50 +340,59 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
                     leading,
                     const SizedBox(width: 12),
                     Expanded(child: titles),
-                    const SizedBox(width: 4),
-                    chevron,
+                    AddonMasterToggle(
+                      addonId: meta.id,
+                      visibility: visibility,
+                      chromeOnly: true,
+                      onProvideFlip: (flip) => _flip = flip,
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-          AddonMasterToggle(
-            addonId: meta.id,
-            visibility: visibility,
-            focusNode: leanback ? _toggleFocus : null,
-            onLeftEdge: leanback
-                ? () {
-                    _rowFocus.requestFocus();
-                  }
-                : null,
-          ),
+          detailsBtn,
           const SizedBox(width: 4),
         ],
       );
+    } else {
+      body = shellFocusableTap(
+        context: context,
+        focusNode: _rowFocus,
+        onTap: widget.onOpen,
+        borderRadius: SettingsTokens.categoryTileRadius,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.row,
+        tvRowId: rowId,
+        tvItemIndex: 0,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: 12),
+              Expanded(child: titles),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: ForjaShellColors.iconMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    return shellFocusableTap(
-      context: context,
-      focusNode: _rowFocus,
-      onTap: onTap,
-      borderRadius: SettingsTokens.categoryTileRadius,
-      scaleOnFocus: 1.0,
-      showFocusRail: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
-        child: Row(
-          children: [
-            leading,
-            const SizedBox(width: 12),
-            Expanded(child: titles),
-            const SizedBox(width: 4),
-            chevron,
-          ],
-        ),
-      ),
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'settings',
+      rowId: rowId,
+      sortOrder: widget.sortOrder,
+      itemCount: meta.hasToggle ? 2 : 1,
+      child: body,
     );
   }
 }

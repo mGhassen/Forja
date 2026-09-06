@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
@@ -18,16 +19,29 @@ class SettingsPackPromptDrill {
   static final ValueNotifier<PluginBatchInstallPrompt?> current =
       ValueNotifier<PluginBatchInstallPrompt?>(null);
 
+  /// True while Install / Apply is downloading — Back must not tear this down.
+  static final ValueNotifier<bool> applying = ValueNotifier<bool>(false);
+
   static void open(PluginBatchInstallPrompt prompt) {
     current.value = prompt;
   }
 
-  static void close() => current.value = null;
+  static void close() {
+    applying.value = false;
+    current.value = null;
+  }
 
   static bool get isOpen => current.value != null;
 
+  static bool get isApplying => applying.value;
+
   /// Back / category change / Not now — defer remote rows, then close.
+  /// No-op while [isApplying] so a mid-download Back cannot abort the batch.
   static Future<void> dismissWithoutApply() async {
+    if (isApplying) {
+      debugPrint('[PackPrompt] dismiss ignored — install in progress');
+      return;
+    }
     final prompt = current.value;
     if (prompt == null) return;
     for (final c in prompt.candidates) {
@@ -137,6 +151,10 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   Future<void> _applySelected() async {
     if (_busy || _selectedCount == 0) return;
     setState(() => _busy = true);
+    SettingsPackPromptDrill.applying.value = true;
+    var installed = 0;
+    var removed = 0;
+    final failures = <String>[];
     try {
       final coordinator = PluginInstallCoordinator.instance;
       final registry = PluginRegistry.instance;
@@ -148,27 +166,56 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           await _deferRemote(c);
           continue;
         }
-        if (c.kind == PluginPackPromptKind.uninstall) {
-          await registry.removePack(url);
-          await PendingRemotePurgeStore.clear(url);
-        } else {
-          await coordinator.installManifest(url);
-          await DeferredRemoteInstallStore.clear(url);
+        final label = c.displayName?.trim().isNotEmpty == true
+            ? c.displayName!.trim()
+            : url;
+        try {
+          if (c.kind == PluginPackPromptKind.uninstall) {
+            debugPrint('[PackPrompt] uninstall $label');
+            await registry.removePack(url);
+            await PendingRemotePurgeStore.clear(url);
+            removed++;
+          } else {
+            debugPrint('[PackPrompt] install $label → $url');
+            await coordinator.installManifest(url);
+            await DeferredRemoteInstallStore.clear(url);
+            installed++;
+            debugPrint('[PackPrompt] install ok $label');
+          }
+        } catch (e) {
+          debugPrint('[PackPrompt] failed $label: $e');
+          failures.add(label);
         }
       }
+      // Always refresh hub nav even if the pane was torn down (Back / remount).
+      await PluginNavRegistry.refresh();
       scheduleForjaSyncPush();
       if (!mounted) return;
+      if (failures.isEmpty) {
+        final bits = <String>[
+          if (installed > 0)
+            installed == 1 ? '1 pack installed' : '$installed packs installed',
+          if (removed > 0)
+            removed == 1 ? '1 pack removed' : '$removed packs removed',
+        ];
+        if (bits.isNotEmpty) ForjaToast.success(bits.join(' · '));
+      } else {
+        ForjaToast.error(
+          'Pack sync: ${failures.length} failed'
+          '${installed > 0 ? ', $installed ok' : ''}'
+          ' (${failures.take(2).join(', ')}'
+          '${failures.length > 2 ? '…' : ''})',
+        );
+      }
       widget.onDismiss();
-    } catch (e) {
-      if (!mounted) return;
-      ForjaToast.error('Pack sync failed: $e');
     } finally {
+      SettingsPackPromptDrill.applying.value = false;
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _notNow() async {
-    if (_busy) return;
+    if (_busy || SettingsPackPromptDrill.isApplying) return;
     setState(() => _busy = true);
     try {
       await SettingsPackPromptDrill.dismissWithoutApply();

@@ -68,7 +68,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
         SettingsAddonDrill.close();
       }
       if (widget.selectedId != SettingsCategoryId.forjaPacks &&
-          SettingsPackPromptDrill.isOpen) {
+          SettingsPackPromptDrill.isOpen &&
+          !SettingsPackPromptDrill.isApplying) {
         unawaited(SettingsPackPromptDrill.dismissWithoutApply());
       }
     }
@@ -176,6 +177,10 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     }
 
     if (SettingsPackPromptDrill.isOpen) {
+      if (SettingsPackPromptDrill.isApplying) {
+        // Mid-download Back used to tear down the pane and skip nav refresh.
+        return true;
+      }
       unawaited(SettingsPackPromptDrill.dismissWithoutApply());
       return true;
     }
@@ -264,7 +269,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                           SettingsAddonDrill.close();
                         }
                         if (id != SettingsCategoryId.forjaPacks &&
-                            SettingsPackPromptDrill.isOpen) {
+                            SettingsPackPromptDrill.isOpen &&
+                            !SettingsPackPromptDrill.isApplying) {
                           unawaited(
                             SettingsPackPromptDrill.dismissWithoutApply(),
                           );

@@ -25,6 +25,8 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
     required this.visibility,
     this.focusNode,
     this.onLeftEdge,
+    this.chromeOnly = false,
+    this.onProvideFlip,
   });
 
   final String addonId;
@@ -35,6 +37,12 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
 
   /// TV: ← from the switch returns to the addon row.
   final VoidCallback? onLeftEdge;
+
+  /// Visual switch only — parent row / OK owns activation ([onProvideFlip]).
+  final bool chromeOnly;
+
+  /// Registers the flip callback so the row can OK-activate the addon.
+  final ValueChanged<VoidCallback>? onProvideFlip;
 
   @override
   ConsumerState<AddonMasterToggle> createState() => _AddonMasterToggleState();
@@ -167,6 +175,8 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   }
 
   Future<void> _toggleNavTab(String navId, bool val) async {
+    // Dirty before KV so Addons soft-pull cannot apply empty cloud mid-write.
+    noteNavigationDirty();
     // Exclusive RMW — rapid ATV OK on IPTV then Live Sports must not both
     // read empty and write past each other (issue 224).
     final updated = await _settings.setNavbarTabVisible(navId, val);
@@ -207,9 +217,25 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       unawaited(_toggle(!enabled));
     }
 
-    // Leanback: separate D-pad focus stop (→ from row). Visible chrome so →
-    // is obvious. Switch is display-only (onChanged null) so Material
-    // ActivateIntent cannot swallow Select as a no-op (224).
+    widget.onProvideFlip?.call(flip);
+
+    final switchChrome = ForjaSwitch(
+      value: enabled,
+      onChanged: null,
+      scale: ForjaSwitch.settingsScale,
+      emphasized: _chromeActive,
+    );
+
+    // Row owns OK — switch is display-only (Addons list parity with Features).
+    if (widget.chromeOnly) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: IgnorePointer(child: switchChrome),
+      );
+    }
+
+    // Leanback: separate D-pad focus stop (legacy). Switch is display-only
+    // (onChanged null) so Material ActivateIntent cannot swallow Select (224).
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
     if (leanback) {
       return Actions(
@@ -245,16 +271,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           child: SizedBox(
             width: 56,
             height: 44,
-            child: Center(
-              child: IgnorePointer(
-                child: ForjaSwitch(
-                  value: enabled,
-                  onChanged: null,
-                  scale: ForjaSwitch.settingsScale,
-                  emphasized: _chromeActive,
-                ),
-              ),
-            ),
+            child: Center(child: IgnorePointer(child: switchChrome)),
           ),
         ),
       );
