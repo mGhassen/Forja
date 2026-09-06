@@ -198,7 +198,8 @@ class _SettingsPlaybackSectionState
                   );
                 },
               ),
-            if (!kIsWeb && (Platform.isMacOS || Platform.isWindows))
+            if (!kIsWeb &&
+                SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(
                 context,
                 'Auto picture-in-picture',
@@ -212,7 +213,9 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
-            if (!kIsWeb && (Platform.isMacOS || Platform.isWindows))
+            // Desktop-only (RFC-083). Hidden on Android TV / phone.
+            if (!kIsWeb &&
+                SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(
                 context,
                 'In-app mini player',

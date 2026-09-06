@@ -454,7 +454,14 @@ class SettingsService {
   }
 
   /// Escape → in-Forja mini player (default off). Distinct from OS/window PiP.
+  /// Desktop-only — always off on phone / Android TV (not shown in Settings).
   Future<bool> getInAppMiniPlayer() async {
+    if (platformProfile != PlatformProfile.desktop) {
+      if (inAppMiniPlayerNotifier.value) {
+        inAppMiniPlayerNotifier.value = false;
+      }
+      return false;
+    }
     final v = await kvGetBool(_inAppMiniPlayerKey, fallback: false);
     if (inAppMiniPlayerNotifier.value != v) {
       inAppMiniPlayerNotifier.value = v;
@@ -463,6 +470,7 @@ class SettingsService {
   }
 
   Future<void> setInAppMiniPlayer(bool v) async {
+    if (platformProfile != PlatformProfile.desktop) return;
     await kvSetBool(_inAppMiniPlayerKey, v);
     inAppMiniPlayerNotifier.value = v;
   }
