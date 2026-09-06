@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **29 / 29** fix · **0 / 4** acceptance |
+| **Progress** | **30 / 30** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -48,6 +48,7 @@
 | 27 | I224-T27 | Web pack install default-on hub Features (`navigationAfterForjaPacksChange`); Features hydrate without inventory prune; cache set on save | ✅ |
 | 28 | I224-T28 | Pack hub refresh must not put Features `visibleIds` into `syncActiveHubNavIds` known set (stripped Anime ON from rail); MainScreen listens KV notifier directly; rail fallback dest; pack-prompt activates hubs | ✅ |
 | 29 | I224-T29 | Stop navbar notify storm: no mid-refresh cache bump; Features scan bumps only on changed; `ensureNavIdsKnown` known-only (no visible auto-insert); MainScreen debounce + no-op skip | ✅ |
+| 30 | I224-T30 | Hub refresh: do not fold Features `visibleIds` into `syncActiveHubNavIds` known on the live path; scripts-missing = hydration pending; skip empty-active strip unless intentional wipe; Features heal re-enable after strip race | ✅ |
 
 ---
 
@@ -78,8 +79,9 @@
 8. Web Addons toggled flag + nav via two parallel commits; nav `toPayload` pruned with **old** `availableIds` (flags still false) and stripped the tab just enabled.
 9. Web Features hydrated nav by pruning against **empty** `playDraft` (effects not run yet) — cloud `visibleIds` for IPTV/Live were stripped so Features showed the row OFF or empty after Addons ON.
 10. Pack hub `PluginNavRegistry.refresh` folded Features `visibleIds` into `syncActiveHubNavIds` **knownHubIds**, so a mid-refresh empty active set **stripped** just-enabled hub tabs from KV (Features Anime ON, shell rail only profile).
+11. `_syncHubNavVisibility` re-introduced that fold for “legacy ghosts”; with scripts still awaiting confirm, empty-active sync stripped Anime right after Features OK (A04).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only (not Features visibleIds); MainScreen reloads rail from `navbarChangeNotifier` directly.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 

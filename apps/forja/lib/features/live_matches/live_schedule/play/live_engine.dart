@@ -571,8 +571,11 @@ bool liveEnginePreferDirectPlayback(String m3u8Url) {
 
 /// Plugin `directPlayback` must not force a MediaKit open of `wfty.st` —
 /// that CDN needs `/hls-proxy` so child playlists keep sportsembed Referer.
+/// Amazon S3 (Foorja etc.): same — mbedtls often RST / bogus regions NXDOMAIN
+/// on direct open; hls-proxy uses host TLS.
 bool liveEngineOpenDirect(String m3u8Url, {bool pluginDirect = false}) {
   final host = Uri.tryParse(m3u8Url.trim())?.host.toLowerCase() ?? '';
   if (host.contains('wfty.st')) return false;
+  if (host.contains('amazonaws.com')) return false;
   return pluginDirect || liveEnginePreferDirectPlayback(m3u8Url);
 }

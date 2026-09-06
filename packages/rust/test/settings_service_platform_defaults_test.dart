@@ -641,6 +641,28 @@ void main() {
     expect(await service.getNavbarConfig(), isEmpty);
   });
 
+  test('syncActiveHubNavIds strips orphan hub tabs when known includes them',
+      () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(const [
+      'home',
+      'anime',
+      'iptv',
+      'live_matches',
+    ]);
+    await service.setDefaultNavTab('home');
+
+    // Empty pack index + empty cache: known = visible non-core orphans only.
+    await service.syncActiveHubNavIds(
+      activeHubIds: const {},
+      knownHubIds: const {'home', 'anime'},
+    );
+
+    expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
+    expect(await service.getDefaultNavTab(), 'iptv');
+  });
+
   test('addon feature flags migrate from navbar visibleIds', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);

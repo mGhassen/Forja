@@ -108,11 +108,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
           : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
-    assert(navTabBuilders.containsKey(id), 'No tab builder for $id');
     final isNew = !_tabCache.containsKey(id);
     final tab = _tabCache.putIfAbsent(id, () {
       final builder = navTabBuilders[id];
       if (builder == null) {
+        // Ghost rail id (stale KV / pack mid-refresh) — never assert-crash.
+        if (kDebugMode) {
+          debugPrint('[MainScreen] No tab builder for $id — empty placeholder');
+        }
         return const SizedBox.shrink();
       }
       final key = _keyForTab(id);
@@ -386,12 +389,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
     final beforeFilter = List<String>.from(visible);
-    // Do not drop hub tabs with [isContributed] here — Features can enable a
-    // hub while PluginNavRegistry.refresh is mid-flight; filtering hid Anime
-    // on the rail while Settings → Features still showed it ON (ATV 224).
-    // Pack-off cleanup stays in [PluginNavRegistry.syncActiveHubNavIds].
+    // Drop hub ids with no pack contribution (legacy KV ghosts like `home`
+    // after the Home pack is gone). Soft-fail in [_tabFor] covers the brief
+    // Features-enable → refresh gap; prune in [PluginNavRegistry.refresh]
+    // clears KV. Filtering here matches [BootNeeds.resolve].
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
+        .where(PluginNavRegistry.isContributed)
         .where(
           (id) =>
               !SettingsService.addonGatedNavIds.contains(id) ||
@@ -453,6 +457,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
           _visibleIds,
           defaultTabId: defaultTab,
         );
+        // Prefer a buildable tab when default points at a ghost hub id.
+        if (_selectedIndex < _visibleIds.length &&
+            !navTabBuilders.containsKey(_visibleIds[_selectedIndex])) {
+          final buildable = _visibleIds.indexWhere(navTabBuilders.containsKey);
+          if (buildable >= 0) _selectedIndex = buildable;
+        }
         if (_selectedIndex < _visibleIds.length) {
           final tabId = _visibleIds[_selectedIndex];
           _mountedTabIds.add(tabId);
@@ -587,7 +597,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         _visibleIds.where((id) => id != 'settings').toList(growable: false);
     var target = defaultTab;
     if (!featureIds.contains(target)) {
-      target = featureIds.isNotEmpty ? featureIds.first : 'home';
+      target = featureIds.isNotEmpty ? featureIds.first : 'settings';
     }
     final idx = _visibleIds.indexOf(target);
     if (idx >= 0) _selectTab(idx);

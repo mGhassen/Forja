@@ -484,6 +484,19 @@ class _SettingsNavigationPageBodyState
       });
       await scheduleNavigationSyncPush();
       if (!mounted || epoch != _saveEpoch) return;
+      // Heal strip race: hub refresh must not leave KV without a just-enabled
+      // tab while Features still shows ON (224 A04 — ATV rail empty).
+      if (next) {
+        final again = await _settings.getNavbarConfig();
+        if (!again.contains(id)) {
+          debugPrint('[Features] heal re-enable $id after strip race');
+          final healed = await _settings.setNavbarTabVisible(id, true);
+          if (!mounted || epoch != _saveEpoch) return;
+          setState(() => _navbarVisible = List.of(healed));
+          await scheduleNavigationSyncPush();
+        }
+      }
+      if (!mounted || epoch != _saveEpoch) return;
       final startupOptions = _startupTabOptions();
       if (!startupOptions.contains(_defaultNavTab)) {
         final resolved = startupOptions.isNotEmpty

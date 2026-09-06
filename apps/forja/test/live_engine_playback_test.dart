@@ -34,6 +34,16 @@ void main() {
       );
     });
 
+    test('amazon s3 foorja playlists use hls-proxy even when pluginDirect', () {
+      expect(
+        liveEngineOpenDirect(
+          'https://foorja1.s3.eu-north-1.amazonaws.com/live/master.m3u8',
+          pluginDirect: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('ppv indianservers playlists open direct', () {
       expect(
         liveEnginePreferDirectPlayback(

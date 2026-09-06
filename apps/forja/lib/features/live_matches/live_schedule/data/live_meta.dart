@@ -501,8 +501,11 @@ _StreamedStream _streamedStreamFromResolveRow({
     embedUrl: url,
     source: sourceToken,
     viewers: viewers,
-    directPlayback: row['directPlayback'] == true ||
-        iptvLiveEnginePlayUrlReady(url),
+    // Respect explicit plugin false (e.g. MobiKora S3 → hls-proxy). Only
+    // infer ready from the URL when the row omits directPlayback.
+    directPlayback: row.containsKey('directPlayback')
+        ? row['directPlayback'] == true
+        : iptvLiveEnginePlayUrlReady(url),
     resolvedHeaders: resolvedHeaders,
   );
 }

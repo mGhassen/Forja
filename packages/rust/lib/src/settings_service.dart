@@ -1744,13 +1744,27 @@ class SettingsService {
   /// [knownHubIds] = pack-installed / previously contributed hub tab ids only
   /// (never Features `visibleIds` alone — that stripped just-enabled tabs).
   /// [activeHubIds] = hubs currently contributed by an enabled pack+plugin.
+  ///
+  /// When [activeHubIds] is empty and [knownHubIds] is not, skip unless
+  /// [allowEmptyActiveStrip] — empty-active during lean/script-pending refresh
+  /// was wiping Features enables off the rail (224 A04).
   Future<void> syncActiveHubNavIds({
     required Set<String> activeHubIds,
     required Set<String> knownHubIds,
     bool notify = true,
+    bool allowEmptyActiveStrip = false,
   }) async {
     return _withNavbarExclusive(() async {
       if (!await kvHasKey(_navbarConfigKey)) return;
+      if (activeHubIds.isEmpty &&
+          knownHubIds.isNotEmpty &&
+          !allowEmptyActiveStrip) {
+        debugPrint(
+          '[Settings] syncActiveHubNavIds skip empty-active strip '
+          '(known=${knownHubIds.length})',
+        );
+        return;
+      }
       final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
       final next = raw
           .where((id) => !knownHubIds.contains(id) || activeHubIds.contains(id))

@@ -307,8 +307,9 @@ abstract final class PluginNavRegistry {
   }
 
   /// True while hub `nav` cannot be scanned yet — lean stubs, splash download,
-  /// or empty pack index before cloud sync. Must not [syncActiveHubNavIds]
-  /// with an empty active set (that permanently strips Features defaults).
+  /// scripts awaiting user confirm, or empty pack index before cloud sync.
+  /// Must not [syncActiveHubNavIds] with an empty active set (that permanently
+  /// strips Features defaults — ATV rail empty while Features Anime stays ON).
   static Future<bool> _hubNavHydrationPending() async {
     final coordinator = PluginInstallCoordinator.instance;
     if (coordinator.isBootWarm || coordinator.isInstalling) return true;
@@ -319,10 +320,14 @@ abstract final class PluginNavRegistry {
       // install, allow the empty-hub wipe.
       return !ShellBus.splashDismissed.value;
     }
+    final registry = PluginRegistry.instance;
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
       // Cloud lean rows are URL-only until full install fills plugins + nav.
       if (pack.plugins.isEmpty) return true;
+      // Manifest plugins present but disk JS not downloaded yet — treat as
+      // pending so empty-hub sync cannot strip a just-enabled Features tab.
+      if (await registry.packNeedsDiskInstall(pack)) return true;
     }
     return false;
   }
@@ -375,13 +380,13 @@ abstract final class PluginNavRegistry {
       _tabPluginIds = {};
       _seeded = true;
       await _clearNavSnapshot();
-      if (packKnownHubTabIds.isNotEmpty) {
-        await SettingsService().syncActiveHubNavIds(
-          activeHubIds: const {},
-          knownHubIds: packKnownHubTabIds,
-          notify: _refreshNotifyPending,
-        );
-      }
+      // Always prune — packKnown alone is empty when cache + packs are gone, but
+      // KV can still hold legacy hub ids (`home`, `anime`, …) with no builder.
+      await _syncHubNavVisibility(
+        activeHubIds: const {},
+        packKnownHubTabIds: packKnownHubTabIds,
+        includeVisibleOrphans: true,
+      );
       if (hadHubs && _refreshNotifyPending) {
         SettingsService.navbarChangeNotifier.value++;
       }
@@ -460,10 +465,11 @@ abstract final class PluginNavRegistry {
         notify: _refreshNotifyPending,
       );
     }
-    await SettingsService().syncActiveHubNavIds(
+    await _syncHubNavVisibility(
       activeHubIds: vodHubIds,
-      knownHubIds: packKnownHubTabIds,
-      notify: _refreshNotifyPending,
+      packKnownHubTabIds: packKnownHubTabIds,
+      // All hub packs disabled → strip known hub tabs from the rail.
+      allowEmptyActiveStrip: vodHubIds.isEmpty && packKnownHubTabIds.isNotEmpty,
     );
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
@@ -474,6 +480,39 @@ abstract final class PluginNavRegistry {
       SettingsService.navbarChangeNotifier.value++;
     }
     return changed;
+  }
+
+  /// Drop rail tabs whose pack/plugin is off.
+  ///
+  /// [packKnownHubTabIds] = installed / previously contributed hubs only.
+  /// Never fold Features `visibleIds` into known on the live path — that made
+  /// `syncActiveHubNavIds` treat a just-enabled Anime tab as "known but
+  /// inactive" and strip it from the rail (224 A04).
+  ///
+  /// [includeVisibleOrphans] only for the no-packs wipe path (legacy ghosts
+  /// in KV when the pack index and nav cache are both empty).
+  static Future<void> _syncHubNavVisibility({
+    required Set<String> activeHubIds,
+    required Set<String> packKnownHubTabIds,
+    bool includeVisibleOrphans = false,
+    bool allowEmptyActiveStrip = false,
+  }) async {
+    var known = Set<String>.from(packKnownHubTabIds);
+    if (includeVisibleOrphans) {
+      final visible = await SettingsService().getNavbarConfig();
+      for (final id in visible) {
+        if (!coreShellNavIds.contains(id)) known.add(id);
+      }
+    }
+    if (known.isEmpty) return;
+    await SettingsService().syncActiveHubNavIds(
+      activeHubIds: activeHubIds,
+      knownHubIds: known,
+      notify: _refreshNotifyPending,
+      allowEmptyActiveStrip:
+          allowEmptyActiveStrip ||
+          (includeVisibleOrphans && activeHubIds.isEmpty),
+    );
   }
 
   static String? pluginIdForTabSync(String tabId) {
