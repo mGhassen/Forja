@@ -58,6 +58,17 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   @override
   bool get maintainState => true;
 
+  /// [ModalRoute] always inserts a barrier. Even with [barrierColor] null it
+  /// uses [HitTestBehavior.opaque] and eats every miss under the page — so the
+  /// shell never gets clicks while mini shows only a corner widget.
+  @override
+  Widget buildModalBarrier() {
+    if (InAppMiniPlayerController.instance.isActive) {
+      return const SizedBox.shrink();
+    }
+    return super.buildModalBarrier();
+  }
+
   @override
   Widget buildPage(
     BuildContext context,
