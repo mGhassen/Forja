@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 5 / 5** fix · **2 / 2** acceptance |
+| **Progress** | **Complete · 6 / 6** fix · **3 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 3 | I223-T03 | Rust: invent embed.st fallback only for admin/delta/golf/ppv/bravo | ✅ |
 | 4 | I223-T04 | Streamic catalog emits `streams` embeds; live resolve omits unlock misses | ✅ |
 | 5 | I223-T05 | TimStreams resolve omits unlock misses (same no-embed contract) | ✅ |
+| 6 | I223-T06 | Unlock DLHD/DaddyLive embeds (iframe → Clappr atob m3u8) for Streamic | ✅ |
 
 ---
 
@@ -34,6 +35,7 @@
 |--:|----|-------------|--------|
 | 1 | I223-A01 | Streamed Providers row for a live fixture unlocks to native HLS or toast “No playable stream” — no `Failed to recognize file format` reconnect loop on embed HTML | ✅ |
 | 2 | I223-A02 | Streamic sibling no longer invents `embed.st/embed/streamic/…` via streamed.pk fallback | ✅ |
+| 3 | I223-A03 | San Luis / Chivas Streamic `dlhd.pk` mirror unlocks to native HLS (web-working daddy embed) | ✅ |
 
 ---
 

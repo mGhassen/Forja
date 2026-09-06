@@ -466,3 +466,124 @@ async function resolveEmbedIndia(ctx, embedUrl, cfg) {
     },
   ];
 }
+
+function isDaddyLiveHost(host) {
+  var h = String(host || '').toLowerCase();
+  if (!h) return false;
+  return (
+    h === 'dlhd.pk' ||
+    h.endsWith('.dlhd.pk') ||
+    h === 'dlive.sx' ||
+    h.endsWith('.dlive.sx') ||
+    h === 'dlhd.sx' ||
+    h.endsWith('.dlhd.sx') ||
+    h === 'thedaddy.to' ||
+    h.endsWith('.thedaddy.to') ||
+    h === 'lovecdn.ru' ||
+    h.endsWith('.lovecdn.ru') ||
+    h === 'lovetier.bz' ||
+    h.endsWith('.lovetier.bz')
+  );
+}
+
+function isDaddyLiveUrl(url) {
+  try {
+    var u = new URL(String(url || '').trim());
+    if (!isDaddyLiveHost(u.host)) return false;
+    var path = u.pathname.toLowerCase();
+    return (
+      path.indexOf('/stream/stream-') >= 0 ||
+      path.indexOf('/daddy.php') >= 0 ||
+      path.indexOf('/premiumtv/') >= 0 ||
+      path.indexOf('/watch.php') >= 0
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+function m3u8FromDaddyHtml(html) {
+  var body = String(html || '');
+  if (!body) return '';
+  // Clappr: source:window.atob('…base64 m3u8…')
+  var atobM = body.match(/window\.atob\(\s*['"]([A-Za-z0-9+/=]+)['"]\s*\)/i);
+  if (atobM) {
+    try {
+      var decoded = atob(atobM[1]);
+      if (/\.m3u8/i.test(decoded)) return decoded.trim();
+    } catch (_) {}
+  }
+  var direct = body.match(/https?:\/\/[^\"'\s<>]+?\.m3u8[^\"'\s<>]*/i);
+  if (direct) return direct[0].replace(/&amp;/g, '&');
+  return '';
+}
+
+function daddyIframeFromHtml(html) {
+  var body = String(html || '');
+  var m = body.match(
+    /iframe[^>]+src=["'](https?:\/\/[^"']+(?:premiumtv\/daddy[^"']*|daddy[^"']*\.php[^"']*))["']/i
+  );
+  if (m) return m[1].replace(/&amp;/g, '&');
+  m = body.match(/iframe[^>]+src=["'](https?:\/\/[^"']+)["']/i);
+  return m ? m[1].replace(/&amp;/g, '&') : '';
+}
+
+async function fetchDaddyHtml(ctx, url, referer) {
+  var res = await ctx.fetch(String(url), {
+    headers: {
+      'User-Agent': ua(),
+      Accept: 'text/html,application/xhtml+xml',
+      Referer: referer || 'https://streamic.st/',
+    },
+  });
+  if (!res || !res.ok) return '';
+  if (typeof res.text === 'function') {
+    try {
+      return String(await res.text());
+    } catch (_) {}
+  }
+  return '';
+}
+
+async function resolveDaddyLiveEmbed(ctx, embedUrl, cfg) {
+  var raw = String(embedUrl || '').trim();
+  if (!raw || !isDaddyLiveUrl(raw)) return null;
+
+  var pageReferer = 'https://streamic.st/';
+  try {
+    pageReferer = new URL(raw).origin + '/';
+  } catch (_) {}
+
+  var html = await fetchDaddyHtml(ctx, raw, pageReferer);
+  var m3u8 = m3u8FromDaddyHtml(html);
+  var playerPage = raw;
+
+  if (!m3u8) {
+    var iframe = daddyIframeFromHtml(html);
+    if (iframe) {
+      playerPage = iframe;
+      var iframeHtml = await fetchDaddyHtml(ctx, iframe, raw);
+      m3u8 = m3u8FromDaddyHtml(iframeHtml);
+    }
+  }
+  if (!m3u8) return null;
+
+  var origin = '';
+  try {
+    origin = new URL(playerPage).origin;
+  } catch (_) {
+    origin = pageReferer.replace(/\/$/, '');
+  }
+  return [
+    {
+      url: m3u8,
+      headers: {
+        Referer: playerPage,
+        Origin: origin,
+        'User-Agent': ua(),
+      },
+      directPlayback: preferDirectPlayback(m3u8),
+    },
+  ];
+}
+

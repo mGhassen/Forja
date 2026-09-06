@@ -117,9 +117,12 @@ function embedPriority(url) {
   if (/\.m3u8|\.mp4/i.test(u)) return 0;
   if (u.indexOf('embed.st') >= 0 || u.indexOf('embedindia.st') >= 0) return 1;
   if (u.indexOf('embed/') >= 0 && u.indexOf('admin/') >= 0) return 1;
+  if (u.indexOf('dlhd.pk') >= 0 || u.indexOf('dlive.sx') >= 0 || u.indexOf('daddy.php') >= 0) {
+    return 1;
+  }
   if (u.indexOf('strmi.buzz') >= 0 || u.indexOf('strm.buzz') >= 0) return 2;
   if (u.indexOf('streami.fit') >= 0) return 2;
-  if (u.indexOf('lovetier.bz') >= 0 || u.indexOf('dlhd.pk') >= 0) return 3;
+  if (u.indexOf('lovetier.bz') >= 0 || u.indexOf('lovecdn.ru') >= 0) return 3;
   return 4;
 }
 
@@ -201,6 +204,13 @@ async function unlockEmbed(ctx, url, cfg) {
         if (candidate && candidate.length) return candidate[0];
       } catch (_) {}
     }
+  }
+
+  if (isDaddyLiveUrl(raw)) {
+    try {
+      var daddy = await resolveDaddyLiveEmbed(ctx, raw, cfg);
+      if (daddy && daddy.length) return daddy[0];
+    } catch (_) {}
   }
 
   return null;

@@ -94,6 +94,13 @@ async function unlockEmbed(ctx, url, cfg) {
     }
   }
 
+  if (isDaddyLiveUrl(raw)) {
+    try {
+      var daddy = await resolveDaddyLiveEmbed(ctx, raw, cfg);
+      if (daddy && daddy.length) return daddy[0];
+    } catch (_) {}
+  }
+
   return null;
 }
 

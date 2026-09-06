@@ -28,7 +28,7 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 
 ## Tips
 
-- Streams are third-party — availability changes with broadcasts and region
+- Streams are third-party — availability changes with broadcasts and region. Streamic may list fewer mirrors than the website: Forja only keeps ones it can unlock to native HLS (e.g. DLHD/DaddyLive), and skips iframe-only dead ends.
 - Escape / Back closes the streams panel, then leaves the player and stops audio
 - Pack layout with `style: grid` can restore a card browse if a hub pack declares it
 
