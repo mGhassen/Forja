@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-062](062-[open]-native-iptv-sports-matching.md)  
-**Area:** `shared/catalog/kit/sources/live_schedule/`, `plugins/hubs/live_sports/`, host services
+**Area:** `features/live_matches/live_schedule/`, `plugins/hubs/live_sports/`, host services
 
 ## Status at a glance
 
@@ -61,7 +61,7 @@
 
 ## Summary
 
-RFC-071 relocated Live Matches under `kit/sources/live_schedule/` and a hub pack, but **browse/play stayed a host god-page** with a leftover **mode** model (Forja Live / Forja Sports / Stremio) that the product already abandoned.
+RFC-071 relocated Live Matches under kit then RFC-085 moved it to `features/live_matches/`, but **browse/play stayed a host god-page** with a leftover **mode** model (Forja Live / Forja Sports / Stremio) that the product already abandoned.
 
 **Product contract (target):**
 

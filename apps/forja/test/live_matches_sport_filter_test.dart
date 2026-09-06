@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_filter.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_sport_filter.dart';
 
 void main() {
   group('normalizeLiveSportId', () {

@@ -956,6 +956,8 @@ class PlayerTopBarActions extends StatelessWidget {
     this.onPip,
     this.showPip = false,
     this.pipActive = false,
+    this.onInAppMini,
+    this.showInAppMini = false,
     this.onPlayer,
     this.showPlayer = false,
     this.tvFocusable = false,
@@ -968,6 +970,8 @@ class PlayerTopBarActions extends StatelessWidget {
   final VoidCallback? onPip;
   final bool showPip;
   final bool pipActive;
+  final VoidCallback? onInAppMini;
+  final bool showInAppMini;
   final ValueChanged<BuildContext>? onPlayer;
   final bool showPlayer;
   final bool tvFocusable;
@@ -994,6 +998,14 @@ class PlayerTopBarActions extends StatelessWidget {
             icon: Icons.cast_rounded,
             tooltip: 'Cast',
             onPressed: onCast!,
+            size: 44,
+            tvFocusable: tvFocusable,
+          ),
+        if (showInAppMini && onInAppMini != null)
+          PlayerFlatIconButton(
+            icon: Icons.branding_watermark_outlined,
+            tooltip: 'In-app mini player',
+            onPressed: onInAppMini!,
             size: 44,
             tvFocusable: tvFocusable,
           ),

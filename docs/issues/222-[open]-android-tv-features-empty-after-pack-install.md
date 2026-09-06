@@ -58,4 +58,4 @@
 
 1. Android TV (or desktop): install ForjaHQ Home + Anime hubs.
 2. Open **Settings → Features** — Home / Anime rows appear (on after first-seen).
-3. Cold start with packs already installed — Features still lists hubs + IPTV + Live Sports.
+3. Cold start with packs already installed — Features lists hubs; IPTV / Live Sports only if those Addons are on.

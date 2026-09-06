@@ -237,16 +237,21 @@ abstract final class PluginNavRegistry {
     return _destinations.containsKey(tabId);
   }
 
-  /// Tab ids that belong in Settings → Features (host-core + enabled hubs).
+  /// Tab ids that belong in Settings → Features (enabled hubs + active Addons).
   ///
-  /// Always includes Addons-gated core (`iptv`, `live_matches`) so Features is
-  /// never an empty list when packs are still hydrating. Omits `settings`
-  /// (hardcoded "Always visible" row). Callers still strip [archivedNavIds].
-  static List<String> featureTabIds() {
+  /// Addon-gated host tabs (`iptv`, `live_matches`) appear only when already
+  /// in [activeAddonNavIds] (Addons ON). Features never invents them — Addons
+  /// is the sole activator. Omits `settings` (hardcoded "Always visible" row).
+  /// Callers still strip archived nav ids.
+  static List<String> featureTabIds({Iterable<String>? activeAddonNavIds}) {
     _ensureSeeded();
+    final active = activeAddonNavIds?.toSet() ?? const <String>{};
     return [
       for (final id in coreShellNavIds)
-        if (id != 'settings') id,
+        if (id != 'settings')
+          if (!SettingsService.addonGatedNavIds.contains(id) ||
+              active.contains(id))
+            id,
       for (final id in _destinations.keys)
         if (id != 'settings' && !coreShellNavIds.contains(id)) id,
     ];

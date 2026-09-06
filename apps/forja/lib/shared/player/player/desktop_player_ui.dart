@@ -59,6 +59,10 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       '[DesktopPlayer] Escape down armed=${_s._escapeExitArmed} '
       'chrome=${_s._showControls} fs=${_s._isFullscreen}',
     );
+    if (InAppMiniPlayerController.instance.isActive) {
+      unawaited(InAppMiniPlayerController.instance.close());
+      return;
+    }
     final handledAt = _s._escapeHandledAt;
     if (handledAt != null &&
         DateTime.now().difference(handledAt) <
@@ -112,6 +116,17 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       debugPrint('[DesktopPlayer] Escape fullscreen done armed=${_s._escapeExitArmed}');
       return;
     }
+    // Mini on: demote immediately when chrome is already hidden. Skip the
+    // arm step — hover re-show was clearing armed before confirm.
+    final miniOn = await InAppMiniPlayerController.readSettingEnabled();
+    if (!mounted || _s._disposed) return;
+    if (miniOn) {
+      debugPrint('[DesktopPlayer] Escape → in-app mini (no arm)');
+      _s._escapeExitArmed = false;
+      await InAppMiniPlayerController.instance.enter();
+      if (mounted && !_s._disposed) setState(() {});
+      return;
+    }
     if (!_s._escapeExitArmed) {
       debugPrint('[DesktopPlayer] Escape → arm only (armed=false → true)');
       _armEscapeExit();
@@ -119,10 +134,65 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return;
     }
     debugPrint(
-      '[DesktopPlayer] Escape → confirm exit (armed=true)',
+      '[DesktopPlayer] Escape → confirm (armed=true)',
     );
     _s._escapeExitArmed = false;
     await _exitPlayer();
+  }
+
+  Future<void> pauseForMini() async {
+    if (_s._disposed || !_s._playerReady) return;
+    try {
+      await _s._player.pause();
+    } catch (e) {
+      debugPrint('[DesktopPlayer] pauseForMini: $e');
+    }
+  }
+
+  Future<void> playFromMini() async {
+    if (_s._disposed || !_s._playerReady) return;
+    try {
+      await _s._player.play();
+    } catch (e) {
+      debugPrint('[DesktopPlayer] playFromMini: $e');
+    }
+  }
+
+  void onEnteredMini() {
+    if (!mounted || _s._disposed) return;
+    setState(() {
+      _s._showControls = false;
+      _s._escapeExitArmed = false;
+    });
+  }
+
+  void onExpandedFromMini() {
+    if (!mounted || _s._disposed) return;
+    setState(() {
+      _s._showControls = true;
+    });
+    _syncChromeHideTimer();
+  }
+
+  Future<void> closeFromMini() async {
+    _s._bypassEscapeArm = true;
+    await _exitPlayer();
+  }
+
+  Future<void> stopForNewPlay() async {
+    if (_s._disposed) return;
+    final existing = _s._stopForNewPlayCompleter;
+    if (existing != null) return existing.future;
+    final c = Completer<void>();
+    _s._stopForNewPlayCompleter = c;
+    _s._bypassEscapeArm = true;
+    await _exitPlayer();
+    if (!c.isCompleted) {
+      await c.future.timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {},
+      );
+    }
   }
 
   @override

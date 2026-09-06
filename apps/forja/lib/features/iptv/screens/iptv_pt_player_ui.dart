@@ -730,12 +730,16 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   /// Desktop Escape ladder — IPTV + Live Matches (same player).
-  /// Overlay/guide/search → hide chrome → leave fullscreen → arm → leave player.
+  /// Overlay/guide/search → hide chrome → leave fullscreen → arm → leave / mini.
   void _handleEscapeKey() {
     debugPrint(
       '[IptvPlayer] Escape down armed=${_s._escapeExitArmed} '
       'chrome=${_s._controlsVisible} fs=${_s._isFullscreen}',
     );
+    if (InAppMiniPlayerController.instance.isActive) {
+      unawaited(InAppMiniPlayerController.instance.close());
+      return;
+    }
     final handledAt = _s._escapeHandledAt;
     if (handledAt != null &&
         DateTime.now().difference(handledAt) <
@@ -795,14 +799,72 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       });
       return;
     }
+    // Mini on: demote when chrome already hidden (skip arm — hover cleared it).
+    final miniOn = await InAppMiniPlayerController.readSettingEnabled();
+    if (!mounted || _s._disposed) return;
+    if (miniOn) {
+      debugPrint('[IptvPlayer] Escape → in-app mini (no arm)');
+      _s._escapeExitArmed = false;
+      await InAppMiniPlayerController.instance.enter();
+      if (mounted && !_s._disposed) setState(() {});
+      return;
+    }
     if (!_s._escapeExitArmed) {
       debugPrint('[IptvPlayer] Escape → arm only');
       setState(() => _s._escapeExitArmed = true);
       return;
     }
-    debugPrint('[IptvPlayer] Escape → confirm exit');
+    debugPrint('[IptvPlayer] Escape → confirm');
     _s._escapeExitArmed = false;
     await _s._exitIptvPlayer();
+  }
+
+  Future<void> pauseForMini() async {
+    if (_s._disposed) return;
+    _s._userPlayWhenReady = false;
+    await _s._enginePause();
+  }
+
+  Future<void> playFromMini() async {
+    if (_s._disposed) return;
+    _s._userPlayWhenReady = true;
+    await _s._enginePlay();
+  }
+
+  void onEnteredMini() {
+    if (!mounted || _s._disposed) return;
+    setState(() {
+      _s._controlsVisible = false;
+      _s._guideVisible = false;
+      _s._searchVisible = false;
+      _s._escapeExitArmed = false;
+    });
+  }
+
+  void onExpandedFromMini() {
+    if (!mounted || _s._disposed) return;
+    ShellBus.maskShellUnderPlayer.value = true;
+    setState(() {
+      _s._controlsVisible = true;
+    });
+    _scheduleHideControls();
+  }
+
+  Future<void> closeFromMini() => _s._exitIptvPlayer();
+
+  Future<void> stopForNewPlay() async {
+    if (_s._disposed) return;
+    final existing = _s._stopForNewPlayCompleter;
+    if (existing != null) return existing.future;
+    final c = Completer<void>();
+    _s._stopForNewPlayCompleter = c;
+    await _s._exitIptvPlayer();
+    if (!c.isCompleted) {
+      await c.future.timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {},
+      );
+    }
   }
 
   void _claimPlayFocus() {
@@ -875,7 +937,75 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ShellScopeBuilder(builder: (context, _) => _buildPlayer(context));
+    return ShellScopeBuilder(
+      builder: (context, _) => ListenableBuilder(
+        listenable: InAppMiniPlayerController.instance.active,
+        builder: (context, _) {
+          if (InAppMiniPlayerController.instance.isActive) {
+            return _buildInAppMiniBody();
+          }
+          return _buildPlayer(context);
+        },
+      ),
+    );
+  }
+
+  Widget _buildInAppMiniBody() {
+    final controller = _s._controller;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const IgnorePointer(child: SizedBox.expand()),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          width: InAppMiniPlayerChrome.width,
+          height: InAppMiniPlayerChrome.height,
+          child: Material(
+            elevation: 12,
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            color: Colors.black,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (controller != null && !_s._exoBackend)
+                  Video(
+                    controller: controller,
+                    controls: NoVideoControls,
+                    fit: BoxFit.contain,
+                    fill: Colors.black,
+                    subtitleViewConfiguration: const SubtitleViewConfiguration(
+                      visible: false,
+                    ),
+                  )
+                else
+                  const ColoredBox(color: Colors.black),
+                InAppMiniPlayerChrome(
+                  playing: _s._playing,
+                  rootFocus: _s._miniRootFocus,
+                  playPauseFocus: _s._miniPlayPauseFocus,
+                  expandFocus: _s._miniExpandFocus,
+                  closeFocus: _s._miniCloseFocus,
+                  onPlayPause: () {
+                    unawaited(
+                      InAppMiniPlayerController.instance.togglePlayPause(),
+                    );
+                    if (mounted) setState(() {});
+                  },
+                  onExpand: () {
+                    unawaited(InAppMiniPlayerController.instance.expand());
+                  },
+                  onClose: () {
+                    unawaited(InAppMiniPlayerController.instance.close());
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Cold open / Source / engine switch — full-screen spinner.
@@ -1428,9 +1558,19 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Widget _buildTopBar(bool compact) {
+    return ListenableBuilder(
+      listenable: SettingsService.inAppMiniPlayerNotifier,
+      builder: (context, _) => _buildTopBarActions(compact),
+    );
+  }
+
+  Widget _buildTopBarActions(bool compact) {
     // PiP is phone/desktop chrome - hide on leanback TV (matches VOD player).
     final showPip =
         PipService.instance.isSupported && iptvShowPointerChrome(context);
+    final showInAppMini =
+        iptvShowPointerChrome(context) &&
+        InAppMiniPlayerController.settingEnabled;
     final tv = iptvUseTvFocus(context);
     void downFromTop() {
       if (_showProgressChrome &&
@@ -1482,6 +1622,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     var next = 1; // 1 = Back
     final playerOrder = ++next;
     final statsOrder = ++next;
+    final miniOrder = showInAppMini ? ++next : null;
     final pipOrder = showPip ? ++next : null;
 
     return Padding(
@@ -1575,6 +1716,15 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               onDownEdge: downFromTop,
               onLeftEdge: tv ? () => claim(_s._playerMenuFocus) : null,
             ),
+            if (showInAppMini)
+              _topBarFlatAction(
+                icon: Icons.branding_watermark_outlined,
+                tooltip: 'In-app mini player',
+                tvFocusOrder: miniOrder,
+                onPressed: () =>
+                    unawaited(InAppMiniPlayerController.instance.enter()),
+                onDownEdge: downFromTop,
+              ),
             if (showPip)
               _topBarFlatAction(
                 icon: PipService.instance.isDesktopActive

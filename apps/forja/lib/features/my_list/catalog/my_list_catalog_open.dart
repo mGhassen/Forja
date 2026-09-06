@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';

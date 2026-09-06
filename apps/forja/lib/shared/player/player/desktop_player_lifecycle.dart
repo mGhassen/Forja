@@ -25,6 +25,8 @@ mixin _DesktopPlayerLifecycle
   @override
   void initState() {
     super.initState();
+    InAppMiniPlayerController.instance.attach(_s);
+    unawaited(InAppMiniPlayerController.readSettingEnabled());
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _s._disposed) return false;
       return PlayerBackExitGate.consumeChromeOrArmExit(

@@ -26,6 +26,8 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
+import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/features/my_list/my_list_host.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -140,6 +142,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
   MyListService().syncAddHandler = syncMyListAddToTrackers;
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
+  MyListHost.ensureRegistered();
+  LiveSportsHost.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();

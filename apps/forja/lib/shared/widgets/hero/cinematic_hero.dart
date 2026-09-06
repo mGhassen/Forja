@@ -1853,6 +1853,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     // forja-interactive node on every carousel step → FocusManager crash.
     final focusable = isActive;
     final tabId = widget.tvTabId;
+    final hasListAction =
+        heroItem.movie != null || heroItem.listTarget != null;
     final details = HeroPillPlayButton(
       label: 'View details',
       icon: Icons.info_outline_rounded,
@@ -1864,6 +1866,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       tvRowId: focusable && tvNav ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: focusable && tvNav ? 0 : null,
       onUpEdge: focusable && tvNav ? _focusHomeHeroGallery : null,
+      onRightEdge: focusable && tvNav && !hasListAction
+          ? () {
+              ShellTvFocus.registerHeroLastMiniDoor(_tvHeroPlayFocus);
+              ShellTvFocus.tryFocusMiniFromHeroLast();
+            }
+          : null,
       onKeyEvent: focusable && policy.heroPlayAutoFocus
           ? (node, event) {
               if (!shellTvIsNavigationKey(event)) {
@@ -1893,6 +1901,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             tvTabId: focusable && tvNav ? tabId : null,
             tvItemIndexStart: focusable && tvNav ? 1 : 0,
             onUpEdge: focusable && tvNav ? _focusHomeHeroGallery : null,
+            onRightEdge: focusable && tvNav
+                ? () {
+                    ShellTvFocus.tryFocusMiniFromHeroLast();
+                  }
+                : null,
             enabled: focusable,
           )
         : heroItem.listTarget != null

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** fix · **0 / 2** acceptance |
+| **Progress** | **13 / 13** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 10 | I224-T10 | Addons/Features/Packs: row OK activates; details chevron on the right; Features D-pad uses per-row `TvCatalogRow` columns | ✅ |
 | 11 | I224-T11 | Row activate calls `setAddonMasterEnabled` directly (no mid-build `_flip` callback — silent no-op) | ✅ |
 | 12 | I224-T12 | Soft pull refuses cloud nav that shrinks local tabs; heal hollow cloud with a nav push | ✅ |
+| 13 | I224-T13 | Features toggles use `setNavbarTabVisible` RMW + serialize saves; skip hydrate mid-write | ✅ |
 
 ---
 

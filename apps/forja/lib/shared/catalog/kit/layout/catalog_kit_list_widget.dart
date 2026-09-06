@@ -6,7 +6,8 @@ import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
-import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
+import 'package:forja/shared/catalog/host_list_registry.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -16,22 +17,26 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:rust/rust.dart';
 
-/// Layout widget [`CatalogKitTypes.list`] — host-backed poster grid.
+/// Layout widget [`CatalogKitTypes.list`] — poster grid from a registered
+/// host list source (opaque `source` id and/or hub [pluginId]).
 class CatalogKitListWidget extends ConsumerStatefulWidget {
   const CatalogKitListWidget({
     super.key,
     required this.tabId,
     required this.layoutSpec,
     required this.refreshEpoch,
+    this.pluginId = '',
     this.tvRowOrder = 0,
   });
 
   final String tabId;
   final Map<String, dynamic> layoutSpec;
   final int refreshEpoch;
+  final String pluginId;
   final int tvRowOrder;
 
-  String get listSource => (layoutSpec['source'] ?? 'my_list').toString();
+  /// Opaque pack/feature source id — empty means resolve by [pluginId] only.
+  String get listSource => (layoutSpec['source'] ?? '').toString().trim();
   String get kindMenuId =>
       (layoutSpec['kindMenu'] ?? layoutSpec['kindTab'] ?? 'kind').toString();
   String get statusTabId =>
@@ -47,10 +52,15 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   final _scroll = ScrollController();
   CatalogKitListSource? _source;
 
+  CatalogKitListSource? _resolveSource() => CatalogHostListRegistry.resolve(
+        sourceId: widget.listSource.isEmpty ? null : widget.listSource,
+        pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
+      );
+
   @override
   void initState() {
     super.initState();
-    _source = CatalogKitListSources.resolve(widget.listSource);
+    _source = _resolveSource();
     TvHeroActions.bind(
       widget.tabId,
       enterFromNavFocus: _focusEntry,
@@ -65,8 +75,9 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   @override
   void didUpdateWidget(CatalogKitListWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.listSource != oldWidget.listSource) {
-      _source = CatalogKitListSources.resolve(widget.listSource);
+    if (widget.listSource != oldWidget.listSource ||
+        widget.pluginId != oldWidget.pluginId) {
+      _source = _resolveSource();
     }
     if (widget.refreshEpoch != oldWidget.refreshEpoch) {
       _source?.invalidateOnRefresh(ref);
@@ -107,9 +118,12 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   Widget build(BuildContext context) {
     final source = _source;
     if (source == null) {
+      final label = widget.listSource.isNotEmpty
+          ? widget.listSource
+          : (widget.pluginId.isNotEmpty ? widget.pluginId : '(none)');
       return Center(
         child: Text(
-          'Unsupported kit.list source: ${widget.listSource}',
+          'Unsupported kit.list source: $label',
           style: TextStyle(color: ForjaShellColors.textSecondary),
         ),
       );

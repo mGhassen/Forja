@@ -695,6 +695,7 @@ class ListStatusHeroControl extends StatefulWidget {
     this.tvTabId,
     this.tvItemIndexStart = 0,
     this.onUpEdge,
+    this.onRightEdge,
     this.onMenuOpenChanged,
     this.enabled = true,
   });
@@ -704,6 +705,7 @@ class ListStatusHeroControl extends StatefulWidget {
   final String? tvTabId;
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onRightEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
   /// Inactive hero carousel slides: visual only (no FocusNode / onTap).
   final bool enabled;
@@ -914,6 +916,7 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
             tvRowId: tv != null ? MediaDetailsTv.heroRowId : null,
             tvItemIndexStart: widget.tvItemIndexStart,
             onUpEdge: widget.onUpEdge,
+            onRightEdge: widget.onRightEdge,
             slots: [
               HeroPillIconSlot(
                 label: _label(status),
@@ -940,6 +943,7 @@ class MyListHeroStatusPill extends StatelessWidget {
     this.tvTabId,
     this.tvItemIndexStart = 0,
     this.onUpEdge,
+    this.onRightEdge,
     this.onMenuOpenChanged,
     this.enabled = true,
   });
@@ -948,6 +952,7 @@ class MyListHeroStatusPill extends StatelessWidget {
   final String? tvTabId;
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onRightEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
   final bool enabled;
 
@@ -1002,6 +1007,7 @@ class MyListHeroStatusPill extends StatelessWidget {
       tvTabId: tvTabId,
       tvItemIndexStart: tvItemIndexStart,
       onUpEdge: onUpEdge,
+      onRightEdge: onRightEdge,
       onMenuOpenChanged: onMenuOpenChanged,
       enabled: enabled,
     );

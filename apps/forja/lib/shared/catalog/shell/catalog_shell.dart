@@ -40,7 +40,7 @@ import '../plugin_nav.dart';
 import '../protocol.dart';
 import '../runtime.dart';
 import '../kit/chrome/catalog_chrome_filters.dart';
-import '../kit/sources/live_schedule/live_sports_kit_page.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
 import 'catalog_open.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.
@@ -330,10 +330,9 @@ class _CatalogShellState extends State<CatalogShell>
     markShellTabFresh();
   }
 
-  bool get _hasMyListWidget => CatalogKitTypes.treeContains(
+  bool get _hasHostListWidget => CatalogKitTypes.treeContains(
     _widgets,
     slot: CatalogKitTypes.list,
-    listSource: 'my_list',
   );
 
   void _onLayoutTabSelect(String widgetId, String value, {required bool toggle}) {
@@ -381,7 +380,8 @@ class _CatalogShellState extends State<CatalogShell>
         );
       case CatalogKitTypes.list:
         return CatalogKitListWidget(
-          tabId: widget.tabId ?? 'mylist',
+          tabId: widget.tabId ?? '',
+          pluginId: widget.pluginId,
           layoutSpec: spec,
           refreshEpoch: _hostRefreshEpoch,
           tvRowOrder: _tvOrder(tvOrders, id),
@@ -416,7 +416,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    if ((_hasMyListWidget || _isLiveHub) && mounted) {
+    if ((_hasHostListWidget || _isLiveHub) && mounted) {
       setState(() => _hostRefreshEpoch++);
     }
     _forceNextRails = force;
@@ -1286,7 +1286,8 @@ class _CatalogShellState extends State<CatalogShell>
         );
       case CatalogKitTypes.list:
         return CatalogKitListWidget(
-          tabId: widget.tabId ?? 'mylist',
+          tabId: widget.tabId ?? '',
+          pluginId: widget.pluginId,
           layoutSpec: spec,
           refreshEpoch: _hostRefreshEpoch,
           tvRowOrder: _tvOrder(tvOrders, id),

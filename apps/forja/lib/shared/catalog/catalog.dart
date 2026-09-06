@@ -5,6 +5,7 @@ export 'deeplink.dart';
 export 'filter.dart';
 export 'catalog_pack_assets.dart';
 export 'forja_host_assets.dart';
+export 'host_list_registry.dart';
 export 'kit/kit.dart';
 export 'plugin_nav.dart';
 export 'protocol.dart';

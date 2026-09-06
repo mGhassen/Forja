@@ -726,6 +726,12 @@ void main() {
       expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
       expect(
         PluginNavRegistry.featureTabIds(),
+        isNot(contains('iptv')),
+      );
+      expect(
+        PluginNavRegistry.featureTabIds(
+          activeAddonNavIds: const ['iptv', 'live_matches'],
+        ),
         containsAll(['iptv', 'live_matches']),
       );
     });

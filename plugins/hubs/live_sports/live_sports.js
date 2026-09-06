@@ -1,22 +1,18 @@
-// Live Sports hub — generic catalog kit layout. Host owns modes, schedule
-// merge, chrome, and play via `kit.list { source: live_schedule }` (RFC-071).
+// Live Sports hub — generic catalog kit layout. Feature host owns schedule
+// browse/play via opaque `kit.list { source: live_schedule }` (RFC-085).
 
 function liveSportsLayout() {
   return {
     pages: {
       live_matches: {
         widgets: [
-          kitStack(
-            'page',
-            { expand: true },
-            [
-              kitList('grid', {
-                source: 'live_schedule',
-                style: 'list',
-                expand: true,
-              }),
-            ],
-          ),
+          kitStack('page', { expand: true }, [
+            kitList('grid', {
+              source: 'live_schedule',
+              style: 'list',
+              expand: true,
+            }),
+          ]),
         ],
       },
     },
@@ -31,6 +27,6 @@ function extract(ctx) {
   return hubFail(
     action,
     'INVALID_ACTION',
-    'live-sports hub only exposes layout — browse and play are host-owned',
+    'live-sports hub exposes layout; schedule browse is the live_matches feature',
   );
 }

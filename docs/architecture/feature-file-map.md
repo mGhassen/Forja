@@ -58,7 +58,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
-| [`shared/catalog/kit/sources/live_schedule/live_sports_hub_page.dart`](../../apps/forja/lib/shared/catalog/kit/sources/live_schedule/live_sports_hub_page.dart) | — | Live Sports hub | In | Catalog list source (RFC-071); pack `plugins/hubs/live_sports/` |
+| [`features/live_matches/live_schedule/live_sports_hub_page.dart`](../../apps/forja/lib/features/live_matches/live_schedule/live_sports_hub_page.dart) | — | Live Sports hub | In | Feature host (RFC-085); pack `plugins/hubs/live_sports/` |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
@@ -98,7 +98,7 @@ These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In |
 | [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
 
-My List is not a `features/` screen — hub pack `plugins/hubs/my_list` + host services in [`shared/lists/`](../../apps/forja/lib/shared/lists/) and [`shared/catalog/kit/sources/my_list/`](../../apps/forja/lib/shared/catalog/kit/sources/my_list/).
+My List hub pack `plugins/hubs/my_list` + feature host in [`features/my_list/`](../../apps/forja/lib/features/my_list/) and list services in [`shared/lists/`](../../apps/forja/lib/shared/lists/) (RFC-085 — not under catalog kit).
 
 ---
 

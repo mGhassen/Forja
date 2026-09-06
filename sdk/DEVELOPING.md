@@ -453,7 +453,7 @@ Compose hub pages in **`layout`** with typed kit widgets. The host maps each `ty
 | `kit.stack` | Vertical column | `children[]`, `expand: true` (last child fills viewport) |
 | `kit.menu` | Underline filter menu | `items[]` (`id`, `label`), `toggle`, `focusUp` / `focusDown` |
 | `kit.tabs` | Status / segment strip | `tabs[]`, `default`, `focusUp` / `focusDown` |
-| `kit.list` | Host-backed grid | `source` (registered host backend, e.g. `my_list`), `kindMenu`, `statusTab` |
+| `kit.list` | Host-backed grid | Optional opaque `source` id (feature-registered) and/or hub plugin id; `kindMenu`, `statusTab` |
 | `kit.row` | Horizontal rail | Same as legacy `rail` / `ranked` |
 
 Legacy aliases still work: `stack` → `kit.stack`, `tabs` + `style: 'underline'` → `kit.menu`, `host.my_list` → `kit.list`.
@@ -470,7 +470,7 @@ kitStack('page', { expand: true }, [
 
 Browse hubs keep `hero`, `mood`, `rail`, `host.continue`, etc. Use `kit.*` when you need composable chrome (menus, tabs, host lists) in one page tree.
 
-`kit.list` binds to a **host source backend** (Model A): the pack declares layout + labels; the host owns persistence (local bookmarks, Simkl sync) and exposes data via registered source ids (`my_list` today). Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
+`kit.list` binds to a **host source backend** registered outside kit (RFC-085): the pack declares layout + an opaque `source` id; the feature registers that id at boot (e.g. My List → `features/my_list`). Kit never hardcodes product names. Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
 
 Pack `kit.menu` / `kit.tabs` render in the **shell top bar** (same slot as Home Search / Films / Series) — not inside the page body.
 

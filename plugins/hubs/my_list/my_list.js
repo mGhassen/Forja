@@ -1,4 +1,5 @@
 // My List hub — layout from catalog kit (`kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`).
+// Host feature `features/my_list` registers opaque source `my_list` (RFC-085).
 
 var MY_LIST_KIND_ITEMS = [
   { id: 'movie', label: 'Film' },
@@ -54,6 +55,6 @@ function extract(ctx) {
   return hubFail(
     action,
     'INVALID_ACTION',
-    'my-list hub only exposes layout — browse is host-owned',
+    'my-list hub exposes layout; list data is host-registered for source my_list',
   );
 }

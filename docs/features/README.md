@@ -44,6 +44,7 @@ Your cinema universe in one app. This guide explains every **in-scope** feature 
 - [Subtitles](playback/subtitles.md)
 - [Audio tracks](playback/audio-tracks.md)
 - [Playback speed](playback/playback-speed.md)
+- [In-app mini player](playback/in-app-mini-player.md)
 - [Picture-in-picture](playback/picture-in-picture.md)
 - [Skip segments](playback/skip-segments.md)
 - [Next episode](playback/next-episode.md)

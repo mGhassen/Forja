@@ -436,6 +436,14 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                       ? () =>
                                             ShellTvFocus.focusHomeHeroGallery()
                                       : null,
+                                  onUpEdge: tvFocus
+                                      ? () {
+                                          ShellTvFocus.registerTopBarMiniDoor(
+                                            _searchFocus,
+                                          );
+                                          ShellTvFocus.tryFocusMiniFromTopBar();
+                                        }
+                                      : null,
                                 ),
                                 SizedBox(width: tabGap),
                               ],
@@ -454,6 +462,14 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                   onDownEdge: tvFocus
                                       ? () =>
                                             ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
+                                  onUpEdge: tvFocus
+                                      ? () {
+                                          ShellTvFocus.registerTopBarMiniDoor(
+                                            i == 0 ? _menuFocus : null,
+                                          );
+                                          ShellTvFocus.tryFocusMiniFromTopBar();
+                                        }
                                       : null,
                                 ),
                               ],
@@ -474,6 +490,14 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                   onDownEdge: tvFocus
                                       ? () =>
                                             ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
+                                  onUpEdge: tvFocus
+                                      ? () {
+                                          ShellTvFocus.registerTopBarMiniDoor(
+                                            _categoriesTabFocus,
+                                          );
+                                          ShellTvFocus.tryFocusMiniFromTopBar();
+                                        }
                                       : null,
                                 ),
                             ],
@@ -519,6 +543,7 @@ class _CategoryTab extends StatefulWidget {
     this.tvFocus = false,
     this.listIndex,
     this.onDownEdge,
+    this.onUpEdge,
     this.focusNode,
   });
 
@@ -531,6 +556,7 @@ class _CategoryTab extends StatefulWidget {
   final bool tvFocus;
   final int? listIndex;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
   final FocusNode? focusNode;
 
   @override
@@ -676,6 +702,7 @@ class _CategoryTabState extends State<_CategoryTab> {
         tvZone: ShellTvZone.topBar,
         tvItemIndex: widget.listIndex,
         onDownEdge: widget.onDownEdge,
+        onUpEdge: widget.onUpEdge,
         focusNode: widget.focusNode,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: (hovered) => setState(() => _hovered = hovered),

@@ -109,6 +109,8 @@ class SettingsService {
   static const String _contentWarningsKey = 'content_warnings';
   /// Desktop Space / virtual-desktop switch → enter PiP (default off).
   static const String _autoPipOnDesktopSwitchKey = 'auto_pip_on_desktop_switch';
+  /// Escape demotes to in-Forja mini player (default off). Not OS/window PiP.
+  static const String _inAppMiniPlayerKey = 'in_app_mini_player';
   /// Keep VOD/IPTV playing when the app leaves the foreground.
   /// Default: on desktop, off phone/Android TV ([PlatformDefaults.playInBackground]).
   static const String _playInBackgroundKey = 'play_in_background';
@@ -335,6 +337,8 @@ class SettingsService {
       ValueNotifier<bool>(true);
   static final ValueNotifier<bool> autoPipOnDesktopSwitchNotifier =
       ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> inAppMiniPlayerNotifier =
+      ValueNotifier<bool>(false);
   static final ValueNotifier<bool> playInBackgroundNotifier =
       ValueNotifier<bool>(false);
 
@@ -441,6 +445,20 @@ class SettingsService {
   Future<void> setAutoPipOnDesktopSwitch(bool v) async {
     await kvSetBool(_autoPipOnDesktopSwitchKey, v);
     autoPipOnDesktopSwitchNotifier.value = v;
+  }
+
+  /// Escape → in-Forja mini player (default off). Distinct from OS/window PiP.
+  Future<bool> getInAppMiniPlayer() async {
+    final v = await kvGetBool(_inAppMiniPlayerKey, fallback: false);
+    if (inAppMiniPlayerNotifier.value != v) {
+      inAppMiniPlayerNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setInAppMiniPlayer(bool v) async {
+    await kvSetBool(_inAppMiniPlayerKey, v);
+    inAppMiniPlayerNotifier.value = v;
   }
 
   /// When on, VOD/IPTV keep playing after the app leaves the foreground.

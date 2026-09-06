@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/lists/external_lists_providers.dart';
-import 'package:forja/shared/lists/my_list_providers.dart';
-import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/kit/sources/my_list/my_list_catalog_open.dart';
-import 'package:forja/shared/catalog/kit/sources/my_list/my_list_merge.dart';
+import 'package:forja/features/my_list/catalog/my_list_catalog_open.dart';
+import 'package:forja/features/my_list/catalog/my_list_merge.dart';
+import 'package:forja/features/my_list/my_list_host.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
+import 'package:forja/shared/lists/external_lists_providers.dart';
+import 'package:forja/shared/lists/my_list_providers.dart';
 
 /// Hub plugin id for the default My List pack (`plugins/hubs/my_list`).
 const myListHubPluginId = 'my-list-hub';
@@ -349,7 +350,7 @@ final class MyListCatalogSource implements CatalogKitListSource {
   static const instance = MyListCatalogSource._();
 
   @override
-  String get id => CatalogKitListSources.myList;
+  String get id => MyListHost.listSourceId;
 
   @override
   String? get hubPluginId => myListHubPluginId;

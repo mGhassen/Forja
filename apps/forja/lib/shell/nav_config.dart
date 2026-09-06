@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/live_sports_host_layout.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_host_layout.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
 

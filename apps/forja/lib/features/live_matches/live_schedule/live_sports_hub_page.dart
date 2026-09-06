@@ -24,14 +24,14 @@ import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/player/player/utils.dart' show probeStreamSourceUrl;
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_filter.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_stremio_meta.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_team_parse.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_play_kit.dart';
+import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_sport_filter.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_stremio_meta.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_team_parse.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_iptv_sports_config.dart';
+import 'package:forja/features/live_matches/live_schedule/play/live_engine.dart';
+import 'package:forja/features/live_matches/live_schedule/play/live_play_kit.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
@@ -227,8 +227,8 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     for (final w in widget.layoutWidgets) {
       final type = (w['type'] ?? '').toString();
       if (type != CatalogKitTypes.list && type != 'list') continue;
-      final src = (w['source'] ?? CatalogKitListSources.liveSchedule).toString();
-      if (src != CatalogKitListSources.liveSchedule) continue;
+      final src = (w['source'] ?? LiveSportsHost.listSourceId).toString();
+      if (src != LiveSportsHost.listSourceId) continue;
       final style = (w['style'] ?? 'list').toString().trim().toLowerCase();
       return style != 'grid' && style != 'cards';
     }

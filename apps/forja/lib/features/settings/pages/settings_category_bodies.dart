@@ -331,7 +331,8 @@ class _SettingsNavigationPageBodyState
     debugLabel: 'settings-features-tab-0',
   );
   List<String> _navbarVisible = [];
-  // Host-core rows immediately — don't wait on async hub scan (ATV / issue 222).
+  // Hub rows from pack nav; addon-gated host tabs arrive after Addons ON /
+  // provider hydrate (not pre-seeded as activatable Features).
   List<String> _navbarOrder = [
     for (final id in PluginNavRegistry.featureTabIds())
       if (!archivedNavIds.contains(id)) id,
@@ -339,7 +340,13 @@ class _SettingsNavigationPageBodyState
   String _defaultNavTab = 'settings';
   bool _loaded = false;
   int _handledEnterToken = 0;
+  /// Skip provider hydrate while a Features write is in flight (stale snap
+  /// was wiping OK enables — 224).
+  int _saveEpoch = 0;
+  int _writesInFlight = 0;
+  Future<void> _saveChain = Future<void>.value();
 
+  bool get _featuresWriteInFlight => _writesInFlight > 0;
   @override
   void dispose() {
     _firstTabFocus.dispose();
@@ -396,25 +403,43 @@ class _SettingsNavigationPageBodyState
       _startupTabOptionsFor(_navbarOrder, _navbarVisible);
 
   Future<void> _saveNavbarConfig() async {
+    final epoch = ++_saveEpoch;
+    _writesInFlight++;
     final visible = _navbarOrder
         .where((id) => _navbarVisible.contains(id))
         .toList();
     // Dirty before KV so soft pull cannot wipe a mid-edit enable (224).
     noteNavigationDirty();
-    // Await KV write before scheduling push — otherwise syncFromCloud can
-    // flush a pending navigation overlay that still reads the old empty
-    // visibleIds and snap Features toggles back off (issue 221).
-    await _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
-    await scheduleNavigationSyncPush();
-    final startupOptions = _startupTabOptions();
-    if (!startupOptions.contains(_defaultNavTab)) {
-      final resolved = startupOptions.isNotEmpty
-          ? startupOptions.first
-          : 'settings';
-      if (mounted) setState(() => _defaultNavTab = resolved);
-      await _settings.setDefaultNavTab(resolved);
+    try {
+      // Await KV write before scheduling push — otherwise syncFromCloud can
+      // flush a pending navigation overlay that still reads the old empty
+      // visibleIds and snap Features toggles back off (issue 221).
+      await _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
+      if (!mounted || epoch != _saveEpoch) return;
       await scheduleNavigationSyncPush();
+      if (!mounted || epoch != _saveEpoch) return;
+      final startupOptions = _startupTabOptions();
+      if (!startupOptions.contains(_defaultNavTab)) {
+        final resolved = startupOptions.isNotEmpty
+            ? startupOptions.first
+            : 'settings';
+        if (mounted) setState(() => _defaultNavTab = resolved);
+        await _settings.setDefaultNavTab(resolved);
+        await scheduleNavigationSyncPush();
+      }
+    } finally {
+      _writesInFlight--;
     }
+  }
+
+  /// Queue full order writes so an older empty snapshot cannot finish after a
+  /// newer enable and wipe KV (224 — Features OK then Addons next=[live] only).
+  void _enqueueFullSave() {
+    _saveChain = _saveChain.then((_) async {
+      if (!mounted) return;
+      await _saveNavbarConfig();
+    });
+    unawaited(_saveChain);
   }
 
   Future<void> _setDefaultNavTab(String id) async {
@@ -423,15 +448,45 @@ class _SettingsNavigationPageBodyState
     await scheduleNavigationSyncPush();
   }
 
-  void _toggleNavbarVisible(String id) {
+  Future<void> _toggleNavbarVisible(String id, {bool? enable}) async {
+    final next = enable ?? !_navbarVisible.contains(id);
+    if (_navbarVisible.contains(id) == next) return;
     setState(() {
-      if (_navbarVisible.contains(id)) {
-        _navbarVisible.remove(id);
+      if (next) {
+        if (!_navbarVisible.contains(id)) _navbarVisible.add(id);
       } else {
-        _navbarVisible.add(id);
+        _navbarVisible.remove(id);
       }
     });
-    unawaited(_saveNavbarConfig());
+    // RMW under the same exclusive lock as Addons — never rewrite the whole
+    // visible list from widget memory (concurrent full saves wiped tabs).
+    final epoch = ++_saveEpoch;
+    _writesInFlight++;
+    noteNavigationDirty();
+    debugPrint('[Features] toggle $id → $next');
+    try {
+      final updated = await _settings.setNavbarTabVisible(id, next);
+      debugPrint('[Features] navbar next=$updated');
+      if (!mounted || epoch != _saveEpoch) return;
+      setState(() {
+        _navbarVisible = List.of(updated);
+      });
+      await scheduleNavigationSyncPush();
+      if (!mounted || epoch != _saveEpoch) return;
+      final startupOptions = _startupTabOptions();
+      if (!startupOptions.contains(_defaultNavTab)) {
+        final resolved = startupOptions.isNotEmpty
+            ? startupOptions.first
+            : 'settings';
+        setState(() => _defaultNavTab = resolved);
+        await _settings.setDefaultNavTab(resolved);
+        await scheduleNavigationSyncPush();
+      }
+    } catch (e, st) {
+      debugPrint('[Features] toggle $id failed: $e\n$st');
+    } finally {
+      _writesInFlight--;
+    }
   }
 
   void _moveNavbarItem(int from, int to) {
@@ -442,7 +497,7 @@ class _SettingsNavigationPageBodyState
       final item = _navbarOrder.removeAt(from);
       _navbarOrder.insert(to, item);
     });
-    unawaited(_saveNavbarConfig());
+    _enqueueFullSave();
   }
 
   Widget _defaultNavStar(
@@ -531,6 +586,8 @@ class _SettingsNavigationPageBodyState
     >(settingsNavigationProvider, (previous, next) {
       final snap = next.valueOrNull;
       if (snap == null) return;
+      // In-flight Features write — stale provider snap must not wipe OK state.
+      if (_featuresWriteInFlight) return;
       // Cloud pull often re-emits the same nav — skip setState so focus stays.
       if (_loaded &&
           listEquals(_navbarVisible, snap.visible) &&
@@ -581,7 +638,7 @@ class _SettingsNavigationPageBodyState
                       final item = _navbarOrder.removeAt(oldIndex);
                       _navbarOrder.insert(newIndex, item);
                     });
-                    unawaited(_saveNavbarConfig());
+                    _enqueueFullSave();
                   },
                   itemBuilder: (context, index) {
                     final id = _navbarOrder[index];
@@ -612,14 +669,9 @@ class _SettingsNavigationPageBodyState
                             value: isVisible,
                             scale: ForjaSwitch.settingsScale,
                             onChanged: (val) {
-                              setState(() {
-                                if (val) {
-                                  _navbarVisible.add(id);
-                                } else {
-                                  _navbarVisible.remove(id);
-                                }
-                              });
-                              unawaited(_saveNavbarConfig());
+                              unawaited(
+                                _toggleNavbarVisible(id, enable: val),
+                              );
                             },
                           ),
                         ),
@@ -670,7 +722,7 @@ class _SettingsNavigationPageBodyState
                             child: shellFocusableTap(
                               context: context,
                               focusNode: index == 0 ? _firstTabFocus : null,
-                              onTap: () => _toggleNavbarVisible(id),
+                              onTap: () => unawaited(_toggleNavbarVisible(id)),
                               borderRadius: SettingsTokens.categoryTileRadius,
                               scaleOnFocus: 1.0,
                               showFocusRail: true,

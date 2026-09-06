@@ -27,6 +27,15 @@ abstract final class ShellTvFocus {
 
   static final Map<String, FocusNode> _navNodes = {};
 
+  /// In-app mini player root focus (chrome door target).
+  static FocusNode? _miniRoot;
+
+  /// Which chrome door last jumped into mini — restore target on leave.
+  static InAppMiniChromeDoor? _miniDoor;
+
+  static FocusNode? _topBarMiniDoor;
+  static FocusNode? _heroLastMiniDoor;
+
   static void registerNav(String id, FocusNode node) {
     _navNodes[id] = node;
   }
@@ -207,7 +216,77 @@ abstract final class ShellTvFocus {
     }
     return onUp() ? KeyEventResult.handled : KeyEventResult.ignored;
   }
+
+  // ── In-app mini player chrome doors ─────────────────────────────────────
+
+  static bool get miniRegistered =>
+      _miniRoot != null && _miniRoot!.canRequestFocus;
+
+  static void registerMini(FocusNode root) {
+    _miniRoot = root;
+  }
+
+  static void unregisterMini() {
+    _miniRoot = null;
+    _miniDoor = null;
+  }
+
+  static void registerTopBarMiniDoor(FocusNode? node) {
+    _topBarMiniDoor = node;
+  }
+
+  static void registerHeroLastMiniDoor(FocusNode? node) {
+    _heroLastMiniDoor = node;
+  }
+
+  /// Jump to mini from a chrome door. Records [door] for restore.
+  static bool focusMini({InAppMiniChromeDoor door = InAppMiniChromeDoor.nav}) {
+    final node = _miniRoot;
+    if (node == null || !node.canRequestFocus) return false;
+    _miniDoor = door;
+    node.requestFocus();
+    return true;
+  }
+
+  /// Leave mini focus → last chrome door (or current nav tab).
+  static bool restoreFromMini() {
+    final door = _miniDoor;
+    _miniDoor = null;
+    switch (door) {
+      case InAppMiniChromeDoor.topBar:
+        final n = _topBarMiniDoor;
+        if (n != null && n.canRequestFocus) {
+          n.requestFocus();
+          return true;
+        }
+        break;
+      case InAppMiniChromeDoor.heroLast:
+        final n = _heroLastMiniDoor;
+        if (n != null && n.canRequestFocus) {
+          n.requestFocus();
+          return true;
+        }
+        break;
+      case InAppMiniChromeDoor.nav:
+      case null:
+        break;
+    }
+    return focusCurrentNavTab();
+  }
+
+  /// True when in-app mini is registered (demoted). Chrome edges call this.
+  static bool tryFocusMiniFromTopBar() =>
+      focusMini(door: InAppMiniChromeDoor.topBar);
+
+  static bool tryFocusMiniFromNav() =>
+      focusMini(door: InAppMiniChromeDoor.nav);
+
+  static bool tryFocusMiniFromHeroLast() =>
+      focusMini(door: InAppMiniChromeDoor.heroLast);
 }
+
+/// Which shell chrome control opened the in-app mini focus door.
+enum InAppMiniChromeDoor { topBar, nav, heroLast }
 
 /// Swallow horizontal D-pad at a row edge so focus stays in the hero / chip strip.
 KeyEventResult shellTrapTvFocusHorizontalEdge(

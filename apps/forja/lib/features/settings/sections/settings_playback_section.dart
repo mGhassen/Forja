@@ -212,6 +212,20 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
+            if (!kIsWeb && (Platform.isMacOS || Platform.isWindows))
+              settingsFocusableToggle(
+                context,
+                'In-app mini player',
+                'Escape keeps a small player inside Forja while you browse. Off by default. Distinct from picture-in-picture.',
+                snap.inAppMiniPlayer,
+                (val) async {
+                  await _settings.setInAppMiniPlayer(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(inAppMiniPlayer: val),
+                  );
+                  schedulePreferencesSyncPush();
+                },
+              ),
             if (widget.visibility.vodTab)
               settingsFocusableDropdown(
                 context,

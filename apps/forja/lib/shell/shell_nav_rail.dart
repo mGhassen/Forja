@@ -1146,6 +1146,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             if (arrow == LogicalKeyboardKey.arrowUp ||
                 arrow == LogicalKeyboardKey.arrowDown ||
                 arrow == LogicalKeyboardKey.arrowLeft) {
+              if (arrow == LogicalKeyboardKey.arrowLeft &&
+                  ShellTvFocus.miniRegistered &&
+                  ShellTvFocus.tryFocusMiniFromNav()) {
+                return KeyEventResult.handled;
+              }
               if (ShellTvFocusCoordinator.handleNavKey(arrow)) {
                 return KeyEventResult.handled;
               }

@@ -13,6 +13,8 @@ import 'package:forja/shared/player/trailer_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
@@ -285,8 +287,9 @@ class AppRouter {
     ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier,
     EnginePlaySession? enginePlaySession,
     bool fadeTransition = false,
-  }) {
-    final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
+  }) async {
+    await InAppMiniPlayerController.instance.stopForNewPlay();
+    if (!context.mounted) return null;
     const settings = RouteSettings(name: playerRouteName);
     // Capture shell tokens now - loading dialogs / hosts may unmount while the
     // player route still rebuilds its pageBuilder.
@@ -300,9 +303,33 @@ class AppRouter {
     // previous episode instead of details.
     final replacingPlayer =
         ModalRoute.of(context)?.settings.name == playerRouteName;
+    final RouteTransitionsBuilder transitions = fadeTransition
+        ? (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeInOut,
+              ),
+              child: child,
+            );
+          }
+        : _slideTransition;
     return navigator.pushAndRemoveUntil<T>(
-      routeBuilder(
-        (_) => ShellScope(
+      InAppMiniAwarePageRoute<T>(
+        settings: settings,
+        transitionDuration: fadeTransition
+            ? (ShellTokens.isAndroidTvDevice
+                ? Duration.zero
+                : const Duration(milliseconds: 1000))
+            : _pushTransitionDuration,
+        reverseTransitionDuration: fadeTransition
+            ? (ShellTokens.isAndroidTvDevice
+                ? Duration.zero
+                : const Duration(milliseconds: 500))
+            : _popTransitionDuration,
+        fullscreenDialog: fadeTransition,
+        transitionsBuilder: transitions,
+        builder: (_) => ShellScope(
           profile: profile,
           config: config,
           child: PlayerScreen(
@@ -341,12 +368,12 @@ class AppRouter {
             enginePlaySession: enginePlaySession,
           ),
         ),
-        settings: settings,
       ),
       (route) {
         if (route.isFirst) return true;
         final name = route.settings.name;
         if (name == playerRouteName) return false;
+        if (name == 'iptv_player') return false;
         if (name == loadingOverlayRouteName) {
           // Always strip Auto loading dialogs above the old player.
           if (route is PopupRoute) return false;

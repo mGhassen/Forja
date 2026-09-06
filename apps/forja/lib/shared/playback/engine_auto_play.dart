@@ -11,7 +11,7 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 
 export 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
-import 'package:forja/shared/catalog/kit/sources/sources_request_context.dart';
+import 'package:forja/shared/catalog/kit/play/sources_request_context.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';

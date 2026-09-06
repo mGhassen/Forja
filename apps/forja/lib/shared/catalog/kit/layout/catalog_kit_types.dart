@@ -4,8 +4,8 @@
 /// `layout` widgets. Legacy aliases (`stack`, `tabs`, `rail`, `host.my_list`)
 /// normalize to the same slots for one release.
 ///
-/// Domain data (My List, Live Sports, …) is a [kit.list] `source` id — not
-/// product-named kit types.
+/// Domain data is feature-owned: packs may pass an opaque [kit.list] `source`
+/// id registered via [CatalogHostListRegistry] — kit never names products.
 abstract final class CatalogKitTypes {
   CatalogKitTypes._();
 
@@ -55,7 +55,7 @@ abstract final class CatalogKitTypes {
       final type = normalize((spec['type'] ?? '').toString(), spec);
       if (type != slot) return;
       if (slot == list && listSource != null) {
-        final src = (spec['source'] ?? 'my_list').toString();
+        final src = (spec['source'] ?? '').toString();
         if (src != listSource) return;
       }
       found = true;

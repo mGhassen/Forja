@@ -19,6 +19,9 @@ import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
@@ -36,8 +39,8 @@ import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
+import 'package:forja/features/live_matches/live_schedule/play/live_engine.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -64,7 +67,6 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/forja_network_image.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -520,6 +522,8 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     BuildContext context,
     IptvPtPlayerScreen player,
   ) async {
+    await InAppMiniPlayerController.instance.stopForNewPlay();
+    if (!context.mounted) return null;
     final hostContext = context;
     ShellBus.maskShellUnderPlayer.value = true;
     await WidgetsBinding.instance.endOfFrame;
@@ -528,9 +532,25 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
       return null;
     }
     return Navigator.of(hostContext, rootNavigator: true).push<T>(
-      AppRouter.slideRoute(
-        (_) => ShellScope.rehost(hostContext, player),
+      InAppMiniAwarePageRoute<T>(
         settings: const RouteSettings(name: 'iptv_player'),
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          );
+        },
+        builder: (_) => ShellScope.rehost(hostContext, player),
       ),
     );
   }
@@ -548,7 +568,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _IptvPtPlayerWatchdog,
         _IptvPtPlayerRecovery,
         _IptvPtPlayerEngine,
-        _IptvPtPlayerUi {
+        _IptvPtPlayerUi
+    implements InAppMiniPlayerSession {
   static int _nextExoViewId = 1;
 
   /// When true, IPTV uses Media3 ExoPlayer; otherwise media_kit.
@@ -744,6 +765,22 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _pipHover = false;
   StreamSubscription<bool>? _pipSub;
 
+  Completer<void>? _stopForNewPlayCompleter;
+  late final FocusNode _miniRootFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-root');
+  late final FocusNode _miniPlayPauseFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-play');
+  late final FocusNode _miniExpandFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-expand');
+  late final FocusNode _miniCloseFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-close');
+
+  @override
+  FocusNode get miniRootFocus => _miniRootFocus;
+
+  @override
+  bool get isPlaying => _playing;
+
   /// Paused because app left foreground — resume only if set (issue 134).
   bool _pausedByLifecycle = false;
 
@@ -921,6 +958,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
+    InAppMiniPlayerController.instance.attach(this);
+    unawaited(InAppMiniPlayerController.readSettingEnabled());
     // Cover catalog/rail under the opaque route (set again from [open] before
     // push so the first slide frame is already masked).
     ShellBus.maskShellUnderPlayer.value = true;
@@ -1091,6 +1130,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         event.logicalKey == LogicalKeyboardKey.escape &&
         _isDesktop) {
       if (_isPipMode) return false;
+      if (InAppMiniPlayerController.instance.isActive) {
+        unawaited(InAppMiniPlayerController.instance.close());
+        return true;
+      }
       _handleEscapeKey();
       return true;
     }
@@ -1458,6 +1501,15 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     ShellBus.leavePlayerSurface();
     ShellBus.clearMaskShellUnderPlayer();
     _disposed = true;
+    InAppMiniPlayerController.instance.detach(this);
+    _miniRootFocus.dispose();
+    _miniPlayPauseFocus.dispose();
+    _miniExpandFocus.dispose();
+    _miniCloseFocus.dispose();
+    final stopWait = _stopForNewPlayCompleter;
+    if (stopWait != null && !stopWait.isCompleted) {
+      stopWait.complete();
+    }
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _backFocus.dispose();

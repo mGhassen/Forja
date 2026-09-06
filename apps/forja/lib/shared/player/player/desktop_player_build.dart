@@ -6,143 +6,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
   @override
   Widget build(BuildContext context) {
     ref.watch(playerResolveStatusProvider);
-    // Mouse back / trackpad swipe / system pop must match the chrome Back
-    // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
-    final Widget body;
-    if (!_s._playerReady) {
-      body = const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
-        ),
-      );
-    } else {
-      // Include enter-pending: window shrinks before the stream sets _isPipMode.
-      final pipMode =
-          _s._isPipMode || PipService.instance.isDesktopActive;
-      body = Theme(
-        data: ThemeData.dark(),
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: ListenableBuilder(
-            listenable: _s._statusController,
-            // Keep [Stack] as [child] so status churn only rebuilds the
-            // cursor wrapper — not the video tree.
-            builder: (context, child) => MouseRegion(
-              onHover: _s._onPointerHover,
-              // Immersive hide uses [SystemMouseCursors.none], but keep the
-              // pointer visible while CHECKING SOURCES (status roulette) is up -
-              // otherwise chrome can auto-hide mid-check and the cursor vanishes.
-              cursor: _s._keepPlayerCursorVisible
-                  ? SystemMouseCursors.basic
-                  : SystemMouseCursors.none,
-              child: child,
-            ),
-            child: Stack(
-                fit: StackFit.expand,
-                children: [
-                // ── Video ────────────────────────────────────────────────
-                Video(
-                  controller: _s._controller,
-                  controls: NoVideoControls,
-                  fit: _s._videoFit,
-                  fill: Colors.black,
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible: false,
-                  ),
-                ),
-
-                // Click empty video → play/pause; double-click → fullscreen.
-                // Chrome sits above and keeps its own hit targets.
-                if (!pipMode)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        _s._player.playOrPause();
-                        _s._onMouseMove();
-                      },
-                      onDoubleTap: () => unawaited(_s._toggleFullscreen()),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-
-                // ── Custom subtitle overlay ──────────────────────────────
-                // Auto-scales relative to the rendered window height so
-                // the text stays readable in normal mode, fullscreen, AND
-                // shrinks proportionally when in PiP (480x270).
-                // Custom subtitle overlay - hidden when mpv natively handles
-                // ASS/SSA or image-based subtitles (they render on the video frame instead).
-                if (!_s._isNativeSubtitle)
-                  StreamBuilder<List<String>>(
-                    stream: _s._player.stream.subtitle,
-                    initialData: _s._player.state.subtitle,
-                    builder: (context, snap) {
-                      final lines = snap.data ?? [];
-                      final text = lines
-                          .where((l) => l.trim().isNotEmpty)
-                          .join('\n');
-                      if (text.isEmpty) return const SizedBox.shrink();
-                      const refHeight = 720.0;
-                      final winH = MediaQuery.of(context).size.height;
-                      final scale = (winH / refHeight).clamp(0.35, 1.0);
-                      final hSidePad = 24.0 * scale;
-                      return Positioned(
-                        left: hSidePad,
-                        right: hSidePad,
-                        bottom: _s._subtitleBottomPadding * scale,
-                        child: IgnorePointer(
-                          child: Text(
-                            text,
-                            style: _s._buildSubtitleTextStyle(scale: scale),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                // ── Controls Overlay ─────────────────────────────────────
-                // Hidden entirely while PiP is active - replaced by the
-                // floating revert button below.
-                if (!pipMode)
-                  AnimatedOpacity(
-                    opacity: _s._showControls ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    child: IgnorePointer(
-                      ignoring: !_s._showControls,
-                      child: _buildControlsOverlay(),
-                    ),
-                  ),
-
-                if (!pipMode && _s._escapeExitArmed)
-                  const PlayerEscapeExitHint(),
-
-                // ── PiP chrome (drag + throw snap + hover controls) ─────
-                if (pipMode) _buildPipRevertOverlay(),
-
-                if (!isStreamLoadingOverlayActive && !_s._isLoadingNextEp)
-                  PlayerStatusOverlay(
-                    controller: _s._statusController,
-                    bufferingListenable: _s._isBufferingNotifier,
-                  ),
-
-                if (!pipMode)
-                  ParentalGuideLayer(
-                    imdbId: widget.movie?.imdbId,
-                    playbackStarted: _s._playbackConfirmed,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return Actions(
       actions: {
-        // Swallow Flutter's Escape → DismissIntent → maybePop. The player
-        // HardwareKeyboard handler owns the hide/arm/exit ladder.
         DismissIntent: CallbackAction<DismissIntent>(
           onInvoke: (_) {
             _s._handleEscapeKey();
@@ -154,8 +19,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
-          // Back icon / mouse Back set [_bypassEscapeArm]. Escape must never
-          // leave through maybePop — only [_handleEscapeKey] confirms exit.
           if (_s._bypassEscapeArm) {
             unawaited(_s._exitPlayer());
             return;
@@ -165,8 +28,181 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           );
           _s._handleEscapeKey();
         },
-        child: body,
+        child: ListenableBuilder(
+          listenable: InAppMiniPlayerController.instance.active,
+          builder: (context, _) => _buildPlayerBody(context),
+        ),
       ),
+    );
+  }
+
+  Widget _buildPlayerBody(BuildContext context) {
+    // Mouse back / trackpad swipe / system pop must match the chrome Back
+    // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
+    if (!_s._playerReady) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
+        ),
+      );
+    }
+    if (InAppMiniPlayerController.instance.isActive) {
+      return _buildInAppMiniBody();
+    }
+    // Include enter-pending: window shrinks before the stream sets _isPipMode.
+    final pipMode =
+        _s._isPipMode || PipService.instance.isDesktopActive;
+    return Theme(
+      data: ThemeData.dark(),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: ListenableBuilder(
+          listenable: _s._statusController,
+          builder: (context, child) => MouseRegion(
+            onHover: _s._onPointerHover,
+            cursor: _s._keepPlayerCursorVisible
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.none,
+            child: child,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Video(
+                controller: _s._controller,
+                controls: NoVideoControls,
+                fit: _s._videoFit,
+                fill: Colors.black,
+                subtitleViewConfiguration: const SubtitleViewConfiguration(
+                  visible: false,
+                ),
+              ),
+              if (!pipMode)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      _s._player.playOrPause();
+                      _s._onMouseMove();
+                    },
+                    onDoubleTap: () => unawaited(_s._toggleFullscreen()),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (!_s._isNativeSubtitle)
+                StreamBuilder<List<String>>(
+                  stream: _s._player.stream.subtitle,
+                  initialData: _s._player.state.subtitle,
+                  builder: (context, snap) {
+                    final lines = snap.data ?? [];
+                    final text = lines
+                        .where((l) => l.trim().isNotEmpty)
+                        .join('\n');
+                    if (text.isEmpty) return const SizedBox.shrink();
+                    const refHeight = 720.0;
+                    final winH = MediaQuery.of(context).size.height;
+                    final scale = (winH / refHeight).clamp(0.35, 1.0);
+                    final hSidePad = 24.0 * scale;
+                    return Positioned(
+                      left: hSidePad,
+                      right: hSidePad,
+                      bottom: _s._subtitleBottomPadding * scale,
+                      child: IgnorePointer(
+                        child: Text(
+                          text,
+                          style: _s._buildSubtitleTextStyle(scale: scale),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              if (!pipMode)
+                AnimatedOpacity(
+                  opacity: _s._showControls ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 220),
+                  child: IgnorePointer(
+                    ignoring: !_s._showControls,
+                    child: _buildControlsOverlay(),
+                  ),
+                ),
+              if (!pipMode && _s._escapeExitArmed)
+                const PlayerEscapeExitHint(),
+              if (pipMode) _buildPipRevertOverlay(),
+              if (!isStreamLoadingOverlayActive && !_s._isLoadingNextEp)
+                PlayerStatusOverlay(
+                  controller: _s._statusController,
+                  bufferingListenable: _s._isBufferingNotifier,
+                ),
+              if (!pipMode)
+                ParentalGuideLayer(
+                  imdbId: widget.movie?.imdbId,
+                  playbackStarted: _s._playbackConfirmed,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Transparent pass-through + corner video (in-Forja mini — not OS PiP).
+  Widget _buildInAppMiniBody() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const IgnorePointer(child: SizedBox.expand()),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          width: InAppMiniPlayerChrome.width,
+          height: InAppMiniPlayerChrome.height,
+          child: Material(
+            elevation: 12,
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            color: Colors.black,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Video(
+                  controller: _s._controller,
+                  controls: NoVideoControls,
+                  fit: BoxFit.contain,
+                  fill: Colors.black,
+                  subtitleViewConfiguration: const SubtitleViewConfiguration(
+                    visible: false,
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _s._isPlayingNotifier,
+                  builder: (context, playing, _) {
+                    return InAppMiniPlayerChrome(
+                      playing: playing,
+                      rootFocus: _s._miniRootFocus,
+                      playPauseFocus: _s._miniPlayPauseFocus,
+                      expandFocus: _s._miniExpandFocus,
+                      closeFocus: _s._miniCloseFocus,
+                      onPlayPause: () {
+                        unawaited(
+                          InAppMiniPlayerController.instance.togglePlayPause(),
+                        );
+                      },
+                      onExpand: () {
+                        unawaited(InAppMiniPlayerController.instance.expand());
+                      },
+                      onClose: () {
+                        unawaited(InAppMiniPlayerController.instance.close());
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -259,31 +295,40 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             // Must go through [_forceLeavePlayer] - a direct pop skipped silence/stop
             // and left mpv audio playing (issue 059). Escape arm must not apply.
             onBack: _s._forceLeavePlayer,
-            trailing: PlayerTopBarActions(
-              showPlayer: widget.onSwitchPlayer != null,
-              onPlayer: widget.onSwitchPlayer != null
-                  ? (anchorContext) => unawaited(_s._showPlayerMenu(anchorContext))
-                  : null,
-              showCast:
-                  CastingService.instance.isAirPlayAvailable ||
-                  CastingService.instance.isChromecastAvailable,
-              onCast: () {
-                showPlayerCastPicker(
-                  context,
-                  streamUrl: _s._currentUrl,
-                  title: widget.title,
-                  headers: widget.headers,
-                  statusController: _s._statusController,
-                );
-                _s._onMouseMove();
-              },
-              showPip: PipService.instance.isSupported,
-              pipActive: PipService.instance.isDesktopActive,
-              onPip: () async {
-                await PipService.instance.toggle();
-                if (mounted) setState(() {});
-                _s._onMouseMove();
-              },
+            trailing: ListenableBuilder(
+              listenable: SettingsService.inAppMiniPlayerNotifier,
+              builder: (context, _) => PlayerTopBarActions(
+                showPlayer: widget.onSwitchPlayer != null,
+                onPlayer: widget.onSwitchPlayer != null
+                    ? (anchorContext) =>
+                        unawaited(_s._showPlayerMenu(anchorContext))
+                    : null,
+                showCast:
+                    CastingService.instance.isAirPlayAvailable ||
+                    CastingService.instance.isChromecastAvailable,
+                onCast: () {
+                  showPlayerCastPicker(
+                    context,
+                    streamUrl: _s._currentUrl,
+                    title: widget.title,
+                    headers: widget.headers,
+                    statusController: _s._statusController,
+                  );
+                  _s._onMouseMove();
+                },
+                showInAppMini: InAppMiniPlayerController.settingEnabled,
+                onInAppMini: () {
+                  unawaited(InAppMiniPlayerController.instance.enter());
+                  _s._onMouseMove();
+                },
+                showPip: PipService.instance.isSupported,
+                pipActive: PipService.instance.isDesktopActive,
+                onPip: () async {
+                  await PipService.instance.toggle();
+                  if (mounted) setState(() {});
+                  _s._onMouseMove();
+                },
+              ),
             ),
           ),
         ),

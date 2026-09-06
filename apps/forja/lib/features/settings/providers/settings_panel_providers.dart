@@ -41,6 +41,7 @@ class SettingsPlaybackSnapshot {
     required this.autoSkipIntro,
     required this.contentWarnings,
     required this.autoPipOnDesktopSwitch,
+    required this.inAppMiniPlayer,
     required this.playInBackground,
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
@@ -74,6 +75,7 @@ class SettingsPlaybackSnapshot {
   final bool autoSkipIntro;
   final bool contentWarnings;
   final bool autoPipOnDesktopSwitch;
+  final bool inAppMiniPlayer;
   final bool playInBackground;
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
@@ -107,6 +109,7 @@ class SettingsPlaybackSnapshot {
     bool? autoSkipIntro,
     bool? contentWarnings,
     bool? autoPipOnDesktopSwitch,
+    bool? inAppMiniPlayer,
     bool? playInBackground,
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
@@ -149,6 +152,7 @@ class SettingsPlaybackSnapshot {
       contentWarnings: contentWarnings ?? this.contentWarnings,
       autoPipOnDesktopSwitch:
           autoPipOnDesktopSwitch ?? this.autoPipOnDesktopSwitch,
+      inAppMiniPlayer: inAppMiniPlayer ?? this.inAppMiniPlayer,
       playInBackground: playInBackground ?? this.playInBackground,
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
       iptvLiveMaxHeightLabel:
@@ -222,6 +226,7 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       autoSkipIntro: await s.getAutoSkipIntro(),
       contentWarnings: await s.getContentWarnings(),
       autoPipOnDesktopSwitch: await s.getAutoPipOnDesktopSwitch(),
+      inAppMiniPlayer: await s.getInAppMiniPlayer(),
       playInBackground: await s.getPlayInBackground(),
       iptvEpgEnabled: iptvEpgEnabled,
       iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
@@ -444,8 +449,8 @@ class SettingsNavigationNotifier
   Future<SettingsNavigationSnapshot> build() async {
     // Navbar writes (Addons / sync / MainScreen hub refresh).
     ref.watch(navbarRevisionProvider);
-    // Never block Features on pack I/O — host-core (IPTV / Live Sports) must
-    // paint like desktop even when hub refresh is slow or hung (issue 222).
+    // Never block Features on pack I/O — hub scan runs in the background
+    // (issue 222). Addon-gated host tabs appear only after Addons enables them.
     if (PluginNavRegistry.destinations.isEmpty) {
       unawaited(_scanHubsInBackground());
     }
@@ -495,9 +500,11 @@ class SettingsNavigationNotifier
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);
     navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
-    final contributed = PluginNavRegistry.featureTabIds()
-        .where((id) => !archivedNavIds.contains(id))
-        .toList();
+    // Hierarchy: Addons alone activates iptv/live_matches; Features lists them
+    // only when already on (one-bit navbar visibleIds).
+    final contributed = PluginNavRegistry.featureTabIds(
+      activeAddonNavIds: navVisible,
+    ).where((id) => !archivedNavIds.contains(id)).toList();
     final contributedSet = contributed.toSet();
     var navOrder = (await s.getNavbarTabOrder())
         .where((id) => !archivedNavIds.contains(id))

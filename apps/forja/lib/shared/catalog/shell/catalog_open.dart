@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_play_kit.dart';
+import 'package:forja/features/live_matches/live_schedule/play/live_play_kit.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from

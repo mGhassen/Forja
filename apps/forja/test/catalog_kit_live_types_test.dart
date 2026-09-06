@@ -1,12 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_schedule_source.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
+import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_schedule_source.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/live_sports_kit_page.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 
 void main() {
+  setUp(() {
+    CatalogHostListRegistry.debugReset();
+    LiveSportsHost.debugReset();
+    LiveSportsHost.ensureRegistered();
+  });
+
   group('Live schedule kit.list source', () {
     test('matchesLayout detects kit.list + live_schedule', () {
       final layout = [
@@ -29,14 +36,17 @@ void main() {
         CatalogKitTypes.treeContains(
           layout,
           slot: CatalogKitTypes.list,
-          listSource: CatalogKitListSources.liveSchedule,
+          listSource: LiveSportsHost.listSourceId,
         ),
         isTrue,
       );
-      expect(CatalogKitListSources.isFullPageHost('live_schedule'), isTrue);
-      expect(CatalogKitListSources.resolve('live_schedule'), isNull);
+      expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isTrue);
       expect(
-        CatalogKitLiveSources.resolve(CatalogKitLiveSources.liveSchedule),
+        CatalogHostListRegistry.resolve(sourceId: 'live_schedule'),
+        isNull,
+      );
+      expect(
+        LiveSportsListSources.resolve(LiveSportsListSources.liveSchedule),
         isNotNull,
       );
     });
@@ -94,7 +104,7 @@ void main() {
 
     test('HubLiveScheduleSource resolves live_schedule id', () {
       expect(
-        CatalogKitLiveSources.resolve('live_schedule'),
+        LiveSportsListSources.resolve('live_schedule'),
         isA<HubLiveScheduleSource>(),
       );
       expect(const HubLiveScheduleSource().id, 'live_schedule');

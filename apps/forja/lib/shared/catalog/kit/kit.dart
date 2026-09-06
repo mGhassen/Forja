@@ -1,6 +1,7 @@
 /// Catalog UI kit — rows, cards, widgets, and chrome for hub plugins.
 ///
 /// Plugins declare layout widget types; [CatalogShell] composes kit pieces.
+/// Product hubs (My List, Live Sports) live under `features/` — not here.
 library;
 
 export 'cards/hub_poster_card.dart';
@@ -12,21 +13,13 @@ export 'chrome/hub_search_page.dart';
 export 'layout/catalog_kit_focus.dart';
 export 'layout/catalog_kit_top_bar.dart';
 export 'layout/catalog_kit_top_menu_registry.dart';
+export 'layout/catalog_kit_list_source.dart';
 export 'layout/catalog_kit_list_widget.dart';
 export 'layout/catalog_kit_menu_widget.dart';
 export 'layout/catalog_stack_widget.dart';
 export 'layout/catalog_kit_tabs_widget.dart';
 export 'layout/catalog_kit_types.dart';
 export 'layout/catalog_layout_scope.dart';
-export 'sources/catalog_kit_list_source.dart';
-export 'sources/live_schedule/live_sports_hub_page.dart';
-export 'sources/live_schedule/live_sports_kit_page.dart';
-export 'sources/live_schedule/data/live_schedule_source.dart';
-export 'sources/live_schedule/data/live_prefs.dart';
-export 'sources/live_schedule/data/live_iptv_sports_config.dart';
-export 'sources/live_schedule/play/live_engine.dart';
-export 'sources/live_schedule/play/live_play_kit.dart';
-export 'sources/live_schedule/play/live_embed_webview_proxy.dart';
 export 'widgets/catalog_because_section.dart';
 export 'widgets/catalog_continue_watching_card.dart';
 export 'widgets/catalog_continue_watching_section.dart';
@@ -39,4 +32,6 @@ export 'play/catalog_play_context.dart';
 export 'play/catalog_play_hooks.dart';
 export 'play/catalog_play_resolve.dart';
 export 'play/catalog_play_session.dart';
+export 'play/sources_request_context.dart';
+export 'play/stremio_stream_id.dart';
 export 'meta/catalog_meta_movie.dart';

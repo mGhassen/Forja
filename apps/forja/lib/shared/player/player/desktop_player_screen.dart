@@ -40,6 +40,8 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
@@ -182,7 +184,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         _DesktopPlayerSources,
         _DesktopPlayerEpisodes,
         _DesktopPlayerUi,
-        _DesktopPlayerBuild {
+        _DesktopPlayerBuild
+    implements InAppMiniPlayerSession {
   // ── Player ──────────────────────────────────────────────────────────────
   late Player _player;
   late VideoController _controller;
@@ -201,6 +204,24 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// When true, [PopScope] skips the Escape arm ladder (Back icon / mouse Back).
   bool _bypassEscapeArm = false;
+
+  /// Completes when this player finishes [stopForNewPlay] teardown.
+  Completer<void>? _stopForNewPlayCompleter;
+
+  late final FocusNode _miniRootFocus =
+      FocusNode(debugLabel: 'in-app-mini-root');
+  late final FocusNode _miniPlayPauseFocus =
+      FocusNode(debugLabel: 'in-app-mini-play');
+  late final FocusNode _miniExpandFocus =
+      FocusNode(debugLabel: 'in-app-mini-expand');
+  late final FocusNode _miniCloseFocus =
+      FocusNode(debugLabel: 'in-app-mini-close');
+
+  @override
+  FocusNode get miniRootFocus => _miniRootFocus;
+
+  @override
+  bool get isPlaying => _isPlayingNotifier.value;
 
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
@@ -563,6 +584,15 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
+    InAppMiniPlayerController.instance.detach(this);
+    _miniRootFocus.dispose();
+    _miniPlayPauseFocus.dispose();
+    _miniExpandFocus.dispose();
+    _miniCloseFocus.dispose();
+    final stopWait = _stopForNewPlayCompleter;
+    if (stopWait != null && !stopWait.isCompleted) {
+      stopWait.complete();
+    }
     _cancelPendingStreamWork();
     _postSeekStall?.dispose();
     _postSeekStall = null;

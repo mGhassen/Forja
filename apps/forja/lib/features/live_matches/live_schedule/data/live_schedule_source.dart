@@ -1,11 +1,12 @@
-import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
+import 'package:forja/features/live_matches/live_schedule/play/live_engine.dart';
+import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/shared/engine/engine.dart';
 
-/// Host-backed schedule for `kit.list { source: live_schedule }`.
-abstract final class CatalogKitLiveSources {
-  CatalogKitLiveSources._();
+/// Feature schedule source ids (opaque to kit).
+abstract final class LiveSportsListSources {
+  LiveSportsListSources._();
 
-  static const liveSchedule = 'live_schedule';
+  static const liveSchedule = LiveSportsHost.listSourceId;
 
   static LiveScheduleSource? resolve(String sourceId) {
     if (sourceId == liveSchedule) return const HubLiveScheduleSource();
@@ -31,12 +32,12 @@ abstract class LiveScheduleSource {
   Future<List<CatalogMetaItem>> load(LiveScheduleQuery query);
 }
 
-/// Default `live_schedule` source (RFC-073) — engine catalog rows → [CatalogMetaItem].
+/// Default schedule source (RFC-073) — engine catalog rows → [CatalogMetaItem].
 class HubLiveScheduleSource implements LiveScheduleSource {
   const HubLiveScheduleSource();
 
   @override
-  String get id => CatalogKitLiveSources.liveSchedule;
+  String get id => LiveSportsListSources.liveSchedule;
 
   @override
   Future<List<CatalogMetaItem>> load(LiveScheduleQuery query) async {

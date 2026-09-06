@@ -1,5 +1,5 @@
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
+import 'package:forja/features/live_matches/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
