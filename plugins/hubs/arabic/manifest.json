@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs).",
+  "description": "Larozaa Arabic movies and TV hub.",
   "version": "1.4.3",
   "tags": [
     "arabic"
@@ -11,7 +11,7 @@
     {
       "id": "arabic-hub",
       "name": "Arabic",
-      "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs)",
+      "description": "Larozaa Arabic movies and TV hub",
       "entry": "arabic.js",
       "kind": "catalog",
       "protocol": 1,
