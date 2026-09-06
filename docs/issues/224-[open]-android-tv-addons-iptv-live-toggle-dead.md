@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **37 / 37** fix · **0 / 4** acceptance |
+| **Progress** | **40 / 40** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -56,6 +56,9 @@
 | 35 | I224-T35 | Session navbar + crash-reporting memory SoT when KV readback no-ops; refuse hollow `[]` nav push over rich cloud; drop dirty-hollow take-cloud; loud `[KV] skipped` when `!Engine.isReady` | ✅ |
 | 36 | I224-T36 | Android: ship `libc++_shared.so` next to `libffi.so` (dlopen was failing → Engine never ready → all settings writes no-op) | ✅ |
 | 37 | I224-T37 | Features first hide: ignore stale richer provider snap; drop one-way “skip hydrate that drops tabs” that then blocked the correct thinner snap | ✅ |
+| 38 | I224-T38 | Soft pull skips `addon_feature_*` while nav dirty (stale cloud false no longer strips Live Sports alone); session memory for Addons unlock flags | ✅ |
+| 39 | I224-T39 | Push then soft-pull crush: 8s nav-push grace; no Features-open soft-pull; no dirty heal-repush; await Features nav upsert; preserve hub ids in `tabOrder` export; loud `pushProfileSettings` logs | ✅ |
+| 40 | I224-T40 | Push overlays onto cached cloud payload — no pull-before-upsert RMW | ✅ |
 
 ---
 

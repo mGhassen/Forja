@@ -881,11 +881,22 @@ class SyncService {
   Future<void> pushProfileSettings(Map<String, dynamic> payload) async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      debugPrint('[Sync] pushProfileSettings skipped — not signed in');
+      return;
+    }
     final profile = await activeProfile();
-    if (profile == null) return;
+    if (profile == null) {
+      debugPrint('[Sync] pushProfileSettings skipped — no active profile');
+      return;
+    }
 
     final now = DateTime.now().toUtc().toIso8601String();
+    final nav = payload['navigation'];
+    debugPrint(
+      '[Sync] pushProfileSettings profile=${profile.id} '
+      'nav=${nav is Map ? nav['visibleIds'] : null}',
+    );
     try {
       await client.from('profile_settings').upsert({
         'profile_id': profile.id,
@@ -894,8 +905,10 @@ class SyncService {
         'updated_at': now,
         'updated_by': userId,
       });
+      debugPrint('[Sync] pushProfileSettings upsert ok');
     } catch (e) {
       debugPrint('[Sync] pushProfileSettings error: $e');
+      rethrow;
     }
   }
 

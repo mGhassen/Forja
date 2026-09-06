@@ -42,6 +42,16 @@ class SyncDomainBridge {
   int _navigationLocalGen = 0;
   int _navigationSyncedGen = 0;
 
+  /// After a successful Features/Addons nav upsert — skip soft-pull **nav apply**
+  /// for a short window so a lagging read does not crush what we just pushed.
+  DateTime? _lastNavigationPushAt;
+  static const _navPushGrace = Duration(seconds: 8);
+
+  /// Last known `profile_settings.payload`. Pushes overlay local domains onto
+  /// this — they do **not** pull-before-upsert (that race crushed Features).
+  /// Seeded / refreshed only by soft-pull / cold first push.
+  Map<String, dynamic>? _cloudPayloadCache;
+
   /// Drop deferred cloud pushes (sign-out / tear-down). Does not write local stores.
   void cancelPendingPushes() {
     for (final timer in _pushTimers.values) {
@@ -114,6 +124,8 @@ class SyncDomainBridge {
     cancelPendingPushes();
     _navigationLocalGen = 0;
     _navigationSyncedGen = 0;
+    _lastNavigationPushAt = null;
+    _cloudPayloadCache = null;
     final defaults = PlatformDefaults.forProfile(
       SettingsService.platformProfile,
     );
@@ -197,9 +209,21 @@ class SyncDomainBridge {
   ///
   /// Call when opening Settings / Addons, side-nav tab select, window focus /
   /// app resume. Local toggles must [schedulePush] only — not this.
+  ///
+  /// Do **not** soft-pull on the Features editing surface itself, and do not
+  /// soft-pull immediately after a nav push (stale cloud read crushes the
+  /// upsert the user just made).
   Future<void> syncFromCloud({bool force = false}) async {
     if (!SyncService.instance.isSignedIn) return;
     final now = DateTime.now();
+    final lastPush = _lastNavigationPushAt;
+    if (lastPush != null && now.difference(lastPush) < _navPushGrace) {
+      debugPrint(
+        '[Sync] soft-pull skipped — navigation push grace '
+        '(${_navPushGrace.inSeconds}s after upsert)',
+      );
+      return;
+    }
     if (!force &&
         _lastCloudPullAt != null &&
         now.difference(_lastCloudPullAt!) < _cloudPullMinInterval) {
@@ -227,6 +251,17 @@ class SyncDomainBridge {
             overlayDomains: flush,
             overlayAddonFeatures: flush.contains(_domainPreferences),
           );
+        }
+        // Push grace may have started during flush — do not pull nav back yet.
+        final afterFlush = DateTime.now();
+        final pushAt = _lastNavigationPushAt;
+        if (pushAt != null &&
+            afterFlush.difference(pushAt) < _navPushGrace) {
+          debugPrint(
+            '[Sync] soft-pull aborted after flush — still in nav push grace',
+          );
+          _lastCloudPullAt = afterFlush;
+          return;
         }
         await pullAndMergeAll(resetLocalFirst: false);
         _lastCloudPullAt = DateTime.now();
@@ -271,6 +306,7 @@ class SyncDomainBridge {
       await seedNewProfileDefaults();
       return;
     }
+    _cloudPayloadCache = Map<String, dynamic>.from(remote);
     await _applyLeanPayload(
       remote,
       resetLocalFirst: resetLocalFirst,
@@ -302,23 +338,11 @@ class SyncDomainBridge {
     return _pullAndApplyUserIptvPortals();
   }
 
-  /// Push lean settings + IPTV. Cloud is master:
-  /// - Merges local cache into the existing cloud row (never replaces with a
-  ///   partial local export that drops remote keys).
-  /// - [overlayDomains] null = full overlay (new-profile seed / empty-row
-  ///   backfill). Non-null = only those domains (debounced UI edits **and**
-  ///   [prepareProfileSwitch] flush). A playback-only / empty-pending switch
-  ///   cannot rewrite cloud navigation (issue 126). Navigation shrink from a
-  ///   thin device cache is refused unless `_domainNavigation` is in the
-  ///   overlay set (Settings → Features).
-  /// - Empty local Stremio/Nuvio/Forja never deletes cloud unless
-  ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] / [allowEmptyForjaWipe]
-  ///   (that domain's edit).
-  /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
-  /// - Local IPTV shorter than cloud never replaces unless [allowIptvShrink]
-  ///   (intentional delete) or [allowEmptyIptvWipe] (clear-all).
-  /// [pushIptvIfLocalEmpty] false skips IPTV entirely when local is empty
-  /// (profile switch / seed).
+  /// Push lean settings + IPTV.
+  ///
+  /// Overlay intentional local domains onto the **cached** cloud row, then
+  /// upsert. Does not pull-before-push (that RMW race crushed Features).
+  /// Cache is filled by soft-pull / first cold push fetch.
   Future<void> pushAllLocal({
     bool pushIptvIfLocalEmpty = true,
     bool allowEmptyIptvWipe = false,
@@ -345,12 +369,20 @@ class SyncDomainBridge {
           overlayAddonFeatures || overlayDomains == null,
     );
     if (payload == null) {
-      debugPrint('[Sync] pushAllLocal skipped (cloud pull failed)');
+      debugPrint('[Sync] pushAllLocal skipped (no cloud base)');
       return;
     }
     await SyncService.instance.pushProfileSettings(payload);
+    _cloudPayloadCache = Map<String, dynamic>.from(payload);
     if (overlayNav && navGenAtStart == _navigationLocalGen) {
       _navigationSyncedGen = navGenAtStart;
+      _lastNavigationPushAt = DateTime.now();
+      final nav = payload['navigation'];
+      final ids = nav is Map ? _navVisibleIds(Map<String, dynamic>.from(nav)) : null;
+      debugPrint(
+        '[Sync] navigation upsert ok visibleIds=$ids '
+        'tabOrder=${nav is Map ? nav['tabOrder'] : null}',
+      );
     }
     final pushIptv = overlayDomains == null ||
         overlayDomains.contains(_domainIptv);
@@ -520,13 +552,31 @@ class SyncDomainBridge {
     return out;
   }
 
-  /// Cloud SoT: start from remote row, overlay intentional local cache.
-  ///
-  /// Returns `null` when the cloud pull failed — caller must not upsert
-  /// (would replace cloud with a local-only payload).
-  ///
-  /// [overlayDomains] null overlays every lean domain. Otherwise only the
-  /// listed domains (preferences → playback, navigation, stremio, nuvio, forja).
+  /// Base cloud row for domain overlay. Prefer [_cloudPayloadCache]; network
+  /// pull only when cache is empty (cold) or [forceFetch].
+  Future<Map<String, dynamic>?> _cloudBaseForMerge({
+    bool forceFetch = false,
+  }) async {
+    if (!forceFetch && _cloudPayloadCache != null) {
+      return Map<String, dynamic>.from(_cloudPayloadCache!);
+    }
+    try {
+      final remote = await SyncService.instance.pullProfileSettings() ?? {};
+      _cloudPayloadCache = Map<String, dynamic>.from(remote);
+      return Map<String, dynamic>.from(remote);
+    } catch (e) {
+      if (_cloudPayloadCache != null) {
+        debugPrint('[Sync] cloud pull failed — overlay onto cache: $e');
+        return Map<String, dynamic>.from(_cloudPayloadCache!);
+      }
+      debugPrint('[Sync] merge aborted (no cloud base): $e');
+      return null;
+    }
+  }
+
+  /// Overlay intentional local domains onto the cached (or cold-fetched) cloud
+  /// row. Returns `null` when there is no base — caller must not upsert a
+  /// local-only payload (would wipe other cloud domains).
   Future<Map<String, dynamic>?> _buildMergedCloudPayload({
     required bool allowEmptyStremioWipe,
     required bool allowEmptyNuvioWipe,
@@ -534,13 +584,8 @@ class SyncDomainBridge {
     Set<String>? overlayDomains,
     bool overlayAddonFeatures = false,
   }) async {
-    final Map<String, dynamic> remote;
-    try {
-      remote = await SyncService.instance.pullProfileSettings() ?? {};
-    } catch (e) {
-      debugPrint('[Sync] merge aborted (cloud pull failed): $e');
-      return null;
-    }
+    final remote = await _cloudBaseForMerge();
+    if (remote == null) return null;
     final local = await _buildLeanPayload();
     final next = Map<String, dynamic>.from(remote);
     final overlayAll = overlayDomains == null;
@@ -683,15 +728,38 @@ class SyncDomainBridge {
       // true is idempotent and covers any caller that reset without that wipe.
       _navigationLocalGen = 0;
       _navigationSyncedGen = 0;
+      _lastNavigationPushAt = null;
+      // Keep [_cloudPayloadCache] — resetLocalFirst still applies [payload]
+      // from the pull that seeded the cache.
       await resetSyncedLocalToPlatformDefaults(
         clearIptv: true,
         notify: false,
       );
+      // resetSyncedLocal cleared cache; restore from this pull.
+      _cloudPayloadCache = Map<String, dynamic>.from(payload);
     }
 
     final playback = payload['playback'];
     if (playback is Map) {
-      await importPreferences(Map<String, dynamic>.from(playback));
+      final pb = Map<String, dynamic>.from(playback);
+      // Addons unlock flags travel with Features rail edits. Soft pull must not
+      // apply stale cloud `addon_feature_*=false` while nav is still dirty —
+      // that left live_matches in visibleIds but stripped it from the rail
+      // (addons={iptv} only) and flipped the Addons switch off alone (224).
+      final addonEditPending =
+          !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
+      if (addonEditPending) {
+        if (pb.containsKey('addon_feature_iptv') ||
+            pb.containsKey('addon_feature_live_matches')) {
+          debugPrint(
+            '[Sync] skip addon_feature_* apply — local Addons/Features '
+            'edit not synced yet',
+          );
+        }
+        pb.remove('addon_feature_iptv');
+        pb.remove('addon_feature_live_matches');
+      }
+      await importPreferences(pb);
     }
 
     final connected = payload['connectedServices'];
@@ -718,29 +786,28 @@ class SyncDomainBridge {
     final navPending =
         !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
     if (editedDuringPull || navPending) {
-      // Unsynced local Features/Addons edit — push already flushed in
-      // [syncFromCloud]. Do not apply cloud nav over mid-edit; still heal if
-      // local is richer than this remote snapshot.
+      // Unsynced local Features/Addons edit — flush already pushed in
+      // [syncFromCloud]. Do not apply cloud nav; do not heal-push again (that
+      // re-entered soft-pull and crushed the upsert the user just made).
       debugPrint(
         '[Sync] skip navigation apply — local Features edit not synced yet '
         '(editedDuringPull=$editedDuringPull pending=$navPending)',
       );
-      final localNav = await _exportNavigationCompact();
-      final remoteNav = navigation is Map
-          ? Map<String, dynamic>.from(navigation)
-          : null;
-      if (navigationWouldShrinkLocal(localNav, remoteNav)) {
-        debugPrint('[Sync] heal cloud nav — local richer than soft-pull remote');
-        await schedulePush(_domainNavigation);
-      }
     } else if (navigation is Map) {
-      // Synced soft pull / profile reset: cloud is source of truth so web
-      // Features / Addons changes land in the app (224). Mid-edit is handled
-      // above; local toggles push before this path runs.
-      await _importNavigation(
-        Map<String, dynamic>.from(navigation),
-        resetLocalFirst: resetLocalFirst,
-      );
+      final lastPush = _lastNavigationPushAt;
+      if (lastPush != null &&
+          DateTime.now().difference(lastPush) < _navPushGrace) {
+        debugPrint(
+          '[Sync] skip navigation apply — within post-push grace',
+        );
+      } else {
+        // Synced soft pull / profile reset: cloud is source of truth so web
+        // Features / Addons changes land in the app (224).
+        await _importNavigation(
+          Map<String, dynamic>.from(navigation),
+          resetLocalFirst: resetLocalFirst,
+        );
+      }
     } else if (resetLocalFirst) {
       // Reset left platform-default nav without notifying; publish once.
       SettingsService.navbarChangeNotifier.value++;

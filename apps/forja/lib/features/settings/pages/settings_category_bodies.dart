@@ -355,11 +355,9 @@ class _SettingsNavigationPageBodyState
   @override
   void initState() {
     super.initState();
-    // Soft pull on open so web Features changes land. Local toggles push only;
-    // syncFromCloud flushes dirty nav before applying cloud (224).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
-    });
+    // Features is the edit surface — push only on toggle/reorder.
+    // Soft-pull lives on Settings/Addons open + resume (not here); pulling
+    // while editing crushed the upsert the user just made (224).
   }
 
   @override
@@ -507,8 +505,9 @@ class _SettingsNavigationPageBodyState
         setState(() => _defaultNavTab = resolved);
         await _settings.setDefaultNavTab(resolved);
       }
-      // Cloud after local rail is stable.
-      unawaited(scheduleNavigationSyncPush());
+      // Cloud after local rail is stable — await so logs show upsert before
+      // any concurrent soft-pull grace kicks in.
+      await scheduleNavigationSyncPush();
     } catch (e, st) {
       debugPrint('[Features] toggle $id failed: $e\n$st');
     } finally {

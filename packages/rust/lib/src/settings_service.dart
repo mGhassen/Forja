@@ -784,10 +784,14 @@ class SettingsService {
 
   /// Settings → Addons feature availability for host tabs (RFC-086).
   /// Not navbar visibility — Features alone writes `visibleIds`.
+  static final Map<String, bool> _addonFeatureMemory = {};
+
   Future<bool> isAddonFeatureEnabled(String navId) async {
     await ensureAddonFeaturesMigratedFromNav();
     final key = _addonFeatureKey(navId);
     if (key == null) return false;
+    final mem = _addonFeatureMemory[navId];
+    if (mem != null) return mem;
     return kvGetBool(key, fallback: false);
   }
 
@@ -795,7 +799,8 @@ class SettingsService {
     await ensureAddonFeaturesMigratedFromNav();
     final key = _addonFeatureKey(navId);
     if (key == null) return;
-    if (await kvGetBool(key, fallback: false) == enabled) return;
+    if (await isAddonFeatureEnabled(navId) == enabled) return;
+    _addonFeatureMemory[navId] = enabled;
     await kvSetBool(key, enabled);
     playSourceChangeNotifier.value++;
     navbarChangeNotifier.value++;
@@ -806,7 +811,7 @@ class SettingsService {
     await ensureAddonFeaturesMigratedFromNav();
     return [
       for (final id in addonGatedNavIds)
-        if (await kvGetBool(_addonFeatureKey(id)!, fallback: false)) id,
+        if (await isAddonFeatureEnabled(id)) id,
     ];
   }
 
@@ -825,6 +830,7 @@ class SettingsService {
     for (final id in addonGatedNavIds) {
       final key = _addonFeatureKey(id)!;
       if (raw.contains(id) && !await kvHasKey(key)) {
+        _addonFeatureMemory[id] = true;
         await kvSetBool(key, true);
       }
     }
@@ -2168,15 +2174,26 @@ class SettingsService {
   /// uses [getNavbarConfig] for visible-only order.
   Future<List<String>> getNavbarTabOrder() async {
     final visible = await getNavbarConfig();
+    final known = (await kvGetStringList(
+      _navbarKnownIdsKey,
+      fallback: const [],
+    )).toSet();
+    // Preserve hub ids (anime/home/…) — [allNavIds] alone drops them from
+    // cloud `tabOrder` export so Features sort never landed (224).
+    final catalog = <String>{
+      ...allNavIds,
+      ...visible,
+      ...known,
+    }.toList();
     if (!await kvHasKey(_navbarTabOrderKey)) {
-      final hidden = allNavIds.where((id) => !visible.contains(id)).toList();
+      final hidden = catalog.where((id) => !visible.contains(id)).toList();
       return [...visible, ...hidden];
     }
     final stored = await kvGetStringList(
       _navbarTabOrderKey,
       fallback: const [],
     );
-    return _mergeNavbarTabOrder(stored, allNavIds);
+    return _mergeNavbarTabOrder(stored, catalog);
   }
 
   static List<String> _mergeNavbarTabOrder(
@@ -2252,7 +2269,11 @@ class SettingsService {
     if (tabOrder != null) {
       await kvSetStringList(
         _navbarTabOrderKey,
-        _mergeNavbarTabOrder(tabOrder, allNavIds),
+        _mergeNavbarTabOrder(tabOrder, {
+          ...allNavIds,
+          ...tabOrder,
+          ...visibleIds,
+        }.toList()),
       );
     }
     if (notify && !unchanged) navbarChangeNotifier.value++;
