@@ -6,6 +6,7 @@ import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shell/player_surface_chrome_stub.dart';
 
 /// Hub search backed by a catalog plugin `search` action.
 ///
@@ -75,21 +76,23 @@ class CatalogSearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HubSearchPage(
-      hintText: hintText,
-      tvTabId: tabId,
-      structuredSearch: structuredSearch,
-      onSearch: _search,
-      loadRecommendations: _recommendations,
-      onOpen: (result) {
-        final payload = result.payload;
-        if (payload is! CatalogMetaItem) return;
-        openCatalogMetaItem(
-          context,
-          pluginId: pluginId,
-          item: payload,
-        );
-      },
+    return PlayerSurfaceChromeStub(
+      builder: (context) => HubSearchPage(
+        hintText: hintText,
+        tvTabId: tabId,
+        structuredSearch: structuredSearch,
+        onSearch: _search,
+        loadRecommendations: _recommendations,
+        onOpen: (result) {
+          final payload = result.payload;
+          if (payload is! CatalogMetaItem) return;
+          openCatalogMetaItem(
+            context,
+            pluginId: pluginId,
+            item: payload,
+          );
+        },
+      ),
     );
   }
 }

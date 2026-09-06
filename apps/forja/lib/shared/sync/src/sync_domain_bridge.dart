@@ -681,10 +681,15 @@ class SyncDomainBridge {
       final remoteNav = navigation is Map
           ? Map<String, dynamic>.from(navigation)
           : null;
-      // Dirty empty/thin local must not block richer cloud Features (224).
-      if (navigationWouldShrinkCloud(remoteNav, localNav)) {
+      final localIds = _navVisibleIds(localNav);
+      final remoteIds = _navVisibleIds(remoteNav);
+      // Hollow dirty local (empty ATV cache) may take richer cloud Features.
+      // Non-empty dirty local must never be replaced — Addons OK → [iptv]
+      // then "richer cloud" apply was wiping the enable so the next OK
+      // logged next=[live_matches] only (224).
+      if (localIds.isEmpty && remoteIds.isNotEmpty) {
         debugPrint(
-          '[Sync] apply cloud nav — dirty local would shrink Features',
+          '[Sync] apply cloud nav — dirty local hollow, take Features from cloud',
         );
         _navigationLocalGen = _navigationSyncedGen;
         if (navigation is Map) {
@@ -692,7 +697,8 @@ class SyncDomainBridge {
         }
       } else {
         debugPrint(
-          '[Sync] skip navigation apply — local Features edit not synced yet',
+          '[Sync] skip navigation apply — local Features edit not synced yet '
+          '(local ${localIds.length} tab(s))',
         );
       }
     } else if (navigation is Map) {

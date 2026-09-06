@@ -43,6 +43,42 @@ Future<void> setAddonMasterEnabled(
   required String addonId,
   required bool val,
 }) async {
+  // Serialize IPTV / Live Sports so rapid ATV OK cannot interleave sync pulls
+  // between navbar writes (224 — next=[iptv] then next=[live_matches] only).
+  if (addonId == SettingsAddonId.iptv ||
+      addonId == SettingsAddonId.liveSports) {
+    final prev = _addonNavToggleChain;
+    final gate = Completer<void>();
+    _addonNavToggleChain = gate.future;
+    await prev;
+    try {
+      await _setAddonMasterEnabledBody(
+        ref,
+        context,
+        addonId: addonId,
+        val: val,
+      );
+    } finally {
+      gate.complete();
+    }
+    return;
+  }
+  await _setAddonMasterEnabledBody(
+    ref,
+    context,
+    addonId: addonId,
+    val: val,
+  );
+}
+
+Future<void> _addonNavToggleChain = Future<void>.value();
+
+Future<void> _setAddonMasterEnabledBody(
+  WidgetRef ref,
+  BuildContext context, {
+  required String addonId,
+  required bool val,
+}) async {
   final settings = SettingsService();
   final notifier = ref.read(settingsPlaybackProvider.notifier);
 

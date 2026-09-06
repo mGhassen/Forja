@@ -458,16 +458,14 @@ abstract final class PluginNavRegistry {
       );
     }
     final vodHubIds = dests.keys.toSet().difference(coreShellNavIds);
-    // Recover when every VOD hub was stripped (known-but-invisible after a race).
-    if (vodHubIds.isNotEmpty) {
-      final visible = await SettingsService().getNavbarConfig();
-      if (_deferredEmptyHubNavSync || !visible.any(vodHubIds.contains)) {
-        _deferredEmptyHubNavSync = false;
-        await SettingsService().ensureActiveDefaultHubsVisible(
-          activeHubIds: vodHubIds,
-          notify: _refreshNotifyPending,
-        );
-      }
+    // Boot recovery only — never re-insert hubs just because the user hid
+    // every VOD tab (IPTV / Live Sports only is a valid Features choice).
+    if (_deferredEmptyHubNavSync && vodHubIds.isNotEmpty) {
+      _deferredEmptyHubNavSync = false;
+      await SettingsService().ensureActiveDefaultHubsVisible(
+        activeHubIds: vodHubIds,
+        notify: _refreshNotifyPending,
+      );
     }
     await SettingsService().syncActiveHubNavIds(
       activeHubIds: vodHubIds,

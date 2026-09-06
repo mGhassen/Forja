@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shell/player_surface_chrome_stub.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_body.dart';
 
@@ -243,6 +244,36 @@ void main() {
       expect(ticks.value, greaterThan(0));
     },
   );
+
+  testWidgets(
+    'PlayerSurfaceChromeStub drops child while player is active',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PlayerSurfaceChromeStub(
+            builder: (_) => const Text('chrome'),
+          ),
+        ),
+      );
+      expect(find.text('chrome'), findsOneWidget);
+
+      ShellBus.enterPlayerSurface();
+      await tester.pump();
+      expect(find.text('chrome'), findsNothing);
+      expect(find.byType(ColoredBox), findsWidgets);
+
+      ShellBus.leavePlayerSurface();
+      await tester.pump();
+      expect(find.text('chrome'), findsOneWidget);
+    },
+  );
+
+  test('ShellBus.cancelBackgroundWorkForPlayback is safe to call', () {
+    expect(ShellBus.cancelBackgroundWorkForPlayback, returnsNormally);
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerSurfaceActive.value, isTrue);
+    ShellBus.leavePlayerSurface();
+  });
 }
 
 class _TickerProbe extends StatefulWidget {

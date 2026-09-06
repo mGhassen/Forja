@@ -463,17 +463,9 @@ class SettingsNavigationNotifier
       final hubs = PluginNavRegistry.destinations.keys
           .where((id) => !PluginNavRegistry.coreShellNavIds.contains(id))
           .toSet();
-      if (hubs.isNotEmpty) {
-        final s = SettingsService();
-        final visible = await s.getNavbarConfig();
-        if (!visible.any(hubs.contains)) {
-          await s.ensureActiveDefaultHubsVisible(
-            activeHubIds: hubs,
-            notify: false,
-          );
-        }
-      }
-      // One bump so Features / rail pick up hub rows after the scan.
+      // Do not call ensureActiveDefaultHubsVisible here — that re-inserted
+      // every hub after the user hid them all (IPTV/Live only), so the next
+      // Features "on" was a no-op with no rail notify.
       if (changed || hubs.isNotEmpty) {
         SettingsService.navbarChangeNotifier.value++;
       }
@@ -484,18 +476,8 @@ class SettingsNavigationNotifier
 
   Future<SettingsNavigationSnapshot> _snapshotFromPrefs() async {
     final s = SettingsService();
-    final vodHubIds = PluginNavRegistry.destinations.keys
-        .where((id) => !PluginNavRegistry.coreShellNavIds.contains(id))
-        .toSet();
-    if (vodHubIds.isNotEmpty) {
-      final rawVisible = await s.getNavbarConfig();
-      if (!rawVisible.any(vodHubIds.contains)) {
-        await s.ensureActiveDefaultHubsVisible(
-          activeHubIds: vodHubIds,
-          notify: false,
-        );
-      }
-    }
+    // Read-only snapshot. Never ensureActiveDefaultHubsVisible — that fought
+    // intentional Features hides when only Addons tabs remained visible.
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);

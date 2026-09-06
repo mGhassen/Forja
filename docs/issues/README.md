@@ -141,7 +141,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 21/21 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [118-[open]-…](118-[open]-iptv-thin-local-cache-shrinks-cloud.md) | Thin local IPTV cache shrinks cloud portals | P0 | Critical | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [119-[open]-…](119-[open]-android-tv-double-back-exit.md) | Android TV double Back / Exit to quit | P1 | Medium | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 8/8 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 11/11 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [121-[open]-…](121-[open]-android-tv-skip-shell-slide.md) | Android TV skip shell slide transitions | P1 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [122-[open]-…](122-[open]-android-tv-iptv-player-lost-dpad.md) | Android TV IPTV player lost D-pad | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [123-[open]-…](123-[open]-android-tv-iptv-catalog-focus-after-player.md) | Android TV IPTV catalog focus after player | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -242,7 +242,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [220-[open]-…](220-[open]-live-sports-addon-nav-without-hub-pack.md) | Live Sports Addons ON but no navbar tab | P1 | High | open | 4/4 · A 3/3 | — |
 | [221-[open]-…](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) | Features Home toggle reverts after cloud sync | P0 | Critical | open | 8/8 · A 0/2 | — |
 | [222-[open]-…](222-[open]-android-tv-features-empty-after-pack-install.md) | ATV Features empty after hub pack install | P0 | Critical | open | 7/7 · A 0/2 | — |
-| [224-[open]-…](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) | ATV Addons IPTV / Live Sports toggle does not stick | P0 | Critical | open | 13/13 · A 0/2 | — |
+| [224-[open]-…](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) | ATV Addons IPTV / Live Sports toggle does not stick | P0 | Critical | open | 17/17 · A 0/2 | — |
 | [225-[open]-…](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) | Official pack install aborts batch / skips hub nav refresh | P0 | Critical | open | 4/4 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 

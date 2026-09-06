@@ -42,6 +42,7 @@ void main() {
 
   setUp(() async {
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    SettingsService.resetNavbarLockForTest();
     await openFreshStore();
   });
 
@@ -641,5 +642,19 @@ void main() {
     await service.ensureNavIdsKnown(allHubIds: const ['hub_notify']);
     expect(SettingsService.navbarChangeNotifier.value, greaterThan(before));
     expect(await service.getNavbarConfig(), contains('hub_notify'));
+  });
+
+  test('concurrent setNavbarTabVisible keeps both tabs', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(const []);
+
+    final results = await Future.wait([
+      service.setNavbarTabVisible('iptv', true),
+      service.setNavbarTabVisible('live_matches', true),
+    ]);
+
+    expect(results.last, containsAll(['iptv', 'live_matches']));
+    expect(await service.getNavbarConfig(), containsAll(['iptv', 'live_matches']));
   });
 }

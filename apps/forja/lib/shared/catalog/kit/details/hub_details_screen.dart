@@ -37,6 +37,7 @@ import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/player_surface_chrome_stub.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
     show
@@ -617,32 +618,34 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemePreset>(
-      valueListenable: AppTheme.themeNotifier,
-      builder: (context, _, _) {
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_loading)
-                Center(
-                  child: CircularProgressIndicator(
-                    color: ForjaShellColors.sectionAccent,
-                  ),
-                )
-              else if (_error != null)
-                ShellErrorRetryPanel(
-                  message: _error!,
-                  onRetry: _load,
-                )
-              else
-                _buildScrollLayout(),
-              MediaDetailsBackButton(focusNode: _backFocus),
-            ],
-          ),
-        );
-      },
+    return PlayerSurfaceChromeStub(
+      builder: (context) => ValueListenableBuilder<AppThemePreset>(
+        valueListenable: AppTheme.themeNotifier,
+        builder: (context, _, _) {
+          return Scaffold(
+            backgroundColor: AppTheme.bgDark,
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (_loading)
+                  Center(
+                    child: CircularProgressIndicator(
+                      color: ForjaShellColors.sectionAccent,
+                    ),
+                  )
+                else if (_error != null)
+                  ShellErrorRetryPanel(
+                    message: _error!,
+                    onRetry: _load,
+                  )
+                else
+                  _buildScrollLayout(),
+                MediaDetailsBackButton(focusNode: _backFocus),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

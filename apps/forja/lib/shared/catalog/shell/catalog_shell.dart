@@ -18,6 +18,7 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shell/player_surface_chrome_stub.dart';
 
 import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_pack_filters.dart';
@@ -1331,6 +1332,12 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    return PlayerSurfaceChromeStub(
+      builder: (context) => _buildCatalogBody(context),
+    );
+  }
+
+  Widget _buildCatalogBody(BuildContext context) {
     final body = () {
       final liveHub = widget.tabId == 'live_matches' ||
           LiveSportsKitPage.matchesLayout(_widgets);

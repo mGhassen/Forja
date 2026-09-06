@@ -18,6 +18,7 @@ import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/player_surface_chrome_stub.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -150,44 +151,35 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     final ctrl = ref.watch(iptvControllerProvider);
     return TvFocusGraph(
       tabId: 'iptv',
-      child: ValueListenableBuilder<bool>(
-        valueListenable: ShellBus.playerSurfaceActive,
-        builder: (context, playerActive, _) {
-          // Keep this State (TV focus restore / controller) but drop the
-          // catalog widget tree so logos and EPG cards do not layout, decode,
-          // or probe while live decode owns the SoC.
-          if (playerActive) {
-            return const ColoredBox(color: Colors.black);
-          }
-          return VisibilityDetector(
-            key: const Key('iptv_pt_screen'),
-            onVisibilityChanged: (info) {
-              if (ShellBus.playerSurfaceActive.value) return;
-              if (info.visibleFraction > 0) {
-                _syncShellNav();
-                unawaited(SyncService.instance.pullAccountFeatures());
-              }
+      child: PlayerSurfaceChromeStub(
+        builder: (context) => VisibilityDetector(
+          key: const Key('iptv_pt_screen'),
+          onVisibilityChanged: (info) {
+            if (ShellBus.playerSurfaceActive.value) return;
+            if (info.visibleFraction > 0) {
+              _syncShellNav();
+              unawaited(SyncService.instance.pullAccountFeatures());
+            }
+          },
+          child: PopScope(
+            canPop: !ctrl.portalPanelOpen,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) ctrl.back();
             },
-            child: PopScope(
-              canPop: !ctrl.portalPanelOpen,
-              onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) ctrl.back();
-              },
-              child: AnimatedBuilder(
-                animation: ctrl,
-                builder: (_, _) => AnimatedSwitcher(
-                  duration: ShellTokens.isAndroidTvDevice
-                      ? Duration.zero
-                      : const Duration(milliseconds: 250),
-                  child: KeyedSubtree(
-                    key: ValueKey(ctrl.view),
-                    child: _buildView(context, ctrl),
-                  ),
+            child: AnimatedBuilder(
+              animation: ctrl,
+              builder: (_, _) => AnimatedSwitcher(
+                duration: ShellTokens.isAndroidTvDevice
+                    ? Duration.zero
+                    : const Duration(milliseconds: 250),
+                child: KeyedSubtree(
+                  key: ValueKey(ctrl.view),
+                  child: _buildView(context, ctrl),
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

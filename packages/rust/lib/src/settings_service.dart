@@ -1429,15 +1429,23 @@ class SettingsService {
   /// write leaves only `live_matches` (issue 224).
   static Future<void> _navbarExclusiveTail = Future<void>.value();
 
+  /// Last committed visible ids under the exclusive lock — RMW prefers this
+  /// over a stale KV read when a soft-pull / prefs race rewrote storage.
+  static List<String>? _navbarVisibleMemory;
+
   static Future<T> _withNavbarExclusive<T>(Future<T> Function() op) {
     final done = Completer<T>();
-    _navbarExclusiveTail = _navbarExclusiveTail.then((_) async {
-      try {
-        done.complete(await op());
-      } catch (e, st) {
-        done.completeError(e, st);
-      }
-    });
+    // catchError keeps the chain alive if a prior op failed.
+    _navbarExclusiveTail = _navbarExclusiveTail
+        .catchError((_) {})
+        .then((_) async {
+          try {
+            done.complete(await op());
+          } catch (e, st) {
+            if (!done.isCompleted) done.completeError(e, st);
+          }
+        });
+    unawaited(_navbarExclusiveTail.catchError((_) {}));
     return done.future;
   }
 
@@ -1648,6 +1656,7 @@ class SettingsService {
       if (await kvHasKey(_navbarConfigKey)) {
         final prev = await kvGetStringList(_navbarConfigKey, fallback: const []);
         await kvSetStringList(_navbarConfigKey, visible);
+        _navbarVisibleMemory = List<String>.from(visible);
         // Features / rail watch this — without a bump, pack install can leave
         // Settings → Features stuck on Settings-only until a manual reopen.
         if (notify && !listEquals(prev, visible)) {
@@ -1682,6 +1691,7 @@ class SettingsService {
       ];
       if (listEquals(visible, ordered)) return;
       await kvSetStringList(_navbarConfigKey, ordered);
+      _navbarVisibleMemory = List<String>.from(ordered);
       if (notify) navbarChangeNotifier.value++;
     });
   }
@@ -1703,6 +1713,7 @@ class SettingsService {
           .toList();
       if (listEquals(raw, next)) return;
       await kvSetStringList(_navbarConfigKey, next);
+      _navbarVisibleMemory = List<String>.from(next);
       final defaultTab = await getDefaultNavTab();
       if (knownHubIds.contains(defaultTab) &&
           !activeHubIds.contains(defaultTab)) {
@@ -1716,13 +1727,40 @@ class SettingsService {
   /// RMW add/remove one tab under the navbar exclusive lock (issue 224).
   Future<List<String>> setNavbarTabVisible(String navId, bool visible) {
     return _withNavbarExclusive(() async {
-      final nav = await getNavbarConfig();
+      final fromKv = await getNavbarConfig();
+      final mem = _navbarVisibleMemory;
+      // If KV shrank vs the last committed write (soft-pull race), heal from
+      // session memory before applying this toggle.
+      final List<String> nav;
+      if (mem != null &&
+          mem.isNotEmpty &&
+          fromKv.length < mem.length &&
+          mem.any((id) => !fromKv.contains(id))) {
+        nav = <String>{...mem, ...fromKv}.toList();
+        debugPrint(
+          '[Navbar] RMW heal after shrink (kv=$fromKv mem=$mem)',
+        );
+      } else {
+        nav = fromKv;
+      }
       final updated = visible
           ? [...nav, if (!nav.contains(navId)) navId]
           : nav.where((id) => id != navId).toList();
       await _setNavbarConfigUnlocked(updated);
+      // Enabling a tab already silently restored in KV (unchanged write) still
+      // needs a bump so a stale rail catches up.
+      if (visible && listEquals(fromKv, updated)) {
+        navbarChangeNotifier.value++;
+      }
       return updated;
     });
+  }
+
+  /// Test-only: clear exclusive-lock session state between stores.
+  @visibleForTesting
+  static void resetNavbarLockForTest() {
+    _navbarVisibleMemory = null;
+    _navbarExclusiveTail = Future<void>.value();
   }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.
@@ -2066,6 +2104,7 @@ class SettingsService {
         : null;
     final unchanged = raw != null && listEquals(raw, visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
+    _navbarVisibleMemory = List<String>.from(visibleIds);
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
       fallback: const [],

@@ -78,6 +78,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
   /// Empty until first [getNavbarConfig] — avoids all-tabs → filtered flash.
   List<String> _visibleIds = const [];
   bool _initialNavResolved = false;
+  /// Drop stale navbar loads when toggles fire faster than async reloads.
+  int _navbarLoadGen = 0;
   /// When every feature tab is hidden, show [ShellEmptyFeaturesScreen] until
   /// the user opens Settings from the rail or an empty-state CTA.
   bool _emptyFeaturesBodyDismissed = false;
@@ -356,8 +358,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   Future<void> _loadNavbarConfig() async {
+    final gen = ++_navbarLoadGen;
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
+    if (!mounted || gen != _navbarLoadGen) return;
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
         .where(PluginNavRegistry.isContributed)
@@ -367,7 +371,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
           .toList();
     }
-    if (!mounted) return;
+    if (!mounted || gen != _navbarLoadGen) return;
     final applyDefaultTab = ShellBus.selectDefaultTabOnNextNavLoad;
     if (applyDefaultTab) {
       ShellBus.selectDefaultTabOnNextNavLoad = false;

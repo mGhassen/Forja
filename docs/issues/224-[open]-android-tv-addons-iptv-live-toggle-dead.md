@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** fix · **0 / 2** acceptance |
+| **Progress** | **17 / 17** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,10 @@
 | 11 | I224-T11 | Row activate calls `setAddonMasterEnabled` directly (no mid-build `_flip` callback — silent no-op) | ✅ |
 | 12 | I224-T12 | Soft pull refuses cloud nav that shrinks local tabs; heal hollow cloud with a nav push | ✅ |
 | 13 | I224-T13 | Features toggles use `setNavbarTabVisible` RMW + serialize saves; skip hydrate mid-write | ✅ |
+| 14 | I224-T14 | Dirty soft pull: apply richer cloud only when local visible is empty — never replace non-empty Addons enables | ✅ |
+| 15 | I224-T15 | Session navbar memory heal + serialize IPTV/Live Sports addon toggles through sync push | ✅ |
+| 16 | I224-T16 | Stop Features/hub refresh from re-inserting every hub after intentional all-hub hide (Home enable was no-op / no rail) | ✅ |
+| 17 | I224-T17 | MainScreen navbar load generation guard — stale async reload cannot wipe a newer visible set | ✅ |
 
 ---
 

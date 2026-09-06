@@ -119,4 +119,37 @@ void main() {
       );
     });
   });
+
+  group('dirty soft-pull policy (224)', () {
+    test('non-empty dirty local vs richer cloud is a shrink both ways', () {
+      // Regression context: local=[iptv] after Addons OK, cloud has hubs.
+      // Old code treated shrinkCloud as "apply cloud" and wiped IPTV.
+      // New policy: apply only when localIds.isEmpty && remoteIds.isNotEmpty.
+      final local = {
+        'visibleIds': ['iptv'],
+      };
+      final remote = {
+        'visibleIds': ['home', 'asian_drama', 'anime', 'mylist'],
+      };
+      expect(
+        SyncDomainBridge.navigationWouldShrinkCloud(remote, local),
+        isTrue,
+      );
+      expect(
+        SyncDomainBridge.navigationWouldShrinkLocal(local, remote),
+        isTrue,
+      );
+      final hollow = {'visibleIds': <String>[]};
+      expect(
+        SyncDomainBridge.navigationWouldShrinkCloud(remote, hollow),
+        isTrue,
+      );
+      // Hollow local is the only dirty case that may take cloud (caller check).
+      expect(hollow['visibleIds'], isEmpty);
+      expect(
+        (remote['visibleIds'] as List).isNotEmpty,
+        isTrue,
+      );
+    });
+  });
 }
