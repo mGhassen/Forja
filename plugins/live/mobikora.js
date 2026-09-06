@@ -163,9 +163,20 @@ function isBrightcoveUrl(url) {
   }
 }
 
+function isAmazonS3Url(url) {
+  try {
+    return (
+      new URL(String(url || '')).host.toLowerCase().indexOf('amazonaws.com') >=
+      0
+    );
+  } catch (_) {
+    return /amazonaws\.com/i.test(String(url || ''));
+  }
+}
+
 function playbackHeaders(playUrl, playerPageUrl) {
-  // AlbaPlayer serves Brightcove with referrerpolicy=no-referrer — keep UA only.
-  if (isBrightcoveUrl(playUrl)) {
+  // Brightcove / public S3 (Foorja) — CORS *; Referer/Origin not required.
+  if (isBrightcoveUrl(playUrl) || isAmazonS3Url(playUrl)) {
     return { 'User-Agent': ua() };
   }
   var origin = '';
@@ -184,8 +195,9 @@ function playRow(url, name, playerPageUrl) {
     url: url,
     name: name || 'MobiKora',
     headers: playbackHeaders(url, playerPageUrl),
-    // Always hand MediaKit a ready HLS URL (preferDirectPlayback misses Brightcove).
-    directPlayback: true,
+    // S3/Foorja: hls-proxy (MediaKit mbedtls often RST mid-session on direct
+    // S3 HLS). Brightcove + other CDNs: direct open with headers.
+    directPlayback: !isAmazonS3Url(url),
   };
 }
 

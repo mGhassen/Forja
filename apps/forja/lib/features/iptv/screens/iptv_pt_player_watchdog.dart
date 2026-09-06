@@ -299,6 +299,18 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (!_bufferedRecovery) return false;
     if (_stallWithoutPlayhead) return false;
     if (_bufferingHardWall) return false;
+    // After cold open: empty demuxer + no feed = dead even if VO still pulses
+    // (MediaKit live can keep estimated-fps / playhead ticks while S3 TLS
+    // resets and cache sits at 0 — web keeps refetching; we must reopen).
+    final openedAt = _s._openedAt;
+    final pastColdOpen =
+        openedAt != null &&
+        DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
+    if (pastColdOpen &&
+        _s._cacheAheadSecs < 0.5 &&
+        !_networkStillFeeding) {
+      return false;
+    }
     // MediaKit live + stall ON: paint/playhead only (VO freeze with full cache).
     // Stall OFF (Stalker Auto): healthy demuxer still counts — playhead often
     // sits at 0 while TS paints; ignoring cache made Auto feel like stall ON.
