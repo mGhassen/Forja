@@ -121,6 +121,26 @@ mixin _LiveMatchesForjaLive
       _usesForjaLiveLazyCatalog &&
       (_s._forjaLiveCatalogHydrating || _forjaLiveAnyLoading);
 
+  /// Top-bar / empty-body copy while catalogs scrape or merge into the grid.
+  String get _forjaLiveCatalogProgressLabel {
+    final scoped = _gridScopedPluginLoads.toList();
+    if (scoped.isEmpty) return 'Loading catalogs…';
+    final total = scoped.length;
+    final done = scoped.where((e) => e.attempted && !e.loading).length;
+    final loading = scoped.where((e) => e.loading).toList();
+    if (loading.isNotEmpty) {
+      final name = loading.first.label.trim();
+      if (total <= 1) {
+        return name.isEmpty ? 'Loading catalog…' : 'Loading $name…';
+      }
+      final progress = '$done/$total';
+      if (name.isEmpty) return 'Loading catalogs… $progress';
+      return 'Loading $name… $progress';
+    }
+    if (_s._forjaLiveCatalogHydrating) return 'Loading catalogs…';
+    return 'Merging catalogs…';
+  }
+
   void _setForjaLiveCatalogHydrating(bool value) {
     if (_s._forjaLiveCatalogHydrating == value) return;
     setState(() => _s._forjaLiveCatalogHydrating = value);

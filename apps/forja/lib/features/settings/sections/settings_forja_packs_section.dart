@@ -671,6 +671,13 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
             ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            onLeftEdge: () {
+              final focusHeader =
+                  SettingsExpandHeaderFocus.maybeFocusHeaderOf(context);
+              if (focusHeader != null) {
+                focusHeader();
+              }
+            },
             onFocusChange: (f) {
               if (_focused == f) return;
               setState(() => _focused = f);

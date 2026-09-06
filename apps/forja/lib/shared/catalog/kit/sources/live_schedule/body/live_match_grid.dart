@@ -389,10 +389,12 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
     // Sport chips stay full-bleed; streams / portal panels only split the
     // match list (panel top aligns under the category bar).
+    // Portals overlays the whole body (including streams) when open.
     final matchList = _buildBody();
+    final withStreams = _buildStreamsPanelStack(context, matchList);
     final listWithPanels = iptvCtrl == null
-        ? _buildStreamsPanelStack(context, matchList)
-        : _buildIptvPortalStack(context, iptvCtrl, matchList);
+        ? withStreams
+        : _buildIptvPortalStack(context, iptvCtrl, withStreams);
 
     return TvFocusGraph(
       tabId: LiveSportsHubPageState._tabId,
@@ -418,7 +420,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     const panelWidth = 380.0;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
-    final withPortals = Stack(
+    return Stack(
       children: [
         content,
         if (ctrl.portalPanelOpen && useSidePanel)
@@ -455,7 +457,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           ),
       ],
     );
-    return _buildStreamsPanelStack(context, withPortals);
   }
 
   Widget _buildStreamsPanelStack(BuildContext context, Widget content) {
@@ -528,36 +529,47 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
   Widget _buildHeader([IptvController? iptvCtrl]) {
     final tvFocus = _tvFocus(context);
+    final catalogBusy = _s._topBarCatalogWorkInProgress;
+    final forjaLive = this as _LiveMatchesForjaLive;
     final topBarItemCount = tvFocus
         ? (_s._showIptvPortalTopBar
-            ? _s._topBarPortalIndex + 1
-            : _s._topBarRefreshIndex + 1)
+            ? _s._topBarPortalFocusIndex + 1
+            : (catalogBusy
+                ? _s._topBarRefreshIndex
+                : _s._topBarRefreshIndex + 1))
         : (LiveSportsHubPageState._timelineViewEnabled
             ? _s._topBarViewIndex + 1
             : _s._topBarRefreshIndex + 1);
 
-    final refresh = tvFocus
-        ? _LiveMatchesRefreshTopBarButton(
-            focusNode: _s._refreshFocusNode,
-            tvItemIndex: _s._topBarRefreshIndex,
-            onTap: _s._onTopBarRefreshPressed,
-            onDownEdge: _s._topBarDownEdge,
-            onLeftEdge: () => _s._focusTopBarItem(
-              _s._showTimeTopBar
-                  ? _s._topBarTimeIndex
-                  : _s._showCatalogTopBar
-                      ? _s._topBarCatalogIndex
-                      : _s._topBarRefreshIndex,
-            ),
-            onRightEdge: _s._showIptvPortalTopBar
-                ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
-                : () {},
-          )
-        : IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-            onPressed: _s._load,
-          );
+    final Widget refreshSlot;
+    if (catalogBusy) {
+      refreshSlot = _LiveMatchesCatalogProgressChip(
+        label: forjaLive._forjaLiveCatalogProgressLabel,
+      );
+    } else if (tvFocus) {
+      refreshSlot = _LiveMatchesRefreshTopBarButton(
+        focusNode: _s._refreshFocusNode,
+        tvItemIndex: _s._topBarRefreshIndex,
+        onTap: _s._onTopBarRefreshPressed,
+        onDownEdge: _s._topBarDownEdge,
+        onLeftEdge: () => _s._focusTopBarItem(
+          _s._showTimeTopBar
+              ? _s._topBarTimeIndex
+              : _s._showCatalogTopBar
+                  ? _s._topBarCatalogIndex
+                  : _s._topBarRefreshIndex,
+        ),
+        onRightEdge: _s._showIptvPortalTopBar
+            ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
+            : () {},
+      );
+    } else {
+      refreshSlot = IconButton(
+        tooltip: 'Refresh',
+        icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+        onPressed: _s._load,
+      );
+    }
 
     final header = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -574,7 +586,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           ],
           if (_s._showTimeTopBar) _s._timeTopBarButton(),
           const Spacer(),
-          refresh,
+          refreshSlot,
           if (!_liveMatchesLeanbackOnly(context) &&
               LiveSportsHubPageState._timelineViewEnabled) ...[
             const SizedBox(width: 4),
@@ -630,11 +642,44 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final layout = ShellMoodCircleLayout.resolve(
-            context,
-            itemCount: itemCount,
-            maxWidth: constraints.maxWidth,
-          );
+          // Fixed chip size — only as many as fit stay in view; rest scroll.
+          final layout = tvFocus
+              ? ShellMoodCircleLayout.tvScrollable
+              : ShellMoodCircleLayout.desktop;
+          final overflows =
+              layout.contentWidth(itemCount) > constraints.maxWidth;
+
+          Widget strip({TvChipEdges Function(int index)? edgesFor}) {
+            if (!overflows) {
+              return _buildCenteredSportCircles(
+                layout: layout,
+                itemCount: itemCount,
+                scaleToFit: false,
+                tvFocus: tvFocus,
+                edgesFor: edgesFor,
+              );
+            }
+            return SizedBox(
+              height: layout.rowHeight,
+              width: double.infinity,
+              child: FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: HorizontalScroller(
+                  height: layout.rowHeight,
+                  itemCount: itemCount,
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: layout.horizontalGap),
+                  itemBuilder: (context, i) => _buildSportCircleItem(
+                    layout: layout,
+                    index: i,
+                    itemCount: itemCount,
+                    tvFocus: tvFocus,
+                    edges: edgesFor?.call(i),
+                  ),
+                ),
+              ),
+            );
+          }
 
           if (tvFocus) {
             return TvChipStrip(
@@ -643,32 +688,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
               sortOrder: _chipSortOrder,
               itemCount: itemCount,
               resultsRowId: resultsRowId,
-              builder: (context, edgesFor) => _buildCenteredSportCircles(
-                layout: layout,
-                itemCount: itemCount,
-                scaleToFit: true,
-                tvFocus: tvFocus,
-                edgesFor: edgesFor,
-              ),
+              builder: (context, edgesFor) => strip(edgesFor: edgesFor),
             );
           }
 
-          if (layout.contentWidth(itemCount) <= constraints.maxWidth) {
-            return _buildCenteredSportCircles(
-              layout: layout,
-              itemCount: itemCount,
-              scaleToFit: false,
-              tvFocus: tvFocus,
-            );
-          }
-
-          // Overflow: scale to fit and keep centered (same as TV / Anime vibes).
-          return _buildCenteredSportCircles(
-            layout: layout,
-            itemCount: itemCount,
-            scaleToFit: true,
-            tvFocus: tvFocus,
-          );
+          return strip();
         },
       ),
     );
@@ -720,8 +744,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       final emptyMsg = kLiveMatchesCatalogFiltersHidden
           ? 'Catalog schedule feeds are temporarily hidden'
           : forjaLive._showForjaLiveCatalogChrome
-              ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
-              : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins';
+              ? 'No matches for this catalog, sport, or schedule window. Try another catalog, a wider time window, or Refresh.'
+              : 'No Forja Live matches. Enable plugins in Settings → Forja Sports → Live Forja plugins.';
       return ShellErrorRetryPanel(
         message: emptyMsg,
         onRetry: _s._load,
@@ -967,6 +991,14 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
       tvRowId: tvFocus ? LiveSportsHubPageState._gridRowId : null,
       tvZone: ShellTvZone.grid,
+      tvItemIndex: tvFocus ? index : null,
+      onRightEdge: tvFocus && _s._streamsPanelMatch != null
+          ? () => ShellTvFocusCoordinator.focusRowItem(
+                LiveSportsHubPageState._tabId,
+                LiveSportsHubPageState._streamsTabsRowId,
+                0,
+              )
+          : null,
       child: row,
     );
   }
@@ -1061,6 +1093,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   }
 
   Widget _buildForjaLiveCatalogProgress() {
+    final label =
+        (this as _LiveMatchesForjaLive)._forjaLiveCatalogProgressLabel;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1068,7 +1102,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
           const SizedBox(height: 12),
           Text(
-            'Loading live catalogs…',
+            label,
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,

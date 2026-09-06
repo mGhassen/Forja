@@ -67,7 +67,7 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
             result.failureMessage ?? 'Could not check for updates.',
           );
         } else {
-          ForjaToast.success("You're running the latest version!");
+        ForjaToast.success("You're on the latest version");
         }
       }
     } catch (e) {
@@ -176,7 +176,7 @@ class _SettingsMacOsKeychainRowState
     return SettingsToggleRow(
       title: 'Store secrets in Keychain',
       subtitle:
-          'Off by default (local app file). Turn on to use the macOS Keychain — '
+          'Off by default (local app file). Turn on to use the macOS Keychain. '
           'Forja explains first; the system may ask for your password once.',
       value: enabled,
       onChanged: _setEnabled,

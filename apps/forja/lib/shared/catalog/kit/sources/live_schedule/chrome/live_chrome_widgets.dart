@@ -197,6 +197,52 @@ class _LiveMatchesRefreshTopBarButtonState
   }
 }
 
+/// Replaces top-bar Refresh while catalogs scrape / merge.
+class _LiveMatchesCatalogProgressChip extends StatelessWidget {
+  const _LiveMatchesCatalogProgressChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: Tooltip(
+        message: label,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 220),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Catalog picker sheet ───────────────────────────────────────────────────
 
 class _LiveMatchesCatalogSheet extends StatefulWidget {
@@ -500,7 +546,7 @@ class _LiveMatchesScheduleSheetState extends State<_LiveMatchesScheduleSheet> {
 
   String _statusSubtitle(_LiveMatchesScheduleStatus status) => switch (status) {
         _LiveMatchesScheduleStatus.airing =>
-          'In-play and 24/7 — including rows without streams yet',
+          'Live and 24/7, including rows without streams yet',
         _LiveMatchesScheduleStatus.upcoming =>
           'Not started yet, within the horizon below',
         _LiveMatchesScheduleStatus.both =>
@@ -1211,6 +1257,10 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     this.iptvCtrl,
     required this.onTap,
     this.tvItemIndex,
+    this.tvTabId,
+    this.tvRowId,
+    this.onUpEdge,
+    this.onLeftEdge,
     this.hideCategorySubtitle = false,
   });
 
@@ -1219,6 +1269,10 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   final IptvController? iptvCtrl;
   final VoidCallback onTap;
   final int? tvItemIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
   /// When the Live TV category rail is visible, skip repeating category on the row.
   final bool hideCategorySubtitle;
 
@@ -1433,6 +1487,10 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
             viewerCount: viewers > 0 ? viewers : null,
             onPlay: onTap,
             tvItemIndex: tvItemIndex,
+            tvTabId: tvTabId,
+            tvRowId: tvRowId,
+            onUpEdge: onUpEdge,
+            onLeftEdge: onLeftEdge,
             onHoverProbe: _liveHoverProbe,
             probeHealthCache: cachedHealth,
           );
@@ -1447,6 +1505,10 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
           badges: const [],
           onPlay: onTap,
           tvItemIndex: tvItemIndex,
+          tvTabId: tvTabId,
+          tvRowId: tvRowId,
+          onUpEdge: onUpEdge,
+          onLeftEdge: onLeftEdge,
           onHoverProbe:
               _isPortalIptvRow ? _portalHoverProbe : _hoverProbe,
           probeHealthCache: cachedHealth,

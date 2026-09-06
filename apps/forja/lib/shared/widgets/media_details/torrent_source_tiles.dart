@@ -154,8 +154,11 @@ class SourcesPanelChannelTile extends StatelessWidget {
     this.footer,
     this.badges = const [],
     this.tvItemIndex,
+    this.tvTabId,
+    this.tvRowId,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
@@ -169,8 +172,12 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final List<String> badges;
   final int? viewerCount;
   final int? tvItemIndex;
+  /// Override Sources panel graph (e.g. Live Sports side panel).
+  final String? tvTabId;
+  final String? tvRowId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
 
@@ -183,8 +190,11 @@ class SourcesPanelChannelTile extends StatelessWidget {
       leading: leading,
       footer: footer,
       tvItemIndex: tvItemIndex,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
       onHoverProbe: onHoverProbe,
       probeHealthCache: probeHealthCache,
       viewerCount: viewerCount,
@@ -469,8 +479,11 @@ class _SourceBadgeCard extends StatefulWidget {
     this.languageCodes = const [],
     this.magnet,
     this.tvItemIndex,
+    this.tvTabId,
+    this.tvRowId,
     this.onUpEdge,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
@@ -491,8 +504,11 @@ class _SourceBadgeCard extends StatefulWidget {
   final List<String> languageCodes;
   final String? magnet;
   final int? tvItemIndex;
+  final String? tvTabId;
+  final String? tvRowId;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final int? viewerCount;
@@ -855,7 +871,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       child: face,
     );
 
-    final tv = widget.tvItemIndex != null && SourcesPanelTv.isTv(context);
+    final tv = widget.tvItemIndex != null &&
+        (widget.tvTabId != null || SourcesPanelTv.isTv(context));
+    final tabId = widget.tvTabId ?? SourcesPanelTv.tabId;
+    final rowId = widget.tvRowId ?? SourcesPanelTv.listRowId;
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -865,12 +884,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       showFocusFill: false,
       suppressInkHover: true,
       listIndex: tv ? widget.tvItemIndex : null,
-      tvTabId: tv ? SourcesPanelTv.tabId : null,
-      tvRowId: tv ? SourcesPanelTv.listRowId : null,
+      tvTabId: tv ? tabId : null,
+      tvRowId: tv ? rowId : null,
       tvItemIndex: tv ? widget.tvItemIndex : null,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
         _syncHoverProbe(focused || _hovered);

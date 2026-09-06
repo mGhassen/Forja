@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **8 / 8** acceptance |
-| **Current slice** | Core tab + list/panel standard kit UX; pack layout override |
+| **Progress** | **5 / 5** components · **9 / 9** acceptance |
+| **Current slice** | Core tab + list/panel standard kit UX; pack layout override; TV D-pad on list/panel |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -39,6 +39,7 @@
 | 6 | R84-A06 | Enabled hub with `nav.tabId: live_matches` replaces builder with pack `CatalogShell` layout | ✅ |
 | 7 | R84-A07 | Disabling hub pack does not strip `live_matches` from navbar when user kept it visible | ✅ |
 | 8 | R84-A08 | Feature doc + changelog describe host feature + list/panel | ✅ |
+| 9 | R84-A09 | TV: D-pad walks dense match list + side streams panel (chrome, tabs, cats, cards); ←/→ between list and panel | ✅ |
 
 ---
 

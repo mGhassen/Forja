@@ -390,8 +390,8 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
           );
     final server = widget.server?.trim();
     final tip = server != null && server.isNotEmpty
-        ? 'Source — ${widget.label} · $server'
-        : 'Source — ${widget.label}';
+        ? 'Source: ${widget.label} · $server'
+        : 'Source: ${widget.label}';
     return Tooltip(message: tip, child: button);
   }
 }
@@ -534,8 +534,8 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
           );
     final server = widget.server?.trim();
     final tip = server != null && server.isNotEmpty
-        ? 'Sources — ${widget.label} · $server'
-        : 'Sources — ${widget.label}';
+        ? 'Sources: ${widget.label} · $server'
+        : 'Sources: ${widget.label}';
     return Tooltip(message: tip, child: button);
   }
 }

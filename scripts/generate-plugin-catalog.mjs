@@ -159,6 +159,18 @@ function readManifest(relativePath) {
   return JSON.parse(raw)
 }
 
+/** Soft CTA pack ids — Recommended badge on Community Packs + Official picker. */
+const RECOMMENDED_PACK_IDS = new Set([
+  'home',
+  'anime',
+  'asian-drama',
+  'providers',
+  'live',
+  'catalog',
+  'torrent',
+  'arabic',
+])
+
 function build() {
   const manifestPaths = collectManifestPaths(pluginsRoot).sort((a, b) =>
     a.localeCompare(b),
@@ -187,6 +199,7 @@ function build() {
       ? manifest.plugins.length
       : undefined
     const tags = packTags(manifest)
+    const recommended = RECOMMENDED_PACK_IDS.has(id)
 
     return {
       id,
@@ -195,11 +208,18 @@ function build() {
       description: packDescription(manifest),
       accent: index % 2 === 0 ? 'brand' : 'flame',
       official: true,
+      ...(recommended ? { recommended: true } : {}),
       ...(author ? { author } : {}),
       ...(version ? { version } : {}),
       ...(pluginCount != null ? { pluginCount } : {}),
       ...(tags.length > 0 ? { tags } : {}),
     }
+  })
+
+  packs.sort((a, b) => {
+    const byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0)
+    if (byRec !== 0) return byRec
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
   })
 
   return {

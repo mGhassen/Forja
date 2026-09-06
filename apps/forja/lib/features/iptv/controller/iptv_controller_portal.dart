@@ -389,7 +389,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
   static String _verifyFailedError(IptvPortalPlatform platform) =>
       switch (platform) {
         IptvPortalPlatform.m3u =>
-          'Could not load playlist — check the URL or local file.',
+          'Could not load playlist. Check the URL or local file.',
         IptvPortalPlatform.xtream || IptvPortalPlatform.stalker =>
           'Login failed - wrong credentials or dead portal.',
       };

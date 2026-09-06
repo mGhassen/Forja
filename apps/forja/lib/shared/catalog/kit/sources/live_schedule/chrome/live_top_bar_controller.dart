@@ -33,14 +33,18 @@ mixin _LiveMatchesData
   }
 
   void _focusTopBarItem(int index) {
+    final portalIndex = _topBarPortalFocusIndex;
     if ((_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
         (_s._showTimeTopBar && index == _s._topBarTimeIndex) ||
-        (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
+        (_s._showIptvPortalTopBar && index == portalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
         LiveSportsHubPageState._tabId,
         LiveSportsHubPageState._topBarRowId,
         index,
       );
+      return;
+    }
+    if (_topBarCatalogWorkInProgress && index == _s._topBarRefreshIndex) {
       return;
     }
     final node = index == _s._topBarViewIndex
@@ -157,6 +161,25 @@ mixin _LiveMatchesData
         _liveForjaPluginDisplayName(filter);
   }
 
+  bool get _topBarCatalogWorkInProgress =>
+      _s._loading ||
+      (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy;
+
+  /// When Refresh is swapped for a progress chip, Portals reuses that TV index.
+  int get _topBarPortalFocusIndex => _topBarCatalogWorkInProgress
+      ? _s._topBarRefreshIndex
+      : _s._topBarPortalIndex;
+
+  void _focusTopBarTrailing() {
+    if (_s._showIptvPortalTopBar) {
+      _focusTopBarItem(_topBarPortalFocusIndex);
+      return;
+    }
+    if (!_topBarCatalogWorkInProgress) {
+      _focusTopBarItem(_s._topBarRefreshIndex);
+    }
+  }
+
   Widget _catalogTopBarButton() {
     return _LiveMatchesTopBarActionButton(
       label: _catalogTopBarLabel,
@@ -168,9 +191,13 @@ mixin _LiveMatchesData
         context,
         listIndex: _s._topBarCatalogIndex,
       ),
-      onRightEdge: () => _focusTopBarItem(
-        _s._showTimeTopBar ? _s._topBarTimeIndex : _s._topBarRefreshIndex,
-      ),
+      onRightEdge: () {
+        if (_s._showTimeTopBar) {
+          _focusTopBarItem(_s._topBarTimeIndex);
+          return;
+        }
+        _focusTopBarTrailing();
+      },
       onDownEdge: _topBarDownEdge,
     );
   }
@@ -190,7 +217,7 @@ mixin _LiveMatchesData
             ? _s._topBarCatalogIndex
             : _s._topBarRefreshIndex,
       ),
-      onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      onRightEdge: _focusTopBarTrailing,
       onDownEdge: _topBarDownEdge,
     );
   }
@@ -201,8 +228,14 @@ mixin _LiveMatchesData
       onTogglePanel: _toggleIptvPortalPanel,
       tvTabId: LiveSportsHubPageState._tabId,
       tvRowId: LiveSportsHubPageState._topBarRowId,
-      tvItemIndex: _s._topBarPortalIndex,
-      onLeftEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      tvItemIndex: _topBarPortalFocusIndex,
+      onLeftEdge: () => _focusTopBarItem(
+        _s._showTimeTopBar
+            ? _s._topBarTimeIndex
+            : _s._showCatalogTopBar
+                ? _s._topBarCatalogIndex
+                : _topBarPortalFocusIndex,
+      ),
       onRightEdge: () {},
       onDownEdge: _topBarDownEdge,
     );
@@ -251,7 +284,7 @@ mixin _LiveMatchesData
       _focusTopBarItem(_s._topBarCatalogIndex);
       return;
     }
-    _focusTopBarItem(_s._topBarRefreshIndex);
+    _focusTopBarTrailing();
   }
 
   /// First grid row ↑ → sport chips → Catalog / Time.
@@ -276,7 +309,7 @@ mixin _LiveMatchesData
       _focusTopBarItem(_s._topBarCatalogIndex);
       return;
     }
-    _focusTopBarItem(_s._topBarRefreshIndex);
+    _focusTopBarTrailing();
   }
 
   bool get _applyTimeWindowFilter => _s._showCatalogTopBar;

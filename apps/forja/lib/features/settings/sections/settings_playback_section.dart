@@ -80,7 +80,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'Movies & series engine',
-                'Home, Search, Anime, Asian Drama, and IPTV Movies/Series. Live IPTV has its own row under IPTV settings.',
+                'Used for Home, Search, Anime, Asian Drama, and IPTV Movies/Series. Live IPTV has its own setting under IPTV.',
                 snap.builtInEngine.displayName,
                 builtInPlayerEngineOptionsForUi
                     .map((e) => e.displayName)
@@ -103,7 +103,7 @@ class _SettingsPlaybackSectionState
             settingsFocusableDropdown(
               context,
               'Preferred Audio Language',
-              'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
+              'Switch to a matching audio track when playback starts. Pick "None" to keep the stream default.',
               snap.preferredAudioLang,
               kTrackLanguageDisplayNames,
               (val) async {
@@ -119,7 +119,7 @@ class _SettingsPlaybackSectionState
             settingsFocusableDropdown(
               context,
               'Preferred Subtitle Language',
-              'When a video starts, pick in-stream or online subtitles in this language. In-stream mux tracks win when they match. Pick "None" to start with subs off.',
+              'Prefer this language for in-stream or online subtitles. In-stream tracks win when they match. Pick "None" to start with subs off.',
               snap.preferredSubtitleLang,
               kTrackLanguageDisplayNames,
               (val) async {
@@ -135,7 +135,7 @@ class _SettingsPlaybackSectionState
             settingsFocusableToggle(
               context,
               'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
-              'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
+              'Fall back to AC-3, E-AC-3, or AAC when Atmos, TrueHD, or 7.1 is not supported.',
               snap.avoidUnsupportedAudio,
               (val) async {
                 await _settings.setAvoidUnsupportedAudio(val);
@@ -149,7 +149,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableToggle(
                 context,
                 'Auto next episode',
-                'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
+                'Start the next episode when one ends. Also available in the player Episodes panel.',
                 snap.autoNextEpisode,
                 (val) async {
                   await _settings.setAutoNextEpisode(val);
@@ -162,7 +162,7 @@ class _SettingsPlaybackSectionState
             settingsFocusableToggle(
               context,
               'Auto skip intro',
-              'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
+              'Skip intro and recap segments automatically when timestamps are available.',
               snap.autoSkipIntro,
               (val) async {
                 await _settings.setAutoSkipIntro(val);
@@ -173,7 +173,7 @@ class _SettingsPlaybackSectionState
             settingsFocusableToggle(
               context,
               'Content warnings',
-              'Show nudity, violence, and other IMDb parents-guide ratings when a movie or episode starts.',
+              'Show IMDb content ratings (nudity, violence, and similar) when playback starts.',
               snap.contentWarnings,
               (val) async {
                 await _settings.setContentWarnings(val);
@@ -188,8 +188,8 @@ class _SettingsPlaybackSectionState
                 context,
                 'Play in background',
                 SettingsService.platformProfile == PlatformProfile.desktop
-                    ? 'Keep movies, series, and IPTV playing when Forja leaves the foreground. On by default on desktop — turn off to pause until you return.'
-                    : 'Keep movies, series, and IPTV playing when Forja leaves the foreground. Off by default — playback pauses until you return (app stays in memory for a quick resume).',
+                    ? 'Keep movies, series, and IPTV playing when Forja is in the background. On by default on desktop.'
+                    : 'Keep movies, series, and IPTV playing when Forja is in the background. Off by default (playback pauses until you return).',
                 snap.playInBackground,
                 (val) async {
                   await _settings.setPlayInBackground(val);
@@ -202,7 +202,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableToggle(
                 context,
                 'Auto picture-in-picture',
-                'On Space (macOS) or virtual-desktop (Windows) switch while playing, shrink into PiP automatically. Off by default — use the player PiP button anytime.',
+                'Enter picture-in-picture when you switch Space (macOS) or virtual desktop (Windows) while playing. You can still use the player PiP button anytime.',
                 snap.autoPipOnDesktopSwitch,
                 (val) async {
                   await _settings.setAutoPipOnDesktopSwitch(val);
@@ -216,7 +216,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'Max stream quality',
-                'Cap Auto stream ranking and HLS start bitrate. Auto uses a mid-high soft ceiling for a faster first frame; pick 4K for the top ladder rung.',
+                'Limit Auto stream quality and HLS start bitrate. Auto aims for a faster first frame. Pick 4K for the highest ladder.',
                 snap.maxPlaybackHeightLabel,
                 SettingsService.maxPlaybackHeightOptions.keys.toList(),
                 (val) async {
@@ -234,7 +234,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'Anime title language',
-                'How anime titles appear in the Anime hub, details, and player. Default Romaji. Stream matching always tries romaji first, then English, native, and AniList synonyms.',
+                'Title language in the Anime hub, details, and player. Default is Romaji. Stream matching still tries romaji, then English, native, and synonyms.',
                 snap.animeTitleLanguageLabel,
                 SettingsService.animeTitleLanguageOptions,
                 (val) async {

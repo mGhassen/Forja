@@ -100,8 +100,8 @@ class _SettingsSearchTorrentsSectionState
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
               child: Text(
-                'UIndex is Cloudflare-protected. Point this at a local FlareSolverr '
-                'or Byparr instance (same /v1 API) — same setup as Prowlarr indexers.',
+                'UIndex is behind Cloudflare. Point this at a local FlareSolverr or Byparr '
+                'instance (same /v1 API as Prowlarr indexers).',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: ForjaShellColors.textSecondary,
                     ),
@@ -115,7 +115,7 @@ class _SettingsSearchTorrentsSectionState
             settingsFocusableSlider(
               title: 'Disk cache: ${snap.diskCacheGb} GB',
               subtitle:
-                  'Max torrent data kept on disk. Playing now is never deleted; oldest idle downloads are removed when over this size.',
+                  'Max torrent data on disk. The file playing now is never deleted. Oldest idle downloads are removed when over this size.',
               value: snap.diskCacheGb.toDouble().clamp(
                 SettingsService.minTorrentDiskCacheGb.toDouble(),
                 SettingsService.maxTorrentDiskCacheGb.toDouble(),

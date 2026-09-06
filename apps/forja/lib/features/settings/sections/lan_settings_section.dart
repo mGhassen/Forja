@@ -305,7 +305,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       });
       if (found.isEmpty) {
         ForjaToast.info(
-          'No desktop found — enter IP and port from Settings → LAN on desktop',
+          'No desktop found. Enter the IP and port from Settings → LAN on the desktop.',
         );
       }
     }
@@ -330,11 +330,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     setState(() => _pairing = false);
     if (token == null) {
       ForjaToast.error(
-        'Pairing failed — check code, IP, and that desktop LAN is on',
+        'Pairing failed. Check the code, IP, and that desktop LAN is on.',
       );
       return;
     }
-    ForjaToast.success('Paired — enable Direct torrent in Settings → Playback');
+    ForjaToast.success('Paired. Enable Direct torrent in Settings → Playback.');
     _pairCodeController.clear();
     await _load();
     _refreshPlaySourceGates();
@@ -440,7 +440,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   Widget _introCard() {
     return Text(
       _isDesktopServer
-          ? 'Turn this PC into a Forja LAN server. Pair TVs and phones once — they pick torrents; this desktop downloads and streams.'
+          ? 'Turn this PC into a Forja LAN server. Pair TVs and phones once. They pick torrents; this desktop downloads and streams.'
           : 'Pair once with a desktop Forja on the same Wi‑Fi. After that, torrent sources on this device play through the desktop.',
       style: TextStyle(
         color: ForjaShellColors.textSecondary,
@@ -460,7 +460,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         title: 'Enable LAN server',
         subtitle: running
             ? 'Listening · $_primaryAddressLabel'
-            : 'Off — TVs cannot use this desktop for torrents',
+            : 'Off. TVs cannot use this desktop for torrents',
         value: running,
         onChanged: (v) => unawaited(_toggleServer(v)),
       ),
@@ -479,7 +479,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 8),
         if (_localIps.isEmpty)
           Text(
-            'Port $_serverPort — could not detect a LAN IP; check Wi‑Fi / Ethernet.',
+            'Port $_serverPort. Could not detect a LAN IP. Check Wi‑Fi or Ethernet.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -734,7 +734,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
             active == null
-                ? 'No LAN torrents yet — play one from a paired TV.'
+                ? 'No LAN torrents yet. Play one from a paired TV.'
                 : 'Serving now (not yet in history).',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
@@ -1014,7 +1014,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     ),
                   Text(
                     _paired
-                        ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
+                        ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'}. Torrents play via desktop.'
                         : 'Pair once. Then open Sources → Torrents on a title.',
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary.withValues(
@@ -1123,7 +1123,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         SettingsToggleRow(
           title: 'Allow local torrent on this device',
           subtitle:
-              'Advanced — use the on-device engine instead of the desktop. Leave off for TV.',
+              'Advanced. Use the on-device engine instead of the desktop. Leave off on TV.',
           value: _allowLocalTorrent,
           adminOnly: true,
           onChanged: (v) async {

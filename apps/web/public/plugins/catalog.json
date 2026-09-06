@@ -2,44 +2,15 @@
   "schema": 1,
   "packs": [
     {
-      "id": "catalog",
-      "kind": "catalog",
-      "name": "ForjaHQ Catalog",
-      "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
-      "accent": "brand",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.9.2",
-      "pluginCount": 9,
-      "tags": [
-        "live",
-        "sports"
-      ]
-    },
-    {
-      "id": "aflem",
-      "kind": "hubs",
-      "name": "ForjaHQ Aflem",
-      "description": "Aflem Arabic series hub (Brstej upstream).",
-      "accent": "flame",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.6",
-      "pluginCount": 1,
-      "tags": [
-        "aflem",
-        "arabic"
-      ]
-    },
-    {
       "id": "anime",
       "kind": "hubs",
       "name": "ForjaHQ Anime",
       "description": "AniList-powered anime hub with search and details.",
       "accent": "brand",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "pluginCount": 2,
       "tags": [
         "anime"
@@ -49,10 +20,11 @@
       "id": "arabic",
       "kind": "hubs",
       "name": "ForjaHQ Arabic",
-      "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs)",
+      "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs).",
       "accent": "flame",
       "official": true,
-      "version": "1.4.2",
+      "recommended": true,
+      "version": "1.4.3",
       "pluginCount": 1,
       "tags": [
         "arabic"
@@ -65,8 +37,9 @@
       "description": "KissKH Asian drama catalog hub.",
       "accent": "brand",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "pluginCount": 2,
       "tags": [
         "asian-drama",
@@ -74,18 +47,19 @@
       ]
     },
     {
-      "id": "cartoon",
-      "kind": "hubs",
-      "name": "ForjaHQ Cartoon",
-      "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
-      "accent": "flame",
+      "id": "catalog",
+      "kind": "catalog",
+      "name": "ForjaHQ Catalog",
+      "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
+      "accent": "brand",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.5",
-      "pluginCount": 1,
+      "version": "1.9.2",
+      "pluginCount": 9,
       "tags": [
-        "arabic",
-        "cartoon"
+        "live",
+        "sports"
       ]
     },
     {
@@ -95,71 +69,14 @@
       "description": "TMDB movie and TV catalog for the Home tab.",
       "accent": "brand",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "pluginCount": 1,
       "tags": [
         "home",
         "movies",
         "tv"
-      ]
-    },
-    {
-      "id": "kids",
-      "kind": "hubs",
-      "name": "ForjaHQ Kids",
-      "description": "Dimakids Arabic kids cartoons and movies hub.",
-      "accent": "flame",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.0",
-      "pluginCount": 1,
-      "tags": [
-        "arabic",
-        "kids"
-      ]
-    },
-    {
-      "id": "live-sports",
-      "kind": "hubs",
-      "name": "ForjaHQ Live Sports",
-      "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
-      "accent": "brand",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.0",
-      "pluginCount": 1,
-      "tags": [
-        "live",
-        "sports"
-      ]
-    },
-    {
-      "id": "my-list",
-      "kind": "hubs",
-      "name": "ForjaHQ My List",
-      "description": "Personal watchlists: local bookmarks and Simkl sync.",
-      "accent": "flame",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.0",
-      "pluginCount": 2,
-      "tags": [
-        "lists"
-      ]
-    },
-    {
-      "id": "iptv-vod",
-      "kind": "iptv",
-      "name": "ForjaHQ IPTV VOD",
-      "description": "IPTV portal movie and series details with optional TMDB enrich.",
-      "accent": "brand",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.0",
-      "pluginCount": 2,
-      "tags": [
-        "iptv"
       ]
     },
     {
@@ -169,6 +86,7 @@
       "description": "Live Matches per-site stream resolve (Forja Live).",
       "accent": "flame",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
       "version": "1.9.3",
       "pluginCount": 6,
@@ -184,6 +102,7 @@
       "description": "VOD, anime, and drama stream extractors plus file-host hops.",
       "accent": "brand",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
       "version": "1.5.32",
       "pluginCount": 88,
@@ -203,11 +122,100 @@
       "description": "Built-in torrent indexer search for movies and series.",
       "accent": "flame",
       "official": true,
+      "recommended": true,
       "author": "ForjaHQ",
       "version": "1.0.7",
       "pluginCount": 9,
       "tags": [
         "torrent"
+      ]
+    },
+    {
+      "id": "aflem",
+      "kind": "hubs",
+      "name": "ForjaHQ Aflem",
+      "description": "Aflem Arabic series hub (Brstej upstream).",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.7",
+      "pluginCount": 1,
+      "tags": [
+        "aflem",
+        "arabic"
+      ]
+    },
+    {
+      "id": "cartoon",
+      "kind": "hubs",
+      "name": "ForjaHQ Cartoon",
+      "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.6",
+      "pluginCount": 1,
+      "tags": [
+        "arabic",
+        "cartoon"
+      ]
+    },
+    {
+      "id": "iptv-vod",
+      "kind": "iptv",
+      "name": "ForjaHQ IPTV VOD",
+      "description": "IPTV portal movie and series details with optional TMDB enrich.",
+      "accent": "brand",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.1",
+      "pluginCount": 2,
+      "tags": [
+        "iptv"
+      ]
+    },
+    {
+      "id": "kids",
+      "kind": "hubs",
+      "name": "ForjaHQ Kids",
+      "description": "Dimakids Arabic kids cartoons and movies hub.",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.1",
+      "pluginCount": 1,
+      "tags": [
+        "arabic",
+        "kids"
+      ]
+    },
+    {
+      "id": "live-sports",
+      "kind": "hubs",
+      "name": "ForjaHQ Live Sports",
+      "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
+      "accent": "brand",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.1",
+      "pluginCount": 1,
+      "tags": [
+        "live",
+        "sports"
+      ]
+    },
+    {
+      "id": "my-list",
+      "kind": "hubs",
+      "name": "ForjaHQ My List",
+      "description": "Personal watchlists: local bookmarks and Simkl sync.",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.2",
+      "pluginCount": 2,
+      "tags": [
+        "lists"
       ]
     }
   ]

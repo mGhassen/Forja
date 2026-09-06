@@ -8,6 +8,8 @@ export type ForjaPluginCatalogEntry = {
   accent: 'brand' | 'flame'
   /** Curated ForjaHQ packs in this catalog. Community entries omit or set false. */
   official?: boolean
+  /** Soft CTA — Recommended badge on core ForjaHQ packs. */
+  recommended?: boolean
   author?: string
   version?: string
   pluginCount?: number
@@ -61,6 +63,10 @@ export function packHasTag(pack: ForjaPluginPackLive, tag: string): boolean {
 
 export function isOfficialPluginPack(pack: ForjaPluginPackLive): boolean {
   return pack.official === true
+}
+
+export function isRecommendedPluginPack(pack: ForjaPluginPackLive): boolean {
+  return pack.recommended === true
 }
 
 export function packAuthorLabel(pack: ForjaPluginPackLive): string | undefined {

@@ -200,7 +200,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
       }
 
       if (mounted) {
-        ForjaToast.success('Settings exported successfully!');
+        ForjaToast.success('Settings exported');
       }
     } catch (e, st) {
       debugPrint('[SettingsData] export failed: $e\n$st');
@@ -235,7 +235,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
       context: context,
       title: 'Import Settings',
       body:
-          'This will overwrite all your current settings, including addons, API keys, and preferences. Continue?',
+          'This overwrites your current settings, including addons, API keys, and preferences. Continue?',
       confirmLabel: 'Import',
       destructive: true,
     );
@@ -245,7 +245,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
     try {
       final data = json.decode(jsonStr) as Map<String, dynamic>;
       await _settings.importAllSettings(data);
-      if (mounted) ForjaToast.success('Settings imported successfully!');
+      if (mounted) ForjaToast.success('Settings imported');
     } catch (e) {
       if (mounted) ForjaToast.error('Import failed: $e');
     } finally {
@@ -540,8 +540,8 @@ class _SettingsNavigationPageBodyState
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             leanback
-                ? 'Show, hide, and reorder navigation tabs. OK toggles a tab; star sets the default menu; ↑/↓ reorder. Settings is always visible.'
-                : 'Show, hide, and reorder navigation tabs. Drag to reorder. Settings is always visible.',
+                ? 'OK toggles a tab. Star sets the default menu. ↑/↓ reorder. Settings stays visible.'
+                : 'Show, hide, and reorder tabs. Drag to reorder. Settings stays visible.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
               fontSize: 13,

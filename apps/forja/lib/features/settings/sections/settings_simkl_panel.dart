@@ -66,7 +66,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     }
 
     if (mounted) {
-      ForjaToast.success('Code $userCode copied! Opening $verifyUrl...');
+      ForjaToast.success('Code $userCode copied. Opening $verifyUrl…');
     }
 
     _pollTimer?.cancel();

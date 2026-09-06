@@ -170,7 +170,7 @@ class _SettingsForjaAddonsSectionState
         _addonController.clear();
         // saveStremioAddon bumps addonChangeNotifier → stremioAddonsProvider.
         scheduleStremioSyncPush();
-        if (mounted) ForjaToast.success('Addon installed successfully!');
+        if (mounted) ForjaToast.success('Addon installed');
       } else {
         if (mounted) ForjaToast.error('Failed to install addon. Check URL.');
       }
@@ -354,17 +354,55 @@ class _SettingsForjaAddonsSectionState
               final trailing = Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ForjaSwitch(
-                    value: allOn,
-                    scale: ForjaSwitch.settingsScale,
-                    onChanged: addon.scrapers.isEmpty
-                        ? null
-                        : (val) async {
-                            await NuvioService.instance.setAllScrapersEnabled(
-                              manifestUrl: addon.manifestUrl,
-                              enabled: val,
-                            );
-                          },
+                  Builder(
+                    builder: (context) {
+                      final tv =
+                          ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+                      final switchBody = IgnorePointer(
+                        child: ForjaSwitch(
+                          value: allOn,
+                          scale: ForjaSwitch.settingsScale,
+                          onChanged: (_) {},
+                        ),
+                      );
+                      void toggle(bool val) {
+                        if (addon.scrapers.isEmpty) return;
+                        unawaited(
+                          NuvioService.instance.setAllScrapersEnabled(
+                            manifestUrl: addon.manifestUrl,
+                            enabled: val,
+                          ),
+                        );
+                      }
+
+                      if (!tv) {
+                        return ForjaSwitch(
+                          value: allOn,
+                          scale: ForjaSwitch.settingsScale,
+                          onChanged: addon.scrapers.isEmpty ? null : toggle,
+                        );
+                      }
+                      return shellFocusableTap(
+                        context: context,
+                        onTap: addon.scrapers.isEmpty
+                            ? null
+                            : () => toggle(!allOn),
+                        borderRadius: 20,
+                        scaleOnFocus: 1.0,
+                        showFocusRail: false,
+                        showFocusFill: false,
+                        showFocusBorder: false,
+                        tvTabId: 'settings',
+                        tvZone: ShellTvZone.settings,
+                        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                        onLeftEdge: () {
+                          SettingsExpandHeaderFocus.maybeFocusHeaderOf(
+                            context,
+                          )?.call();
+                        },
+                        child: switchBody,
+                      );
+                    },
                   ),
                   if (!builtIn)
                     _AddonRemoveActions(
@@ -394,43 +432,29 @@ class _SettingsForjaAddonsSectionState
               }).toList();
               return KeyedSubtree(
                 key: ValueKey(addon.manifestUrl),
-                child: settingsExpansionSideActions(
+                child: settingsExpandableWithSideActions(
                   context: context,
                   trailing: trailing,
-                  tile: Theme(
-                    data: settingsExpansionTheme(context),
-                    child: ExpansionTile(
-                      shape: settingsExpansionShape,
-                      collapsedShape: settingsExpansionShape,
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                      leading: const Icon(
-                        Icons.code_rounded,
-                        color: ForjaShellColors.iconActive,
-                      ),
-                      title: Text(
-                        builtIn ? '${addon.name} (Built-in)' : addon.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: ForjaShellColors.textPrimary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: ForjaShellColors.textSecondary,
-                        ),
-                      ),
-                      trailing: settingsExpansionTrailing(context, trailing),
-                      children: settingsExpansionChildren(
-                        context,
-                        trailing: trailing,
-                        children: scraperRows,
-                      ),
+                  leading: const Icon(
+                    Icons.code_rounded,
+                    color: ForjaShellColors.iconActive,
+                  ),
+                  title: Text(
+                    builtIn ? '${addon.name} (Built-in)' : addon.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ForjaShellColors.textPrimary,
                     ),
                   ),
+                  subtitle: Text(
+                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                  children: scraperRows,
                 ),
               );
             }),
@@ -697,7 +721,7 @@ class _SettingsForjaAddonsSectionState
     ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
-      ForjaToast.success('Jackett settings saved!');
+      ForjaToast.success('Jackett settings saved');
     }
   }
 
@@ -748,7 +772,7 @@ class _SettingsForjaAddonsSectionState
     ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
-      ForjaToast.success('Prowlarr settings saved!');
+      ForjaToast.success('Prowlarr settings saved');
     }
   }
 

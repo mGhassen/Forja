@@ -78,13 +78,13 @@ const List<SettingsAddonMeta> kSettingsAddons = [
   SettingsAddonMeta(
     id: SettingsAddonId.stremio,
     title: 'Stremio',
-    subtitle: 'Install and manage Stremio addons',
+    subtitle: 'Stremio addons',
     icon: Icons.extension_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.nuvio,
     title: 'Nuvio',
-    subtitle: 'Install and manage Nuvio scrapers',
+    subtitle: 'Nuvio scrapers',
     icon: Icons.travel_explore_rounded,
   ),
   SettingsAddonMeta(

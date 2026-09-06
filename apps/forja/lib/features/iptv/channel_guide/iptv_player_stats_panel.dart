@@ -168,7 +168,7 @@ class _IptvMediaKitStatsBodyState extends State<_IptvMediaKitStatsBody> {
     if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n < 0) return raw;
-    if (n > _maxSaneCacheAheadSecs) return '— (invalid PTS)';
+    if (n > _maxSaneCacheAheadSecs) return 'n/a (invalid PTS)';
     if (n < 60) return '${n.toStringAsFixed(1)} s';
     return '${(n / 60).toStringAsFixed(1)} min';
   }

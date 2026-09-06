@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -558,6 +559,8 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
     this.tvRowId,
     this.tvItemIndexStart,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onDownEdge,
   });
 
   final List<HeroPillSegment<T>> segments;
@@ -567,6 +570,8 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
   final String? tvRowId;
   final int? tvItemIndexStart;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -600,6 +605,8 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
                   ? tvItemIndexStart! + i
                   : null,
               onUpEdge: onUpEdge,
+              onDownEdge: onDownEdge,
+              onLeftEdge: i == 0 ? onLeftEdge : null,
             ),
           ],
         ],
@@ -620,6 +627,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
     this.tvRowId,
     this.tvItemIndex,
     this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
   });
 
   final HeroPillSegment<T> segment;
@@ -632,6 +641,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
   final String? tvRowId;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -648,13 +659,27 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
             itemIndex: tvItemIndex,
           )
         : null;
-    final effectiveOnKey = onUpEdge != null
+    final effectiveOnKey =
+        (onUpEdge != null || onDownEdge != null || onLeftEdge != null)
         ? (FocusNode node, KeyEvent event) {
-            final up = ShellTvFocus.onArrowUp(event, () {
+            if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+              return KeyEventResult.ignored;
+            }
+            if (onLeftEdge != null &&
+                event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              onLeftEdge!();
+              return KeyEventResult.handled;
+            }
+            if (onUpEdge != null &&
+                event.logicalKey == LogicalKeyboardKey.arrowUp) {
               onUpEdge!();
-              return true;
-            });
-            if (up == KeyEventResult.handled) return up;
+              return KeyEventResult.handled;
+            }
+            if (onDownEdge != null &&
+                event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              onDownEdge!();
+              return KeyEventResult.handled;
+            }
             return KeyEventResult.ignored;
           }
         : null;

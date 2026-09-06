@@ -910,7 +910,7 @@ class PluginRegistry {
     }
     if (missing.isNotEmpty) {
       throw Exception(
-        'manifest install failed — missing scripts: ${missing.join(', ')}',
+        'manifest install failed: missing scripts: ${missing.join(', ')}',
       );
     }
 

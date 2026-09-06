@@ -14,11 +14,11 @@ On a fresh install, only **Settings** is visible on the rail — no Addons (IPTV
 
 ## What you can do
 
-- Toggle visibility for each available tab (Home, Asian Drama, Anime, IPTV, Live Sports, My List) — on **TV**, **OK** on the tab name toggles visibility (same as the switch on desktop). **VOD hub tabs** appear only while their `kind: catalog` pack+plugin is **enabled** under Forja Packs. **Live Sports** stays available as a host feature whenever Addons / Features keeps it on.
-- **Plugin on/off** (Settings → Sources → Forja → Hubs) controls whether a hub exists at all: turn it off and it **disappears** from Features and the nav rail. Among enabled hubs, Features show/hide still controls rail visibility.
-- Reorder tabs — **drag** on desktop / phone; **↑/↓** on **TV** (same idea as server reliability order). On the web portal use up/down under **Profile settings → Features**
-- Select the **star** beside a visible tab (or Settings) to make it the menu that opens when you launch the app (and after you switch to this profile mid-session) — works with mouse and with **OK** on TV
-- Restore a cleaner bar by hiding unused hubs
+- Show, hide, and reorder tabs. On **TV**: OK toggles, star sets default, ↑/↓ reorder. On desktop/phone: drag to reorder. Settings stays visible.
+- Toggle visibility for each available tab (Home, Asian Drama, Anime, IPTV, Live Sports, My List). **VOD hub tabs** appear only while their `kind: catalog` pack+plugin is **enabled** under Forja Packs. **Live Sports** stays available whenever Addons / Features keeps it on.
+- **Plugin on/off** (Settings → Sources → Forja → Hubs) controls whether a hub exists at all. Turn it off and it disappears from Features and the nav rail. Among enabled hubs, Features show/hide still controls rail visibility.
+- Select the **star** beside a visible tab (or Settings) to choose the menu that opens at launch (and after you switch to this profile). Works with mouse and with **OK** on TV.
+- Hide unused hubs for a cleaner bar.
 - Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab). Edits wait until they are saved locally before syncing, so a toggle does not snap back off when the window refocuses.
 
 Home, Asian Drama, Anime, and Arabic install from ForjaHQ hub packs (Settings → Forja Packs → **Hubs**). A newly contributed hub tab is **on** in Features the first time the host sees it; hide it here if you do not want it on the rail.

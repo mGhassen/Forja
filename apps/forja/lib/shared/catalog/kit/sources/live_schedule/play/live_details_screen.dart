@@ -141,7 +141,55 @@ class _LiveMatchDetailsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _ensureTabLoaded(_LiveMatchListTab.providers);
+      _claimSidePanelTvFocus();
     });
+  }
+
+  void _claimSidePanelTvFocus() {
+    if (!widget.asSidePanel) return;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    ShellTvFocusCoordinator.focusRowItem(
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._streamsTabsRowId,
+      0,
+    );
+  }
+
+  void _focusMatchListFromPanel() {
+    final grid = ShellTvFocusCoordinator.rowHandle(
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._gridRowId,
+    );
+    if (grid == null || grid.itemCount <= 0) return;
+    final idx = grid.lastFocusedIndex.clamp(0, grid.itemCount - 1);
+    ShellTvFocusCoordinator.focusRowItem(
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._gridRowId,
+      idx,
+    );
+  }
+
+  void _focusStreamsListFromTabs() {
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    if (_listTab == _LiveMatchListTab.liveTv) {
+      final cats = ShellTvFocusCoordinator.rowHandle(
+        LiveSportsHubPageState._tabId,
+        LiveSportsHubPageState._streamsCatsRowId,
+      );
+      if (cats != null && cats.itemCount > 0) {
+        ShellTvFocusCoordinator.focusRowItem(
+          LiveSportsHubPageState._tabId,
+          LiveSportsHubPageState._streamsCatsRowId,
+          0,
+        );
+        return;
+      }
+    }
+    ShellTvFocusCoordinator.focusRowItem(
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._streamsListRowId,
+      0,
+    );
   }
 
   @override
@@ -354,36 +402,77 @@ class _LiveMatchDetailsScreenState
 
   Widget _buildToggleRow({required bool tvFocus}) {
     final showLiveTvSearch = _listTab == _LiveMatchListTab.liveTv;
+    final side = widget.asSidePanel;
+    final tabId = side
+        ? LiveSportsHubPageState._tabId
+        : MediaDetailsTv.tabId;
+    final rowId = side
+        ? LiveSportsHubPageState._streamsTabsRowId
+        : MediaDetailsTv.heroRowId;
+    final sort = side
+        ? LiveSportsHubPageState._streamsTabsSort
+        : MediaDetailsTv.heroRowSortOrder;
+
+    Widget pills = HeroPillSegmentedChoice<_LiveMatchListTab>(
+      segments: const [
+        HeroPillSegment(
+          value: _LiveMatchListTab.providers,
+          label: 'Providers',
+          icon: Icons.dns_rounded,
+        ),
+        HeroPillSegment(
+          value: _LiveMatchListTab.liveTv,
+          label: 'Live TV',
+          icon: Icons.live_tv_rounded,
+        ),
+      ],
+      selected: _listTab,
+      onSelected: _selectTab,
+      onUpEdge: tvFocus
+          ? (side
+              ? () => ShellTvFocusCoordinator.focusRowItem(
+                    LiveSportsHubPageState._tabId,
+                    LiveSportsHubPageState._streamsChromeRowId,
+                    0,
+                  )
+              : _focusBack)
+          : null,
+      onDownEdge: tvFocus && side ? _focusStreamsListFromTabs : null,
+      onLeftEdge: tvFocus && side ? _focusMatchListFromPanel : null,
+      tvTabId: tvFocus ? tabId : null,
+      tvRowId: tvFocus ? rowId : null,
+      tvItemIndexStart: 0,
+    );
+
+    if (tvFocus) {
+      pills = side
+          ? TvCatalogRow(
+              tabId: tabId,
+              rowId: rowId,
+              sortOrder: sort,
+              itemCount: 2,
+              onFocusUp: () => ShellTvFocusCoordinator.focusRowItem(
+                LiveSportsHubPageState._tabId,
+                LiveSportsHubPageState._streamsChromeRowId,
+                0,
+              ),
+              onFocusDown: _focusStreamsListFromTabs,
+              child: pills,
+            )
+          : DetailsHeroTvActionScope(
+              tabId: tabId,
+              itemCount: 2,
+              onFocusUp: _focusBack,
+              onFocusDown: () {},
+              child: pills,
+            );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        DetailsHeroTvActionScope(
-          tabId: MediaDetailsTv.tabId,
-          itemCount: 2,
-          onFocusUp: tvFocus ? _focusBack : null,
-          onFocusDown: tvFocus ? () {} : null,
-          child: HeroPillSegmentedChoice<_LiveMatchListTab>(
-            segments: const [
-              HeroPillSegment(
-                value: _LiveMatchListTab.providers,
-                label: 'Providers',
-                icon: Icons.dns_rounded,
-              ),
-              HeroPillSegment(
-                value: _LiveMatchListTab.liveTv,
-                label: 'Live TV',
-                icon: Icons.live_tv_rounded,
-              ),
-            ],
-            selected: _listTab,
-            onSelected: _selectTab,
-            onUpEdge: tvFocus ? _focusBack : null,
-            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-            tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-            tvItemIndexStart: 0,
-          ),
-        ),
+        pills,
         if (showLiveTvSearch) ...[
           const SizedBox(width: 16),
           _buildLiveTvExpandingSearch(tvFocus: tvFocus),
@@ -561,6 +650,24 @@ class _LiveMatchDetailsScreenState
         channelQuery: _listTab == _LiveMatchListTab.liveTv
             ? _liveTvChannelQuery
             : '',
+        tvTabId: widget.asSidePanel && tvFocus
+            ? LiveSportsHubPageState._tabId
+            : null,
+        tvListRowId: widget.asSidePanel && tvFocus
+            ? LiveSportsHubPageState._streamsListRowId
+            : null,
+        tvCatsRowId: widget.asSidePanel && tvFocus
+            ? LiveSportsHubPageState._streamsCatsRowId
+            : null,
+        onLeftToMatchList:
+            widget.asSidePanel && tvFocus ? _focusMatchListFromPanel : null,
+        onUpToTabs: widget.asSidePanel && tvFocus
+            ? () => ShellTvFocusCoordinator.focusRowItem(
+                  LiveSportsHubPageState._tabId,
+                  LiveSportsHubPageState._streamsTabsRowId,
+                  0,
+                )
+            : null,
       ),
     );
   }
@@ -643,6 +750,112 @@ class _LiveMatchDetailsScreenState
     final viewport = MediaQuery.sizeOf(context);
 
     if (widget.asSidePanel) {
+      Widget chrome = Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _heroTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (_heroMetaParts.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _heroMetaParts.join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          ListenableBuilder(
+            listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
+            builder: (context, _) {
+              final busy = _activeCtrl.searching;
+              return shellFocusableTap(
+                context: context,
+                onTap: busy ? null : _retryActiveTab,
+                borderRadius: 16,
+                scaleOnFocus: 1.0,
+                listIndex: 0,
+                tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
+                tvRowId:
+                    tvFocus ? LiveSportsHubPageState._streamsChromeRowId : null,
+                tvItemIndex: tvFocus ? 0 : null,
+                onLeftEdge: tvFocus ? _focusMatchListFromPanel : null,
+                onDownEdge: tvFocus
+                    ? () => ShellTvFocusCoordinator.focusRowItem(
+                          LiveSportsHubPageState._tabId,
+                          LiveSportsHubPageState._streamsTabsRowId,
+                          0,
+                        )
+                    : null,
+                child: Tooltip(
+                  message: 'Reload sources',
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.refresh_rounded,
+                      color: busy ? Colors.white24 : Colors.white70,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          shellFocusableTap(
+            context: context,
+            onTap: () => widget.host.closeMatchStreamsPanel(),
+            borderRadius: 16,
+            scaleOnFocus: 1.0,
+            listIndex: 1,
+            tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
+            tvRowId:
+                tvFocus ? LiveSportsHubPageState._streamsChromeRowId : null,
+            tvItemIndex: tvFocus ? 1 : null,
+            onDownEdge: tvFocus
+                ? () => ShellTvFocusCoordinator.focusRowItem(
+                      LiveSportsHubPageState._tabId,
+                      LiveSportsHubPageState._streamsTabsRowId,
+                      0,
+                    )
+                : null,
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.close_rounded, color: Colors.white70),
+            ),
+          ),
+        ],
+      );
+      if (tvFocus) {
+        chrome = TvCatalogRow(
+          tabId: LiveSportsHubPageState._tabId,
+          rowId: LiveSportsHubPageState._streamsChromeRowId,
+          sortOrder: LiveSportsHubPageState._streamsChromeSort,
+          itemCount: 2,
+          onFocusDown: () => ShellTvFocusCoordinator.focusRowItem(
+            LiveSportsHubPageState._tabId,
+            LiveSportsHubPageState._streamsTabsRowId,
+            0,
+          ),
+          child: chrome,
+        );
+      }
+
       return Material(
         color: ForjaShellColors.surfaceElevated,
         child: Column(
@@ -650,70 +863,7 @@ class _LiveMatchDetailsScreenState
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 4, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _heroTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (_heroMetaParts.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              _heroMetaParts.join(' · '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  ListenableBuilder(
-                    listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
-                    builder: (context, _) {
-                      final busy = _activeCtrl.searching;
-                      return shellFocusableTap(
-                        context: context,
-                        onTap: busy ? null : _retryActiveTab,
-                        borderRadius: 16,
-                        child: Tooltip(
-                          message: 'Reload sources',
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.refresh_rounded,
-                              color: busy ? Colors.white24 : Colors.white70,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  shellFocusableTap(
-                    context: context,
-                    onTap: () => widget.host.closeMatchStreamsPanel(),
-                    borderRadius: 16,
-                    child: const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Icon(Icons.close_rounded, color: Colors.white70),
-                    ),
-                  ),
-                ],
-              ),
+              child: chrome,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -858,6 +1008,11 @@ class _LiveMatchStreamsSection extends StatefulWidget {
     this.inlineHero = false,
     this.browseByCategory = false,
     this.channelQuery = '',
+    this.tvTabId,
+    this.tvListRowId,
+    this.tvCatsRowId,
+    this.onLeftToMatchList,
+    this.onUpToTabs,
   });
 
   final _IptvSportsChannelsPanelController controller;
@@ -871,6 +1026,11 @@ class _LiveMatchStreamsSection extends StatefulWidget {
   final bool browseByCategory;
   /// Live TV channel text filter (from expanding search next to the tab).
   final String channelQuery;
+  final String? tvTabId;
+  final String? tvListRowId;
+  final String? tvCatsRowId;
+  final VoidCallback? onLeftToMatchList;
+  final VoidCallback? onUpToTabs;
 
   @override
   State<_LiveMatchStreamsSection> createState() =>
@@ -1279,7 +1439,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       for (final c in cats) (key: c.key, label: c.label, count: c.count),
     ];
 
-    return ListView.separated(
+    final list = ListView.separated(
       padding: const EdgeInsets.only(right: 8, bottom: 8),
       itemCount: rows.length,
       separatorBuilder: (_, _) => const SizedBox(height: 4),
@@ -1291,12 +1451,36 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
           count: row.count,
           selected: selected,
           listIndex: i,
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tvCatsRowId,
+          onLeftEdge: widget.onLeftToMatchList,
+          onUpEdge: i == 0 ? widget.onUpToTabs : null,
+          onRightEdge: widget.tvFocus
+              ? () => ShellTvFocusCoordinator.focusRowItem(
+                    widget.tvTabId ?? LiveSportsHubPageState._tabId,
+                    widget.tvListRowId ??
+                        LiveSportsHubPageState._streamsListRowId,
+                    0,
+                  )
+              : null,
           onTap: () {
             if (_selectedCategoryKey == row.key) return;
             setState(() => _selectedCategoryKey = row.key);
           },
         );
       },
+    );
+    final tabId = widget.tvTabId;
+    final rowId = widget.tvCatsRowId;
+    if (tabId == null || rowId == null || !widget.tvFocus) return list;
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: LiveSportsHubPageState._streamsCatsSort,
+      itemCount: rows.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: widget.onUpToTabs,
+      child: list,
     );
   }
 
@@ -1312,13 +1496,16 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     final playAll = allForPlay ?? sources;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = widget.inlineHero || constraints.maxWidth >= 720;
-        final crossCount = wide ? 2 : 1;
+        // Side panel (~40% width): one card per row so titles stay readable.
+        // Full-page details: two columns when the body is wide enough.
+        final crossCount =
+            widget.inlineHero || constraints.maxWidth < 720 ? 1 : 2;
         const gap = 10.0;
 
+        Widget grid;
         if (crossCount == 1) {
           if (widget.inlineHero) {
-            return ListView.separated(
+            grid = ListView.separated(
               padding: const EdgeInsets.only(bottom: 8),
               itemCount: sources.length,
               separatorBuilder: (_, _) => const SizedBox(height: gap),
@@ -1330,28 +1517,27 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
                 hideCategorySubtitle: hideCategorySubtitle,
               ),
             );
-          }
-          return Wrap(
-            runSpacing: gap,
-            children: [
-              for (var i = 0; i < sources.length; i++)
-                SizedBox(
-                  width: constraints.maxWidth,
-                  child: _sourceCard(
-                    context,
-                    sources,
-                    i,
-                    allForPlay: playAll,
-                    hideCategorySubtitle: hideCategorySubtitle,
+          } else {
+            grid = Wrap(
+              runSpacing: gap,
+              children: [
+                for (var i = 0; i < sources.length; i++)
+                  SizedBox(
+                    width: constraints.maxWidth,
+                    child: _sourceCard(
+                      context,
+                      sources,
+                      i,
+                      allForPlay: playAll,
+                      hideCategorySubtitle: hideCategorySubtitle,
+                    ),
                   ),
-                ),
-            ],
-          );
-        }
-
-        final rowCount = (sources.length + 1) ~/ 2;
-        if (widget.inlineHero) {
-          return ListView.builder(
+              ],
+            );
+          }
+        } else if (widget.inlineHero) {
+          final rowCount = (sources.length + 1) ~/ 2;
+          grid = ListView.builder(
             padding: const EdgeInsets.only(bottom: 8),
             itemCount: rowCount,
             itemBuilder: (context, row) {
@@ -1390,25 +1576,38 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               );
             },
           );
+        } else {
+          final tileWidth = (constraints.maxWidth - gap) / 2;
+          grid = Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (var i = 0; i < sources.length; i++)
+                SizedBox(
+                  width: tileWidth,
+                  child: _sourceCard(
+                    context,
+                    sources,
+                    i,
+                    allForPlay: playAll,
+                    hideCategorySubtitle: hideCategorySubtitle,
+                  ),
+                ),
+            ],
+          );
         }
 
-        final tileWidth = (constraints.maxWidth - gap) / 2;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (var i = 0; i < sources.length; i++)
-              SizedBox(
-                width: tileWidth,
-                child: _sourceCard(
-                  context,
-                  sources,
-                  i,
-                  allForPlay: playAll,
-                  hideCategorySubtitle: hideCategorySubtitle,
-                ),
-              ),
-          ],
+        final tabId = widget.tvTabId;
+        final rowId = widget.tvListRowId;
+        if (tabId == null || rowId == null || !widget.tvFocus) return grid;
+        return TvGrid(
+          tabId: tabId,
+          rowId: rowId,
+          sortOrder: LiveSportsHubPageState._streamsListSort,
+          itemCount: sources.length,
+          columns: crossCount,
+          onFocusUp: widget.onUpToTabs,
+          child: grid,
         );
       },
     );
@@ -1440,6 +1639,16 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     required List<IptvPlaySource> allForPlay,
     bool hideCategorySubtitle = false,
   }) {
+    final leftCol = i % 2 == 0;
+    final leftEdge = !leftCol
+        ? null
+        : (widget.browseByCategory && widget.tvCatsRowId != null
+            ? () => ShellTvFocusCoordinator.focusRowItem(
+                  widget.tvTabId ?? LiveSportsHubPageState._tabId,
+                  widget.tvCatsRowId!,
+                  0,
+                )
+            : widget.onLeftToMatchList);
     return _IptvSportsChannelSheetRow(
       source: sources[i],
       iptvCtrl: widget.iptvCtrl,
@@ -1450,6 +1659,10 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
         List<IptvPlaySource>.from(allForPlay),
       ),
       tvItemIndex: widget.tvFocus ? i : null,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvListRowId,
+      onUpEdge: i < 2 ? widget.onUpToTabs : null,
+      onLeftEdge: leftEdge,
     );
   }
 }
@@ -1461,6 +1674,11 @@ class _LiveTvCategoryRailRow extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.listIndex,
+    this.tvTabId,
+    this.tvRowId,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
   });
 
   final String label;
@@ -1468,6 +1686,11 @@ class _LiveTvCategoryRailRow extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
   final int listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
 
   @override
   State<_LiveTvCategoryRailRow> createState() => _LiveTvCategoryRailRowState();
@@ -1535,6 +1758,12 @@ class _LiveTvCategoryRailRowState extends State<_LiveTvCategoryRailRow> {
       scaleOnFocus: 1.0,
       showFocusFill: false,
       listIndex: widget.listIndex,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvTabId != null ? widget.listIndex : null,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),
       child: tile,

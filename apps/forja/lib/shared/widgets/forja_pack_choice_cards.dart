@@ -72,7 +72,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             title: 'Official packs',
             subtitle: widget.compact
                 ? 'Choose which ForjaHQ packs to install'
-                : 'Best experience — install the ForjaHQ bundle',
+                : 'Best experience: install the ForjaHQ bundle',
             accent: true,
             onTap: widget.onInstallOfficial,
           ),

@@ -251,7 +251,7 @@ class _CatalogShellState extends State<CatalogShell>
     if (invalid != null) {
       setState(() {
         _loading = false;
-        _error = 'Layout from ${widget.pluginId} is invalid — $invalid';
+        _error = 'Layout from ${widget.pluginId} is invalid: $invalid';
       });
       return;
     }
@@ -454,8 +454,8 @@ class _CatalogShellState extends State<CatalogShell>
     if (error.message.isNotEmpty) return error.message;
     return switch (error.code) {
       CatalogErrorCode.authRequired => 'Sign in to use this hub',
-      CatalogErrorCode.authExpired => 'Session expired — sign in again',
-      CatalogErrorCode.rateLimit => 'Rate limited — try again shortly',
+      CatalogErrorCode.authExpired => 'Session expired. Sign in again.',
+      CatalogErrorCode.rateLimit => 'Rate limited. Try again shortly.',
       _ => 'Could not load ${widget.pluginId} (${error.code.wire})',
     };
   }

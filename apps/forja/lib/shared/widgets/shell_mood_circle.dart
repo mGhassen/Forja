@@ -39,6 +39,18 @@ class ShellMoodCircleLayout {
     labelMaxLines: 2,
   );
 
+  /// TV chip size that stays readable — use with horizontal scroll when many.
+  static const tvScrollable = ShellMoodCircleLayout(
+    circleSize: 54,
+    itemWidth: 78,
+    horizontalGap: 10,
+    rowHeight: 54 + 6 + 12 + 8,
+    labelFontSize: 10.5,
+    iconSize: 22.7,
+    iconSizeActive: 28.1,
+    labelMaxLines: 1,
+  );
+
   double contentWidth(int itemCount) {
     if (itemCount <= 0) return 0;
     return itemCount * itemWidth + (itemCount - 1) * horizontalGap;

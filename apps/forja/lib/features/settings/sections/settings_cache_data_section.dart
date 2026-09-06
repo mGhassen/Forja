@@ -71,7 +71,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               title: 'Images & WebView',
               subtitle:
                   'Poster thumbnails and extractor WebView caches. Frees disk; '
-                  'images re-download when needed.',
+                  'images download again when needed.',
               onTap: () => _run(
                 kind: _ClearBusy.images,
                 title: 'Clear images & WebView?',
@@ -91,7 +91,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 title: 'IPTV portal cache',
                 subtitle:
                     'Catalogs, alive checks, and channel scans. '
-                    'Portals and favorites stay; next open re-fetches.',
+                    'Portals and favorites stay. Re-fetches on next open.',
                 onTap: () => _run(
                   kind: _ClearBusy.iptvPortals,
                   title: 'Clear IPTV portal cache?',
@@ -111,8 +111,8 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 iconColor: const Color(0xFFA78BFA),
                 title: 'Downloaded updates',
                 subtitle:
-                    'Installer files saved by in-app update (.dmg, .exe, AppImage). '
-                    'Safe to remove after you install or if you downloaded again.',
+                    'Installer files from in-app update (.dmg, .exe, AppImage). '
+                    'Safe to remove after you install.',
                 onTap: () => _run(
                   kind: _ClearBusy.updates,
                   title: 'Clear downloaded updates?',
@@ -136,8 +136,8 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               iconColor: const Color(0xFFFBBF24),
               title: 'Provider scores',
               subtitle:
-                  'Reliability totals used for Settings Score and Auto order. '
-                  'Your drag order is kept; scores start over.',
+                  'Reliability totals for Settings Score and Auto order. '
+                  'Drag order is kept; scores start over.',
               onTap: () => _run(
                 kind: _ClearBusy.scores,
                 title: 'Reset provider scores?',
@@ -162,8 +162,8 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               iconColor: const Color(0xFFF87171),
               title: 'Continue watching',
               subtitle:
-                  'Home, Anime, Asian Drama, and Anime Arabic resume rows. '
-                  'Cannot be undone for this profile / Guest.',
+                  'Resume rows on Home, Anime, and Asian Drama. '
+                  'Cannot be undone for this profile.',
               onTap: () => _run(
                 kind: _ClearBusy.continueWatching,
                 title: 'Clear continue watching?',
@@ -185,7 +185,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               iconColor: const Color(0xFFF87171),
               title: 'Watched episode marks',
               subtitle:
-                  'Local “watched” checkmarks on TV episode lists. '
+                  'Local watched checkmarks on TV episode lists. '
                   'Trakt / Simkl online history stays.',
               onTap: () => _run(
                 kind: _ClearBusy.watched,

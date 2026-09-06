@@ -126,7 +126,7 @@ class IptvClient {
     if (s.isEmpty) return 'Could not load catalog';
     final lower = s.toLowerCase();
     if (lower.contains('auth_failed')) {
-      return 'Login failed — check username and password';
+      return 'Login failed. Check username and password.';
     }
     if (lower.contains('error sending request') ||
         lower.contains('timed out') ||
@@ -141,7 +141,7 @@ class IptvClient {
         lower.contains('player_api') ||
         s.contains('://') ||
         lower.contains('could not reach portal')) {
-      return 'Could not reach portal — check URL or network';
+      return 'Could not reach portal. Check URL or network.';
     }
     if (RegExp(r'^HTTP \d{3}$').hasMatch(s)) {
       return 'Portal returned $s';

@@ -24,6 +24,12 @@ class PluginInstallCandidate {
   const PluginInstallCandidate({
     required this.manifestUrl,
     this.displayName,
+    this.description,
+    this.tags = const [],
+    this.catalogKind,
+    this.version,
+    this.official = false,
+    this.recommended = false,
     this.alreadyInstalled = false,
     this.kind = PluginPackPromptKind.install,
     this.fromRemoteProfile = false,
@@ -31,6 +37,25 @@ class PluginInstallCandidate {
 
   final String manifestUrl;
   final String? displayName;
+
+  /// Short blurb for the picker subtitle (not the install URL).
+  final String? description;
+
+  /// Topic tags (`anime`, `live`, …) for the meta line.
+  final List<String> tags;
+
+  /// Catalog kind (`hubs`, `providers`, `live`, …).
+  final String? catalogKind;
+
+  /// Optional semver from the public catalog (may be stale offline).
+  final String? version;
+
+  /// ForjaHQ official pack (shows Official badge).
+  final bool official;
+
+  /// Soft CTA — Recommended badge next to Official on core packs.
+  final bool recommended;
+
   /// Install: already on disk. Uninstall: already gone from device.
   final bool alreadyInstalled;
   final PluginPackPromptKind kind;

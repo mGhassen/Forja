@@ -2,6 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
+  "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs).",
   "version": "1.4.3",
   "tags": [
     "arabic"

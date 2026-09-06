@@ -89,7 +89,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
       await Clipboard.setData(const ClipboardData(text: kCommunityPacksUrl));
       if (!mounted) return;
       setState(() {
-        _status = 'URL copied — open on your phone:\n$kCommunityPacksUrl';
+        _status = 'URL copied. Open on your phone:\n$kCommunityPacksUrl';
       });
       return;
     }

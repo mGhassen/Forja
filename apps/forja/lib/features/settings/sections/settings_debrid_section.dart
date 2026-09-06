@@ -122,7 +122,7 @@ class _SettingsDebridSectionState
     final key = _rdController.text.trim();
     if (key.isEmpty) {
       if (mounted) {
-        ForjaToast.warning('Please enter an API key');
+        ForjaToast.warning('Enter an API key');
       }
       return;
     }
@@ -239,7 +239,7 @@ class _SettingsDebridSectionState
       hint: 'Enter TorBox API Key',
       onSave: () async {
         await _debrid.saveTorBoxKey(_torboxController.text);
-        if (mounted) ForjaToast.success('TorBox API Key Saved!');
+        if (mounted) ForjaToast.success('TorBox API key saved');
       },
     );
   }
@@ -250,7 +250,7 @@ class _SettingsDebridSectionState
       hint: 'Enter AllDebrid API Key',
       onSave: () async {
         await _debrid.saveAllDebridKey(_alldebridController.text);
-        if (mounted) ForjaToast.success('AllDebrid API Key Saved!');
+        if (mounted) ForjaToast.success('AllDebrid API key saved');
       },
       linkLabel: 'Get your API key at alldebrid.com/apikeys',
       linkUrl: 'https://alldebrid.com/apikeys',
@@ -263,7 +263,7 @@ class _SettingsDebridSectionState
       hint: 'Enter Premiumize API Key',
       onSave: () async {
         await _debrid.savePremiumizeKey(_premiumizeController.text);
-        if (mounted) ForjaToast.success('Premiumize API Key Saved!');
+        if (mounted) ForjaToast.success('Premiumize API key saved');
       },
       linkLabel: 'Get your API key at premiumize.me/account',
       linkUrl: 'https://www.premiumize.me/account',
@@ -276,7 +276,7 @@ class _SettingsDebridSectionState
       hint: 'Enter Debrid-Link API Key',
       onSave: () async {
         await _debrid.saveDebridLinkKey(_debridlinkController.text);
-        if (mounted) ForjaToast.success('Debrid-Link API Key Saved!');
+        if (mounted) ForjaToast.success('Debrid-Link API key saved');
       },
       linkLabel: 'Get your API key at debrid-link.com/webapp/apikey',
       linkUrl: 'https://debrid-link.com/webapp/apikey',

@@ -125,7 +125,7 @@ class PluginInstallCoordinator {
       );
       _setProgress(
         PluginInstallProgress(
-          label: 'Ready — ${pack.name}',
+          label: 'Ready: ${pack.name}',
           manifestUrl: manifestUrl,
           sourceUrl: manifestUrl,
           completedSteps: 1,
@@ -211,7 +211,7 @@ class PluginInstallCoordinator {
     if (want.isEmpty) return null;
     final current = progress.value;
     if (current != null) {
-      return '${current.phaseTitle} ${current.label} — wait for the progress banner at the bottom.';
+      return '${current.phaseTitle} ${current.label}. Wait for the progress banner at the bottom.';
     }
     final hit = PluginRegistry.packPluginFromPacks(
       await PluginRegistry.instance.listPacksRaw(),
@@ -397,7 +397,7 @@ class PluginInstallCoordinator {
       completed++;
       _setProgress(
         PluginInstallProgress(
-          label: job.isUpdate ? 'Ready — ${pack.name}' : 'Installed ${pack.name}',
+          label: job.isUpdate ? 'Ready: ${pack.name}' : 'Installed ${pack.name}',
           manifestUrl: url,
           sourceUrl: url,
           completedSteps: completed,
@@ -410,7 +410,7 @@ class PluginInstallCoordinator {
     if (total > 0) {
       _setProgress(
         PluginInstallProgress(
-          label: 'Ready — all plugins',
+          label: 'Ready: all plugins',
           completedSteps: total,
           totalSteps: total,
           isUpdate: false,

@@ -16,6 +16,7 @@ import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -99,6 +100,15 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
+  /// Side streams panel (Providers / Live TV) — same TvFocusGraph as browse.
+  static const _streamsTabsRowId = 'live-streams-tabs';
+  static const _streamsChromeRowId = 'live-streams-chrome';
+  static const _streamsListRowId = 'live-streams-list';
+  static const _streamsCatsRowId = 'live-streams-cats';
+  static const _streamsTabsSort = 10;
+  static const _streamsChromeSort = 11;
+  static const _streamsCatsSort = 12;
+  static const _streamsListSort = 13;
   // tabs: All + each sport
   List<_Sport> _sports = [];
   bool _loading = true;

@@ -28,19 +28,6 @@ type PluginBatchInstallDialogProps = {
   onCancel: () => void
 }
 
-function defaultSelection(
-  packs: ForjaPluginPackLive[],
-  installedPacks: ForjaPackRow[],
-): Set<string> {
-  const next = new Set<string>()
-  for (const pack of packs) {
-    if (!isPackInstalled(installedPacks, pack.manifestUrl)) {
-      next.add(pack.manifestUrl)
-    }
-  }
-  return next
-}
-
 export function PluginBatchInstallDialog({
   open,
   packs,
@@ -52,14 +39,14 @@ export function PluginBatchInstallDialog({
 }: PluginBatchInstallDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(() =>
-    initialSelection ?? defaultSelection(packs, installedPacks),
+  const [selected, setSelected] = useState<Set<string>>(
+    () => initialSelection ?? new Set(),
   )
 
   useEffect(() => {
     if (!open) return
     setQuery('')
-    setSelected(initialSelection ?? defaultSelection(packs, installedPacks))
+    setSelected(initialSelection ?? new Set())
   }, [open, packs, installedPacks, initialSelection])
 
   useEffect(() => {

@@ -463,7 +463,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       setState(() {
         _importingShareCode = false;
         _shareCodeError = msg.contains('unavailable')
-            ? 'Share service temporarily unavailable — try again later'
+            ? 'Share service temporarily unavailable. Try again later.'
             : 'Could not load share code';
       });
     }

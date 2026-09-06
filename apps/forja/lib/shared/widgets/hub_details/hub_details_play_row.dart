@@ -106,7 +106,7 @@ class HubDetailsUpcomingNotice extends StatelessWidget {
                     Text(
                       hasDate
                           ? 'Streams unlock around $date'
-                          : 'Not published yet — check back when it premieres',
+                          : 'Not published yet. Check back when it premieres.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.62),
                         fontSize: 13,

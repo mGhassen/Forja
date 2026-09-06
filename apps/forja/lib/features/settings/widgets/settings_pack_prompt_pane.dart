@@ -81,10 +81,8 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   @override
   void initState() {
     super.initState();
-    _selected = {
-      for (final c in widget.prompt.candidates)
-        if (!c.alreadyInstalled) _key(c),
-    };
+    // User picks packs — do not pre-check every actionable row.
+    _selected = {};
   }
 
   Iterable<PluginInstallCandidate> get _actionable =>
@@ -182,7 +180,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   String get _body {
     if (widget.prompt.hasRemoteProfile) {
       return 'These packs changed on your profile from another device. '
-          'Choose what to apply here — the rest can wait in Forja Packs.';
+          'Choose what to apply here. The rest can wait in Forja Packs.';
     }
     return 'Choose which packs to download on this device. '
         'You can install the rest later from this page.';
@@ -284,7 +282,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   }
 }
 
-/// Flat checkbox row — no card chrome (matches pending pack tiles).
+/// Flat checkbox row — no card chrome (matches Community Packs list rows).
 class _PackPromptRow extends StatelessWidget {
   const _PackPromptRow({
     required this.candidate,
@@ -298,6 +296,17 @@ class _PackPromptRow extends StatelessWidget {
   final bool enabled;
   final ValueChanged<bool> onChanged;
 
+  static String _labelize(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    return t
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final settled = candidate.alreadyInstalled;
@@ -307,9 +316,15 @@ class _PackPromptRow extends StatelessWidget {
         : 'Plugin pack';
     final actionLabel = uninstall ? 'Uninstall' : 'Install';
     final settledLabel = uninstall ? 'Already removed' : 'Already on device';
-    final subtitle = settled
-        ? settledLabel
-        : '$actionLabel · ${candidate.manifestUrl.trim()}';
+    final desc = candidate.description?.trim();
+    final tagsLine = candidate.tags
+        .map(_labelize)
+        .where((t) => t.isNotEmpty)
+        .join(' · ');
+    final version = candidate.version?.trim();
+    final muted = settled
+        ? ForjaShellColors.textSecondary
+        : ForjaShellColors.textPrimary;
 
     void flip() {
       if (!enabled) return;
@@ -334,36 +349,141 @@ class _PackPromptRow extends StatelessWidget {
     );
 
     final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // TV: row owns focus — Checkbox must not steal a second node.
-          ExcludeFocus(excluding: tv, child: checkbox),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: ExcludeFocus(excluding: tv, child: checkbox),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        candidate.official ? 'ForjaHQ' : 'Community',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary
+                              .withValues(alpha: 0.55),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    if (candidate.official) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ForjaShellColors.brandGreen
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: ForjaShellColors.brandGreen
+                                .withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: const Text(
+                          'Official',
+                          style: TextStyle(
+                            color: ForjaShellColors.brandGreen,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (candidate.recommended) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF4D1C)
+                              .withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: const Color(0xFFFF4D1C)
+                                .withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: const Text(
+                          'Recommended',
+                          style: TextStyle(
+                            color: Color(0xFFFF4D1C),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (version != null && version.isNotEmpty) ...[
+                      const Spacer(),
+                      Text(
+                        version.startsWith('v') ? version : 'v$version',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary
+                              .withValues(alpha: 0.55),
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
                 Text(
                   title,
                   style: TextStyle(
-                    color: settled
-                        ? ForjaShellColors.textSecondary
-                        : ForjaShellColors.textPrimary,
+                    color: muted,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                if (tagsLine.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    tagsLine.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary
+                          .withValues(alpha: 0.45),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 3),
                 Text(
-                  subtitle,
-                  maxLines: settled ? 1 : 2,
+                  settled
+                      ? settledLabel
+                      : (desc != null && desc.isNotEmpty)
+                          ? desc
+                          : actionLabel,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: ForjaShellColors.textSecondary,
-                    fontSize: 11,
-                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    height: 1.35,
                   ),
                 ),
               ],

@@ -49,7 +49,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
         settingsFocusableToggle(
           context,
           'IPTV programme guide (EPG)',
-          'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
+          'Show NOW and NEXT programme info in the player and channel browser.',
           snap.iptvEpgEnabled,
           (val) async {
             await settings.setIptvEpgEnabled(val);
@@ -60,7 +60,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
         settingsFocusableDropdown(
           context,
           'IPTV live max quality',
-          'ExoPlayer only. Auto keeps full portal quality. Pick 1080p / 720p / 480p only if a weak device needs a lower adaptive variant — never applied automatically.',
+          'ExoPlayer only. Auto uses the portal’s full quality. Cap at 1080p, 720p, or 480p only on weak devices.',
           snap.iptvLiveMaxHeightLabel,
           SettingsService.iptvLiveMaxHeightOptions.keys.toList(),
           (val) async {
@@ -76,7 +76,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
         settingsFocusableDropdown(
           context,
           'IPTV live recovery',
-          'How live channels reconnect. Auto (default) picks the policy per source — stall reopen for Xtream, buffer hold without stall for Stalker / Forja Live / Stremio — so you do not change settings per channel. Stable lets you force one policy. Classic reconnects on freeze timers. Takes effect next time you open the player.',
+          'How live channels reconnect after a stall. Auto picks per source (Xtream, Stalker, Forja Live, Stremio). Stable forces one policy. Classic uses freeze timers. Applies the next time you open the player.',
           snap.iptvLiveRecoveryModeLabel,
           SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
           (val) async {
@@ -107,7 +107,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableToggle(
             context,
             'Reopen on buffer stall',
-            'Stable only. Off by default under Auto. If the picture freezes or Buffering sticks with no playback progress, reconnect even when the demuxer still reports cache. Can kill a healthy buffer on Stalker — leave off unless you need it. Takes effect next time you open the player.',
+            'Stable mode only. Reconnect when the picture freezes even if cache still reports data. Can drop a healthy Stalker buffer. Leave off unless you need it. Applies the next time you open the player.',
             snap.iptvLiveRecoveryStallReopen,
             (val) async {
               await settings.setIptvLiveRecoveryMode(
@@ -126,7 +126,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableToggle(
             context,
             'IPTV match display refresh',
-            'MediaKit only. On by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink after the first frame (4K waits so the decoder can finish init); next open of the player picks it up.',
+            'MediaKit only. Match the TV refresh rate to the channel (for example 50 Hz for 50 fps). Helps 4K stutter. May briefly blink HDMI after the first frame. Applies the next time you open the player.',
             snap.iptvMatchDisplayRefresh,
             (val) async {
               await settings.setIptvMatchDisplayRefresh(val);
@@ -140,7 +140,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableDropdown(
             context,
             'IPTV live buffer',
-            'MediaKit only. How many seconds of live demuxer cushion to keep ahead of the playhead. Auto picks by resolution (HD 15 s / FHD+UHD 20 s, 96 MiB). Manual 15–30 also scales demuxer RAM. 30 s is 150 MB — can force-close 4K on weak boxes. Helps underrun experiments — not cadence judder. Next open of the player.',
+            'MediaKit only. Live buffer ahead of playback. Auto: HD 15s, FHD/UHD 20s. Manual 15–30s also raises demuxer RAM. 30s (~150 MB) can crash 4K on weak boxes. Helps underruns, not frame judder. Applies the next time you open the player.',
             snap.iptvLiveBufferSecsLabel,
             SettingsService.iptvLiveBufferSecsOptions.keys.toList(),
             (val) async {

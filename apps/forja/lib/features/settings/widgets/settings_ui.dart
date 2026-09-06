@@ -239,7 +239,10 @@ const Border settingsExpansionShape = Border();
 
 /// Leanback: keep [trailing] visible to the right of [tile] (switch / refresh /
 /// remove). Desktop keeps actions in [ExpansionTile.trailing] via
-/// [settingsExpansionTrailing]. Wrap the pack list in
+/// [settingsExpansionTrailing]. Prefer [settingsExpandableWithSideActions] for
+/// pack/addon rows so the header is [shellFocusableTap] (Material
+/// [ExpansionTile] ListTile focus cannot move → to side actions — app-root
+/// DirectionalFocus no-ops ←/→). Wrap the pack list in
 /// [ShellTvDisableLinearFocus] so ↓ walks packs and → reaches the actions.
 Widget settingsExpansionSideActions({
   required BuildContext context,
@@ -259,6 +262,208 @@ Widget settingsExpansionSideActions({
       ),
     ],
   );
+}
+
+/// Desktop: [ExpansionTile] with optional [trailing] in the header.
+/// Leanback: focusable header + side actions — → lands on switch / icons.
+Widget settingsExpandableWithSideActions({
+  required BuildContext context,
+  required Widget leading,
+  required Widget title,
+  Widget? subtitle,
+  required List<Widget> children,
+  Widget? trailing,
+  EdgeInsetsGeometry tilePadding = const EdgeInsets.symmetric(horizontal: 2),
+  EdgeInsetsGeometry childrenPadding = const EdgeInsets.fromLTRB(8, 0, 2, 8),
+}) {
+  if (!ShellScope.inputPolicyOf(context).leanbackOnly) {
+    return Theme(
+      data: settingsExpansionTheme(context),
+      child: ExpansionTile(
+        shape: settingsExpansionShape,
+        collapsedShape: settingsExpansionShape,
+        tilePadding: tilePadding,
+        childrenPadding: childrenPadding,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: settingsExpansionTrailing(context, trailing),
+        children: settingsExpansionChildren(
+          context,
+          trailing: trailing,
+          children: children,
+        ),
+      ),
+    );
+  }
+  return _SettingsTvExpandableSideRow(
+    leading: leading,
+    title: title,
+    subtitle: subtitle,
+    trailing: trailing,
+    tilePadding: tilePadding,
+    childrenPadding: childrenPadding,
+    children: children,
+  );
+}
+
+/// Leanback pack/addon expand row — header owns D-pad; → moves to [trailing].
+class _SettingsTvExpandableSideRow extends StatefulWidget {
+  const _SettingsTvExpandableSideRow({
+    required this.leading,
+    required this.title,
+    this.subtitle,
+    required this.children,
+    this.trailing,
+    required this.tilePadding,
+    required this.childrenPadding,
+  });
+
+  final Widget leading;
+  final Widget title;
+  final Widget? subtitle;
+  final List<Widget> children;
+  final Widget? trailing;
+  final EdgeInsetsGeometry tilePadding;
+  final EdgeInsetsGeometry childrenPadding;
+
+  @override
+  State<_SettingsTvExpandableSideRow> createState() =>
+      _SettingsTvExpandableSideRowState();
+}
+
+class _SettingsTvExpandableSideRowState
+    extends State<_SettingsTvExpandableSideRow> {
+  bool _expanded = false;
+  late final FocusNode _headerFocus =
+      FocusNode(debugLabel: 'settings-pack-header');
+
+  @override
+  void dispose() {
+    _headerFocus.dispose();
+    super.dispose();
+  }
+
+  void _toggle() => setState(() => _expanded = !_expanded);
+
+  void _focusHeader() {
+    if (_headerFocus.canRequestFocus) _headerFocus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final header = Padding(
+      padding: widget.tilePadding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: widget.leading,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DefaultTextStyle.merge(
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ForjaShellColors.textPrimary,
+                    ),
+                    child: widget.title,
+                  ),
+                  if (widget.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    widget.subtitle!,
+                  ],
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Icon(
+              _expanded
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded,
+              color: ForjaShellColors.iconMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Widget? trailing = widget.trailing;
+    if (trailing != null) {
+      trailing = SettingsExpandHeaderFocus(
+        focusHeader: _focusHeader,
+        child: trailing,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: shellFocusableTap(
+                context: context,
+                focusNode: _headerFocus,
+                onTap: _toggle,
+                borderRadius: SettingsTokens.categoryTileRadius,
+                scaleOnFocus: 1.0,
+                showFocusRail: false,
+                showFocusFill: true,
+                showFocusBorder: false,
+                tvTabId: 'settings',
+                tvZone: ShellTvZone.settings,
+                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                child: header,
+              ),
+            ),
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: trailing,
+              ),
+          ],
+        ),
+        if (_expanded)
+          Padding(
+            padding: widget.childrenPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: widget.children,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Lets side-action controls (pack switch) send ← back to the expand header.
+class SettingsExpandHeaderFocus extends InheritedWidget {
+  const SettingsExpandHeaderFocus({
+    super.key,
+    required this.focusHeader,
+    required super.child,
+  });
+
+  final VoidCallback focusHeader;
+
+  static VoidCallback? maybeFocusHeaderOf(BuildContext context) => context
+      .getInheritedWidgetOfExactType<SettingsExpandHeaderFocus>()
+      ?.focusHeader;
+
+  @override
+  bool updateShouldNotify(covariant SettingsExpandHeaderFocus oldWidget) =>
+      focusHeader != oldWidget.focusHeader;
 }
 
 List<Widget> settingsExpansionChildren(

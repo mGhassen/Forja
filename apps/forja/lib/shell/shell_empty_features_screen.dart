@@ -100,7 +100,7 @@ class _ShellEmptyFeaturesScreenState
         title: 'Features',
         body: tv
             ? 'Choose which tabs appear in the rail.'
-            : 'Choose which tabs appear — Home, Anime, IPTV, Live Matches, Lists, and more.',
+            : 'Choose which tabs appear: Home, Anime, IPTV, Live Matches, Lists, and more.',
         accent: const Color(0xFF34D399),
         onAction: widget.onOpenFeatures,
       ),

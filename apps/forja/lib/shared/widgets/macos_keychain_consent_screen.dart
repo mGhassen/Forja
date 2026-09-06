@@ -67,7 +67,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
               SizedBox(height: 12),
               Text(
                 'After you allow this, macOS may show its own password dialog '
-                'once — it may mention "flutter_secure_storage_service". That '
+                'once. It may mention "flutter_secure_storage_service". That '
                 'name is Forja’s secure vault, not a separate app. Choose '
                 'Always Allow if you trust Forja.',
                 style: TextStyle(

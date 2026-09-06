@@ -17,6 +17,7 @@ import { usePluginBatchInstall } from '@/hooks/use-plugin-batch-install'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
 import {
   isOfficialPluginPack,
+  isRecommendedPluginPack,
   packAuthorLabel,
   packHasTag,
   pluginKindLabel,
@@ -33,9 +34,41 @@ import { cn } from '@/lib/utils'
 const PAGE_SIZE = 10
 /** Fixed list-row height — panel heights are exact multiples of this. */
 const LIST_ROW_HEIGHT_CLASS = 'h-16'
+/** Taller rows when description is inlined (TV / no detail panel). */
+const LIST_ROW_RICH_HEIGHT_CLASS = 'h-[5.5rem]'
 /** Left scroll area = 10 rows; right panel = 7 rows (independent). */
 const LIST_BODY_HEIGHT_CLASS = 'h-[calc(10*4rem)]'
+const LIST_BODY_RICH_HEIGHT_CLASS = 'h-[calc(7*5.5rem)]'
 const DETAIL_PANEL_HEIGHT_CLASS = 'h-[calc(7*4rem)]'
+
+function useTvBrowseLayout() {
+  const [tv, setTv] = useState(false)
+  useEffect(() => {
+    const ua =
+      typeof navigator !== 'undefined'
+        ? /Android.*(TV|AFT|BRAVIA|SmartTV|GoogleTV)|AppleTV|CrKey|TV Safari/i.test(
+            navigator.userAgent,
+          )
+        : false
+    const mq =
+      typeof window !== 'undefined'
+        ? window.matchMedia('(hover: none) and (pointer: coarse)')
+        : null
+    const update = () => {
+      const coarse = mq?.matches ?? false
+      // Large coarse screens (TV / leanback browsers) — no detail panel.
+      setTv(ua || (coarse && window.innerWidth >= 900))
+    }
+    update()
+    mq?.addEventListener('change', update)
+    window.addEventListener('resize', update)
+    return () => {
+      mq?.removeEventListener('change', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return tv
+}
 
 function paginate<T>(items: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
@@ -65,6 +98,21 @@ function OfficialBadge({ compact = false }: { compact?: boolean }) {
   )
 }
 
+function RecommendedBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'shrink-0 rounded-md border border-forja-flame/40 bg-forja-flame/14 font-mono-ui uppercase tracking-wider text-forja-flame',
+        compact
+          ? 'px-1.5 py-px text-[8px]'
+          : 'px-2 py-0.5 text-[9px]',
+      )}
+    >
+      Recommended
+    </span>
+  )
+}
+
 function PluginDetailPanel({
   pack,
   onClose,
@@ -73,6 +121,7 @@ function PluginDetailPanel({
   onClose?: () => void
 }) {
   const official = isOfficialPluginPack(pack)
+  const recommended = isRecommendedPluginPack(pack)
   const author = packAuthorLabel(pack)
   const { user } = useAuth()
   const { data } = useForjaSetting()
@@ -106,6 +155,7 @@ function PluginDetailPanel({
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {official ? <OfficialBadge /> : null}
+          {recommended ? <RecommendedBadge /> : null}
           {onProfile ? (
             <span className="shrink-0 rounded-md border border-forja-green/35 bg-forja-green/10 px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-forja-green">
               On profile
@@ -180,16 +230,20 @@ function PluginListRow({
   pack,
   focused,
   checked,
+  rich,
   onRowClick,
   onToggleCheck,
 }: {
   pack: ForjaPluginPackLive
   focused: boolean
   checked: boolean
+  /** Inline description (TV / no detail panel). */
+  rich?: boolean
   onRowClick: (event: MouseEvent<HTMLElement>) => void
   onToggleCheck: () => void
 }) {
   const official = isOfficialPluginPack(pack)
+  const recommended = isRecommendedPluginPack(pack)
   const author = packAuthorLabel(pack)
 
   return (
@@ -205,7 +259,7 @@ function PluginListRow({
       }}
       className={cn(
         'flex w-full shrink-0 cursor-pointer items-center gap-3 border-b border-white/[0.06] px-3 text-left transition-colors sm:px-4',
-        LIST_ROW_HEIGHT_CLASS,
+        rich ? LIST_ROW_RICH_HEIGHT_CLASS : LIST_ROW_HEIGHT_CLASS,
         checked
           ? 'bg-forja-green/15'
           : focused
@@ -247,10 +301,16 @@ function PluginListRow({
             {author ?? 'Community'}
           </span>
           {official ? <OfficialBadge compact /> : null}
+          {recommended ? <RecommendedBadge compact /> : null}
         </div>
         <p className="truncate text-sm font-medium text-[#EDE6DA]">
           {pack.name}
         </p>
+        {rich && pack.description ? (
+          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-[rgba(237,230,218,0.55)]">
+            {pack.description}
+          </p>
+        ) : null}
         {(pack.tags?.length ?? 0) > 0 ? (
           <p className="mt-0.5 truncate font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
             {pack.tags!.map((t) => pluginTagLabel(t)).join(' · ')}
@@ -258,7 +318,7 @@ function PluginListRow({
         ) : null}
       </div>
       {pack.version ? (
-        <span className="shrink-0 font-mono-ui text-[10px] text-[rgba(237,230,218,0.35)]">
+        <span className="shrink-0 self-start pt-1 font-mono-ui text-[10px] text-[rgba(237,230,218,0.35)]">
           v{pack.version}
         </span>
       ) : null}
@@ -281,6 +341,7 @@ export function PluginCatalogBrowser({
   batchInstallOnMount,
   onBatchInstallOnMountHandled,
 }: PluginCatalogBrowserProps) {
+  const tvBrowse = useTvBrowseLayout()
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<string | 'all'>('all')
   const [tagFilter, setTagFilter] = useState<string | 'all'>('all')
@@ -321,7 +382,13 @@ export function PluginCatalogBrowser({
           ),
       )
     }
-    return list.sort((a, b) => a.name.localeCompare(b.name))
+    return list.sort((a, b) => {
+      const byRec =
+        (isRecommendedPluginPack(b) ? 1 : 0) -
+        (isRecommendedPluginPack(a) ? 1 : 0)
+      if (byRec !== 0) return byRec
+      return a.name.localeCompare(b.name)
+    })
   }, [packs, kindFilter, tagFilter, query])
 
   const pageSlice = useMemo(
@@ -339,9 +406,9 @@ export function PluginCatalogBrowser({
     [checkedIds, filtered],
   )
 
-  const showMultiAdd = checkedIds.size >= 2
+  const showMultiAdd = tvBrowse ? checkedIds.size >= 1 : checkedIds.size >= 2
   const multiSelectMode = checkedIds.size >= 2
-  const showDetail = Boolean(detail) && !multiSelectMode
+  const showDetail = Boolean(detail) && !multiSelectMode && !tvBrowse
 
   function closeDetail() {
     setDetailId(null)
@@ -354,6 +421,12 @@ export function PluginCatalogBrowser({
       setMobileDetailOpen(false)
     }
   }, [multiSelectMode])
+
+  useEffect(() => {
+    if (!tvBrowse) return
+    setDetailId(null)
+    setMobileDetailOpen(false)
+  }, [tvBrowse])
 
   useEffect(() => {
     setPage(1)
@@ -465,6 +538,12 @@ export function PluginCatalogBrowser({
       return
     }
 
+    // TV / leanback: no detail panel — row OK toggles selection.
+    if (tvBrowse) {
+      toggleCheck(packId)
+      return
+    }
+
     // Plain click: open detail (clear multi-select)
     setDetailId(packId)
     setMobileDetailOpen(true)
@@ -473,7 +552,8 @@ export function PluginCatalogBrowser({
   }
 
   async function handleMultiAdd() {
-    if (checkedPacks.length < 2) return
+    if (checkedPacks.length < 1) return
+    if (!tvBrowse && checkedPacks.length < 2) return
     const opened = await tryOpenForjaBatchInstallDeepLink(
       checkedPacks.map((pack) => ({
         manifestUrl: pack.manifestUrl,
@@ -589,10 +669,13 @@ export function PluginCatalogBrowser({
               {showMultiAdd ? (
                 <div className="flex h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 sm:px-4">
                   <p className="font-mono-ui text-[10px] uppercase tracking-wider text-forja-green">
-                    {checkedIds.size} packs selected
-                    <span className="ml-2 text-[rgba(237,230,218,0.45)]">
-                      Shift+click range · Esc clear
-                    </span>
+                    {checkedIds.size}{' '}
+                    {checkedIds.size === 1 ? 'pack' : 'packs'} selected
+                    {!tvBrowse ? (
+                      <span className="ml-2 text-[rgba(237,230,218,0.45)]">
+                        Shift+click range · Esc clear
+                      </span>
+                    ) : null}
                   </p>
                   <button
                     type="button"
@@ -608,7 +691,9 @@ export function PluginCatalogBrowser({
               ) : (
                 <div className="flex h-9 shrink-0 items-center border-b border-white/[0.06] px-3 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
-                    Packs · click for details · checkbox or Shift+click to select
+                    {tvBrowse
+                      ? 'Packs · select to add · OK toggles selection'
+                      : 'Packs · click for details · checkbox or Shift+click to select'}
                   </p>
                 </div>
               )}
@@ -616,11 +701,11 @@ export function PluginCatalogBrowser({
               <div
                 className={cn(
                   'shrink-0 overflow-y-auto',
-                  LIST_BODY_HEIGHT_CLASS,
+                  tvBrowse ? LIST_BODY_RICH_HEIGHT_CLASS : LIST_BODY_HEIGHT_CLASS,
                 )}
               >
                 {isLoading ? (
-                  <ListSkeleton />
+                  <ListSkeleton rich={tvBrowse} />
                 ) : filtered.length === 0 ? (
                   <p className="px-4 py-8 text-center text-sm text-[rgba(237,230,218,0.45)]">
                     No packs match your search.
@@ -632,6 +717,7 @@ export function PluginCatalogBrowser({
                       pack={pack}
                       focused={showDetail && detail?.id === pack.id}
                       checked={checkedIds.has(pack.id)}
+                      rich={tvBrowse}
                       onRowClick={(event) => handleRowClick(pack.id, event)}
                       onToggleCheck={() => toggleCheck(pack.id)}
                     />
@@ -746,7 +832,7 @@ function FilterChip({
   )
 }
 
-function ListSkeleton() {
+function ListSkeleton({ rich = false }: { rich?: boolean }) {
   return (
     <div className="animate-pulse">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
@@ -754,13 +840,14 @@ function ListSkeleton() {
           key={i}
           className={cn(
             'flex items-center gap-3 border-b border-white/[0.06] px-4',
-            LIST_ROW_HEIGHT_CLASS,
+            rich ? LIST_ROW_RICH_HEIGHT_CLASS : LIST_ROW_HEIGHT_CLASS,
           )}
         >
           <div className="size-4 rounded-sm bg-white/10" />
           <div className="flex-1 space-y-1.5">
             <div className="h-2.5 w-16 rounded bg-white/5" />
             <div className="h-3 w-32 rounded bg-white/10" />
+            {rich ? <div className="h-2.5 w-48 rounded bg-white/5" /> : null}
           </div>
         </div>
       ))}

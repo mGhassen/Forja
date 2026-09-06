@@ -38,15 +38,39 @@ Future<List<OfficialForjaHqPack>> resolveOfficialForjaHqPacks() async {
       final baked = byId[id];
       if (baked == null) continue;
       final name = (raw['name'] as String?)?.trim();
+      final desc = (raw['description'] as String?)?.trim();
+      final kind = (raw['kind'] as String?)?.trim();
+      final tagsRaw = raw['tags'];
+      final tags = <String>[
+        if (tagsRaw is List)
+          for (final t in tagsRaw)
+            if (t is String && t.trim().isNotEmpty) t.trim(),
+      ];
+      final recommended = raw['recommended'] == true ||
+          baked.recommended ||
+          kOfficialRecommendedPackIds.contains(id);
       out.add(
         OfficialForjaHqPack(
           id: baked.id,
           name: (name != null && name.isNotEmpty) ? name : baked.name,
+          description: (desc != null && desc.isNotEmpty)
+              ? desc
+              : baked.description,
+          kind: (kind != null && kind.isNotEmpty) ? kind : baked.kind,
+          tags: tags.isNotEmpty ? tags : baked.tags,
+          recommended: recommended,
           manifestUrl: baked.manifestUrl,
         ),
       );
     }
-    if (out.isNotEmpty) return out;
+    if (out.isNotEmpty) {
+      out.sort((a, b) {
+        final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
+        if (byRec != 0) return byRec;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+      return out;
+    }
   } catch (e) {
     debugPrint('[OfficialPacks] catalog fetch failed: $e');
   }
@@ -86,9 +110,22 @@ List<PluginInstallCandidate> officialPackCandidatesMissing({
       PluginInstallCandidate(
         manifestUrl: url,
         displayName: pack.name,
+        description: pack.description,
+        tags: pack.tags,
+        catalogKind: pack.kind,
+        official: true,
+        recommended: pack.recommended ||
+            kOfficialRecommendedPackIds.contains(pack.id),
       ),
     );
   }
+  out.sort((a, b) {
+    final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
+    if (byRec != 0) return byRec;
+    final an = (a.displayName ?? '').toLowerCase();
+    final bn = (b.displayName ?? '').toLowerCase();
+    return an.compareTo(bn);
+  });
   return out;
 }
 

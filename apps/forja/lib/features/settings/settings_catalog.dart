@@ -64,14 +64,14 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       const SettingsCategoryMeta(
         id: SettingsCategoryId.sources,
         title: 'Addons',
-        subtitle: 'Playback, IPTV, torrent, Stremio, debrid, LAN',
+        subtitle: 'Playback, IPTV, torrents, Stremio, debrid, LAN',
         icon: Icons.extension_rounded,
       ),
     if (visibility.showForjaPacksCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.forjaPacks,
         title: 'Forja Packs',
-        subtitle: 'Install and manage Forja plugin packs',
+        subtitle: 'Install and manage plugin packs',
         icon: Icons.inventory_2_outlined,
       ),
     const SettingsCategoryMeta(

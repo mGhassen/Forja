@@ -520,7 +520,7 @@ class LiveMatchesEngine {
   static void engineResolveFailed([String? detail]) {
     ForjaToast.error(
       detail == null || detail.isEmpty
-          ? 'Engine resolve failed: no playable stream found'
+          ? 'No playable stream found'
           : detail,
     );
   }

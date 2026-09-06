@@ -358,7 +358,7 @@ Future<void> runEngineAutoPlay({
       failureNotifier.value = ResolveFailure(
         title: 'Couldn’t start playback',
         detail:
-            'No Forja plugins are selected for this title. Open Sources → Forja and turn on providers.',
+            'No Forja plugins are on for this title. Open Sources → Forja and turn on providers.',
         primaryLabel: 'Close',
         primaryIcon: Icons.close_rounded,
         onPrimary: () {

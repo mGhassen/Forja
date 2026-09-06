@@ -125,6 +125,12 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
           PluginInstallCandidate(
             manifestUrl: c.manifestUrl,
             displayName: c.displayName,
+            description: c.description,
+            tags: c.tags,
+            catalogKind: c.catalogKind,
+            version: c.version,
+            official: c.official,
+            recommended: c.recommended,
             kind: c.kind,
             fromRemoteProfile: c.fromRemoteProfile,
             alreadyInstalled: c.kind == PluginPackPromptKind.uninstall
