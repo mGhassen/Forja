@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **16 / 16** acceptance |
+| **Progress** | **8 / 8** components · **17 / 17** acceptance |
 | **Current slice** | Desktop in-app mini shipped — phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -50,6 +50,7 @@
 | 14 | R83-A14 | Top-right chrome button demotes when setting on (desktop VOD + IPTV) | ✅ |
 | 15 | R83-A15 | Mini: OverlayEntry.opaque synced so shell paints under transparent player route | ✅ |
 | 16 | R83-A16 | Mini: same MediaKit Video slot resized (no remount) so picture is not black | ✅ |
+| 17 | R83-A17 | Mini: shell / overlay / rails receive pointer hits outside the corner (no full-window Material/MouseRegion/Scaffold hit absorb) | ✅ |
 
 ---
 

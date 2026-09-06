@@ -4,13 +4,18 @@ import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
-import { useNavigationSetting } from '@/hooks/use-user-setting'
+import {
+  useNavigationSetting,
+  usePlaybackSetting,
+} from '@/hooks/use-user-setting'
 import {
   DEFAULT_NAV_TAB,
   HOST_CORE_NAV_IDS,
+  emptyPreferencesPayload,
   normalizeNavigationPayload,
   navTabLabel,
   type NavigationPayload,
+  type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
@@ -56,7 +61,8 @@ function emptyNavDraft(): NavDraft {
 }
 
 export function AccountSettingsNavigationPage() {
-  const { data, profileId, isLoading, save } = useNavigationSetting()
+  const navigation = useNavigationSetting()
+  const playback = usePlaybackSetting()
   const {
     draft,
     commit,
@@ -65,28 +71,66 @@ export function AccountSettingsNavigationPage() {
     savedFlash,
     saveError,
   } = useCommitDraft({
-    profileId,
-    updatedAt: data?.updated_at,
-    isReady: Boolean(data) && !isLoading,
-    serverValue: data?.payload,
+    profileId: navigation.profileId,
+    updatedAt: navigation.data?.updated_at,
+    isReady: Boolean(navigation.data) && !navigation.isLoading,
+    serverValue: navigation.data?.payload,
     mapServer: navigationFromServer,
     makeEmpty: emptyNavDraft,
-    save,
+    save: navigation.save,
     toPayload: payloadFromDraft,
   })
 
+  const playDraft = useCommitDraft({
+    profileId: playback.profileId,
+    updatedAt: playback.data?.updated_at,
+    isReady: Boolean(playback.data) && !playback.isLoading,
+    serverValue: playback.data?.payload,
+    mapServer: (value: unknown) => ({
+      ...emptyPreferencesPayload(),
+      ...((value as PreferencesPayload | undefined) ?? {}),
+    }),
+    makeEmpty: emptyPreferencesPayload,
+    save: playback.save,
+  })
+
+  /** RFC-086: IPTV / Live Sports only after Addons unlocks them. */
+  const featureOrder = useMemo(() => {
+    const iptvOn =
+      playDraft.draft.addon_feature_iptv ?? draft.visible.has('iptv')
+    const liveOn =
+      playDraft.draft.addon_feature_live_matches ??
+      draft.visible.has('live_matches')
+    return draft.order.filter((id) => {
+      if (id === 'iptv') return Boolean(iptvOn)
+      if (id === 'live_matches') return Boolean(liveOn)
+      return true
+    })
+  }, [
+    draft.order,
+    draft.visible,
+    playDraft.draft.addon_feature_iptv,
+    playDraft.draft.addon_feature_live_matches,
+  ])
+
   const startupOptions = useMemo(() => {
-    const opts = draft.order.filter((id) => draft.visible.has(id))
+    const opts = featureOrder.filter((id) => draft.visible.has(id))
     if (!opts.includes('settings')) opts.push('settings')
     return opts
-  }, [draft.order, draft.visible])
+  }, [featureOrder, draft.visible])
 
   const move = (index: number, dir: -1 | 1) => {
+    const id = featureOrder[index]
+    if (!id) return
     void commit((prev) => {
+      const fullIndex = prev.order.indexOf(id)
+      if (fullIndex < 0) return prev
+      const targetId = featureOrder[index + dir]
+      if (!targetId) return prev
+      const target = prev.order.indexOf(targetId)
+      if (target < 0) return prev
       const next = [...prev.order]
-      const target = index + dir
-      if (target < 0 || target >= next.length) return prev
-      ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[fullIndex], next[target]] = [next[target], next[fullIndex]]
       return { ...prev, order: next }
     })
   }
@@ -105,15 +149,20 @@ export function AccountSettingsNavigationPage() {
     })
   }
 
+  const footerSaving = isSaving || playDraft.isSaving
+  const footerFlash = savedFlash || playDraft.savedFlash
+  const footerError = saveError ?? playDraft.saveError
+  const locked = controlsLocked || playDraft.controlsLocked || footerSaving
+
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Turn IPTV / Live Sports on from Addons (or here). Hub tabs appear after Forja Packs sync packs that contribute them."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons first. Hub tabs appear after Forja Packs sync packs that contribute them."
       footer={
         <SettingsAutosaveFooter
-          isSaving={isSaving}
-          savedFlash={savedFlash}
-          error={saveError}
+          isSaving={footerSaving}
+          savedFlash={footerFlash}
+          error={footerError}
         />
       }
     >
@@ -122,7 +171,7 @@ export function AccountSettingsNavigationPage() {
         description="Star sets the default tab after launch or profile switch. Hub names come from installed packs — not a fixed catalog on the portal."
       >
         <ul className="divide-y divide-forja-border/60">
-          {draft.order.map((id, index) => {
+          {featureOrder.map((id, index) => {
             const on = draft.visible.has(id)
             const isDefault = draft.defaultTab === id
             return (
@@ -134,7 +183,7 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} up`}
-                    disabled={controlsLocked || isSaving || index === 0}
+                    disabled={locked || index === 0}
                     onClick={() => move(index, -1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -144,9 +193,7 @@ export function AccountSettingsNavigationPage() {
                     type="button"
                     aria-label={`Move ${labelFor(id)} down`}
                     disabled={
-                      controlsLocked ||
-                      isSaving ||
-                      index === draft.order.length - 1
+                      locked || index === featureOrder.length - 1
                     }
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
@@ -169,7 +216,7 @@ export function AccountSettingsNavigationPage() {
                       ? `${labelFor(id)} is default tab`
                       : `Set ${labelFor(id)} as default tab`
                   }
-                  disabled={controlsLocked || isSaving || !on}
+                  disabled={locked || !on}
                   onClick={() =>
                     void commit((prev) => ({ ...prev, defaultTab: id }))
                   }
@@ -188,7 +235,7 @@ export function AccountSettingsNavigationPage() {
                   role="switch"
                   aria-checked={on}
                   aria-label={`Show ${labelFor(id)}`}
-                  disabled={controlsLocked || isSaving}
+                  disabled={locked}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
                     'group relative h-6 w-11 shrink-0 appearance-none rounded-full border-0 p-0 transition-colors active:scale-100 active:filter-none disabled:cursor-not-allowed disabled:opacity-60',
@@ -217,7 +264,7 @@ export function AccountSettingsNavigationPage() {
                   ? 'Settings is default tab'
                   : 'Set Settings as default tab'
               }
-              disabled={controlsLocked || isSaving}
+              disabled={locked}
               onClick={() =>
                 void commit((prev) => ({ ...prev, defaultTab: 'settings' }))
               }
@@ -253,7 +300,7 @@ export function AccountSettingsNavigationPage() {
                 ? draft.defaultTab
                 : (startupOptions[0] ?? DEFAULT_NAV_TAB)
             }
-            disabled={controlsLocked || isSaving}
+            disabled={locked}
             onChange={(e) =>
               void commit((prev) => ({ ...prev, defaultTab: e.target.value }))
             }

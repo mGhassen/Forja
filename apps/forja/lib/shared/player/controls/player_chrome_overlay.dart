@@ -772,7 +772,11 @@ class PlayerTopBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final titleInset = constraints.maxWidth >= 600 ? 152.0 : 96.0;
-        return MouseRegion(
+        // opaque:false — default MouseRegion eats the mac title-inset zone and
+        // blocks [DragToMoveArea] / overlay drag strip underneath.
+        return DesktopWindowChrome.wrapDragMove(
+          MouseRegion(
+          opaque: false,
           onEnter: (_) => playerChromeCancelSeekScrubs(),
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, topPadding(context), 16, 6),
@@ -856,6 +860,7 @@ class PlayerTopBar extends StatelessWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );

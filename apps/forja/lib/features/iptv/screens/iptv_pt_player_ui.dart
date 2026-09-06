@@ -1037,7 +1037,14 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           }
           unawaited(_s._exitIptvPlayer());
         },
-        child: Scaffold(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Mini: Scaffold/MouseRegion are opaque hit targets — ignore them so
+            // shell/rails receive clicks; corner slot below stays interactive.
+            IgnorePointer(
+              ignoring: mini,
+              child: Scaffold(
           // Always transparent — full black comes from a stack [ColoredBox] so
           // mini can hit-test through to the shell (same MediaKit resize path).
           backgroundColor: Colors.transparent,
@@ -1097,17 +1104,17 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           onClaimPlayFocus: _claimPlayFocus,
           onControlsActivity: _scheduleHideControls,
           child: MouseRegion(
-            onHover: mini ? null : (_) => _onPlayerMouseMove(),
-            cursor: mini ||
-                    (_s._controlsVisible ||
+            onHover: (_) => _onPlayerMouseMove(),
+            cursor: (_s._controlsVisible ||
                         _s._guideVisible ||
                         _s._searchVisible)
                 ? SystemMouseCursors.basic
                 : SystemMouseCursors.none,
-            child: GestureDetector(
-              behavior: mini
-                  ? HitTestBehavior.deferToChild
-                  : HitTestBehavior.opaque,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+              behavior: HitTestBehavior.translucent,
               onTap: hideFullChrome ? null : _toggleControls,
               // Double-click / double-tap video → toggle fullscreen (same as films).
               // Android TV is already immersive — no fullscreen toggle.
@@ -1125,76 +1132,26 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 children: [
                   if (!mini)
                     const Positioned.fill(child: ColoredBox(color: Colors.black)),
-                  if (mini) const IgnorePointer(child: SizedBox.expand()),
-                  // One video slot for full + mini — remount drops MediaKit texture.
+                  // Full-player video only — mini mounts the same GlobalKey slot
+                  // outside [IgnorePointer] so the corner stays hittable.
+                  if (!mini)
                   Positioned(
                     key: const ValueKey('iptv-player-video-slot'),
-                    left: mini ? null : 0,
-                    top: mini ? null : 0,
-                    right: mini ? 16 : 0,
-                    bottom: mini ? 16 : 0,
-                    width: mini ? InAppMiniPlayerChrome.width : null,
-                    height: mini ? InAppMiniPlayerChrome.height : null,
+                    left: 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
                     child: Material(
-                      elevation: mini ? 12 : 0,
+                      elevation: 0,
                       color: Colors.black,
-                      borderRadius: BorderRadius.circular(mini ? 10 : 0),
-                      clipBehavior: Clip.antiAlias,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
                           ExcludeFocus(
                             child: RepaintBoundary(
-                              child: !_s._playerReady
-                                  ? _playerSwitchingSurface()
-                                  : _s._exoBackend
-                                      ? ExoPlayerView(
-                                          viewId: _s._exoViewId!,
-                                          // IPTV Exo always TextureView on ATV: physical
-                                          // SurfaceView + hybrid composition went audio-only
-                                          // black (even cold-open) and the composition-dead
-                                          // surface still fires renderedFirstFrame, so the
-                                          // watchdog cannot rescue it (issue 133).
-                                          allowSurfaceView: false,
-                                        )
-                                      : Video(
-                                          key: ValueKey(_s._videoEpoch),
-                                          controller: _s._controller!,
-                                          fit: BoxFit.contain,
-                                          fill: Colors.black,
-                                          controls: NoVideoControls,
-                                          subtitleViewConfiguration:
-                                              const SubtitleViewConfiguration(
-                                            visible: false,
-                                          ),
-                                        ),
+                              child: _buildIptvVideoSurface(),
                             ),
                           ),
-                          if (mini)
-                            InAppMiniPlayerChrome(
-                              playing: _s._playing,
-                              rootFocus: _s._miniRootFocus,
-                              playPauseFocus: _s._miniPlayPauseFocus,
-                              expandFocus: _s._miniExpandFocus,
-                              closeFocus: _s._miniCloseFocus,
-                              onPlayPause: () {
-                                unawaited(
-                                  InAppMiniPlayerController.instance
-                                      .togglePlayPause(),
-                                );
-                                if (mounted) setState(() {});
-                              },
-                              onExpand: () {
-                                unawaited(
-                                  InAppMiniPlayerController.instance.expand(),
-                                );
-                              },
-                              onClose: () {
-                                unawaited(
-                                  InAppMiniPlayerController.instance.close(),
-                                );
-                              },
-                            ),
                         ],
                       ),
                     ),
@@ -1242,9 +1199,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                   if (!hideFullChrome && _s._showPlaybackBanner) _buildBanner(),
                   if (!hideFullChrome && _s._escapeExitArmed)
                     const PlayerEscapeExitHint(),
-                  // Title-strip drag + double-click maximize (shell parity).
-                  if (!hideFullChrome && DesktopWindowChrome.isDesktop)
-                    DesktopWindowChrome.overlayDragStrip(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP / mini is active.
                   if (!hideFullChrome)
@@ -1324,10 +1278,96 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     ),
                 ],
               ),
+                ),
+                if (!hideFullChrome &&
+                    DesktopWindowChrome.isDesktop &&
+                    !_s._controlsVisible)
+                  DesktopWindowChrome.overlayDragStrip(),
+              ],
             ),
           ),
         ),
       ),
+            ),
+            if (mini) _buildInAppMiniCorner(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// MediaKit / Exo surface — [GlobalKey] keeps the texture across full↔mini;
+  /// [ValueKey] epoch remounts after engine recreate.
+  Widget _buildIptvVideoSurface() {
+    if (!_s._playerReady) return _playerSwitchingSurface();
+    if (_s._exoBackend) {
+      return KeyedSubtree(
+        key: _s._videoViewKey,
+        child: ExoPlayerView(
+          key: ValueKey('iptv-exo-${_s._videoEpoch}'),
+          viewId: _s._exoViewId!,
+          // IPTV Exo always TextureView on ATV: physical SurfaceView + hybrid
+          // composition went audio-only black (even cold-open) and the
+          // composition-dead surface still fires renderedFirstFrame, so the
+          // watchdog cannot rescue it (issue 133).
+          allowSurfaceView: false,
+        ),
+      );
+    }
+    return KeyedSubtree(
+      key: _s._videoViewKey,
+      child: Video(
+        key: ValueKey(_s._videoEpoch),
+        controller: _s._controller!,
+        fit: BoxFit.contain,
+        fill: Colors.black,
+        controls: NoVideoControls,
+        subtitleViewConfiguration: const SubtitleViewConfiguration(
+          visible: false,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInAppMiniCorner() {
+    return Positioned(
+      key: const ValueKey('iptv-player-video-slot'),
+      right: 16,
+      bottom: 16,
+      width: InAppMiniPlayerChrome.width,
+      height: InAppMiniPlayerChrome.height,
+      child: Material(
+        elevation: 12,
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ExcludeFocus(
+              child: RepaintBoundary(child: _buildIptvVideoSurface()),
+            ),
+            InAppMiniPlayerChrome(
+              playing: _s._playing,
+              rootFocus: _s._miniRootFocus,
+              playPauseFocus: _s._miniPlayPauseFocus,
+              expandFocus: _s._miniExpandFocus,
+              closeFocus: _s._miniCloseFocus,
+              onPlayPause: () {
+                unawaited(
+                  InAppMiniPlayerController.instance.togglePlayPause(),
+                );
+                if (mounted) setState(() {});
+              },
+              onExpand: () {
+                unawaited(InAppMiniPlayerController.instance.expand());
+              },
+              onClose: () {
+                unawaited(InAppMiniPlayerController.instance.close());
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1553,7 +1593,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   Widget _buildTopBar(bool compact) {
     return ListenableBuilder(
       listenable: SettingsService.inAppMiniPlayerNotifier,
-      builder: (context, _) => _buildTopBarActions(compact),
+      builder: (context, _) => DesktopWindowChrome.wrapDragMove(
+        _buildTopBarActions(compact),
+      ),
     );
   }
 

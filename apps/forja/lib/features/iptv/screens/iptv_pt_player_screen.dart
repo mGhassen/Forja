@@ -766,6 +766,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   StreamSubscription<bool>? _pipSub;
 
   Completer<void>? _stopForNewPlayCompleter;
+  /// Keep MediaKit/Exo surface across full ↔ in-app mini (no remount).
+  final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'iptv-player-video');
   late final FocusNode _miniRootFocus =
       FocusNode(debugLabel: 'iptv-in-app-mini-root');
   late final FocusNode _miniPlayPauseFocus =

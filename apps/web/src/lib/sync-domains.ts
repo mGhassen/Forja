@@ -107,6 +107,10 @@ export type PreferencesPayload = {
   auto_skip_intro?: boolean
   iptv_epg_enabled?: boolean
   max_playback_height?: number
+  /** Host Addons → IPTV unlocked (RFC-086). Rail default-on via navigation. */
+  addon_feature_iptv?: boolean
+  /** Host Addons → Live Sports unlocked (RFC-086). */
+  addon_feature_live_matches?: boolean
 }
 
 export type ProvidersPayload = {
@@ -440,6 +444,8 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
     auto_skip_intro: false,
     iptv_epg_enabled: true,
     max_playback_height: 2160,
+    addon_feature_iptv: false,
+    addon_feature_live_matches: false,
   }
 }
 

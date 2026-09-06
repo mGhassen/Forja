@@ -70,9 +70,10 @@ Widget settingsTitleText(
 
 /// Category row in the Settings hub list / sidebar.
 ///
-/// Chrome is only the green left bar / icon (selection). TV D-pad focus does
-/// not draw a gray ring - focusing a tile selects it so accent + detail match.
-class SettingsCategoryTile extends StatelessWidget {
+/// Selected chrome is the green left bar + ink. Keyboard / D-pad focus uses the
+/// same rail via [shellFocusableTap] — needed on desktop, which does not
+/// auto-select on focus (leanback does, so selection ≈ focus there).
+class SettingsCategoryTile extends StatefulWidget {
   const SettingsCategoryTile({
     super.key,
     required this.icon,
@@ -112,49 +113,67 @@ class SettingsCategoryTile extends StatelessWidget {
   final VoidCallback? onRightEdge;
 
   @override
+  State<SettingsCategoryTile> createState() => _SettingsCategoryTileState();
+}
+
+class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
+    final selected = widget.selected;
     final iconColor = selected
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.iconMuted;
     final titleColor = selected
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
-    final rail = tvRowId != null;
+    final rail = widget.tvRowId != null;
+    final policy = ShellScope.inputPolicyOf(context);
+    // FocusableControl owns the green rail while keyboard/D-pad chrome is on.
+    // Keep selected paint when focus is hidden (mouse mode / programmatic land)
+    // so the open category stays marked.
+    final focusRailVisible =
+        policy.focusChromeVisible(context, focused: _focused);
+    final showSelectedChrome = selected && !focusRailVisible;
 
     final child = AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: selected ? ForjaShellColors.inkHover : Colors.transparent,
+        color:
+            showSelectedChrome ? ForjaShellColors.inkHover : Colors.transparent,
         border: Border(
           left: BorderSide(
-            color: selected ? ForjaShellColors.brandGreen : Colors.transparent,
+            color: showSelectedChrome
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
             width: 2.5,
           ),
         ),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: iconColor),
+          Icon(widget.icon, size: 22, color: iconColor),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 settingsTitleText(
-                  title,
+                  widget.title,
                   TextStyle(
                     color: titleColor,
                     fontSize: SettingsTokens.categoryTitleSize,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
-                  adminOnly: adminOnly,
+                  adminOnly: widget.adminOnly,
                   sparkSize: 13,
                 ),
-                if (subtitle != null) ...[
+                if (widget.subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    subtitle!,
+                    widget.subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -178,22 +197,24 @@ class SettingsCategoryTile extends StatelessWidget {
 
     return shellFocusableTap(
       context: context,
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
-      // Category rail chrome is the green left bar - never the gray menu ring.
+      // Green left bar + ink — never the gray menu ring.
+      showFocusRail: true,
       showFocusBorder: false,
       showFocusFill: false,
-      listIndex: listIndex,
+      listIndex: widget.listIndex,
       tvTabId: 'settings',
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex ?? listIndex,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex ?? widget.listIndex,
       tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
       // Item mode snaps the first tile to list top (header stays visible).
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onRightEdge: onRightEdge,
-      focusNode: focusNode,
+      onRightEdge: widget.onRightEdge,
+      focusNode: widget.focusNode,
       onFocusChange: (focused) {
+        if (_focused != focused) setState(() => _focused = focused);
         // Auto-select on focus is leanback-only. Desktop also has
         // useFocusableMoodChips (hybrid D-pad), but resume/rebuild can dump
         // focus onto the first category tile (Profile) and was calling
@@ -205,7 +226,7 @@ class SettingsCategoryTile extends StatelessWidget {
           // that just received D-pad focus (↓ looked dead on Playback → Sources).
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
-            (onFocusSelect ?? onTap)();
+            (widget.onFocusSelect ?? widget.onTap)();
           });
         }
       },

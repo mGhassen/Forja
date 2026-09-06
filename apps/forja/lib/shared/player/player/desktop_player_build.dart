@@ -62,7 +62,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         // Full: opaque black under video. Mini: omit so shell paints through.
         if (!mini)
           const Positioned.fill(child: ColoredBox(color: Colors.black)),
-        if (mini) const IgnorePointer(child: SizedBox.expand()),
         Positioned(
           key: const ValueKey('desktop-player-video-slot'),
           left: mini ? null : 0,
@@ -187,22 +186,34 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             imdbId: widget.movie?.imdbId,
             playbackStarted: _s._playbackConfirmed,
           ),
+        // Topmost when chrome is hidden — hover-to-show chrome used to cover the
+        // mid-stack strip via MouseRegion, so maximize never fired.
+        if (!mini && !pipMode && !_s._showControls)
+          DesktopWindowChrome.overlayDragStrip(),
       ],
     );
 
+    // Mini: only the corner Positioned hit-tests. Full-window Material /
+    // MouseRegion default to opaque hits and blocked shell + rails under the
+    // transparent player route (picture painted; clicks did not).
     return Theme(
       data: ThemeData.dark(),
-      child: ListenableBuilder(
-        listenable: _s._statusController,
-        builder: (context, child) => MouseRegion(
-          onHover: mini ? null : _s._onPointerHover,
-          cursor: mini || _s._keepPlayerCursorVisible
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.none,
-          child: child,
-        ),
-        child: stack,
-      ),
+      child: mini
+          ? stack
+          : Material(
+              type: MaterialType.transparency,
+              child: ListenableBuilder(
+                listenable: _s._statusController,
+                builder: (context, child) => MouseRegion(
+                  onHover: _s._onPointerHover,
+                  cursor: _s._keepPlayerCursorVisible
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.none,
+                  child: child,
+                ),
+                child: stack,
+              ),
+            ),
     );
   }
 

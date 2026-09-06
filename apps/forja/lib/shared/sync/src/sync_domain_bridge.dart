@@ -681,11 +681,14 @@ class SyncDomainBridge {
     }
 
     final playback = payload['playback'];
-    if (playback is Map) {
+    final playbackMap =
+        playback is Map ? Map<String, dynamic>.from(playback) : null;
+    var addonFeaturePending = false;
+    if (playbackMap != null) {
       final editedAddonDuringPull = !resetLocalFirst &&
           addonFeatureGenAtFetch != null &&
           _addonFeatureLocalGen != addonFeatureGenAtFetch;
-      final addonFeaturePending = !resetLocalFirst &&
+      addonFeaturePending = !resetLocalFirst &&
           (_addonFeatureLocalGen != _addonFeatureSyncedGen ||
               editedAddonDuringPull);
       if (addonFeaturePending) {
@@ -695,7 +698,7 @@ class SyncDomainBridge {
         );
       }
       await importPreferences(
-        Map<String, dynamic>.from(playback),
+        playbackMap,
         skipAddonFeatures: addonFeaturePending,
       );
     }
@@ -774,7 +777,36 @@ class SyncDomainBridge {
       SettingsService.navbarChangeNotifier.value++;
     }
 
+    // Legacy web wrote IPTV/Live into visibleIds without playback flags.
+    // When cloud prefs omit the keys, promote from rail membership (224).
+    if (!addonFeaturePending) {
+      await _healAddonFeaturesFromNavIfPrefsSilent(playbackMap ?? const {});
+    }
+
     // Ignore legacy payload.iptv (M3U / portals) - tables + local store own IPTV.
+  }
+
+  /// Old portal Addons toggles only mutated `navigation.visibleIds`. Promote
+  /// missing `addon_feature_*` from current nav so ATV soft-pull unlocks.
+  Future<void> _healAddonFeaturesFromNavIfPrefsSilent(
+    Map<String, dynamic> playback,
+  ) async {
+    final nav = await _settings.getNavbarConfig();
+    if (!playback.containsKey('addon_feature_iptv') && nav.contains('iptv')) {
+      if (!await _settings.isAddonFeatureEnabled('iptv')) {
+        debugPrint('[Sync] heal addon_feature_iptv from legacy cloud nav');
+        await _settings.setAddonFeatureEnabled('iptv', true);
+      }
+    }
+    if (!playback.containsKey('addon_feature_live_matches') &&
+        nav.contains('live_matches')) {
+      if (!await _settings.isAddonFeatureEnabled('live_matches')) {
+        debugPrint(
+          '[Sync] heal addon_feature_live_matches from legacy cloud nav',
+        );
+        await _settings.setAddonFeatureEnabled('live_matches', true);
+      }
+    }
   }
 
   Future<Map<String, dynamic>> _exportStremioCompact() async {

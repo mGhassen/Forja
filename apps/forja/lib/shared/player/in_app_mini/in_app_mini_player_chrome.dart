@@ -58,15 +58,13 @@ class InAppMiniPlayerChrome extends StatelessWidget {
       onKeyEvent: _onRootKey,
       child: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
+        // Transparent — parent Material clips/elevates the video slot.
+        // Opaque black here covered MediaKit/Exo (audio-only mini).
         child: Material(
-          color: Colors.black,
-          elevation: 12,
-          borderRadius: BorderRadius.circular(10),
-          clipBehavior: Clip.antiAlias,
+          type: MaterialType.transparency,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Video sits under this chrome (sibling in parent Stack).
               Positioned(
                 left: 0,
                 right: 0,

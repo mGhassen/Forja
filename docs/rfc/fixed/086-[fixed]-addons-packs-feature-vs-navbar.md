@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **9 / 9** acceptance |
-| **Current slice** | Two-layer flags shipped — availability vs rail |
+| **Progress** | **Complete** · **4 / 4** components · **10 / 10** acceptance |
+| **Current slice** | Two-layer flags shipped — web portal writes same prefs keys |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,14 @@ Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
 | 7 | R86-A07 | Addons IPTV / Live ON → feature flag on **and** Features rail on by default | ✅ |
 | 8 | R86-A08 | Pack / hub plugin ON → hub Features rail on by default (first-seen + re-enable) | ✅ |
 | 9 | R86-A09 | Features can still hide a tab while Addon / pack stays on | ✅ |
+
+---
+
+## Acceptance (web portal contract)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 10 | R86-A10 | Web Addons IPTV / Live writes `addon_feature_*` + default rail `visibleIds` (same as app) | ✅ |
 
 ---
 

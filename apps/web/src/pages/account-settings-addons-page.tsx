@@ -189,6 +189,31 @@ export function AccountSettingsAddonsPage() {
     })
   }
 
+  /** RFC-086: unlock via playback flag + default Features rail on (same as app). */
+  const setHostAddon = (
+    navId: 'iptv' | 'live_matches',
+    on: boolean,
+  ) => {
+    const flagKey =
+      navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
+    void playDraft.commit((prev) => ({
+      ...prev,
+      [flagKey]: on,
+      ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
+    }))
+    setNavTab(navId, on)
+  }
+
+  const hostAddonOn = (navId: 'iptv' | 'live_matches'): boolean => {
+    const flag =
+      navId === 'iptv'
+        ? playDraft.draft.addon_feature_iptv
+        : playDraft.draft.addon_feature_live_matches
+    // Legacy cloud: web used to write nav only — treat rail membership as on.
+    if (flag === undefined) return navDraft.draft.visible.has(navId)
+    return flag
+  }
+
   const footerSaving = playDraft.isSaving || navDraft.isSaving
   const footerFlash = playDraft.savedFlash || navDraft.savedFlash
   const footerError = playDraft.saveError ?? navDraft.saveError
@@ -219,8 +244,8 @@ export function AccountSettingsAddonsPage() {
         <AddonRow
           title="IPTV"
           description="Xtream portals, EPG, live quality"
-          checked={navDraft.draft.visible.has('iptv')}
-          onCheckedChange={(v) => setNavTab('iptv', v)}
+          checked={hostAddonOn('iptv')}
+          onCheckedChange={(v) => setHostAddon('iptv', v)}
           href="/account/settings/iptv"
           hrefLabel="Portals"
           disabled={busy}
@@ -228,8 +253,8 @@ export function AccountSettingsAddonsPage() {
         <AddonRow
           title="Live Sports"
           description="Live Matches tab, live provider packs, schedule catalogs"
-          checked={navDraft.draft.visible.has('live_matches')}
-          onCheckedChange={(v) => setNavTab('live_matches', v)}
+          checked={hostAddonOn('live_matches')}
+          onCheckedChange={(v) => setHostAddon('live_matches', v)}
           href="/account/settings/live-sports"
           hrefLabel="Plugins"
           disabled={busy}

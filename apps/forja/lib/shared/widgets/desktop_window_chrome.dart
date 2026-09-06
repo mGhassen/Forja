@@ -53,6 +53,13 @@ class DesktopWindowChrome {
       ),
     );
   }
+
+  /// Wrap player / overlay chrome so drag + double-click maximize work on the
+  /// title region (buttons as children still receive taps).
+  static Widget wrapDragMove(Widget child) {
+    if (!isDesktop) return child;
+    return DragToMoveArea(child: child);
+  }
 }
 
 class _DesktopShellFrame extends StatelessWidget {
