@@ -151,6 +151,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Always rotate the access JWT on cold start when a session exists. Skew /
   // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
   await SyncService.instance.refreshSession(force: true);
+  unawaited(ProfileSettingsRealtime.ensureListening());
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   unawaited(SettingsService().getAnimeTitleLanguage());
   if (Platform.isAndroid) {

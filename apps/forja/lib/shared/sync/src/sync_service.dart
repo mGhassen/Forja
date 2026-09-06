@@ -8,6 +8,7 @@ import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:forja/shared/sync/src/profile_settings_realtime.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -76,6 +77,7 @@ class SyncService {
 
   void _notifyIdentityChanged() {
     identityRevision.value++;
+    unawaited(ProfileSettingsRealtime.ensureListening());
   }
 
   /// Single in-flight refresh (Guepard desktop-boot pattern) so boot/resume/
@@ -455,6 +457,7 @@ class SyncService {
   Future<void> signOut() async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
+    await ProfileSettingsRealtime.stop();
     // Gate listens for signedOut and wipes account-bound local state (IPTV…).
     // gotrue clears local session first, then may throw on remote revoke when
     // DNS/TLS is down — never leave Settings stuck on signed-in error chrome.
@@ -469,6 +472,7 @@ class SyncService {
 
   /// Drop cloud feature flags and refresh chrome after session end.
   void clearIdentityAfterSignOut() {
+    unawaited(ProfileSettingsRealtime.stop());
     AccountFeatures.instance.clear();
     unawaited(useGuestPluginDiskScope());
     _notifyIdentityChanged();

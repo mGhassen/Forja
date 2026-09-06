@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **41 / 41** fix · **0 / 4** acceptance |
+| **Progress** | **42 / 42** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -60,6 +60,7 @@
 | 39 | I224-T39 | Push then soft-pull crush: 8s nav-push grace; no Features-open soft-pull; no dirty heal-repush; await Features nav upsert; preserve hub ids in `tabOrder` export; loud `pushProfileSettings` logs | ✅ |
 | 40 | I224-T40 | Push overlays onto cached cloud payload — no pull-before-upsert RMW | ✅ |
 | 41 | I224-T41 | Web Profile: soft-pull on focus/visibility + realtime; serialize optimistic patches; pause draft hydrate while saves in flight | ✅ |
+| 42 | I224-T42 | App: subscribe `profile_settings` Realtime → debounced soft-pull (same dirty/grace path); start/stop on sign-in / profile / sign-out | ✅ |
 
 ---
 
@@ -94,7 +95,7 @@
 12. Soft pull kept applying cloud `visibleIds=[]` while fighting mid-edit enables; later refuse-empty/shrink guards then blocked **cloud → app** so web Features/Addons never landed.
 13. **Android emulator / ATV root (224 logs):** `libffi.so` dlopen failed — `libc++_shared.so` not packaged in jniLibs → `Engine.isReady=false` → every KV write silently no-op’d (`navbar write []→[anime]` then readback `[]`; crash toggle stuck on fallback).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands; soft pull **flushes dirty nav push first**, then applies **cloud as SoT when synced** (web enables land); skips nav apply only while a local edit is still unsynced; Android jniLibs ships **`libc++_shared.so`** with `libffi.so`; session navbar/crash memory covers transient KV miss.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands; soft pull **flushes dirty nav push first**, then applies **cloud as SoT when synced** (web enables land); skips nav apply only while a local edit is still unsynced; Android jniLibs ships **`libc++_shared.so`** with `libffi.so`; session navbar/crash memory covers transient KV miss; app + web subscribe to `profile_settings` Realtime for soft-pull (dirty/grace still win).
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
