@@ -134,6 +134,8 @@ function preferDirectPlayback(m3u8Url) {
     host = u.host.toLowerCase();
   } catch (_) {}
   if (host.indexOf('wfty.st') >= 0) return false;
+  // Public S3 (Foorja etc.) — MediaKit mbedtls often RST on long direct sessions.
+  if (host.indexOf('amazonaws.com') >= 0) return false;
   if (host.indexOf('indianservers.st') >= 0) return true;
   if (host.indexOf('strmd.st') >= 0 && path.indexOf('/streamfree/stream/') >= 0) {
     return true;
@@ -587,3 +589,432 @@ async function resolveDaddyLiveEmbed(ctx, embedUrl, cfg) {
   ];
 }
 
+
+/* ── Nest unlock (AlbaPlayer / tirfoot / OK.ru / Livepeer / S3) ───────────
+ * Shared by live plugins that walk iframe trees to native HLS only.
+ * Sites swap CDNs often — add a leaf helper, don't hardcode one host.
+ */
+
+function nestUa() {
+  return 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+}
+
+function nestUniq(urls) {
+  var out = [];
+  var seen = {};
+  for (var i = 0; i < urls.length; i++) {
+    var u = String(urls[i] || '').trim();
+    if (!u || seen[u]) continue;
+    seen[u] = 1;
+    out.push(u);
+  }
+  return out;
+}
+
+function nestHtmlUnescape(s) {
+  return String(s || '')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+function nestIsCleanPlayUrl(url) {
+  var u = String(url || '').trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  if (/&quot;|&amp;|"|'/i.test(u)) return false;
+  // Fake AWS regions (NXDOMAIN) — never open.
+  if (/\.s3\.us-north-\d+\.amazonaws\.com/i.test(u)) return false;
+  return true;
+}
+
+function nestHost(url) {
+  try {
+    return new URL(String(url || '')).host.toLowerCase();
+  } catch (_) {
+    return '';
+  }
+}
+
+function nestIsAmazonS3Url(url) {
+  return nestHost(url).indexOf('amazonaws.com') >= 0;
+}
+
+function nestIsOkCdUrl(url) {
+  var h = nestHost(url);
+  return (
+    h.indexOf('okcdn.ru') >= 0 ||
+    h.indexOf('vkuser.net') >= 0 ||
+    h.indexOf('ok.ru') >= 0
+  );
+}
+
+function nestIsBrightcoveUrl(url) {
+  return nestHost(url).indexOf('brightcove') >= 0;
+}
+
+/** Bunny/Livepeer edge 307 — MediaKit often won't follow. */
+function nestCanonicalizePlayUrl(url) {
+  var raw = String(url || '').trim();
+  if (!raw) return '';
+  try {
+    var u = new URL(raw);
+    var host = u.host.toLowerCase();
+    if (host === 'livepeercdn.studio' || host === 'cdn.livepeer.com') {
+      u.host = 'playback.livepeer.studio';
+      return u.href;
+    }
+  } catch (_) {}
+  return raw;
+}
+
+function nestAcceptPlayUrl(url) {
+  var playUrl = nestCanonicalizePlayUrl(url);
+  if (!nestIsCleanPlayUrl(playUrl)) return '';
+  return playUrl;
+}
+
+function nestExtractOkRuHls(html) {
+  var text = nestHtmlUnescape(html);
+  var out = [];
+  var keys = ['hlsMasterPlaylistUrl', 'hlsPlaybackMasterPlaylistUrl'];
+  for (var i = 0; i < keys.length; i++) {
+    var re = new RegExp('"' + keys[i] + '"\\s*:\\s*"([^"]+)"', 'gi');
+    var m;
+    while ((m = re.exec(text))) {
+      var url = String(m[1] || '').trim();
+      if (nestIsCleanPlayUrl(url)) out.push(url);
+    }
+  }
+  return nestUniq(out);
+}
+
+function nestExtractM3u8(html) {
+  var out = nestExtractOkRuHls(html);
+  var text = nestHtmlUnescape(html);
+  var re = /https?:\/\/[^\s"'<>\\]+?\.m3u8[^\s"'<>\\]*/gi;
+  var m;
+  while ((m = re.exec(text))) {
+    var url = m[0].replace(/\\+$/, '').replace(/&amp;/g, '&');
+    if (nestIsCleanPlayUrl(url)) out.push(url);
+  }
+  var srcRe = /(?:source|file|src)\s*[:=]\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/gi;
+  while ((m = srcRe.exec(text))) {
+    if (nestIsCleanPlayUrl(m[1])) out.push(m[1]);
+  }
+  return nestUniq(out);
+}
+
+function nestExtractIframeSrcs(html) {
+  var out = [];
+  var re = /<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi;
+  var m;
+  while ((m = re.exec(String(html || '')))) {
+    var src = String(m[1] || '').trim();
+    if (src) out.push(src);
+  }
+  return nestUniq(out);
+}
+
+function nestNestedEmbedUrls(html, baseUrl) {
+  var out = [];
+  var iframes = nestExtractIframeSrcs(html);
+  for (var i = 0; i < iframes.length; i++) {
+    var src = String(iframes[i] || '').trim();
+    if (!src || /^javascript:/i.test(src)) continue;
+    // playerv5 injects "+q+u+q+" — no scheme/path markers; skip before resolve
+    // or it becomes https://host/+q+u+q+ and looks like a real URL.
+    if (!/[:/.]/.test(src)) continue;
+    if (
+      /acscdn|doubleclick|googlesyndication|pagead2|adservice|\.js($|\?)|\.css($|\?)/i.test(
+        src,
+      )
+    ) {
+      continue;
+    }
+    var abs = src;
+    try {
+      abs = new URL(src, baseUrl).href;
+    } catch (_) {
+      continue;
+    }
+    if (!/^https?:\/\//i.test(abs)) continue;
+    try {
+      var nestU = new URL(abs);
+      if (!nestU.hostname || nestU.hostname.indexOf('.') < 0) continue;
+      if (/^\/*(\+[A-Za-z0-9]*)+$/.test(nestU.pathname)) continue;
+    } catch (_) {
+      continue;
+    }
+    out.push(abs);
+  }
+  return nestUniq(out);
+}
+
+function nestExtractServPages(playerHtml, baseUrl) {
+  var out = [baseUrl];
+  var re = /href=["']([^"']+\?serv=\d+)["']/gi;
+  var m;
+  while ((m = re.exec(String(playerHtml || '')))) {
+    var href = String(m[1] || '').trim();
+    if (!href) continue;
+    try {
+      out.push(new URL(href, baseUrl).href);
+    } catch (_) {
+      out.push(href);
+    }
+  }
+  return nestUniq(out);
+}
+
+function nestServLabel(url, html) {
+  try {
+    var u = new URL(url);
+    var serv = u.searchParams.get('serv');
+    if (serv) {
+      var re = new RegExp(
+        'href=["\'][^"\']*\\?serv=' + serv + '["\'][^>]*>([\\s\\S]*?)<\\/a>',
+        'i',
+      );
+      var m = String(html || '').match(re);
+      if (m) {
+        var label = String(m[1] || '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (label) return label;
+      }
+      return 'Server ' + serv;
+    }
+  } catch (_) {}
+  var active = String(html || '').match(
+    /class=["'][^"']*aplr-link[^"']*active[^"']*["'][^>]*>([\s\S]*?)<\/a>/i,
+  );
+  if (active) {
+    var activeLabel = String(active[1] || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (activeLabel) return activeLabel;
+  }
+  return 'Server';
+}
+
+async function nestFetchHtml(ctx, url, referer) {
+  var headers = {
+    'User-Agent': nestUa(),
+    Accept: 'text/html,application/xhtml+xml',
+  };
+  if (referer) headers.Referer = referer;
+  try {
+    var res = await ctx.fetch(url, { headers: headers });
+    if (!res || !res.ok) return '';
+    return await res.text();
+  } catch (_) {
+    return '';
+  }
+}
+
+function nestPlaybackHeaders(playUrl, playerPageUrl) {
+  if (nestIsBrightcoveUrl(playUrl) || nestIsAmazonS3Url(playUrl)) {
+    return { 'User-Agent': nestUa() };
+  }
+  if (nestIsOkCdUrl(playUrl)) {
+    return {
+      Referer: 'https://ok.ru/',
+      Origin: 'https://ok.ru',
+      'User-Agent': nestUa(),
+    };
+  }
+  var origin = '';
+  try {
+    origin = new URL(playerPageUrl || playUrl).origin;
+  } catch (_) {}
+  return {
+    Referer: playerPageUrl || origin + '/',
+    Origin: origin || 'https://25.streemach.fun',
+    'User-Agent': nestUa(),
+  };
+}
+
+function nestPlayRow(url, name, playerPageUrl) {
+  var playUrl = nestCanonicalizePlayUrl(url);
+  return {
+    url: playUrl,
+    name: name || 'Live',
+    headers: nestPlaybackHeaders(playUrl, playerPageUrl),
+    // S3: hls-proxy (mbedtls RST). OK.ru / Livepeer / others: direct + headers.
+    directPlayback: !nestIsAmazonS3Url(playUrl),
+  };
+}
+
+async function nestUnlockPlayerPage(
+  ctx,
+  playerUrl,
+  channelReferer,
+  depth,
+  seenPages,
+  brand,
+) {
+  depth = depth || 0;
+  brand = brand || 'Live';
+  if (depth > 4) return [];
+  seenPages = seenPages || {};
+  var key = String(playerUrl || '').trim();
+  if (!key || seenPages[key]) return [];
+  seenPages[key] = 1;
+
+  var html = await nestFetchHtml(ctx, playerUrl, channelReferer || playerUrl);
+  if (!html) return [];
+
+  var pages = nestExtractServPages(html, playerUrl);
+  var out = [];
+  var seen = {};
+
+  for (var i = 0; i < pages.length; i++) {
+    var pageUrl = pages[i];
+    var pageHtml =
+      pageUrl === playerUrl
+        ? html
+        : await nestFetchHtml(ctx, pageUrl, playerUrl);
+    if (!pageHtml) continue;
+    seenPages[pageUrl] = 1;
+
+    var m3u8s = nestExtractM3u8(pageHtml);
+    var label = nestServLabel(pageUrl, pageHtml);
+    for (var j = 0; j < m3u8s.length; j++) {
+      var accepted = nestAcceptPlayUrl(m3u8s[j]);
+      if (!accepted || seen[accepted]) continue;
+      seen[accepted] = 1;
+      out.push(nestPlayRow(accepted, brand + ' · ' + label, pageUrl));
+    }
+
+    // Nest leaves per page (Alba → tirfoot → ok.ru / Livepeer / S3).
+    // Walk every ?serv= tab even if an earlier tab already unlocked HLS.
+    if (!m3u8s.length && depth < 4) {
+      var nested = nestNestedEmbedUrls(pageHtml, pageUrl);
+      for (var k = 0; k < nested.length; k++) {
+        var nestUrl = nested[k];
+        if (seenPages[nestUrl]) continue;
+        var nestRows = await nestUnlockPlayerPage(
+          ctx,
+          nestUrl,
+          pageUrl,
+          depth + 1,
+          seenPages,
+          brand,
+        );
+        for (var n = 0; n < nestRows.length; n++) {
+          var row = nestRows[n];
+          if (!row || !row.url || seen[row.url]) continue;
+          seen[row.url] = 1;
+          if (row.name && row.name.indexOf(label) < 0) {
+            row.name =
+              brand +
+              ' · ' +
+              label +
+              ' · ' +
+              String(row.name || '').replace(
+                new RegExp('^' + brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' · '),
+                '',
+              );
+          }
+          out.push(row);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Walk a channel / player URL to native HLS rows.
+ * @param {object} ctx engine fetch context
+ * @param {string} channelUrl page or direct media URL
+ * @param {{ brand?: string, originReferer?: string }} opts
+ */
+async function nestUnlockChannel(ctx, channelUrl, opts) {
+  opts = opts || {};
+  var brand = opts.brand || 'Live';
+  var originReferer = opts.originReferer || '';
+  var raw = String(channelUrl || '').trim();
+  if (!raw) return [];
+
+  if (/\.m3u8|\.mp4/i.test(raw)) {
+    if (/\.mp4/i.test(raw) && !/\.m3u8/i.test(raw)) {
+      return [nestPlayRow(raw, brand, raw)];
+    }
+    var ready = nestAcceptPlayUrl(raw);
+    return ready ? [nestPlayRow(ready, brand, raw)] : [];
+  }
+
+  if (/ok\.ru\/videoembed\//i.test(raw)) {
+    var okHtml = await nestFetchHtml(ctx, raw, 'https://ok.ru/');
+    if (!okHtml) return [];
+    var okUrls = nestExtractM3u8(okHtml);
+    var okOut = [];
+    for (var oi = 0; oi < okUrls.length; oi++) {
+      var okReady = nestAcceptPlayUrl(okUrls[oi]);
+      if (!okReady) continue;
+      okOut.push(nestPlayRow(okReady, brand + ' · OK', raw));
+    }
+    return okOut;
+  }
+
+  if (/albaplayer/i.test(raw)) {
+    return nestUnlockPlayerPage(ctx, raw, raw, 0, {}, brand);
+  }
+
+  var pageRef = originReferer;
+  if (!pageRef) {
+    var host = nestHost(raw);
+    pageRef = host ? 'https://' + host + '/' : raw;
+  }
+  var html = await nestFetchHtml(ctx, raw, pageRef);
+  if (!html) return [];
+
+  var direct = nestExtractM3u8(html);
+  if (direct.length) {
+    var rows = [];
+    var seenDirect = {};
+    for (var d = 0; d < direct.length; d++) {
+      var accepted = nestAcceptPlayUrl(direct[d]);
+      if (!accepted || seenDirect[accepted]) continue;
+      seenDirect[accepted] = 1;
+      rows.push(nestPlayRow(accepted, brand, raw));
+    }
+    if (rows.length) return rows;
+  }
+
+  var iframes = nestExtractIframeSrcs(html).filter(function (src) {
+    return /albaplayer|streemach|player|ok\.ru\/videoembed/i.test(src);
+  });
+  if (!iframes.length) return [];
+
+  var out = [];
+  var seen = {};
+  for (var i = 0; i < iframes.length; i++) {
+    var nestRows = [];
+    try {
+      nestRows = await nestUnlockPlayerPage(
+        ctx,
+        iframes[i],
+        raw,
+        0,
+        {},
+        brand,
+      );
+    } catch (_) {
+      nestRows = [];
+    }
+    for (var j = 0; j < nestRows.length; j++) {
+      var row = nestRows[j];
+      if (!row || !row.url || seen[row.url]) continue;
+      seen[row.url] = 1;
+      out.push(row);
+    }
+  }
+  return out;
+}

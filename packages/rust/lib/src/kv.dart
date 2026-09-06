@@ -1,4 +1,18 @@
+import 'package:flutter/foundation.dart';
+
 import 'facade.dart';
+
+final Set<String> _kvSkipLogged = {};
+
+void _kvWriteSkipped(String op, String key) {
+  if (!kDebugMode) return;
+  final stamp = '$op:$key';
+  if (!_kvSkipLogged.add(stamp)) return;
+  debugPrint(
+    '[KV] $op($key) skipped — Engine.isReady=${Engine.isReady} '
+    '(settings will not persist; further skips for this key silenced)',
+  );
+}
 
 Future<bool> kvHasKey(String key) async {
   if (!Engine.isReady) return false;
@@ -16,7 +30,10 @@ String? kvGetStringSync(String key) {
 }
 
 Future<void> kvSetString(String key, String value) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetString', key);
+    return;
+  }
   Engine.storageWriteString(key, value);
 }
 
@@ -30,7 +47,10 @@ bool kvGetBoolSync(String key, {required bool fallback}) {
 }
 
 Future<void> kvSetBool(String key, bool value) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetBool', key);
+    return;
+  }
   Engine.storageWriteBool(key, value);
 }
 
@@ -42,7 +62,10 @@ Future<int> kvGetInt(String key, {required int fallback}) async {
 }
 
 Future<void> kvSetInt(String key, int value) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetInt', key);
+    return;
+  }
   Engine.storageWrite(key, value);
 }
 
@@ -54,7 +77,10 @@ Future<double> kvGetDouble(String key, {required double fallback}) async {
 }
 
 Future<void> kvSetDouble(String key, double value) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetDouble', key);
+    return;
+  }
   Engine.storageWrite(key, value);
 }
 
@@ -67,7 +93,10 @@ Future<List<String>> kvGetStringList(
 }
 
 Future<void> kvSetStringList(String key, List<String> values) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetStringList', key);
+    return;
+  }
   Engine.storageWriteStringList(key, values);
 }
 
@@ -77,7 +106,10 @@ Future<List<Map<String, dynamic>>> kvGetMapList(String key) async {
 }
 
 Future<void> kvSetMapList(String key, List<Map<String, dynamic>> values) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetMapList', key);
+    return;
+  }
   Engine.storageWriteMapList(key, values);
 }
 
@@ -94,7 +126,10 @@ Future<List<Map<String, dynamic>>> kvGetJsonList(String key) async {
 }
 
 Future<void> kvSetJsonList(String key, List<Map<String, dynamic>> values) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetJsonList', key);
+    return;
+  }
   Engine.storageWrite(key, values);
 }
 
@@ -106,6 +141,9 @@ Future<List<String>> kvGetJsonStringList(String key) async {
 }
 
 Future<void> kvSetJsonStringList(String key, List<String> values) async {
-  if (!Engine.isReady) return;
+  if (!Engine.isReady) {
+    _kvWriteSkipped('kvSetJsonStringList', key);
+    return;
+  }
   Engine.storageWrite(key, values);
 }

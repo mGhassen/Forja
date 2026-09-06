@@ -195,7 +195,8 @@ class SyncDomainBridge {
   /// Cloud → local cache. Flush pending local domain pushes first so an in-flight
   /// edit is not lost, then [pullAndMergeAll]. Debounced unless [force].
   ///
-  /// Call on side-nav tab select, window focus / app resume. Not on a timer.
+  /// Call when opening Settings / Addons, side-nav tab select, window focus /
+  /// app resume. Local toggles must [schedulePush] only — not this.
   Future<void> syncFromCloud({bool force = false}) async {
     if (!SyncService.instance.isSignedIn) return;
     final now = DateTime.now();
@@ -211,19 +212,20 @@ class SyncDomainBridge {
     run = () async {
       try {
         final pending = Set<String>.from(_pushTimers.keys);
+        final navDirty = _navigationLocalGen != _navigationSyncedGen;
         cancelPendingPushes();
-        // Do NOT auto-flush dirty navigation here — a thin/empty ATV cache
-        // with intentional overlay would wipe richer cloud Features (224).
-        // [_applyLeanPayload] takes cloud when dirty local would shrink it.
-        if (pending.isNotEmpty) {
+        // Flush local edits before pull so cloud SoT soft-pull can apply web
+        // changes without racing an unsynced Features/Addons enable (224).
+        final flush = <String>{...pending};
+        if (navDirty) flush.add(_domainNavigation);
+        if (flush.isNotEmpty) {
           await pushAllLocal(
             pushIptvIfLocalEmpty: false,
-            allowEmptyStremioWipe: pending.contains(_domainStremio),
-            allowEmptyNuvioWipe: pending.contains(_domainNuvio),
-            allowEmptyForjaWipe: pending.contains(_domainForja),
-            // Only flush domains that were pending — never overlay stale
-            // navigation / playback from an unrelated edit (issue 126).
-            overlayDomains: pending,
+            allowEmptyStremioWipe: flush.contains(_domainStremio),
+            allowEmptyNuvioWipe: flush.contains(_domainNuvio),
+            allowEmptyForjaWipe: flush.contains(_domainForja),
+            overlayDomains: flush,
+            overlayAddonFeatures: flush.contains(_domainPreferences),
           );
         }
         await pullAndMergeAll(resetLocalFirst: false);
@@ -579,7 +581,18 @@ class SyncDomainBridge {
         final intentionalNavEdit =
             overlayDomains != null &&
             overlayDomains.contains(_domainNavigation);
-        if (!intentionalNavEdit &&
+        final localIds = _navVisibleIds(localNav);
+        final remoteIds = _navVisibleIds(remoteNav);
+        // Hollow local (KV miss / never wrote this session) must not wipe cloud
+        // Features — that was the 224 soft-pull loop: flush [] then import [].
+        if (localIds.isEmpty &&
+            remoteIds.isNotEmpty &&
+            !SettingsService.navbarSessionExplicitEmpty) {
+          debugPrint(
+            '[Sync] refuse hollow nav push over rich cloud '
+            '(local=[] remote=$remoteIds)',
+          );
+        } else if (!intentionalNavEdit &&
             navigationWouldShrinkCloud(remoteNav, localNav)) {
           debugPrint(
             '[Sync] refuse navigation shrink from non-Features push',
@@ -704,65 +717,30 @@ class SyncDomainBridge {
         _navigationLocalGen != navGenAtFetch;
     final navPending =
         !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
-    if (editedDuringPull) {
+    if (editedDuringPull || navPending) {
+      // Unsynced local Features/Addons edit — push already flushed in
+      // [syncFromCloud]. Do not apply cloud nav over mid-edit; still heal if
+      // local is richer than this remote snapshot.
       debugPrint(
-        '[Sync] skip navigation apply — local edit during cloud pull',
+        '[Sync] skip navigation apply — local Features edit not synced yet '
+        '(editedDuringPull=$editedDuringPull pending=$navPending)',
       );
       final localNav = await _exportNavigationCompact();
       final remoteNav = navigation is Map
           ? Map<String, dynamic>.from(navigation)
           : null;
       if (navigationWouldShrinkLocal(localNav, remoteNav)) {
-        debugPrint(
-          '[Sync] heal cloud nav — local richer during mid-pull edit',
-        );
+        debugPrint('[Sync] heal cloud nav — local richer than soft-pull remote');
         await schedulePush(_domainNavigation);
-      }
-    } else if (navPending) {
-      final localNav = await _exportNavigationCompact();
-      final remoteNav = navigation is Map
-          ? Map<String, dynamic>.from(navigation)
-          : null;
-      final localIds = _navVisibleIds(localNav);
-      final remoteIds = _navVisibleIds(remoteNav);
-      // Hollow dirty local (empty ATV cache) may take richer cloud Features.
-      // Non-empty dirty local must never be replaced — Addons OK → [iptv]
-      // then "richer cloud" apply was wiping the enable so the next OK
-      // logged next=[live_matches] only (224).
-      if (localIds.isEmpty && remoteIds.isNotEmpty) {
-        debugPrint(
-          '[Sync] apply cloud nav — dirty local hollow, take Features from cloud',
-        );
-        _navigationLocalGen = _navigationSyncedGen;
-        if (navigation is Map) {
-          await _importNavigation(Map<String, dynamic>.from(navigation));
-        }
-      } else {
-        debugPrint(
-          '[Sync] skip navigation apply — local Features edit not synced yet '
-          '(local ${localIds.length} tab(s))',
-        );
-        // Push richer local so web Features rail matches the device (224).
-        if (navigationWouldShrinkLocal(localNav, remoteNav)) {
-          await schedulePush(_domainNavigation);
-        }
       }
     } else if (navigation is Map) {
-      // Soft pull: never drop local tabs for a thinner cloud row — that wiped
-      // Addons/Features enables right after OK (224). Profile switch
-      // (resetLocalFirst) still applies cloud as master.
-      final localNav = await _exportNavigationCompact();
-      final remoteNav = Map<String, dynamic>.from(navigation);
-      if (!resetLocalFirst &&
-          navigationWouldShrinkLocal(localNav, remoteNav)) {
-        debugPrint(
-          '[Sync] skip cloud nav shrink on soft pull — keep local '
-          '${_navVisibleIds(localNav).length} tab(s); heal cloud',
-        );
-        await schedulePush(_domainNavigation);
-      } else {
-        await _importNavigation(remoteNav);
-      }
+      // Synced soft pull / profile reset: cloud is source of truth so web
+      // Features / Addons changes land in the app (224). Mid-edit is handled
+      // above; local toggles push before this path runs.
+      await _importNavigation(
+        Map<String, dynamic>.from(navigation),
+        resetLocalFirst: resetLocalFirst,
+      );
     } else if (resetLocalFirst) {
       // Reset left platform-default nav without notifying; publish once.
       SettingsService.navbarChangeNotifier.value++;
@@ -850,13 +828,36 @@ class SyncDomainBridge {
     return out;
   }
 
-  Future<void> _importNavigation(Map<String, dynamic> payload) async {
+  Future<void> _importNavigation(
+    Map<String, dynamic> payload, {
+    bool resetLocalFirst = false,
+  }) async {
     if (payload['visibleIds'] is List) {
+      final incoming = (payload['visibleIds'] as List).cast<String>();
+      // Only block when a Features/Addons edit is still unsynced. Synced soft
+      // pull must apply cloud as SoT (including empty / shrink) so web changes
+      // reach the app (224).
+      if (!resetLocalFirst &&
+          _navigationLocalGen != _navigationSyncedGen) {
+        final local = await _settings.getNavbarConfig();
+        if (local.isNotEmpty ||
+            navigationWouldShrinkLocal(
+              {'visibleIds': local},
+              {'visibleIds': incoming},
+            )) {
+          debugPrint(
+            '[Sync] refuse _importNavigation — dirty local=$local '
+            'incoming=$incoming',
+          );
+          return;
+        }
+      }
+      debugPrint('[Sync] _importNavigation visibleIds=$incoming');
       final tabOrder = payload['tabOrder'] is List
           ? (payload['tabOrder'] as List).cast<String>()
           : null;
       await _settings.setNavbarConfig(
-        (payload['visibleIds'] as List).cast<String>(),
+        incoming,
         tabOrder: tabOrder,
       );
     }

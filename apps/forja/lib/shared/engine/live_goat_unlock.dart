@@ -782,6 +782,8 @@ class LiveGoatUnlock {
     // Brightcove Live (MobiKora / AlbaPlayer) — demuxed fMP4 masters; open
     // direct with headers (hls-proxy not required; CDN is CORS *).
     if (host.contains('brightcove.com')) return true;
+    // Foorja / public S3 — prefer hls-proxy (MediaKit mbedtls RST on long sessions).
+    if (host.contains('amazonaws.com')) return false;
     if (host.contains('streamfree.top') &&
         (path.contains('/live/') ||
             path.contains('/live-cdn/') ||

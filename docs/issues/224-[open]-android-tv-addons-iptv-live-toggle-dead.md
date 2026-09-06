@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **31 / 31** fix · **0 / 4** acceptance |
+| **Progress** | **37 / 37** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -50,6 +50,12 @@
 | 29 | I224-T29 | Stop navbar notify storm: no mid-refresh cache bump; Features scan bumps only on changed; `ensureNavIdsKnown` known-only (no visible auto-insert); MainScreen debounce + no-op skip | ✅ |
 | 30 | I224-T30 | Hub refresh: do not fold Features `visibleIds` into `syncActiveHubNavIds` known on the live path; scripts-missing = hydration pending; skip empty-active strip unless intentional wipe; Features heal re-enable after strip race | ✅ |
 | 31 | I224-T31 | MainScreen must not filter Features tabs with `isContributed` (silent rail drop); hub refresh must not empty-active-strip when packs exist; Features toggle forces rail notify | ✅ |
+| 32 | I224-T32 | Radical: no soft-pull on Features open; no routine hub sync strip on refresh; refuse dirty `_importNavigation` shrink; Features skip hydrate that drops tabs; pack OFF explicitly hides hubs; navbar write stack logs | ✅ |
+| 33 | I224-T33 | Soft pull never applies empty `visibleIds` (refuse `_importNavigation` + skip hollow cloud); seeded `getNavbarConfig` read-only (no silent shell migration wipe); `setNavbarTabVisible` readback under exclusive lock | ✅ |
+| 34 | I224-T34 | Soft pull: when synced, cloud is SoT (web enables land); flush dirty nav push before pull; skip nav apply only while local edit unsynced — remove refuse-empty/shrink that blocked cloud→app | ✅ |
+| 35 | I224-T35 | Session navbar + crash-reporting memory SoT when KV readback no-ops; refuse hollow `[]` nav push over rich cloud; drop dirty-hollow take-cloud; loud `[KV] skipped` when `!Engine.isReady` | ✅ |
+| 36 | I224-T36 | Android: ship `libc++_shared.so` next to `libffi.so` (dlopen was failing → Engine never ready → all settings writes no-op) | ✅ |
+| 37 | I224-T37 | Features first hide: ignore stale richer provider snap; drop one-way “skip hydrate that drops tabs” that then blocked the correct thinner snap | ✅ |
 
 ---
 
@@ -81,14 +87,16 @@
 9. Web Features hydrated nav by pruning against **empty** `playDraft` (effects not run yet) — cloud `visibleIds` for IPTV/Live were stripped so Features showed the row OFF or empty after Addons ON.
 10. Pack hub `PluginNavRegistry.refresh` folded Features `visibleIds` into `syncActiveHubNavIds` **knownHubIds**, so a mid-refresh empty active set **stripped** just-enabled hub tabs from KV (Features Anime ON, shell rail only profile).
 11. `_syncHubNavVisibility` re-introduced that fold for “legacy ghosts”; with scripts still awaiting confirm, empty-active sync stripped Anime right after Features OK (A04).
+12. Soft pull kept applying cloud `visibleIds=[]` while fighting mid-edit enables; later refuse-empty/shrink guards then blocked **cloud → app** so web Features/Addons never landed.
+13. **Android emulator / ATV root (224 logs):** `libffi.so` dlopen failed — `libc++_shared.so` not packaged in jniLibs → `Engine.isReady=false` → every KV write silently no-op’d (`navbar write []→[anime]` then readback `[]`; crash toggle stuck on fallback).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands; soft pull **flushes dirty nav push first**, then applies **cloud as SoT when synced** (web enables land); skips nav apply only while a local edit is still unsynced; Android jniLibs ships **`libc++_shared.so`** with `libffi.so`; session navbar/crash memory covers transient KV miss.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
 ## Verify
 
-1. **Hot restart** ATV / desktop (`R` is not enough if isolate stale — prefer full stop/run).
+1. **Full stop + `flutter run`** (must reinstall APK so `libc++_shared.so` is in the package). Boot log must show `Rust engine v…` — not `libc++_shared.so not found`.
 2. Settings → Addons → focus IPTV row → OK once. Log must show `[AddonToggle] set iptv → true`.
 3. Switch stays green; Features lists IPTV / Live Sports; rail shows tabs by default.
 4. OK again turns off and stays off; Features drops the row (not merely toggle off).

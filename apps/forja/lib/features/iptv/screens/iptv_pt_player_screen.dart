@@ -283,6 +283,27 @@ bool iptvLiveEnginePlayUrlReady(String url) {
   return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
 }
 
+/// Signed / flaky CDNs (OK.ru, Livepeer, Foorja S3) — re-resolve on recovery
+/// instead of reopening the same dead playlist.
+bool iptvLiveEngineUrlVolatile(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('okcdn.ru') ||
+      host.contains('vkuser.net') ||
+      host.contains('ok.ru') ||
+      host.contains('livepeer') ||
+      host.contains('amazonaws.com') ||
+      host.contains('foorja');
+}
+
+bool iptvLiveEngineCanForceRefresh(IptvPlaySource src) {
+  if (src.liveSourceKind != IptvLiveSourceKind.liveEngine) return false;
+  final params = src.liveEngineResolveParams;
+  if (params == null || params.isEmpty) return false;
+  final matchId = (params['matchId'] ?? '').toString().trim();
+  return matchId.isNotEmpty;
+}
+
 /// Cache key for live-source hover / picker health probes.
 String iptvLiveSourceProbeKey(IptvPlaySource src) {
   final id = (src.streamId ?? '').trim();
@@ -354,6 +375,7 @@ typedef IptvLiveEngineResolveSource =
     Future<IptvPlaySource?> Function(
       IptvPlaySource catalogSource, {
       void Function(String message)? onProgress,
+      bool forceRefresh,
     });
 
 /// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per

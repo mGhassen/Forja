@@ -430,10 +430,13 @@ mixin _LiveMatchesPlayback
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
       liveViewerCount: _effectiveStreamViewers(stream, match),
       liveStreamHd: stream.hd,
-      liveEngineEmbedUrl: directPlayback ? null : (embed.isNotEmpty ? embed : null),
-      liveEngineResolveParams: directPlayback
+      liveEngineEmbedUrl: directPlayback
           ? null
-          : _liveEngineResolveParams(match, stream),
+          : (embed.isEmpty || iptvLiveEnginePlayUrlReady(embed)
+              ? null
+              : embed),
+      // Keep params even for ready rows so volatile CDNs can re-unlock.
+      liveEngineResolveParams: _liveEngineResolveParams(match, stream),
     );
   }
 
@@ -653,17 +656,21 @@ mixin _LiveMatchesPlayback
     final embed = stream.embedUrl.trim();
     return IptvPlaySource(
       url: url,
-      label: _streamPanelLabel(match, stream),
+      label: _streamPickerLabel(match, stream),
       detail: _streamPanelDetail(stream),
       headers: headers,
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
       liveViewerCount: _effectiveStreamViewers(stream, match),
       liveStreamHd: stream.hd,
-      liveEngineEmbedUrl: embed.isEmpty ? null : embed,
-      liveEngineResolveParams: resolved
+      // After unlock, do not store the signed play URL as embed (recovery
+      // re-walks via matchId in params).
+      liveEngineEmbedUrl: resolved
           ? null
-          : _liveEngineResolveParams(match, stream),
+          : (embed.isEmpty || iptvLiveEnginePlayUrlReady(embed)
+              ? null
+              : embed),
+      liveEngineResolveParams: _liveEngineResolveParams(match, stream),
     );
   }
 
@@ -735,6 +742,7 @@ mixin _LiveMatchesPlayback
   Future<IptvPlaySource?> _resolveIptvPlaySourceFromCatalog(
     IptvPlaySource catalog, {
     void Function(String)? onProgress,
+    bool forceRefresh = false,
   }) async {
     final params = catalog.liveEngineResolveParams;
     if (params == null) return null;
@@ -743,16 +751,22 @@ mixin _LiveMatchesPlayback
       final url = catalog.url.trim();
       if (url.isNotEmpty && !url.startsWith('pending:')) embed = url;
     }
+    // Volatile / force: drop stale signed play URL — unlock again from matchId.
+    if (forceRefresh || iptvLiveEngineUrlVolatile(embed)) {
+      if (iptvLiveEnginePlayUrlReady(embed)) {
+        embed = '';
+      }
+    }
     final match = _streamedMatchFromLiveEngineParams(params);
     final stream = _streamedStreamFromLiveEngineParams(params, embedUrl: embed);
     final resolved = await _resolveStreamToEnginePlaySource(
       match,
       stream,
       onProgress: onProgress,
+      forceRefresh: forceRefresh || iptvLiveEngineUrlVolatile(catalog.url),
     );
     return resolved?.copyWith(
-      liveEngineEmbedUrl: embed,
-      liveEngineResolveParams: null,
+      liveEngineResolveParams: params,
     );
   }
 
@@ -1235,6 +1249,7 @@ mixin _LiveMatchesPlayback
     _StreamedStream stream, {
     void Function(String)? onProgress,
     bool allowSourceRefFallback = true,
+    bool forceRefresh = false,
   }) async {
     var embed = stream.embedUrl.trim();
     if (embed.startsWith('pending:')) embed = '';
@@ -1243,9 +1258,14 @@ mixin _LiveMatchesPlayback
       if (iframe.isNotEmpty) embed = iframe;
     }
 
-    // Already unlocked — do not re-unlock (signed CDNs die).
-    if (embed.isNotEmpty &&
-        (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed))) {
+    // Already unlocked — skip re-unlock unless volatile CDN / forced refresh
+    // (OK.ru / Livepeer / S3 signatures die; reopen must walk the channel again).
+    final ready =
+        embed.isNotEmpty &&
+        (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed));
+    final skipReuse =
+        forceRefresh || (ready && iptvLiveEngineUrlVolatile(embed));
+    if (ready && !skipReuse) {
       final headers = LiveGoatUnlock.withWftyPlaybackReferer(
         embed,
         stream.resolvedHeaders ??
@@ -1274,6 +1294,11 @@ mixin _LiveMatchesPlayback
         headers: direct ? headers : const {},
         resolved: true,
       );
+    }
+
+    // Re-unlock from matchId — do not pass a dead signed m3u8 as embedUrl.
+    if (skipReuse && iptvLiveEnginePlayUrlReady(embed)) {
+      embed = '';
     }
 
     final iframeCatalog = _isIframeCatalogMatch(match, stream);

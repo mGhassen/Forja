@@ -47,10 +47,14 @@ abstract final class ProductAnalytics {
 
   static Future<void> setEnabled(bool enabled) async {
     await SettingsService().setProductAnalyticsEnabled(enabled);
-    if (enabled) {
-      await _start();
-    } else {
-      await _stop();
+    try {
+      if (enabled) {
+        await _start();
+      } else {
+        await _stop();
+      }
+    } catch (e, st) {
+      debugPrint('[ProductAnalytics] SDK toggle failed: $e\n$st');
     }
   }
 

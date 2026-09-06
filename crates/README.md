@@ -30,6 +30,7 @@ Output:
 
 - `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so`
 - `apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libffi.so`
+- `…/jniLibs/*/libc++_shared.so` (required — `libffi` links NDK `c++_shared`; without it `dlopen` fails and `Engine.isReady` stays false)
 
 Release APK bundles Rust automatically (`buildRust=true` → `preReleaseBuild`):
 

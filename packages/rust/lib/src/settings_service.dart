@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'built_in_player_engine.dart';
 import 'catalog/stremio_addon_features.dart';
+import 'facade.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
@@ -946,12 +947,20 @@ class SettingsService {
     normalizeLiveStreamResolve(mode),
   );
 
-  /// Crash reporting to Sentry (RFC-043). Default on; Settings → About for everyone.
-  Future<bool> isCrashReportingEnabled() async =>
-      kvGetBool(_crashReportingEnabledKey, fallback: true);
+  /// Session mirror — KV readback was stuck at fallback `true` (224).
+  static bool? _crashReportingMemory;
 
-  Future<void> setCrashReportingEnabled(bool enabled) async =>
-      kvSetBool(_crashReportingEnabledKey, enabled);
+  /// Crash reporting to Sentry (RFC-043). Default on; Settings → About for everyone.
+  Future<bool> isCrashReportingEnabled() async {
+    final mem = _crashReportingMemory;
+    if (mem != null) return mem;
+    return kvGetBool(_crashReportingEnabledKey, fallback: true);
+  }
+
+  Future<void> setCrashReportingEnabled(bool enabled) async {
+    _crashReportingMemory = enabled;
+    await kvSetBool(_crashReportingEnabledKey, enabled);
+  }
 
   // --- In-app update auto-check (RFC-015 R15-A08 / R15-A09) ---
   static const String _updateLastCheckAtKey = 'update_last_check_at';
@@ -1487,6 +1496,16 @@ class SettingsService {
   static const String _navbarShell091Key = 'navbar_shell_091';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
+  /// Process-local rail mirror. KV readback was returning [] immediately after
+  /// a successful-looking write (224 logs: want=[anime] got=[]), and soft pull
+  /// then flushed empty nav over cloud. Memory is SoT for the session; KV is
+  /// best-effort durable store.
+  static List<String>? _navbarVisibleMemory;
+
+  /// True when this session wrote an intentional empty Features rail.
+  static bool get navbarSessionExplicitEmpty =>
+      _navbarVisibleMemory != null && _navbarVisibleMemory!.isEmpty;
+
   /// Serializes navbar KV writes / RMW (issue 224).
   static Future<void> _navbarExclusiveTail = Future<void>.value();
 
@@ -1722,8 +1741,11 @@ class SettingsService {
   }) async {
     if (activeHubIds.isEmpty) return;
     return _withNavbarExclusive(() async {
-      if (!await kvHasKey(_navbarConfigKey)) return;
-      final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      if (_navbarVisibleMemory == null &&
+          !await kvHasKey(_navbarConfigKey)) {
+        return;
+      }
+      final visible = await _readNavbarVisibleRaw();
       if (visible.any(activeHubIds.contains)) return;
 
       // Keep any stored host tabs, then restore stripped VOD hubs, then the rest.
@@ -1734,8 +1756,7 @@ class SettingsService {
           if (!visible.contains(id)) id,
       ];
       if (listEquals(visible, ordered)) return;
-      await kvSetStringList(_navbarConfigKey, ordered);
-      if (notify) navbarChangeNotifier.value++;
+      await _setNavbarConfigUnlocked(ordered, notify: notify);
     });
   }
 
@@ -1755,7 +1776,10 @@ class SettingsService {
     bool allowEmptyActiveStrip = false,
   }) async {
     return _withNavbarExclusive(() async {
-      if (!await kvHasKey(_navbarConfigKey)) return;
+      if (_navbarVisibleMemory == null &&
+          !await kvHasKey(_navbarConfigKey)) {
+        return;
+      }
       if (activeHubIds.isEmpty &&
           knownHubIds.isNotEmpty &&
           !allowEmptyActiveStrip) {
@@ -1765,32 +1789,49 @@ class SettingsService {
         );
         return;
       }
-      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      final raw = await _readNavbarVisibleRaw();
       final next = raw
           .where((id) => !knownHubIds.contains(id) || activeHubIds.contains(id))
           .toList();
       if (listEquals(raw, next)) return;
-      await kvSetStringList(_navbarConfigKey, next);
+      debugPrint(
+        '[Settings] syncActiveHubNavIds strip $raw → $next '
+        '(active=$activeHubIds known=$knownHubIds)\n'
+        '${StackTrace.current}',
+      );
+      await _setNavbarConfigUnlocked(next, notify: notify);
       final defaultTab = await getDefaultNavTab();
       if (knownHubIds.contains(defaultTab) &&
           !activeHubIds.contains(defaultTab)) {
         final fallback = next.isNotEmpty ? next.first : 'settings';
         await kvSetString(_defaultNavTabKey, fallback);
       }
-      if (notify) navbarChangeNotifier.value++;
     });
   }
 
   /// RMW add/remove one tab under the navbar exclusive lock (issue 224).
   Future<List<String>> setNavbarTabVisible(String navId, bool visible) {
     return _withNavbarExclusive(() async {
-      final nav = await getNavbarConfig();
+      final nav = await _readNavbarVisibleRaw();
       final updated = visible
           ? [...nav, if (!nav.contains(navId)) navId]
           : nav.where((id) => id != navId).toList();
       await _setNavbarConfigUnlocked(updated);
-      return updated;
+      return List<String>.from(updated);
     });
+  }
+
+  /// Raw visible ids — memory first, then KV.
+  Future<List<String>> _readNavbarVisibleRaw() async {
+    final mem = _navbarVisibleMemory;
+    if (mem != null) return List<String>.from(mem);
+    if (!await kvHasKey(_navbarConfigKey)) {
+      return const [];
+    }
+    return (await kvGetStringList(_navbarConfigKey, fallback: const []))
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList();
   }
 
   /// Test-only: reset exclusive lock between stores.
@@ -1930,7 +1971,55 @@ class SettingsService {
   }
 
   Future<List<String>> getNavbarConfig() async {
+    final mem = _navbarVisibleMemory;
+    if (mem != null) {
+      final known = (await kvGetStringList(
+        _navbarKnownIdsKey,
+        fallback: const [],
+      )).toSet();
+      if (allNavIds.any((id) => !known.contains(id))) {
+        await kvSetStringList(_navbarKnownIdsKey, {
+          ...known,
+          ...allNavIds,
+        }.toList());
+      }
+      return List<String>.from(mem);
+    }
+
     final skipLegacyMigrations = await kvHasKey(_platformDefaultsSeededKey);
+
+    // Seeded installs: read-only path. Shell migrations used direct
+    // kvSetStringList and could strip hub ids (anime ∉ host allNavIds) without
+    // going through navbar write logs (224: write [anime] → verify []).
+    if (skipLegacyMigrations) {
+      if (!await kvHasKey(_navbarConfigKey)) {
+        await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
+        return List<String>.from(_defaults.visibleNavIds);
+      }
+      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      final filtered = raw
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList();
+      final known = (await kvGetStringList(
+        _navbarKnownIdsKey,
+        fallback: const [],
+      )).toSet();
+      final unknown = <String>[];
+      for (final id in allNavIds) {
+        if (filtered.contains(id)) continue;
+        if (known.contains(id)) continue;
+        if (addonGatedNavIds.contains(id)) continue;
+        unknown.add(id);
+      }
+      if (unknown.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
+        await kvSetStringList(_navbarKnownIdsKey, {
+          ...known,
+          ...allNavIds,
+        }.toList());
+      }
+      return filtered;
+    }
 
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell080Key)) {
       await kvSetStringList(_navbarConfigKey, const ['home', 'search']);
@@ -2126,11 +2215,31 @@ class SettingsService {
     List<String>? tabOrder,
     bool notify = true,
   }) async {
-    final raw = await kvHasKey(_navbarConfigKey)
-        ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-        : null;
+    final raw = _navbarVisibleMemory ??
+        (await kvHasKey(_navbarConfigKey)
+            ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+            : null);
     final unchanged = raw != null && listEquals(raw, visibleIds);
+    if (kDebugMode && !unchanged) {
+      debugPrint(
+        '[Settings] navbar write ${raw ?? const <String>[]} → $visibleIds\n'
+        '${StackTrace.current}',
+      );
+    }
+    _navbarVisibleMemory = List<String>.from(visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
+    if (kDebugMode && Engine.isReady) {
+      final kvNow = await kvGetStringList(
+        _navbarConfigKey,
+        fallback: const [],
+      );
+      if (!listEquals(kvNow, visibleIds)) {
+        debugPrint(
+          '[Settings] navbar KV mismatch after write want=$visibleIds '
+          'got=$kvNow (using memory)',
+        );
+      }
+    }
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
       fallback: const [],
@@ -2313,10 +2422,14 @@ class SettingsService {
       );
     }
     if (prefsMap.containsKey(_navbarConfigKey)) {
-      await kvSetStringList(
-        _navbarConfigKey,
-        (prefsMap[_navbarConfigKey] as List).cast<String>(),
-      );
+      final ids = (prefsMap[_navbarConfigKey] as List).cast<String>();
+      _navbarVisibleMemory = List<String>.from(ids);
+      await kvSetStringList(_navbarConfigKey, ids);
+    }
+    if (prefsMap.containsKey(_crashReportingEnabledKey)) {
+      final enabled = prefsMap[_crashReportingEnabledKey] as bool;
+      _crashReportingMemory = enabled;
+      await kvSetBool(_crashReportingEnabledKey, enabled);
     }
     if (prefsMap.containsKey(_defaultNavTabKey)) {
       await kvSetString(

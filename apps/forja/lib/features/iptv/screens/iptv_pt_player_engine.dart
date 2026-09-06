@@ -323,8 +323,14 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-  Future<void> _engineOpenSource(IptvPlaySource src) async {
-    final resolved = await _maybeResolveLiveEngineSource(src);
+  Future<void> _engineOpenSource(
+    IptvPlaySource src, {
+    bool forceLiveRefresh = false,
+  }) async {
+    final resolved = await _maybeResolveLiveEngineSource(
+      src,
+      forceRefresh: forceLiveRefresh,
+    );
     if (resolved == null) return;
     src = resolved;
     src = await _refreshStalkerPlayUrl(src);
@@ -421,9 +427,17 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
 
   /// Stalker create_link URLs are one-shot / short-lived. Mint a fresh link
   /// before every open when we still have the portal + cmd (streamId).
-  Future<IptvPlaySource?> _maybeResolveLiveEngineSource(IptvPlaySource src) async {
+  Future<IptvPlaySource?> _maybeResolveLiveEngineSource(
+    IptvPlaySource src, {
+    bool forceRefresh = false,
+  }) async {
     if (_liveSourceKindFor(src) != IptvLiveSourceKind.liveEngine) return src;
-    if (iptvLiveEnginePlayUrlReady(src.url)) return src;
+    final refresh =
+        forceRefresh ||
+        (iptvLiveEngineUrlVolatile(src.url) &&
+            iptvLiveEngineCanForceRefresh(src));
+    if (iptvLiveEnginePlayUrlReady(src.url) && !refresh) return src;
+    if (refresh && !iptvLiveEngineCanForceRefresh(src)) return src;
     final resolve = widget.liveEngineResolveSource;
     if (resolve == null) {
       LiveMatchesEngine.engineResolveFailed();
@@ -431,7 +445,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
     final idx = _s._sourceIdx;
     setState(() {
-      _s._statusBanner = 'Unlocking source…';
+      _s._statusBanner = refresh ? 'Refreshing stream…' : 'Unlocking source…';
     });
     try {
       final resolved = await resolve(
@@ -440,17 +454,20 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
           if (!mounted) return;
           setState(() => _s._statusBanner = msg);
         },
+        forceRefresh: refresh,
       );
       if (resolved == null || !iptvLiveEnginePlayUrlReady(resolved.url)) {
         LiveMatchesEngine.engineResolveFailed();
         return null;
       }
-      if (idx >= 0 && idx < _s._sources.length && _s._sources[idx].url == src.url) {
+      if (idx >= 0 && idx < _s._sources.length) {
         _s._sources = List<IptvPlaySource>.from(_s._sources)..[idx] = resolved;
       }
       return resolved;
     } finally {
-      if (mounted && _s._statusBanner == 'Unlocking source…') {
+      if (mounted &&
+          (_s._statusBanner == 'Unlocking source…' ||
+              _s._statusBanner == 'Refreshing stream…')) {
         setState(() => _s._statusBanner = null);
       }
     }

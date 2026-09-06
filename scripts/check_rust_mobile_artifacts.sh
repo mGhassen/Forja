@@ -7,11 +7,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-all}"
 ANDROID_SO_ARM64="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so"
 ANDROID_SO_V7A="$ROOT/apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libffi.so"
+ANDROID_CXX_ARM64="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a/libc++_shared.so"
+ANDROID_CXX_V7A="$ROOT/apps/forja/android/app/src/main/jniLibs/armeabi-v7a/libc++_shared.so"
 IOS_DYLIB="$ROOT/apps/forja/ios/Runner/Frameworks/libffi.dylib"
 
 check_android() {
   local missing=0
-  for so in "$ANDROID_SO_ARM64" "$ANDROID_SO_V7A"; do
+  for so in "$ANDROID_SO_ARM64" "$ANDROID_SO_V7A" "$ANDROID_CXX_ARM64" "$ANDROID_CXX_V7A"; do
     if [[ -f "$so" ]]; then
       echo "OK  $so"
     else

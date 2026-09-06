@@ -344,6 +344,10 @@ class _SettingsNavigationPageBodyState
   /// was wiping OK enables — 224).
   int _saveEpoch = 0;
   int _writesInFlight = 0;
+  /// Visible set after the latest Features toggle/save — ignore provider
+  /// snaps until they match. Stale richer snaps were re-enabling a just-hidden
+  /// tab; then the drop-guard blocked the correct thinner snap (first OFF no-op).
+  List<String>? _pendingVisible;
   Future<void> _saveChain = Future<void>.value();
 
   bool get _featuresWriteInFlight => _writesInFlight > 0;
@@ -351,9 +355,11 @@ class _SettingsNavigationPageBodyState
   @override
   void initState() {
     super.initState();
-    // Do NOT soft-pull on Features open — concurrent syncFromCloud was
-    // applying empty cloud visibleIds over a mid-toggle enable (224 A04:
-    // next=[anime] then heal strip race, then Features snap OFF).
+    // Soft pull on open so web Features changes land. Local toggles push only;
+    // syncFromCloud flushes dirty nav before applying cloud (224).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
+    });
   }
 
   @override
@@ -417,6 +423,7 @@ class _SettingsNavigationPageBodyState
     final visible = _navbarOrder
         .where((id) => _navbarVisible.contains(id))
         .toList();
+    _pendingVisible = List<String>.from(visible);
     // Dirty before KV so soft pull cannot wipe a mid-edit enable (224).
     noteNavigationDirty();
     try {
@@ -469,6 +476,7 @@ class _SettingsNavigationPageBodyState
     });
     final epoch = ++_saveEpoch;
     _writesInFlight++;
+    _pendingVisible = List<String>.from(_navbarVisible);
     noteNavigationDirty();
     debugPrint('[Features] toggle $id → $next');
     try {
@@ -476,6 +484,7 @@ class _SettingsNavigationPageBodyState
       debugPrint('[Features] navbar next=$updated');
       if (!mounted || epoch != _saveEpoch) return;
       setState(() => _navbarVisible = List.of(updated));
+      _pendingVisible = List<String>.from(updated);
       // Rail first — do not await cloud push before the shell reloads.
       SettingsService.navbarChangeNotifier.value++;
       if (!mounted || epoch != _saveEpoch) return;
@@ -486,6 +495,7 @@ class _SettingsNavigationPageBodyState
         final healed = await _settings.setNavbarTabVisible(id, true);
         if (!mounted || epoch != _saveEpoch) return;
         setState(() => _navbarVisible = List.of(healed));
+        _pendingVisible = List<String>.from(healed);
         SettingsService.navbarChangeNotifier.value++;
       }
       if (!mounted || epoch != _saveEpoch) return;
@@ -605,15 +615,19 @@ class _SettingsNavigationPageBodyState
       if (snap == null) return;
       // In-flight Features write — stale provider snap must not wipe OK state.
       if (_featuresWriteInFlight) return;
-      // Cloud / hub refresh must not turn OFF a tab still in local UI until
-      // the user toggles it (224 — Anime heal then Features snap OFF).
-      if (_loaded &&
-          _navbarVisible.any((id) => !snap.visible.contains(id))) {
-        debugPrint(
-          '[Features] skip hydrate that drops tabs '
-          'local=$_navbarVisible snap=${snap.visible}',
-        );
-        return;
+      final pending = _pendingVisible;
+      if (pending != null) {
+        final pendingSet = pending.toSet();
+        final snapSet = snap.visible.toSet();
+        if (pendingSet.length != snapSet.length ||
+            !pendingSet.containsAll(snapSet)) {
+          debugPrint(
+            '[Features] skip hydrate until pending visible matches '
+            'pending=$pending snap=${snap.visible}',
+          );
+          return;
+        }
+        _pendingVisible = null;
       }
       // Cloud pull often re-emits the same nav — skip setState so focus stays.
       if (_loaded &&

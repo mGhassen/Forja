@@ -37,10 +37,23 @@ abstract final class Telemetry {
 
   static Future<void> setEnabled(bool enabled) async {
     await SettingsService().setCrashReportingEnabled(enabled);
-    if (enabled) {
-      await _startCrash();
-    } else {
-      await _stopCrash();
+    // Persist first; SDK start/stop must not undo the preference if it throws.
+    final readBack = await SettingsService().isCrashReportingEnabled();
+    if (readBack != enabled) {
+      debugPrint(
+        '[Telemetry] crash_reporting_enabled readback mismatch '
+        'want=$enabled got=$readBack — rewriting',
+      );
+      await SettingsService().setCrashReportingEnabled(enabled);
+    }
+    try {
+      if (enabled) {
+        await _startCrash();
+      } else {
+        await _stopCrash();
+      }
+    } catch (e, st) {
+      debugPrint('[Telemetry] crash SDK toggle failed: $e\n$st');
     }
   }
 
@@ -121,8 +134,12 @@ abstract final class Telemetry {
 
   static Future<void> _stopCrash() async {
     if (!_crashActive) return;
-    await Sentry.close();
-    _crashActive = false;
+    try {
+      await Sentry.close();
+    } finally {
+      // Prefer preference truth over SDK state if close throws mid-shutdown.
+      _crashActive = false;
+    }
   }
 
   static void _installHooks() {

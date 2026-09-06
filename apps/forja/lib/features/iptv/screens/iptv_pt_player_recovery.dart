@@ -5,7 +5,10 @@ part of 'iptv_pt_player_screen.dart';
 
 mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
   Future<void> _openCurrent({bool hardRecreate = false});
-  Future<void> _engineOpenSource(IptvPlaySource src);
+  Future<void> _engineOpenSource(
+    IptvPlaySource src, {
+    bool forceLiveRefresh = false,
+  });
   Future<void> _probeStreamCapabilities();
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
@@ -186,7 +189,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         _s._retryAttempt = 0;
         if (_s._disposed || (!_s._exoBackend && !_s._playerAlive)) return;
         try {
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
         } catch (e) {
           debugPrint('[IPTV] cold-retry open failed: $e');
         }
@@ -252,7 +260,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         }
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] VO-freeze recreate failed: $e');
@@ -276,7 +289,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } else if (allowHardRecreate || (atvMkLive && _s._retryAttempt > 2)) {
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] hard recreate failed: $e');
@@ -285,7 +303,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
         // forceHard on attempt 1–2 also soft-reopens (ATV ANR if we recreate).
         try {
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
           await _enginePlay();
         } catch (_) {}
       } else if (_s._retryAttempt <= 4) {
@@ -297,12 +320,22 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
           }
         } catch (_) {}
         try {
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
         } catch (_) {}
       } else {
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
+          await _engineOpenSource(
+            _s._sources[_s._sourceIdx],
+            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+              _s._sources[_s._sourceIdx],
+            ),
+          );
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] recreate failed: $e');

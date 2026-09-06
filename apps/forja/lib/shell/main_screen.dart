@@ -255,8 +255,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
     popShellOverlayUntilRoot();
-    // Cloud Features / profile settings: pull on side-nav use (not a timer).
-    // Debounced to 15s inside syncFromCloud so rapid tab clicks do not spam.
+    // Cloud Features / profile settings: soft pull on side-nav use so web
+    // changes land (debounced 15s). Local toggles push only — syncFromCloud
+    // flushes dirty nav before applying cloud as SoT (224).
     if (SyncService.instance.isSignedIn) {
       unawaited(SyncDomainBridge.instance.syncFromCloud());
     }

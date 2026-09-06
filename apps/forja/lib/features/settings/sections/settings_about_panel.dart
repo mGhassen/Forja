@@ -90,9 +90,15 @@ class SettingsCrashReportingRow extends ConsumerStatefulWidget {
 
 class _SettingsCrashReportingRowState
     extends ConsumerState<SettingsCrashReportingRow> {
+  /// Optimistic value — same pattern as Playback toggles. Do not wait on
+  /// [crashReportingEnabledProvider] invalidate (fallback `true` + Sentry
+  /// close latency made the switch look stuck ON while KV was already off).
+  bool? _override;
+
   @override
   Widget build(BuildContext context) {
-    final enabled = ref.watch(crashReportingEnabledProvider).valueOrNull;
+    final enabled =
+        _override ?? ref.watch(crashReportingEnabledProvider).valueOrNull;
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Crash reporting',
@@ -105,15 +111,24 @@ class _SettingsCrashReportingRowState
   }
 
   Future<void> _setCrashReporting(bool value) async {
-    await Telemetry.setEnabled(value);
-    ref.invalidate(crashReportingEnabledProvider);
-    if (!mounted) return;
-    if (value && !Telemetry.isConfigured) {
-      ForjaToast.info('Crash reporting is not available in this build yet.');
-    } else if (value && Telemetry.isActive) {
-      ForjaToast.success('Crash reporting on');
-    } else if (!value) {
-      ForjaToast.success('Crash reporting off');
+    setState(() => _override = value);
+    try {
+      await Telemetry.setEnabled(value);
+      ref.invalidate(crashReportingEnabledProvider);
+      if (!mounted) return;
+      if (value && !Telemetry.isConfigured) {
+        ForjaToast.info('Crash reporting is not available in this build yet.');
+      } else if (value && Telemetry.isActive) {
+        ForjaToast.success('Crash reporting on');
+      } else if (!value) {
+        ForjaToast.success('Crash reporting off');
+      }
+    } catch (e, st) {
+      debugPrint('[About] crash reporting toggle failed: $e\n$st');
+      if (!mounted) return;
+      setState(() => _override = null);
+      ref.invalidate(crashReportingEnabledProvider);
+      ForjaToast.error('Could not update crash reporting');
     }
   }
 }
@@ -129,9 +144,12 @@ class SettingsProductAnalyticsRow extends ConsumerStatefulWidget {
 
 class _SettingsProductAnalyticsRowState
     extends ConsumerState<SettingsProductAnalyticsRow> {
+  bool? _override;
+
   @override
   Widget build(BuildContext context) {
-    final enabled = ref.watch(productAnalyticsEnabledProvider).valueOrNull;
+    final enabled =
+        _override ?? ref.watch(productAnalyticsEnabledProvider).valueOrNull;
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Product analytics',
@@ -144,15 +162,24 @@ class _SettingsProductAnalyticsRowState
   }
 
   Future<void> _setEnabled(bool value) async {
-    await Telemetry.setAnalyticsEnabled(value);
-    ref.invalidate(productAnalyticsEnabledProvider);
-    if (!mounted) return;
-    if (value && !ProductAnalytics.isConfigured) {
-      ForjaToast.info('Product analytics is not available in this build yet.');
-    } else if (value && ProductAnalytics.isActive) {
-      ForjaToast.success('Product analytics on');
-    } else if (!value) {
-      ForjaToast.success('Product analytics off');
+    setState(() => _override = value);
+    try {
+      await Telemetry.setAnalyticsEnabled(value);
+      ref.invalidate(productAnalyticsEnabledProvider);
+      if (!mounted) return;
+      if (value && !ProductAnalytics.isConfigured) {
+        ForjaToast.info('Product analytics is not available in this build yet.');
+      } else if (value && ProductAnalytics.isActive) {
+        ForjaToast.success('Product analytics on');
+      } else if (!value) {
+        ForjaToast.success('Product analytics off');
+      }
+    } catch (e, st) {
+      debugPrint('[About] product analytics toggle failed: $e\n$st');
+      if (!mounted) return;
+      setState(() => _override = null);
+      ref.invalidate(productAnalyticsEnabledProvider);
+      ForjaToast.error('Could not update product analytics');
     }
   }
 }

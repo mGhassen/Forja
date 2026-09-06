@@ -70,10 +70,17 @@ read_local_sdk_dir() {
 latest_ndk_in() {
   local parent="$1"
   [[ -d "$parent" ]] || return 1
-  local latest
-  latest="$(ls -1d "$parent"/* 2>/dev/null | sort -V | tail -1 || true)"
-  [[ -n "$latest" && -d "$latest" ]] || return 1
-  echo "$latest"
+  local candidate
+  # Prefer newest complete NDK (skip half-installed stubs with only .installer).
+  # macOS lacks `tac` — reverse via awk.
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" && -d "$candidate" ]] || continue
+    if [[ -d "$candidate/toolchains/llvm/prebuilt" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done < <(ls -1d "$parent"/* 2>/dev/null | sort -V | awk '{a[i++]=$0} END {for (j=i-1; j>=0; j--) print a[j]}')
+  return 1
 }
 
 resolve_ndk() {
@@ -183,6 +190,16 @@ EOF
   mkdir -p "$dest64"
   cp -f "$out64" "$dest64/libffi.so"
   echo "Copied -> $dest64/libffi.so"
+  # libffi (aws-lc / C++ deps) links ANDROID_STL=c++_shared — ship it or dlopen fails:
+  # "library libc++_shared.so not found" → Engine.isReady=false (224).
+  local cxx64="$sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+  if [[ -f "$cxx64" ]]; then
+    cp -f "$cxx64" "$dest64/libc++_shared.so"
+    echo "Copied -> $dest64/libc++_shared.so"
+  else
+    echo "error: missing $cxx64 (required by libffi.so)" >&2
+    exit 1
+  fi
 
   echo "==> Android armeabi-v7a (NDK: $ndk)"
   rustup target add armv7-linux-androideabi >/dev/null 2>&1 || true
@@ -201,6 +218,14 @@ EOF
   mkdir -p "$dest32"
   cp -f "$out32" "$dest32/libffi.so"
   echo "Copied -> $dest32/libffi.so"
+  local cxx32="$sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so"
+  if [[ -f "$cxx32" ]]; then
+    cp -f "$cxx32" "$dest32/libc++_shared.so"
+    echo "Copied -> $dest32/libc++_shared.so"
+  else
+    echo "error: missing $cxx32 (required by libffi.so)" >&2
+    exit 1
+  fi
 }
 
 case "${1:-all}" in

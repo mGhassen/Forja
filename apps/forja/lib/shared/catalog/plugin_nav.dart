@@ -380,8 +380,10 @@ abstract final class PluginNavRegistry {
       _tabPluginIds = {};
       _seeded = true;
       await _clearNavSnapshot();
-      // Always prune — packKnown alone is empty when cache + packs are gone, but
-      // KV can still hold legacy hub ids (`home`, `anime`, …) with no builder.
+      // No packs left — drop hub tabs from the rail (orphan wipe only).
+      debugPrint(
+        '[PluginNav] refresh empty-install wipe known=$packKnownHubTabIds',
+      );
       await _syncHubNavVisibility(
         activeHubIds: const {},
         packKnownHubTabIds: packKnownHubTabIds,
@@ -465,27 +467,9 @@ abstract final class PluginNavRegistry {
         notify: _refreshNotifyPending,
       );
     }
-    await _syncHubNavVisibility(
-      activeHubIds: vodHubIds,
-      packKnownHubTabIds: packKnownHubTabIds,
-      // Never strip when the enabled scan is empty but packs still exist —
-      // that wiped Features Anime on every soft-pull/engine refresh (224).
-      // Pack-off / uninstall: hub leaves [installedHubTabIds] and is pruned
-      // via previousDestKeys ∉ installed below.
-      allowEmptyActiveStrip: false,
-    );
-    // Hubs that vanished from the pack index (uninstall) — prune those only.
-    final removedHubs = previousDestKeys
-        .difference(installedHubTabIds)
-        .difference(coreShellNavIds);
-    if (removedHubs.isNotEmpty) {
-      await SettingsService().syncActiveHubNavIds(
-        activeHubIds: vodHubIds,
-        knownHubIds: removedHubs,
-        notify: _refreshNotifyPending,
-        allowEmptyActiveStrip: true,
-      );
-    }
+    // Do NOT syncActiveHubNavIds on every refresh — that stripped Features
+    // enables whenever the enabled-hub scan lagged (224). Pack disable /
+    // uninstall prunes tabs explicitly in Settings → Forja Packs.
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
     } else {

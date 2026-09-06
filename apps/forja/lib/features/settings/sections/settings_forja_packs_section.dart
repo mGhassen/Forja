@@ -579,6 +579,8 @@ class _SettingsForjaPacksSectionState
     await PluginNavRegistry.refresh();
     if (enabled) {
       await _activatePackHubFeatures(pack);
+    } else {
+      await _deactivatePackHubFeatures(pack);
     }
     if (!mounted) return;
     scheduleForjaSyncPush();
@@ -604,6 +606,29 @@ class _SettingsForjaPacksSectionState
     noteNavigationDirty();
     for (final id in tabs) {
       await settings.setNavbarTabVisible(id, true);
+    }
+    await scheduleNavigationSyncPush();
+  }
+
+  /// Pack OFF → drop that pack's hub tabs from Features / rail.
+  Future<void> _deactivatePackHubFeatures(EnginePack pack) async {
+    final settings = SettingsService();
+    final tabs = <String>[];
+    for (final pl in pack.plugins) {
+      if (!pl.isHubCatalog) continue;
+      final spec = CatalogNavSpec.fromPluginNav(
+        pl.nav,
+        pluginId: pl.id,
+        fallbackLabel: pl.name,
+      );
+      if (spec == null || !spec.isValid) continue;
+      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
+      tabs.add(spec.tabId);
+    }
+    if (tabs.isEmpty) return;
+    noteNavigationDirty();
+    for (final id in tabs) {
+      await settings.setNavbarTabVisible(id, false);
     }
     await scheduleNavigationSyncPush();
   }
