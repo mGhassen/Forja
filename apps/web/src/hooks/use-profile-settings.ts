@@ -44,13 +44,14 @@ function subscribeProfileSettingsRealtime(
   listeners.add(onChange)
 
   if (!profileSettingsChannels.has(profileId)) {
+    // Drop leftovers (HMR / Strict Mode) before opening a fresh topic.
     for (const ch of supabase.getChannels()) {
       if (ch.topic.includes(`profile_settings:${profileId}`)) {
         void supabase.removeChannel(ch)
       }
     }
     const channel = supabase
-      .channel(`profile_settings:${profileId}`)
+      .channel(`profile_settings:${profileId}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
