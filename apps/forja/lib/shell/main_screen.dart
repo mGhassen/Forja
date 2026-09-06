@@ -389,13 +389,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
     final beforeFilter = List<String>.from(visible);
-    // Drop hub ids with no pack contribution (legacy KV ghosts like `home`
-    // after the Home pack is gone). Soft-fail in [_tabFor] covers the brief
-    // Features-enable → refresh gap; prune in [PluginNavRegistry.refresh]
-    // clears KV. Filtering here matches [BootNeeds.resolve].
+    // Trust Features `visibleIds`. Do not filter with [isContributed] — that
+    // dropped Anime on the rail while KV still had it and Features showed ON
+    // (load raced mid-refresh / empty dest map → silent no-op skip). Pack-off
+    // cleanup is [PluginNavRegistry] sync only.
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
-        .where(PluginNavRegistry.isContributed)
         .where(
           (id) =>
               !SettingsService.addonGatedNavIds.contains(id) ||
@@ -410,9 +409,16 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (!mounted || gen != _navbarLoadGen) return;
     final nextIds = [...visible, 'settings'];
     // Skip no-op reloads — notifier storms were reprinting visible=[] forever.
+    // Compare against what we would paint (post-filter), not raw KV.
     if (_initialNavResolved &&
         listEquals(_visibleIds, nextIds) &&
         !ShellBus.selectDefaultTabOnNextNavLoad) {
+      if (kDebugMode && !listEquals(beforeFilter, visible)) {
+        debugPrint(
+          '[MainScreen] navbar skipped paint $beforeFilter → $visible '
+          '(already $_visibleIds)',
+        );
+      }
       return;
     }
     if (kDebugMode && !listEquals(beforeFilter, visible)) {

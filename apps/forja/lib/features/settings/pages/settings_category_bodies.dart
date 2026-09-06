@@ -351,11 +351,9 @@ class _SettingsNavigationPageBodyState
   @override
   void initState() {
     super.initState();
-    // Soft pull + await nav heal when this device’s rail is richer than cloud
-    // (app Features ON / web OFF — 224).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
-    });
+    // Do NOT soft-pull on Features open — concurrent syncFromCloud was
+    // applying empty cloud visibleIds over a mid-toggle enable (224 A04:
+    // next=[anime] then heal strip race, then Features snap OFF).
   }
 
   @override
@@ -469,8 +467,6 @@ class _SettingsNavigationPageBodyState
         _navbarVisible.remove(id);
       }
     });
-    // RMW under the same exclusive lock as Addons — never rewrite the whole
-    // visible list from widget memory (concurrent full saves wiped tabs).
     final epoch = ++_saveEpoch;
     _writesInFlight++;
     noteNavigationDirty();
@@ -479,22 +475,18 @@ class _SettingsNavigationPageBodyState
       final updated = await _settings.setNavbarTabVisible(id, next);
       debugPrint('[Features] navbar next=$updated');
       if (!mounted || epoch != _saveEpoch) return;
-      setState(() {
-        _navbarVisible = List.of(updated);
-      });
-      await scheduleNavigationSyncPush();
+      setState(() => _navbarVisible = List.of(updated));
+      // Rail first — do not await cloud push before the shell reloads.
+      SettingsService.navbarChangeNotifier.value++;
       if (!mounted || epoch != _saveEpoch) return;
-      // Heal strip race: hub refresh must not leave KV without a just-enabled
-      // tab while Features still shows ON (224 A04 — ATV rail empty).
-      if (next) {
-        final again = await _settings.getNavbarConfig();
-        if (!again.contains(id)) {
-          debugPrint('[Features] heal re-enable $id after strip race');
-          final healed = await _settings.setNavbarTabVisible(id, true);
-          if (!mounted || epoch != _saveEpoch) return;
-          setState(() => _navbarVisible = List.of(healed));
-          await scheduleNavigationSyncPush();
-        }
+      final verify = await _settings.getNavbarConfig();
+      debugPrint('[Features] navbar verify=$verify');
+      if (next && !verify.contains(id)) {
+        debugPrint('[Features] heal re-enable $id after strip race');
+        final healed = await _settings.setNavbarTabVisible(id, true);
+        if (!mounted || epoch != _saveEpoch) return;
+        setState(() => _navbarVisible = List.of(healed));
+        SettingsService.navbarChangeNotifier.value++;
       }
       if (!mounted || epoch != _saveEpoch) return;
       final startupOptions = _startupTabOptions();
@@ -504,8 +496,9 @@ class _SettingsNavigationPageBodyState
             : 'settings';
         setState(() => _defaultNavTab = resolved);
         await _settings.setDefaultNavTab(resolved);
-        await scheduleNavigationSyncPush();
       }
+      // Cloud after local rail is stable.
+      unawaited(scheduleNavigationSyncPush());
     } catch (e, st) {
       debugPrint('[Features] toggle $id failed: $e\n$st');
     } finally {
@@ -612,6 +605,16 @@ class _SettingsNavigationPageBodyState
       if (snap == null) return;
       // In-flight Features write — stale provider snap must not wipe OK state.
       if (_featuresWriteInFlight) return;
+      // Cloud / hub refresh must not turn OFF a tab still in local UI until
+      // the user toggles it (224 — Anime heal then Features snap OFF).
+      if (_loaded &&
+          _navbarVisible.any((id) => !snap.visible.contains(id))) {
+        debugPrint(
+          '[Features] skip hydrate that drops tabs '
+          'local=$_navbarVisible snap=${snap.visible}',
+        );
+        return;
+      }
       // Cloud pull often re-emits the same nav — skip setState so focus stays.
       if (_loaded &&
           listEquals(_navbarVisible, snap.visible) &&

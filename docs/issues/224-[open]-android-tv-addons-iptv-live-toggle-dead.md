@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **30 / 30** fix · **0 / 4** acceptance |
+| **Progress** | **31 / 31** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -49,6 +49,7 @@
 | 28 | I224-T28 | Pack hub refresh must not put Features `visibleIds` into `syncActiveHubNavIds` known set (stripped Anime ON from rail); MainScreen listens KV notifier directly; rail fallback dest; pack-prompt activates hubs | ✅ |
 | 29 | I224-T29 | Stop navbar notify storm: no mid-refresh cache bump; Features scan bumps only on changed; `ensureNavIdsKnown` known-only (no visible auto-insert); MainScreen debounce + no-op skip | ✅ |
 | 30 | I224-T30 | Hub refresh: do not fold Features `visibleIds` into `syncActiveHubNavIds` known on the live path; scripts-missing = hydration pending; skip empty-active strip unless intentional wipe; Features heal re-enable after strip race | ✅ |
+| 31 | I224-T31 | MainScreen must not filter Features tabs with `isContributed` (silent rail drop); hub refresh must not empty-active-strip when packs exist; Features toggle forces rail notify | ✅ |
 
 ---
 

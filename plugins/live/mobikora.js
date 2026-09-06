@@ -77,17 +77,52 @@ function extractIframeSrcs(html) {
   return uniq(out);
 }
 
-function extractM3u8(html) {
+function htmlUnescape(s) {
+  return String(s || '')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+function isCleanPlayUrl(url) {
+  var u = String(url || '').trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  if (/&quot;|&amp;|"|'/i.test(u)) return false;
+  if (/\.s3\.us-north-\d+\.amazonaws\.com/i.test(u)) return false;
+  return true;
+}
+
+function extractOkRuHls(html) {
+  var text = htmlUnescape(html);
   var out = [];
-  var text = String(html || '');
+  var keys = ['hlsMasterPlaylistUrl', 'hlsPlaybackMasterPlaylistUrl'];
+  for (var i = 0; i < keys.length; i++) {
+    var re = new RegExp('"' + keys[i] + '"\\s*:\\s*"([^"]+)"', 'gi');
+    var m;
+    while ((m = re.exec(text))) {
+      var url = String(m[1] || '').trim();
+      if (isCleanPlayUrl(url)) out.push(url);
+    }
+  }
+  return uniq(out);
+}
+
+function extractM3u8(html) {
+  var out = extractOkRuHls(html);
+  var text = htmlUnescape(html);
   var re = /https?:\/\/[^\s"'<>\\]+?\.m3u8[^\s"'<>\\]*/gi;
   var m;
   while ((m = re.exec(text))) {
     var url = m[0].replace(/\\+$/, '').replace(/&amp;/g, '&');
-    out.push(url);
+    if (isCleanPlayUrl(url)) out.push(url);
   }
   var srcRe = /(?:source|file|src)\s*[:=]\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/gi;
-  while ((m = srcRe.exec(text))) out.push(m[1]);
+  while ((m = srcRe.exec(text))) {
+    if (isCleanPlayUrl(m[1])) out.push(m[1]);
+  }
   return uniq(out);
 }
 
@@ -174,6 +209,20 @@ function isAmazonS3Url(url) {
   }
 }
 
+function isOkCdUrl(url) {
+  try {
+    var h = new URL(String(url || '')).host.toLowerCase();
+    return (
+      h.indexOf('okcdn.ru') >= 0 ||
+      h.indexOf('vkuser.net') >= 0 ||
+      h.indexOf('ok.ru') >= 0 ||
+      h.endsWith('.ok.ru')
+    );
+  } catch (_) {
+    return /okcdn\.ru|vkuser\.net|\bok\.ru\b/i.test(String(url || ''));
+  }
+}
+
 /** Bunny/Livepeer edge returns 307 — MediaKit often won't follow; open final. */
 function canonicalizePlayUrl(url) {
   var raw = String(url || '').trim();
@@ -190,9 +239,15 @@ function canonicalizePlayUrl(url) {
 }
 
 function playbackHeaders(playUrl, playerPageUrl) {
-  // Brightcove / public S3 (Foorja) — CORS *; Referer/Origin not required.
   if (isBrightcoveUrl(playUrl) || isAmazonS3Url(playUrl)) {
     return { 'User-Agent': ua() };
+  }
+  if (isOkCdUrl(playUrl)) {
+    return {
+      Referer: 'https://ok.ru/',
+      Origin: 'https://ok.ru',
+      'User-Agent': ua(),
+    };
   }
   var origin = '';
   try {
@@ -211,39 +266,19 @@ function playRow(url, name, playerPageUrl) {
     url: playUrl,
     name: name || 'MobiKora',
     headers: playbackHeaders(playUrl, playerPageUrl),
-    // S3/Foorja: hls-proxy (MediaKit mbedtls often RST mid-session on direct
-    // S3 HLS). Brightcove + other CDNs: direct open with headers.
+    // S3/Foorja: hls-proxy. OK.ru signed HLS + others: direct with headers.
     directPlayback: !isAmazonS3Url(playUrl),
   };
 }
 
-/** Skip NXDOMAIN / 404; keep URLs through transient CDN blips (Livepeer 502). */
-async function probePlayableUrl(ctx, url) {
+/**
+ * Only drop clearly dead URLs. Do NOT require a live #EXTM3U probe — OK.ru /
+ * Livepeer flap and a failed probe caused empty Providers while web still played.
+ */
+function acceptPlayUrl(url) {
   var playUrl = canonicalizePlayUrl(url);
-  if (!playUrl) return '';
-  try {
-    var host = new URL(playUrl).host.toLowerCase();
-    // Fake/nonexistent AWS regions (e.g. us-north-2) — never open.
-    if (/\.s3\.us-north-\d+\.amazonaws\.com$/i.test(host)) return '';
-  } catch (_) {}
-  try {
-    var res = await ctx.fetch(playUrl, {
-      headers: {
-        'User-Agent': ua(),
-        Accept: 'application/vnd.apple.mpegurl,application/x-mpegURL,*/*',
-      },
-    });
-    if (!res) return '';
-    if (res.status === 404 || res.status === 410) return '';
-    var body = String((await res.text()) || '').trim();
-    if (body.indexOf('#EXTM3U') === 0) return playUrl;
-    // 502/503 or empty body: still return — browser often recovers; NXDOMAIN
-    // already failed in fetch catch below.
-    if (res.ok || res.status === 502 || res.status === 503) return playUrl;
-    return '';
-  } catch (_) {
-    return '';
-  }
+  if (!isCleanPlayUrl(playUrl)) return '';
+  return playUrl;
 }
 
 function nestedEmbedUrls(html, baseUrl) {
@@ -271,7 +306,7 @@ function nestedEmbedUrls(html, baseUrl) {
 
 async function unlockPlayerPage(ctx, playerUrl, channelReferer, depth, seenPages) {
   depth = depth || 0;
-  if (depth > 3) return [];
+  if (depth > 4) return [];
   seenPages = seenPages || {};
   var key = String(playerUrl || '').trim();
   if (!key || seenPages[key]) return [];
@@ -294,15 +329,14 @@ async function unlockPlayerPage(ctx, playerUrl, channelReferer, depth, seenPages
     var m3u8s = extractM3u8(pageHtml);
     var label = servLabel(pageUrl, pageHtml);
     for (var j = 0; j < m3u8s.length; j++) {
-      var probed = await probePlayableUrl(ctx, m3u8s[j]);
-      if (!probed || seen[probed]) continue;
-      seen[probed] = 1;
-      out.push(playRow(probed, 'MobiKora · ' + label, pageUrl));
+      var accepted = acceptPlayUrl(m3u8s[j]);
+      if (!accepted || seen[accepted]) continue;
+      seen[accepted] = 1;
+      out.push(playRow(accepted, 'MobiKora · ' + label, pageUrl));
     }
 
-    // AlbaPlayer often nests a second embed (tirfoot / blogger) that holds the
-    // real HLS URL — static HTML on the alba page itself has no .m3u8.
-    if (!out.length && depth < 3) {
+    // Nest: AlbaPlayer → tirfoot/blogger → ok.ru embed → signed HLS.
+    if (!out.length && depth < 4) {
       var nested = nestedEmbedUrls(pageHtml, pageUrl);
       for (var k = 0; k < nested.length; k++) {
         var nestUrl = nested[k];
@@ -341,8 +375,22 @@ async function unlockChannelPage(ctx, channelUrl) {
     if (/\.mp4/i.test(raw) && !/\.m3u8/i.test(raw)) {
       return [playRow(raw, 'MobiKora', raw)];
     }
-    var ready = await probePlayableUrl(ctx, raw);
+    var ready = acceptPlayUrl(raw);
     return ready ? [playRow(ready, 'MobiKora', raw)] : [];
+  }
+
+  // Direct OK.ru embed URL from a nest.
+  if (/ok\.ru\/videoembed\//i.test(raw)) {
+    var okHtml = await fetchHtml(ctx, raw, 'https://ok.ru/');
+    if (!okHtml) return [];
+    var okUrls = extractM3u8(okHtml);
+    var okOut = [];
+    for (var oi = 0; oi < okUrls.length; oi++) {
+      var okReady = acceptPlayUrl(okUrls[oi]);
+      if (!okReady) continue;
+      okOut.push(playRow(okReady, 'MobiKora · OK', raw));
+    }
+    return okOut;
   }
 
   if (/albaplayer/i.test(raw)) {
@@ -357,16 +405,16 @@ async function unlockChannelPage(ctx, channelUrl) {
     var rows = [];
     var seenDirect = {};
     for (var d = 0; d < direct.length; d++) {
-      var probed = await probePlayableUrl(ctx, direct[d]);
-      if (!probed || seenDirect[probed]) continue;
-      seenDirect[probed] = 1;
-      rows.push(playRow(probed, 'MobiKora · ' + channelLabel(raw), raw));
+      var accepted = acceptPlayUrl(direct[d]);
+      if (!accepted || seenDirect[accepted]) continue;
+      seenDirect[accepted] = 1;
+      rows.push(playRow(accepted, 'MobiKora · ' + channelLabel(raw), raw));
     }
     if (rows.length) return rows;
   }
 
   var iframes = extractIframeSrcs(html).filter(function (src) {
-    return /albaplayer|streemach|player/i.test(src);
+    return /albaplayer|streemach|player|ok\.ru\/videoembed/i.test(src);
   });
   if (!iframes.length) return [];
 

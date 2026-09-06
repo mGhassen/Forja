@@ -468,9 +468,24 @@ abstract final class PluginNavRegistry {
     await _syncHubNavVisibility(
       activeHubIds: vodHubIds,
       packKnownHubTabIds: packKnownHubTabIds,
-      // All hub packs disabled → strip known hub tabs from the rail.
-      allowEmptyActiveStrip: vodHubIds.isEmpty && packKnownHubTabIds.isNotEmpty,
+      // Never strip when the enabled scan is empty but packs still exist —
+      // that wiped Features Anime on every soft-pull/engine refresh (224).
+      // Pack-off / uninstall: hub leaves [installedHubTabIds] and is pruned
+      // via previousDestKeys ∉ installed below.
+      allowEmptyActiveStrip: false,
     );
+    // Hubs that vanished from the pack index (uninstall) — prune those only.
+    final removedHubs = previousDestKeys
+        .difference(installedHubTabIds)
+        .difference(coreShellNavIds);
+    if (removedHubs.isNotEmpty) {
+      await SettingsService().syncActiveHubNavIds(
+        activeHubIds: vodHubIds,
+        knownHubIds: removedHubs,
+        notify: _refreshNotifyPending,
+        allowEmptyActiveStrip: true,
+      );
+    }
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
     } else {
