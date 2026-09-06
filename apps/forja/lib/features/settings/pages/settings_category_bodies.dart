@@ -33,6 +33,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 
 /// Builds the body for a Settings category (lazy - only when selected / pushed).
 Widget buildSettingsCategoryBody(
@@ -329,8 +330,12 @@ class _SettingsNavigationPageBodyState
     debugLabel: 'settings-features-tab-0',
   );
   List<String> _navbarVisible = [];
-  List<String> _navbarOrder = [];
-  String _defaultNavTab = 'home';
+  // Host-core rows immediately — don't wait on async hub scan (ATV / issue 222).
+  List<String> _navbarOrder = [
+    for (final id in PluginNavRegistry.featureTabIds())
+      if (!archivedNavIds.contains(id)) id,
+  ];
+  String _defaultNavTab = 'settings';
   bool _loaded = false;
   int _handledEnterToken = 0;
 

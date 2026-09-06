@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -1405,6 +1406,23 @@ class SettingsService {
   static const String _navbarShell091Key = 'navbar_shell_091';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
+  /// Serializes navbar KV writes / RMW so rapid Addons toggles (ATV OK) cannot
+  /// lose updates — e.g. IPTV then Live Sports both read `[]` and the second
+  /// write leaves only `live_matches` (issue 224).
+  static Future<void> _navbarExclusiveTail = Future<void>.value();
+
+  static Future<T> _withNavbarExclusive<T>(Future<T> Function() op) {
+    final done = Completer<T>();
+    _navbarExclusiveTail = _navbarExclusiveTail.then((_) async {
+      try {
+        done.complete(await op());
+      } catch (e, st) {
+        done.completeError(e, st);
+      }
+    });
+    return done.future;
+  }
+
   /// Default visible tabs (settings appended in MainScreen).
   static const List<String> defaultTvVisibleNavIds =
       PlatformDefaults.androidTvNavIds;
@@ -1575,42 +1593,50 @@ class SettingsService {
 
   /// After hubs pack refresh: mark new tab ids known; auto-show hubs the user
   /// has never seen (same insert rules as [getNavbarConfig]).
+  ///
+  /// [notify] false when Features is already rebuilding from the same refresh
+  /// (avoids cancelling `settingsNavigationProvider` mid-load — issue 222).
   Future<void> ensureNavIdsKnown({
     required List<String> allHubIds,
+    bool notify = true,
   }) async {
-    registerExtraNavIds(allHubIds);
-    final known = (await kvGetStringList(
-      _navbarKnownIdsKey,
-      fallback: const [],
-    )).toSet();
-    final visible = await kvHasKey(_navbarConfigKey)
-        ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-        : List<String>.from(defaultVisibleNavIds);
-    var changed = false;
-    for (final id in allHubIds) {
-      if (known.contains(id)) continue;
-      known.add(id);
-      changed = true;
-      if (!visible.contains(id)) {
-        visible.add(id);
+    return _withNavbarExclusive(() async {
+      registerExtraNavIds(allHubIds);
+      final known = (await kvGetStringList(
+        _navbarKnownIdsKey,
+        fallback: const [],
+      )).toSet();
+      final visible = await kvHasKey(_navbarConfigKey)
+          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+          : List<String>.from(defaultVisibleNavIds);
+      var changed = false;
+      for (final id in allHubIds) {
+        if (known.contains(id)) continue;
+        known.add(id);
+        changed = true;
+        if (!visible.contains(id)) {
+          visible.add(id);
+        }
       }
-    }
-    if (!changed && known.containsAll(allNavIds) && known.containsAll(allHubIds)) {
-      return;
-    }
-    await kvSetStringList(_navbarKnownIdsKey, {
-      ...known,
-      ...allNavIds,
-    }.toList());
-    if (await kvHasKey(_navbarConfigKey)) {
-      final prev = await kvGetStringList(_navbarConfigKey, fallback: const []);
-      await kvSetStringList(_navbarConfigKey, visible);
-      // Features / rail watch this — without a bump, pack install can leave
-      // Settings → Features stuck on Settings-only until a manual reopen.
-      if (!listEquals(prev, visible)) {
-        navbarChangeNotifier.value++;
+      if (!changed &&
+          known.containsAll(allNavIds) &&
+          known.containsAll(allHubIds)) {
+        return;
       }
-    }
+      await kvSetStringList(_navbarKnownIdsKey, {
+        ...known,
+        ...allNavIds,
+      }.toList());
+      if (await kvHasKey(_navbarConfigKey)) {
+        final prev = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        await kvSetStringList(_navbarConfigKey, visible);
+        // Features / rail watch this — without a bump, pack install can leave
+        // Settings → Features stuck on Settings-only until a manual reopen.
+        if (notify && !listEquals(prev, visible)) {
+          navbarChangeNotifier.value++;
+        }
+      }
+    });
   }
 
   /// Re-insert active hub tabs missing from the visible navbar — recovery after
@@ -1621,22 +1647,25 @@ class SettingsService {
   /// (not Addons-gated `iptv` / `live_matches`).
   Future<void> ensureActiveDefaultHubsVisible({
     required Set<String> activeHubIds,
+    bool notify = true,
   }) async {
     if (activeHubIds.isEmpty) return;
-    if (!await kvHasKey(_navbarConfigKey)) return;
-    final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
-    if (visible.any(activeHubIds.contains)) return;
+    return _withNavbarExclusive(() async {
+      if (!await kvHasKey(_navbarConfigKey)) return;
+      final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      if (visible.any(activeHubIds.contains)) return;
 
-    // Keep any stored host tabs, then restore stripped VOD hubs, then the rest.
-    final ordered = <String>[
-      for (final id in visible)
-        if (!activeHubIds.contains(id)) id,
-      for (final id in activeHubIds)
-        if (!visible.contains(id)) id,
-    ];
-    if (listEquals(visible, ordered)) return;
-    await kvSetStringList(_navbarConfigKey, ordered);
-    navbarChangeNotifier.value++;
+      // Keep any stored host tabs, then restore stripped VOD hubs, then the rest.
+      final ordered = <String>[
+        for (final id in visible)
+          if (!activeHubIds.contains(id)) id,
+        for (final id in activeHubIds)
+          if (!visible.contains(id)) id,
+      ];
+      if (listEquals(visible, ordered)) return;
+      await kvSetStringList(_navbarConfigKey, ordered);
+      if (notify) navbarChangeNotifier.value++;
+    });
   }
 
   /// Drop hub tabs whose pack/plugin is off from the visible navbar.
@@ -1646,20 +1675,36 @@ class SettingsService {
   Future<void> syncActiveHubNavIds({
     required Set<String> activeHubIds,
     required Set<String> knownHubIds,
+    bool notify = true,
   }) async {
-    if (!await kvHasKey(_navbarConfigKey)) return;
-    final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-    final next = raw
-        .where((id) => !knownHubIds.contains(id) || activeHubIds.contains(id))
-        .toList();
-    if (listEquals(raw, next)) return;
-    await kvSetStringList(_navbarConfigKey, next);
-    final defaultTab = await getDefaultNavTab();
-    if (knownHubIds.contains(defaultTab) && !activeHubIds.contains(defaultTab)) {
-      final fallback = next.isNotEmpty ? next.first : 'settings';
-      await kvSetString(_defaultNavTabKey, fallback);
-    }
-    navbarChangeNotifier.value++;
+    return _withNavbarExclusive(() async {
+      if (!await kvHasKey(_navbarConfigKey)) return;
+      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+      final next = raw
+          .where((id) => !knownHubIds.contains(id) || activeHubIds.contains(id))
+          .toList();
+      if (listEquals(raw, next)) return;
+      await kvSetStringList(_navbarConfigKey, next);
+      final defaultTab = await getDefaultNavTab();
+      if (knownHubIds.contains(defaultTab) &&
+          !activeHubIds.contains(defaultTab)) {
+        final fallback = next.isNotEmpty ? next.first : 'settings';
+        await kvSetString(_defaultNavTabKey, fallback);
+      }
+      if (notify) navbarChangeNotifier.value++;
+    });
+  }
+
+  /// RMW add/remove one tab under the navbar exclusive lock (issue 224).
+  Future<List<String>> setNavbarTabVisible(String navId, bool visible) {
+    return _withNavbarExclusive(() async {
+      final nav = await getNavbarConfig();
+      final updated = visible
+          ? [...nav, if (!nav.contains(navId)) navId]
+          : nav.where((id) => id != navId).toList();
+      await _setNavbarConfigUnlocked(updated);
+      return updated;
+    });
   }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.
@@ -1980,6 +2025,20 @@ class SettingsService {
   }
 
   Future<void> setNavbarConfig(
+    List<String> visibleIds, {
+    List<String>? tabOrder,
+    bool notify = true,
+  }) {
+    return _withNavbarExclusive(
+      () => _setNavbarConfigUnlocked(
+        visibleIds,
+        tabOrder: tabOrder,
+        notify: notify,
+      ),
+    );
+  }
+
+  Future<void> _setNavbarConfigUnlocked(
     List<String> visibleIds, {
     List<String>? tabOrder,
     bool notify = true,

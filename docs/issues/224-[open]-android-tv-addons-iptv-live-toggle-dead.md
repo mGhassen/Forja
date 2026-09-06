@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I224-T05 | Skip nav apply when local gen moved during an in-flight soft pull | ✅ |
 | 6 | I224-T06 | Leanback Addons switch: `onChanged: null` + `ActivateIntent` → flip (Material Switch was swallowing Select as no-op) | ✅ |
 | 7 | I224-T07 | Keep Settings visibility across reload so Addons body is not remounted mid-toggle | ✅ |
+| 8 | I224-T08 | Serialize navbar RMW (`setNavbarTabVisible`) so rapid IPTV then Live Sports OK cannot wipe the first write | ✅ |
 
 ---
 
@@ -47,8 +48,9 @@
 1. Leanback DPAD_CENTER Select often routed to Material `Switch` **ActivateIntent**. The switch used `onChanged: (_) {}` (enabled no-op) so OK looked dead — outer `FocusableControl.onTap` never flipped nav.
 2. Soft pull on Addons open could overwrite a mid-pull local enable, or a dirty empty local gen could skip / fight cloud Features.
 3. Early “flush dirty nav before pull” would intentionally overlay thin local and wipe richer cloud.
+4. Rapid OK on IPTV then Live Sports raced `getNavbarConfig` → mutate → `setNavbarConfig` — both reads saw `[]`, second write left only `live_matches` (logs: `next=[iptv]` then `next=[live_matches]`).
 
-**After:** Leanback switch is display-only; `ActivateIntent` + key activate flip nav; soft pull skips stale apply when gen moved; thin dirty local yields to cloud; Addons force-pulls on open.
+**After:** Leanback switch is display-only; `ActivateIntent` + key activate flip nav; soft pull skips stale apply when gen moved; thin dirty local yields to cloud; Addons force-pulls on open; navbar RMW is serialized via `SettingsService.setNavbarTabVisible`.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 

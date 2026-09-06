@@ -167,15 +167,12 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   }
 
   Future<void> _toggleNavTab(String navId, bool val) async {
-    final nav = await _settings.getNavbarConfig();
-    final updated = val
-        ? [...nav, if (!nav.contains(navId)) navId]
-        : nav.where((id) => id != navId).toList();
+    // Exclusive RMW — rapid ATV OK on IPTV then Live Sports must not both
+    // read empty and write past each other (issue 224).
+    final updated = await _settings.setNavbarTabVisible(navId, val);
     debugPrint(
-      '[AddonToggle] navbar $navId → $val (was ${nav.contains(navId)}; '
-      'next=$updated)',
+      '[AddonToggle] navbar $navId → $val (next=$updated)',
     );
-    await _settings.setNavbarConfig(updated);
   }
 
   @override

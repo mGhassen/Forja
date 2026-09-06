@@ -1518,10 +1518,13 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       return healthProbe.checkNow(_probeKey, bare);
     }
 
-    // Signed Streamed / WatchFooty HLS — bare alive-check false-fails without
-    // Referer; probe the same way Sources panel does (headers + Referer).
+    // Signed Streamed / WatchFooty / Stremio (Highfly, flixnest, …) — bare
+    // alive-check false-fails without addon Referer; use Sources-panel probe.
     final url = source.url.trim();
-    if (!iptvLiveEnginePlayUrlReady(url)) {
+    final stremioHttp = source.liveSourceKind == IptvLiveSourceKind.stremio &&
+        (url.toLowerCase().startsWith('http://') ||
+            url.toLowerCase().startsWith('https://'));
+    if (!iptvLiveEnginePlayUrlReady(url) && !stremioHttp) {
       return true;
     }
     final headers = LiveGoatUnlock.withWftyPlaybackReferer(

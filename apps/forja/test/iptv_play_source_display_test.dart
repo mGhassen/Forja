@@ -118,7 +118,23 @@ void main() {
     );
     expect(iptvLiveSourceProbeUrl(stremioFlixnest), isNull);
     expect(iptvLiveSourceProbeSkipped(stremioFlixnest), isTrue);
-    expect(iptvLiveSourceCanHoverProbe(stremioFlixnest), isFalse);
+    // Hover uses header probe (not bare alive-check).
+    expect(iptvLiveSourceCanHoverProbe(stremioFlixnest), isTrue);
+
+    const stremioHighfly = IptvPlaySource(
+      url: 'https://leaf.highfly.dev/live/abc123/index.m3u8',
+      label: 'CA: TSN 2 RAW',
+      liveSourceKind: IptvLiveSourceKind.stremio,
+      headers: {'User-Agent': 'Mozilla/5.0'},
+    );
+    expect(iptvLiveSourceCanHoverProbe(stremioHighfly), isTrue);
+
+    const stremioLeafNoExt = IptvPlaySource(
+      url: 'https://leaf.highfly.dev/stream/xyz',
+      label: 'US: ABC HD',
+      liveSourceKind: IptvLiveSourceKind.stremio,
+    );
+    expect(iptvLiveSourceCanHoverProbe(stremioLeafNoExt), isTrue);
 
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',

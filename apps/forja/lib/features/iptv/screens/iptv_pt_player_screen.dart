@@ -335,15 +335,22 @@ bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }
 
-/// Live Sports Providers hover: ready HLS/MP4 (with or without Referer headers).
-/// Stremio / pending / embed catalog pages stay off — bare checks false-fail.
+/// Live Sports Providers hover: portal rows, ready HLS/MP4, and Stremio http(s)
+/// play URLs. Embed / `pending:` catalog pages stay off. Stremio and signed
+/// Streamed/WatchFooty rows probe with headers in `_liveHoverProbe` (not bare
+/// [IptvAliveChecker] — that false-fails JWT / Referer CDNs).
 bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
-  if (src.liveSourceKind == IptvLiveSourceKind.stremio) return false;
   if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
       src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
     return true;
   }
-  return iptvLiveEnginePlayUrlReady(src.url.trim());
+  final url = src.url.trim();
+  if (url.isEmpty || url.startsWith('pending:')) return false;
+  if (src.liveSourceKind == IptvLiveSourceKind.stremio) {
+    final lower = url.toLowerCase();
+    return lower.startsWith('http://') || lower.startsWith('https://');
+  }
+  return iptvLiveEnginePlayUrlReady(url);
 }
 
 typedef IptvLiveEngineResolveSource =

@@ -36,6 +36,11 @@ abstract final class PluginNavRegistry {
   /// hydrating — next successful hub scan restores platform-default visibility.
   static bool _deferredEmptyHubNavSync = false;
 
+  /// One refresh at a time — concurrent callers (MainScreen + Features) tore
+  /// static dest maps and looked "changed" forever (navbar bump storm).
+  static Future<bool>? _refreshInFlight;
+  static bool _refreshNotifyPending = false;
+
   static Map<String, NavDestination> get destinations {
     _ensureSeeded();
     return Map.unmodifiable(_destinations);
@@ -325,7 +330,23 @@ abstract final class PluginNavRegistry {
     return false;
   }
 
-  static Future<bool> refresh() async {
+  static Future<bool> refresh({bool notify = true}) async {
+    _refreshNotifyPending = _refreshNotifyPending || notify;
+    final existing = _refreshInFlight;
+    if (existing != null) return existing;
+    final run = _refreshBody();
+    _refreshInFlight = run;
+    try {
+      return await run;
+    } finally {
+      if (identical(_refreshInFlight, run)) {
+        _refreshInFlight = null;
+        _refreshNotifyPending = false;
+      }
+    }
+  }
+
+  static Future<bool> _refreshBody() async {
     _ensureSeeded();
     if (!_testNavLocked && _destinations.isEmpty && _tabPluginIds.isEmpty) {
       await _loadCachedNav();
@@ -356,9 +377,10 @@ abstract final class PluginNavRegistry {
         await SettingsService().syncActiveHubNavIds(
           activeHubIds: const {},
           knownHubIds: allKnownHubTabIds.difference(coreShellNavIds),
+          notify: _refreshNotifyPending,
         );
       }
-      if (hadHubs) {
+      if (hadHubs && _refreshNotifyPending) {
         SettingsService.navbarChangeNotifier.value++;
       }
       return hadHubs;
@@ -427,25 +449,32 @@ abstract final class PluginNavRegistry {
         allHubIds: dests.keys
             .where((id) => !coreShellNavIds.contains(id))
             .toList(),
+        notify: _refreshNotifyPending,
       );
     }
-    if (_deferredEmptyHubNavSync && dests.isNotEmpty) {
-      _deferredEmptyHubNavSync = false;
-      // VOD hubs only — never force-on Addons-gated core tabs (iptv / live_matches).
-      await SettingsService().ensureActiveDefaultHubsVisible(
-        activeHubIds: dests.keys.toSet().difference(coreShellNavIds),
-      );
+    final vodHubIds = dests.keys.toSet().difference(coreShellNavIds);
+    // Recover when every VOD hub was stripped (known-but-invisible after a race).
+    if (vodHubIds.isNotEmpty) {
+      final visible = await SettingsService().getNavbarConfig();
+      if (_deferredEmptyHubNavSync || !visible.any(vodHubIds.contains)) {
+        _deferredEmptyHubNavSync = false;
+        await SettingsService().ensureActiveDefaultHubsVisible(
+          activeHubIds: vodHubIds,
+          notify: _refreshNotifyPending,
+        );
+      }
     }
     await SettingsService().syncActiveHubNavIds(
-      activeHubIds: dests.keys.toSet().difference(coreShellNavIds),
+      activeHubIds: vodHubIds,
       knownHubIds: allHubTabIds.difference(coreShellNavIds),
+      notify: _refreshNotifyPending,
     );
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
     } else {
       await _clearNavSnapshot();
     }
-    if (changed) {
+    if (changed && _refreshNotifyPending) {
       SettingsService.navbarChangeNotifier.value++;
     }
     return changed;

@@ -11,6 +11,7 @@ import 'package:forja/features/settings/widgets/settings_plugin_install_progress
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -328,11 +329,9 @@ class _SettingsForjaPacksSectionState
                       trailing: _EnginePackActions(
                         packEnabled: pack.enabled,
                         update: update,
-                        onTogglePack: (val) =>
-                            EngineService.instance.setPackEnabled(
-                              sourceUrl: pack.sourceUrl,
-                              enabled: val,
-                            ),
+                        onTogglePack: (val) => unawaited(
+                          _togglePackEnabled(pack, enabled: val),
+                        ),
                         onRefresh: () =>
                             _refreshEnginePack(pack.sourceUrl, update: update),
                         onRemove: () => _removeEnginePack(pack.sourceUrl),
@@ -350,11 +349,9 @@ class _SettingsForjaPacksSectionState
                       trailing: _EnginePackActions(
                         packEnabled: pack.enabled,
                         update: update,
-                        onTogglePack: (val) =>
-                            EngineService.instance.setPackEnabled(
-                              sourceUrl: pack.sourceUrl,
-                              enabled: val,
-                            ),
+                        onTogglePack: (val) => unawaited(
+                          _togglePackEnabled(pack, enabled: val),
+                        ),
                         onRefresh: () =>
                             _refreshEnginePack(pack.sourceUrl, update: update),
                         onRemove: () => _removeEnginePack(pack.sourceUrl),
@@ -545,6 +542,37 @@ class _SettingsForjaPacksSectionState
     }
   }
 
+  /// Enable pack; if scripts are missing (cloud lean stub), download first so
+  /// hub `nav` can contribute Features / rail tabs (ATV parity with desktop).
+  Future<void> _togglePackEnabled(
+    EnginePack pack, {
+    required bool enabled,
+  }) async {
+    if (enabled &&
+        await PluginRegistry.instance.packNeedsDiskInstall(pack)) {
+      setState(() => _engineInstalling = true);
+      try {
+        await PluginInstallCoordinator.instance.installManifest(
+          pack.sourceUrl,
+        );
+        await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+      } catch (e) {
+        if (mounted) ForjaToast.error('Install failed: $e');
+        return;
+      } finally {
+        if (mounted) setState(() => _engineInstalling = false);
+      }
+    }
+    await EngineService.instance.setPackEnabled(
+      sourceUrl: pack.sourceUrl,
+      enabled: enabled,
+    );
+    await PluginNavRegistry.refresh();
+    if (!mounted) return;
+    scheduleForjaSyncPush();
+    ref.invalidate(enginePacksProvider);
+  }
+
   Future<void> _installNamedPack(String sourceUrl) async {
     setState(() => _engineInstalling = true);
     try {
@@ -552,6 +580,7 @@ class _SettingsForjaPacksSectionState
         sourceUrl,
       );
       await DeferredRemoteInstallStore.clear(sourceUrl);
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);

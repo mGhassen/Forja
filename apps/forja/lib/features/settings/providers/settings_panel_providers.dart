@@ -442,19 +442,55 @@ class SettingsNavigationNotifier
     extends AsyncNotifier<SettingsNavigationSnapshot> {
   @override
   Future<SettingsNavigationSnapshot> build() async {
+    // Navbar writes (Addons / sync / MainScreen hub refresh).
     ref.watch(navbarRevisionProvider);
-    final n = EngineService.changeNotifier;
-    void onPacks() => ref.invalidateSelf();
-    n.addListener(onPacks);
-    ref.onDispose(() => n.removeListener(onPacks));
-    return _load();
+    // Never block Features on pack I/O — host-core (IPTV / Live Sports) must
+    // paint like desktop even when hub refresh is slow or hung (issue 222).
+    if (PluginNavRegistry.destinations.isEmpty) {
+      unawaited(_scanHubsInBackground());
+    }
+    return _snapshotFromPrefs();
   }
 
-  Future<SettingsNavigationSnapshot> _load() async {
-    // Pack install can finish while Features is open — scan hub `nav` before
-    // building the list so Home / Anime / … appear (issue 222).
-    await PluginNavRegistry.refresh();
+  Future<void> _scanHubsInBackground() async {
+    try {
+      final changed = await PluginNavRegistry.refresh(notify: false);
+      final hubs = PluginNavRegistry.destinations.keys
+          .where((id) => !PluginNavRegistry.coreShellNavIds.contains(id))
+          .toSet();
+      if (hubs.isNotEmpty) {
+        final s = SettingsService();
+        final visible = await s.getNavbarConfig();
+        if (!visible.any(hubs.contains)) {
+          await s.ensureActiveDefaultHubsVisible(
+            activeHubIds: hubs,
+            notify: false,
+          );
+        }
+      }
+      // One bump so Features / rail pick up hub rows after the scan.
+      if (changed || hubs.isNotEmpty) {
+        SettingsService.navbarChangeNotifier.value++;
+      }
+    } catch (e, st) {
+      debugPrint('[Features] background hub scan failed: $e\n$st');
+    }
+  }
+
+  Future<SettingsNavigationSnapshot> _snapshotFromPrefs() async {
     final s = SettingsService();
+    final vodHubIds = PluginNavRegistry.destinations.keys
+        .where((id) => !PluginNavRegistry.coreShellNavIds.contains(id))
+        .toSet();
+    if (vodHubIds.isNotEmpty) {
+      final rawVisible = await s.getNavbarConfig();
+      if (!rawVisible.any(vodHubIds.contains)) {
+        await s.ensureActiveDefaultHubsVisible(
+          activeHubIds: vodHubIds,
+          notify: false,
+        );
+      }
+    }
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);
@@ -467,7 +503,6 @@ class SettingsNavigationNotifier
         .where((id) => !archivedNavIds.contains(id))
         .where(contributedSet.contains)
         .toList();
-    // Prefs / `_extraNavIds` can lag pack refresh — always surface contributed.
     for (final id in contributed) {
       if (!navOrder.contains(id)) navOrder.add(id);
     }
@@ -503,7 +538,12 @@ class SettingsNavigationNotifier
     state = const AsyncLoading<SettingsNavigationSnapshot>().copyWithPrevious(
       previous,
     );
-    state = await AsyncValue.guard(_load);
+    try {
+      await PluginNavRegistry.refresh(notify: false);
+    } catch (e, st) {
+      debugPrint('[Features] reload refresh failed: $e\n$st');
+    }
+    state = await AsyncValue.guard(_snapshotFromPrefs);
   }
 }
 
