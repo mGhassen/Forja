@@ -131,6 +131,8 @@ class SyncDomainBridge {
       'content_warnings': true,
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 2160,
+      'addon_feature_iptv': false,
+      'addon_feature_live_matches': false,
     });
     await _settings.setNavbarConfig(
       List<String>.from(defaults.visibleNavIds),
@@ -1019,6 +1021,9 @@ class SyncDomainBridge {
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),
+      'addon_feature_iptv': await _settings.isAddonFeatureEnabled('iptv'),
+      'addon_feature_live_matches':
+          await _settings.isAddonFeatureEnabled('live_matches'),
     };
   }
 
@@ -1094,6 +1099,18 @@ class SyncDomainBridge {
     if (payload.containsKey('anime_title_language')) {
       await _settings.setAnimeTitleLanguage(
         payload['anime_title_language'] as String,
+      );
+    }
+    if (payload.containsKey('addon_feature_iptv')) {
+      await _settings.setAddonFeatureEnabled(
+        'iptv',
+        payload['addon_feature_iptv'] as bool,
+      );
+    }
+    if (payload.containsKey('addon_feature_live_matches')) {
+      await _settings.setAddonFeatureEnabled(
+        'live_matches',
+        payload['addon_feature_live_matches'] as bool,
       );
     }
   }

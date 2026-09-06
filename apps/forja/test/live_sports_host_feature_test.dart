@@ -30,7 +30,7 @@ void main() {
     expect(off, isNot(contains('home')));
 
     final on = PluginNavRegistry.featureTabIds(
-      activeAddonNavIds: const ['iptv', 'live_matches'],
+      availableAddonFeatureIds: const ['iptv', 'live_matches'],
     );
     expect(on, containsAll(['iptv', 'live_matches']));
     expect(on, isNot(contains('settings')));
@@ -39,7 +39,7 @@ void main() {
   test('Features inventory includes contributed hub tabs', () {
     PluginNavRegistry.seedTestHubNav();
     final ids = PluginNavRegistry.featureTabIds(
-      activeAddonNavIds: const ['iptv', 'live_matches'],
+      availableAddonFeatureIds: const ['iptv', 'live_matches'],
     );
     expect(ids, containsAll(['iptv', 'live_matches', 'test_hub_a']));
     expect(ids, isNot(contains('settings')));

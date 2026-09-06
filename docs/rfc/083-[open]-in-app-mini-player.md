@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **15 / 15** acceptance |
+| **Progress** | **8 / 8** components · **16 / 16** acceptance |
 | **Current slice** | Desktop in-app mini shipped — phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -49,6 +49,7 @@
 | 13 | R83-A13 | Setting on: Escape demotes when chrome already hidden (skip arm — hover cannot clear) | ✅ |
 | 14 | R83-A14 | Top-right chrome button demotes when setting on (desktop VOD + IPTV) | ✅ |
 | 15 | R83-A15 | Mini: OverlayEntry.opaque synced so shell paints under transparent player route | ✅ |
+| 16 | R83-A16 | Mini: same MediaKit Video slot resized (no remount) so picture is not black | ✅ |
 
 ---
 

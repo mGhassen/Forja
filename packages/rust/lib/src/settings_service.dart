@@ -132,6 +132,12 @@ class SettingsService {
   /// Android TV MediaKit live demuxer cushion (seconds). `0` = Auto by height.
   /// Admin-only; max 30. Pairs with demuxer-max-bytes tiers (issue 150).
   static const String _iptvLiveBufferSecsKey = 'iptv_live_buffer_secs';
+  /// RFC-086: Addons feature availability (not navbar visibility).
+  static const String _addonFeatureIptvKey = 'addon_feature_iptv';
+  static const String _addonFeatureLiveMatchesKey = 'addon_feature_live_matches';
+  /// One-shot: set addon feature flags from prior one-bit `navbar_config`.
+  static const String _addonFeatureFromNavMigratedKey =
+      'addon_feature_from_nav_v1';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
 
@@ -765,6 +771,55 @@ class SettingsService {
     if (await isPlaySourceTorrentStored() == enabled) return;
     await kvSetBool(_playSourceTorrentKey, enabled);
     playSourceChangeNotifier.value++;
+  }
+
+  /// Settings → Addons feature availability for host tabs (RFC-086).
+  /// Not navbar visibility — Features alone writes `visibleIds`.
+  Future<bool> isAddonFeatureEnabled(String navId) async {
+    await ensureAddonFeaturesMigratedFromNav();
+    final key = _addonFeatureKey(navId);
+    if (key == null) return false;
+    return kvGetBool(key, fallback: false);
+  }
+
+  Future<void> setAddonFeatureEnabled(String navId, bool enabled) async {
+    await ensureAddonFeaturesMigratedFromNav();
+    final key = _addonFeatureKey(navId);
+    if (key == null) return;
+    if (await kvGetBool(key, fallback: false) == enabled) return;
+    await kvSetBool(key, enabled);
+    playSourceChangeNotifier.value++;
+    navbarChangeNotifier.value++;
+  }
+
+  /// Nav ids whose Addons feature flag is on (for Features inventory).
+  Future<List<String>> listAvailableAddonFeatureNavIds() async {
+    await ensureAddonFeaturesMigratedFromNav();
+    return [
+      for (final id in addonGatedNavIds)
+        if (await kvGetBool(_addonFeatureKey(id)!, fallback: false)) id,
+    ];
+  }
+
+  static String? _addonFeatureKey(String navId) => switch (navId) {
+    'iptv' => _addonFeatureIptvKey,
+    'live_matches' => _addonFeatureLiveMatchesKey,
+    _ => null,
+  };
+
+  /// Upgrade from one-bit nav: visible `iptv` / `live_matches` ⇒ feature on.
+  Future<void> ensureAddonFeaturesMigratedFromNav() async {
+    if (await kvHasKey(_addonFeatureFromNavMigratedKey)) return;
+    final raw = await kvHasKey(_navbarConfigKey)
+        ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+        : const <String>[];
+    for (final id in addonGatedNavIds) {
+      final key = _addonFeatureKey(id)!;
+      if (raw.contains(id) && !await kvHasKey(key)) {
+        await kvSetBool(key, true);
+      }
+    }
+    await kvSetString(_addonFeatureFromNavMigratedKey, '1');
   }
 
   /// Device-cache value for cloud sync / backup (not platform-gated).
@@ -1424,27 +1479,18 @@ class SettingsService {
   static const String _navbarShell091Key = 'navbar_shell_091';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
-  /// Serializes navbar KV writes / RMW so rapid Addons toggles (ATV OK) cannot
-  /// lose updates — e.g. IPTV then Live Sports both read `[]` and the second
-  /// write leaves only `live_matches` (issue 224).
+  /// Serializes navbar KV writes / RMW (issue 224).
   static Future<void> _navbarExclusiveTail = Future<void>.value();
-
-  /// Last committed visible ids under the exclusive lock — RMW prefers this
-  /// over a stale KV read when a soft-pull / prefs race rewrote storage.
-  static List<String>? _navbarVisibleMemory;
 
   static Future<T> _withNavbarExclusive<T>(Future<T> Function() op) {
     final done = Completer<T>();
-    // catchError keeps the chain alive if a prior op failed.
-    _navbarExclusiveTail = _navbarExclusiveTail
-        .catchError((_) {})
-        .then((_) async {
-          try {
-            done.complete(await op());
-          } catch (e, st) {
-            if (!done.isCompleted) done.completeError(e, st);
-          }
-        });
+    _navbarExclusiveTail = _navbarExclusiveTail.catchError((_) {}).then((_) async {
+      try {
+        done.complete(await op());
+      } catch (e, st) {
+        if (!done.isCompleted) done.completeError(e, st);
+      }
+    });
     unawaited(_navbarExclusiveTail.catchError((_) {}));
     return done.future;
   }
@@ -1572,8 +1618,8 @@ class SettingsService {
     return false;
   }
 
-  /// Host tabs gated by Settings → Addons. Never auto-insert on first-seen —
-  /// only Features / Addons toggles may show them.
+  /// Host tabs gated by Settings → Addons feature flags (RFC-086). Never
+  /// auto-insert into navbar — Features alone writes `visibleIds`.
   static const Set<String> addonGatedNavIds = {
     'iptv',
     'live_matches',
@@ -1617,8 +1663,8 @@ class SettingsService {
     }
   }
 
-  /// After hubs pack refresh: mark new tab ids known; auto-show hubs the user
-  /// has never seen (same insert rules as [getNavbarConfig]).
+  /// After hubs pack refresh: mark new tab ids known. Does **not** write
+  /// `visibleIds` — Features alone paints the rail (RFC-086).
   ///
   /// [notify] false when Features is already rebuilding from the same refresh
   /// (avoids cancelling `settingsNavigationProvider` mid-load — issue 222).
@@ -1632,17 +1678,11 @@ class SettingsService {
         _navbarKnownIdsKey,
         fallback: const [],
       )).toSet();
-      final visible = await kvHasKey(_navbarConfigKey)
-          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-          : List<String>.from(defaultVisibleNavIds);
       var changed = false;
       for (final id in allHubIds) {
         if (known.contains(id)) continue;
         known.add(id);
         changed = true;
-        if (!visible.contains(id)) {
-          visible.add(id);
-        }
       }
       if (!changed &&
           known.containsAll(allNavIds) &&
@@ -1653,15 +1693,9 @@ class SettingsService {
         ...known,
         ...allNavIds,
       }.toList());
-      if (await kvHasKey(_navbarConfigKey)) {
-        final prev = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        await kvSetStringList(_navbarConfigKey, visible);
-        _navbarVisibleMemory = List<String>.from(visible);
-        // Features / rail watch this — without a bump, pack install can leave
-        // Settings → Features stuck on Settings-only until a manual reopen.
-        if (notify && !listEquals(prev, visible)) {
-          navbarChangeNotifier.value++;
-        }
+      // Inventory (Features list) may gain hub rows — bump without touching rail.
+      if (notify && changed) {
+        navbarChangeNotifier.value++;
       }
     });
   }
@@ -1691,7 +1725,6 @@ class SettingsService {
       ];
       if (listEquals(visible, ordered)) return;
       await kvSetStringList(_navbarConfigKey, ordered);
-      _navbarVisibleMemory = List<String>.from(ordered);
       if (notify) navbarChangeNotifier.value++;
     });
   }
@@ -1713,7 +1746,6 @@ class SettingsService {
           .toList();
       if (listEquals(raw, next)) return;
       await kvSetStringList(_navbarConfigKey, next);
-      _navbarVisibleMemory = List<String>.from(next);
       final defaultTab = await getDefaultNavTab();
       if (knownHubIds.contains(defaultTab) &&
           !activeHubIds.contains(defaultTab)) {
@@ -1727,39 +1759,18 @@ class SettingsService {
   /// RMW add/remove one tab under the navbar exclusive lock (issue 224).
   Future<List<String>> setNavbarTabVisible(String navId, bool visible) {
     return _withNavbarExclusive(() async {
-      final fromKv = await getNavbarConfig();
-      final mem = _navbarVisibleMemory;
-      // If KV shrank vs the last committed write (soft-pull race), heal from
-      // session memory before applying this toggle.
-      final List<String> nav;
-      if (mem != null &&
-          mem.isNotEmpty &&
-          fromKv.length < mem.length &&
-          mem.any((id) => !fromKv.contains(id))) {
-        nav = <String>{...mem, ...fromKv}.toList();
-        debugPrint(
-          '[Navbar] RMW heal after shrink (kv=$fromKv mem=$mem)',
-        );
-      } else {
-        nav = fromKv;
-      }
+      final nav = await getNavbarConfig();
       final updated = visible
           ? [...nav, if (!nav.contains(navId)) navId]
           : nav.where((id) => id != navId).toList();
       await _setNavbarConfigUnlocked(updated);
-      // Enabling a tab already silently restored in KV (unchanged write) still
-      // needs a bump so a stale rail catches up.
-      if (visible && listEquals(fromKv, updated)) {
-        navbarChangeNotifier.value++;
-      }
       return updated;
     });
   }
 
-  /// Test-only: clear exclusive-lock session state between stores.
+  /// Test-only: reset exclusive lock between stores.
   @visibleForTesting
   static void resetNavbarLockForTest() {
-    _navbarVisibleMemory = null;
     _navbarExclusiveTail = Future<void>.value();
   }
 
@@ -2021,25 +2032,16 @@ class SettingsService {
       _navbarKnownIdsKey,
       fallback: const [],
     )).toSet();
-    final newlyAdded = <String>[];
-    for (var i = 0; i < allNavIds.length; i++) {
-      final id = allNavIds[i];
+    // RFC-086: never auto-insert unknown ids into visible — Features alone
+    // writes the rail. Only expand known so first-seen hubs appear in Features.
+    final unknown = <String>[];
+    for (final id in allNavIds) {
       if (filtered.contains(id)) continue;
       if (known.contains(id)) continue;
-      // Addons-gated host tabs stay off until the user enables them.
       if (addonGatedNavIds.contains(id)) continue;
-      newlyAdded.add(id);
-      var insertAt = filtered.length;
-      for (var j = i - 1; j >= 0; j--) {
-        final idx = filtered.indexOf(allNavIds[j]);
-        if (idx >= 0) {
-          insertAt = idx + 1;
-          break;
-        }
-      }
-      filtered.insert(insertAt, id);
+      unknown.add(id);
     }
-    if (newlyAdded.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
+    if (unknown.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
       await kvSetStringList(_navbarKnownIdsKey, {
         ...known,
         ...allNavIds,
@@ -2104,7 +2106,6 @@ class SettingsService {
         : null;
     final unchanged = raw != null && listEquals(raw, visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
-    _navbarVisibleMemory = List<String>.from(visibleIds);
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
       fallback: const [],
@@ -2163,6 +2164,9 @@ class SettingsService {
         await isPlaySourceWebstreamingEnabled();
     prefsMap[_p2pStreamingAcknowledgedKey] =
         await isP2pStreamingAcknowledged();
+    prefsMap[_addonFeatureIptvKey] = await isAddonFeatureEnabled('iptv');
+    prefsMap[_addonFeatureLiveMatchesKey] =
+        await isAddonFeatureEnabled('live_matches');
     for (final key in [
       _sortPreferenceKey,
       _debridServiceKey,

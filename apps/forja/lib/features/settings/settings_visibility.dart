@@ -153,8 +153,8 @@ class SettingsVisibility {
       showPlaySourceEngineToggle: await PlaySourceEffective.showEngineToggle(),
       lanPlaySourcesEditable: lanEditable,
       vodTab: nav.any(BootNeeds.isVodNavId),
-      iptvNav: nav.contains('iptv'),
-      liveMatchesNav: nav.contains('live_matches'),
+      iptvNav: await s.isAddonFeatureEnabled('iptv'),
+      liveMatchesNav: await s.isAddonFeatureEnabled('live_matches'),
     );
   }
 }

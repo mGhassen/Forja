@@ -35,45 +35,15 @@ bool addonMasterEnabled({
   };
 }
 
-/// Writes Addons master enable — call from the row OK / click (not via a
-/// mid-build flip callback; that left `_flip` null and silent no-ops).
+/// Nav id for Addons-gated host features (RFC-086).
+String? addonFeatureNavId(String addonId) => switch (addonId) {
+  SettingsAddonId.iptv => 'iptv',
+  SettingsAddonId.liveSports => 'live_matches',
+  _ => null,
+};
+
+/// Writes Addons master enable — call from the row OK / click.
 Future<void> setAddonMasterEnabled(
-  WidgetRef ref,
-  BuildContext context, {
-  required String addonId,
-  required bool val,
-}) async {
-  // Serialize IPTV / Live Sports so rapid ATV OK cannot interleave sync pulls
-  // between navbar writes (224 — next=[iptv] then next=[live_matches] only).
-  if (addonId == SettingsAddonId.iptv ||
-      addonId == SettingsAddonId.liveSports) {
-    final prev = _addonNavToggleChain;
-    final gate = Completer<void>();
-    _addonNavToggleChain = gate.future;
-    await prev;
-    try {
-      await _setAddonMasterEnabledBody(
-        ref,
-        context,
-        addonId: addonId,
-        val: val,
-      );
-    } finally {
-      gate.complete();
-    }
-    return;
-  }
-  await _setAddonMasterEnabledBody(
-    ref,
-    context,
-    addonId: addonId,
-    val: val,
-  );
-}
-
-Future<void> _addonNavToggleChain = Future<void>.value();
-
-Future<void> _setAddonMasterEnabledBody(
   WidgetRef ref,
   BuildContext context, {
   required String addonId,
@@ -81,10 +51,7 @@ Future<void> _setAddonMasterEnabledBody(
 }) async {
   final settings = SettingsService();
   final notifier = ref.read(settingsPlaybackProvider.notifier);
-
-  debugPrint(
-    '[AddonToggle] set $addonId → $val',
-  );
+  debugPrint('[AddonToggle] set $addonId → $val');
 
   if (val &&
       (addonId == SettingsAddonId.torrent ||
@@ -98,6 +65,7 @@ Future<void> _setAddonMasterEnabledBody(
     }
   }
 
+  final featureNavId = addonFeatureNavId(addonId);
   switch (addonId) {
     case SettingsAddonId.torrent:
       await settings.setPlaySourceTorrentEnabled(val);
@@ -114,16 +82,15 @@ Future<void> _setAddonMasterEnabledBody(
           .read(settingsDebridProvider.notifier)
           .patch((s) => s.copyWith(useDebrid: val));
     case SettingsAddonId.iptv:
-      noteNavigationDirty();
-      final updated = await settings.setNavbarTabVisible('iptv', val);
-      debugPrint('[AddonToggle] navbar iptv → $val (next=$updated)');
-      if (!val) {
-        await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
-      }
     case SettingsAddonId.liveSports:
-      noteNavigationDirty();
-      final updated = await settings.setNavbarTabVisible('live_matches', val);
-      debugPrint('[AddonToggle] navbar live_matches → $val (next=$updated)');
+      await settings.setAddonFeatureEnabled(featureNavId!, val);
+      if (!val) {
+        noteNavigationDirty();
+        await settings.setNavbarTabVisible(featureNavId, false);
+        if (addonId == SettingsAddonId.iptv) {
+          await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+        }
+      }
     case SettingsAddonId.lan:
       await LanPrefs.instance.setLanServerEnabled(val);
   }
@@ -132,15 +99,9 @@ Future<void> _setAddonMasterEnabledBody(
     await deactivateAddonChildren(addonId);
   }
 
-  if (addonId == SettingsAddonId.iptv ||
-      addonId == SettingsAddonId.liveSports) {
-    // Await so a soft pull cannot apply empty cloud before the upsert lands.
+  schedulePreferencesSyncPush();
+  if (!val && featureNavId != null) {
     await scheduleNavigationSyncPush();
-    if (addonId == SettingsAddonId.iptv) {
-      schedulePreferencesSyncPush();
-    }
-  } else {
-    schedulePreferencesSyncPush();
   }
 }
 

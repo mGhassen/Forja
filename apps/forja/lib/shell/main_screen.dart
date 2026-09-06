@@ -362,9 +362,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
     if (!mounted || gen != _navbarLoadGen) return;
+    final addonFeatures = await SettingsService().listAvailableAddonFeatureNavIds();
+    if (!mounted || gen != _navbarLoadGen) return;
+    final addonSet = addonFeatures.toSet();
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
         .where(PluginNavRegistry.isContributed)
+        .where(
+          (id) =>
+              !SettingsService.addonGatedNavIds.contains(id) ||
+              addonSet.contains(id),
+        )
         .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible

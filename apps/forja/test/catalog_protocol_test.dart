@@ -730,7 +730,7 @@ void main() {
       );
       expect(
         PluginNavRegistry.featureTabIds(
-          activeAddonNavIds: const ['iptv', 'live_matches'],
+          availableAddonFeatureIds: const ['iptv', 'live_matches'],
         ),
         containsAll(['iptv', 'live_matches']),
       );

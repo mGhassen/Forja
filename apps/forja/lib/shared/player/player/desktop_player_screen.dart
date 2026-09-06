@@ -217,6 +217,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   late final FocusNode _miniCloseFocus =
       FocusNode(debugLabel: 'in-app-mini-close');
 
+  /// Keep MediaKit [Video] State across full ↔ in-app mini (texture stays alive).
+  final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'desktop-player-video');
+
   @override
   FocusNode get miniRootFocus => _miniRootFocus;
 

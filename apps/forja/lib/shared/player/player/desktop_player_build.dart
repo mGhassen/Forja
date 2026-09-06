@@ -47,12 +47,145 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         ),
       );
     }
-    if (InAppMiniPlayerController.instance.isActive) {
-      return _buildInAppMiniBody();
-    }
+    final mini = InAppMiniPlayerController.instance.isActive;
     // Include enter-pending: window shrinks before the stream sets _isPipMode.
     final pipMode =
         _s._isPipMode || PipService.instance.isDesktopActive;
+
+    // One [Video] slot for full + mini — remounting MediaKit drops the texture
+    // (black picture, audio still plays).
+    final stack = Stack(
+      fit: StackFit.expand,
+      children: [
+        if (mini) const IgnorePointer(child: SizedBox.expand()),
+        Positioned(
+          key: const ValueKey('desktop-player-video-slot'),
+          left: mini ? null : 0,
+          top: mini ? null : 0,
+          right: mini ? 16 : 0,
+          bottom: mini ? 16 : 0,
+          width: mini ? InAppMiniPlayerChrome.width : null,
+          height: mini ? InAppMiniPlayerChrome.height : null,
+          child: Material(
+            elevation: mini ? 12 : 0,
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(mini ? 10 : 0),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Video(
+                  key: _s._videoViewKey,
+                  controller: _s._controller,
+                  controls: NoVideoControls,
+                  fit: _s._videoFit,
+                  fill: Colors.black,
+                  subtitleViewConfiguration: const SubtitleViewConfiguration(
+                    visible: false,
+                  ),
+                ),
+                if (mini)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _s._isPlayingNotifier,
+                    builder: (context, playing, _) {
+                      return InAppMiniPlayerChrome(
+                        playing: playing,
+                        rootFocus: _s._miniRootFocus,
+                        playPauseFocus: _s._miniPlayPauseFocus,
+                        expandFocus: _s._miniExpandFocus,
+                        closeFocus: _s._miniCloseFocus,
+                        onPlayPause: () {
+                          unawaited(
+                            InAppMiniPlayerController.instance
+                                .togglePlayPause(),
+                          );
+                        },
+                        onExpand: () {
+                          unawaited(
+                            InAppMiniPlayerController.instance.expand(),
+                          );
+                        },
+                        onClose: () {
+                          unawaited(
+                            InAppMiniPlayerController.instance.close(),
+                          );
+                        },
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (!mini && !pipMode)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                _s._player.playOrPause();
+                _s._onMouseMove();
+              },
+              onDoubleTap: () => unawaited(_s._toggleFullscreen()),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        if (!mini && !_s._isNativeSubtitle)
+          StreamBuilder<List<String>>(
+            stream: _s._player.stream.subtitle,
+            initialData: _s._player.state.subtitle,
+            builder: (context, snap) {
+              final lines = snap.data ?? [];
+              final text =
+                  lines.where((l) => l.trim().isNotEmpty).join('\n');
+              if (text.isEmpty) return const SizedBox.shrink();
+              const refHeight = 720.0;
+              final winH = MediaQuery.of(context).size.height;
+              final scale = (winH / refHeight).clamp(0.35, 1.0);
+              final hSidePad = 24.0 * scale;
+              return Positioned(
+                left: hSidePad,
+                right: hSidePad,
+                bottom: _s._subtitleBottomPadding * scale,
+                child: IgnorePointer(
+                  child: Text(
+                    text,
+                    style: _s._buildSubtitleTextStyle(scale: scale),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            },
+          ),
+        if (!mini && !pipMode)
+          AnimatedOpacity(
+            opacity: _s._showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 220),
+            child: IgnorePointer(
+              ignoring: !_s._showControls,
+              child: _buildControlsOverlay(),
+            ),
+          ),
+        if (!mini && !pipMode && _s._escapeExitArmed)
+          const PlayerEscapeExitHint(),
+        if (!mini && pipMode) _buildPipRevertOverlay(),
+        if (!mini &&
+            !isStreamLoadingOverlayActive &&
+            !_s._isLoadingNextEp)
+          PlayerStatusOverlay(
+            controller: _s._statusController,
+            bufferingListenable: _s._isBufferingNotifier,
+          ),
+        if (!mini && !pipMode)
+          ParentalGuideLayer(
+            imdbId: widget.movie?.imdbId,
+            playbackStarted: _s._playbackConfirmed,
+          ),
+      ],
+    );
+
+    // Mini: no Scaffold — transparent hit-through to the shell underneath.
+    if (mini) return stack;
+
     return Theme(
       data: ThemeData.dark(),
       child: Scaffold(
@@ -66,143 +199,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 : SystemMouseCursors.none,
             child: child,
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Video(
-                controller: _s._controller,
-                controls: NoVideoControls,
-                fit: _s._videoFit,
-                fill: Colors.black,
-                subtitleViewConfiguration: const SubtitleViewConfiguration(
-                  visible: false,
-                ),
-              ),
-              if (!pipMode)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      _s._player.playOrPause();
-                      _s._onMouseMove();
-                    },
-                    onDoubleTap: () => unawaited(_s._toggleFullscreen()),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              if (!_s._isNativeSubtitle)
-                StreamBuilder<List<String>>(
-                  stream: _s._player.stream.subtitle,
-                  initialData: _s._player.state.subtitle,
-                  builder: (context, snap) {
-                    final lines = snap.data ?? [];
-                    final text = lines
-                        .where((l) => l.trim().isNotEmpty)
-                        .join('\n');
-                    if (text.isEmpty) return const SizedBox.shrink();
-                    const refHeight = 720.0;
-                    final winH = MediaQuery.of(context).size.height;
-                    final scale = (winH / refHeight).clamp(0.35, 1.0);
-                    final hSidePad = 24.0 * scale;
-                    return Positioned(
-                      left: hSidePad,
-                      right: hSidePad,
-                      bottom: _s._subtitleBottomPadding * scale,
-                      child: IgnorePointer(
-                        child: Text(
-                          text,
-                          style: _s._buildSubtitleTextStyle(scale: scale),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              if (!pipMode)
-                AnimatedOpacity(
-                  opacity: _s._showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 220),
-                  child: IgnorePointer(
-                    ignoring: !_s._showControls,
-                    child: _buildControlsOverlay(),
-                  ),
-                ),
-              if (!pipMode && _s._escapeExitArmed)
-                const PlayerEscapeExitHint(),
-              if (pipMode) _buildPipRevertOverlay(),
-              if (!isStreamLoadingOverlayActive && !_s._isLoadingNextEp)
-                PlayerStatusOverlay(
-                  controller: _s._statusController,
-                  bufferingListenable: _s._isBufferingNotifier,
-                ),
-              if (!pipMode)
-                ParentalGuideLayer(
-                  imdbId: widget.movie?.imdbId,
-                  playbackStarted: _s._playbackConfirmed,
-                ),
-            ],
-          ),
+          child: stack,
         ),
       ),
-    );
-  }
-
-  /// Transparent pass-through + corner video (in-Forja mini — not OS PiP).
-  Widget _buildInAppMiniBody() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const IgnorePointer(child: SizedBox.expand()),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          width: InAppMiniPlayerChrome.width,
-          height: InAppMiniPlayerChrome.height,
-          child: Material(
-            elevation: 12,
-            borderRadius: BorderRadius.circular(10),
-            clipBehavior: Clip.antiAlias,
-            color: Colors.black,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Video(
-                  controller: _s._controller,
-                  controls: NoVideoControls,
-                  fit: BoxFit.contain,
-                  fill: Colors.black,
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible: false,
-                  ),
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: _s._isPlayingNotifier,
-                  builder: (context, playing, _) {
-                    return InAppMiniPlayerChrome(
-                      playing: playing,
-                      rootFocus: _s._miniRootFocus,
-                      playPauseFocus: _s._miniPlayPauseFocus,
-                      expandFocus: _s._miniExpandFocus,
-                      closeFocus: _s._miniCloseFocus,
-                      onPlayPause: () {
-                        unawaited(
-                          InAppMiniPlayerController.instance.togglePlayPause(),
-                        );
-                      },
-                      onExpand: () {
-                        unawaited(InAppMiniPlayerController.instance.expand());
-                      },
-                      onClose: () {
-                        unawaited(InAppMiniPlayerController.instance.close());
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 

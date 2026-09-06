@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 17** fix · **0 / 2** acceptance |
+| **Progress** | **19 / 19** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -36,6 +36,8 @@
 | 15 | I224-T15 | Session navbar memory heal + serialize IPTV/Live Sports addon toggles through sync push | ✅ |
 | 16 | I224-T16 | Stop Features/hub refresh from re-inserting every hub after intentional all-hub hide (Home enable was no-op / no rail) | ✅ |
 | 17 | I224-T17 | MainScreen navbar load generation guard — stale async reload cannot wipe a newer visible set | ✅ |
+| 18 | I224-T18 | RFC-086: Addons write `addon_feature_*` only; Features sole `visibleIds` writer | ✅ |
+| 19 | I224-T19 | RFC-086: packs `ensureNavIdsKnown` known-only (no first-seen auto-insert into navbar) | ✅ |
 
 ---
 
@@ -43,8 +45,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports row once → switch stays on; chevron opens details; Features lists them; rail shows tabs | ⬜ |
+| 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports → switch stays on; Features lists them; Features OK puts tabs on rail | ⬜ |
 | 2 | I224-A02 | Enable IPTV + Live Sports on web Profile → Features / Addons → open Addons on ATV → switches show on without local re-toggle | ⬜ |
+| 3 | I224-A03 | Addons ON does not add IPTV/Live to the rail until Features turns them on | ⬜ |
 
 ---
 

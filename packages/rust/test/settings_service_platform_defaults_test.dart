@@ -613,7 +613,7 @@ void main() {
     expect(await service.getNavbarConfig(), ['iptv', 'home']);
   });
 
-  test('ensureNavIdsKnown auto-shows first-seen hub tabs', () async {
+  test('ensureNavIdsKnown marks hubs known without painting the rail', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     expect(await service.getNavbarConfig(), isEmpty);
@@ -622,26 +622,35 @@ void main() {
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
 
-    expect(await service.getNavbarConfig(), [
-      'hub_alpha',
-      'hub_beta',
-    ]);
+    // RFC-086: Features alone writes visibleIds.
+    expect(await service.getNavbarConfig(), isEmpty);
+
+    await service.setNavbarTabVisible('hub_alpha', true);
+    expect(await service.getNavbarConfig(), ['hub_alpha']);
 
     await service.setNavbarConfig(const []);
     await service.ensureNavIdsKnown(
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
-    // Already known — must not force-show again after user hide.
     expect(await service.getNavbarConfig(), isEmpty);
   });
 
-  test('ensureNavIdsKnown bumps navbar notifier when visible changes', () async {
+  test('ensureNavIdsKnown bumps navbar notifier when newly known', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     final before = SettingsService.navbarChangeNotifier.value;
     await service.ensureNavIdsKnown(allHubIds: const ['hub_notify']);
     expect(SettingsService.navbarChangeNotifier.value, greaterThan(before));
-    expect(await service.getNavbarConfig(), contains('hub_notify'));
+    expect(await service.getNavbarConfig(), isEmpty);
+  });
+
+  test('addon feature flags migrate from navbar visibleIds', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(const ['iptv', 'live_matches']);
+    expect(await service.isAddonFeatureEnabled('iptv'), isTrue);
+    expect(await service.isAddonFeatureEnabled('live_matches'), isTrue);
+    expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
   });
 
   test('concurrent setNavbarTabVisible keeps both tabs', () async {

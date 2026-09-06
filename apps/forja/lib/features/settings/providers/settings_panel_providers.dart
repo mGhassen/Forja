@@ -482,10 +482,16 @@ class SettingsNavigationNotifier
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);
     navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
-    // Hierarchy: Addons alone activates iptv/live_matches; Features lists them
-    // only when already on (one-bit navbar visibleIds).
+    final availableAddons = await s.listAvailableAddonFeatureNavIds();
+    final availableSet = availableAddons.toSet();
+    // Drop stale rail tabs whose Addons feature is off.
+    navVisible.removeWhere(
+      (id) =>
+          SettingsService.addonGatedNavIds.contains(id) &&
+          !availableSet.contains(id),
+    );
     final contributed = PluginNavRegistry.featureTabIds(
-      activeAddonNavIds: navVisible,
+      availableAddonFeatureIds: availableAddons,
     ).where((id) => !archivedNavIds.contains(id)).toList();
     final contributedSet = contributed.toSet();
     var navOrder = (await s.getNavbarTabOrder())
