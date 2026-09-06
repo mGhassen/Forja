@@ -1671,8 +1671,11 @@ class SettingsService {
     }
   }
 
-  /// After hubs pack refresh: mark new tab ids known; first-seen hubs default
-  /// **on** the rail (RFC-086 — activating a pack activates its Features).
+  /// After hubs pack refresh: mark new tab ids known only.
+  ///
+  /// Does **not** insert into `visibleIds` — Features / pack-activate paths
+  /// call [setNavbarTabVisible] (RFC-086). Auto-insert fought intentional
+  /// empty rails and stormed navbar notifies when paired with strip sync.
   ///
   /// [notify] false when Features is already rebuilding from the same refresh
   /// (avoids cancelling `settingsNavigationProvider` mid-load — issue 222).
@@ -1686,20 +1689,11 @@ class SettingsService {
         _navbarKnownIdsKey,
         fallback: const [],
       )).toSet();
-      final hasConfig = await kvHasKey(_navbarConfigKey);
-      final visible = hasConfig
-          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-          : <String>[];
       var knownChanged = false;
-      var visibleChanged = false;
       for (final id in allHubIds) {
         if (known.contains(id)) continue;
         known.add(id);
         knownChanged = true;
-        if (!visible.contains(id)) {
-          visible.add(id);
-          visibleChanged = true;
-        }
       }
       if (!knownChanged &&
           known.containsAll(allNavIds) &&
@@ -1710,10 +1704,7 @@ class SettingsService {
         ...known,
         ...allNavIds,
       }.toList());
-      if (hasConfig && visibleChanged) {
-        await kvSetStringList(_navbarConfigKey, visible);
-      }
-      if (notify && (knownChanged || visibleChanged)) {
+      if (notify && knownChanged) {
         navbarChangeNotifier.value++;
       }
     });

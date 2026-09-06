@@ -146,9 +146,13 @@ async function fetchHtml(ctx, url, referer) {
     Accept: 'text/html,application/xhtml+xml',
   };
   if (referer) headers.Referer = referer;
-  var res = await ctx.fetch(url, { headers: headers });
-  if (!res.ok) return '';
-  return await res.text();
+  try {
+    var res = await ctx.fetch(url, { headers: headers });
+    if (!res || !res.ok) return '';
+    return await res.text();
+  } catch (_) {
+    return '';
+  }
 }
 
 function isBrightcoveUrl(url) {
@@ -185,7 +189,33 @@ function playRow(url, name, playerPageUrl) {
   };
 }
 
-async function unlockPlayerPage(ctx, playerUrl, channelReferer) {
+function nestedEmbedUrls(html, baseUrl) {
+  var out = [];
+  var iframes = extractIframeSrcs(html);
+  for (var i = 0; i < iframes.length; i++) {
+    var src = String(iframes[i] || '').trim();
+    if (!src || /^javascript:/i.test(src)) continue;
+    if (/acscdn|doubleclick|googlesyndication|pagead2|adservice/i.test(src)) {
+      continue;
+    }
+    var abs = src;
+    try {
+      abs = new URL(src, baseUrl).href;
+    } catch (_) {}
+    if (!/^https?:\/\//i.test(abs)) continue;
+    out.push(abs);
+  }
+  return uniq(out);
+}
+
+async function unlockPlayerPage(ctx, playerUrl, channelReferer, depth, seenPages) {
+  depth = depth || 0;
+  if (depth > 3) return [];
+  seenPages = seenPages || {};
+  var key = String(playerUrl || '').trim();
+  if (!key || seenPages[key]) return [];
+  seenPages[key] = 1;
+
   var html = await fetchHtml(ctx, playerUrl, channelReferer || playerUrl);
   if (!html) return [];
 
@@ -195,8 +225,10 @@ async function unlockPlayerPage(ctx, playerUrl, channelReferer) {
 
   for (var i = 0; i < pages.length; i++) {
     var pageUrl = pages[i];
-    var pageHtml = pageUrl === playerUrl ? html : await fetchHtml(ctx, pageUrl, playerUrl);
+    var pageHtml =
+      pageUrl === playerUrl ? html : await fetchHtml(ctx, pageUrl, playerUrl);
     if (!pageHtml) continue;
+    seenPages[pageUrl] = 1;
 
     var m3u8s = extractM3u8(pageHtml);
     var label = servLabel(pageUrl, pageHtml);
@@ -205,6 +237,36 @@ async function unlockPlayerPage(ctx, playerUrl, channelReferer) {
       if (seen[url]) continue;
       seen[url] = 1;
       out.push(playRow(url, 'MobiKora · ' + label, pageUrl));
+    }
+
+    // AlbaPlayer often nests a second embed (tirfoot / blogger) that holds the
+    // real HLS URL — static HTML on the alba page itself has no .m3u8.
+    if (!m3u8s.length && depth < 3) {
+      var nested = nestedEmbedUrls(pageHtml, pageUrl);
+      for (var k = 0; k < nested.length; k++) {
+        var nestUrl = nested[k];
+        if (seenPages[nestUrl]) continue;
+        var nestRows = await unlockPlayerPage(
+          ctx,
+          nestUrl,
+          pageUrl,
+          depth + 1,
+          seenPages,
+        );
+        for (var n = 0; n < nestRows.length; n++) {
+          var row = nestRows[n];
+          if (!row || !row.url || seen[row.url]) continue;
+          seen[row.url] = 1;
+          if (row.name && row.name.indexOf(label) < 0) {
+            row.name =
+              'MobiKora · ' +
+              label +
+              ' · ' +
+              String(row.name || '').replace(/^MobiKora · /, '');
+          }
+          out.push(row);
+        }
+      }
     }
   }
   return out;
@@ -240,7 +302,12 @@ async function unlockChannelPage(ctx, channelUrl) {
   var out = [];
   var seen = {};
   for (var i = 0; i < iframes.length; i++) {
-    var rows = await unlockPlayerPage(ctx, iframes[i], raw);
+    var rows = [];
+    try {
+      rows = await unlockPlayerPage(ctx, iframes[i], raw);
+    } catch (_) {
+      rows = [];
+    }
     for (var j = 0; j < rows.length; j++) {
       var row = rows[j];
       if (!row || !row.url || seen[row.url]) continue;

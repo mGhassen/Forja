@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **28 / 28** fix · **0 / 3** acceptance |
+| **Progress** | **29 / 29** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -47,6 +47,7 @@
 | 26 | I224-T26 | Web Features hydrates inventory from cloud playback/packs (not empty playDraft); default-on never-stored available ids | ✅ |
 | 27 | I224-T27 | Web pack install default-on hub Features (`navigationAfterForjaPacksChange`); Features hydrate without inventory prune; cache set on save | ✅ |
 | 28 | I224-T28 | Pack hub refresh must not put Features `visibleIds` into `syncActiveHubNavIds` known set (stripped Anime ON from rail); MainScreen listens KV notifier directly; rail fallback dest; pack-prompt activates hubs | ✅ |
+| 29 | I224-T29 | Stop navbar notify storm: no mid-refresh cache bump; Features scan bumps only on changed; `ensureNavIdsKnown` known-only (no visible auto-insert); MainScreen debounce + no-op skip | ✅ |
 
 ---
 

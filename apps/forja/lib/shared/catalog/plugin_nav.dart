@@ -137,7 +137,8 @@ abstract final class PluginNavRegistry {
       final json = jsonDecode(raw);
       if (json is! Map) return;
       _applySnapshot(_snapshotFromJson(Map<String, dynamic>.from(json)));
-      SettingsService.navbarChangeNotifier.value++;
+      // Do not bump navbarChangeNotifier here — refresh callers notify when
+      // the scan finishes. Notifying mid-refresh storms MainScreen loads (224).
     } catch (_) {}
   }
 

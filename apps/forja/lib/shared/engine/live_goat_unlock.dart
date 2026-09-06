@@ -779,6 +779,9 @@ class LiveGoatUnlock {
     // `wfty.st` is path-signed (no query) — keep `/hls-proxy` so ffmpeg child
     // playlist/segment GETs still send sportsembed Referer (direct open does not).
     if (host.contains('indianservers.st')) return true;
+    // Brightcove Live (MobiKora / AlbaPlayer) — demuxed fMP4 masters; open
+    // direct with headers (hls-proxy not required; CDN is CORS *).
+    if (host.contains('brightcove.com')) return true;
     if (host.contains('streamfree.top') &&
         (path.contains('/live/') ||
             path.contains('/live-cdn/') ||

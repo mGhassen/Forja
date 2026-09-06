@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
@@ -5,8 +7,11 @@ import 'package:forja/shared/theme/app_theme.dart';
 
 /// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close + resize.
 ///
+/// Auto-hides after idle (same 3s as desktop full-player chrome). Hover, tap,
+/// or D-pad focus on the mini reveals it again.
+///
 /// Never calls OS/window PiP ([PipService]).
-class InAppMiniPlayerChrome extends StatelessWidget {
+class InAppMiniPlayerChrome extends StatefulWidget {
   const InAppMiniPlayerChrome({
     super.key,
     required this.playing,
@@ -32,6 +37,94 @@ class InAppMiniPlayerChrome extends StatelessWidget {
   static const double width = 320;
   static const double height = 180;
 
+  static const Duration hideAfter = Duration(seconds: 3);
+
+  @override
+  State<InAppMiniPlayerChrome> createState() => _InAppMiniPlayerChromeState();
+}
+
+class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
+  bool _chromeVisible = true;
+  Timer? _hideTimer;
+  bool _resizing = false;
+
+  bool get _anyMiniFocused =>
+      widget.rootFocus.hasFocus ||
+      widget.playPauseFocus.hasFocus ||
+      widget.expandFocus.hasFocus ||
+      widget.closeFocus.hasFocus;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenFocus(true);
+    _scheduleHide();
+  }
+
+  @override
+  void didUpdateWidget(covariant InAppMiniPlayerChrome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.rootFocus, widget.rootFocus) ||
+        !identical(oldWidget.playPauseFocus, widget.playPauseFocus) ||
+        !identical(oldWidget.expandFocus, widget.expandFocus) ||
+        !identical(oldWidget.closeFocus, widget.closeFocus)) {
+      _listenFocus(false, old: oldWidget);
+      _listenFocus(true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _listenFocus(false);
+    super.dispose();
+  }
+
+  void _listenFocus(bool add, {InAppMiniPlayerChrome? old}) {
+    final w = old ?? widget;
+    final nodes = [
+      w.rootFocus,
+      w.playPauseFocus,
+      w.expandFocus,
+      w.closeFocus,
+    ];
+    for (final n in nodes) {
+      if (add) {
+        n.addListener(_onFocusChanged);
+      } else {
+        n.removeListener(_onFocusChanged);
+      }
+    }
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) return;
+    if (_anyMiniFocused) {
+      _reveal();
+    } else {
+      _scheduleHide();
+    }
+  }
+
+  void _reveal() {
+    _hideTimer?.cancel();
+    if (!_chromeVisible) {
+      setState(() => _chromeVisible = true);
+    }
+    if (!_anyMiniFocused && !_resizing) {
+      _scheduleHide();
+    }
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    if (_anyMiniFocused || _resizing) return;
+    _hideTimer = Timer(InAppMiniPlayerChrome.hideAfter, () {
+      if (!mounted || _anyMiniFocused || _resizing) return;
+      setState(() => _chromeVisible = false);
+    });
+  }
+
   KeyEventResult _onRootKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
@@ -55,7 +148,7 @@ class InAppMiniPlayerChrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      focusNode: rootFocus,
+      focusNode: widget.rootFocus,
       onKeyEvent: _onRootKey,
       child: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
@@ -63,64 +156,98 @@ class InAppMiniPlayerChrome extends StatelessWidget {
         // Opaque black here covered MediaKit/Exo (audio-only mini).
         child: Material(
           type: MaterialType.transparency,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const Positioned(
-                left: 0,
-                top: 0,
-                child: _MiniResizeGrip(),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.75),
-                        Colors.transparent,
-                      ],
+          child: MouseRegion(
+            onEnter: (_) => _reveal(),
+            onHover: (_) => _reveal(),
+            onExit: (_) {
+              if (!_anyMiniFocused && !_resizing) _scheduleHide();
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _reveal,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: AnimatedOpacity(
+                      opacity: _chromeVisible ? 1 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: IgnorePointer(
+                        ignoring: !_chromeVisible,
+                        child: _MiniResizeGrip(
+                          onDragStart: () {
+                            _resizing = true;
+                            _reveal();
+                          },
+                          onDragEnd: () {
+                            _resizing = false;
+                            _scheduleHide();
+                          },
+                        ),
+                      ),
                     ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 28, 8, 8),
-                    child: Row(
-                      children: [
-                        _MiniFocusButton(
-                          focusNode: playPauseFocus,
-                          order: 1,
-                          icon: playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          tooltip: playing ? 'Pause' : 'Play',
-                          onTap: onPlayPause,
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: AnimatedOpacity(
+                      opacity: _chromeVisible ? 1 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: IgnorePointer(
+                        ignoring: !_chromeVisible,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.75),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 28, 8, 8),
+                            child: Row(
+                              children: [
+                                _MiniFocusButton(
+                                  focusNode: widget.playPauseFocus,
+                                  order: 1,
+                                  icon: widget.playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  tooltip: widget.playing ? 'Pause' : 'Play',
+                                  onTap: widget.onPlayPause,
+                                ),
+                                const Spacer(),
+                                _MiniFocusButton(
+                                  focusNode: widget.expandFocus,
+                                  order: 2,
+                                  icon: Icons.open_in_full_rounded,
+                                  tooltip: 'Expand',
+                                  onTap: widget.onExpand,
+                                ),
+                                const SizedBox(width: 6),
+                                _MiniFocusButton(
+                                  focusNode: widget.closeFocus,
+                                  order: 3,
+                                  icon: Icons.close_rounded,
+                                  tooltip: 'Close',
+                                  onTap: widget.onClose,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        const Spacer(),
-                        _MiniFocusButton(
-                          focusNode: expandFocus,
-                          order: 2,
-                          icon: Icons.open_in_full_rounded,
-                          tooltip: 'Expand',
-                          onTap: onExpand,
-                        ),
-                        const SizedBox(width: 6),
-                        _MiniFocusButton(
-                          focusNode: closeFocus,
-                          order: 3,
-                          icon: Icons.close_rounded,
-                          tooltip: 'Close',
-                          onTap: onClose,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -130,7 +257,13 @@ class InAppMiniPlayerChrome extends StatelessWidget {
 
 /// Top-left drag grip — mini is anchored bottom-right, so this corner grows it.
 class _MiniResizeGrip extends StatefulWidget {
-  const _MiniResizeGrip();
+  const _MiniResizeGrip({
+    this.onDragStart,
+    this.onDragEnd,
+  });
+
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
 
   @override
   State<_MiniResizeGrip> createState() => _MiniResizeGripState();
@@ -147,6 +280,7 @@ class _MiniResizeGripState extends State<_MiniResizeGrip> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onPanStart: (d) {
+          widget.onDragStart?.call();
           _startWidth = InAppMiniPlayerController.instance.size.value.width;
           _startDx = d.globalPosition.dx;
         },
@@ -161,10 +295,12 @@ class _MiniResizeGripState extends State<_MiniResizeGrip> {
         onPanEnd: (_) {
           _startWidth = null;
           _startDx = null;
+          widget.onDragEnd?.call();
         },
         onPanCancel: () {
           _startWidth = null;
           _startDx = null;
+          widget.onDragEnd?.call();
         },
         child: const SizedBox(
           width: 28,

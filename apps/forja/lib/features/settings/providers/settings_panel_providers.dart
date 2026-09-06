@@ -460,13 +460,9 @@ class SettingsNavigationNotifier
   Future<void> _scanHubsInBackground() async {
     try {
       final changed = await PluginNavRegistry.refresh(notify: false);
-      final hubs = PluginNavRegistry.destinations.keys
-          .where((id) => !PluginNavRegistry.coreShellNavIds.contains(id))
-          .toSet();
-      // Do not call ensureActiveDefaultHubsVisible here — that re-inserted
-      // every hub after the user hid them all (IPTV/Live only), so the next
-      // Features "on" was a no-op with no rail notify.
-      if (changed || hubs.isNotEmpty) {
+      // Only bump when the hub map actually changed — `hubs.isNotEmpty` alone
+      // re-notified every Features rebuild and stormed MainScreen (224).
+      if (changed) {
         SettingsService.navbarChangeNotifier.value++;
       }
     } catch (e, st) {

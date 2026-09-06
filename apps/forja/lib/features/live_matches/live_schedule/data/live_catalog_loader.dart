@@ -675,6 +675,14 @@ mixin _LiveMatchesForjaLive
       future.whenComplete(() {
         if (_s._forjaLiveGridCatalogInflightSerial != serial) return;
         _s._forjaLiveGridCatalogInflight = null;
+        // Stale-gen early return skips _syncCatalogHydratingState — drop a
+        // stuck spinner when this serial finished with nothing registered.
+        if (!mounted) return;
+        if (_s._forjaLiveCatalogHydrating &&
+            _s._forjaLivePluginLoads.isEmpty &&
+            !_forjaLiveAnyLoading) {
+          _setForjaLiveCatalogHydrating(false);
+        }
       }),
     );
   }
@@ -695,7 +703,10 @@ mixin _LiveMatchesForjaLive
     }
     _s._forjaLiveCatalogSettingsDirty = false;
     if (mounted) setState(() {});
-    _kickForjaLiveLazyCatalog();
+    // replace: multi-pack updates fire changeNotifier twice; a non-replace
+    // kick no-ops while the first load is in flight and leaves hydrating
+    // stuck on an empty plugin map ("Loading catalogs…" forever).
+    _kickForjaLiveLazyCatalog(replace: true);
   }
 
   Future<bool> _isScheduleEnrichCatalogEnabled() async {

@@ -325,15 +325,20 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
-    } else if ((this as _LiveMatchesForjaLive)._gridCatalogNeedsHydration() &&
-        !_forjaLiveCatalogHydrating &&
-        !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
-      (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
     } else if (_forjaLiveCatalogSettingsDirty) {
       _forjaLiveCatalogSettingsDirty = false;
       (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
         reloadNow: true,
       );
+    } else if ((this as _LiveMatchesForjaLive)._gridCatalogNeedsHydration()) {
+      final forja = this as _LiveMatchesForjaLive;
+      final stuckEmpty = _forjaLiveCatalogHydrating &&
+          _forjaLivePluginLoads.isEmpty &&
+          _forjaLiveGridCatalogInflight == null;
+      if (stuckEmpty ||
+          (!_forjaLiveCatalogHydrating && !forja._forjaLiveAnyLoading)) {
+        forja._kickForjaLiveLazyCatalog(replace: stuckEmpty);
+      }
     }
     unawaited(_consumePendingLivePlayOpen());
   }

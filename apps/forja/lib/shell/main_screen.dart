@@ -329,14 +329,33 @@ class _MainScreenState extends ConsumerState<MainScreen>
     unawaited(_refreshHubNavThenLoad());
   }
 
+  Future<void>? _hubNavReloadInFlight;
+
   Future<void> _refreshHubNavThenLoad() async {
-    final changed = await PluginNavRegistry.refresh();
-    if (!mounted) return;
-    // Pack scripts can change without nav shape changes. Hub CatalogShell is
-    // keep-alive + 15m stale window — mark stale (and remount builders when
-    // nav actually changed) so returning to Home / Anime / … reloads rails.
-    _invalidateHubTabsAfterPackChange(remountBuilders: changed);
-    await _loadNavbarConfig();
+    final existing = _hubNavReloadInFlight;
+    if (existing != null) {
+      await existing;
+      if (!mounted) return;
+      await _loadNavbarConfig();
+      return;
+    }
+    final run = () async {
+      final changed = await PluginNavRegistry.refresh();
+      if (!mounted) return;
+      // Pack scripts can change without nav shape changes. Hub CatalogShell is
+      // keep-alive + 15m stale window — mark stale (and remount builders when
+      // nav actually changed) so returning to Home / Anime / … reloads rails.
+      _invalidateHubTabsAfterPackChange(remountBuilders: changed);
+      await _loadNavbarConfig();
+    }();
+    _hubNavReloadInFlight = run;
+    try {
+      await run;
+    } finally {
+      if (identical(_hubNavReloadInFlight, run)) {
+        _hubNavReloadInFlight = null;
+      }
+    }
   }
 
   void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {
@@ -379,6 +398,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
               addonSet.contains(id),
         )
         .toList();
+    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
+      visible = visible
+          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
+          .toList();
+    }
+    if (!mounted || gen != _navbarLoadGen) return;
+    final nextIds = [...visible, 'settings'];
+    // Skip no-op reloads — notifier storms were reprinting visible=[] forever.
+    if (_initialNavResolved &&
+        listEquals(_visibleIds, nextIds) &&
+        !ShellBus.selectDefaultTabOnNextNavLoad) {
+      return;
+    }
     if (kDebugMode && !listEquals(beforeFilter, visible)) {
       debugPrint(
         '[MainScreen] navbar filter $beforeFilter → $visible '
@@ -387,12 +419,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     } else if (kDebugMode) {
       debugPrint('[MainScreen] navbar visible=$visible');
     }
-    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
-      visible = visible
-          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
-          .toList();
-    }
-    if (!mounted || gen != _navbarLoadGen) return;
     final applyDefaultTab = ShellBus.selectDefaultTabOnNextNavLoad;
     if (applyDefaultTab) {
       ShellBus.selectDefaultTabOnNextNavLoad = false;
@@ -411,7 +437,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       } else if (visible.isNotEmpty && currentId != 'settings') {
         _emptyFeaturesBodyDismissed = false;
       }
-      _visibleIds = [...visible, 'settings'];
+      _visibleIds = nextIds;
       if (!_initialNavResolved || applyDefaultTab) {
         if (applyDefaultTab) {
           // Fresh tab trees for the incoming profile's settings/portals.
@@ -454,8 +480,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _syncCurrentNavTab();
   }
 
+  Timer? _navbarReloadDebounce;
+
   void _onNavbarConfigChanged() {
-    unawaited(_loadNavbarConfig());
+    _navbarReloadDebounce?.cancel();
+    _navbarReloadDebounce = Timer(const Duration(milliseconds: 32), () {
+      if (!mounted) return;
+      unawaited(_loadNavbarConfig());
+    });
   }
 
   bool _shellChromeRebuildPending = false;
@@ -638,6 +670,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   @override
   void dispose() {
+    _navbarReloadDebounce?.cancel();
     _metricsDebounce?.cancel();
     _metricsSafety?.cancel();
     _updateAutoCheck.dispose();

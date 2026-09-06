@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **21 / 21** acceptance |
-| **Current slice** | Desktop in-app mini shipped — keep-play + resize · ModalBarrier hit passthrough · phone deferred |
+| **Progress** | **9 / 9** components · **22 / 22** acceptance |
+| **Current slice** | Desktop in-app mini shipped — keep-play + resize · chrome auto-hide · phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -56,6 +56,7 @@
 | 19 | R83-A19 | Mini top-left grip resizes 16:9 within ~240–720px width (VOD + IPTV) | ✅ |
 | 20 | R83-A20 | OS minimize / app background while mini active does not auto-pause | ✅ |
 | 21 | R83-A21 | Mini: `buildModalBarrier` is empty while active — default null-color `ModalBarrier` is `HitTestBehavior.opaque` and blocked shell clicks under the transparent route | ✅ |
+| 22 | R83-A22 | Mini chrome (buttons + grip) auto-hides after ~3s idle; hover / tap / D-pad focus reveals; stays while focused or resizing | ✅ |
 
 ---
 

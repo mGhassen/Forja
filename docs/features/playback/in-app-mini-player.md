@@ -19,11 +19,12 @@ When enabled, **Escape** (after the usual hide-chrome / leave-fullscreen steps) 
 - Browse the shell while the mini sits in the bottom-right corner (video keeps playing)
 - Drag the **top-left corner** of the mini to resize (16:9, about 240–720px wide)
 - **Play** / **Pause** on the mini chrome
+- Mini chrome (buttons + resize grip) hides after a few seconds of idle — hover or tap the mini to show it again
 - **Expand** — full player again (shell freezes like a normal player session)
 - **Close** — stop playback and leave the player
 - Minimize the Forja window while mini is active — playback keeps going
 - Start Play on another (or the same) title — mini stops, then the normal loading → full player path runs
-- D-pad (when mini is active): **Up** from hub top menu, **Left** from the nav rail outer edge, or **Right** from the last hero action — focus the mini. **Left** / **Up** / **Back** from mini restores that chrome (does not Close)
+- D-pad (when mini is active): **Up** from hub top menu, **Left** from the nav rail outer edge, or **Right** from the last hero action — focus the mini (chrome stays visible while focused). **Left** / **Up** / **Back** from mini restores that chrome (does not Close)
 
 ## Tips
 
