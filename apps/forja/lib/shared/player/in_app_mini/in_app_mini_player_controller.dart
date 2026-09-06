@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/widgets.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -8,15 +6,24 @@ import 'package:rust/rust.dart';
 /// Host for in-Forja mini player (not OS/window [PipService] PiP).
 ///
 /// Escape (when setting on) demotes the full player to a corner widget inside
-/// the Forja window. Playback pauses on enter; expand restores full chrome and
-/// [ShellBus.enterPlayerSurface].
+/// the Forja window. Playback keeps running on enter; expand restores full
+/// chrome and [ShellBus.enterPlayerSurface].
 class InAppMiniPlayerController {
   InAppMiniPlayerController._();
 
-  static final InAppMiniPlayerController instance = InAppMiniPlayerController._();
+  static final InAppMiniPlayerController instance =
+      InAppMiniPlayerController._();
+
+  static const Size defaultSize = Size(320, 180);
+  static const double aspectRatio = 16 / 9;
+  static const double minWidth = 240;
+  static const double maxWidth = 720;
 
   /// True while a VOD or IPTV player is demoted to the in-app corner.
   final ValueNotifier<bool> active = ValueNotifier<bool>(false);
+
+  /// Corner size (16:9). Drag the top-left grip to resize.
+  final ValueNotifier<Size> size = ValueNotifier<Size>(defaultSize);
 
   /// Session callbacks bound by the living player screen.
   InAppMiniPlayerSession? _session;
@@ -50,13 +57,19 @@ class InAppMiniPlayerController {
     }
   }
 
-  /// Pause + demote. Caller must already be the full player and setting on.
+  /// Clamp width and lock 16:9.
+  void setSizeWidth(double width) {
+    final w = width.clamp(minWidth, maxWidth);
+    size.value = Size(w, w / aspectRatio);
+  }
+
+  /// Demote without pausing. Caller must already be the full player and setting on.
   Future<void> enter() async {
     final session = _session;
     if (session == null || active.value) return;
 
     _resumeOnExpand = session.isPlaying;
-    await session.pauseForMini();
+    // Keep decode running — user pauses from mini chrome if wanted.
     if (!identical(_session, session)) return;
 
     active.value = true;

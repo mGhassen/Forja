@@ -489,9 +489,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
     final panel = KeyedSubtree(
-      key: ValueKey(
-        'live-streams-${match.id}-r${_s._streamsPanelReloadEpoch}',
-      ),
+      key: ValueKey('live-streams-${match.id}'),
       child: _LiveMatchDetailsScreen(
         host: _s,
         match: match,

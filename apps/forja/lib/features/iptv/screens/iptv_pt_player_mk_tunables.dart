@@ -348,8 +348,13 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       await p.setProperty('keep-open', 'yes');
       await p.setProperty('keep-open-pause', 'no');
 
-      // HLS: pick best variant
-      await p.setProperty('hls-bitrate', 'max');
+      // HLS: pick best variant. Desktop live forces software decode (TextureSW);
+      // `max` grabs Brightcove / fat demuxed 1080p50 masters and underruns into
+      // the watchdog reopen loop. Soft-cap ~720p when decoding in software.
+      await p.setProperty(
+        'hls-bitrate',
+        (_useSoftwareDecode && !_s.widget.vodPlayback) ? '3500000' : 'max',
+      );
 
       // RTSP over TCP - way more reliable on flaky networks
       await p.setProperty('rtsp-transport', 'tcp');

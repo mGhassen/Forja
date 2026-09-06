@@ -481,7 +481,8 @@ class SettingsNavigationNotifier
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
     navVisible.removeWhere(archivedNavIds.contains);
-    navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
+    // Do not filter with isContributed — hub dests can lag a Features enable;
+    // MainScreen + syncActiveHubNavIds own pack-off cleanup (224 ATV rail).
     final availableAddons = await s.listAvailableAddonFeatureNavIds();
     final availableSet = availableAddons.toSet();
     // Drop stale rail tabs whose Addons feature is off.

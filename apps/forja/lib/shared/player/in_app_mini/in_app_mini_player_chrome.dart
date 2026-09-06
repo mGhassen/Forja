@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
-/// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close.
+/// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close + resize.
 ///
 /// Never calls OS/window PiP ([PipService]).
 class InAppMiniPlayerChrome extends StatelessWidget {
@@ -28,6 +28,7 @@ class InAppMiniPlayerChrome extends StatelessWidget {
   final VoidCallback? onExpand;
   final VoidCallback? onClose;
 
+  /// Default corner size (also [InAppMiniPlayerController.defaultSize]).
   static const double width = 320;
   static const double height = 180;
 
@@ -65,6 +66,11 @@ class InAppMiniPlayerChrome extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              const Positioned(
+                left: 0,
+                top: 0,
+                child: _MiniResizeGrip(),
+              ),
               Positioned(
                 left: 0,
                 right: 0,
@@ -120,6 +126,82 @@ class InAppMiniPlayerChrome extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Top-left drag grip — mini is anchored bottom-right, so this corner grows it.
+class _MiniResizeGrip extends StatefulWidget {
+  const _MiniResizeGrip();
+
+  @override
+  State<_MiniResizeGrip> createState() => _MiniResizeGripState();
+}
+
+class _MiniResizeGripState extends State<_MiniResizeGrip> {
+  double? _startWidth;
+  double? _startDx;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeUpLeftDownRight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (d) {
+          _startWidth = InAppMiniPlayerController.instance.size.value.width;
+          _startDx = d.globalPosition.dx;
+        },
+        onPanUpdate: (d) {
+          final startW = _startWidth;
+          final startDx = _startDx;
+          if (startW == null || startDx == null) return;
+          // Drag left → wider (bottom-right anchored).
+          final delta = startDx - d.globalPosition.dx;
+          InAppMiniPlayerController.instance.setSizeWidth(startW + delta);
+        },
+        onPanEnd: (_) {
+          _startWidth = null;
+          _startDx = null;
+        },
+        onPanCancel: () {
+          _startWidth = null;
+          _startDx = null;
+        },
+        child: const SizedBox(
+          width: 28,
+          height: 28,
+          child: CustomPaint(painter: _CornerResizePainter()),
+        ),
+      ),
+    );
+  }
+}
+
+class _CornerResizePainter extends CustomPainter {
+  const _CornerResizePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.55)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    const inset = 6.0;
+    const arm = 10.0;
+    canvas.drawLine(
+      const Offset(inset, inset),
+      const Offset(inset + arm, inset),
+      paint,
+    );
+    canvas.drawLine(
+      const Offset(inset, inset),
+      const Offset(inset, inset + arm),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MiniFocusButton extends StatelessWidget {

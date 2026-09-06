@@ -538,6 +538,7 @@ mixin _DesktopPlayerLifecycle
           !_s._isPipMode &&
           !PipService.instance.isDesktopActive &&
           !PipService.instance.autoPipArmed &&
+          !InAppMiniPlayerController.instance.isActive &&
           !SettingsService.keepsPlayingInBackground &&
           _s._player.state.playing) {
         _s._pausedByLifecycle = true;
@@ -561,7 +562,10 @@ mixin _DesktopPlayerLifecycle
   }
 
   void _pauseForAppBackground() {
-    if (_s._disposed || _s._isPipMode || PipService.instance.isDesktopActive) {
+    if (_s._disposed ||
+        _s._isPipMode ||
+        PipService.instance.isDesktopActive ||
+        InAppMiniPlayerController.instance.isActive) {
       return;
     }
     // Space / desktop switch: enter PiP instead of pausing (fluid).

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **17 / 17** acceptance |
-| **Current slice** | Desktop in-app mini shipped — phone deferred |
+| **Progress** | **9 / 9** components · **20 / 20** acceptance |
+| **Current slice** | Desktop in-app mini shipped — keep-play + resize · phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 6 | R83-C06 | ShellTvFocus registerMini + chrome doors (top Up / nav Left / hero last Right) | ✅ |
 | 7 | R83-C07 | Feature docs + changelog | ✅ |
 | 8 | R83-C08 | Top-right In-app mini button on desktop VOD + IPTV chrome | ✅ |
+| 9 | R83-C09 | Keep playing on demote; top-left drag resize (16:9); skip lifecycle pause while mini | ✅ |
 
 ---
 
@@ -51,6 +52,9 @@
 | 15 | R83-A15 | Mini: OverlayEntry.opaque synced so shell paints under transparent player route | ✅ |
 | 16 | R83-A16 | Mini: same MediaKit Video slot resized (no remount) so picture is not black | ✅ |
 | 17 | R83-A17 | Mini: shell / overlay / rails receive pointer hits outside the corner (no full-window Material/MouseRegion/Scaffold hit absorb) | ✅ |
+| 18 | R83-A18 | Demote keeps playing (no auto-pause); user pauses from mini chrome | ✅ |
+| 19 | R83-A19 | Mini top-left grip resizes 16:9 within ~240–720px width (VOD + IPTV) | ✅ |
+| 20 | R83-A20 | OS minimize / app background while mini active does not auto-pause | ✅ |
 
 ---
 
@@ -60,7 +64,8 @@ In-app mini player: Escape (when enabled) shrinks the player to a corner **insid
 
 ### Goals
 
-- Pause on demote so shell can render without fighting decode
+- Keep playing on demote (pause only from mini chrome); skip lifecycle pause while mini
+- Drag-resize corner (16:9)
 - Expand restores full-player shell freeze (`enterPlayerSurface`)
 - Three chrome D-pad doors only — never catalog Down to mini
 

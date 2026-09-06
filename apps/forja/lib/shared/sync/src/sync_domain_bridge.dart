@@ -1277,12 +1277,14 @@ class SyncDomainBridge {
   /// Cloud lean fields that affect Live Providers / Stremio UI — not full manifest.
   static String _stremioLeanFingerprint(Map<String, dynamic> addon) {
     final features = addon['features'];
-    final feat = features is List
-        ? StremioAddonFeatures.normalize(features).join(',')
-        : '';
-    final enabled = addon.containsKey('enabled')
-        ? StremioAddonFeatures.normalizeEnabled(addon['enabled']).toString()
-        : '';
+    final featList = features is List
+        ? StremioAddonFeatures.normalize(features)
+        : const <String>[];
+    // Stable order — cloud vs local list order must not false-dirty.
+    final feat = (List<String>.from(featList)..sort()).join(',');
+    // Missing enabled == on (legacy). Cloud `enabled: true` must match.
+    final enabled =
+        StremioAddonFeatures.normalizeEnabled(addon['enabled']).toString();
     final name = (addon['name'] ?? '').toString().trim();
     final description = (addon['description'] ?? '').toString().trim();
     final base = SettingsService.normalizeStremioAddonBaseUrl(

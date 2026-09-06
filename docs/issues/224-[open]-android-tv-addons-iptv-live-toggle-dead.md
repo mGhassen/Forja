@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **27 / 27** fix · **0 / 3** acceptance |
+| **Progress** | **28 / 28** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -46,6 +46,7 @@
 | 25 | I224-T25 | Web Addons IPTV / Live: one `profile_settings` patch (playback flags + nav) so Features prune cannot drop the just-enabled tab | ✅ |
 | 26 | I224-T26 | Web Features hydrates inventory from cloud playback/packs (not empty playDraft); default-on never-stored available ids | ✅ |
 | 27 | I224-T27 | Web pack install default-on hub Features (`navigationAfterForjaPacksChange`); Features hydrate without inventory prune; cache set on save | ✅ |
+| 28 | I224-T28 | Pack hub refresh must not put Features `visibleIds` into `syncActiveHubNavIds` known set (stripped Anime ON from rail); MainScreen listens KV notifier directly; rail fallback dest; pack-prompt activates hubs | ✅ |
 
 ---
 
@@ -56,6 +57,7 @@
 | 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports → switch stays on; Features lists them; rail shows by default | ⬜ |
 | 2 | I224-A02 | Enable IPTV + Live Sports on web Profile → Features / Addons → open Addons on ATV → switches show on without local re-toggle | ⬜ |
 | 3 | I224-A03 | Features can hide IPTV / Live while Addons stays on; Addons OFF removes both Features inventory and rail | ⬜ |
+| 4 | I224-A04 | ATV: Features → OK on a hub tab (e.g. Anime) → switch stays on and shell rail shows that tab (profile avatar alone is not enough) | ⬜ |
 
 ---
 
@@ -74,8 +76,9 @@
 7. Web `normalizeNavigationPayload` always injected HOST_CORE into `tabOrder`, so Features listed IPTV / Live even when unlocked flags were false; stale hub ids stayed after packs were cleared.
 8. Web Addons toggled flag + nav via two parallel commits; nav `toPayload` pruned with **old** `availableIds` (flags still false) and stripped the tab just enabled.
 9. Web Features hydrated nav by pruning against **empty** `playDraft` (effects not run yet) — cloud `visibleIds` for IPTV/Live were stripped so Features showed the row OFF or empty after Addons ON.
+10. Pack hub `PluginNavRegistry.refresh` folded Features `visibleIds` into `syncActiveHubNavIds` **knownHubIds**, so a mid-refresh empty active set **stripped** just-enabled hub tabs from KV (Features Anime ON, shell rail only profile).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft).
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only (not Features visibleIds); MainScreen reloads rail from `navbarChangeNotifier` directly.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 

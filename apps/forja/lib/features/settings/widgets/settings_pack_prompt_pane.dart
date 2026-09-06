@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
@@ -11,6 +13,7 @@ import 'package:forja/shared/engine/remote_pack_intent_store.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:rust/rust.dart';
 
 /// Open pack install/uninstall picker inside Settings → Forja Packs (right pane).
 ///
@@ -177,10 +180,11 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
             removed++;
           } else {
             debugPrint('[PackPrompt] install $label → $url');
-            await coordinator.installManifest(url);
+            final pack = await coordinator.installManifest(url);
             await DeferredRemoteInstallStore.clear(url);
             installed++;
             debugPrint('[PackPrompt] install ok $label');
+            await _activatePackHubFeatures(pack);
           }
         } catch (e) {
           debugPrint('[PackPrompt] failed $label: $e');
@@ -212,6 +216,28 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       SettingsPackPromptDrill.applying.value = false;
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _activatePackHubFeatures(EnginePack pack) async {
+    final settings = SettingsService();
+    final tabs = <String>[];
+    for (final pl in pack.plugins) {
+      if (!pl.isHubCatalog || !pl.enabled) continue;
+      final spec = CatalogNavSpec.fromPluginNav(
+        pl.nav,
+        pluginId: pl.id,
+        fallbackLabel: pl.name,
+      );
+      if (spec == null || !spec.isValid) continue;
+      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
+      tabs.add(spec.tabId);
+    }
+    if (tabs.isEmpty) return;
+    noteNavigationDirty();
+    for (final id in tabs) {
+      await settings.setNavbarTabVisible(id, true);
+    }
+    await scheduleNavigationSyncPush();
   }
 
   Future<void> _notNow() async {

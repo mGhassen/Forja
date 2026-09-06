@@ -318,6 +318,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
+    SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
 
     unawaited(_refreshHubNavThenLoad());
     _syncCurrentNavTab();
@@ -365,15 +366,27 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final addonFeatures = await SettingsService().listAvailableAddonFeatureNavIds();
     if (!mounted || gen != _navbarLoadGen) return;
     final addonSet = addonFeatures.toSet();
+    final beforeFilter = List<String>.from(visible);
+    // Do not drop hub tabs with [isContributed] here — Features can enable a
+    // hub while PluginNavRegistry.refresh is mid-flight; filtering hid Anime
+    // on the rail while Settings → Features still showed it ON (ATV 224).
+    // Pack-off cleanup stays in [PluginNavRegistry.syncActiveHubNavIds].
     visible = visible
         .where((id) => !archivedNavIds.contains(id))
-        .where(PluginNavRegistry.isContributed)
         .where(
           (id) =>
               !SettingsService.addonGatedNavIds.contains(id) ||
               addonSet.contains(id),
         )
         .toList();
+    if (kDebugMode && !listEquals(beforeFilter, visible)) {
+      debugPrint(
+        '[MainScreen] navbar filter $beforeFilter → $visible '
+        '(addons=$addonSet)',
+      );
+    } else if (kDebugMode) {
+      debugPrint('[MainScreen] navbar visible=$visible');
+    }
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
@@ -442,7 +455,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _onNavbarConfigChanged() {
-    _loadNavbarConfig();
+    unawaited(_loadNavbarConfig());
   }
 
   bool _shellChromeRebuildPending = false;
@@ -637,6 +650,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
+    SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     ShellBus.clearOverlayShellTabId();
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
@@ -648,9 +662,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(navbarRevisionProvider, (_, _) {
-      _onNavbarConfigChanged();
-    });
     _syncEmptyFeaturesGate();
     return ShellScopeBuilder(
       builder: (shellContext, profile) {

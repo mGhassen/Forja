@@ -1750,7 +1750,8 @@ class SettingsService {
 
   /// Drop hub tabs whose pack/plugin is off from the visible navbar.
   ///
-  /// [knownHubIds] = all catalog hub tab ids the shell knows about.
+  /// [knownHubIds] = pack-installed / previously contributed hub tab ids only
+  /// (never Features `visibleIds` alone — that stripped just-enabled tabs).
   /// [activeHubIds] = hubs currently contributed by an enabled pack+plugin.
   Future<void> syncActiveHubNavIds({
     required Set<String> activeHubIds,

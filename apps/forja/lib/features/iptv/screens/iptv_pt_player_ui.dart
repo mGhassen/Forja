@@ -1330,45 +1330,50 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Widget _buildInAppMiniCorner() {
-    return Positioned(
-      key: const ValueKey('iptv-player-video-slot'),
-      right: 16,
-      bottom: 16,
-      width: InAppMiniPlayerChrome.width,
-      height: InAppMiniPlayerChrome.height,
-      child: Material(
-        elevation: 12,
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ExcludeFocus(
-              child: RepaintBoundary(child: _buildIptvVideoSurface()),
+    return ValueListenableBuilder<Size>(
+      valueListenable: InAppMiniPlayerController.instance.size,
+      builder: (context, miniSize, _) {
+        return Positioned(
+          key: const ValueKey('iptv-player-video-slot'),
+          right: 16,
+          bottom: 16,
+          width: miniSize.width,
+          height: miniSize.height,
+          child: Material(
+            elevation: 12,
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ExcludeFocus(
+                  child: RepaintBoundary(child: _buildIptvVideoSurface()),
+                ),
+                InAppMiniPlayerChrome(
+                  playing: _s._playing,
+                  rootFocus: _s._miniRootFocus,
+                  playPauseFocus: _s._miniPlayPauseFocus,
+                  expandFocus: _s._miniExpandFocus,
+                  closeFocus: _s._miniCloseFocus,
+                  onPlayPause: () {
+                    unawaited(
+                      InAppMiniPlayerController.instance.togglePlayPause(),
+                    );
+                    if (mounted) setState(() {});
+                  },
+                  onExpand: () {
+                    unawaited(InAppMiniPlayerController.instance.expand());
+                  },
+                  onClose: () {
+                    unawaited(InAppMiniPlayerController.instance.close());
+                  },
+                ),
+              ],
             ),
-            InAppMiniPlayerChrome(
-              playing: _s._playing,
-              rootFocus: _s._miniRootFocus,
-              playPauseFocus: _s._miniPlayPauseFocus,
-              expandFocus: _s._miniExpandFocus,
-              closeFocus: _s._miniCloseFocus,
-              onPlayPause: () {
-                unawaited(
-                  InAppMiniPlayerController.instance.togglePlayPause(),
-                );
-                if (mounted) setState(() {});
-              },
-              onExpand: () {
-                unawaited(InAppMiniPlayerController.instance.expand());
-              },
-              onClose: () {
-                unawaited(InAppMiniPlayerController.instance.close());
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

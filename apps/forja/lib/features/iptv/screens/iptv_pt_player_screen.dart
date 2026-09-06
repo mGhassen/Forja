@@ -1388,6 +1388,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
           !_isPipMode &&
           !PipService.instance.isDesktopActive &&
           !PipService.instance.autoPipArmed &&
+          !InAppMiniPlayerController.instance.isActive &&
           !SettingsService.keepsPlayingInBackground &&
           _playing) {
         _pausedByLifecycle = true;
@@ -1399,7 +1400,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }
 
   void _pauseForAppBackground() {
-    if (_disposed || _isPipMode || PipService.instance.isDesktopActive) {
+    if (_disposed ||
+        _isPipMode ||
+        PipService.instance.isDesktopActive ||
+        InAppMiniPlayerController.instance.isActive) {
       return;
     }
     if (PipService.instance.autoPipArmed && (_playing || _pausedByLifecycle)) {

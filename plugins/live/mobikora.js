@@ -151,15 +151,37 @@ async function fetchHtml(ctx, url, referer) {
   return await res.text();
 }
 
-function playbackHeaders(playerUrl) {
+function isBrightcoveUrl(url) {
+  try {
+    return new URL(String(url || '')).host.toLowerCase().indexOf('brightcove') >= 0;
+  } catch (_) {
+    return /brightcove\.com/i.test(String(url || ''));
+  }
+}
+
+function playbackHeaders(playUrl, playerPageUrl) {
+  // AlbaPlayer serves Brightcove with referrerpolicy=no-referrer — keep UA only.
+  if (isBrightcoveUrl(playUrl)) {
+    return { 'User-Agent': ua() };
+  }
   var origin = '';
   try {
-    origin = new URL(playerUrl).origin;
+    origin = new URL(playerPageUrl || playUrl).origin;
   } catch (_) {}
   return {
-    Referer: playerUrl || origin + '/',
+    Referer: playerPageUrl || origin + '/',
     Origin: origin || 'https://25.streemach.fun',
     'User-Agent': ua(),
+  };
+}
+
+function playRow(url, name, playerPageUrl) {
+  return {
+    url: url,
+    name: name || 'MobiKora',
+    headers: playbackHeaders(url, playerPageUrl),
+    // Always hand MediaKit a ready HLS URL (preferDirectPlayback misses Brightcove).
+    directPlayback: true,
   };
 }
 
@@ -182,12 +204,7 @@ async function unlockPlayerPage(ctx, playerUrl, channelReferer) {
       var url = m3u8s[j];
       if (seen[url]) continue;
       seen[url] = 1;
-      out.push({
-        url: url,
-        name: 'MobiKora · ' + label,
-        headers: playbackHeaders(pageUrl),
-        directPlayback: preferDirectPlayback(url),
-      });
+      out.push(playRow(url, 'MobiKora · ' + label, pageUrl));
     }
   }
   return out;
@@ -198,14 +215,7 @@ async function unlockChannelPage(ctx, channelUrl) {
   if (!raw) return [];
 
   if (/\.m3u8|\.mp4/i.test(raw)) {
-    return [
-      {
-        url: raw,
-        name: 'MobiKora',
-        headers: playbackHeaders(raw),
-        directPlayback: preferDirectPlayback(raw),
-      },
-    ];
+    return [playRow(raw, 'MobiKora', raw)];
   }
 
   if (/albaplayer/i.test(raw)) {
@@ -218,12 +228,7 @@ async function unlockChannelPage(ctx, channelUrl) {
   var direct = extractM3u8(html);
   if (direct.length) {
     return direct.map(function (url) {
-      return {
-        url: url,
-        name: 'MobiKora · ' + channelLabel(raw),
-        headers: playbackHeaders(raw),
-        directPlayback: preferDirectPlayback(url),
-      };
+      return playRow(url, 'MobiKora · ' + channelLabel(raw), raw);
     });
   }
 

@@ -298,15 +298,6 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
-  static Future<Set<String>> _hubTabIdsFromNavConfig() async {
-    final raw = await SettingsService().getNavbarConfig();
-    return raw.where((id) {
-      if (coreShellNavIds.contains(id)) return false;
-      if (id == 'settings') return false;
-      return true;
-    }).toSet();
-  }
-
   static Future<void> _clearNavSnapshot() async {
     try {
       final p = await SharedPreferences.getInstance();
@@ -358,12 +349,17 @@ abstract final class PluginNavRegistry {
     }
     final previousDestKeys = _destinations.keys.toSet();
     final installed = await listNavHubs(requireEnabled: false);
-    final navConfigHubIds = await _hubTabIdsFromNavConfig();
-    final allKnownHubTabIds = <String>{
+    // Pack-installed hub tabs only — never Features `visibleIds`. Folding the
+    // navbar into knownHubIds made syncActiveHubNavIds strip a just-enabled
+    // Anime tab whenever destinations were mid-refresh (ATV rail empty while
+    // Features still showed ON — 224).
+    final installedHubTabIds = <String>{
       for (final (_, _, nav) in installed) nav.tabId,
-      ...previousDestKeys,
-      ...navConfigHubIds,
     };
+    final packKnownHubTabIds = <String>{
+      ...installedHubTabIds,
+      ...previousDestKeys,
+    }.difference(coreShellNavIds);
 
     if (installed.isEmpty) {
       if (await _hubNavHydrationPending()) {
@@ -378,10 +374,10 @@ abstract final class PluginNavRegistry {
       _tabPluginIds = {};
       _seeded = true;
       await _clearNavSnapshot();
-      if (allKnownHubTabIds.isNotEmpty) {
+      if (packKnownHubTabIds.isNotEmpty) {
         await SettingsService().syncActiveHubNavIds(
           activeHubIds: const {},
-          knownHubIds: allKnownHubTabIds.difference(coreShellNavIds),
+          knownHubIds: packKnownHubTabIds,
           notify: _refreshNotifyPending,
         );
       }
@@ -399,10 +395,6 @@ abstract final class PluginNavRegistry {
     final tabPluginIds = <String, String>{};
     final extras = <String>[];
     final cacheRows = <Map<String, dynamic>>[];
-    final allHubTabIds = <String>{
-      for (final (_, _, nav) in installed) nav.tabId,
-      ...previousDestKeys,
-    };
 
     for (final (pack, pl, nav) in hubs) {
       final iconAsset = CatalogPackAssets.resolveNavIconDisplay(
@@ -469,7 +461,7 @@ abstract final class PluginNavRegistry {
     }
     await SettingsService().syncActiveHubNavIds(
       activeHubIds: vodHubIds,
-      knownHubIds: allHubTabIds.difference(coreShellNavIds),
+      knownHubIds: packKnownHubTabIds,
       notify: _refreshNotifyPending,
     );
     if (dests.isNotEmpty) {
