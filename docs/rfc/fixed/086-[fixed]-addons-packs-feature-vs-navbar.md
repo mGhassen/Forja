@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **6 / 6** acceptance |
+| **Progress** | **Complete** · **4 / 4** components · **9 / 9** acceptance |
 | **Current slice** | Two-layer flags shipped — availability vs rail |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -20,9 +20,9 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R86-C01 | `addon_feature_iptv` / `addon_feature_live_matches` KV + migration from prior one-bit nav | ✅ |
-| 2 | R86-C02 | Addons ON/OFF writes feature flags only (OFF strips rail as cleanup) | ✅ |
-| 3 | R86-C03 | Features sole `visibleIds` writer; inventory from addon flags + pack destinations | ✅ |
-| 4 | R86-C04 | Packs mark known hubs only — no first-seen auto-insert into `visibleIds` | ✅ |
+| 2 | R86-C02 | Addons ON/OFF: feature flag + default rail on; OFF strips rail | ✅ |
+| 3 | R86-C03 | Features inventory from addon flags + pack destinations; Features hide/reorder | ✅ |
+| 4 | R86-C04 | Packs mark known hubs; first-seen / pack activate defaults Features rail on | ✅ |
 
 ---
 
@@ -39,17 +39,29 @@
 
 ---
 
+## Acceptance (default-on activate)
+
+Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 7 | R86-A07 | Addons IPTV / Live ON → feature flag on **and** Features rail on by default | ✅ |
+| 8 | R86-A08 | Pack / hub plugin ON → hub Features rail on by default (first-seen + re-enable) | ✅ |
+| 9 | R86-A09 | Features can still hide a tab while Addon / pack stays on | ✅ |
+
+---
+
 ## Summary
 
 Split **feature availability** from **navbar visibility**.
 
-| Layer | Meaning | Writes `navbar_config`? |
-|-------|---------|-------------------------|
-| **Addons** | IPTV / Live Sports system exists | No (OFF may strip tab as cleanup) |
-| **Packs** | Hub feature exists | No |
-| **Features** | Show on rail / order / star | Yes — only writer |
+| Layer | Meaning | Navbar on activate |
+|-------|---------|-------------------|
+| **Addons** | IPTV / Live Sports system exists | Defaults Features rail **on** |
+| **Packs** | Hub feature exists | Defaults Features rail **on** (first-seen / enable) |
+| **Features** | Show on rail / order / star | User hide/reorder after defaults |
 
-Default when a feature becomes available: listed in Features with rail **OFF** until the user enables it there.
+Addon / pack **OFF** removes the feature from Features and the rail.
 
 ### Related
 

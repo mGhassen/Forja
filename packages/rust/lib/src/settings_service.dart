@@ -1663,8 +1663,8 @@ class SettingsService {
     }
   }
 
-  /// After hubs pack refresh: mark new tab ids known. Does **not** write
-  /// `visibleIds` — Features alone paints the rail (RFC-086).
+  /// After hubs pack refresh: mark new tab ids known; first-seen hubs default
+  /// **on** the rail (RFC-086 — activating a pack activates its Features).
   ///
   /// [notify] false when Features is already rebuilding from the same refresh
   /// (avoids cancelling `settingsNavigationProvider` mid-load — issue 222).
@@ -1678,13 +1678,22 @@ class SettingsService {
         _navbarKnownIdsKey,
         fallback: const [],
       )).toSet();
-      var changed = false;
+      final hasConfig = await kvHasKey(_navbarConfigKey);
+      final visible = hasConfig
+          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+          : <String>[];
+      var knownChanged = false;
+      var visibleChanged = false;
       for (final id in allHubIds) {
         if (known.contains(id)) continue;
         known.add(id);
-        changed = true;
+        knownChanged = true;
+        if (!visible.contains(id)) {
+          visible.add(id);
+          visibleChanged = true;
+        }
       }
-      if (!changed &&
+      if (!knownChanged &&
           known.containsAll(allNavIds) &&
           known.containsAll(allHubIds)) {
         return;
@@ -1693,8 +1702,10 @@ class SettingsService {
         ...known,
         ...allNavIds,
       }.toList());
-      // Inventory (Features list) may gain hub rows — bump without touching rail.
-      if (notify && changed) {
+      if (hasConfig && visibleChanged) {
+        await kvSetStringList(_navbarConfigKey, visible);
+      }
+      if (notify && (knownChanged || visibleChanged)) {
         navbarChangeNotifier.value++;
       }
     });

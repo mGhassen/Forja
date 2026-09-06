@@ -613,7 +613,7 @@ void main() {
     expect(await service.getNavbarConfig(), ['iptv', 'home']);
   });
 
-  test('ensureNavIdsKnown marks hubs known without painting the rail', () async {
+  test('ensureNavIdsKnown first-seen hubs default on the rail', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     expect(await service.getNavbarConfig(), isEmpty);
@@ -622,16 +622,16 @@ void main() {
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
 
-    // RFC-086: Features alone writes visibleIds.
-    expect(await service.getNavbarConfig(), isEmpty);
-
-    await service.setNavbarTabVisible('hub_alpha', true);
-    expect(await service.getNavbarConfig(), ['hub_alpha']);
+    expect(await service.getNavbarConfig(), [
+      'hub_alpha',
+      'hub_beta',
+    ]);
 
     await service.setNavbarConfig(const []);
     await service.ensureNavIdsKnown(
       allHubIds: const ['hub_alpha', 'hub_beta'],
     );
+    // Already known — must not force-show again after user hide.
     expect(await service.getNavbarConfig(), isEmpty);
   });
 
@@ -641,7 +641,7 @@ void main() {
     final before = SettingsService.navbarChangeNotifier.value;
     await service.ensureNavIdsKnown(allHubIds: const ['hub_notify']);
     expect(SettingsService.navbarChangeNotifier.value, greaterThan(before));
-    expect(await service.getNavbarConfig(), isEmpty);
+    expect(await service.getNavbarConfig(), contains('hub_notify'));
   });
 
   test('addon feature flags migrate from navbar visibleIds', () async {

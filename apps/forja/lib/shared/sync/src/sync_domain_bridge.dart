@@ -42,6 +42,13 @@ class SyncDomainBridge {
   int _navigationLocalGen = 0;
   int _navigationSyncedGen = 0;
 
+  /// Same race as nav for RFC-086 `addon_feature_*` prefs (issue 224): Addons
+  /// opens with `syncFromCloud(force: true)` while preferences push was
+  /// debounced 3s — soft pull re-applied cloud `false` and snapped IPTV /
+  /// Live Sports off (Features inventory empty).
+  int _addonFeatureLocalGen = 0;
+  int _addonFeatureSyncedGen = 0;
+
   /// Drop deferred cloud pushes (sign-out / tear-down). Does not write local stores.
   void cancelPendingPushes() {
     for (final timer in _pushTimers.values) {
@@ -114,6 +121,8 @@ class SyncDomainBridge {
     cancelPendingPushes();
     _navigationLocalGen = 0;
     _navigationSyncedGen = 0;
+    _addonFeatureLocalGen = 0;
+    _addonFeatureSyncedGen = 0;
     final defaults = PlatformDefaults.forProfile(
       SettingsService.platformProfile,
     );
@@ -248,6 +257,7 @@ class SyncDomainBridge {
     // Snapshot so a Features/Addons edit mid-pull cannot be overwritten by
     // the stale remote payload we are about to apply (224).
     final navGenAtFetch = _navigationLocalGen;
+    final addonFeatureGenAtFetch = _addonFeatureLocalGen;
     // Profile switch: wipe IPTV first so a failed/slow settings pull cannot
     // leave profile A's portals visible under profile B (issue 217).
     if (resetLocalFirst) {
@@ -273,6 +283,7 @@ class SyncDomainBridge {
       remote,
       resetLocalFirst: resetLocalFirst,
       navGenAtFetch: navGenAtFetch,
+      addonFeatureGenAtFetch: addonFeatureGenAtFetch,
     );
     // Lazy IPTV: only pull portals when this profile shows the IPTV tab.
     // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
@@ -328,8 +339,11 @@ class SyncDomainBridge {
   }) async {
     if (!SyncService.instance.isSignedIn) return;
     final navGenAtStart = _navigationLocalGen;
+    final addonFeatureGenAtStart = _addonFeatureLocalGen;
     final overlayNav = overlayDomains == null ||
         overlayDomains.contains(_domainNavigation);
+    final overlayPrefs = overlayDomains == null ||
+        overlayDomains.contains(_domainPreferences);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
@@ -343,6 +357,9 @@ class SyncDomainBridge {
     await SyncService.instance.pushProfileSettings(payload);
     if (overlayNav && navGenAtStart == _navigationLocalGen) {
       _navigationSyncedGen = navGenAtStart;
+    }
+    if (overlayPrefs && addonFeatureGenAtStart == _addonFeatureLocalGen) {
+      _addonFeatureSyncedGen = addonFeatureGenAtStart;
     }
     final pushIptv = overlayDomains == null ||
         overlayDomains.contains(_domainIptv);
@@ -383,15 +400,29 @@ class SyncDomainBridge {
     }
   }
 
+  /// Mark Addons IPTV / Live Sports feature flags dirty before KV write so a
+  /// concurrent Addons soft pull cannot demote them from stale cloud (224).
+  void noteAddonFeaturesDirty() {
+    if (_addonFeatureLocalGen == _addonFeatureSyncedGen) {
+      _addonFeatureLocalGen++;
+    }
+  }
+
   /// Schedules (or immediately runs) a domain overlay push.
   ///
-  /// Navigation / Forja return after the upsert finishes so callers can await
-  /// before a soft pull (Addons / Features — issue 221 / 224).
+  /// Navigation / Forja / pending addon-feature prefs return after the upsert
+  /// finishes so callers can await before a soft pull (Addons / Features —
+  /// issue 221 / 224).
   Future<void> schedulePush(String domain) async {
     if (!SyncService.instance.isSignedIn) return;
-    // Features nav + Forja pack membership: push immediately so soft pulls and
-    // the web portal see the edit (issue 221 — empty Features / pack deletes).
-    if (domain == _domainNavigation || domain == _domainForja) {
+    final prefsNeedImmediate = domain == _domainPreferences &&
+        _addonFeatureLocalGen != _addonFeatureSyncedGen;
+    // Features nav + Forja pack membership + pending addon_feature_* prefs:
+    // push immediately so soft pulls cannot wipe a just-enabled IPTV/Live
+    // (issue 221 / 224).
+    if (domain == _domainNavigation ||
+        domain == _domainForja ||
+        prefsNeedImmediate) {
       if (domain == _domainNavigation) {
         noteNavigationDirty();
       }
@@ -631,6 +662,7 @@ class SyncDomainBridge {
     Map<String, dynamic> payload, {
     required bool resetLocalFirst,
     int? navGenAtFetch,
+    int? addonFeatureGenAtFetch,
   }) async {
     // Profile switch: wipe first so missing lean keys cannot keep prior profile.
     // Focus/resume refresh: apply cloud over the current cache — do not flash
@@ -640,6 +672,8 @@ class SyncDomainBridge {
       // true is idempotent and covers any caller that reset without that wipe.
       _navigationLocalGen = 0;
       _navigationSyncedGen = 0;
+      _addonFeatureLocalGen = 0;
+      _addonFeatureSyncedGen = 0;
       await resetSyncedLocalToPlatformDefaults(
         clearIptv: true,
         notify: false,
@@ -648,7 +682,22 @@ class SyncDomainBridge {
 
     final playback = payload['playback'];
     if (playback is Map) {
-      await importPreferences(Map<String, dynamic>.from(playback));
+      final editedAddonDuringPull = !resetLocalFirst &&
+          addonFeatureGenAtFetch != null &&
+          _addonFeatureLocalGen != addonFeatureGenAtFetch;
+      final addonFeaturePending = !resetLocalFirst &&
+          (_addonFeatureLocalGen != _addonFeatureSyncedGen ||
+              editedAddonDuringPull);
+      if (addonFeaturePending) {
+        debugPrint(
+          '[Sync] skip addon_feature_* apply — local Addons edit not synced yet'
+          '${editedAddonDuringPull ? ' (edited during pull)' : ''}',
+        );
+      }
+      await importPreferences(
+        Map<String, dynamic>.from(playback),
+        skipAddonFeatures: addonFeaturePending,
+      );
     }
 
     final connected = payload['connectedServices'];
@@ -1027,7 +1076,10 @@ class SyncDomainBridge {
     };
   }
 
-  Future<void> importPreferences(Map<String, dynamic> payload) async {
+  Future<void> importPreferences(
+    Map<String, dynamic> payload, {
+    bool skipAddonFeatures = false,
+  }) async {
     if (payload.containsKey('play_source_torrent_enabled')) {
       await _settings.setPlaySourceTorrentEnabled(
         payload['play_source_torrent_enabled'] as bool,
@@ -1101,17 +1153,19 @@ class SyncDomainBridge {
         payload['anime_title_language'] as String,
       );
     }
-    if (payload.containsKey('addon_feature_iptv')) {
-      await _settings.setAddonFeatureEnabled(
-        'iptv',
-        payload['addon_feature_iptv'] as bool,
-      );
-    }
-    if (payload.containsKey('addon_feature_live_matches')) {
-      await _settings.setAddonFeatureEnabled(
-        'live_matches',
-        payload['addon_feature_live_matches'] as bool,
-      );
+    if (!skipAddonFeatures) {
+      if (payload.containsKey('addon_feature_iptv')) {
+        await _settings.setAddonFeatureEnabled(
+          'iptv',
+          payload['addon_feature_iptv'] as bool,
+        );
+      }
+      if (payload.containsKey('addon_feature_live_matches')) {
+        await _settings.setAddonFeatureEnabled(
+          'live_matches',
+          payload['addon_feature_live_matches'] as bool,
+        );
+      }
     }
   }
 
@@ -1298,7 +1352,7 @@ class SyncDomainBridge {
 void scheduleIptvSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainIptv);
 
-void schedulePreferencesSyncPush() =>
+Future<void> schedulePreferencesSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainPreferences);
 
 void scheduleProvidersSyncPush() {
@@ -1324,3 +1378,7 @@ Future<void> scheduleNavigationSyncPush() =>
 /// Call before writing navbar so soft pulls cannot wipe a mid-edit enable.
 void noteNavigationDirty() =>
     SyncDomainBridge.instance.noteNavigationDirty();
+
+/// Call before writing `addon_feature_*` so soft pulls cannot demote mid-edit.
+void noteAddonFeaturesDirty() =>
+    SyncDomainBridge.instance.noteAddonFeaturesDirty();

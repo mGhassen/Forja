@@ -1038,7 +1038,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           unawaited(_s._exitIptvPlayer());
         },
         child: Scaffold(
-          backgroundColor: mini ? Colors.transparent : Colors.black,
+          // Always transparent — full black comes from a stack [ColoredBox] so
+          // mini can hit-test through to the shell (same MediaKit resize path).
+          backgroundColor: Colors.transparent,
           body: PlayerTvKeyScope(
           enabled:
               !mini &&
@@ -1121,6 +1123,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
+                  if (!mini)
+                    const Positioned.fill(child: ColoredBox(color: Colors.black)),
                   if (mini) const IgnorePointer(child: SizedBox.expand()),
                   // One video slot for full + mini — remount drops MediaKit texture.
                   Positioned(
@@ -1238,6 +1242,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                   if (!hideFullChrome && _s._showPlaybackBanner) _buildBanner(),
                   if (!hideFullChrome && _s._escapeExitArmed)
                     const PlayerEscapeExitHint(),
+                  // Title-strip drag + double-click maximize (shell parity).
+                  if (!hideFullChrome && DesktopWindowChrome.isDesktop)
+                    DesktopWindowChrome.overlayDragStrip(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP / mini is active.
                   if (!hideFullChrome)

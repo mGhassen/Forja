@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **19 / 19** fix · **0 / 2** acceptance |
+| **Progress** | **20 / 20** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,6 +38,7 @@
 | 17 | I224-T17 | MainScreen navbar load generation guard — stale async reload cannot wipe a newer visible set | ✅ |
 | 18 | I224-T18 | RFC-086: Addons write `addon_feature_*` only; Features sole `visibleIds` writer | ✅ |
 | 19 | I224-T19 | RFC-086: packs `ensureNavIdsKnown` known-only (no first-seen auto-insert into navbar) | ✅ |
+| 20 | I224-T20 | Soft pull skips `addon_feature_*` while local dirty; prefs push immediate for pending Addons enable (cloud false no longer snaps IPTV/Live off) | ✅ |
 
 ---
 
@@ -45,9 +46,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports → switch stays on; Features lists them; Features OK puts tabs on rail | ⬜ |
+| 1 | I224-A01 | ATV: Addons → OK on IPTV / Live Sports → switch stays on; Features lists them; rail shows by default | ⬜ |
 | 2 | I224-A02 | Enable IPTV + Live Sports on web Profile → Features / Addons → open Addons on ATV → switches show on without local re-toggle | ⬜ |
-| 3 | I224-A03 | Addons ON does not add IPTV/Live to the rail until Features turns them on | ⬜ |
+| 3 | I224-A03 | Features can hide IPTV / Live while Addons stays on; Addons OFF removes both Features inventory and rail | ⬜ |
 
 ---
 
@@ -61,16 +62,17 @@
 2. Soft pull on Addons open could overwrite a mid-pull local enable, or a dirty empty local gen could skip / fight cloud Features.
 3. Early “flush dirty nav before pull” would intentionally overlay thin local and wipe richer cloud.
 4. Rapid OK on IPTV then Live Sports raced `getNavbarConfig` → mutate → `setNavbarConfig` — both reads saw `[]`, second write left only `live_matches` (logs: `next=[iptv]` then `next=[live_matches]`).
+5. After RFC-086, Addons writes `addon_feature_*` in **preferences** (3s debounce) while opening Addons force soft-pulls playback — stale cloud `false` demoted the flag, emptied Features, and snapped the switch off (even when nav dirty-gen was correct).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled` (no mid-build flip callback); soft pull skips stale apply when gen moved and refuses cloud nav that shrinks local tabs; thin dirty local yields to richer cloud; Addons force-pulls on open; navbar RMW is serialized; Addons/Features/Packs share row-activate + details-chevron; Features D-pad keeps column via `TvCatalogRow`.
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled` (no mid-build flip callback); soft pull skips stale nav apply when gen moved and refuses cloud nav that shrinks local tabs; soft pull also skips `addon_feature_*` while Addons enable is unsynced and prefs push for those flags is immediate (224 — cloud `false` no longer snaps the switch off); thin dirty local yields to richer cloud; Addons force-pulls on open; navbar RMW is serialized; Addons/Features/Packs share row-activate + details-chevron; Features D-pad keeps column via `TvCatalogRow`.
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
 ## Verify
 
 1. **Hot restart** ATV / desktop (`R` is not enough if isolate stale — prefer full stop/run).
-2. Settings → Addons → focus IPTV row → OK once. Log must show `[AddonToggle] flip iptv OFF→ON` then `set iptv → true` / `navbar iptv → true`.
-3. Switch stays green; → chevron → OK opens details; Features lists IPTV / Live Sports; rail shows tabs.
-4. Features: ↓ on a tab label moves to the next tab; ↓ on star moves to the next row’s star. Toggle stays after leaving Settings.
+2. Settings → Addons → focus IPTV row → OK once. Log must show `[AddonToggle] set iptv → true`. Soft pull must log `skip addon_feature_* apply` if it races before prefs push finishes.
+3. Switch stays green; Features lists IPTV / Live Sports; rail shows tabs by default.
+4. OK again turns off and stays off; Features drops the row.
 5. Soft pull must log `skip cloud nav shrink` when cloud is thinner — not wipe local enables.
 6. On web, turn them on → open Addons on device → switches match cloud (cloud richer still applies).

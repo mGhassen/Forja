@@ -19,6 +19,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/widgets/forja_pack_choice_cards.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
@@ -576,9 +577,35 @@ class _SettingsForjaPacksSectionState
       enabled: enabled,
     );
     await PluginNavRegistry.refresh();
+    if (enabled) {
+      await _activatePackHubFeatures(pack);
+    }
     if (!mounted) return;
     scheduleForjaSyncPush();
     ref.invalidate(enginePacksProvider);
+  }
+
+  /// Pack ON → related hub Features on the rail by default (RFC-086).
+  Future<void> _activatePackHubFeatures(EnginePack pack) async {
+    final settings = SettingsService();
+    final tabs = <String>[];
+    for (final pl in pack.plugins) {
+      if (!pl.isHubCatalog || !pl.enabled) continue;
+      final spec = CatalogNavSpec.fromPluginNav(
+        pl.nav,
+        pluginId: pl.id,
+        fallbackLabel: pl.name,
+      );
+      if (spec == null || !spec.isValid) continue;
+      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
+      tabs.add(spec.tabId);
+    }
+    if (tabs.isEmpty) return;
+    noteNavigationDirty();
+    for (final id in tabs) {
+      await settings.setNavbarTabVisible(id, true);
+    }
+    await scheduleNavigationSyncPush();
   }
 
   Future<void> _installNamedPack(String sourceUrl) async {
@@ -589,6 +616,7 @@ class _SettingsForjaPacksSectionState
       );
       await DeferredRemoteInstallStore.clear(sourceUrl);
       await PluginNavRegistry.refresh();
+      await _activatePackHubFeatures(pack);
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);

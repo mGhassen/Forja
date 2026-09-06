@@ -52,11 +52,16 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     final pipMode =
         _s._isPipMode || PipService.instance.isDesktopActive;
 
-    // One [Video] slot for full + mini — remounting MediaKit drops the texture
-    // (black picture, audio still plays).
+    // Same MediaKit [Video] always — only the [Positioned] box resizes.
+    // Do not swap Scaffold ↔ bare stack (that remounts texture → black + audio).
+    // Status ListenableBuilder must pass Stack as [child] — rebuilding Video
+    // on every status tick stuttered playback.
     final stack = Stack(
       fit: StackFit.expand,
       children: [
+        // Full: opaque black under video. Mini: omit so shell paints through.
+        if (!mini)
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
         if (mini) const IgnorePointer(child: SizedBox.expand()),
         Positioned(
           key: const ValueKey('desktop-player-video-slot'),
@@ -129,6 +134,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
               child: const SizedBox.expand(),
             ),
           ),
+        // Above video double-tap (fullscreen); below chrome so buttons still win.
+        if (!mini && !pipMode) DesktopWindowChrome.overlayDragStrip(),
         if (!mini && !_s._isNativeSubtitle)
           StreamBuilder<List<String>>(
             stream: _s._player.stream.subtitle,
@@ -183,24 +190,18 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
       ],
     );
 
-    // Mini: no Scaffold — transparent hit-through to the shell underneath.
-    if (mini) return stack;
-
     return Theme(
       data: ThemeData.dark(),
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: ListenableBuilder(
-          listenable: _s._statusController,
-          builder: (context, child) => MouseRegion(
-            onHover: _s._onPointerHover,
-            cursor: _s._keepPlayerCursorVisible
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.none,
-            child: child,
-          ),
-          child: stack,
+      child: ListenableBuilder(
+        listenable: _s._statusController,
+        builder: (context, child) => MouseRegion(
+          onHover: mini ? null : _s._onPointerHover,
+          cursor: mini || _s._keepPlayerCursorVisible
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.none,
+          child: child,
         ),
+        child: stack,
       ),
     );
   }
