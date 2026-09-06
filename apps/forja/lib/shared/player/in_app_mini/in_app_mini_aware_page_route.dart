@@ -24,9 +24,14 @@ class InAppMiniAwarePageRoute<T> extends PageRoute<T> {
   final bool _fullscreenDialog;
 
   void _onMiniChanged() {
-    if (isActive) {
-      changedInternalState();
+    if (!isActive) return;
+    // TransitionRoute only writes OverlayEntry.opaque on animation
+    // completed. Without this, routes under the player stay Theater-
+    // skipped after [opaque] flips → full-window black behind mini chrome.
+    if (overlayEntries.isNotEmpty) {
+      overlayEntries.first.opaque = opaque;
     }
+    changedInternalState();
   }
 
   @override

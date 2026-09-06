@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **14 / 14** acceptance |
+| **Progress** | **8 / 8** components · **15 / 15** acceptance |
 | **Current slice** | Desktop in-app mini shipped — phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -48,6 +48,7 @@
 | 12 | R83-A12 | IPTV / Live Matches share the same desktop demote path | ✅ |
 | 13 | R83-A13 | Setting on: Escape demotes when chrome already hidden (skip arm — hover cannot clear) | ✅ |
 | 14 | R83-A14 | Top-right chrome button demotes when setting on (desktop VOD + IPTV) | ✅ |
+| 15 | R83-A15 | Mini: OverlayEntry.opaque synced so shell paints under transparent player route | ✅ |
 
 ---
 
