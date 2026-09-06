@@ -55,6 +55,42 @@ import { cn } from '@/lib/utils'
 type SortKey = 'host' | 'accounts' | 'alive' | 'scraped'
 type SortDir = 'asc' | 'desc'
 
+const POOL_SORT_STORAGE_KEY = 'admin.pool.sort'
+const SORT_KEYS: readonly SortKey[] = ['host', 'accounts', 'alive', 'scraped']
+const SORT_DIRS: readonly SortDir[] = ['asc', 'desc']
+const DEFAULT_POOL_SORT: { sortKey: SortKey; sortDir: SortDir } = {
+  sortKey: 'accounts',
+  sortDir: 'desc',
+}
+
+function readPoolSort(): { sortKey: SortKey; sortDir: SortDir } {
+  try {
+    const raw = localStorage.getItem(POOL_SORT_STORAGE_KEY)
+    if (!raw) return DEFAULT_POOL_SORT
+    const parsed = JSON.parse(raw) as { sortKey?: unknown; sortDir?: unknown }
+    const sortKey = SORT_KEYS.includes(parsed.sortKey as SortKey)
+      ? (parsed.sortKey as SortKey)
+      : DEFAULT_POOL_SORT.sortKey
+    const sortDir = SORT_DIRS.includes(parsed.sortDir as SortDir)
+      ? (parsed.sortDir as SortDir)
+      : DEFAULT_POOL_SORT.sortDir
+    return { sortKey, sortDir }
+  } catch {
+    return DEFAULT_POOL_SORT
+  }
+}
+
+function writePoolSort(sortKey: SortKey, sortDir: SortDir) {
+  try {
+    localStorage.setItem(
+      POOL_SORT_STORAGE_KEY,
+      JSON.stringify({ sortKey, sortDir }),
+    )
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 function relativeTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const t = new Date(iso).getTime()
@@ -275,8 +311,7 @@ export function AdminPoolPage() {
     'all',
   )
   const [regionFilter, setRegionFilter] = useState<string>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('accounts')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [{ sortKey, sortDir }, setPoolSort] = useState(readPoolSort)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(50)
   const [peopleFor, setPeopleFor] = useState<{
@@ -306,6 +341,10 @@ export function AdminPoolPage() {
   useEffect(() => {
     setPage(0)
   }, [filters, sortKey, sortDir, pageSize])
+
+  useEffect(() => {
+    writePoolSort(sortKey, sortDir)
+  }, [sortKey, sortDir])
 
   useEffect(() => {
     setSelected(new Map())
@@ -432,12 +471,18 @@ export function AdminPoolPage() {
   }, [resolvedFocusId, open, debouncedQ])
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-    setSortKey(key)
-    setSortDir(key === 'host' ? 'asc' : 'desc')
+    setPoolSort((prev) => {
+      if (prev.sortKey === key) {
+        return {
+          sortKey: key,
+          sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc',
+        }
+      }
+      return {
+        sortKey: key,
+        sortDir: key === 'host' ? 'asc' : 'desc',
+      }
+    })
   }
 
   function invalidatePool() {
