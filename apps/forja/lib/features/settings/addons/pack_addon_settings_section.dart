@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/services/live/iptv_sports_config.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/pack_addon_settings_spec.dart';
 import 'package:forja/shared/foundation/services/pack_settings_store.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Renders pack-declared Addon settings fields for [addonId] (RFC-089).
 class PackAddonSettingsSection extends StatefulWidget {
@@ -61,22 +62,23 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
       for (final field in spec.fields) {
         final k = _valueKey(spec.pluginId, field.id);
         values[k] = switch (field.type) {
-          PackAddonSettingsFieldType.toggle =>
-            field.id == LiveMatchesIptvSportsConfig.mergeMatchingFieldId
-                ? await LiveMatchesIptvSportsConfig.readMergeMatchingEvents(
-                    fallback: field.defaultBool,
-                  )
-                : await PackSettingsStore.getBool(
-                    spec.pluginId,
-                    field.id,
-                    defaultValue: field.defaultBool,
-                  ),
+          PackAddonSettingsFieldType.toggle => await PackSettingsStore.getBool(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultBool,
+            ),
           PackAddonSettingsFieldType.select ||
           PackAddonSettingsFieldType.text =>
             await PackSettingsStore.getString(
               spec.pluginId,
               field.id,
               defaultValue: field.defaultString,
+            ),
+          PackAddonSettingsFieldType.multiSelect =>
+            await PackSettingsStore.getStringList(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultStringList,
             ),
         };
       }
@@ -132,9 +134,6 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     bool value,
   ) async {
     await PackSettingsStore.setBool(spec.pluginId, field.id, value);
-    if (field.id == LiveMatchesIptvSportsConfig.mergeMatchingFieldId) {
-      await LiveMatchesIptvSportsConfig.setMergeMatchingEvents(value);
-    }
     if (!mounted) return;
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
@@ -149,9 +148,40 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
 
+  Future<void> _setStringList(
+    PackAddonSettingsSpec spec,
+    PackAddonSettingsField field,
+    List<String> value,
+  ) async {
+    await PackSettingsStore.setStringList(spec.pluginId, field.id, value);
+    if (!mounted) return;
+    setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading || _specs.isEmpty) return const SizedBox.shrink();
+    if (_loading) return const SizedBox.shrink();
+    if (_specs.isEmpty) {
+      if (widget.addonId != 'live_sports') return const SizedBox.shrink();
+      return SettingsGroup(
+        label: 'Setup',
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+            child: Text(
+              'Install and enable the ForjaHQ Live Sports hub pack under '
+              'Settings → Forja Packs to configure Forja Live / Sports, merge, '
+              'and leagues.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,6 +236,132 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
           label: field.label,
           hint: field.subtitle.isEmpty ? null : field.subtitle,
         );
+      case PackAddonSettingsFieldType.multiSelect:
+        final selected = <String>{
+          ...((_values[key] as List?)?.map((e) => e.toString()) ??
+              field.defaultStringList),
+        };
+        return _MultiSelectChipsField(
+          field: field,
+          selected: selected,
+          onChanged: (next) => unawaited(_setStringList(spec, field, next)),
+        );
     }
+  }
+}
+
+class _MultiSelectChipsField extends StatelessWidget {
+  const _MultiSelectChipsField({
+    required this.field,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final PackAddonSettingsField field;
+  final Set<String> selected;
+  final ValueChanged<List<String>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = field.options;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            field.label,
+            style: TextStyle(
+              color: ForjaShellColors.textPrimary.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          if (field.subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              field.subtitle,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _allNoneButton(
+                context,
+                label: 'All',
+                onPressed: () =>
+                    onChanged([for (final o in options) o.id]),
+              ),
+              _allNoneButton(
+                context,
+                label: 'None',
+                onPressed: () => onChanged(const []),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < options.length; i++)
+                ForjaShellChip(
+                  label: options[i].label,
+                  selected: selected.contains(options[i].id),
+                  listIndex: i,
+                  fontSize: 12,
+                  accentHover: true,
+                  tvTabId: tv ? 'settings' : null,
+                  tvRowId: tv ? 'pack-settings-${field.id}' : null,
+                  ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                  onTap: () {
+                    final next = Set<String>.from(selected);
+                    if (!next.add(options[i].id)) next.remove(options[i].id);
+                    onChanged(next.toList()..sort());
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _allNoneButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return TextButton(onPressed: onPressed, child: Text(label));
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      borderRadius: SettingsTokens.categoryTileRadius,
+      scaleOnFocus: 1.0,
+      showFocusRail: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: ForjaShellColors.brandGreen,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
   }
 }

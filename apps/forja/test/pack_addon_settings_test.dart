@@ -151,6 +151,36 @@ void main() {
       });
       expect(PackAddonSettingsSpec.fromPlugin(plugin), isNull);
     });
+
+    test('parses multi_select with options and default list', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-multi',
+        'name': 'Hub Multi',
+        'entry': 'm.js',
+        'kind': 'catalog',
+        'settings': {
+          'addon': 'live_sports',
+          'fields': [
+            {
+              'id': 'leagues',
+              'type': 'multi_select',
+              'label': 'Leagues',
+              'default': ['A', 'B'],
+              'options': [
+                {'id': 'A', 'label': 'Alpha'},
+                {'id': 'B', 'label': 'Beta'},
+                {'id': 'C', 'label': 'Gamma'},
+              ],
+            },
+          ],
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.fields.single.type, PackAddonSettingsFieldType.multiSelect);
+      expect(spec.fields.single.defaultStringList, ['A', 'B']);
+      expect(spec.fields.single.options.map((o) => o.id), ['A', 'B', 'C']);
+    });
   });
 
   group('PackSettingsStore', () {
@@ -212,6 +242,35 @@ void main() {
           defaultValue: false,
         ),
         isTrue,
+      );
+    });
+
+    test('string list empty selection is not default', () async {
+      expect(
+        await PackSettingsStore.getStringList(
+          'p3',
+          'leagues',
+          defaultValue: const ['NBA'],
+        ),
+        ['NBA'],
+      );
+      await PackSettingsStore.setStringList('p3', 'leagues', const []);
+      expect(
+        await PackSettingsStore.getStringList(
+          'p3',
+          'leagues',
+          defaultValue: const ['NBA'],
+        ),
+        isEmpty,
+      );
+      await PackSettingsStore.setStringList('p3', 'leagues', const ['NBA', 'NFL']);
+      expect(
+        await PackSettingsStore.getStringList(
+          'p3',
+          'leagues',
+          defaultValue: const [],
+        ),
+        ['NBA', 'NFL'],
       );
     });
   });

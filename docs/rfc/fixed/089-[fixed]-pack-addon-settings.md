@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **8 / 8** acceptance |
-| **Current slice** | **Complete** — manifest `settings` + host renderer + Live Sports merge toggle |
+| **Progress** | **Complete** · **5 / 5** components · **8 / 8** acceptance (v1) · **5 / 5** acceptance (Setup slice) |
+| **Current slice** | **Complete** — Live Sports Setup fully pack-owned (`multi_select` + host Setup removed) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 2 | R89-C02 | `PackSettingsStore` (prefs keyed by pluginId + fieldId) | ✅ |
 | 3 | R89-C03 | `PackAddonSettingsSection` appended in Addon detail bodies | ✅ |
 | 4 | R89-C04 | Live Sports hub declares `mergeMatchingEvents`; host toggle removed | ✅ |
+| 5 | R89-C05 | `multi_select` / chips field type + Live Sports Setup fields on hub; host Setup UI removed | ✅ |
 
 ---
 
@@ -41,6 +42,18 @@
 
 ---
 
+## Acceptance (Setup slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R89-A09 | Field type `multi_select` / `chips` parses + persists string list | ✅ |
+| 2 | R89-A10 | Hub v1.0.5+ declares Forja Live / Sports / merge / leagues under `settings` | ✅ |
+| 3 | R89-A11 | Host `SettingsIptvSportsSection` no longer renders Setup toggles/leagues | ✅ |
+| 4 | R89-A12 | `LiveMatchesIptvSportsConfig.load` overlays pack store for those fields | ✅ |
+| 5 | R89-A13 | Pack settings render before host catalog/provider section | ✅ |
+
+---
+
 ## Summary
 
 Plugins declare typed settings that appear **inside** an existing Addons detail. Addon rows stay a fixed host list. Packs do not invent top-level Addon rows in this slice.
@@ -50,29 +63,27 @@ Plugins declare typed settings that appear **inside** an existing Addons detail.
 ```json
 "settings": {
   "addon": "live_sports",
-  "group": "Live Sports",
-  "order": 20,
+  "group": "Setup",
+  "order": 10,
   "fields": [
-    {
-      "id": "mergeMatchingEvents",
-      "type": "toggle",
-      "label": "Merge matching events",
-      "subtitle": "…",
-      "default": false
-    }
+    { "id": "forjaLiveEnabled", "type": "toggle", "…": "…" },
+    { "id": "forjaSportsEnabled", "type": "toggle", "…": "…" },
+    { "id": "mergeMatchingEvents", "type": "toggle", "default": false },
+    { "id": "leagues", "type": "multi_select", "options": [ "…" ] }
   ]
 }
 ```
 
-Field types: `toggle` · `select` · `text`. Prefs: `pack_setting_v1_<pluginId>_<fieldId>`.
+Field types: `toggle` · `select` · `text` · `multi_select`. Prefs: `pack_setting_v1_<pluginId>_<fieldId>`.
 
 ### Shipped
 
 - `EnginePlugin.settings` parse/serialize
-- `PackAddonSettingsSpec` / `PackSettingsStore`
-- `PackAddonSettingsSection` appended from `buildAddonDetailBody`
-- `plugins/hubs/live_sports` v1.0.4 — `mergeMatchingEvents` + capability `settings`
-- `LiveMatchesIptvSportsConfig.load` migrates legacy JSON merge flag into pack store
+- `PackAddonSettingsSpec` / `PackSettingsStore` (incl. string lists)
+- `PackAddonSettingsSection` first in `buildAddonDetailBody`
+- `plugins/hubs/live_sports` v1.0.5 — full Setup + capability `settings`
+- `LiveMatchesIptvSportsConfig.load` migrates legacy host JSON / merge key into pack store
+- Host Live Sports detail keeps catalog/provider capability tabs only
 
 ### Related
 

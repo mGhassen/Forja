@@ -9,7 +9,7 @@ class PackAddonSettingsOption {
 }
 
 /// Typed field declared under plugin `settings.fields[]` (RFC-089).
-enum PackAddonSettingsFieldType { toggle, select, text }
+enum PackAddonSettingsFieldType { toggle, select, text, multiSelect }
 
 class PackAddonSettingsField {
   const PackAddonSettingsField({
@@ -19,6 +19,7 @@ class PackAddonSettingsField {
     this.subtitle = '',
     this.defaultBool = false,
     this.defaultString = '',
+    this.defaultStringList = const [],
     this.options = const [],
   });
 
@@ -28,6 +29,8 @@ class PackAddonSettingsField {
   final String subtitle;
   final bool defaultBool;
   final String defaultString;
+  /// Default selected ids for [PackAddonSettingsFieldType.multiSelect].
+  final List<String> defaultStringList;
   final List<PackAddonSettingsOption> options;
 
   static PackAddonSettingsField? fromJson(Map<String, dynamic> j) {
@@ -38,6 +41,8 @@ class PackAddonSettingsField {
       'toggle' => PackAddonSettingsFieldType.toggle,
       'select' => PackAddonSettingsFieldType.select,
       'text' => PackAddonSettingsFieldType.text,
+      'multi_select' || 'multiselect' || 'chips' =>
+        PackAddonSettingsFieldType.multiSelect,
       _ => null,
     };
     if (type == null) return null;
@@ -55,10 +60,26 @@ class PackAddonSettingsField {
         options.add(PackAddonSettingsOption(id: oid, label: olabel));
       }
     }
-    if (type == PackAddonSettingsFieldType.select && options.isEmpty) {
+    if ((type == PackAddonSettingsFieldType.select ||
+            type == PackAddonSettingsFieldType.multiSelect) &&
+        options.isEmpty) {
       return null;
     }
     final def = j['default'];
+    var defaultStringList = const <String>[];
+    if (def is List) {
+      defaultStringList = [
+        for (final e in def)
+          if (e.toString().trim().isNotEmpty) e.toString().trim(),
+      ];
+    } else if (def is String && def.trim().isNotEmpty) {
+      defaultStringList = [
+        for (final p in def.split(','))
+          if (p.trim().isNotEmpty) p.trim(),
+      ];
+    } else if (type == PackAddonSettingsFieldType.multiSelect) {
+      defaultStringList = [for (final o in options) o.id];
+    }
     return PackAddonSettingsField(
       id: id,
       type: type,
@@ -67,7 +88,8 @@ class PackAddonSettingsField {
       defaultBool: def == true,
       defaultString: def == null
           ? (options.isNotEmpty ? options.first.id : '')
-          : def.toString(),
+          : (def is List ? defaultStringList.join(',') : def.toString()),
+      defaultStringList: defaultStringList,
       options: options,
     );
   }

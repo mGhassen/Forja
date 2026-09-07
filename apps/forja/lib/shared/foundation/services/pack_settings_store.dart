@@ -54,6 +54,31 @@ abstract final class PackSettingsStore {
     await prefs.setString(key(pluginId, fieldId), value);
   }
 
+  static Future<List<String>> getStringList(
+    String pluginId,
+    String fieldId, {
+    required List<String> defaultValue,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final k = key(pluginId, fieldId);
+    // Absent key → defaults. Present empty string → intentional empty selection.
+    if (!prefs.containsKey(k)) return List<String>.from(defaultValue);
+    final raw = prefs.getString(k) ?? '';
+    if (raw.trim().isEmpty) return const [];
+    return [
+      for (final p in raw.split(','))
+        if (p.trim().isNotEmpty) p.trim(),
+    ];
+  }
+
+  static Future<void> setStringList(
+    String pluginId,
+    String fieldId,
+    List<String> value,
+  ) async {
+    await setString(pluginId, fieldId, value.join(','));
+  }
+
   /// True when the pack setting key already exists (no default fallback needed).
   static Future<bool> has(String pluginId, String fieldId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -68,6 +93,16 @@ abstract final class PackSettingsStore {
   ) async {
     if (await has(pluginId, fieldId)) return false;
     await setBool(pluginId, fieldId, legacyValue);
+    return true;
+  }
+
+  static Future<bool> migrateStringListIfAbsent(
+    String pluginId,
+    String fieldId,
+    List<String> legacyValue,
+  ) async {
+    if (await has(pluginId, fieldId)) return false;
+    await setStringList(pluginId, fieldId, legacyValue);
     return true;
   }
 }

@@ -28,7 +28,7 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 - Filter by **sport circles** in the category bar when more than one sport is in the list. **24/7** covers always-on channels.
 - On the **Live Sports Cards** tab, browse a **landscape match card** grid and open **hero details** (Providers / Live TV in a two-column stream grid on desktop; shell navbar stays visible). Same streams as the side panel.
 - Tap a stream row to play in Forja’s **native** live player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream**.
-- Pull-to-refresh / shell refresh reloads the match list. With **Settings → Addons → Live Sports → Merge matching events** on, matching events across catalogs may collapse into one row.
+- Pull-to-refresh / shell refresh reloads the match list. With **Merge matching events** on (hub Setup under Settings → Addons → Live Sports), matching events across catalogs may collapse into one row.
 
 ## Tips
 

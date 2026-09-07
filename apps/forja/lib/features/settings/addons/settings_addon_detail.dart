@@ -15,14 +15,14 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///
-/// Host section first, then pack-declared fields ([PackAddonSettingsSection]).
+/// Pack-declared fields ([PackAddonSettingsSection]) first, then host section.
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
   final host = _hostAddonDetailBody(addonId, visibility);
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      host,
       PackAddonSettingsSection(addonId: addonId),
+      host,
     ],
   );
 }

@@ -6,18 +6,17 @@
 
 On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS schedule as **Forja Live** / **All** (TimStreams, StreamFree, ESPN, PPV, Streamed, …), then name/EPG matching against live channels on **one** Xtream or Stalker portal. Streams play in the native IPTV player. No self-hosted addon. Not an ESPN-only grid.
 
-**Forja Sports** is enabled by default with all leagues matched. **Settings → Addons → Live Sports** always shows **Setup** (enable + leagues). **Live Sports** plugin catalog/provider toggles appear when a live pack is installed — install or refresh under **Settings → Forja Packs**. The Live Sports hub pack also contributes **Merge matching events** under that Addon page.
+**Forja Sports** is enabled by default with all leagues matched. **Setup** (Forja Live / Forja Sports / Merge matching events / leagues) comes from the **Live Sports hub pack** `settings` block under **Settings → Addons → Live Sports**. Catalog/provider capability toggles appear when a live pack is installed — install or refresh under **Settings → Forja Packs**.
 
 ## How to open it
 
 - **Live Matches → Servers → Forja Sports** (portal via top-right **Portals**)
-- **Settings → Addons → Live Sports** — **Setup** always; pack fields + live plugin toggles when installed
+- **Settings → Addons → Live Sports** — hub **Setup** when the Live Sports hub pack is installed and enabled; catalog/provider tabs when live packs are installed
 
 ## What you can do
 
-- **Setup** — enable **Forja Live** and/or **Forja Sports** in Live Matches (independent of installed plugins), and pick which leagues to match for Forja Sports
-- **Merge matching events** (from the Live Sports hub pack settings) — off by default; combines the same game across catalogs and runs ESPN enrich (slower on large schedules)
-- **Live Sports** — **Catalog** / **Provider** tabs at the top; one toggle per site in each tab (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN, MobiKora). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
+- **Setup** (hub pack settings) — enable **Forja Live** and/or **Forja Sports**, turn on **Merge matching events** (off by default; same-game collapse + ESPN enrich), and pick leagues for Forja Sports portal matching
+- **Catalogs & providers** — **Catalog** / **Provider** tabs; one toggle per site (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN, MobiKora). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
 - Browse the same catalog schedule as Forja Live. With **Merge matching events** on (and **Catalog → ESPN**), rows enrich from ESPN (clean home/away; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
@@ -28,7 +27,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 1. Add an Xtream or Stalker portal under IPTV (if you don’t have one)
 2. Live Matches → Servers → **Forja Sports** → top-right **Portals** if needed
-3. Optional: Settings → Addons → Live Sports to narrow leagues, turn on **Merge matching events**, or tune live plugins
+3. Optional: Settings → Addons → Live Sports (hub **Setup**) to narrow leagues, turn on **Merge matching events**, or tune live plugins
 
 ## Tips
 

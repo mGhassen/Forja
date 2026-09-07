@@ -1,19 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/services/live/iptv_sports_config.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
-/// Settings → Forja Sports — Xtream matcher (RFC-062) + live engine plugins (RFC-065).
+/// Addons → Live Sports — live catalog/provider capability toggles only.
 ///
-/// **Setup** (enable + leagues) is IPTV matcher config and always shows when this
-/// category is visible. **Live Sports** plugin toggles appear only when a live pack
-/// with `live_sport` plugins is installed.
+/// Product Setup (Forja Live / Sports / merge / leagues) is declared on the
+/// Live Sports hub pack `settings` block and rendered by
+/// [PackAddonSettingsSection] (RFC-089).
 class SettingsIptvSportsSection extends StatefulWidget {
   const SettingsIptvSportsSection({super.key});
 
@@ -23,9 +20,7 @@ class SettingsIptvSportsSection extends StatefulWidget {
 }
 
 class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
-  LiveMatchesIptvSportsConfig _config = const LiveMatchesIptvSportsConfig();
   bool _loading = true;
-  String? _error;
   List<({EnginePack pack, List<EnginePlugin> plugins})> _liveSportPacks =
       const [];
 
@@ -44,32 +39,11 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
 
   void _onEngineChanged() {
     if (!mounted) return;
-    unawaited(_loadLivePlugins());
+    unawaited(_reload());
   }
 
   Future<void> _reload() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final config = await LiveMatchesIptvSportsConfig.load();
-      await _loadLivePlugins();
-      if (!mounted) return;
-      setState(() {
-        _config = config;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = '$e';
-      });
-    }
-  }
-
-  Future<void> _loadLivePlugins() async {
+    setState(() => _loading = true);
     await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
     final liveSports = <({EnginePack pack, List<EnginePlugin> plugins})>[];
@@ -84,116 +58,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     if (!mounted) return;
     setState(() {
       _liveSportPacks = liveSports;
+      _loading = false;
     });
-  }
-
-  bool get _hasLivePlugins => _liveSportPacks.isNotEmpty;
-
-  Future<void> _persist(LiveMatchesIptvSportsConfig next) async {
-    setState(() => _config = next);
-    await LiveMatchesIptvSportsConfig.save(next);
-  }
-
-  Future<void> _toggleLeague(String league) async {
-    final next = List<String>.from(_config.leagues);
-    if (next.contains(league)) {
-      next.remove(league);
-    } else {
-      next.add(league);
-    }
-    await _persist(_config.copyWith(leagues: next));
-  }
-
-  Widget _leagueActionButton(
-    BuildContext context, {
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (!tv) {
-      return TextButton(onPressed: onPressed, child: Text(label));
-    }
-    return shellFocusableTap(
-      context: context,
-      onTap: onPressed,
-      borderRadius: SettingsTokens.categoryTileRadius,
-      scaleOnFocus: 1.0,
-      showFocusRail: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: ForjaShellColors.brandGreen,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-
-  static const _leagueChipRowId = 'iptv-sports-leagues';
-
-  Widget _leagueChip(
-    BuildContext context,
-    String league,
-    int index, {
-    TvChipEdges? edges,
-  }) {
-    final selected = _config.leagues.contains(league);
-    final label =
-        LiveMatchesIptvSportsConfig.leagueLabels[league] ?? league;
-    return ForjaShellChip(
-      label: label,
-      selected: selected,
-      listIndex: index,
-      fontSize: 12,
-      accentHover: true,
-      tvTabId: edges != null ? 'settings' : null,
-      tvRowId: edges != null ? _leagueChipRowId : null,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onTap: () => _toggleLeague(league),
-      onLeftEdge: edges?.onLeft,
-      onRightEdge: edges?.onRight,
-      onDownEdge: edges?.onDown,
-      onUpEdge: edges?.onUp,
-    );
-  }
-
-  Widget _leagueChipWrap(BuildContext context) {
-    final leagues = LiveMatchesIptvSportsConfig.allLeagues;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (!tv) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (var i = 0; i < leagues.length; i++)
-            _leagueChip(context, leagues[i], i),
-        ],
-      );
-    }
-    return TvChipStrip(
-      tabId: 'settings',
-      rowId: _leagueChipRowId,
-      sortOrder: 80,
-      itemCount: leagues.length,
-      resultsRowId: 'iptv-sports-leagues-end',
-      builder: (context, edgesFor) {
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < leagues.length; i++)
-              _leagueChip(context, leagues[i], i, edges: edgesFor(i)),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -210,162 +76,65 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (_liveSportPacks.isEmpty) {
+      return SettingsGroup(
+        label: 'Catalogs & providers',
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+            child: Text(
+              'No live catalog packs installed. Install ForjaHQ Live (or other '
+              'live packs) under Settings → Forja Packs. Setup toggles come '
+              'from the Live Sports hub pack settings above.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return SettingsGroup(
+      label: 'Catalogs & providers',
       children: [
-        SettingsGroup(
-          label: 'Live Sports',
-          children: [
-            if (_hasLivePlugins) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
-                child: Text(
-                  'Catalog = schedule feed · Provider = stream resolve. '
-                  'Manage the pack under Settings → Sources → Forja → Live.',
-                  style: TextStyle(
-                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              for (final entry in _liveSportPacks) ...[
-                if (_liveSportPacks.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
-                    child: Text(
-                      '${entry.pack.name} · v${entry.pack.version}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: ForjaShellColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
-                  child: SettingsLiveSportCapabilityTabs(
-                    sourceUrl: entry.pack.sourceUrl,
-                    plugins: entry.plugins,
-                    tabRowId:
-                        'forja-sports-live-tabs-${entry.pack.sourceUrl.hashCode}',
-                  ),
-                ),
-              ],
-            ] else
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
-                child: Text(
-                  'No live sports pack installed. Add or refresh '
-                  'ForjaHQ Live Sports under Settings → Sources → Forja → Live.',
-                  style: TextStyle(
-                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-          ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+          child: Text(
+            'Catalog = schedule feed · Provider = stream resolve. '
+            'Manage packs under Settings → Forja Packs.',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
         ),
-        SettingsGroup(
-          label: 'Setup',
-          children: [
+        for (final entry in _liveSportPacks) ...[
+          if (_liveSportPacks.length > 1)
             Padding(
-              padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
+              padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
               child: Text(
-                'Enable each Live Matches server independently. Pick the portal '
-                'in Live Matches → Forja Sports (top-right Portals). '
-                'Leagues apply to Forja Sports only.',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                '${entry.pack.name} · v${entry.pack.version}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  height: 1.4,
+                  color: ForjaShellColors.textPrimary,
                 ),
               ),
             ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: Color(0xFFF87171),
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-            SettingsToggleRow(
-              title: 'Enable Forja Live',
-              subtitle: 'Show the Forja Live server in Live Matches',
-              value: _config.forjaLiveEnabled,
-              onChanged: (v) => _persist(_config.copyWith(forjaLiveEnabled: v)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+            child: SettingsLiveSportCapabilityTabs(
+              sourceUrl: entry.pack.sourceUrl,
+              plugins: entry.plugins,
+              tabRowId:
+                  'forja-sports-live-tabs-${entry.pack.sourceUrl.hashCode}',
             ),
-            SettingsToggleRow(
-              title: 'Enable Forja Sports',
-              subtitle: 'Show the Forja Sports server in Live Matches',
-              value: _config.enabled,
-              onChanged: (v) async {
-                var next = _config.copyWith(enabled: v);
-                if (v && next.leagues.isEmpty) {
-                  next = next.copyWith(
-                    leagues: List<String>.from(
-                      LiveMatchesIptvSportsConfig.allLeagues,
-                    ),
-                  );
-                }
-                if (v && next.portalKey.isEmpty) {
-                  final fromIptv =
-                      await LiveMatchesIptvSportsConfig.resolvePortalKey(next);
-                  if (fromIptv.isNotEmpty) {
-                    next = next.copyWith(portalKey: fromIptv);
-                  }
-                }
-                await _persist(next);
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Leagues',
-                      style: TextStyle(
-                        color: ForjaShellColors.textPrimary.withValues(
-                          alpha: 0.9,
-                        ),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  _leagueActionButton(
-                    context,
-                    label: 'All',
-                    onPressed: () => _persist(
-                      _config.copyWith(
-                        leagues: List<String>.from(
-                          LiveMatchesIptvSportsConfig.allLeagues,
-                        ),
-                      ),
-                    ),
-                  ),
-                  _leagueActionButton(
-                    context,
-                    label: 'None',
-                    onPressed: () =>
-                        _persist(_config.copyWith(leagues: const [])),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-              child: _leagueChipWrap(context),
-            ),
-          ],
-        ),
+          ),
+        ],
       ],
     );
   }

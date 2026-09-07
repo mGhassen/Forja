@@ -2,16 +2,27 @@ import 'dart:convert';
 
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
+import 'package:forja/shared/foundation/services/pack_addon_settings_spec.dart';
+import 'package:forja/shared/foundation/services/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
+///
+/// Product toggles / leagues for Addons → Live Sports come from the hub pack
+/// `settings` block via [PackSettingsStore] (RFC-089).
 class LiveMatchesIptvSportsConfig {
   static const prefsKey = 'live_matches_iptv_sports_v1';
 
-  /// Host-owned merge toggle (not a pack plugin id).
+  static const fieldForjaLive = 'forjaLiveEnabled';
+  static const fieldForjaSports = 'forjaSportsEnabled';
+  static const fieldMergeMatching = 'mergeMatchingEvents';
+  static const fieldLeagues = 'leagues';
+
+  /// Legacy host merge key (pre–pack settings / host-owned migrate).
   static const mergeMatchingPrefsKey = 'live_matches_merge_matching_v1';
-  static const mergeMatchingFieldId = 'mergeMatchingEvents';
+  static const mergeMatchingFieldId = fieldMergeMatching;
 
   static const allLeagues = <String>[
     'NBA',
@@ -380,50 +391,147 @@ class LiveMatchesIptvSportsConfig {
         base = const LiveMatchesIptvSportsConfig();
       }
     }
-    final merge = await _readMergeMatchingEvents(
-      fallback: base.mergeMatchingEvents,
-    );
-    return base.copyWith(mergeMatchingEvents: merge);
+    return _overlayPackSettings(base);
   }
 
-  /// Host-owned merge flag — never keyed by a shipped hub plugin id.
+  /// Enabled hub plugin that declares `settings.addon: live_sports`.
+  static Future<String?> resolveSettingsPluginId() async {
+    final packs = await EngineService.instance.listPacks();
+    for (final pack in packs) {
+      if (!pack.enabled) continue;
+      for (final p in pack.plugins) {
+        if (!p.enabled) continue;
+        final spec = PackAddonSettingsSpec.fromPlugin(p);
+        if (spec != null && spec.addonId == 'live_sports') return p.id;
+      }
+    }
+    return null;
+  }
+
+  static Future<LiveMatchesIptvSportsConfig> _overlayPackSettings(
+    LiveMatchesIptvSportsConfig base,
+  ) async {
+    final pluginId = await resolveSettingsPluginId();
+    if (pluginId == null) {
+      // No hub pack — honor legacy host merge key if present.
+      final merge = await _readLegacyMerge(fallback: base.mergeMatchingEvents);
+      return base.copyWith(mergeMatchingEvents: merge);
+    }
+
+    await PackSettingsStore.migrateBoolIfAbsent(
+      pluginId,
+      fieldForjaLive,
+      base.forjaLiveEnabled,
+    );
+    await PackSettingsStore.migrateBoolIfAbsent(
+      pluginId,
+      fieldForjaSports,
+      base.enabled,
+    );
+    final legacyMerge = await _readLegacyMerge(
+      fallback: base.mergeMatchingEvents,
+    );
+    await PackSettingsStore.migrateBoolIfAbsent(
+      pluginId,
+      fieldMergeMatching,
+      legacyMerge,
+    );
+    await PackSettingsStore.migrateStringListIfAbsent(
+      pluginId,
+      fieldLeagues,
+      base.leagues.isEmpty ? allLeagues : base.leagues,
+    );
+
+    final forjaLive = await PackSettingsStore.getBool(
+      pluginId,
+      fieldForjaLive,
+      defaultValue: true,
+    );
+    final forjaSports = await PackSettingsStore.getBool(
+      pluginId,
+      fieldForjaSports,
+      defaultValue: true,
+    );
+    final merge = await PackSettingsStore.getBool(
+      pluginId,
+      fieldMergeMatching,
+      defaultValue: false,
+    );
+    final leagues = await PackSettingsStore.getStringList(
+      pluginId,
+      fieldLeagues,
+      defaultValue: allLeagues,
+    );
+    return base.copyWith(
+      forjaLiveEnabled: forjaLive,
+      enabled: forjaSports,
+      mergeMatchingEvents: merge,
+      leagues: leagues,
+    );
+  }
+
+  static Future<bool> _readLegacyMerge({required bool fallback}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(mergeMatchingPrefsKey)) {
+      return prefs.getBool(mergeMatchingPrefsKey) ?? fallback;
+    }
+    return fallback;
+  }
+
   static Future<void> setMergeMatchingEvents(bool value) async {
+    final pluginId = await resolveSettingsPluginId();
+    if (pluginId != null) {
+      await PackSettingsStore.setBool(pluginId, fieldMergeMatching, value);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(mergeMatchingPrefsKey, value);
   }
 
   static Future<bool> readMergeMatchingEvents({
     bool fallback = false,
-  }) =>
-      _readMergeMatchingEvents(fallback: fallback);
-
-  static Future<bool> _readMergeMatchingEvents({
-    required bool fallback,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey(mergeMatchingPrefsKey)) {
-      return prefs.getBool(mergeMatchingPrefsKey) ?? fallback;
+    final pluginId = await resolveSettingsPluginId();
+    if (pluginId != null) {
+      await PackSettingsStore.migrateBoolIfAbsent(
+        pluginId,
+        fieldMergeMatching,
+        await _readLegacyMerge(fallback: fallback),
+      );
+      return PackSettingsStore.getBool(
+        pluginId,
+        fieldMergeMatching,
+        defaultValue: fallback,
+      );
     }
-    // Migrate any `pack_setting_v1_<pluginId>_mergeMatchingEvents`.
-    for (final k in prefs.getKeys()) {
-      if (!k.startsWith('pack_setting_v1_') ||
-          !k.endsWith('_$mergeMatchingFieldId')) {
-        continue;
-      }
-      final v = prefs.getBool(k) ?? fallback;
-      await prefs.setBool(mergeMatchingPrefsKey, v);
-      return v;
-    }
-    await prefs.setBool(mergeMatchingPrefsKey, fallback);
-    return fallback;
+    return _readLegacyMerge(fallback: fallback);
   }
 
   static Future<void> save(LiveMatchesIptvSportsConfig config) async {
     final prefs = await SharedPreferences.getInstance();
+    final pluginId = await resolveSettingsPluginId();
+    if (pluginId != null) {
+      await PackSettingsStore.setBool(
+        pluginId,
+        fieldForjaLive,
+        config.forjaLiveEnabled,
+      );
+      await PackSettingsStore.setBool(
+        pluginId,
+        fieldForjaSports,
+        config.enabled,
+      );
+      await PackSettingsStore.setBool(
+        pluginId,
+        fieldMergeMatching,
+        config.mergeMatchingEvents,
+      );
+      await PackSettingsStore.setStringList(
+        pluginId,
+        fieldLeagues,
+        config.leagues,
+      );
+    }
     await prefs.setBool(mergeMatchingPrefsKey, config.mergeMatchingEvents);
-    await prefs.setString(
-      prefsKey,
-      jsonEncode(config.toJson()),
-    );
+    await prefs.setString(prefsKey, jsonEncode(config.toJson()));
   }
 }
