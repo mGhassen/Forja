@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/foundation/services/live/iptv_sports_config.dart';
 import 'package:forja/shared/foundation/services/pack_addon_settings_spec.dart';
 import 'package:forja/shared/foundation/services/pack_settings_store.dart';
 
@@ -60,11 +61,16 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
       for (final field in spec.fields) {
         final k = _valueKey(spec.pluginId, field.id);
         values[k] = switch (field.type) {
-          PackAddonSettingsFieldType.toggle => await PackSettingsStore.getBool(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultBool,
-            ),
+          PackAddonSettingsFieldType.toggle =>
+            field.id == LiveMatchesIptvSportsConfig.mergeMatchingFieldId
+                ? await LiveMatchesIptvSportsConfig.readMergeMatchingEvents(
+                    fallback: field.defaultBool,
+                  )
+                : await PackSettingsStore.getBool(
+                    spec.pluginId,
+                    field.id,
+                    defaultValue: field.defaultBool,
+                  ),
           PackAddonSettingsFieldType.select ||
           PackAddonSettingsFieldType.text =>
             await PackSettingsStore.getString(
@@ -126,6 +132,9 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     bool value,
   ) async {
     await PackSettingsStore.setBool(spec.pluginId, field.id, value);
+    if (field.id == LiveMatchesIptvSportsConfig.mergeMatchingFieldId) {
+      await LiveMatchesIptvSportsConfig.setMergeMatchingEvents(value);
+    }
     if (!mounted) return;
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }

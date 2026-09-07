@@ -35,6 +35,7 @@ abstract class KitListSource {
   String get id;
 
   /// Catalog hub plugin id used to pipe enrich companions (may be null).
+  /// Live Sports / My List host sources leave this null — packs own plugin ids.
   String? get hubPluginId;
 
   /// When true, [KitShell] mounts [buildHostBody] instead of the plain

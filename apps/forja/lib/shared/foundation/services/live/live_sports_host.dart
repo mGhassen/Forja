@@ -3,17 +3,17 @@ import 'package:forja/shared/foundation/services/host_list_registry.dart';
 import 'package:forja/shared/foundation/services/live/live_schedule_catalog_source.dart';
 import 'package:forja/shared/foundation/services/live/live_sports_streams_panel_host.dart';
 
-/// Opaque Live Sports kit ids + foundation registration.
+/// Live Sports host services — list source + streams panel registration.
 ///
-/// Registers the match-list source and streams panel so pack layouts can
-/// resolve `source: live_schedule` without importing play internals.
-/// Tab chrome lives only in hub packs — not a host feature root.
+/// Packs set `kit.list { source: "live_schedule" }`. Host never binds a
+/// shipped hub plugin id (`live-sports-hub`, …).
 abstract final class LiveSportsHost {
   LiveSportsHost._();
 
-  /// Opaque kit.list source id (registry key — not a user-facing name).
+  /// Host service id for [HostListRegistry] / pack `source`.
   static const listSourceId = 'live_schedule';
-  static const hubPluginId = 'live-sports-hub';
+
+  /// Addons capability + list-pack nav tab id (not a plugin id).
   static const tabId = 'live_matches';
 
   static bool _registered = false;
@@ -21,10 +21,7 @@ abstract final class LiveSportsHost {
   static void ensureRegistered() {
     if (_registered) return;
     _registered = true;
-    HostListRegistry.register(
-      LiveScheduleCatalogSource.instance,
-      pluginId: hubPluginId,
-    );
+    HostListRegistry.register(LiveScheduleCatalogSource.instance);
     HostListRegistry.registerPanel(LiveSportsStreamsPanelHost.instance);
   }
 

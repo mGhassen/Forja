@@ -101,7 +101,7 @@ final class LiveScheduleCatalogSource extends KitListSource {
   String get id => LiveSportsHost.listSourceId;
 
   @override
-  String? get hubPluginId => LiveSportsHost.hubPluginId;
+  String? get hubPluginId => null;
 
   @override
   AsyncValue<KitListPage> watchPage(WidgetRef ref, String status) {

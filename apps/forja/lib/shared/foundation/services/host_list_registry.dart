@@ -4,8 +4,9 @@ import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 
 /// Host-side registration for `kit.list` backends + optional side panels.
 ///
-/// Features register at boot. Kit widgets resolve opaque [sourceId] / hub
-/// [pluginId] — they never import product modules.
+/// Features register at boot by **host source id** (e.g. `live_schedule`).
+/// Optional [pluginId] is only for resolve fallback when pack layout omits
+/// `source` — do not pass shipped hub pack ids from foundation hosts.
 abstract final class HostListRegistry {
   HostListRegistry._();
 

@@ -3,15 +3,14 @@ import 'dart:convert';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
-import 'package:forja/shared/foundation/services/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
 class LiveMatchesIptvSportsConfig {
   static const prefsKey = 'live_matches_iptv_sports_v1';
 
-  /// Pack field for schedule merge (RFC-089) — [PackSettingsStore].
-  static const mergeMatchingPluginId = 'live-sports-hub';
+  /// Host-owned merge toggle (not a pack plugin id).
+  static const mergeMatchingPrefsKey = 'live_matches_merge_matching_v1';
   static const mergeMatchingFieldId = 'mergeMatchingEvents';
 
   static const allLeagues = <String>[
@@ -381,31 +380,50 @@ class LiveMatchesIptvSportsConfig {
         base = const LiveMatchesIptvSportsConfig();
       }
     }
-    await PackSettingsStore.migrateBoolIfAbsent(
-      mergeMatchingPluginId,
-      mergeMatchingFieldId,
-      base.mergeMatchingEvents,
-    );
-    final merge = await PackSettingsStore.getBool(
-      mergeMatchingPluginId,
-      mergeMatchingFieldId,
-      defaultValue: false,
+    final merge = await _readMergeMatchingEvents(
+      fallback: base.mergeMatchingEvents,
     );
     return base.copyWith(mergeMatchingEvents: merge);
   }
 
+  /// Host-owned merge flag — never keyed by a shipped hub plugin id.
+  static Future<void> setMergeMatchingEvents(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(mergeMatchingPrefsKey, value);
+  }
+
+  static Future<bool> readMergeMatchingEvents({
+    bool fallback = false,
+  }) =>
+      _readMergeMatchingEvents(fallback: fallback);
+
+  static Future<bool> _readMergeMatchingEvents({
+    required bool fallback,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(mergeMatchingPrefsKey)) {
+      return prefs.getBool(mergeMatchingPrefsKey) ?? fallback;
+    }
+    // Migrate any `pack_setting_v1_<pluginId>_mergeMatchingEvents`.
+    for (final k in prefs.getKeys()) {
+      if (!k.startsWith('pack_setting_v1_') ||
+          !k.endsWith('_$mergeMatchingFieldId')) {
+        continue;
+      }
+      final v = prefs.getBool(k) ?? fallback;
+      await prefs.setBool(mergeMatchingPrefsKey, v);
+      return v;
+    }
+    await prefs.setBool(mergeMatchingPrefsKey, fallback);
+    return fallback;
+  }
+
   static Future<void> save(LiveMatchesIptvSportsConfig config) async {
     final prefs = await SharedPreferences.getInstance();
-    // Merge toggle lives in PackSettingsStore (hub pack settings); keep JSON
-    // key for older builds but always sync from the pack store when present.
-    final merge = await PackSettingsStore.getBool(
-      mergeMatchingPluginId,
-      mergeMatchingFieldId,
-      defaultValue: config.mergeMatchingEvents,
-    );
+    await prefs.setBool(mergeMatchingPrefsKey, config.mergeMatchingEvents);
     await prefs.setString(
       prefsKey,
-      jsonEncode(config.copyWith(mergeMatchingEvents: merge).toJson()),
+      jsonEncode(config.toJson()),
     );
   }
 }
