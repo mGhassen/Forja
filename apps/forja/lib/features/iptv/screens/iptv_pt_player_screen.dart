@@ -39,8 +39,8 @@ import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
-import 'package:forja/features/iptv/sports/live_stream_engine.dart';
-import 'package:forja/features/iptv/sports/iptv_sports_config.dart';
+import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
@@ -1492,7 +1492,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Forja Sports: resolve the armed Xtream/Stalker portal for in-player short EPG.
   Future<void> _initSportsEpgCache() async {
-    final config = await LiveMatchesIptvSportsConfig.load();
+    final config = await IptvPortalSportsConfig.load();
     final armed = await config.resolveForFetch();
     if (armed == null || _disposed || !mounted) return;
     final portals = await IptvStore.load();

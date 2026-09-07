@@ -406,22 +406,27 @@ class EngineService {
       }
     }
 
-    final viaRust = await _runLiveEngineRustJs(
-      plugin: plugin,
-      config: config,
-      action: action,
-      params: catalogCtx,
-      timeout: timeout,
-      gen: gen,
-      generation: () => _catalogGeneration,
-    );
-    if (viaRust != null) {
-      final envelope = _firstEnvelopeMap(viaRust);
-      if (envelope != null) return envelope;
-      if (gen != _catalogGeneration) return null;
-      debugPrint(
-        '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
+    // Hub feed/rail may call ctx.host.liveFeed.load (flutter_js async bridge).
+    // Skip EngineJS for those actions so aggregation can fork catalog plugins.
+    final preferFlutterJs = action == 'feed' || action == 'rail';
+    if (!preferFlutterJs) {
+      final viaRust = await _runLiveEngineRustJs(
+        plugin: plugin,
+        config: config,
+        action: action,
+        params: catalogCtx,
+        timeout: timeout,
+        gen: gen,
+        generation: () => _catalogGeneration,
       );
+      if (viaRust != null) {
+        final envelope = _firstEnvelopeMap(viaRust);
+        if (envelope != null) return envelope;
+        if (gen != _catalogGeneration) return null;
+        debugPrint(
+          '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
+        );
+      }
     }
     if (gen != _catalogGeneration) return null;
 

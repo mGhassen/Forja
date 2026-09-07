@@ -2,8 +2,9 @@
 ///
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
 /// Services domains: `meta/` · `registry/` · `nav/` · `pack/` · `follow/` · `watch/`.
-/// Product hub tabs are pack-owned. Live schedule / IPTV sports glue lives under
-/// `features/iptv/sports/` (RFC-091) — not foundation.
+/// Product hub tabs are pack-owned. Live schedule browse uses generic kit
+/// services + MetaRuntime feed; IPTV portal sports match lives under
+/// `features/iptv/portal_sports/` (RFC-092) — not a Live Sports product tree.
 library;
 
 export 'primitives/primitives.dart';

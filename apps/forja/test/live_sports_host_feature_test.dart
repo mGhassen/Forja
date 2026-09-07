@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
-import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:rust/rust.dart';
@@ -9,9 +9,9 @@ import 'package:rust/rust.dart';
 void main() {
   setUp(() {
     HostListRegistry.debugReset();
-    LiveScheduleKit.debugReset();
+    KitLiveBoot.debugReset();
     PluginNavRegistry.seedBuiltIns();
-    LiveScheduleKit.ensureRegistered();
+    KitLiveBoot.ensureRegistered();
   });
 
   test('live_matches is pack-owned — not core shell without a hub', () {
@@ -55,10 +55,9 @@ void main() {
   });
 
   test('live_schedule registers streams panel host', () {
-    final panel =
-        HostListRegistry.resolvePanel(LiveScheduleKit.listSourceId);
+    final panel = HostListRegistry.resolvePanel(KitLiveBoot.listSourceId);
     expect(panel, isNotNull);
-    expect(panel!.listSourceId, LiveScheduleKit.listSourceId);
+    expect(panel!.listSourceId, KitLiveBoot.listSourceId);
   });
 
   test('hub pack contributes live_matches kit tab', () {

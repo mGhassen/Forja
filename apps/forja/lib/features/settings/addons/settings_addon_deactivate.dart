@@ -1,5 +1,5 @@
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
-import 'package:forja/features/iptv/sports/iptv_sports_config.dart';
+import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -67,9 +67,9 @@ Future<void> _disablePacksOfKind(String kind) async {
 }
 
 Future<void> _disableLiveSports() async {
-  final config = await LiveMatchesIptvSportsConfig.load();
+  final config = await IptvPortalSportsConfig.load();
   if (config.enabled || config.forjaLiveEnabled) {
-    await LiveMatchesIptvSportsConfig.save(
+    await IptvPortalSportsConfig.save(
       config.copyWith(enabled: false, forjaLiveEnabled: false),
     );
   }

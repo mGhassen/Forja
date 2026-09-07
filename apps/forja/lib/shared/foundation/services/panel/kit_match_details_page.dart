@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
-import 'package:forja/features/iptv/sports/live_sports_streams_panel_host.dart';
+import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
@@ -14,8 +14,8 @@ import 'package:forja/shared/foundation/components/details/kit_details_hero.dart
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
 
 /// Full-bleed live match details — [KitDetailsHero] + Providers / Live TV.
-class LiveMatchDetailsPage extends StatefulWidget {
-  const LiveMatchDetailsPage({
+class KitMatchDetailsPage extends StatefulWidget {
+  const KitMatchDetailsPage({
     super.key,
     required this.entry,
     this.refreshEpoch = 0,
@@ -25,12 +25,12 @@ class LiveMatchDetailsPage extends StatefulWidget {
   final int refreshEpoch;
 
   @override
-  State<LiveMatchDetailsPage> createState() => _LiveMatchDetailsPageState();
+  State<KitMatchDetailsPage> createState() => _KitMatchDetailsPageState();
 }
 
-class _LiveMatchDetailsPageState extends State<LiveMatchDetailsPage> {
-  static const _providers = LiveSportsStreamsPanelHost.providersTab;
-  static const _liveTv = LiveSportsStreamsPanelHost.liveTvTab;
+class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
+  static const _providers = KitResolvePanelHost.providersTab;
+  static const _liveTv = KitResolvePanelHost.liveTvTab;
 
   final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
   late final IptvLazyUrlHealthProbe _healthProbe;
@@ -157,12 +157,12 @@ class _LiveMatchDetailsPageState extends State<LiveMatchDetailsPage> {
                       ],
                       initialTabId: _tabId,
                       showTabs: false,
-                      loadTab: (tabId) => LiveSportsStreamsPanelHost.loadTab(
+                      loadTab: (tabId) => KitResolvePanelHost.loadTab(
                         widget.entry.legacyRow,
                         tabId,
                         healthProbe: _healthProbe,
                       ),
-                      onPlayRow: (row) => LiveSportsStreamsPanelHost.playRow(
+                      onPlayRow: (row) => KitResolvePanelHost.playRow(
                         context,
                         row,
                         title: title,

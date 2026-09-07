@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -256,6 +257,21 @@ class EngineRuntime {
         final hostId = (m['hostId'] ?? '').toString().trim();
         final gen = _fetchGeneration;
         unawaited(_dispatchHost(id: id, hostId: hostId, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('LiveFeedStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final queryRaw = m['query'];
+        final query = queryRaw is Map
+            ? Map<String, dynamic>.from(queryRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(_dispatchLiveFeed(id: id, query: query, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -1026,6 +1042,20 @@ class EngineRuntime {
           return search(primary).then(function(hit){ return hit || search(secondary); });
         }
       };
+      h.liveFeed = {
+        load: function(query) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineLiveFeedSeq;
+            globalThis.__engineLiveFeedPending[id] = function(env) {
+              resolve(env && Array.isArray(env.rows) ? env.rows : []);
+            };
+            sendMessage('LiveFeedStart', JSON.stringify({
+              id: id,
+              query: query == null ? {} : query
+            }));
+          });
+        }
+      };
       return h;
     })(),
     hop: globalThis.__engineHop,
@@ -1314,6 +1344,37 @@ class EngineRuntime {
       return;
     }
     _resolveHost(id: id, gen: gen, streams: const []);
+  }
+
+  Future<void> _dispatchLiveFeed({
+    required int id,
+    required Map<String, dynamic> query,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await aggregateLiveFeed(LiveFeedQuery.fromHostParams(query));
+    } catch (e, st) {
+      _forjaRuntimeLog('liveFeed.load failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveLiveFeed(id: id, gen: gen, rows: rows);
+  }
+
+  void _resolveLiveFeed({
+    required int id,
+    required int gen,
+    required List<Map<String, dynamic>> rows,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineLiveFeedResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
+      sourceUrl: 'engine://liveFeed/$id',
+    );
   }
 
   Future<void> _dispatchHop({
@@ -1735,6 +1796,12 @@ class EngineRuntime {
   globalThis.__engineHostResolve = function(id, envelope){
     var p = globalThis.__engineHostPending[id];
     if (p) { delete globalThis.__engineHostPending[id]; p(envelope); }
+  };
+  globalThis.__engineLiveFeedPending = globalThis.__engineLiveFeedPending || {};
+  globalThis.__engineLiveFeedSeq = globalThis.__engineLiveFeedSeq || 0;
+  globalThis.__engineLiveFeedResolve = function(id, envelope){
+    var p = globalThis.__engineLiveFeedPending[id];
+    if (p) { delete globalThis.__engineLiveFeedPending[id]; p(envelope); }
   };
   globalThis.__engineHost = function(hostId){
     return new Promise(function(resolve){

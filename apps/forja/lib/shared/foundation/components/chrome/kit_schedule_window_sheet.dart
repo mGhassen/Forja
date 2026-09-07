@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/features/iptv/sports/live_catalog_sheet.dart';
-import 'package:forja/features/iptv/sports/live_schedule_window.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Old Live Sports Schedule sheet — Status × Horizon (not a flat time list).
 ///
 /// Picks apply live via [onChanged]; the sheet stays open until dismissed.
-Future<void> showLiveScheduleSheet(
+Future<void> showKitScheduleWindowSheet(
   BuildContext context, {
-  required LiveScheduleStatus status,
-  required LiveScheduleHorizon horizon,
+  required KitScheduleStatus status,
+  required KitScheduleHorizon horizon,
   required void Function({
-    LiveScheduleStatus? status,
-    LiveScheduleHorizon? horizon,
+    KitScheduleStatus? status,
+    KitScheduleHorizon? horizon,
   }) onChanged,
 }) {
   return showModalBottomSheet<void>(
@@ -36,11 +36,11 @@ class _LiveScheduleSheet extends StatefulWidget {
     required this.onChanged,
   });
 
-  final LiveScheduleStatus status;
-  final LiveScheduleHorizon horizon;
+  final KitScheduleStatus status;
+  final KitScheduleHorizon horizon;
   final void Function({
-    LiveScheduleStatus? status,
-    LiveScheduleHorizon? horizon,
+    KitScheduleStatus? status,
+    KitScheduleHorizon? horizon,
   }) onChanged;
 
   @override
@@ -53,8 +53,8 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
   static const _horizonRowId = 'live-schedule-horizon';
   final _firstFocus = FocusNode(debugLabel: 'live-schedule-sheet-first');
 
-  late LiveScheduleStatus _status;
-  late LiveScheduleHorizon _horizon;
+  late KitScheduleStatus _status;
+  late KitScheduleHorizon _horizon;
 
   @override
   void initState() {
@@ -81,14 +81,14 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
     super.dispose();
   }
 
-  bool get _showHorizon => _status != LiveScheduleStatus.airing;
+  bool get _showHorizon => _status != KitScheduleStatus.airing;
 
-  void _pickStatus(LiveScheduleStatus status) {
+  void _pickStatus(KitScheduleStatus status) {
     setState(() => _status = status);
     widget.onChanged(status: status);
   }
 
-  void _pickHorizon(LiveScheduleHorizon horizon) {
+  void _pickHorizon(KitScheduleHorizon horizon) {
     setState(() => _horizon = horizon);
     widget.onChanged(horizon: horizon);
   }
@@ -97,15 +97,15 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final statuses = LiveScheduleStatus.values;
-    final horizons = LiveScheduleHorizon.values;
+    final statuses = KitScheduleStatus.values;
+    final horizons = KitScheduleHorizon.values;
 
     Widget statusSection = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < statuses.length; i++)
-          LiveFilterSheetOption(
+          KitFilterSheetOption(
             label: statuses[i].label,
             subtitle: statuses[i].subtitle,
             selected: statuses[i] == _status,
@@ -136,7 +136,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < horizons.length; i++)
-            LiveFilterSheetOption(
+            KitFilterSheetOption(
               label: horizons[i].label,
               subtitle: horizons[i].subtitle,
               selected: horizons[i] == _horizon,

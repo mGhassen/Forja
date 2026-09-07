@@ -11,7 +11,7 @@ Live Sports is a **hub pack** (ForjaHQ Live Sports / Live Sports Cards) — same
 - **List** — dense match rows (list pack) or landscape cards (Cards pack)
 - **Streams** — Providers / Live TV (right panel on list pack; hero details on Cards)
 
-Host only registers opaque schedule/stream adapters (`live_schedule`) from `features/iptv/sports/` (RFC-091). Hub packs own layout + MetaRuntime `feed`. There is **no** host Live Sports feature tab without a hub pack.
+Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV portal match under `features/iptv/portal_sports/` (RFC-092). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`). There is **no** root-app Live Sports product tree and **no** host Live Sports feature tab without a hub pack.
 
 Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). **Settings → Addons → Live Sports** turns catalog/settings capability on or off — it does not invent a navbar tab by itself.
 

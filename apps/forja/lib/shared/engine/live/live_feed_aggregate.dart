@@ -1,59 +1,45 @@
-import 'package:forja/features/iptv/sports/live_stream_engine.dart';
-import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
-import 'package:forja/features/iptv/sports/live_schedule_window.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 
-/// Feature schedule source ids (opaque to kit).
-abstract final class LiveSportsListSources {
-  LiveSportsListSources._();
-
-  static const liveSchedule = LiveScheduleKit.listSourceId;
-
-  static LiveScheduleSource? resolve(String sourceId) {
-    if (sourceId == liveSchedule) return const LiveScheduleListSource();
-    return null;
-  }
-}
-
-/// One live schedule query (catalog + sport + schedule window).
-class LiveScheduleQuery {
-  const LiveScheduleQuery({
+/// Query for [aggregateLiveFeed] — catalog filter + schedule window.
+class LiveFeedQuery {
+  const LiveFeedQuery({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleStatus = LiveScheduleStatus.both,
-    this.scheduleHorizon = LiveScheduleHorizon.h24,
+    this.scheduleStatus = KitScheduleStatus.both,
+    this.scheduleHorizon = KitScheduleHorizon.h24,
   });
 
   final String catalogFilter;
   final String sportFilter;
-  final LiveScheduleStatus scheduleStatus;
-  final LiveScheduleHorizon scheduleHorizon;
-}
+  final KitScheduleStatus scheduleStatus;
+  final KitScheduleHorizon scheduleHorizon;
 
-/// Host schedule backend — loads enabled Forja Live catalog plugins into meta.
-abstract class LiveScheduleSource {
-  String get id;
-
-  Future<List<MetaItem>> load(LiveScheduleQuery query);
-}
-
-/// Default schedule source (RFC-073) — engine catalog rows → [MetaItem].
-class LiveScheduleListSource implements LiveScheduleSource {
-  const LiveScheduleListSource();
-
-  @override
-  String get id => LiveSportsListSources.liveSchedule;
-
-  @override
-  Future<List<MetaItem>> load(LiveScheduleQuery query) async {
-    final rows = await loadLiveScheduleRows(query);
-    return [for (final row in rows) liveMetaFromScheduleRow(row)];
+  factory LiveFeedQuery.fromHostParams(Map<String, dynamic>? params) {
+    final p = params ?? const {};
+    final statusName = (p['scheduleStatus'] ?? '').toString();
+    final horizonName = (p['scheduleHorizon'] ?? '').toString();
+    final status = KitScheduleStatus.values.where((e) => e.name == statusName);
+    final horizon =
+        KitScheduleHorizon.values.where((e) => e.name == horizonName);
+    return LiveFeedQuery(
+      catalogFilter: (p['catalogFilter'] ?? 'all').toString(),
+      sportFilter: (p['sportFilter'] ?? 'all').toString(),
+      scheduleStatus:
+          status.isEmpty ? KitScheduleStatus.both : status.first,
+      scheduleHorizon:
+          horizon.isEmpty ? KitScheduleHorizon.h24 : horizon.first,
+    );
   }
 }
 
-/// Engine catalog rows (opaque maps) for kit list + play bridge.
-Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
-  LiveScheduleQuery query,
+/// Aggregate enabled live catalog plugins into opaque schedule row maps.
+///
+/// Called from `ctx.host.liveFeed.load` (hub feed owns composition) — not from
+/// a Dart schedule list god path.
+Future<List<Map<String, dynamic>>> aggregateLiveFeed(
+  LiveFeedQuery query,
 ) async {
   await LiveMatchesEngine.warmPluginMeta();
   final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
@@ -82,7 +68,7 @@ Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
         final map = Map<String, dynamic>.from(row);
         map.putIfAbsent('pluginId', () => plugin.id);
         map.putIfAbsent('livePluginId', () => plugin.id);
-        final item = liveMetaFromScheduleRow(map);
+        final item = liveMetaFromFeedRow(map);
         if (item.id.isEmpty || !seen.add(item.id)) continue;
         if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
           final kind = item.genres.isNotEmpty
@@ -93,9 +79,7 @@ Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
             continue;
           }
         }
-        if (!liveScheduleRowMatches(map, item, query)) {
-          continue;
-        }
+        if (!liveFeedRowMatches(map, item, query)) continue;
         out.add(map);
       }
     } catch (_) {
@@ -106,18 +90,18 @@ Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
 }
 
 /// Whether a schedule row matches the Status × Horizon window.
-bool liveScheduleRowMatches(
+bool liveFeedRowMatches(
   Map<String, dynamic> row,
   MetaItem item,
-  LiveScheduleQuery query,
+  LiveFeedQuery query,
 ) {
   final airing = item.airing == true;
   final alwaysOn = row['always_live'] == true ||
       row['alwaysLive'] == true ||
       (item.badge ?? '').toLowerCase().contains('24/7') ||
       item.genres.any((g) => g.toLowerCase().contains('24/7'));
-  return liveScheduleKickoffMatches(
-    start: liveScheduleStartsAt(row, item),
+  return kitScheduleKickoffMatches(
+    start: liveFeedStartsAt(row, item),
     status: query.scheduleStatus,
     horizon: query.scheduleHorizon,
     alwaysOn: alwaysOn,
@@ -125,28 +109,7 @@ bool liveScheduleRowMatches(
   );
 }
 
-/// Legacy single-token horizon helper — prefer [liveScheduleRowMatches].
-bool liveScheduleRowInHorizon(
-  Map<String, dynamic> row,
-  MetaItem item,
-  String horizonRaw,
-) {
-  final window = liveScheduleWindowFromPref(horizonRaw) ??
-      (
-        status: LiveScheduleStatus.both,
-        horizon: LiveScheduleHorizon.h24,
-      );
-  return liveScheduleRowMatches(
-    row,
-    item,
-    LiveScheduleQuery(
-      scheduleStatus: window.status,
-      scheduleHorizon: window.horizon,
-    ),
-  );
-}
-
-DateTime? liveScheduleStartsAt(Map<String, dynamic> row, MetaItem item) {
+DateTime? liveFeedStartsAt(Map<String, dynamic> row, MetaItem item) {
   final raw = item.startsAt ??
       (row['startsAt'] ?? row['starts_at'] ?? row['date'] ?? '').toString();
   if (raw.trim().isEmpty) return null;
@@ -159,10 +122,7 @@ DateTime? liveScheduleStartsAt(Map<String, dynamic> row, MetaItem item) {
 }
 
 /// Map a pack catalog row to catalog meta (stable wire contract — RFC-073).
-///
-/// Preferred keys: `id`, `title`, `startsAt`, `airing`, `viewers`, `kind` /
-/// `genres`, `open`, optional `sportMatchGame` / badges / `sources`.
-MetaItem liveMetaFromScheduleRow(Map<String, dynamic> row) {
+MetaItem liveMetaFromFeedRow(Map<String, dynamic> row) {
   final id = (row['id'] ?? '').toString().trim();
   final name = (row['title'] ?? row['name'] ?? '').toString().trim();
   final airing = row['airing'] == true || row['live'] == true;

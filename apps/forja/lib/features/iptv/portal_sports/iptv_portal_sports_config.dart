@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Product toggles / leagues for Addons → Live Sports come from the hub pack
 /// `settings` block via [PackSettingsStore] (RFC-089).
-class LiveMatchesIptvSportsConfig {
+class IptvPortalSportsConfig {
   static const prefsKey = 'live_sports_iptv_sports_v1';
   static const _legacyPrefsKey = 'live_matches_iptv_sports_v1';
 
@@ -50,7 +50,7 @@ class LiveMatchesIptvSportsConfig {
     'UFC',
   ];
 
-  const LiveMatchesIptvSportsConfig({
+  const IptvPortalSportsConfig({
     this.enabled = true,
     this.forjaLiveEnabled = true,
     this.mergeMatchingEvents = false,
@@ -215,7 +215,7 @@ class LiveMatchesIptvSportsConfig {
   }
 
   /// Persist portal + default leagues for Xtream matching (does not toggle Enable).
-  static Future<LiveMatchesIptvSportsConfig> ensureArmed({
+  static Future<IptvPortalSportsConfig> ensureArmed({
     String? portalKey,
   }) async {
     final config = await load();
@@ -247,7 +247,7 @@ class LiveMatchesIptvSportsConfig {
 
   /// Configured override, else IPTV’s last-selected Xtream/Stalker portal.
   static Future<String> resolvePortalKey([
-    LiveMatchesIptvSportsConfig? config,
+    IptvPortalSportsConfig? config,
   ]) async {
     final c = config ?? await load();
     if (c.portalKey.isNotEmpty) return c.portalKey;
@@ -274,7 +274,7 @@ class LiveMatchesIptvSportsConfig {
     return {...sportIds, ...global}.toList();
   }
 
-  LiveMatchesIptvSportsConfig copyWith({
+  IptvPortalSportsConfig copyWith({
     bool? enabled,
     bool? forjaLiveEnabled,
     bool? mergeMatchingEvents,
@@ -283,7 +283,7 @@ class LiveMatchesIptvSportsConfig {
     List<String>? leagues,
     Map<String, List<String>>? sportCategories,
   }) {
-    return LiveMatchesIptvSportsConfig(
+    return IptvPortalSportsConfig(
       enabled: enabled ?? this.enabled,
       forjaLiveEnabled: forjaLiveEnabled ?? this.forjaLiveEnabled,
       mergeMatchingEvents: mergeMatchingEvents ?? this.mergeMatchingEvents,
@@ -330,8 +330,8 @@ class LiveMatchesIptvSportsConfig {
     return out;
   }
 
-  factory LiveMatchesIptvSportsConfig.fromJson(Map<String, dynamic>? j) {
-    if (j == null) return const LiveMatchesIptvSportsConfig();
+  factory IptvPortalSportsConfig.fromJson(Map<String, dynamic>? j) {
+    if (j == null) return const IptvPortalSportsConfig();
     final leaguesRaw = j['leagues'];
     final leagues = <String>[];
     if (leaguesRaw is List) {
@@ -356,7 +356,7 @@ class LiveMatchesIptvSportsConfig {
         if (key.isNotEmpty) cats[key] = ids;
       }
     }
-    return LiveMatchesIptvSportsConfig(
+    return IptvPortalSportsConfig(
       enabled: j['enabled'] == true,
       forjaLiveEnabled: j['forjaLiveEnabled'] != false,
       mergeMatchingEvents: j['mergeMatchingEvents'] == true,
@@ -367,7 +367,7 @@ class LiveMatchesIptvSportsConfig {
     );
   }
 
-  static Future<LiveMatchesIptvSportsConfig> load() async {
+  static Future<IptvPortalSportsConfig> load() async {
     final prefs = await SharedPreferences.getInstance();
     var raw = prefs.getString(prefsKey);
     if (raw == null || raw.isEmpty) {
@@ -377,9 +377,9 @@ class LiveMatchesIptvSportsConfig {
         await prefs.remove(_legacyPrefsKey);
       }
     }
-    LiveMatchesIptvSportsConfig base;
+    IptvPortalSportsConfig base;
     if (raw == null || raw.isEmpty) {
-      base = const LiveMatchesIptvSportsConfig(
+      base = const IptvPortalSportsConfig(
         enabled: true,
         forjaLiveEnabled: true,
         leagues: allLeagues,
@@ -388,16 +388,16 @@ class LiveMatchesIptvSportsConfig {
       try {
         final decoded = jsonDecode(raw);
         if (decoded is Map<String, dynamic>) {
-          base = LiveMatchesIptvSportsConfig.fromJson(decoded);
+          base = IptvPortalSportsConfig.fromJson(decoded);
         } else if (decoded is Map) {
-          base = LiveMatchesIptvSportsConfig.fromJson(
+          base = IptvPortalSportsConfig.fromJson(
             Map<String, dynamic>.from(decoded),
           );
         } else {
-          base = const LiveMatchesIptvSportsConfig();
+          base = const IptvPortalSportsConfig();
         }
       } catch (_) {
-        base = const LiveMatchesIptvSportsConfig();
+        base = const IptvPortalSportsConfig();
       }
     }
     return _overlayPackSettings(base);
@@ -417,8 +417,8 @@ class LiveMatchesIptvSportsConfig {
     return null;
   }
 
-  static Future<LiveMatchesIptvSportsConfig> _overlayPackSettings(
-    LiveMatchesIptvSportsConfig base,
+  static Future<IptvPortalSportsConfig> _overlayPackSettings(
+    IptvPortalSportsConfig base,
   ) async {
     final pluginId = await resolveSettingsPluginId();
     if (pluginId == null) {
@@ -521,7 +521,7 @@ class LiveMatchesIptvSportsConfig {
     return _readLegacyMerge(fallback: fallback);
   }
 
-  static Future<void> save(LiveMatchesIptvSportsConfig config) async {
+  static Future<void> save(IptvPortalSportsConfig config) async {
     final prefs = await SharedPreferences.getInstance();
     final pluginId = await resolveSettingsPluginId();
     if (pluginId != null) {

@@ -5,7 +5,7 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
 
 /// Old Live Sports Catalog sheet — flat ListTile rows (not bordered cards).
-Future<String?> showLiveCatalogSheet(
+Future<String?> showKitCatalogFilterSheet(
   BuildContext context, {
   required String current,
   required List<({String id, String label, String? subtitle})> options,
@@ -98,7 +98,7 @@ class _LiveCatalogSheetState extends State<_LiveCatalogSheet> {
                 ),
                 const SizedBox(height: 16),
                 for (var i = 0; i < widget.options.length; i++)
-                  LiveFilterSheetOption(
+                  KitFilterSheetOption(
                     label: widget.options[i].label,
                     subtitle: widget.options[i].subtitle,
                     selected: widget.options[i].id == selectedId,
@@ -130,6 +130,3 @@ class _LiveCatalogSheetState extends State<_LiveCatalogSheet> {
     );
   }
 }
-
-/// Alias — Live Sports sheets use the generic kit filter row.
-typedef LiveFilterSheetOption = KitFilterSheetOption;

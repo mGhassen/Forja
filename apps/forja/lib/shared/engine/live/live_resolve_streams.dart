@@ -8,8 +8,8 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/foundation/blocks/play/live_play.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/features/iptv/sports/iptv_sports_config.dart';
-import 'package:forja/features/iptv/sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
+import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/lib/stremio_live_meta.dart';
@@ -17,9 +17,9 @@ import 'package:rust/rust.dart'
     show BuiltInPlayerContext, SettingsService, StremioAddonFeatures, StremioService;
 
 /// Live resolve + Stremio providers + native play (RFC-091).
-/// Live TV portal matching is [IptvSportsMatchService] — not this class.
-abstract final class LiveProviderStreams {
-  LiveProviderStreams._();
+/// Live TV portal matching is [IptvPortalSportsMatchService] — not this class.
+abstract final class LiveResolveStreams {
+  LiveResolveStreams._();
 
   static const _providersCacheTtl = Duration(minutes: 30);
   static final Map<String, _ProvidersCacheEntry> _providersCache = {};
@@ -62,14 +62,14 @@ abstract final class LiveProviderStreams {
       final forja = await _loadForjaLiveProviders(match);
       await addBatch(forja);
     } catch (e, st) {
-      debugPrint('[LiveProviderStreams] Forja Live providers error: $e\n$st');
+      debugPrint('[LiveResolveStreams] Forja Live providers error: $e\n$st');
     }
 
     try {
       final stremio = await _loadStremioProviders(match);
       await addBatch(stremio);
     } catch (e, st) {
-      debugPrint('[LiveProviderStreams] Stremio providers error: $e\n$st');
+      debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
     }
 
     if (out.isNotEmpty) {
@@ -140,7 +140,7 @@ abstract final class LiveProviderStreams {
           choices.add(_StreamChoice(match: m, stream: stream));
         }
       } catch (e) {
-        debugPrint('[LiveProviderStreams] resolve ${ref.source}/${ref.id}: $e');
+        debugPrint('[LiveResolveStreams] resolve ${ref.source}/${ref.id}: $e');
       }
     }
 
@@ -407,7 +407,7 @@ abstract final class LiveProviderStreams {
     try {
       catalog = await _fetchStremioSportMatches();
     } catch (e) {
-      debugPrint('[LiveProviderStreams] Stremio catalog error: $e');
+      debugPrint('[LiveResolveStreams] Stremio catalog error: $e');
       return const [];
     }
     final hits = catalog.where((m) => _stremioCatalogEventMatch(match, m)).toList();
@@ -417,7 +417,7 @@ abstract final class LiveProviderStreams {
         try {
           return await _stremioPlaySourcesFor(hit);
         } catch (e) {
-          debugPrint('[LiveProviderStreams] Stremio addon resolve error: $e');
+          debugPrint('[LiveResolveStreams] Stremio addon resolve error: $e');
           return const <IptvPlaySource>[];
         }
       }),
@@ -464,7 +464,7 @@ abstract final class LiveProviderStreams {
         );
       }
     } catch (e) {
-      debugPrint('[LiveProviderStreams] Stremio stream error: $e');
+      debugPrint('[LiveResolveStreams] Stremio stream error: $e');
     }
     return out;
   }
@@ -543,7 +543,7 @@ abstract final class LiveProviderStreams {
           }
         } catch (e) {
           debugPrint(
-            '[LiveProviderStreams] Stremio catalog error ($baseUrl/$catalogId): $e',
+            '[LiveResolveStreams] Stremio catalog error ($baseUrl/$catalogId): $e',
           );
         }
       }
@@ -656,7 +656,7 @@ abstract final class LiveProviderStreams {
     );
     if (!needsLink) return sources;
 
-    final config = await LiveMatchesIptvSportsConfig.load();
+    final config = await IptvPortalSportsConfig.load();
     final armed = await config.resolveForFetch();
     if (armed == null) return [];
     final portals = await IptvStore.load();
@@ -1075,7 +1075,7 @@ abstract final class LiveProviderStreams {
         },
       );
     } catch (e) {
-      debugPrint('[LiveProviderStreams] unlock ${ref.source}/${ref.id}: $e');
+      debugPrint('[LiveResolveStreams] unlock ${ref.source}/${ref.id}: $e');
       return null;
     }
     for (final row in rows) {

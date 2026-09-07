@@ -1,5 +1,5 @@
 // Live Sports Cards hub — landscape cards + details skin.
-// Same MetaRuntime feed contract as live_sports (scheduleItems).
+// Schedule rows: MetaRuntime `feed` composes via ctx.host.liveFeed.load.
 
 function liveSportsCatalogActions() {
   return [
@@ -63,16 +63,39 @@ function liveSportsCardsLayout() {
   };
 }
 
-function liveSportsFeedItems(params) {
-  var raw = params && params.scheduleItems;
-  if (!Array.isArray(raw)) return [];
-  var out = [];
-  for (var i = 0; i < raw.length; i++) {
-    var row = raw[i];
-    if (!row || typeof row !== 'object') continue;
-    out.push(row);
+function liveSportsShapeRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  var out = Object.assign({}, row);
+  if (!out.name && out.title) out.name = out.title;
+  if (!out.type) out.type = 'live_match';
+  if (!out.open && out.id) {
+    out.open = { surface: 'live', id: String(out.id) };
   }
   return out;
+}
+
+function liveSportsLoadFeed(ctx, params) {
+  var host = ctx && ctx.host;
+  var liveFeed = host && host.liveFeed;
+  if (!liveFeed || typeof liveFeed.load !== 'function') {
+    return Promise.resolve([]);
+  }
+  return Promise.resolve(
+    liveFeed.load({
+      catalogFilter: (params && params.catalogFilter) || 'all',
+      sportFilter: (params && params.sportFilter) || 'all',
+      scheduleStatus: (params && params.scheduleStatus) || 'both',
+      scheduleHorizon: (params && params.scheduleHorizon) || 'h24',
+    }),
+  ).then(function (rows) {
+    if (!Array.isArray(rows)) return [];
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var shaped = liveSportsShapeRow(rows[i]);
+      if (shaped) out.push(shaped);
+    }
+    return out;
+  });
 }
 
 function extract(ctx) {
@@ -85,9 +108,8 @@ function extract(ctx) {
     });
   }
   if (action === 'feed' || action === 'rail') {
-    return hubItems(action, liveSportsFeedItems(params), {
-      maxAge: 60,
-      swr: 300,
+    return liveSportsLoadFeed(ctx, params).then(function (items) {
+      return hubItems(action, items, { maxAge: 60, swr: 300 });
     });
   }
   return hubFail(

@@ -1,11 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Live Sports hub prefs — catalog filter, schedule window, view.
+/// Kit schedule prefs — catalog filter, schedule window, view.
 ///
 /// Retired mode/server keys and pre-rename `live_matches_*` storage keys are
 /// migrated / dropped on read (RFC-073 · RFC-087).
-abstract final class LivePrefs {
-  LivePrefs._();
+abstract final class KitSchedulePrefs {
+  KitSchedulePrefs._();
 
   static const viewKey = 'live_sports_timeline_view';
   static const catalogFilterKey = 'live_sports_forja_catalog_filter_v1';

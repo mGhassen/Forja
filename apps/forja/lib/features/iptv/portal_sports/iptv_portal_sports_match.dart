@@ -7,16 +7,16 @@ import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/features/iptv/sports/iptv_sports_config.dart';
+import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/match_team_parse.dart';
 import 'package:rust/rust.dart';
 
 
 /// Host IPTV sports match API (RFC-073). Logic lives in this library part;
-/// call sites use [IptvSportsMatchService] instead of private helpers.
-abstract final class IptvSportsMatchService {
-  IptvSportsMatchService._();
+/// call sites use [IptvPortalSportsMatchService] instead of private helpers.
+abstract final class IptvPortalSportsMatchService {
+  IptvPortalSportsMatchService._();
 
   static Future<List<IptvPlaySource>> resolveStreams(
     MatchEvent match, {
@@ -218,7 +218,7 @@ void invalidateLiveBroadcastCaches() {
   _liveBroadcastPluginInflight.clear();
 }
 
-void invalidateIptvSportsStreamsCache() {
+void invalidateIptvPortalSportsStreamsCache() {
   _iptvSportsStreamsCache.clear();
   _iptvSportsStreamsInFlight.clear();
 }
@@ -905,7 +905,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   void Function(List<IptvPlaySource> batch)? onPartial,
   bool force = false,
 }) async {
-  final config = await LiveMatchesIptvSportsConfig.load();
+  final config = await IptvPortalSportsConfig.load();
   final armed = await config.resolveForFetch();
   if (armed == null) return [];
   final portalKey = armed.portalKey;

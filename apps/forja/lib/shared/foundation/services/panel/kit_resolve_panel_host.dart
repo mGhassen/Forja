@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/features/iptv/sports/iptv_sports_match.dart';
-import 'package:forja/features/iptv/sports/live_match_details_page.dart';
-import 'package:forja/features/iptv/sports/live_provider_streams.dart';
-import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
+import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_match.dart';
+import 'package:forja/shared/foundation/services/panel/kit_match_details_page.dart';
+import 'package:forja/shared/engine/live/live_resolve_streams.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
@@ -14,17 +14,17 @@ import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 /// Thin registry host — Providers via live resolve packs; Live TV via
-/// [IptvSportsMatchService] (RFC-091).
-final class LiveSportsStreamsPanelHost implements KitPanelHost {
-  const LiveSportsStreamsPanelHost();
+/// [IptvPortalSportsMatchService] (RFC-091).
+final class KitResolvePanelHost implements KitPanelHost {
+  const KitResolvePanelHost();
 
-  static const instance = LiveSportsStreamsPanelHost();
+  static const instance = KitResolvePanelHost();
 
   static const providersTab = 'providers';
   static const liveTvTab = 'live_tv';
 
   @override
-  String get listSourceId => LiveScheduleKit.listSourceId;
+  String get listSourceId => KitLiveBoot.listSourceId;
 
   @override
   Widget? buildDetailsPage({
@@ -33,7 +33,7 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
     required List<Map<String, dynamic>> layoutWidgets,
     required int refreshEpoch,
   }) {
-    return LiveMatchDetailsPage(
+    return KitMatchDetailsPage(
       entry: entry,
       refreshEpoch: refreshEpoch,
     );
@@ -48,7 +48,7 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
     required int refreshEpoch,
     VoidCallback? onClosed,
   }) {
-    return _LiveSportsStreamsPanel(
+    return _KitResolveStreamsPanel(
       key: ValueKey('live-panel-${entry.meta.id}'),
       entry: entry,
       refreshEpoch: refreshEpoch,
@@ -62,10 +62,10 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
     IptvLazyUrlHealthProbe? healthProbe,
   }) async {
     final sources = tabId == liveTvTab
-        ? await IptvSportsMatchService.resolveStreams(
+        ? await IptvPortalSportsMatchService.resolveStreams(
             MatchEvent.fromLegacyRow(legacyRow),
           )
-        : await LiveProviderStreams.loadProviders(legacyRow);
+        : await LiveResolveStreams.loadProviders(legacyRow);
     return [
       for (var i = 0; i < sources.length; i++)
         _rowForSource(
@@ -143,7 +143,7 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
   }) async {
     final payload = kitRow.payload;
     if (payload is! _PlayPayload) return;
-    await LiveProviderStreams.play(
+    await LiveResolveStreams.play(
       context,
       sources: payload.sources,
       picked: payload.picked,
@@ -153,8 +153,8 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
   }
 }
 
-class _LiveSportsStreamsPanel extends StatefulWidget {
-  const _LiveSportsStreamsPanel({
+class _KitResolveStreamsPanel extends StatefulWidget {
+  const _KitResolveStreamsPanel({
     super.key,
     required this.entry,
     required this.refreshEpoch,
@@ -166,11 +166,11 @@ class _LiveSportsStreamsPanel extends StatefulWidget {
   final VoidCallback? onClosed;
 
   @override
-  State<_LiveSportsStreamsPanel> createState() =>
-      _LiveSportsStreamsPanelState();
+  State<_KitResolveStreamsPanel> createState() =>
+      _KitResolveStreamsPanelState();
 }
 
-class _LiveSportsStreamsPanelState extends State<_LiveSportsStreamsPanel> {
+class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
   late final IptvLazyUrlHealthProbe _healthProbe;
 
   @override
@@ -217,22 +217,22 @@ class _LiveSportsStreamsPanelState extends State<_LiveSportsStreamsPanel> {
             subtitle: subtitle.isEmpty ? null : subtitle,
             tabs: const [
               KitSourcesTab(
-                id: LiveSportsStreamsPanelHost.providersTab,
+                id: KitResolvePanelHost.providersTab,
                 label: 'Providers',
               ),
               KitSourcesTab(
-                id: LiveSportsStreamsPanelHost.liveTvTab,
+                id: KitResolvePanelHost.liveTvTab,
                 label: 'Live TV',
               ),
             ],
-            initialTabId: LiveSportsStreamsPanelHost.providersTab,
+            initialTabId: KitResolvePanelHost.providersTab,
             onClosed: widget.onClosed,
-            loadTab: (tabId) => LiveSportsStreamsPanelHost.loadTab(
+            loadTab: (tabId) => KitResolvePanelHost.loadTab(
               row,
               tabId,
               healthProbe: _healthProbe,
             ),
-            onPlayRow: (kitRow) => LiveSportsStreamsPanelHost.playRow(
+            onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
               context,
               kitRow,
               title: title,

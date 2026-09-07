@@ -1,36 +1,36 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/iptv/sports/live_prefs.dart';
-import 'package:forja/features/iptv/sports/live_schedule_window.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Catalog / sport / schedule-window filters for Live Sports kit browse.
 @immutable
-class LiveScheduleFilters {
-  const LiveScheduleFilters({
+class KitScheduleFilters {
+  const KitScheduleFilters({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleStatus = LiveScheduleStatus.both,
-    this.scheduleHorizon = LiveScheduleHorizon.h24,
+    this.scheduleStatus = KitScheduleStatus.both,
+    this.scheduleHorizon = KitScheduleHorizon.h24,
   });
 
   final String catalogFilter;
   final String sportFilter;
-  final LiveScheduleStatus scheduleStatus;
-  final LiveScheduleHorizon scheduleHorizon;
+  final KitScheduleStatus scheduleStatus;
+  final KitScheduleHorizon scheduleHorizon;
 
-  String get schedulePref => liveScheduleWindowPref(
+  String get schedulePref => kitScheduleWindowPref(
         status: scheduleStatus,
         horizon: scheduleHorizon,
       );
 
-  LiveScheduleFilters copyWith({
+  KitScheduleFilters copyWith({
     String? catalogFilter,
     String? sportFilter,
-    LiveScheduleStatus? scheduleStatus,
-    LiveScheduleHorizon? scheduleHorizon,
+    KitScheduleStatus? scheduleStatus,
+    KitScheduleHorizon? scheduleHorizon,
   }) =>
-      LiveScheduleFilters(
+      KitScheduleFilters(
         catalogFilter: catalogFilter ?? this.catalogFilter,
         sportFilter: sportFilter ?? this.sportFilter,
         scheduleStatus: scheduleStatus ?? this.scheduleStatus,
@@ -39,7 +39,7 @@ class LiveScheduleFilters {
 
   @override
   bool operator ==(Object other) =>
-      other is LiveScheduleFilters &&
+      other is KitScheduleFilters &&
       other.catalogFilter == catalogFilter &&
       other.sportFilter == sportFilter &&
       other.scheduleStatus == scheduleStatus &&
@@ -54,39 +54,39 @@ class LiveScheduleFilters {
       );
 }
 
-final liveScheduleFiltersProvider =
-    NotifierProvider<LiveScheduleFiltersNotifier, LiveScheduleFilters>(
-  LiveScheduleFiltersNotifier.new,
+final kitScheduleFiltersProvider =
+    NotifierProvider<KitScheduleFiltersNotifier, KitScheduleFilters>(
+  KitScheduleFiltersNotifier.new,
 );
 
-class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
+class KitScheduleFiltersNotifier extends Notifier<KitScheduleFilters> {
   @override
-  LiveScheduleFilters build() {
+  KitScheduleFilters build() {
     Future.microtask(_hydrate);
-    return const LiveScheduleFilters();
+    return const KitScheduleFilters();
   }
 
   Future<void> _hydrate() async {
     final prefs = await SharedPreferences.getInstance();
-    final catalog = (await LivePrefs.getStringMigrated(
+    final catalog = (await KitSchedulePrefs.getStringMigrated(
           prefs,
-          LivePrefs.catalogFilterKey,
-          LivePrefs.legacyCatalogFilterKey,
+          KitSchedulePrefs.catalogFilterKey,
+          KitSchedulePrefs.legacyCatalogFilterKey,
         ))
             ?.trim() ??
         'all';
-    final scheduleRaw = (await LivePrefs.getStringMigrated(
+    final scheduleRaw = (await KitSchedulePrefs.getStringMigrated(
       prefs,
-      LivePrefs.scheduleKey,
-      LivePrefs.legacyScheduleKey,
+      KitSchedulePrefs.scheduleKey,
+      KitSchedulePrefs.legacyScheduleKey,
     ))
         ?.trim();
-    final window = liveScheduleWindowFromPref(scheduleRaw) ??
+    final window = kitScheduleWindowFromPref(scheduleRaw) ??
         (
-          status: LiveScheduleStatus.both,
-          horizon: LiveScheduleHorizon.h24,
+          status: KitScheduleStatus.both,
+          horizon: KitScheduleHorizon.h24,
         );
-    final next = LiveScheduleFilters(
+    final next = KitScheduleFilters(
       catalogFilter: catalog.isEmpty ? 'all' : catalog,
       scheduleStatus: window.status,
       scheduleHorizon: window.horizon,
@@ -98,7 +98,7 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
     final v = value.trim().isEmpty ? 'all' : value.trim();
     state = state.copyWith(catalogFilter: v);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(LivePrefs.catalogFilterKey, v);
+    await prefs.setString(KitSchedulePrefs.catalogFilterKey, v);
   }
 
   Future<void> setSportFilter(String value) async {
@@ -107,8 +107,8 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
   }
 
   Future<void> setScheduleWindow({
-    LiveScheduleStatus? status,
-    LiveScheduleHorizon? horizon,
+    KitScheduleStatus? status,
+    KitScheduleHorizon? horizon,
   }) async {
     final next = state.copyWith(
       scheduleStatus: status,
@@ -117,12 +117,12 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
     if (next == state) return;
     state = next;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(LivePrefs.scheduleKey, next.schedulePref);
+    await prefs.setString(KitSchedulePrefs.scheduleKey, next.schedulePref);
   }
 
   /// Kit layout / legacy single-token write (`both|24h`, `live`, `3h`, …).
   Future<void> setScheduleFromPrefToken(String value) async {
-    final window = liveScheduleWindowFromPref(value);
+    final window = kitScheduleWindowFromPref(value);
     if (window == null) return;
     await setScheduleWindow(
       status: window.status,

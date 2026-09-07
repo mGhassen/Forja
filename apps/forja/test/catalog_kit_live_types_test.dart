@@ -1,20 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/sports/live_prefs.dart';
-import 'package:forja/features/iptv/sports/live_schedule_catalog_source.dart';
-import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
-import 'package:forja/features/iptv/sports/schedule_list_source.dart';
-import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/services/meta/meta_feed_list_source.dart';
+import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 
 void main() {
   setUp(() {
     HostListRegistry.debugReset();
-    LiveScheduleKit.debugReset();
-    LiveScheduleKit.ensureRegistered();
+    KitLiveBoot.debugReset();
+    KitLiveBoot.ensureRegistered();
   });
 
-  group('Live schedule kit.list source', () {
+  group('live_schedule kit.list source', () {
     test('matchesLayout detects kit.list + live_schedule', () {
       final layout = [
         {
@@ -35,20 +36,16 @@ void main() {
         KitTypes.treeContains(
           layout,
           slot: KitTypes.list,
-          listSource: LiveScheduleKit.listSourceId,
+          listSource: KitLiveBoot.listSourceId,
         ),
         isTrue,
       );
       expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
       final source = HostListRegistry.resolve(sourceId: 'live_schedule');
       expect(source, isNotNull);
-      expect(source, same(LiveScheduleCatalogSource.instance));
+      expect(source, same(MetaFeedListSource.liveSchedule));
       expect(source!.wantsHostBody, isFalse);
-      expect(source.id, LiveScheduleKit.listSourceId);
-      expect(
-        LiveSportsListSources.resolve(LiveSportsListSources.liveSchedule),
-        isNotNull,
-      );
+      expect(source.id, KitLiveBoot.listSourceId);
     });
 
     test('generic kit types only — no product-named live slots', () {
@@ -63,11 +60,14 @@ void main() {
     });
   });
 
-  group('LivePrefs', () {
+  group('KitSchedulePrefs', () {
     test('keeps catalog / schedule / view keys; mode keys retired', () {
-      expect(LivePrefs.catalogFilterKey, 'live_sports_forja_catalog_filter_v1');
-      expect(LivePrefs.scheduleKey, 'live_sports_schedule_v2');
-      expect(LivePrefs.viewKey, 'live_sports_timeline_view');
+      expect(
+        KitSchedulePrefs.catalogFilterKey,
+        'live_sports_forja_catalog_filter_v1',
+      );
+      expect(KitSchedulePrefs.scheduleKey, 'live_sports_schedule_v2');
+      expect(KitSchedulePrefs.viewKey, 'live_sports_timeline_view');
     });
   });
 
@@ -93,8 +93,8 @@ void main() {
       expect(item.toJson()['starts_at'], '2026-09-01T18:00:00Z');
     });
 
-    test('liveMetaFromScheduleRow maps opaque rows', () {
-      final item = liveMetaFromScheduleRow({
+    test('liveMetaFromFeedRow maps opaque rows', () {
+      final item = liveMetaFromFeedRow({
         'id': 'evt-1',
         'title': 'Alpha vs Beta',
         'airing': true,
@@ -111,25 +111,51 @@ void main() {
       expect(item.startsAt, '2026-09-01T18:00:00Z');
     });
 
-    test('liveScheduleRowInHorizon filters by window', () {
+    test('liveFeedRowMatches filters by window', () {
       final now = DateTime.now();
       final row = <String, dynamic>{
         'id': 'evt-2',
         'title': 'Soon',
         'startsAt': now.add(const Duration(hours: 2)).millisecondsSinceEpoch,
       };
-      final item = liveMetaFromScheduleRow(row);
-      expect(liveScheduleRowInHorizon(row, item, '1h'), isFalse);
-      expect(liveScheduleRowInHorizon(row, item, '3h'), isTrue);
-      expect(liveScheduleRowInHorizon(row, item, 'all'), isTrue);
+      final item = liveMetaFromFeedRow(row);
+      expect(
+        liveFeedRowMatches(
+          row,
+          item,
+          const LiveFeedQuery(
+            scheduleStatus: KitScheduleStatus.both,
+            scheduleHorizon: KitScheduleHorizon.h1,
+          ),
+        ),
+        isFalse,
+      );
+      expect(
+        liveFeedRowMatches(
+          row,
+          item,
+          const LiveFeedQuery(
+            scheduleStatus: KitScheduleStatus.both,
+            scheduleHorizon: KitScheduleHorizon.h3,
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        liveFeedRowMatches(
+          row,
+          item,
+          const LiveFeedQuery(
+            scheduleStatus: KitScheduleStatus.both,
+            scheduleHorizon: KitScheduleHorizon.h24,
+          ),
+        ),
+        isTrue,
+      );
     });
 
-    test('LiveScheduleListSource resolves live_schedule id', () {
-      expect(
-        LiveSportsListSources.resolve('live_schedule'),
-        isA<LiveScheduleListSource>(),
-      );
-      expect(const LiveScheduleListSource().id, 'live_schedule');
+    test('MetaFeedListSource resolves live_schedule id', () {
+      expect(MetaFeedListSource.liveSchedule.id, 'live_schedule');
     });
   });
 }
