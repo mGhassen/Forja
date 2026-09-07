@@ -344,7 +344,7 @@ final myListCatalogProvider =
       );
     });
 
-final class MyListCatalogSource implements CatalogKitListSource {
+final class MyListCatalogSource extends CatalogKitListSource {
   const MyListCatalogSource._();
 
   static const instance = MyListCatalogSource._();
