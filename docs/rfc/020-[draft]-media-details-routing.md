@@ -99,7 +99,7 @@ Implementation imports move from `features/home/` to `features/media/` — call 
 | `shell/app_router.dart` | yes |
 | `features/home/` | yes (same-app routes via router preferred) |
 | Other features | **no** — use AppRouter only |
-| `shared/widgets/` | **no** — use AppRouter only |
+| `shared/foundation/components/` | **no** — use AppRouter only |
 
 ## Future: deep links
 

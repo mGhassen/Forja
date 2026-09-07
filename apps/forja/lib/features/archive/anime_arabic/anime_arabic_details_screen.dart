@@ -9,12 +9,12 @@ import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
-import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
-import 'package:forja/shared/widgets/media_details/media_details_body.dart';
-import 'package:forja/shared/widgets/media_details/tv_season_episode_picker.dart';
+import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
+import 'package:forja/shared/foundation/components/media_details/media_details_body.dart';
+import 'package:forja/shared/foundation/components/media_details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';
 
 class AnimeArabicDetailsScreen extends StatefulWidget {

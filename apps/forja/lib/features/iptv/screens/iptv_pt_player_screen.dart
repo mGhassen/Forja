@@ -64,9 +64,9 @@ import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/chrome/forja_network_image.dart';
-import 'package:forja/shared/widgets/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:window_manager/window_manager.dart';
 

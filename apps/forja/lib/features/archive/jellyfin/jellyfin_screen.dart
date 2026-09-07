@@ -5,9 +5,9 @@ import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/archive/jellyfin/catalog/jellyfin_service.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/widgets/chrome/hover_scale.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/widgets/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
 import 'jellyfin_details_screen.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────

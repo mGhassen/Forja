@@ -17,8 +17,8 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
-import 'package:forja/shared/widgets/packs/forja_pack_choice_cards.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 

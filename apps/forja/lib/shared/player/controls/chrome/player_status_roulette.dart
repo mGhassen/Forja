@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
-import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 
 enum StatusRouletteKind { loading, success, failed, info }
 

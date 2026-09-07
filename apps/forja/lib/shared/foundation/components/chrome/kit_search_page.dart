@@ -12,10 +12,10 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/search/recent_search_helper_tile.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/widgets/chrome/shell_error_retry_panel.dart';
-import 'package:forja/shared/widgets/tv/tv_search_browse_overlay.dart';
+import 'package:forja/shared/foundation/components/search/recent_search_helper_tile.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';
+import 'package:forja/shared/foundation/primitives/tv/tv_search_browse_overlay.dart';
 
 class KitSearchResult {
   const KitSearchResult({

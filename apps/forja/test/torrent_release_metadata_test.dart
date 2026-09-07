@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
 
 void main() {
   group('TorrentReleaseMetadata.resolveSizeLabel', () {

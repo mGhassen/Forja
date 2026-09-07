@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
 
 import 'ids.dart';
 

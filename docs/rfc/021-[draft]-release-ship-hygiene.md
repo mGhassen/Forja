@@ -138,7 +138,7 @@ Bundle id: `com.forjahq.app` (consistent across platforms).
 
 ## 6. Desktop window chrome
 
-[`desktop_window_chrome.dart`](../../apps/forja/lib/shared/widgets/desktop/desktop_window_chrome.dart) wraps the shell on macOS/Windows/Linux:
+[`desktop_window_chrome.dart`](../../apps/forja/lib/shared/foundation/primitives/desktop/desktop_window_chrome.dart) wraps the shell on macOS/Windows/Linux:
 
 - macOS: hidden title bar + 34px drag strip (`kMacTitleBarHeight`) for traffic lights
 - Windows/Linux: custom caption via `window_manager`

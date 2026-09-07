@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
 
 /// Opaque tab for [KitSourcesPanel].
 @immutable

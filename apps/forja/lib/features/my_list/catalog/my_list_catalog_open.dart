@@ -4,7 +4,7 @@ import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/widgets/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
 import 'package:rust/rust.dart';
 
 Future<void> openMyListCatalogEntry(

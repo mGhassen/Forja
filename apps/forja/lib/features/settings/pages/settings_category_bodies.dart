@@ -32,7 +32,7 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/foundation/services/plugin_nav.dart';
 

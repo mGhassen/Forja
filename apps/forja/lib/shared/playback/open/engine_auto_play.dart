@@ -16,10 +16,10 @@ import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
-import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
-import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/widgets/playback/resolve_failure_view.dart';
-import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
+import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
+import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
+import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 

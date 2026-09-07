@@ -9,8 +9,8 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
-import 'package:forja/shared/widgets/account/macos_keychain_consent_screen.dart';
-import 'package:forja/shared/widgets/update/update_dialog.dart';
+import 'package:forja/shared/foundation/components/account/macos_keychain_consent_screen.dart';
+import 'package:forja/shared/foundation/components/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 
 class SettingsAboutPanel extends StatefulWidget {

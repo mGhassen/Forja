@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 enum ForjaToastKind { success, error, warning, info }
 

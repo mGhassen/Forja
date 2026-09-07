@@ -266,10 +266,10 @@ flowchart TB
     TvCoord[ShellTvFocusCoordinator]
   end
   subgraph shared [SharedPresentation]
-    hero[shared/widgets/hero]
-    media[shared/widgets/media_details]
-    hub[shared/widgets/hub]
-    cards[home_movie_card row]
+    hero[foundation/components/hero]
+    media[foundation/components/media_details]
+    kit[foundation/components rows cards chrome]
+    cards[foundation/components/posters]
   end
   subgraph features [FeatureModules]
     orch[feature_screen orchestrator]
@@ -285,7 +285,7 @@ flowchart TB
 | Layer | Location | Owns | Does NOT own |
 |-------|----------|------|--------------|
 | Shell / profile | `shared/foundation/primitives/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
-| Shared presentation | `shared/widgets/` | Reusable UI + callbacks | State machines, routing |
+| Shared presentation | `shared/foundation/` (`primitives/`, `components/`) | Reusable UI + callbacks | State machines, routing |
 | Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
 
 ### Canonical feature folder
@@ -337,9 +337,9 @@ features/media/
 
 | Widget | Path | Replaces |
 |--------|------|----------|
-| `MediaDetailsScrollPage` | `shared/widgets/media_details/media_details_scroll_page.dart` | Inline scroll + `MediaDetailsTvScope` wrapper |
-| `MediaDetailsRecommendationsSection` | `shared/widgets/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
-| `MediaDetailsTrackerHandlers` | `shared/widgets/media_details/media_details_tracker_handlers.dart` | Trakt/Simkl rating, collection, check-in, list (~400 lines) |
+| `MediaDetailsScrollPage` | `shared/foundation/components/media_details/media_details_scroll_page.dart` | Inline scroll + `MediaDetailsTvScope` wrapper |
+| `MediaDetailsRecommendationsSection` | `shared/foundation/components/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
+| `MediaDetailsTrackerHandlers` | `shared/foundation/components/media_details/media_details_tracker_handlers.dart` | Trakt/Simkl rating, collection, check-in, list (~400 lines) |
 
 **Remaining** (Phase D): `details_webstreaming` mixin/part, `details_episodes` / TV picker; then RFC-026 R26-C03 → `features/media/details/`
 

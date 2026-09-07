@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/chrome/shell_card_play_overlay.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Landscape live-match card (Continue-Watching proportions) — cards pack grid.
 class LiveMatchCard extends StatefulWidget {

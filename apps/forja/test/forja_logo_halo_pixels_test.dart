@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/widgets/brand/forja_logo.dart';
+import 'package:forja/shared/foundation/primitives/brand/forja_logo.dart';
 
 void main() {
   testWidgets('forja logo halo paints green glow pixels', (tester) async {

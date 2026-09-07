@@ -7,9 +7,9 @@ import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
-import 'package:forja/shared/widgets/chrome/hover_scale.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
+import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
 const _jfBlue = Color(0xFF00A4DC);

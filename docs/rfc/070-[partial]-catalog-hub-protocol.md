@@ -347,7 +347,7 @@ Dart UI for hub plugins lives under `shared/foundation/components/` — not in f
 | `kit/meta/` | `MetaItem` → `Movie` for TMDB home rows |
 | `shell/` | `KitShell` composition + open/search only |
 
-Legacy import paths (`features/home/widgets/*`, `shared/widgets/hub/*`) re-export the kit for gradual migration.
+Legacy import paths (`features/home/widgets/*`, `shared/foundation/components/*`) re-export the kit for gradual migration.
 
 ### Host enrich (R70-A28+)
 

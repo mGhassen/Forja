@@ -137,7 +137,7 @@ Product flavor excluding `libtorrent_flutter`, `flutter_js`, and Magnet/Download
 | [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart) | Splash dismiss logic |
 | [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | Staggered futures, palette scope |
 | [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) | Deferred imports in builders |
-| New: `shared/widgets/tab_loading_placeholder.dart` | Shimmer for deferred tab load |
+| New: `shared/foundation/components/tab_loading_placeholder.dart` | Shimmer for deferred tab load |
 
 ## Metrics
 

@@ -22,13 +22,13 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
-import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
-import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
-import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel_chrome.dart';
+import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Right-side Sources panel in the player - same shell/chrome/tiles as

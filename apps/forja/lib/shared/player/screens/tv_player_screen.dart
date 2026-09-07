@@ -3,7 +3,7 @@ import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';
-import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
+import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 /// Android TV player - [MobilePlayerScreen] with D-pad focus traversal on chrome.

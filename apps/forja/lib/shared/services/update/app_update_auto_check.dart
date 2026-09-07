@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/services/update/app_update_auto_check_policy.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
-import 'package:forja/shared/widgets/update/update_dialog.dart';
+import 'package:forja/shared/foundation/components/update/update_dialog.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 

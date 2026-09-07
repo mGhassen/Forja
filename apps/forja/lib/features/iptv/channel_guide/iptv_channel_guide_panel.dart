@@ -12,9 +12,9 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/lists/list_letter_jump_scope.dart';
-import 'package:forja/shared/widgets/chrome/forja_network_image.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/components/lists/list_letter_jump_scope.dart';
+import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
 
 enum _GuideStep { groups, channels }
 enum _FocusColumn { groups, channels, epg }

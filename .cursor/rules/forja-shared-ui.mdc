@@ -6,26 +6,26 @@ alwaysApply: false
 
 # Shared UI components (RFC-026)
 
-Extract **presentation** into `shared/widgets/`; keep **state, fetching, navigation** in feature screens.
+Extract **presentation** into `shared/foundation/` (`primitives/` atoms, `components/` composers); keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
 
 ## Folder map
 
 ```
-shared/widgets/hero/            # titles, meta, cinematic hero, overview, banner
-shared/widgets/media_details/   # details page, cast/trailers, torrent sources, episodes
-shared/widgets/home/            # home rows, posters, atmosphere, loading skeleton
-shared/widgets/hub/             # hub catalog section / poster / search (legacy)
-shared/widgets/kit_details/     # hub details chrome / play / sources
-shared/widgets/chrome/           # focusable tap, scroller, overlays, mood chip
-shared/widgets/desktop/         # window chrome / focus / geometry
-shared/widgets/tv/              # browse text field, search overlay
-shared/widgets/update/          # update dialog + progress banner
-shared/widgets/packs/           # pack choice cards, install progress
-shared/widgets/brand/           # logo, splash logo, profile avatar
-shared/widgets/playback/        # stream/torrent loading, resolve failure
-shared/widgets/lists/           # my-list button, letter jump, list status
-shared/widgets/search/          # recent search helper tile
-shared/widgets/account/         # keychain consent
+shared/foundation/components/hero/            # titles, meta, cinematic hero, overview, banner
+shared/foundation/components/media_details/   # details page, cast/trailers, torrent sources, episodes
+shared/foundation/components/posters/         # rows, posters, atmosphere, loading skeleton
+shared/foundation/components/rows|cards|chrome/  # kit section / poster / search
+shared/foundation/components/details/         # kit details chrome / play / sources
+shared/foundation/primitives/chrome/          # focusable tap, scroller, overlays, mood chip
+shared/foundation/primitives/desktop/         # window chrome / focus / geometry
+shared/foundation/primitives/tv/              # browse text field, search overlay
+shared/foundation/components/update/          # update dialog + progress banner
+shared/foundation/components/packs/           # pack choice cards, install progress
+shared/foundation/primitives/brand/           # logo, splash logo, profile avatar
+shared/foundation/components/playback/        # stream/torrent loading, resolve failure
+shared/foundation/components/lists/           # my-list button, letter jump, list status
+shared/foundation/components/search/          # recent search helper tile
+shared/foundation/components/account/         # keychain consent
 ```
 
 Barrel: `media_details/media_details.dart` for details + torrent sources.
@@ -68,7 +68,7 @@ MediaDetailsScrollPage(
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
 
-Do **not** put app-shell or catalog-host code under `shared/widgets/`. App frame → `lib/shell/`. Hub tab host → `shared/foundation/blocks/shell/`.
+Do **not** put app-shell or kit-host orchestration under `components/` leaf folders. App frame → `lib/shell/`. Hub tab host → `shared/foundation/blocks/shell/`.
 
 ## Do not
 

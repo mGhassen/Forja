@@ -13,8 +13,8 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/brand/animated_logo.dart';
-import 'package:forja/shared/widgets/brand/forja_profile_avatar.dart';
+import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
+import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
 import 'package:rust/rust.dart';
 
 /// Profile-switch splash: avatar flies from its Who's watching tile to center

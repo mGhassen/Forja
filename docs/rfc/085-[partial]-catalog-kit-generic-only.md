@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **16 / 16** acceptance |
-| **Current slice** | App-wide hub/catalog scent purge (`kit_details`, `TvKitRow`, `isKitPlugin`, …) |
+| **Progress** | **4 / 4** components · **17 / 17** acceptance |
+| **Current slice** | `shared/widgets` absorbed into foundation — peer package deleted |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,14 +53,15 @@
 | 14 | R85-A14 | Host-owned primitive files use `forja_*` prefix (`forja_action_chip`, `forja_shell_tokens`, …); kit leaf classes `ForjaActionChip` / `ForjaChipRow` / `ForjaUnderlineTab` / `ForjaStatusTabs` | ✅ |
 | 15 | R85-A15 | Foundation files/types drop `catalog_` / `hub_` product scent — UI `kit_*` / `Kit*`, protocol `meta_*` / `Meta*` (`KitShell`, `MetaItem`, `MetaRuntime`, …) | ✅ |
 | 16 | R85-A16 | App-wide leftover rename: `widgets/kit_details`, `TvKitRow`, `isKitPlugin` / live feed APIs, `PlayContext.metaItem`/`metaOpen`/`kitEpisodes`, `PlayerKitEpisode`, `KitChromeTopBar` | ✅ |
+| 17 | R85-A17 | `shared/widgets` deleted — contents under `foundation/primitives` (brand/chrome/tv/desktop) + `foundation/components` (hero/posters/details/media_details/lists/packs/playback/search/update/account); hub re-export shims removed | ✅ |
 
 ---
 
 ## Summary
 
-**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope) and kit composers live here. Product names stay out of kit folders. No `shared/live/` or peer `shared/design/`.
+**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. Product names stay out of kit folders. No `shared/live/`, peer `shared/design/`, or peer `shared/widgets/`.
 
-**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; pack ids hardcoded in host Dart; design system as a sibling of foundation.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
 
 **Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts; live resolve/schedule orchestration lives under `foundation/services/live`.
 
