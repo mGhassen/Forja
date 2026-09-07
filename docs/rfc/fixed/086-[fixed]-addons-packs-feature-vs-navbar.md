@@ -1,7 +1,7 @@
 # RFC-086: Addons/Packs flag features; Features flags navbar
 
 **Status:** fixed  
-**Depends on:** [RFC-081](081-[fixed]-host-only-platform-nav-defaults.md), [RFC-084](../084-[open]-live-sports-host-feature-kit.md)  
+**Depends on:** [RFC-081](081-[fixed]-host-only-platform-nav-defaults.md), [RFC-084](../canceled/084-[canceled]-live-sports-host-feature-kit.md)
 **Area:** settings / shell / sync
 
 ## Status at a glance

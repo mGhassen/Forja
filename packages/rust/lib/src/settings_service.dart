@@ -822,14 +822,17 @@ class SettingsService {
     _ => null,
   };
 
-  /// Upgrade from one-bit nav: visible `iptv` / `live_matches` ⇒ feature on.
+  /// Upgrade from one-bit nav: visible `iptv` ⇒ feature on.
+  /// Also migrates legacy `live_matches` capability when that id was still
+  /// Addons-gated (pre–RFC-087).
   Future<void> ensureAddonFeaturesMigratedFromNav() async {
     if (await kvHasKey(_addonFeatureFromNavMigratedKey)) return;
     final raw = await kvHasKey(_navbarConfigKey)
         ? await kvGetStringList(_navbarConfigKey, fallback: const [])
         : const <String>[];
-    for (final id in addonGatedNavIds) {
-      final key = _addonFeatureKey(id)!;
+    for (final id in {...addonGatedNavIds, 'live_matches'}) {
+      final key = _addonFeatureKey(id);
+      if (key == null) continue;
       if (raw.contains(id) && !await kvHasKey(key)) {
         _addonFeatureMemory[id] = true;
         await kvSetBool(key, true);
@@ -1655,15 +1658,15 @@ class SettingsService {
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
+  /// Live Sports (`live_matches`) is pack-owned (RFC-087) — not listed here.
   static const Set<String> addonGatedNavIds = {
     'iptv',
-    'live_matches',
   };
 
   /// Host / archived shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// [live_matches] is host core (RFC-084), same class as [iptv].
+  /// [live_matches] is a hub pack tab id (RFC-087), registered via pack `nav`.
   static const List<String> _baseAllNavIds = [
     'discover',
     'similar',
@@ -1671,7 +1674,6 @@ class SettingsService {
     'downloader',
     'magnet',
     'iptv',
-    'live_matches',
     'audiobooks',
     'books',
     'music',
@@ -1741,8 +1743,8 @@ class SettingsService {
   /// a premature empty-hub sync during lean boot.
   ///
   /// No-op if any [activeHubIds] tab is already visible (intentional Features
-  /// hide / partial config — not a full strip). Callers pass VOD hub ids only
-  /// (not Addons-gated `iptv` / `live_matches`).
+  /// hide / partial config — not a full strip). Callers pass VOD/hub ids only
+  /// (including `live_matches`). Does not auto-insert Addons-gated `iptv`.
   Future<void> ensureActiveDefaultHubsVisible({
     required Set<String> activeHubIds,
     bool notify = true,

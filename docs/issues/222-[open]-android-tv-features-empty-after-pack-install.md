@@ -52,7 +52,7 @@
 
 **After:** Features only scans hubs when destinations are empty; `PluginNavRegistry.refresh` is single-flight; stripped hub visibility is restored when no VOD hub is visible; host-core tabs always appear in the Features list.
 
-**Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [220](220-[open]-live-sports-addon-nav-without-hub-pack.md) · [RFC-081](../rfc/fixed/081-[fixed]-host-only-platform-nav-defaults.md)
+**Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [220](canceled/220-[canceled]-live-sports-addon-nav-without-hub-pack.md) · [RFC-081](../rfc/fixed/081-[fixed]-host-only-platform-nav-defaults.md) · [RFC-087](../rfc/fixed/087-[fixed]-live-sports-pack-only.md)
 
 ## Verify
 

@@ -123,8 +123,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       if (child is KitShell) {
         return _tabWithKey(key, child);
       }
-      if (key != null &&
-          (id == 'iptv' || id == 'live_matches')) {
+      if (key != null && id == 'iptv') {
         return KeyedSubtree(key: key, child: child);
       }
       return child;

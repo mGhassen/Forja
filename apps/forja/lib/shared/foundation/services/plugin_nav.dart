@@ -21,7 +21,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'iptv',
-    'live_matches',
     'settings',
   };
 
@@ -450,7 +449,7 @@ abstract final class PluginNavRegistry {
       SettingsService.registerExtraNavIds(extras);
     }
     if (dests.isNotEmpty || extras.isNotEmpty) {
-      // Pack hub tabs only — never auto-show Addons-gated core (`iptv` / `live_matches`).
+      // Pack hub tabs only — never auto-show Addons-gated core (`iptv`).
       await SettingsService().ensureNavIdsKnown(
         allHubIds: dests.keys
             .where((id) => !coreShellNavIds.contains(id))

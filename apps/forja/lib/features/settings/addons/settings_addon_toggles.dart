@@ -36,6 +36,8 @@ bool addonMasterEnabled({
 }
 
 /// Nav id for Addons-gated host features (RFC-086).
+/// Live Sports keeps a capability flag id (`live_matches`) but is pack-owned
+/// for navbar (RFC-087) — not in [SettingsService.addonGatedNavIds].
 String? addonFeatureNavId(String addonId) => switch (addonId) {
   SettingsAddonId.iptv => 'iptv',
   SettingsAddonId.liveSports => 'live_matches',
@@ -88,12 +90,18 @@ Future<bool> setAddonMasterEnabled(
           .read(settingsDebridProvider.notifier)
           .patch((s) => s.copyWith(useDebrid: val));
     case SettingsAddonId.iptv:
-    case SettingsAddonId.liveSports:
       noteNavigationDirty();
       await settings.setAddonFeatureEnabled(featureNavId!, val);
       await settings.setNavbarTabVisible(featureNavId, val);
-      if (!val && addonId == SettingsAddonId.iptv) {
+      if (!val) {
         await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+      }
+    case SettingsAddonId.liveSports:
+      // Capability + catalogs only — tab chrome comes from hub packs (RFC-087).
+      noteNavigationDirty();
+      await settings.setAddonFeatureEnabled(featureNavId!, val);
+      if (!val) {
+        await settings.setNavbarTabVisible(featureNavId, false);
       }
     case SettingsAddonId.lan:
       await LanPrefs.instance.setLanServerEnabled(val);

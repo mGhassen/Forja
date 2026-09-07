@@ -657,8 +657,11 @@ void main() {
     await service.syncActiveHubNavIds(
       activeHubIds: const {},
       knownHubIds: const {'home', 'anime'},
+      allowEmptyActiveStrip: true,
     );
 
+    // Hub orphans stripped; iptv (core) + live_matches (pack tab still in
+    // visible, not in knownHubIds) remain.
     expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
     expect(await service.getDefaultNavTab(), 'iptv');
   });

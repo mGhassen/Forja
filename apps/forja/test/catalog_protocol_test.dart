@@ -717,22 +717,28 @@ void main() {
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      // Host seed empty for VOD hubs; live_matches is core (RFC-084).
+      // Host seed empty — Live Sports is pack-owned (RFC-087).
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.isKitTab('live_matches'), isFalse);
       expect(PluginNavRegistry.isKitTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
-      expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
+      expect(PluginNavRegistry.isContributed('live_matches'), isFalse);
       expect(
         PluginNavRegistry.featureTabIds(),
         isNot(contains('iptv')),
       );
       expect(
         PluginNavRegistry.featureTabIds(
-          availableAddonFeatureIds: const ['iptv', 'live_matches'],
+          availableAddonFeatureIds: const ['iptv'],
         ),
-        containsAll(['iptv', 'live_matches']),
+        contains('iptv'),
+      );
+      expect(
+        PluginNavRegistry.featureTabIds(
+          availableAddonFeatureIds: const ['iptv'],
+        ),
+        isNot(contains('live_matches')),
       );
     });
 

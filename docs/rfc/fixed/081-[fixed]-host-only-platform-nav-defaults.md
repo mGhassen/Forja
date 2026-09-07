@@ -62,4 +62,5 @@ Supersedes R81-A01 for **new** installs only — existing seeded layouts unchang
 
 - [Navigation](../features/getting-started/navigation.md)
 - [Features settings](../features/settings/navigation-bar.md)
-- [RFC-084](../084-[open]-live-sports-host-feature-kit.md) — **exception:** `live_matches` is host core (Addons) like `iptv`, not a pack-gated VOD hub. Still **not** in `PlatformDefaults.defaultNavIds` (visibility via Addons / Features).
+- [RFC-087](087-[fixed]-live-sports-pack-only.md) — Live Sports pack-only (cancels host-core exception)
+- [RFC-084](../canceled/084-[canceled]-live-sports-host-feature-kit.md) — canceled host-core model

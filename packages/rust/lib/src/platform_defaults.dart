@@ -3,10 +3,10 @@ import 'platform_profile.dart';
 
 /// Per-platform first-run defaults and getter fallbacks.
 ///
-/// [visibleNavIds] is empty on a fresh install — host-core tabs (`iptv`,
-/// `live_matches`) stay off until Settings → Addons / Features (RFC-084).
-/// Catalog VOD hubs (`home`, `anime`, …) come from packs via
-/// [SettingsService.ensureNavIdsKnown].
+/// [visibleNavIds] is empty on a fresh install — host-core `iptv` stays off
+/// until Settings → Addons / Features. Hub tabs (`home`, `anime`,
+/// `live_matches`, …) come from packs via [SettingsService.ensureNavIdsKnown]
+/// (RFC-081 · RFC-087).
 class PlatformDefaults {
   const PlatformDefaults({
     required this.visibleNavIds,

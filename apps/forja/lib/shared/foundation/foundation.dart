@@ -1,7 +1,8 @@
 /// Foundation — app-wide base: primitives, kit, protocol, services.
 ///
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
-/// Product hubs (My List, Live Sports) live under `features/` — not here.
+/// Product hubs (My List) live under `features/` — not here.
+/// Live Sports kit services live under `services/live/` (RFC-087).
 library;
 
 export 'primitives/primitives.dart';

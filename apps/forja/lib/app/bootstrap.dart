@@ -26,7 +26,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
-import 'package:forja/features/live_sports/live_sports_host.dart';
+import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
 import 'package:forja/features/my_list/my_list_host.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';

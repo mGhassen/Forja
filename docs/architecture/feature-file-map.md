@@ -58,7 +58,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
-| [`features/live_sports/catalog/live_sports_streams_panel_host.dart`](../../apps/forja/lib/features/live_sports/catalog/live_sports_streams_panel_host.dart) | — | Live Sports streams panel host | In | Thin feature `features/live_sports/`; UI = `KitSourcesPanel`; service = `MatchStreams` |
+| [`shared/foundation/services/live/live_sports_streams_panel_host.dart`](../../apps/forja/lib/shared/foundation/services/live/live_sports_streams_panel_host.dart) | — | Live Sports streams panel host | In | Foundation service; UI = `KitSourcesPanel`; play = `MatchStreams` |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
