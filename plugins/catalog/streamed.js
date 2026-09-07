@@ -64,6 +64,6 @@ async function extract(ctx) {
     byId[m.id] = m;
   });
   return Object.keys(byId).map(function (k) {
-    return matchRow(byId[k], pluginId);
+    return liveCatalogStamp(matchRow(byId[k], pluginId), pluginId);
   });
 }

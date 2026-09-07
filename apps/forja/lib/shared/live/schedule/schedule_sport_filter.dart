@@ -1,31 +1,15 @@
 // Sport-chip id normalization and 24/7 / always-on filtering for Live Matches.
 //
-// Streamed tags always-on channels with a sport slug (`cricket`, `tennis`) and
-// `date: 0`; the website groups those under **24/7**. PPV uses category
-// `24/7 Streams` plus an `always_live` flag (often with stale start/end times).
-// Both must land on the same chip and stay playable.
+// Kind aliases live in catalog packs (`plugins/catalog/_wire.js`). Host only
+// slugifies and treats 24/7 / always-on for chip filtering + playability.
 
-/// Canonical sport chip id across PPV / Streamed / CDN label variants.
+/// Canonical sport chip id — slugify only (packs emit normalized `kind`).
 String normalizeLiveSportId(String raw) {
   var s = raw.trim().toLowerCase().replaceAll(RegExp(r'[/_\s]+'), '-');
   s = s.replaceAll(RegExp(r'-+'), '-');
   if (s.endsWith('-')) s = s.substring(0, s.length - 1);
-  const aliases = <String, String>{
-    'motorsports': 'motor-sports',
-    'motor-sport': 'motor-sports',
-    'miscellaneous': 'other',
-    'misc': 'other',
-    'soccer': 'football',
-    'afl': 'australian-football',
-    'nfl': 'american-football',
-    'ncaa-football': 'american-football',
-    'college-football': 'american-football',
-    'nba': 'basketball',
-    'nhl': 'hockey',
-    '24-7-streams': '24-7',
-    '24-7-stream': '24-7',
-  };
-  return aliases[s] ?? s;
+  if (s == '24-7-streams' || s == '24-7-stream') return '24-7';
+  return s;
 }
 
 String liveSportDisplayName(String raw, String normalizedId) {

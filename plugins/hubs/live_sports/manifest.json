@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live-sports",
   "name": "ForjaHQ Live Sports",
-  "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
+  "description": "Live sports schedule and streams.",
   "author": "ForjaHQ",
   "version": "1.0.1",
   "tags": [
@@ -13,7 +13,7 @@
     {
       "id": "live-sports-hub",
       "name": "Live Sports",
-      "description": "Live sports schedule hub — pack owns layout; host owns modes and play",
+      "description": "Live sports schedule and streams.",
       "entry": "live_sports.js",
       "kind": "catalog",
       "protocol": 1,

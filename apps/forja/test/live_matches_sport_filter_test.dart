@@ -3,13 +3,13 @@ import 'package:forja/shared/live/schedule/schedule_sport_filter.dart';
 
 void main() {
   group('normalizeLiveSportId', () {
-    test('aliases PPV 24/7 Streams and sport buckets', () {
+    test('slugifies and maps 24/7 Streams; sport aliases live in packs', () {
       expect(normalizeLiveSportId('24/7 Streams'), '24-7');
       expect(normalizeLiveSportId('24-7'), '24-7');
-      expect(normalizeLiveSportId('Soccer'), 'football');
+      expect(normalizeLiveSportId('Soccer'), 'soccer');
       expect(normalizeLiveSportId('american-football'), 'american-football');
-      expect(normalizeLiveSportId('NFL'), 'american-football');
-      expect(normalizeLiveSportId('NCAA Football'), 'american-football');
+      expect(normalizeLiveSportId('NFL'), 'nfl');
+      expect(normalizeLiveSportId('NCAA Football'), 'ncaa-football');
     });
   });
 

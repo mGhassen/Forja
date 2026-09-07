@@ -219,7 +219,7 @@ async function fetchLeague(ctx, league, date, pluginId) {
   var out = [];
   events.forEach(function (ev) {
     var row = mapGame(league, ev, pluginId);
-    if (row) out.push(row);
+    if (row) out.push(liveCatalogStamp(row, pluginId));
   });
   return out;
 }

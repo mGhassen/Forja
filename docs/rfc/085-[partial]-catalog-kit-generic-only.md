@@ -1,7 +1,7 @@
 # RFC-085: Catalog kit is generic only
 
 **Status:** partial  
-**Depends on:** [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](073-[open]-live-sports-kit-ownership.md)  
+**Depends on:** [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md)  
 **Area:** `shared/catalog/kit/`, `features/my_list/`, `features/live_matches/`, hub packs
 
 ## Status at a glance
@@ -59,5 +59,5 @@ Pack-driven JS catalog rows for My List / Live schedule remain later work (RFC-0
 
 ### Related
 
-- [RFC-073](073-[open]-live-sports-kit-ownership.md) — thin live schedule composition still open
+- [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md) — live schedule kit ownership complete
 - [RFC-070](070-[partial]-catalog-hub-protocol.md) — hub protocol

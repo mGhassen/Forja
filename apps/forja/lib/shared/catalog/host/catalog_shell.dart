@@ -180,6 +180,15 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   @override
+  void didUpdateWidget(covariant CatalogShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pluginId.trim().isEmpty &&
+        !identical(widget.hostLayout, oldWidget.hostLayout)) {
+      unawaited(_loadLayout());
+    }
+  }
+
+  @override
   void dispose() {
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     CatalogKitTopMenuRegistry.revision.removeListener(_onKitTopMenuRevision);
@@ -239,6 +248,13 @@ class _CatalogShellState extends State<CatalogShell>
         _layoutWidgetSpecs = layoutWidgetSpecIndex(_widgets);
         initLayoutTabSelections(_layoutSelections, _widgets);
       });
+      CatalogKitTopMenuRegistry.syncFromLayout(
+        tabId: _pageKey,
+        widgets: _widgets,
+        selections: _layoutSelections,
+        widgetSpecs: _layoutWidgetSpecs,
+        onSelect: _onLayoutTabSelect,
+      );
       return;
     }
 

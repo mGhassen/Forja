@@ -125,7 +125,7 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     kind: 'hubs',
     tags: ['live', 'sports'],
     description:
-        'Live sports hub — schedule browse and stream resolve via host live kit.',
+        'Live sports schedule and streams.',
     manifestUrl: '$_kPacksBase/hubs/live_sports/manifest.json',
   ),
   OfficialForjaHqPack(

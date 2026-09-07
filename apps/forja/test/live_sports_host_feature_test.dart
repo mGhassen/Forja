@@ -48,18 +48,24 @@ void main() {
   });
 
   test('host-default layout is live_schedule list (RFC-084)', () {
+    final layout = liveSportsHostDefaultLayout();
     expect(
       CatalogKitTypes.treeContains(
-        kLiveSportsHostDefaultLayout,
+        layout,
         slot: CatalogKitTypes.list,
         listSource: LiveSportsHost.listSourceId,
       ),
       isTrue,
     );
-    final root = kLiveSportsHostDefaultLayout.first;
-    expect(root['type'], CatalogKitTypes.list);
-    expect(root['source'], LiveSportsHost.listSourceId);
-    expect(root['style'], 'list');
+    final stack = layout.first;
+    expect(stack['type'], CatalogKitTypes.stack);
+    final children = stack['children'] as List;
+    final list = children.last as Map;
+    expect(list['type'], CatalogKitTypes.list);
+    expect(list['source'], LiveSportsHost.listSourceId);
+    expect(list['style'], 'list');
+    expect(list['catalogMenu'], 'catalog');
+    expect(list['horizonMenu'], 'horizon');
   });
 
   test('live_schedule registers list source without host body', () {

@@ -14,15 +14,17 @@ abstract final class LiveSportsListSources {
   }
 }
 
-/// One live schedule query (catalog + sport filters).
+/// One live schedule query (catalog + sport + horizon filters).
 class LiveScheduleQuery {
   const LiveScheduleQuery({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
+    this.scheduleHorizon = '24h',
   });
 
   final String catalogFilter;
   final String sportFilter;
+  final String scheduleHorizon;
 }
 
 /// Host schedule backend — loads enabled Forja Live catalog plugins into meta.
@@ -80,13 +82,16 @@ Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
         final item = liveMetaFromScheduleRow(map);
         if (item.id.isEmpty || !seen.add(item.id)) continue;
         if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
-          final cat = (map['category'] ?? map['category_name'] ?? '')
-              .toString()
-              .toLowerCase();
-          if (!cat.contains(query.sportFilter.toLowerCase()) &&
+          final kind = item.genres.isNotEmpty
+              ? item.genres.first
+              : (item.badge ?? '');
+          if (!kind.toLowerCase().contains(query.sportFilter.toLowerCase()) &&
               item.type != query.sportFilter) {
             continue;
           }
+        }
+        if (!liveScheduleRowInHorizon(map, item, query.scheduleHorizon)) {
+          continue;
         }
         out.add(map);
       }
@@ -97,15 +102,65 @@ Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
   return out;
 }
 
-/// Map a host schedule row (plugin catalog JSON) to catalog meta.
+/// Whether a schedule row falls inside the selected horizon window.
+bool liveScheduleRowInHorizon(
+  Map<String, dynamic> row,
+  CatalogMetaItem item,
+  String horizonRaw,
+) {
+  final horizon = horizonRaw.trim().toLowerCase();
+  if (horizon.isEmpty || horizon == 'all' || horizon == 'day') return true;
+
+  final airing = item.airing == true;
+  final alwaysOn = row['always_live'] == true ||
+      row['alwaysLive'] == true ||
+      (item.badge ?? '').toLowerCase().contains('24/7') ||
+      item.genres.any((g) => g.toLowerCase().contains('24/7'));
+
+  if (horizon == 'live') return airing || alwaysOn;
+  if (alwaysOn) return true;
+
+  final window = switch (horizon) {
+    '1h' => const Duration(hours: 1),
+    '3h' => const Duration(hours: 3),
+    '6h' => const Duration(hours: 6),
+    '12h' => const Duration(hours: 12),
+    '24h' => const Duration(hours: 24),
+    _ => const Duration(hours: 24),
+  };
+
+  final start = liveScheduleStartsAt(row, item);
+  if (start == null) return airing;
+  final now = DateTime.now();
+  if (airing) return true;
+  final earliest = now.subtract(const Duration(hours: 3));
+  final latest = now.add(window);
+  return !start.isBefore(earliest) && !start.isAfter(latest);
+}
+
+DateTime? liveScheduleStartsAt(Map<String, dynamic> row, CatalogMetaItem item) {
+  final raw = item.startsAt ??
+      (row['startsAt'] ?? row['starts_at'] ?? row['date'] ?? '').toString();
+  if (raw.trim().isEmpty) return null;
+  final asNum = num.tryParse(raw);
+  if (asNum != null) {
+    final ms = asNum > 1e12 ? asNum.toInt() : (asNum * 1000).toInt();
+    if (ms > 0) return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+  return DateTime.tryParse(raw);
+}
+
+/// Map a pack catalog row to catalog meta (stable wire contract — RFC-073).
+///
+/// Preferred keys: `id`, `title`, `startsAt`, `airing`, `viewers`, `kind` /
+/// `genres`, `open`, optional `sportMatchGame` / badges / `sources`.
 CatalogMetaItem liveMetaFromScheduleRow(Map<String, dynamic> row) {
-  final id = (row['id'] ?? row['eventId'] ?? '').toString();
-  final name = (row['title'] ?? row['name'] ?? row['event'] ?? '').toString();
-  final airing = row['airing'] == true ||
-      row['live'] == true ||
-      (row['status'] ?? '').toString().toLowerCase() == 'live';
-  final starts = (row['starts_at'] ?? row['startsAt'] ?? row['date'] ?? '')
-      .toString();
+  final id = (row['id'] ?? '').toString().trim();
+  final name = (row['title'] ?? row['name'] ?? '').toString().trim();
+  final airing = row['airing'] == true || row['live'] == true;
+  final starts = (row['startsAt'] ?? row['starts_at'] ?? row['date'] ?? '')
+      .toString()
+      .trim();
   final viewersRaw = row['viewers'];
   final viewers =
       viewersRaw is num ? viewersRaw.toInt() : int.tryParse('$viewersRaw');
@@ -116,20 +171,42 @@ CatalogMetaItem liveMetaFromScheduleRow(Map<String, dynamic> row) {
       if (s is Map) sources.add(Map<String, dynamic>.from(s));
     }
   }
-  final category = (row['category'] ?? row['category_name'] ?? row['sport'] ?? '')
+  final kind = (row['kind'] ??
+          row['category'] ??
+          row['category_name'] ??
+          row['sport'] ??
+          '')
       .toString()
       .trim();
+  final genresRaw = row['genres'];
+  final genres = <String>[];
+  if (genresRaw is List) {
+    for (final g in genresRaw) {
+      final t = g.toString().trim();
+      if (t.isNotEmpty) genres.add(t);
+    }
+  } else if (kind.isNotEmpty) {
+    genres.add(kind);
+  }
+
+  CatalogOpen? open;
+  final openRaw = row['open'];
+  if (openRaw is Map) {
+    open = CatalogOpen.fromJson(Map<String, dynamic>.from(openRaw));
+  }
+  open ??= id.isEmpty ? null : CatalogOpen(surface: 'live', id: id);
+
   return CatalogMetaItem(
     id: id,
     type: 'live_match',
     name: name,
     poster: (row['poster'] ?? row['thumbnail'] ?? '').toString(),
-    genres: category.isEmpty ? const [] : [category],
-    badge: category.isEmpty ? null : category,
+    genres: genres,
+    badge: kind.isEmpty ? null : kind,
     airing: airing,
     startsAt: starts.isEmpty ? null : starts,
     viewers: viewers,
     sources: sources,
-    open: CatalogOpen(surface: 'live', id: id),
+    open: open,
   );
 }

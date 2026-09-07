@@ -56,5 +56,5 @@ async function extract(ctx) {
       rows.push(row);
     });
   });
-  return rows;
+  return rows.map(function (r) { return liveCatalogStamp(r, pluginId); });
 }

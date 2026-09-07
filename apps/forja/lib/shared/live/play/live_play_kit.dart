@@ -4,8 +4,8 @@ import 'package:forja/shell/shell_bus.dart';
 
 /// Play / details entry for Live Sports meta (`open.surface: live`).
 ///
-/// In-hub card taps use [play/live_play_dispatch.dart]. Cross-hub meta switches
-/// to the Live Sports tab and opens the matching fixture when found (RFC-073).
+/// Cross-hub open switches to the Live Sports tab; [CatalogKitListWidget]
+/// consumes [pendingOpenMatchId] and opens the streams panel (RFC-073 A09).
 abstract final class LivePlayKit {
   LivePlayKit._();
 

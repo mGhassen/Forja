@@ -85,5 +85,5 @@ async function extract(ctx) {
       pluginId: pluginId,
     });
   });
-  return rows;
+  return rows.map(function (r) { return liveCatalogStamp(r, pluginId); });
 }

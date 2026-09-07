@@ -170,7 +170,7 @@ async function extract(ctx) {
 
   return Object.keys(byId)
     .map(function (k) {
-      return byId[k];
+      return liveCatalogStamp(byId[k], pluginId);
     })
     .sort(function (a, b) {
       var liveA = a.airing ? 0 : 1;

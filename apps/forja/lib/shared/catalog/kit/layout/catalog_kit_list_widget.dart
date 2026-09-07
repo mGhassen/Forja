@@ -94,6 +94,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   CatalogKitListEntry? _selected;
   List<String> _dynamicKinds = const [];
   String? _kindFilter;
+  bool _pendingOpenConsumed = false;
 
   CatalogKitListSource? _resolveSource() => CatalogHostListRegistry.resolve(
         sourceId: widget.listSource.isEmpty ? null : widget.listSource,
@@ -190,6 +191,26 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
     source.setupSideEffects(ref, status);
     final pageAsync = source.watchPage(ref, status);
 
+    final catalogMenuId =
+        (widget.layoutSpec['catalogMenu'] ?? 'catalog').toString();
+    final horizonMenuId =
+        (widget.layoutSpec['horizonMenu'] ?? 'horizon').toString();
+    if (scope != null) {
+      final filters = <String, String>{};
+      final catalog = scope.selectedId(catalogMenuId);
+      final horizon = scope.selectedId(horizonMenuId);
+      final kindSel = scope.selectedId(widget.kindMenuId);
+      if (catalog != null) filters['catalog'] = catalog;
+      if (horizon != null) filters['horizon'] = horizon;
+      if (kindSel != null) filters['kind'] = kindSel;
+      if (filters.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          source.onLayoutFilters(ref, filters);
+        });
+      }
+    }
+
     // Status / Simkl writes re-run the FutureProvider; keep the current grid
     // instead of swapping to the shimmer skeleton (feels like a full reload).
     return pageAsync.when(
@@ -227,6 +248,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
         final entries = page.entriesForKind(kind);
+        _consumePendingOpen(entries);
         if (entries.isEmpty) return _emptyState(context, kind: kind);
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
         final body = widget.isDenseList
@@ -287,6 +309,31 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         );
       },
     );
+  }
+
+  void _consumePendingOpen(List<CatalogKitListEntry> entries) {
+    if (_pendingOpenConsumed || entries.isEmpty) return;
+    final pending = _source?.takePendingSelectEntryId();
+    if (pending == null || pending.isEmpty) {
+      _pendingOpenConsumed = true;
+      return;
+    }
+    CatalogKitListEntry? hit;
+    for (final e in entries) {
+      final id = e.meta.id;
+      final openId = e.meta.open?.id ?? '';
+      if (id == pending || openId == pending) {
+        hit = e;
+        break;
+      }
+    }
+    _pendingOpenConsumed = true;
+    if (hit == null || !_autoPanel) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _selected = hit);
+      widget.onEntrySelected?.call(hit!);
+    });
   }
 
   Widget? _buildAutoPanel() {

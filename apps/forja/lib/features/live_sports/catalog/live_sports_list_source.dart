@@ -45,7 +45,8 @@ final liveScheduleCatalogProvider =
   final rows = await loadLiveScheduleRows(
     LiveScheduleQuery(
       catalogFilter: filters.catalogFilter,
-      sportFilter: 'all',
+      sportFilter: filters.sportFilter,
+      scheduleHorizon: filters.scheduleHorizon,
     ),
   );
   final entries = <CatalogKitListEntry>[];
@@ -107,6 +108,31 @@ final class LiveScheduleCatalogSource extends CatalogKitListSource {
           loading: AsyncLoading.new,
         );
   }
+
+  @override
+  void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
+    final catalog = filters['catalog'];
+    final horizon = filters['horizon'];
+    final sport = filters['kind'] ?? filters['sport'];
+    final current = ref.read(liveScheduleFiltersProvider);
+    final notifier = ref.read(liveScheduleFiltersProvider.notifier);
+    if (catalog != null &&
+        catalog.isNotEmpty &&
+        catalog != current.catalogFilter) {
+      notifier.setCatalogFilter(catalog);
+    }
+    if (horizon != null &&
+        horizon.isNotEmpty &&
+        horizon != current.scheduleHorizon) {
+      notifier.setScheduleHorizon(horizon);
+    }
+    if (sport != null && sport.isNotEmpty && sport != current.sportFilter) {
+      notifier.setSportFilter(sport);
+    }
+  }
+
+  @override
+  String? takePendingSelectEntryId() => LivePlayKit.takePendingOpenMatchId();
 
   @override
   void setupSideEffects(WidgetRef ref, String status) {}

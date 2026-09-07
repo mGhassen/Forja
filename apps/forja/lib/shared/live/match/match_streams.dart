@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
@@ -16,12 +15,7 @@ import 'package:forja/shared/live/match/match_event.dart';
 import 'package:forja/shared/live/schedule/schedule_sport_filter.dart';
 import 'package:forja/shared/live/schedule/stremio_live_meta.dart';
 import 'package:rust/rust.dart'
-    show
-        BuiltInPlayerContext,
-        SettingsService,
-        StremioAddonFeatures,
-        StremioService,
-        runLiveMatchesFetchJson;
+    show BuiltInPlayerContext, SettingsService, StremioAddonFeatures, StremioService;
 
 /// Host match-stream resolve + play (RFC-073). No UI / panel parts.
 abstract final class MatchStreams {
@@ -153,9 +147,7 @@ abstract final class MatchStreams {
 
     for (final (m, ref) in jobs) {
       try {
-        final streams = m.isForjaLive
-            ? await _forjaLiveStreamsFromSource(m, ref)
-            : await _fetchStreamedStreams(ref, allowFallback: false);
+        final streams = await _forjaLiveStreamsFromSource(m, ref);
         for (final stream in streams) {
           final url = stream.embedUrl.trim();
           if (url.isEmpty || !seenUrls.add(url)) continue;
@@ -183,7 +175,7 @@ abstract final class MatchStreams {
     );
     if (pluginId.isEmpty) return const [];
 
-    final catalogMeta = await _catalogStreamsForSourceRef(match, source);
+    final catalogMeta = await _inlineStreamsForSourceRef(match, source);
     if (catalogMeta.isNotEmpty) {
       final pluginSource = source.source.trim().isNotEmpty
           ? source.source.trim().toLowerCase()
@@ -268,87 +260,15 @@ abstract final class MatchStreams {
     return out;
   }
 
-  static bool _isStreamedPkGoatSource(String source) {
-    switch (source.trim().toLowerCase()) {
-      case 'admin':
-      case 'delta':
-      case 'golf':
-      case 'ppv':
-      case 'bravo':
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  static Future<List<MatchStream>> _catalogStreamsForSourceRef(
+  static Future<List<MatchStream>> _inlineStreamsForSourceRef(
     MatchEvent match,
     MatchSourceRef sourceRef,
   ) async {
     final token = sourceRef.source.trim().toLowerCase();
-    if (token.isNotEmpty) {
-      final inline = match.inlineStreams
-          .where((s) => s.source.trim().toLowerCase() == token)
-          .toList();
-      if (inline.isNotEmpty) return inline;
-    }
-    if (!_isStreamedPkGoatSource(token)) return const [];
-    return _fetchStreamedStreams(sourceRef, allowFallback: true);
-  }
-
-  static Future<List<MatchStream>> _fetchStreamedStreams(
-    MatchSourceRef sourceRef, {
-    bool allowFallback = true,
-  }) async {
-    if (sourceRef.source.trim().toLowerCase() == 'echo') return const [];
-    try {
-      final raw = await runLiveMatchesFetchJson(
-        jsonEncode({
-          'action': 'streamed_streams',
-          'source': sourceRef.source,
-          'id': sourceRef.id,
-        }),
-      );
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) {
-        return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-      }
-      final list = parsed['items'] as List? ?? [];
-      final rows = list
-          .map((s) {
-            try {
-              return MatchStream.fromJson(s as Map<String, dynamic>);
-            } catch (_) {
-              return null;
-            }
-          })
-          .whereType<MatchStream>()
-          .where((s) => s.embedUrl.isNotEmpty)
-          .toList();
-      if (rows.isNotEmpty) return rows;
-      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-    } catch (_) {
-      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-    }
-  }
-
-  static List<MatchStream> _streamedEmbedFallback(MatchSourceRef sourceRef) {
-    final source = sourceRef.source.trim();
-    final id = sourceRef.id.trim();
-    if (source.isEmpty || id.isEmpty) return const [];
-    if (!_isStreamedPkGoatSource(source)) return const [];
-    if (source.toLowerCase() == 'echo') return const [];
-    return [
-      MatchStream(
-        id: id,
-        streamNo: 1,
-        language: '',
-        hd: false,
-        embedUrl: 'https://embed.st/embed/$source/$id/1',
-        source: source,
-        viewers: 0,
-      ),
-    ];
+    if (token.isEmpty) return const [];
+    return match.inlineStreams
+        .where((s) => s.source.trim().toLowerCase() == token)
+        .toList();
   }
 
   static MatchStream _streamFromResolveRow({
@@ -1031,15 +951,13 @@ abstract final class MatchStreams {
         LiveMatchesEngine.cachedIsIframeCatalog(match.livePluginId);
     final catalogReferer = iframeCatalog
         ? await LiveMatchesEngine.iframeCatalogWebReferer()
-        : match.isForjaLive
-            ? (embed.isNotEmpty
-                ? (_forjaLiveCdnReferer(embed) ??
-                    await LiveMatchesEngine.pluginReferer(
-                      match.livePluginId,
-                      embedUrl: embed,
-                    ))
-                : await LiveMatchesEngine.pluginReferer(match.livePluginId))
-            : 'https://streamed.pk/';
+        : (embed.isNotEmpty
+            ? (_forjaLiveCdnReferer(embed) ??
+                await LiveMatchesEngine.pluginReferer(
+                  match.livePluginId,
+                  embedUrl: embed,
+                ))
+            : await LiveMatchesEngine.pluginReferer(match.livePluginId));
 
     if (embed.isNotEmpty &&
         RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {

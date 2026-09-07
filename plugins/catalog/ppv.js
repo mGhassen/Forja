@@ -66,7 +66,11 @@ async function extract(ctx) {
           });
         });
       });
-      if (rows.length) return rows;
+      if (rows.length) {
+        return rows.map(function (r) {
+          return liveCatalogStamp(r, pluginId);
+        });
+      }
     } catch (e) {
       ctx.error(e);
     }

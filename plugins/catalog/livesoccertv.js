@@ -801,6 +801,7 @@ async function fetchCatalog(ctx, cfg) {
   applyLiveScores(out, liveMap, pluginIdFromCtx(ctx, cfg), compNames);
 
   out = out
+    .map(function (r) { return liveCatalogStamp(r, pluginIdFromCtx(ctx, cfg)); })
     .sort(function (a, b) {
       return Number(a.date || 0) - Number(b.date || 0);
     })

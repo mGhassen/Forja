@@ -287,6 +287,6 @@ async function extract(ctx) {
       };
       if (teams.home) row.homeTeam = teams.home;
       if (teams.away) row.awayTeam = teams.away;
-      return row;
+      return liveCatalogStamp(row, pluginId);
     });
 }

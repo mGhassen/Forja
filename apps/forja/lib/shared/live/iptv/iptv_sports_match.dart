@@ -28,22 +28,15 @@ abstract final class IptvSportsMatchService {
   static Future<LiveBroadcastHints> broadcastHintsFor(MatchEvent match) =>
       _broadcastHintsForMatch(match);
 
-  static Future<List<Map<String, dynamic>>> fetchEspnGames() =>
-      _fetchEspnSportMatchGames();
-
   static void invalidateBroadcastCaches() => invalidateLiveBroadcastCaches();
 
-  static Map<String, dynamic> sportMatchGameForResolve(
-    MatchEvent match,
-    List<Map<String, dynamic>> espnGames,
-  ) =>
-      _sportMatchGameForIptvResolve(match, espnGames);
-
-  static Map<String, dynamic>? findEspnGame(
-    MatchEvent match,
-    List<Map<String, dynamic>> espnGames,
-  ) =>
-      _findEspnGameForMatch(match, espnGames);
+  /// Prefer pack-supplied [MatchEvent.sportMatchGame]; else derive from title.
+  static Map<String, dynamic> sportMatchGameForResolve(MatchEvent match) {
+    if (match.sportMatchGame != null) {
+      return Map<String, dynamic>.from(match.sportMatchGame!);
+    }
+    return _sportMatchGamePayloadFromMatch(match);
+  }
 
   static MatchEvent copyMatch(
     MatchEvent m, {
@@ -62,131 +55,10 @@ abstract final class IptvSportsMatchService {
         awayBadge: awayBadge,
         airing: airing,
       );
-
-  static ({List<MatchEvent> streamed, List<Map<String, dynamic>> espnGames})
-      mergeWithEspn(
-    List<MatchEvent> streamed,
-    List<Map<String, dynamic>> espnGames, {
-    bool appendUnmatched = true,
-  }) =>
-      _mergeStreamedWithEspn(
-        streamed,
-        espnGames,
-        appendUnmatched: appendUnmatched,
-      );
 }
 
-// My IPTV catalog = All (PPV/Streamed/CDN) merged with ESPN (Sportio schedule).
-
-Future<List<Map<String, dynamic>>> _fetchEspnSportMatchGames() async {
-  try {
-    final config = await LiveMatchesIptvSportsConfig.load();
-    final leagues = config.leagues.isEmpty
-        ? LiveMatchesIptvSportsConfig.allLeagues
-        : config.leagues;
-    final now = DateTime.now();
-    final date =
-        '${now.year.toString().padLeft(4, '0')}'
-        '${now.month.toString().padLeft(2, '0')}'
-        '${now.day.toString().padLeft(2, '0')}';
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({
-        'action': 'sport_match_games',
-        'leagues': leagues,
-        'date': date,
-      }),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) {
-      debugPrint('[LiveMatches] ESPN games error: ${parsed['error']}');
-      return [];
-    }
-    final list = parsed['items'] as List? ?? [];
-    return [
-      for (final item in list)
-        if (item is Map)
-          Map<String, dynamic>.from(item),
-    ];
-  } catch (e) {
-    debugPrint('[LiveMatches] ESPN games fetch failed: $e');
-    return [];
-  }
-}
-
-Map<String, dynamic> _espnGamePayload(Map<String, dynamic> g) {
-  return {
-    'id': (g['id'] ?? '').toString(),
-    'title': (g['title'] ?? g['name'] ?? '').toString(),
-    'sport': (g['sport'] ?? '').toString(),
-    'category': (g['category'] ?? g['sport'] ?? '').toString(),
-    'homeTeam': (g['homeTeam'] ?? '').toString(),
-    'awayTeam': (g['awayTeam'] ?? '').toString(),
-    'homeNick': (g['homeNick'] ?? '').toString(),
-    'awayNick': (g['awayNick'] ?? '').toString(),
-    'homeAbbr': (g['homeAbbr'] ?? '').toString(),
-    'awayAbbr': (g['awayAbbr'] ?? '').toString(),
-    'dateMs': (g['dateMs'] as num?)?.toInt() ?? 0,
-    'date': (g['date'] ?? '').toString(),
-  };
-}
-
-MatchEvent _espnGameToStreamedMatch(Map<String, dynamic> g) {
-  final home = (g['homeTeam'] ?? '').toString().trim();
-  final away = (g['awayTeam'] ?? '').toString().trim();
-  final title = (g['title'] ?? g['name'] ?? '').toString().trim();
-  final live = g['live'] == true;
-  return MatchEvent(
-    id: 'espn:${(g['id'] ?? '').toString()}',
-    title: title.isNotEmpty
-        ? title
-        : (home.isNotEmpty && away.isNotEmpty ? '$away vs $home' : 'ESPN'),
-    category: (g['category'] ?? g['sport'] ?? 'other').toString(),
-    dateMs: (g['dateMs'] as num?)?.toInt() ?? 0,
-    poster: (g['poster'] ?? g['homeLogo'] ?? g['awayLogo'] ?? '').toString(),
-    popular: false,
-    airing: live,
-    homeTeam: home.isEmpty ? null : home,
-    awayTeam: away.isEmpty ? null : away,
-    homeBadge: (g['homeLogo'] ?? '').toString(),
-    awayBadge: (g['awayLogo'] ?? '').toString(),
-    sources: const [],
-    catalog: 'iptv_sports',
-    sportMatchGame: _espnGamePayload(g),
-  );
-}
-
-MatchEvent _copyMatchEvent(
-  MatchEvent m, {
-  Map<String, dynamic>? sportMatchGame,
-  String? homeTeam,
-  String? awayTeam,
-  String? homeBadge,
-  String? awayBadge,
-  bool? airing,
-}) {
-  return MatchEvent(
-    id: m.id,
-    title: m.title,
-    category: m.category,
-    dateMs: m.dateMs,
-    poster: m.poster,
-    popular: m.popular,
-    airing: airing ?? m.airing,
-    viewers: m.viewers,
-    homeTeam: homeTeam ?? m.homeTeam,
-    homeBadge: homeBadge ?? m.homeBadge,
-    awayTeam: awayTeam ?? m.awayTeam,
-    awayBadge: awayBadge ?? m.awayBadge,
-    sources: m.sources,
-    inlineStreams: m.inlineStreams,
-    catalog: m.catalog,
-    stremioBaseUrl: m.stremioBaseUrl,
-    stremioType: m.stremioType,
-    stremioAddonName: m.stremioAddonName,
-    sportMatchGame: sportMatchGame ?? m.sportMatchGame,
-    livePluginId: m.livePluginId,
-  );
-}
+// IPTV sports matching uses pack-supplied sportMatchGame / broadcast catalogs.
+// Host ESPN browse merge was removed (RFC-073) — ESPN schedule is catalog-espn.
 
 bool _kickoffClose(int aMs, int bMs) {
   if (aMs <= 0 || bMs <= 0) return true;
@@ -213,175 +85,21 @@ List<String> _broadcastChannelsFromGame(Map<String, dynamic>? game) {
   ];
 }
 
-Map<String, dynamic> _sportMatchGameForIptvResolve(
-  MatchEvent match,
-  List<Map<String, dynamic>> espnGames,
-) {
-  final existing = match.sportMatchGame != null
-      ? Map<String, dynamic>.from(match.sportMatchGame!)
-      : _sportMatchGamePayloadFromMatch(match);
-  final channels = _broadcastChannelsFromGame(existing);
-  final espn = _findEspnGameForMatch(match, espnGames);
-  if (espn == null) return existing;
-  final out = Map<String, dynamic>.from(espn);
-  if (channels.isNotEmpty) {
-    out['broadcastChannels'] = channels;
-  }
-  return out;
-}
-
-bool _teamPairsMatch(String? home, String? away, Map<String, dynamic> espn) {
+bool _teamPairsMatch(String? home, String? away, Map<String, dynamic> other) {
   final epair = matchTeamPairKey(
-    (espn['homeTeam'] ?? '').toString(),
-    (espn['awayTeam'] ?? '').toString(),
+    (other['homeTeam'] ?? '').toString(),
+    (other['awayTeam'] ?? '').toString(),
   );
   final pair = matchTeamPairKey(home, away);
   if (pair != null && epair != null && pair == epair) return true;
 
   final nickPair = matchTeamPairKey(
-    (espn['homeNick'] ?? '').toString(),
-    (espn['awayNick'] ?? '').toString(),
+    (other['homeNick'] ?? '').toString(),
+    (other['awayNick'] ?? '').toString(),
   );
   if (pair != null && nickPair != null && pair == nickPair) return true;
 
-  // Catalog title parse vs ESPN full / nick.
   return false;
-}
-
-bool _sameCatalogEventAsEspn({
-  required String title,
-  required String? homeTeam,
-  required String? awayTeam,
-  required int dateMs,
-  required Map<String, dynamic> espn,
-}) {
-  final espnMs = (espn['dateMs'] as num?)?.toInt() ?? 0;
-  if (!_kickoffClose(dateMs, espnMs)) return false;
-
-  final (home, away) = resolveLiveMatchTeams(
-    homeTeam: homeTeam,
-    awayTeam: awayTeam,
-    title: title,
-  );
-  if (_teamPairsMatch(home, away, espn)) return true;
-
-  final espnTitle = matchTextKey((espn['title'] ?? espn['name'] ?? '').toString());
-  final catalogTitle = matchTextKey(title);
-  return espnTitle.isNotEmpty &&
-      catalogTitle.isNotEmpty &&
-      espnTitle == catalogTitle;
-}
-
-/// Enrich streamed rows with ESPN teams; optionally append ESPN-only games.
-({List<MatchEvent> streamed, List<Map<String, dynamic>> espnGames})
-    _mergeStreamedWithEspn(
-  List<MatchEvent> streamed,
-  List<Map<String, dynamic>> espnGames, {
-  bool appendUnmatched = true,
-}) {
-  final remaining = <Map<String, dynamic>>[];
-  final byPair = <String, Map<String, dynamic>>{};
-  final byTitle = <String, Map<String, dynamic>>{};
-  for (final g in espnGames) {
-    remaining.add(g);
-    final home = (g['homeTeam'] ?? '').toString();
-    final away = (g['awayTeam'] ?? '').toString();
-    final pair = matchTeamPairKey(home, away);
-    if (pair != null) byPair.putIfAbsent(pair, () => g);
-    final nickPair = matchTeamPairKey(
-      (g['homeNick'] ?? '').toString(),
-      (g['awayNick'] ?? '').toString(),
-    );
-    if (nickPair != null) byPair.putIfAbsent(nickPair, () => g);
-    final titleKey = matchTextKey((g['title'] ?? g['name'] ?? '').toString());
-    if (titleKey.isNotEmpty) byTitle.putIfAbsent(titleKey, () => g);
-  }
-
-  Map<String, dynamic>? matchEspnForRow(MatchEvent m) {
-    final (home, away) = resolveLiveMatchTeams(
-      homeTeam: m.homeTeam,
-      awayTeam: m.awayTeam,
-      title: m.title,
-    );
-    final pair = matchTeamPairKey(home, away);
-    Map<String, dynamic>? g;
-    if (pair != null) g = byPair.remove(pair);
-    if (g == null) {
-      final titleKey = matchTextKey(m.title);
-      if (titleKey.isNotEmpty) g = byTitle.remove(titleKey);
-    }
-    if (g == null) {
-      final idx = remaining.indexWhere(
-        (eg) => _sameCatalogEventAsEspn(
-          title: m.title,
-          homeTeam: m.homeTeam,
-          awayTeam: m.awayTeam,
-          dateMs: m.dateMs,
-          espn: eg,
-        ),
-      );
-      if (idx >= 0) g = remaining.removeAt(idx);
-    } else {
-      remaining.remove(g);
-    }
-    return g;
-  }
-
-  final out = <MatchEvent>[];
-  for (final m in streamed) {
-    final g = matchEspnForRow(m);
-    if (g == null) {
-      out.add(m);
-      continue;
-    }
-    final payload = _espnGamePayload(g);
-    out.add(
-      _copyMatchEvent(
-        m,
-        sportMatchGame: payload,
-        homeTeam: (payload['homeTeam'] as String?)?.trim().isNotEmpty == true
-            ? payload['homeTeam'] as String
-            : m.homeTeam,
-        awayTeam: (payload['awayTeam'] as String?)?.trim().isNotEmpty == true
-            ? payload['awayTeam'] as String
-            : m.awayTeam,
-        homeBadge: () {
-          final logo = (g['homeLogo'] ?? '').toString();
-          return logo.isNotEmpty ? logo : m.homeBadge;
-        }(),
-        awayBadge: () {
-          final logo = (g['awayLogo'] ?? '').toString();
-          return logo.isNotEmpty ? logo : m.awayBadge;
-        }(),
-        airing: g['live'] == true ? true : m.airing,
-      ),
-    );
-  }
-  if (appendUnmatched) {
-    out.addAll(remaining.map(_espnGameToStreamedMatch));
-  }
-  return (streamed: out, espnGames: espnGames);
-}
-
-Map<String, dynamic>? _findEspnGameForMatch(
-  MatchEvent match,
-  List<Map<String, dynamic>> espnGames,
-) {
-  if (match.sportMatchGame != null) {
-    return Map<String, dynamic>.from(match.sportMatchGame!);
-  }
-  for (final g in espnGames) {
-    if (_sameCatalogEventAsEspn(
-      title: match.title,
-      homeTeam: match.homeTeam,
-      awayTeam: match.awayTeam,
-      dateMs: match.dateMs,
-      espn: g,
-    )) {
-      return _espnGamePayload(g);
-    }
-  }
-  return null;
 }
 
 bool _broadcastTokenMatches(String a, String b) {

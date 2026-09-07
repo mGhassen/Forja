@@ -92,16 +92,31 @@ void main() {
       final item = liveMetaFromScheduleRow({
         'id': 'evt-1',
         'title': 'Alpha vs Beta',
-        'live': true,
-        'starts_at': '2026-09-01T18:00:00Z',
+        'airing': true,
+        'startsAt': '2026-09-01T18:00:00Z',
         'viewers': 9,
-        'category': 'Football',
+        'kind': 'football',
+        'open': {'surface': 'live', 'id': 'evt-1'},
       });
       expect(item.id, 'evt-1');
       expect(item.type, 'live_match');
       expect(item.airing, isTrue);
       expect(item.open?.surface, 'live');
-      expect(item.genres, ['Football']);
+      expect(item.genres, ['football']);
+      expect(item.startsAt, '2026-09-01T18:00:00Z');
+    });
+
+    test('liveScheduleRowInHorizon filters by window', () {
+      final now = DateTime.now();
+      final row = <String, dynamic>{
+        'id': 'evt-2',
+        'title': 'Soon',
+        'startsAt': now.add(const Duration(hours: 2)).millisecondsSinceEpoch,
+      };
+      final item = liveMetaFromScheduleRow(row);
+      expect(liveScheduleRowInHorizon(row, item, '1h'), isFalse);
+      expect(liveScheduleRowInHorizon(row, item, '3h'), isTrue);
+      expect(liveScheduleRowInHorizon(row, item, 'all'), isTrue);
     });
 
     test('HubLiveScheduleSource resolves live_schedule id', () {

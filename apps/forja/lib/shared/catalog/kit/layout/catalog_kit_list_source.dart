@@ -51,6 +51,13 @@ abstract class CatalogKitListSource {
   }) =>
       null;
 
+  /// Optional layout menu filters (`catalog` / `horizon` ids → selected value).
+  /// Default no-op — host sources that care sync prefs from kit chrome.
+  void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {}
+
+  /// One-shot pending entry id to select after page load (cross-hub open).
+  String? takePendingSelectEntryId() => null;
+
   AsyncValue<CatalogKitListPage> watchPage(WidgetRef ref, String status);
 
   void setupSideEffects(WidgetRef ref, String status);

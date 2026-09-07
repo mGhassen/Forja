@@ -76,7 +76,7 @@ Replace the hardcoded Live Matches feature screen with a **plugin-contributed ca
 
 ### Modes (retired — see RFC-073)
 
-RFC-071 shipped host-owned browse modes. Product moved resolve choice to match **Providers** / **Live TV**. Mode registry removed in [RFC-073](../073-[open]-live-sports-kit-ownership.md).
+RFC-071 shipped host-owned browse modes. Product moved resolve choice to match **Providers** / **Live TV**. Mode registry removed in [RFC-073](073-[fixed]-live-sports-kit-ownership.md).
 
 ### Related
 

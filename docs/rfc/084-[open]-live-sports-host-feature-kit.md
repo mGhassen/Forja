@@ -1,7 +1,7 @@
 # RFC-084: Live Sports host feature + kit standard layout
 
 **Status:** open  
-**Depends on:** [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](073-[open]-live-sports-kit-ownership.md) · [RFC-081](fixed/081-[fixed]-host-only-platform-nav-defaults.md)  
+**Depends on:** [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md) · [RFC-081](fixed/081-[fixed]-host-only-platform-nav-defaults.md)  
 **Area:** shell / Live Sports / catalog kit
 
 ## Status at a glance
