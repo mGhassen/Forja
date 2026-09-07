@@ -33,7 +33,8 @@ profile is known — another profile’s settings are never shown first.
   hub is visible.
 - **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or
   create an account at `/signup` (Turnstile captcha when configured) — check your
-  email and open the **Confirm email** link to finish signup. Use
+  email and open the **Confirm email** link; you land signed in on **Who’s
+  watching?** (`/account/profiles`). Use
   **Forgot password?** on `/login` (or open `/forgot-password`) to email a reset
   link; open the link to choose a new password on `/reset-password`, then sign in.
   Link an Android TV at `/connect` (code from the TV or QR). Under **Account**,

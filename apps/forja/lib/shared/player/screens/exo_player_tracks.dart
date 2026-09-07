@@ -321,6 +321,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
   Future<void> _turnOffSubtitles() async {
     _s._selectedExternalSubUrl = null;
     _s._preferredSubtitleApplied = true;
+    _s._cueTexts.value = const [];
     await SettingsService().setPreferredSubtitleLanguage('None');
     await ExoPlayerBridge.selectTrack(
       _s._viewId,

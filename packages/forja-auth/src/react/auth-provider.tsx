@@ -294,7 +294,9 @@ export function ForjaAuthProvider({ host, children }: ForjaAuthProviderProps) {
     ): Promise<AuthResult> => {
       if (!configured) return unavailable()
       if (!signupEnabled) return featureOff('Sign up')
-      const emailRedirectTo = `${window.location.origin}/auth/callback`
+      // Fallback if a hosted template still uses {{ .ConfirmationURL }}.
+      // Preferred path: confirmation.html → token_hash + verifyOtp (no PKCE).
+      const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/account/profiles')}`
       const { data, error } = await client.auth.signUp({
         email,
         password,

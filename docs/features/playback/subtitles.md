@@ -4,7 +4,7 @@
 
 ## What it is
 
-The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons — and **merges them with tracks from the stream you are playing** (provider / KissKh / Videasy sideloads) into one language list. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass (**MediaKit** only). On **Android ExoPlayer** (optional — MediaKit is the default on phone and Android TV), SRT/VTT work for online search, provider sideloads (including local Asian Drama tracks), and **Load from file**; appearance sliders and ASS styling stay on MediaKit.
+The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons — and **merges them with tracks from the stream you are playing** (provider / KissKh / Videasy sideloads) into one language list. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass (**MediaKit** only). On **Android ExoPlayer**, SRT/VTT (online search, provider sideloads, in-stream text) paint as a Flutter overlay above the video so they stay visible on Android TV PlatformViews; appearance sliders apply there. ASS styling stays on MediaKit.
 
 ## How to open it
 
@@ -26,6 +26,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
 - **KissKh (Asian Drama):** provider Sub API tracks (decrypted in the pack, attached as sideloads) are preferred over HLS mux “In-stream” — those mux tracks can be mistimed vs kisskh.co
 - On **Android TV**, opening Subtitles lands focus on the active language/track (or **Off** when subs are off)
+- **ExoPlayer on Android TV:** subtitle text is drawn by Flutter over the video (not the native Exo caption view) so boxes like Xiaomi keep showing selected SRT/VTT / in-stream tracks
 - **File** in the Subtitles header loads a local subtitle file; it is hidden on Android TV
 - Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie / Levrx use the hub’s enrich TMDB id when present (not the KissKh / AniList open id)
 - Subtitle search works best when the title and year match TMDB metadata

@@ -167,7 +167,7 @@
                     >
                       <a
                         class="email-btn"
-                        href="{{ .ConfirmationURL }}"
+                        href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/account/profiles"
                         style="
                           display: inline-block;
                           padding: 16px 36px;
@@ -201,9 +201,9 @@
               >
                 Button not working? Paste this link into your browser:<br />
                 <a
-                  href="{{ .ConfirmationURL }}"
+                  href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/account/profiles"
                   style="color: rgba(237, 230, 218, 0.55); text-decoration: underline; word-break: break-all"
-                >{{ .ConfirmationURL }}</a>
+                >{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/account/profiles</a>
               </td>
             </tr>
             <tr>

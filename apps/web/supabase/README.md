@@ -78,10 +78,15 @@ copy match the Forja dark brand (green CTA, paper text on near-black).
 | Reauthentication | `reauthentication.html` | Your Forja verification code |
 
 **Auth model:** email + password and passkeys (no magic-link login in the app).
-Signup confirmation and password reset both use a **clickable link**
-(`{{ .ConfirmationURL }}`). Signup `signUp` sets `emailRedirectTo` to
-`/auth/callback` (PKCE exchange → account). Recovery uses `redirectTo`
-`/reset-password` so the user sets a new password, then signs in.
+Signup confirmation uses a **clickable link** with `token_hash` (not PKCE
+`ConfirmationURL`) so the click creates a session in any browser and lands on
+`/account/profiles`. Recovery still uses `{{ .ConfirmationURL }}` with
+`redirectTo` `/reset-password`. Signup `signUp` still sets `emailRedirectTo` as
+a fallback when a hosted template still uses `ConfirmationURL`.
+
+Confirm signup button / paste URL (see `templates/confirmation.html`):
+
+`{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/account/profiles`
 
 ### Session inactivity (30 days)
 
@@ -140,8 +145,8 @@ your public web origin so the logo loads in real inboxes.
 4. Sign up (or open `/forgot-password` to trigger recovery) → open Mailpit UI at **http://127.0.0.1:55324**
 5. For recovery: click the **reset link** in the email → `/reset-password` → choose
    a new password → sign in at `/login`
-6. For signup confirm: click **Confirm email** in the message → `/auth/callback`
-   → account (or sign in with the password you chose)
+6. For signup confirm: click **Confirm email** → `/auth/callback?token_hash=…`
+   → signed-in **Who’s watching?** (`/account/profiles`)
 7. Set `enable_confirmations = false` again if you want click-free test users
 
 ### Hosted (production Dashboard)
@@ -154,10 +159,11 @@ editing files in `templates/`:
 3. Confirm **URL Configuration → Site URL** is the public web origin (not
    `localhost`) so `{{ .SiteURL }}/brand/logo-email.png` resolves
 4. Redirect URLs must include `/login`, `/signup`, `/forgot-password`,
-   `/reset-password`, `/auth/callback`, and `/account`. Signup confirmation
-   emails redirect to `/auth/callback`; recovery emails redirect to
-   `/reset-password`. Daily sign-in stays email/password or passkey (no
-   magic-link login).
+   `/reset-password`, `/auth/callback`, and `/account`. **Paste the updated
+   Confirm signup HTML** from `templates/confirmation.html` (token_hash link) —
+   hosted does not pick up file edits automatically. Recovery emails still use
+   `ConfirmationURL` → `/reset-password`. Daily sign-in stays email/password or
+   passkey (no magic-link login).
 
 From `apps/web` only:
 

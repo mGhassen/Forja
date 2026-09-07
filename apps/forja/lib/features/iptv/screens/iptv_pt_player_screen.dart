@@ -771,6 +771,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   double _subtitleBgOpacity = 0.67;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+  /// Exo Media3 cues → Flutter overlay (issue 230).
+  final ValueNotifier<List<String>> _exoCueTexts =
+      ValueNotifier<List<String>>(const []);
 
   List<Map<String, dynamic>> _externalSubtitles = [];
   String? _selectedExternalSubUrl;
@@ -1577,6 +1580,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
     _subtitleFetchSub?.cancel();
+    _exoCueTexts.dispose();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
     unawaited(_finalizeExit());

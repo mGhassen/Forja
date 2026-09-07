@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **7 / 7** acceptance (password reset + signup confirm link) · **6 / 7** acceptance (passkeys) · **0 / 1** mobile deferred |
-| **Current slice** | Signup confirm + password reset via email link; passkeys on web + Flutter desktop |
+| **Progress** | **6 / 6** components · **11 / 11** acceptance (v1 portal) · **3 / 3** acceptance (signup captcha) · **3 / 3** acceptance (account management) · **1 / 1** acceptance (desktop handoff) · **8 / 8** acceptance (password reset + signup confirm link) · **6 / 7** acceptance (passkeys) · **0 / 1** mobile deferred |
+| **Current slice** | Signup confirm link creates session via token_hash → `/account/profiles` |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -85,6 +85,7 @@
 | 5 | R34-A23 | Signup confirmation is OTP-code based: confirmation email shows code; signup page verifies via `verifyOtp` type `signup` | ✅ |
 | 6 | R34-A31 | Password reset uses email link (`{{ .ConfirmationURL }}` + `redirectTo` `/reset-password`); `PASSWORD_RECOVERY` → `updateUser` → sign out → `/login` (replaces typed OTP for recovery) | ✅ |
 | 7 | R34-A32 | Signup confirmation uses email link (`{{ .ConfirmationURL }}` + `emailRedirectTo` `/auth/callback`); signup UI asks user to open the link (no typed OTP) | ✅ |
+| 8 | R34-A33 | Signup confirm email uses `token_hash` + `type=email` → `/auth/callback` `verifyOtp` creates a session and navigates to `/account/profiles` (any browser; PKCE `ConfirmationURL` fallback still supported) | ✅ |
 
 ---
 

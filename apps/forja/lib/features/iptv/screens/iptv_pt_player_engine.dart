@@ -257,6 +257,17 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       case 'renderedFirstFrame':
         _noteVideoFrame(reason: 'exo first frame');
         break;
+      case 'cues':
+        final raw = event['texts'];
+        if (raw is! List) {
+          _s._exoCueTexts.value = const [];
+          break;
+        }
+        _s._exoCueTexts.value = [
+          for (final e in raw)
+            if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+        ];
+        break;
       case 'tracksChanged':
         break;
     }
@@ -337,6 +348,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     _s._applyLiveRecoveryModeForCurrentSource(src: src);
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
+      _s._exoCueTexts.value = const [];
       final live = iptvExoUrlLooksLive(src.url);
       // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
       var maxHeight = 0;

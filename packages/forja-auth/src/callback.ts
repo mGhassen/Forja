@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { EmailOtpType, SupabaseClient } from '@supabase/supabase-js'
 import { mapAuthError } from './errors'
 
 export type AuthCallbackResult =
@@ -8,8 +8,31 @@ export type AuthCallbackResult =
 const DEFAULT_UNAVAILABLE =
   "Sign-in isn't available right now. Download Forja and play without an account."
 
+const EMAIL_OTP_TYPES = new Set<string>([
+  'signup',
+  'invite',
+  'magiclink',
+  'recovery',
+  'email_change',
+  'email',
+])
+
+/** Relative app path only — blocks open redirects. */
+export function safeAuthNextPath(raw: string | null, fallback: string): string {
+  if (!raw) return fallback
+  if (!raw.startsWith('/') || raw.startsWith('//')) return fallback
+  return raw
+}
+
+function isEmailOtpType(value: string): value is EmailOtpType {
+  return EMAIL_OTP_TYPES.has(value)
+}
+
 /**
- * Exchange `?code=` (PKCE OAuth / magic link) for a session.
+ * Finish an auth redirect into a session:
+ * - `?code=` — PKCE (OAuth / older ConfirmationURL redirects)
+ * - `?token_hash=&type=` — email confirm / invite (session without PKCE verifier)
+ *
  * Client-side — works for both portal and admin SPAs.
  */
 export async function exchangeAuthCode(
@@ -43,10 +66,12 @@ export async function exchangeAuthCode(
     }
   }
 
+  const next = safeAuthNextPath(params.get('next'), defaultNext)
   const code = params.get('code')
-  const next = params.get('next') || defaultNext
+  const tokenHash = params.get('token_hash')
+  const typeRaw = params.get('type')
 
-  if (!code) {
+  if (!code && !tokenHash) {
     return {
       status: 'error',
       message: 'Missing sign-in code. Start again from Log in.',
@@ -62,7 +87,40 @@ export async function exchangeAuthCode(
     }
   }
 
-  const { error } = await client.auth.exchangeCodeForSession(code)
+  if (tokenHash) {
+    if (!typeRaw || !isEmailOtpType(typeRaw)) {
+      return {
+        status: 'error',
+        message: 'That confirmation link is invalid. Request a new one.',
+        nextPath: errorPath,
+      }
+    }
+    const { data, error } = await client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: typeRaw,
+    })
+    if (error) {
+      const message = mapAuthError({
+        message: error.message,
+        code: error.code,
+      })
+      return {
+        status: 'error',
+        message,
+        nextPath: `${errorPath}?error=${encodeURIComponent(message)}`,
+      }
+    }
+    if (!data.session) {
+      return {
+        status: 'error',
+        message: 'Email confirmed, but sign-in failed. Log in with your password.',
+        nextPath: errorPath,
+      }
+    }
+    return { status: 'ok', nextPath: next }
+  }
+
+  const { data, error } = await client.auth.exchangeCodeForSession(code!)
   if (error) {
     const message = mapAuthError({
       message: error.message,
@@ -72,6 +130,13 @@ export async function exchangeAuthCode(
       status: 'error',
       message,
       nextPath: `${errorPath}?error=${encodeURIComponent(message)}`,
+    }
+  }
+  if (!data.session) {
+    return {
+      status: 'error',
+      message: 'Sign-in did not create a session. Try logging in.',
+      nextPath: errorPath,
     }
   }
 

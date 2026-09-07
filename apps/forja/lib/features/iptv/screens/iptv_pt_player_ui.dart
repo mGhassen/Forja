@@ -220,11 +220,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         selectedExternalSubUrl: _s._selectedExternalSubUrl,
         isFetchingSubs: _s._isFetchingSubs,
         onOff: () async {
+          _s._exoCueTexts.value = const [];
           await ExoPlayerBridge.selectTrack(id, type: 'text', trackId: null);
           if (mounted) setState(() => _s._selectedExternalSubUrl = null);
         },
         onSelectEmbedded: (track) async {
           if (track == null) {
+            _s._exoCueTexts.value = const [];
             await ExoPlayerBridge.selectTrack(id, type: 'text', trackId: null);
             return;
           }
@@ -679,6 +681,25 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final fn = fontMap[_s._subtitleFont];
     if (fn != null) return fn(textStyle: base);
     return base;
+  }
+
+  Widget _buildIptvCuePositioned(String text) {
+    const refHeight = 720.0;
+    final winH = MediaQuery.of(context).size.height;
+    final scale = (winH / refHeight).clamp(0.35, 1.0);
+    final hSidePad = 24.0 * scale;
+    return Positioned(
+      left: hSidePad,
+      right: hSidePad,
+      bottom: _s._subtitleBottomPadding * scale,
+      child: IgnorePointer(
+        child: Text(
+          text,
+          style: _buildSubtitleTextStyle(scale: scale),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
   }
 
   void _scheduleHideControls() {
@@ -1162,8 +1183,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                         child: ColoredBox(color: Colors.black),
                       ),
                     ),
-                  // Text subs (SRT/VTT) — same Flutter overlay as home movies.
-                  // ASS/PGS stay on mpv via sub-visibility.
+                  // Text subs (SRT/VTT) — Flutter overlay for MediaKit and Exo
+                  // (native SubtitleView inside PlatformView is GONE, issue 230).
                   if (!hideFullChrome &&
                       !_s._exoBackend &&
                       _s._player != null &&
@@ -1177,22 +1198,18 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                             .where((l) => l.trim().isNotEmpty)
                             .join('\n');
                         if (text.isEmpty) return const SizedBox.shrink();
-                        const refHeight = 720.0;
-                        final winH = MediaQuery.of(context).size.height;
-                        final scale = (winH / refHeight).clamp(0.35, 1.0);
-                        final hSidePad = 24.0 * scale;
-                        return Positioned(
-                          left: hSidePad,
-                          right: hSidePad,
-                          bottom: _s._subtitleBottomPadding * scale,
-                          child: IgnorePointer(
-                            child: Text(
-                              text,
-                              style: _buildSubtitleTextStyle(scale: scale),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
+                        return _buildIptvCuePositioned(text);
+                      },
+                    ),
+                  if (!hideFullChrome && _s._exoBackend)
+                    ValueListenableBuilder<List<String>>(
+                      valueListenable: _s._exoCueTexts,
+                      builder: (context, lines, _) {
+                        final text = lines
+                            .where((l) => l.trim().isNotEmpty)
+                            .join('\n');
+                        if (text.isEmpty) return const SizedBox.shrink();
+                        return _buildIptvCuePositioned(text);
                       },
                     ),
                   // Reconnect/switch always; Buffering… only when picture stalled.

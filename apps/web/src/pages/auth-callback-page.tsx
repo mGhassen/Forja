@@ -4,6 +4,7 @@ import { runAuthCallback } from '@forja/auth/react'
 import { AUTH_UNAVAILABLE_MESSAGE } from '@/hooks/use-auth'
 import {
   isSafeDesktopCallback,
+  readDesktopAuthSearchParams,
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
@@ -31,11 +32,19 @@ export function AuthCallbackPage() {
         void navigate({ to: '/login/mfa', replace: true })
         return
       }
-      const desktop = resolveDesktopAuthParams()
+
+      // Prefer live URL desktop params (OAuth/desktop signup). Fall back to
+      // sessionStorage only when this tab started a desktop handoff.
+      const fromUrl = readDesktopAuthSearchParams()
+      const desktop = isSafeDesktopCallback(fromUrl.callback)
+        ? fromUrl
+        : resolveDesktopAuthParams()
       if (isSafeDesktopCallback(desktop.callback)) {
+        // Session is live — login page mints desktop session B and hands off.
         void navigate({ to: '/login', replace: true })
         return
       }
+
       void navigate({ to: result.nextPath, replace: true })
     })()
     return () => {

@@ -189,6 +189,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   double _subtitleBottomPadding = 0;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+  /// Media3 cues painted in Flutter — native SubtitleView is GONE (issue 230).
+  final ValueNotifier<List<String>> _cueTexts = ValueNotifier<List<String>>(
+    const [],
+  );
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -392,6 +396,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
+    _cueTexts.value = const [];
     _surfaceFallback.resetForNewOpen();
     setState(() {
       _hasError = false;
@@ -636,6 +641,18 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         }
         break;
       case 'renderedFirstFrame':
+        break;
+      case 'cues':
+        // Avoid setState — ValueListenableBuilder only (issue 151 / 230).
+        final raw = event['texts'];
+        if (raw is! List) {
+          _cueTexts.value = const [];
+          break;
+        }
+        _cueTexts.value = [
+          for (final e in raw)
+            if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+        ];
         break;
     }
   }
@@ -1260,6 +1277,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _applySubtitleStyle() async {
     if (_disposed) return;
+    // Appearance is Flutter-only now (issue 230). Still push to native for
+    // API parity / future remounts; Kotlin stores and ignores paint.
     try {
       await ExoPlayerBridge.setSubtitleStyle(
         _viewId,
@@ -1273,6 +1292,66 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     } catch (e) {
       debugPrint('[ExoPlayer] setSubtitleStyle failed: $e');
     }
+    // Rebuild cue overlay with new style without waiting for next cue.
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildCueOverlay(List<String> texts) {
+    if (texts.isEmpty) return const SizedBox.shrink();
+    final bgAlpha = (_subtitleBgOpacity * 255).round().clamp(0, 255);
+    final fontFamily = switch (_subtitleFont) {
+      'Roboto Mono' => 'monospace',
+      'Default' || '' => null,
+      _ => _subtitleFont,
+    };
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          // Mirror Media3 bottomPaddingFraction mapping (~2%–22% of height).
+          bottom: 24 + _subtitleBottomPadding.clamp(0, 120),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: bgAlpha == 0
+                ? Colors.transparent
+                : Colors.black.withAlpha(bgAlpha),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: bgAlpha == 0 ? 0 : 10,
+              vertical: bgAlpha == 0 ? 0 : 4,
+            ),
+            child: Text(
+              texts.join('\n'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _subtitleColor,
+                fontSize: _subtitleSize,
+                fontWeight: _subtitleBold ? FontWeight.bold : FontWeight.w500,
+                fontFamily: fontFamily,
+                height: 1.25,
+                shadows: const [
+                  Shadow(
+                    color: Colors.black,
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                  Shadow(
+                    color: Colors.black87,
+                    blurRadius: 2,
+                    offset: Offset(1, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showSubtitleSettings() {
@@ -1541,6 +1620,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _statusController.dispose();
     _isBufferingNotifier.dispose();
     _providerSourcesCache.dispose();
+    _cueTexts.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
@@ -2269,6 +2349,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   child: ExoPlayerView(
                     key: ValueKey<int>(_viewId),
                     viewId: _viewId,
+                  ),
+                ),
+              ),
+              // Flutter cue paint — native SubtitleView is GONE inside the
+              // PlatformView (issue 230 / Xiaomi ATV VirtualDisplay).
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ValueListenableBuilder<List<String>>(
+                    valueListenable: _cueTexts,
+                    builder: (context, texts, _) => _buildCueOverlay(texts),
                   ),
                 ),
               ),
