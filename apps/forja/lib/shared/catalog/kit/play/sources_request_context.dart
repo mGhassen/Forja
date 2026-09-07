@@ -1,5 +1,5 @@
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/catalog_extract_context.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:rust/rust.dart';
 

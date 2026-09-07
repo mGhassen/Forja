@@ -1,16 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
+
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 import 'cache.dart';
-import 'protocol.dart';
 
 /// Runs catalog hub actions through [EngineService.runCatalog] with caching.
 ///
-/// Not the JS engine runtime (`shared/engine/runtime.dart`) — this is the
+/// Not the JS engine runtime (`shared/engine/runtime/runtime.dart`) — this is the
 /// protocol-level caller hubs use.
 class CatalogRuntime {
   CatalogRuntime._();

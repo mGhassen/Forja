@@ -1,8 +1,8 @@
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_hub_episodes.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/catalog_extract_context.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 
 /// Catalog kit boundary — maps pack [CatalogMetaItem] → play args.

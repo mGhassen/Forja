@@ -1,10 +1,10 @@
-import 'package:forja/shared/catalog/hub_cover_urls.dart';
+import 'package:forja/shared/catalog/utils/hub_cover_urls.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_movie_meta.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';

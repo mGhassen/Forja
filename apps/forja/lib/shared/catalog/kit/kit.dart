@@ -37,5 +37,6 @@ export 'play/catalog_iptv_play.dart';
 export 'play/catalog_live_play.dart';
 export 'play/sources_request_context.dart';
 export 'layout/catalog_kit_panel_host.dart';
+export 'panel/catalog_kit_sources_panel.dart';
 export 'play/stremio_stream_id.dart';
 export 'meta/catalog_meta_movie.dart';

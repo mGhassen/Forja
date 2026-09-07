@@ -38,7 +38,7 @@
 | **anime** | 17 | ~7,100 | `catalog/anime_service.dart` (1,648) + `widgets/` |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
-| **live_matches** | 6 | ~3,563 | `live_matches_widgets.dart` (1,457) + `live_matches_screen.dart` (94) |
+| **live_sports** | 4 | thin host | `live_sports_host.dart` + catalog list/panel; panel in `shared/live/` |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
 | **anime_arabic** | 6 | ~3,900 | `anime_arabic_screen.dart` (1,313) |
 | **search** | 6 | ~2,007 | `search_widgets.dart` (609) + `search_screen.dart` (109) |
@@ -58,7 +58,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
-| [`features/live_matches/streams/live_sports_hub_page.dart`](../../apps/forja/lib/features/live_matches/streams/live_sports_hub_page.dart) | — | Live Sports hub | In | Feature host (RFC-085); pack `plugins/hubs/live_sports/` |
+| [`shared/live/panel/live_sports_streams_page.dart`](../../apps/forja/lib/shared/live/panel/live_sports_streams_page.dart) | — | Live Sports streams panel | In | Thin feature `features/live_sports/`; pack `plugins/hubs/live_sports/` |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |

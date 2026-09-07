@@ -5,7 +5,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
 import 'package:forja/features/iptv/data/storage.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_update_download_storage.dart';

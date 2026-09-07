@@ -1,4 +1,4 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
 
 /// Host IPTV sports match API (RFC-073). Logic lives in this library part;

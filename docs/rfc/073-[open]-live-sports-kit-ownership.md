@@ -2,14 +2,14 @@
 
 **Status:** open  
 **Depends on:** [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-062](062-[open]-native-iptv-sports-matching.md)  
-**Area:** `features/live_matches/streams/`, `plugins/hubs/live_sports/`, host services
+**Area:** `features/live_sports/`, `shared/live/`, `plugins/hubs/live_sports/`, host services
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **3 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) · **2 / 2** acceptance (platform services) · **2 / 3** acceptance (god-folder teardown) |
-| **Current slice** | `live_schedule/` gone → `streams/` panel host; kit browse under `browse/`; R73-A17 panel detach still open |
+| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **3 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) · **2 / 2** acceptance (platform services) · **4 / 4** acceptance (god-folder teardown) |
+| **Current slice** | Thin feature + `shared/live/` panel; CatalogShell kit browse; R73-A17/A18 done — R73-A06/A09 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -74,7 +74,8 @@
 |--:|----|-------------|--------|
 | 1 | R73-A15 | Delete unreachable full-browse hub UI; `LiveSportsHubPage` is panel-only | ✅ |
 | 2 | R73-A16 | Rename `live_schedule/` → `streams/`; browse shell under `browse/` | ✅ |
-| 3 | R73-A17 | Detach streams panel + play from hub `part` library (no god State) | ⬜ |
+| 3 | R73-A17 | Detach streams panel + play from hub `part` library (no god State) | ✅ |
+| 4 | R73-A18 | Feature folder My List–thin — no `streams/` under feature; panel in `shared/live/panel` | ✅ |
 
 ---
 
@@ -97,31 +98,29 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 
 ### Shipped this slice
 
-- `LiveSportsBrowseShell` mounts **`CatalogKitListWidget`** (`style: list` → `HubLiveMatchDenseTile`) from `LiveScheduleCatalogSource` — not a wrap of the god browse UI
-- Sport chips on the browse shell; panel via `CatalogHostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → hub `panelOnly`
+- Tab mounts **`CatalogShell`** + host layout → **`CatalogKitListWidget`** (`style: list` → `HubLiveMatchDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
+- Sport chips via kit list; panel via `CatalogHostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → `LiveSportsStreamsPage` (`shared/live/panel/`)
+- Standalone libs under `shared/live/data` + `shared/live/play`; panel `part` library under `shared/live/panel` (left feature)
+- Feature folder renamed `live_matches` → `live_sports` (thin: host + layout + list source + panel host); opaque ids `live_matches` / `live_schedule` unchanged
 - Kit play service `openForjaLiveNativePlayer` — dispatch + streams panel use it (peer of portal `catalog_iptv_play`)
 - `IptvSportsMatchService` — Live TV / ESPN / broadcast match path
 - `HubLiveScheduleSource` / `loadLiveScheduleRows` — engine catalog → `CatalogMetaItem`
-- CatalogShell mounts via `wantsHostBody` — no Live-named early return
-- `LiveSportsTvRows` shared focus ids
-- Timeline view **deleted**
-- Streams panel file `live_streams_panel.dart` (still hub `part`)
-- `LivePlayKit` pending cross-hub open
-- **God full-browse UI deleted** — hub `LiveSportsHubPage` is panel-only streams host; browse chrome/grid/cards/sheets removed; folder renamed `live_schedule` → `streams`; browse shell under `browse/`
+- `LiveSportsTvRows` in `shared/live/data/live_schedule_filters.dart`
+- Timeline view **deleted**; browse shell **deleted**
 
 ### Still open
 
 - Catalog / horizon top-bar sheets not yet kit-composed (R73-A06 — sport chips on kit shell; hub copies of Catalog/Schedule chrome deleted)
-- Full detach of streams panel from hub `part` library (panel remains temporary streams library under `streams/`)
+- Panel still a large `part` library under `shared/live/panel` (not a generic kit panel rewrite)
 - `open.surface: live` still tab-switch / panel, not a standalone kit details route (R73-A09)
 
 ### Slices
 
 1. **Kill modes** — ✅
-2. **Kit browse** — 🔄 (list is kit; god browse torn down; catalog/horizon sheets still open)
-3. **Details + IPTV service** — 🔄 (panelOnly host; still hub part)
+2. **Kit browse** — 🔄 (CatalogShell list is kit; catalog/horizon sheets still open)
+3. **Details + IPTV service** — 🔄 (panelOnly in shared; R73-A09 open)
 4. **Platform services** — ✅ (panel registry + shared live play)
-5. **God-folder teardown** — 🔄 (`live_schedule` deleted; panel still hub `part`s)
+5. **God-folder teardown** — ✅ (thin feature + `shared/live/`; R73-A15–A18)
 
 ### Related
 

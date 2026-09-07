@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 void main() {
   group('hubMetaIsUpcoming', () {

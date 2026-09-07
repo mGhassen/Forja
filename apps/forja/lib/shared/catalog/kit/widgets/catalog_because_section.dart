@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/protocol/filter.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
 import 'package:forja/shared/catalog/kit/rows/catalog_row_prefetch.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/catalog/services/runtime.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';

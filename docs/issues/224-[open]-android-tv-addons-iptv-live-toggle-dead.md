@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **43 / 43** fix · **0 / 4** acceptance |
+| **Progress** | **44 / 44** fix · **0 / 4** acceptance |
 | **Current slice** | Fix code landed — device QA (A01–A04) still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
@@ -63,6 +63,7 @@
 | 41 | I224-T41 | Web Profile: soft-pull on focus/visibility + realtime; serialize optimistic patches; pause draft hydrate while saves in flight | ✅ |
 | 42 | I224-T42 | App: subscribe `profile_settings` Realtime → debounced soft-pull (same dirty/grace path); start/stop on sign-in / profile / sign-out | ✅ |
 | 43 | I224-T43 | Remove `profile_settings` Realtime (app + web); soft-pull on open Settings/Addons, resume/focus, web tab visibility only — supersedes T41 realtime + T42; keep applied add-migration; forward drop from publication | ✅ |
+| 44 | I224-T44 | Web Features: default-on only *newly* available ids — stop mount race that upserted every hub ON over cloud (reload looked stale / pushed old) | ✅ |
 
 ---
 
@@ -123,4 +124,5 @@ Ops: hosted still had `profile_settings` on `supabase_realtime` from T41/T42 —
 5. Web: Addons OFF + Packs empty → Features shows Settings only (no IPTV / Live / Asian Drama rows).
 6. Web IPTV ON → open Addons on ATV → switch on. Changing EPG / quality on ATV must not clear cloud IPTV unlock.
 7. Change Features on web → open Addons (or resume app) on device → rail matches (no live channel while idle).
-8. Mark A01–A04 ✅ only after the matching ATV/web steps above pass.
+8. App thins Features → hard-reload web Features → matches cloud (no auto-save of every hub ON).
+9. Mark A01–A04 ✅ only after the matching ATV/web steps above pass.

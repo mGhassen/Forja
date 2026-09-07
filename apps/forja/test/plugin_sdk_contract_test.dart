@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/plugin_contract.dart';
+import 'package:forja/shared/engine/packs/plugin_contract.dart';
 
 /// Repo-root `plugins/` — test cwd is `apps/forja`.
 File _repoFile(String rel) => File('../../$rel');

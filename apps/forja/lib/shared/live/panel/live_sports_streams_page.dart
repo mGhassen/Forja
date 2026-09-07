@@ -15,14 +15,14 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/player/player/utils.dart' show probeStreamSourceUrl;
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/features/live_matches/catalog/live_schedule_filters.dart';
-import 'package:forja/features/live_matches/streams/data/live_prefs.dart';
-import 'package:forja/features/live_matches/streams/data/live_sport_filter.dart';
-import 'package:forja/features/live_matches/streams/data/live_stremio_meta.dart';
-import 'package:forja/features/live_matches/streams/data/live_team_parse.dart';
-import 'package:forja/features/live_matches/streams/data/live_iptv_sports_config.dart';
-import 'package:forja/features/live_matches/streams/play/live_engine.dart';
-import 'package:forja/features/live_matches/streams/play/live_play_kit.dart';
+import 'package:forja/shared/live/data/live_schedule_filters.dart';
+import 'package:forja/shared/live/data/live_prefs.dart';
+import 'package:forja/shared/live/data/live_sport_filter.dart';
+import 'package:forja/shared/live/data/live_stremio_meta.dart';
+import 'package:forja/shared/live/data/live_team_parse.dart';
+import 'package:forja/shared/live/data/live_iptv_sports_config.dart';
+import 'package:forja/shared/live/play/live_engine.dart';
+import 'package:forja/shared/live/play/live_play_kit.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_live_play.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
@@ -55,12 +55,12 @@ part 'play/live_play_dispatch.dart';
 part 'play/live_streams_panel.dart';
 part 'providers/live_schedule_provider.dart';
 
-/// Streams panel host for Live Sports (`nav.tabId: live_matches`).
+/// Streams panel for Live Sports (`nav.tabId: live_matches`).
 ///
-/// Full god browse was deleted. Kit browse ([LiveSportsBrowseShell]) owns the
-/// match list; this widget mounts only the Providers / Live TV panel.
-class LiveSportsHubPage extends ConsumerStatefulWidget {
-  const LiveSportsHubPage({
+/// Kit [CatalogShell] / [CatalogKitListWidget] owns the match list. This page
+/// mounts only the Providers / Live TV panel (via [LiveSportsStreamsPanelHost]).
+class LiveSportsStreamsPage extends ConsumerStatefulWidget {
+  const LiveSportsStreamsPage({
     super.key,
     this.layoutWidgets = const [],
     this.parentShellVisible = true,
@@ -91,13 +91,13 @@ class LiveSportsHubPage extends ConsumerStatefulWidget {
   final VoidCallback? onPanelClosed;
 
   @override
-  ConsumerState<LiveSportsHubPage> createState() => _LiveSportsHubPageState();
+  ConsumerState<LiveSportsStreamsPage> createState() => _LiveSportsStreamsPageState();
 }
 
-class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
+class _LiveSportsStreamsPageState extends ConsumerState<LiveSportsStreamsPage>
     with
         TickerProviderStateMixin,
-        ShellTabRefresh<LiveSportsHubPage>,
+        ShellTabRefresh<LiveSportsStreamsPage>,
         _LiveMatchesData,
         _LiveMatchesForjaLive,
         _LiveMatchesBuild,
@@ -270,7 +270,7 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       widget.parentShellVisible && super.shellTabVisible;
 
   @override
-  void didUpdateWidget(LiveSportsHubPage oldWidget) {
+  void didUpdateWidget(LiveSportsStreamsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.panelOnly) {
       if (oldWidget.kitPanelRow != widget.kitPanelRow) {
@@ -341,7 +341,7 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       return;
     }
     (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
-      reloadNow: (this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible,
+      reloadNow: (this as ShellTabRefresh<LiveSportsStreamsPage>).shellTabVisible,
     );
   }
 

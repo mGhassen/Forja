@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
@@ -14,9 +14,9 @@ import 'package:rust/rust.dart';
 /// Intro / profile splash should pass [startPlaySources]: false and
 /// [startTorrent]: false so LocalServer / Nuvio / torrent stay
 /// off the animation floor. ForjaHQ packs (+ hub layout/rails prefetch) await
-/// only when [BootNeeds.needsForjaPluginWarm]. Splash silently re-hydrates
-/// packs already installed on this device; brand-new lean stubs prompt once
-/// (after splash). IPTV/Live-only with no pending packs skips.
+/// only when [BootNeeds.needsForjaPluginWarm]. Splash silently downloads
+/// profile pack membership (toast after dismiss). IPTV/Live-only with no
+/// pending packs skips.
 class ProfileEngineWarm {
   ProfileEngineWarm._();
 
@@ -56,8 +56,6 @@ class ProfileEngineWarm {
               notifyUpdates: true,
               includeNuvio: needs.nuvio,
               awaitCloudLean: true,
-              // New lean stubs → confirm once; already-installed → silent repair.
-              promptBeforeInstall: true,
             )
             .catchError((Object e) {
               debugPrint('[Init] Plugin install error (non-fatal): $e');

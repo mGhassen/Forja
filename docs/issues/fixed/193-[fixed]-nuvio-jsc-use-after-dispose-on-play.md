@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** fixed  
-**Area:** `apps/forja/lib/shared/nuvio/nuvio_runtime.dart`, `apps/forja/lib/shared/engine/runtime.dart`  
+**Area:** `apps/forja/lib/shared/nuvio/nuvio_runtime.dart`, `apps/forja/lib/shared/engine/runtime/runtime.dart`  
 **Reported:** 2026-08-21
 
 ## Status at a glance

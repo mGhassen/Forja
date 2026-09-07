@@ -1,4 +1,4 @@
-import 'models.dart';
+import 'package:forja/shared/engine/models/models.dart';
 
 /// Live sport plugin capability keys (`catalog` schedule, `resolve` stream).
 abstract final class LiveSportCapabilities {

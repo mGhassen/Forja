@@ -11,9 +11,9 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -36,12 +36,12 @@ import '../kit/details/hub_details_meta.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/catalog_row_prefetch.dart';
 import '../kit/rows/hub_catalog_section.dart';
-import '../filter.dart';
-import '../plugin_nav.dart';
-import '../protocol.dart';
-import '../runtime.dart';
+import '../protocol/filter.dart';
+import '../services/plugin_nav.dart';
+import '../protocol/protocol.dart';
+import '../services/runtime.dart';
 import '../kit/chrome/catalog_chrome_filters.dart';
-import '../host_list_registry.dart';
+import '../services/host_list_registry.dart';
 import '../kit/layout/catalog_kit_list_source.dart';
 import 'catalog_open.dart';
 
@@ -50,12 +50,21 @@ import 'catalog_open.dart';
 /// One `layout` call describes the page; each rail fetches when it enters the
 /// viewport and paginates horizontally as the user scrolls the row.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({super.key, required this.pluginId, this.tabId});
+  const CatalogShell({
+    super.key,
+    required this.pluginId,
+    this.tabId,
+    this.hostLayout,
+  });
 
   final String pluginId;
 
   /// Shell nav id — used for the layout page key (defaults to `home`).
   final String? tabId;
+
+  /// Host-owned layout when no hub pack contributes widgets (e.g. Live Sports
+  /// core tab). Skips pack `layout` when [pluginId] is empty.
+  final List<Map<String, dynamic>>? hostLayout;
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -216,6 +225,23 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   Future<void> _loadLayout({bool forceRefresh = false}) async {
+    final host = widget.hostLayout;
+    if (host != null &&
+        host.isNotEmpty &&
+        widget.pluginId.trim().isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = null;
+        _widgets = [
+          for (final w in host) Map<String, dynamic>.from(w),
+        ];
+        _layoutWidgetSpecs = layoutWidgetSpecIndex(_widgets);
+        initLayoutTabSelections(_layoutSelections, _widgets);
+      });
+      return;
+    }
+
     final soft = _widgets.isNotEmpty && !forceRefresh;
     if (!soft) {
       setState(() {
@@ -404,6 +430,8 @@ class _CatalogShellState extends State<CatalogShell>
       layoutSpec: spec,
       refreshEpoch: _hostRefreshEpoch,
       tvRowOrder: _tvOrder(tvOrders, id),
+      shellTabVisible: shellTabVisible,
+      layoutWidgets: _widgets,
     );
   }
 
@@ -437,6 +465,24 @@ class _CatalogShellState extends State<CatalogShell>
     return host;
   }
 
+  bool get _hasRegisteredListPanel {
+    var found = false;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (found) return;
+      final type = CatalogKitTypes.normalize(
+        (spec['type'] ?? '').toString(),
+        spec,
+      );
+      if (type != CatalogKitTypes.list) return;
+      final sourceId = (spec['source'] ?? '').toString().trim();
+      if (sourceId.isEmpty) return;
+      if (CatalogHostListRegistry.resolvePanel(sourceId) != null) {
+        found = true;
+      }
+    });
+    return found;
+  }
+
   bool get _hasHostBodySource {
     var found = false;
     walkLayoutWidgets(_widgets, (spec) {
@@ -453,7 +499,7 @@ class _CatalogShellState extends State<CatalogShell>
       );
       if (source != null && source.wantsHostBody) found = true;
     });
-    return found || widget.tabId == 'live_matches';
+    return found;
   }
 
   Widget? _fullPageLayoutBody({required Map<String, int> tvOrders}) {
@@ -474,7 +520,8 @@ class _CatalogShellState extends State<CatalogShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    if ((_hasHostListWidget || _hasHostBodySource) && mounted) {
+    if ((_hasHostListWidget || _hasHostBodySource || _hasRegisteredListPanel) &&
+        mounted) {
       setState(() => _hostRefreshEpoch++);
     }
     _forceNextRails = force;
@@ -490,7 +537,7 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
-    if (_hasHostBodySource) {
+    if (_hasHostBodySource || _hasRegisteredListPanel) {
       EngineService.instance.cancelLiveCatalog();
     }
   }
@@ -498,7 +545,7 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
-    if (_hasHostBodySource && mounted) {
+    if ((_hasHostBodySource || _hasRegisteredListPanel) && mounted) {
       setState(() {});
     }
   }

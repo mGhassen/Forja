@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_install_prompt.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/remote_pack_intent_store.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
@@ -67,9 +68,9 @@ class PluginInstallProgress {
   }
 }
 
-/// Boot + background: migrate, await cloud lean, prompt after cloud sync only.
-/// Never silent-downloads / auto-updates. Download confirm runs when
-/// [SyncDomainBridge.importForja] lands lean stubs (or Settings Install).
+/// Boot + background: migrate, await cloud lean, silent-download membership.
+/// Cloud adds auto-install; updates still toast for confirm. User-initiated
+/// Settings / deep-link installs still use [promptPendingPackInstalls].
 class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
@@ -94,8 +95,6 @@ class PluginInstallCoordinator {
   /// In-flight manual installs keyed by manifest URL (sequential batch safe).
   final Map<String, Future<EnginePack>> _manualByUrl = {};
   bool _bootWarm = false;
-  /// Set when [promptPendingPackInstalls] enqueues — blocks post-splash re-queue.
-  bool _pendingInstallPromptOffered = false;
 
   /// True while splash / [ensureAllInstalled] owns hydrate + silent purge.
   bool get isBootWarm => _bootWarm;
@@ -194,7 +193,7 @@ class PluginInstallCoordinator {
 
     debugPrint(
       '[PluginInstall] ensurePluginReady($want) needs download — '
-      'wait for cloud sync prompt or Settings → Forja Packs',
+      'wait for cloud sync hydrate or Settings → Forja Packs',
     );
     return false;
   }
@@ -247,9 +246,60 @@ class PluginInstallCoordinator {
     }
     if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
       return '${hit.pack.name} is not downloaded yet. '
-          'Accept the install prompt after cloud sync, or open Settings → Forja Packs.';
+          'Open Settings → Forja Packs, or wait for cloud sync to finish.';
     }
     return null;
+  }
+
+  /// Toast after cloud membership installs (splash or mid-session).
+  Future<void> notifyCloudPacksInstalled(List<String> names) async {
+    final labels = [
+      for (final n in names)
+        if (n.trim().isNotEmpty) n.trim(),
+    ];
+    if (labels.isEmpty) return;
+    await _waitForSplashDismissed();
+    final count = labels.length;
+    final sample = labels.first;
+    try {
+      ForjaToast.info(
+        count == 1 ? '$sample installed' : '$count packs installed',
+        duration: const Duration(seconds: 6),
+        actionLabel: 'View',
+        onAction: _openForjaPacksSettings,
+      );
+    } catch (e) {
+      debugPrint('[PluginInstall] install toast skipped: $e');
+    }
+  }
+
+  /// Toast after cloud membership removes packs from this device.
+  Future<void> notifyCloudPacksRemoved(List<String> names) async {
+    final labels = [
+      for (final n in names)
+        if (n.trim().isNotEmpty) n.trim(),
+    ];
+    if (labels.isEmpty) return;
+    await _waitForSplashDismissed();
+    final count = labels.length;
+    final sample = labels.first;
+    try {
+      ForjaToast.info(
+        count == 1 ? '$sample removed' : '$count packs removed',
+        duration: const Duration(seconds: 5),
+        actionLabel: 'View',
+        onAction: _openForjaPacksSettings,
+      );
+    } catch (e) {
+      debugPrint('[PluginInstall] remove toast skipped: $e');
+    }
+  }
+
+  void _openForjaPacksSettings() {
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.forjaPacks,
+      enterDetail: true,
+    );
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
@@ -332,15 +382,12 @@ class PluginInstallCoordinator {
     bool awaitCloudLean = false,
     // Ignored — Nuvio never silent-hydrates (Settings install / refresh only).
     bool includeNuvio = true,
-    /// When true: brand-new lean stubs (empty plugins) prompt once.
-    /// Packs already installed on this device (plugin index present) always
-    /// silent-repair missing scripts on splash — never re-ask.
-    bool promptBeforeInstall = true,
+    // Ignored — cloud membership always silent-downloads.
+    bool promptBeforeInstall = false,
   }) {
     return _inFlight ??= _run(
       notifyUpdates: notifyUpdates,
       awaitCloudLean: awaitCloudLean,
-      promptBeforeInstall: promptBeforeInstall,
     ).whenComplete(() {
       _inFlight = null;
       progress.value = null;
@@ -350,10 +397,8 @@ class PluginInstallCoordinator {
   Future<void> _run({
     required bool notifyUpdates,
     required bool awaitCloudLean,
-    required bool promptBeforeInstall,
   }) async {
     _bootWarm = true;
-    _pendingInstallPromptOffered = false;
     final registry = PluginRegistry.instance;
 
     try {
@@ -387,35 +432,25 @@ class PluginInstallCoordinator {
     }
     await PendingRemotePurgeStore.clearAll();
 
+    // Old "Install later" rows: cloud membership always auto-hydrates now.
+    await DeferredRemoteInstallStore.clearAll();
+
     final packs = await registry.listPacksRaw();
-    final silentJobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];
-    final newLean = <EnginePack>[];
+    final jobs = <({EnginePack pack, bool isUpdate})>[];
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (await DeferredRemoteInstallStore.contains(pack.sourceUrl)) continue;
-      if (!await registry.packNeedsDiskInstall(pack)) continue;
-      // Empty plugins = cloud lean stub never installed on this device.
-      // Plugin index present = user already accepted install — splash repair.
-      if (pack.plugins.isEmpty && promptBeforeInstall) {
-        newLean.add(pack);
-      } else {
-        silentJobs.add((pack: pack, isUpdate: false, forceRefresh: true));
+      if (await registry.packNeedsDiskInstall(pack)) {
+        jobs.add((pack: pack, isUpdate: false));
       }
     }
 
-    if (newLean.isNotEmpty) {
-      await promptPendingPackInstalls(packsOverride: newLean);
-      debugPrint(
-        '[PluginInstall] ${newLean.length} new lean pack(s) — user prompt',
-      );
-    }
-
     var completed = 0;
-    final total = silentJobs.length;
-    debugPrint('[PluginInstall] ${silentJobs.length} silent repair job(s)');
+    final total = jobs.length;
+    final installedNames = <String>[];
+    debugPrint('[PluginInstall] ${jobs.length} silent install job(s)');
 
-    for (final job in silentJobs) {
+    for (final job in jobs) {
       final pack = job.pack;
       final url = pack.sourceUrl;
       try {
@@ -423,6 +458,7 @@ class PluginInstallCoordinator {
           manifestUrl: url,
           isUpdate: job.isUpdate,
         );
+        installedNames.add(pack.name);
       } catch (e) {
         debugPrint('[PluginInstall] install failed ($url): $e');
         PluginRegistry.officialInstallError.value =
@@ -451,6 +487,10 @@ class PluginInstallCoordinator {
         ),
       );
       await Future<void>.delayed(readyDwell);
+    }
+
+    if (installedNames.isNotEmpty) {
+      await notifyCloudPacksInstalled(installedNames);
     }
 
     await syncTorrentSearchCatalog();
@@ -484,8 +524,8 @@ class PluginInstallCoordinator {
     return PluginBatchInstallPrompt(candidates: candidates);
   }
 
-  /// Queue single or batch install prompt for packs that still need download.
-  /// Never installs without the user accepting the dialog.
+  /// Queue single or batch install prompt (Settings / deep link only).
+  /// Cloud membership never uses this — it silent-downloads.
   Future<void> promptPendingPackInstalls({
     List<EnginePack>? packsOverride,
   }) async {
@@ -500,7 +540,6 @@ class PluginInstallCoordinator {
         .toList(growable: false);
     if (pending.isEmpty) return;
 
-    _pendingInstallPromptOffered = true;
     if (pending.length == 1) {
       final only = pending.first;
       ShellBus.enqueuePluginInstall(

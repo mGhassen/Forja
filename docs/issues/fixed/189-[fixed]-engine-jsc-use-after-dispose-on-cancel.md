@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** fixed  
-**Area:** `apps/forja/lib/shared/engine/runtime.dart`, `service.dart`  
+**Area:** `apps/forja/lib/shared/engine/runtime/runtime.dart`, `service.dart`  
 **Reported:** 2026-08-20
 
 ## Status at a glance

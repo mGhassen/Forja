@@ -1,4 +1,4 @@
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 

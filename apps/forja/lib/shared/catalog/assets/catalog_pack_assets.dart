@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:forja/shared/catalog/forja_host_assets.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 
 /// Resolves pack-relative asset paths from a hub plugin manifest URL.
 abstract final class CatalogPackAssets {
@@ -44,19 +43,15 @@ abstract final class CatalogPackAssets {
 
   /// Resolve [nav.icon] to a display path for [NavDestination.iconAsset].
   ///
-  /// Returns a Flutter `assets/…` path, an absolute file path, or an http(s)
-  /// URL. Null → use Material default. Host always tints the bitmap to the
-  /// rail color (`ColorFilter` + `BlendMode.srcIn`) like other nav glyphs.
+  /// Returns an absolute file path or http(s) URL. Null → Material default.
+  /// Host always tints the bitmap to the rail color (`ColorFilter` +
+  /// `BlendMode.srcIn`) like other nav glyphs.
   static String? resolveNavIconDisplay({
     required String? packSourceUrl,
     required String? icon,
   }) {
     final raw = icon?.trim() ?? '';
     if (raw.isEmpty) return null;
-
-    final host = ForjaHostAssets.resolveFlutterPath(raw);
-    if (host != null) return host;
-
     if (raw.startsWith('forja://')) return null;
     if (raw.startsWith('assets/')) return null;
     if (!isPackNavIcon(raw)) return null;

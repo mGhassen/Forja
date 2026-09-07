@@ -4,7 +4,7 @@
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "tags": [
     "lists"
   ],
@@ -29,7 +29,7 @@
         "tabId": "mylist",
         "label": "My List",
         "order": 15,
-        "icon": "forja://asset/nav/my-list",
+        "icon": "icons/nav.png",
         "accent": "#FBBF24"
       },
       "prelude": "_kit.js"

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/catalog_pack_assets.dart';
-import 'package:forja/shared/catalog/forja_host_assets.dart';
+import 'package:forja/shared/catalog/assets/catalog_pack_assets.dart';
+import 'package:forja/shared/catalog/assets/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
-import 'package:forja/shared/engine/hub_plugin_config.dart';
+import 'package:forja/shared/engine/hub/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav_destination.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -183,7 +183,6 @@ abstract final class PluginNavRegistry {
         if (tabId.isEmpty) continue;
         final iconAsset = m['iconAsset']?.toString();
         final material =
-            ForjaHostAssets.materialIconFor(m['icon']?.toString()) ??
             ForjaHostAssets.defaultNavIcon;
         dests[tabId] = NavDestination(
           id: tabId,
@@ -629,8 +628,7 @@ abstract final class PluginNavRegistry {
   }
 
   static IconData iconDataFor(CatalogNavSpec nav) {
-    return ForjaHostAssets.materialIconFor(nav.icon) ??
-        ForjaHostAssets.defaultNavIcon;
+    return ForjaHostAssets.defaultNavIcon;
   }
 
   static Color? accentFor(CatalogNavSpec nav) {

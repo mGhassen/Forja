@@ -125,8 +125,7 @@ void main() {
       ShellTokens.navRailIconIdleScale,
     );
 
-    final searchIcon =
-        find.image(const AssetImage('assets/images/nav/search.png'));
+    final searchIcon = find.byIcon(Icons.apps_outlined);
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);

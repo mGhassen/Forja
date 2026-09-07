@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/catalog.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shell/nav_destination.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -708,7 +708,7 @@ void main() {
       expect(byTab['asian_drama']!.pluginId, 'kisskh-hub');
       expect(byTab['arabic']!.pluginId, 'arabic-hub');
       expect(byTab['mylist']!.pluginId, 'my-list-hub');
-      expect(byTab['mylist']!.icon, ForjaHostAssets.uriNavMyList);
+      expect(byTab['mylist']!.icon, 'icons/nav.png');
       expect(byTab['live_matches']!.pluginId, 'live-sports-hub');
       expect(byTab['live_matches']!.icon, 'icons/nav.png');
       expect(byTab['cartoon']!.pluginId, 'dimatoon-hub');
@@ -736,7 +736,7 @@ void main() {
       );
     });
 
-    test('nav icons are pack-relative or forja://asset — never assets/', () {
+    test('nav icons are pack-relative — never assets/ or forja://asset', () {
       final specs = [
         for (final p in loadAllHubPlugins())
           if (p.nav != null)
@@ -752,6 +752,7 @@ void main() {
       expect(byTab['anime']!.icon, 'icons/nav.png');
       expect(byTab['asian_drama']!.icon, 'icons/nav.png');
       expect(byTab['cartoon']!.icon, 'icons/nav.png');
+      expect(byTab['mylist']!.icon, 'icons/nav.png');
 
       for (final s in specs) {
         final icon = s.icon;
@@ -768,35 +769,18 @@ void main() {
           isFalse,
           reason: '${s.tabId} must not leak Flutter asset paths',
         );
-        final packOk = CatalogPackAssets.isPackNavIcon(icon);
-        final hostOk = ForjaHostAssets.isKnown(icon);
         expect(
-          packOk || hostOk,
-          isTrue,
-          reason: '${s.tabId} icon $icon must be pack-relative or forja://asset',
+          icon.startsWith('forja://'),
+          isFalse,
+          reason: '${s.tabId} must not use host forja://asset URIs',
         );
-        if (hostOk) {
-          final flutterPath = ForjaHostAssets.resolveFlutterPath(icon);
-          if (flutterPath != null) {
-            expect(flutterPath, startsWith('assets/'));
-          }
-        }
+        expect(
+          CatalogPackAssets.isPackNavIcon(icon),
+          isTrue,
+          reason: '${s.tabId} icon $icon must be pack-relative or http(s)',
+        );
       }
 
-      expect(
-        PluginNavRegistry.iconDataFor(
-          CatalogNavSpec.fromPluginNav(
-            {
-              'tabId': 'custom_hub',
-              'label': 'Custom',
-              'icon': ForjaHostAssets.uriNavHome,
-            },
-            pluginId: 'test-hub',
-            fallbackLabel: 'Custom',
-          )!,
-        ),
-        Icons.home_outlined,
-      );
       expect(
         PluginNavRegistry.iconDataFor(
           CatalogNavSpec.fromPluginNav(
@@ -822,14 +806,19 @@ void main() {
         cartoonIcon,
       );
       expect(
-        ForjaHostAssets.resolveFlutterPath('assets/images/nav/home.png'),
+        CatalogPackAssets.resolveNavIconDisplay(
+          packSourceUrl: Uri.file(cartoonManifest).toString(),
+          icon: 'forja://asset/nav/home',
+        ),
         isNull,
       );
       expect(
-        ForjaHostAssets.resolveFlutterPath(ForjaHostAssets.uriNavHome),
-        ForjaHostAssets.flutterNavHome,
+        CatalogPackAssets.resolveNavIconDisplay(
+          packSourceUrl: Uri.file(cartoonManifest).toString(),
+          icon: 'assets/images/nav/home.png',
+        ),
+        isNull,
       );
-      expect(ForjaHostAssets.ids, contains('nav/home'));
     });
 
     test('forjaHqSlot extracts arbitrary hub path segment from manifest url', () {

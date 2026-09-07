@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/catalog_hub_capabilities.dart';
+import 'package:forja/shared/catalog/protocol/catalog_hub_capabilities.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_bar.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:rust/rust.dart';

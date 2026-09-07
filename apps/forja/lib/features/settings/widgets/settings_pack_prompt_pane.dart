@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/plugin_install_prompt.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/remote_pack_intent_store.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -38,8 +38,9 @@ class SettingsPackPromptDrill {
 
   static bool get isApplying => applying.value;
 
-  /// Back / category change / Not now — defer remote rows, then close.
-  /// No-op while [isApplying] so a mid-download Back cannot abort the batch.
+  /// Back / category change / Not now — close without applying.
+  /// Remote-profile cloud sync no longer uses defer for installs (auto-download).
+  /// Unchecked remote uninstall rows still defer purge until next boot/session.
   static Future<void> dismissWithoutApply() async {
     if (isApplying) {
       debugPrint('[PackPrompt] dismiss ignored — install in progress');
@@ -51,10 +52,10 @@ class SettingsPackPromptDrill {
       if (c.alreadyInstalled || !c.fromRemoteProfile) continue;
       final url = c.manifestUrl.trim();
       if (url.isEmpty) continue;
+      // Install confirms for cloud membership are gone; only uninstall defer remains
+      // for deeplink/legacy remote uninstall batches if any.
       if (c.kind == PluginPackPromptKind.uninstall) {
         await PendingRemotePurgeStore.defer(url);
-      } else {
-        await DeferredRemoteInstallStore.defer(url);
       }
     }
     close();
@@ -144,9 +145,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   Future<void> _deferRemote(PluginInstallCandidate c) async {
     if (!c.fromRemoteProfile) return;
     final url = c.manifestUrl.trim();
-    if (c.kind == PluginPackPromptKind.install) {
-      await DeferredRemoteInstallStore.defer(url);
-    } else {
+    if (c.kind == PluginPackPromptKind.uninstall) {
       await PendingRemotePurgeStore.defer(url);
     }
   }

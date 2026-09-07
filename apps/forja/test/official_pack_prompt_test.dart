@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/official_forjahq_install.dart';
-import 'package:forja/shared/engine/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/official_forjahq_install.dart';
+import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 
 void main() {
   group('officialPackCandidatesMissing', () {

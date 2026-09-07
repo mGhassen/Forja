@@ -1,5 +1,5 @@
 import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 class HubStremioLoadResult {

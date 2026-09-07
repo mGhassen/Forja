@@ -1,5 +1,5 @@
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/categories.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/models/categories.dart';
 import 'package:rust/rust.dart';
 
 /// Resolved engine extract inputs from pack [CatalogOpen.extract].

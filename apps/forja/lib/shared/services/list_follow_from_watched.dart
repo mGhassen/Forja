@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/catalog/catalog_details_fetch.dart';
+import 'package:forja/shared/catalog/services/catalog_details_fetch.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/shared/lists/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';

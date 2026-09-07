@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/ids.dart';
+import 'package:forja/shared/engine/models/ids.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -34,7 +34,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 
 /// Builds the body for a Settings category (lazy - only when selected / pushed).
 Widget buildSettingsCategoryBody(

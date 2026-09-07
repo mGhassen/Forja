@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/live_matches/streams/live_sports_hub_page.dart';
-import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/live/panel/live_sports_streams_page.dart';
+import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_panel_host.dart';
 import 'package:forja/shared/design/design.dart';
@@ -31,7 +31,7 @@ final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {
             left: BorderSide(color: ForjaShellColors.borderSubtle),
           ),
         ),
-        child: LiveSportsHubPage(
+        child: LiveSportsStreamsPage(
           key: ValueKey('live-panel-${entry.meta.id}'),
           layoutWidgets: layoutWidgets,
           parentShellVisible: shellTabVisible,

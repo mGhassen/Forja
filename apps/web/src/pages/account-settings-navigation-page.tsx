@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
@@ -139,22 +139,33 @@ export function AccountSettingsNavigationPage() {
       ),
   })
 
-  // Pack / Addons unlock can land while Features is open (or hydrate before
-  // inventory is known). Default-on any available id not yet in draft order
-  // and persist so the app rail matches.
+  // Default-on only ids that *newly* become available (Addons unlock / pack
+  // add while this page is open). Never run on first inventory tick — that
+  // races an empty draft before hydrate and upserts every hub ON over cloud.
+  const prevAvailableRef = useRef<string[] | null>(null)
   useEffect(() => {
-    void commit((prev) => {
-      const stillMissing = availableIds.filter((id) => !prev.order.includes(id))
-      if (stillMissing.length === 0) return prev
-      const visible = new Set(prev.visible)
+    prevAvailableRef.current = null
+  }, [navigation.profileId])
+
+  useEffect(() => {
+    if (controlsLocked) return
+    const prev = prevAvailableRef.current
+    prevAvailableRef.current = availableIds
+    if (prev === null) return
+    const newly = availableIds.filter((id) => !prev.includes(id))
+    if (newly.length === 0) return
+    void commit((d) => {
+      const stillMissing = newly.filter((id) => !d.order.includes(id))
+      if (stillMissing.length === 0) return d
+      const visible = new Set(d.visible)
       for (const id of stillMissing) visible.add(id)
       return {
-        ...prev,
-        order: [...prev.order, ...stillMissing],
+        ...d,
+        order: [...d.order, ...stillMissing],
         visible,
       }
     })
-  }, [availableIds, commit])
+  }, [availableIds, commit, controlsLocked])
 
   /** Derived inventory ordered by draft.order, then any new available ids. */
   const featureOrder = useMemo(() => {

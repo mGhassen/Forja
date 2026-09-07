@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/my_list/catalog/my_list_catalog_source.dart';
-import 'package:forja/shared/catalog/host_list_registry.dart';
+import 'package:forja/shared/catalog/services/host_list_registry.dart';
 
 /// Product constants for the My List hub — feature-owned, not kit.
 abstract final class MyListHost {

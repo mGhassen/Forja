@@ -1,7 +1,7 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
-mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
-  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
+mixin _LiveMatchesBuild on ConsumerState<LiveSportsStreamsPage> {
+  _LiveSportsStreamsPageState get _s => this as _LiveSportsStreamsPageState;
 
   int cardViewersForMatch(_StreamedMatch match) {
     final cached = _s._eventStreamViewerTotals[_liveEventViewerKey(match)];
@@ -25,7 +25,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Live Sports browse is kit-owned. Use LiveSportsBrowseShell.',
+            'Live Sports browse is kit-owned (CatalogShell + kit.list).',
             textAlign: TextAlign.center,
             style: TextStyle(color: ForjaShellColors.textSecondary),
           ),

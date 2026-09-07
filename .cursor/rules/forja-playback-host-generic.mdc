@@ -44,7 +44,7 @@ catalog ids (AniList, KissKh, Arabic video ids).
 - Call `TmdbApi` or pack upstream APIs from playback.
 - Default scraper/provider names (`larozaa`, …).
 
-`EngineCategories` in **`shared/engine/categories.dart`** is for **engine plugin
+`EngineCategories` in **`shared/engine/models/categories.dart`** is for **engine plugin
 types** (`engine.json`). Playback must **not** import it to interpret catalog meta.
 
 ---

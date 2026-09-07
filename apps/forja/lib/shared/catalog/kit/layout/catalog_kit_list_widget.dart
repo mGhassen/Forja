@@ -7,19 +7,24 @@ import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
-import 'package:forja/shared/catalog/host_list_registry.dart';
+import 'package:forja/shared/catalog/services/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_panel_host.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Layout widget [`CatalogKitTypes.list`] — poster grid or dense list from a
 /// registered host list source (opaque `source` id and/or hub [pluginId]).
+///
+/// When a [CatalogKitPanelHost] is registered for [listSource], selection and
+/// side panel are owned here (no feature browse shell).
 class CatalogKitListWidget extends ConsumerStatefulWidget {
   const CatalogKitListWidget({
     super.key,
@@ -33,6 +38,8 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
     this.sidePanel,
     this.dynamicKindChips = false,
     this.onDynamicKinds,
+    this.shellTabVisible = true,
+    this.layoutWidgets = const [],
   });
 
   final String tabId;
@@ -47,13 +54,20 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
   /// Called when a row is activated (before [CatalogKitListSource.openEntry]).
   final ValueChanged<CatalogKitListEntry>? onEntrySelected;
 
-  /// Optional side panel beside a dense list (Live Sports streams panel).
+  /// Optional side panel beside a dense list. When null, kit resolves a
+  /// registered [CatalogKitPanelHost] for [listSource].
   final Widget? sidePanel;
 
   /// When true and no layout kind menu, expose unique entry kinds to parent.
   final bool dynamicKindChips;
 
   final ValueChanged<List<String>>? onDynamicKinds;
+
+  /// Shell tab visibility for panel hosts.
+  final bool shellTabVisible;
+
+  /// Full layout tree passed through to [CatalogKitPanelHost].
+  final List<Map<String, dynamic>> layoutWidgets;
 
   /// Opaque pack/feature source id — empty means resolve by [pluginId] only.
   String get listSource => (layoutSpec['source'] ?? '').toString().trim();
@@ -77,11 +91,23 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
 class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   final _scroll = ScrollController();
   CatalogKitListSource? _source;
+  CatalogKitListEntry? _selected;
+  List<String> _dynamicKinds = const [];
+  String? _kindFilter;
 
   CatalogKitListSource? _resolveSource() => CatalogHostListRegistry.resolve(
         sourceId: widget.listSource.isEmpty ? null : widget.listSource,
         pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
       );
+
+  CatalogKitPanelHost? get _panelHost {
+    final id = widget.listSource;
+    if (id.isEmpty) return null;
+    return CatalogHostListRegistry.resolvePanel(id);
+  }
+
+  bool get _autoPanel =>
+      widget.sidePanel == null && _panelHost != null && widget.isDenseList;
 
   @override
   void initState() {
@@ -155,12 +181,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
       );
     }
 
-    final scope = CatalogLayoutScope.of(context);
+    final scope = CatalogLayoutScope.maybeOf(context);
     final status =
-        scope.selectedId(widget.statusTabId) ??
+        scope?.selectedId(widget.statusTabId) ??
         widget.layoutSpec['defaultStatus']?.toString() ??
         'plantowatch';
-    final kind = scope.selectedId(widget.kindMenuId);
 
     source.setupSideEffects(ref, status);
     final pageAsync = source.watchPage(ref, status);
@@ -181,7 +206,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         if (page.loadingRemote && page.totalCount == 0) {
           return _loadingGrid(context);
         }
-        if (widget.dynamicKindChips || widget.onDynamicKinds != null) {
+        final wantKinds =
+            widget.dynamicKindChips ||
+            widget.onDynamicKinds != null ||
+            _autoPanel;
+        if (wantKinds) {
           final kinds = <String>{};
           for (final e in page.entriesForKind(null)) {
             if (e.kind.isNotEmpty && e.kind != 'live_match') kinds.add(e.kind);
@@ -190,55 +219,111 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             widget.onDynamicKinds?.call(sorted);
+            if (!_sameStringList(sorted, _dynamicKinds)) {
+              setState(() => _dynamicKinds = sorted);
+            }
           });
         }
+        final scopeKind = scope?.selectedId(widget.kindMenuId);
+        final kind = scopeKind ?? _kindFilter;
         final entries = page.entriesForKind(kind);
         if (entries.isEmpty) return _emptyState(context, kind: kind);
+        final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
         final body = widget.isDenseList
-            ? _denseList(context, source, entries)
+            ? _denseList(context, source, entries, selectedId: selectedId)
             : _grid(context, source, entries);
-        final panel = widget.sidePanel;
-        if (panel == null || !widget.isDenseList) return body;
-        final wide = MediaQuery.sizeOf(context).width >= 900;
-        final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
-        if (useSideSplit) {
-          final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
-          final listFlex = 100 - panelFlex;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: listFlex, child: body),
-              Expanded(flex: panelFlex, child: panel),
-            ],
-          );
-        }
-        return Stack(
-          children: [
-            body,
-            Positioned.fill(
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.45),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: MediaQuery.sizeOf(context).width * 0.92,
-                    child: panel,
+        final panel = widget.sidePanel ?? _buildAutoPanel();
+        Widget listBody = body;
+        if (panel != null && widget.isDenseList) {
+          final wide = MediaQuery.sizeOf(context).width >= 900;
+          final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
+          if (useSideSplit) {
+            final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
+            final listFlex = 100 - panelFlex;
+            listBody = Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: listFlex, child: body),
+                Expanded(flex: panelFlex, child: panel),
+              ],
+            );
+          } else {
+            listBody = Stack(
+              children: [
+                body,
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: MediaQuery.sizeOf(context).width * 0.92,
+                        child: panel,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
+            );
+          }
+        }
+        final chips = _dynamicKinds;
+        if (!_autoPanel || chips.length <= 1) return listBody;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _KitKindChipRow(
+              tabId: widget.tabId,
+              rowId: widget.kindMenuId,
+              kinds: ['all', ...chips],
+              selected: kind ?? 'all',
+              onSelect: (id) {
+                setState(() => _kindFilter = id == 'all' ? null : id);
+                scope?.onSelect(widget.kindMenuId, id, toggle: false);
+              },
             ),
+            Expanded(child: listBody),
           ],
         );
       },
     );
   }
 
+  Widget? _buildAutoPanel() {
+    if (!_autoPanel) return null;
+    final entry = _selected;
+    final host = _panelHost;
+    if (entry == null || host == null) return null;
+    final layouts = widget.layoutWidgets.isNotEmpty
+        ? widget.layoutWidgets
+        : [widget.layoutSpec];
+    return host.buildSidePanel(
+      context: context,
+      entry: entry,
+      layoutWidgets: layouts,
+      shellTabVisible: widget.shellTabVisible,
+      refreshEpoch: widget.refreshEpoch,
+      onClosed: () => setState(() => _selected = null),
+    );
+  }
+
+  static bool _sameStringList(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   Widget _denseList(
     BuildContext context,
     CatalogKitListSource source,
-    List<CatalogKitListEntry> entries,
-  ) {
+    List<CatalogKitListEntry> entries, {
+    String? selectedId,
+  }) {
     final leading = ShellTokens.compactChromeLeadingInset(context);
+    final panelActive = widget.sidePanel != null || _autoPanel;
     final list = ListView.separated(
       controller: _scroll,
       padding: EdgeInsets.fromLTRB(
@@ -256,8 +341,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         final entry = entries[index];
         final meta = entry.meta;
         final airing = meta.airing == true;
-        final selected = widget.selectedEntryId != null &&
-            widget.selectedEntryId == meta.id;
+        final selected = selectedId != null && selectedId == meta.id;
         return HubLiveMatchDenseTile(
           title: meta.name,
           meta: hubLiveMatchDenseMetaLine(
@@ -279,10 +363,9 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
                   _focusRow(widget.statusTabId, 0) ||
                   _focusRow(widget.kindMenuId, 0)
               : null,
-          onRightEdge: selected && widget.sidePanel != null
-              ? () {}
-              : null,
+          onRightEdge: selected && panelActive ? () {} : null,
           onTap: () {
+            if (_autoPanel) setState(() => _selected = entry);
             widget.onEntrySelected?.call(entry);
             source.openEntry(context, entry);
           },
@@ -369,7 +452,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   }) {
     final meta = entry.meta;
     final status =
-        CatalogLayoutScope.of(context).selectedId(widget.statusTabId) ??
+        CatalogLayoutScope.maybeOf(context)?.selectedId(widget.statusTabId) ??
         'plantowatch';
     return HubPosterCard(
       imageUrl: catalogKitListPosterUrl(meta),
@@ -436,7 +519,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
     String? kindLabel;
     if (kind != null) {
       final kindSpec =
-          CatalogLayoutScope.of(context).widgetSpecFor(widget.kindMenuId);
+          CatalogLayoutScope.maybeOf(context)?.widgetSpecFor(widget.kindMenuId);
       if (kindSpec != null) {
         for (final tab in catalogKitItemsFromSpec(kindSpec)) {
           if (tab.id == kind) kindLabel = tab.label;
@@ -543,3 +626,57 @@ String catalogKitListPosterUrl(CatalogMetaItem meta) {
 
 /// @deprecated Use [catalogKitListPosterUrl].
 String myListPosterUrl(CatalogMetaItem meta) => catalogKitListPosterUrl(meta);
+
+class _KitKindChipRow extends StatelessWidget {
+  const _KitKindChipRow({
+    required this.tabId,
+    required this.rowId,
+    required this.kinds,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String tabId;
+  final String rowId;
+  final List<String> kinds;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  static String _label(String id) {
+    if (id == 'all') return 'All';
+    if (id.isEmpty) return id;
+    return id[0].toUpperCase() + id.substring(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(
+          horizontal: ShellTokens.compactChromeLeadingInset(context),
+          vertical: 8,
+        ),
+        itemCount: kinds.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final id = kinds[i];
+          final on = selected == id;
+          return shellFocusableTap(
+            context: context,
+            onTap: () => onSelect(id),
+            listIndex: i,
+            tvTabId: tabId,
+            tvRowId: rowId,
+            tvItemIndex: i,
+            child: ForjaShellChip(
+              label: _label(id),
+              selected: on,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

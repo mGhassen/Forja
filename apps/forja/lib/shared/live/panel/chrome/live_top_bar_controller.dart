@@ -1,8 +1,8 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
 mixin _LiveMatchesData
-    on ConsumerState<LiveSportsHubPage>, ShellTabRefresh<LiveSportsHubPage> {
-  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
+    on ConsumerState<LiveSportsStreamsPage>, ShellTabRefresh<LiveSportsStreamsPage> {
+  _LiveSportsStreamsPageState get _s => this as _LiveSportsStreamsPageState;
 
   bool get _tvFocusEnabled =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -11,7 +11,7 @@ mixin _LiveMatchesData
     if (!_tvFocusEnabled) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (ShellTvFocus.currentNavTabId != _LiveSportsHubPageState._tabId) {
+      if (ShellTvFocus.currentNavTabId != _LiveSportsStreamsPageState._tabId) {
         return;
       }
       _restoreLiveMatchesTvFocus();

@@ -1,5 +1,5 @@
-import 'package:forja/features/live_matches/streams/play/live_engine.dart';
-import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/live/play/live_engine.dart';
+import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Feature schedule source ids (opaque to kit).

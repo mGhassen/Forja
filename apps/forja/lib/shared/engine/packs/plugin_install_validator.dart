@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/models/models.dart';
 
 /// Pre-disk install checks — manifest shape is validated earlier via
 /// [PluginContract.validateManifest].

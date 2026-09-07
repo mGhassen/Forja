@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/catalog_pack_assets.dart';
+import 'package:forja/shared/catalog/assets/catalog_pack_assets.dart';
 
 class NavDestination {
   const NavDestination({
@@ -17,7 +17,7 @@ class NavDestination {
   final IconData activeIcon;
   final String label;
 
-  /// Resolved display source: Flutter `assets/…`, absolute file path, or http(s).
+  /// Pack-resolved display source: absolute file path or http(s). Never host assets/.
   final String? iconAsset;
 }
 
@@ -56,16 +56,6 @@ class NavDestinationIcon extends StatelessWidget {
   }
 
   Widget? _imageFor(String asset) {
-    if (asset.startsWith('assets/')) {
-      return Image.asset(
-        asset,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-      );
-    }
     if (asset.startsWith('http://') || asset.startsWith('https://')) {
       return Image.network(
         asset,

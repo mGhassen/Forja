@@ -25,11 +25,11 @@
   },
   "hostParity": {
     "dart": {
-      "catalogProtocol": "apps/forja/lib/shared/catalog/protocol.dart",
-      "manifestParser": "apps/forja/lib/shared/engine/models.dart",
-      "manifestValidator": "apps/forja/lib/shared/engine/plugin_contract.dart",
+      "catalogProtocol": "apps/forja/lib/shared/catalog/protocol/protocol.dart",
+      "manifestParser": "apps/forja/lib/shared/engine/models/models.dart",
+      "manifestValidator": "apps/forja/lib/shared/engine/packs/plugin_contract.dart",
       "vodStreamParser": "packages/rust/lib/src/models/stream_source.dart",
-      "torrentSearch": "apps/forja/lib/shared/engine/runtime.dart"
+      "torrentSearch": "apps/forja/lib/shared/engine/runtime/runtime.dart"
     }
   },
   "fixtures": {

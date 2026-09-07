@@ -117,10 +117,11 @@
         "icon": {
           "type": "string",
           "minLength": 1,
-          "description": "Pack-relative image (e.g. icons/nav.png) or forja://asset/… host glyph. Omit for Material default.",
+          "description": "Pack-relative image (e.g. icons/nav.png) or http(s). Omit for Material default.",
           "not": {
             "anyOf": [
               { "pattern": "^assets/" },
+              { "pattern": "^forja://" },
               { "pattern": "\\.\\." }
             ]
           }

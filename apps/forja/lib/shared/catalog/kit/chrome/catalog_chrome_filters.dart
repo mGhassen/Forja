@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Shell top-bar + pack `filters` → protocol filter leaves (plugin-driven).

@@ -1,4 +1,4 @@
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 /// Strip a TMDB CDN URL (or keep a `/path`) for [Movie.posterPath].

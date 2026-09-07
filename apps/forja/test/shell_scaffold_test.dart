@@ -9,11 +9,10 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
-import 'package:forja/shared/catalog/forja_host_assets.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
@@ -100,21 +99,18 @@ void main() {
           icon: Icons.home_outlined,
           activeIcon: Icons.home,
           label: 'Hub A',
-          iconAsset: ForjaHostAssets.flutterNavHome,
         ),
         hubB: const NavDestination(
           id: hubB,
-          icon: Icons.animation_outlined,
-          activeIcon: Icons.animation,
+          icon: Icons.live_tv_outlined,
+          activeIcon: Icons.live_tv,
           label: 'Hub B',
-          iconAsset: ForjaHostAssets.flutterNavAnime,
         ),
         hubC: const NavDestination(
           id: hubC,
-          icon: Icons.theater_comedy_outlined,
-          activeIcon: Icons.theater_comedy,
+          icon: Icons.sports_soccer_outlined,
+          activeIcon: Icons.sports_soccer,
           label: 'Hub C',
-          iconAsset: ForjaHostAssets.flutterNavAsianDrama,
         ),
       },
     );
@@ -420,9 +416,7 @@ void main() {
       expect(ShellBus.shellOverlayHasPage.value, isTrue);
       expect(find.text('Details'), findsOneWidget);
 
-      await tester.tap(
-        find.image(const AssetImage('assets/images/nav/home.png')),
-      );
+      await tester.tap(find.byIcon(Icons.home_outlined));
       await tester.pumpAndSettle();
 
       expect(ShellBus.shellOverlayHasPage.value, isFalse);
@@ -449,10 +443,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ShellNavRail), findsOneWidget);
-      expect(
-        find.image(const AssetImage('assets/images/nav/anime.png')),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.live_tv), findsOneWidget);
     },
   );
 
@@ -481,17 +472,15 @@ void main() {
       profile: ShellProfile.desktop,
     );
 
-    final animeIcon = find.image(
-      const AssetImage('assets/images/nav/anime.png'),
-    );
-    expect(animeIcon, findsOneWidget);
+    final hubBIcon = find.byIcon(Icons.live_tv);
+    expect(hubBIcon, findsOneWidget);
     expect(find.text('Anime'), findsNothing);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
     await tester.pump();
-    await gesture.moveTo(tester.getCenter(animeIcon));
+    await gesture.moveTo(tester.getCenter(hubBIcon));
     await tester.pump();
     await tester.pump(ShellTokens.navRailLabelRevealDelay);
     for (var i = 0; i < 12; i++) {
@@ -514,7 +503,7 @@ void main() {
     );
 
     final animeItem = find.ancestor(
-      of: animeIcon,
+      of: hubBIcon,
       matching: find.byWidgetPredicate(
         (w) =>
             w is SizedBox &&
@@ -540,9 +529,7 @@ void main() {
       (widget) =>
           widget is NavDestinationIcon && widget.destination.id == hubA,
     );
-    final homeImage = find.image(
-      const AssetImage('assets/images/nav/home.png'),
-    );
+    final homeImage = find.byIcon(Icons.home_outlined);
     expect(
       tester.widget<NavDestinationIcon>(homeIconWidget()).color,
       ForjaShellColors.iconMuted,
@@ -571,9 +558,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final animeImage = find.image(
-      const AssetImage('assets/images/nav/anime.png'),
-    );
+    final animeImage = find.byIcon(Icons.live_tv);
     final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     Color underlineColor() =>
         (tester.widget<AnimatedContainer>(underline).decoration

@@ -1,4 +1,4 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
 class _ForjaLivePluginLoad {
   const _ForjaLivePluginLoad({
@@ -33,9 +33,9 @@ class _ForjaLivePluginLoad {
 }
 
 mixin _LiveMatchesForjaLive
-    on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
+    on ConsumerState<LiveSportsStreamsPage>, _LiveMatchesData {
   @override
-  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
+  _LiveSportsStreamsPageState get _s => this as _LiveSportsStreamsPageState;
 
   bool get _usesForjaLiveLazyCatalog => true;
 
@@ -338,7 +338,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _restoreForjaLiveCatalogFilterPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(
-      _LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
+      _LiveSportsStreamsPageState._forjaLiveCatalogFilterPreferenceKey,
     );
     if (saved == null || saved.isEmpty) return;
     if (!mounted) return;
@@ -348,7 +348,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
+      _LiveSportsStreamsPageState._forjaLiveCatalogFilterPreferenceKey,
       filter,
     );
   }
@@ -370,8 +370,8 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _restoreTimeWindowPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_LiveSportsHubPageState._schedulePreferenceKey) ??
-        prefs.getString(_LiveSportsHubPageState._timeWindowPreferenceKeyLegacy);
+    final raw = prefs.getString(_LiveSportsStreamsPageState._schedulePreferenceKey) ??
+        prefs.getString(_LiveSportsStreamsPageState._timeWindowPreferenceKeyLegacy);
     final saved = _liveMatchesScheduleFromPref(raw);
     if (saved == null) return;
     if (!mounted) return;
@@ -394,7 +394,7 @@ mixin _LiveMatchesForjaLive
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _LiveSportsHubPageState._schedulePreferenceKey,
+      _LiveSportsStreamsPageState._schedulePreferenceKey,
       _liveMatchesSchedulePref(status: status, horizon: horizon),
     );
   }
@@ -659,7 +659,7 @@ mixin _LiveMatchesForjaLive
 
   void _kickForjaLiveLazyCatalog({bool replace = false}) {
     if (!_usesForjaLiveLazyCatalog) return;
-    if (!(this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible) return;
+    if (!(this as ShellTabRefresh<LiveSportsStreamsPage>).shellTabVisible) return;
     if (!_s._browseHydrated) return;
     if (_s._forjaLiveGridCatalogInflight != null && !replace) return;
     if (replace) {

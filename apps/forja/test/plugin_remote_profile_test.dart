@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, Object> _basePrefs(List<Map<String, dynamic>> packs) => {
@@ -22,18 +25,27 @@ Future<void> _seedPacks(List<Map<String, dynamic>> packs) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  late Directory diskRoot;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues(_basePrefs(const []));
+    diskRoot = await Directory.systemTemp.createTemp('remote_profile_');
+    PluginScriptDiskStore.debugRoot = diskRoot;
     ShellBus.resetPluginInstallQueueForTest();
+    ShellBus.splashDismissed.value = true;
     PluginInstallCoordinator.debugSetBootWarm(false);
     await DeferredRemoteInstallStore.clearAll();
     await PendingRemotePurgeStore.clearAll();
   });
 
-  tearDown(() {
+  tearDown(() async {
     ShellBus.resetPluginInstallQueueForTest();
     PluginInstallCoordinator.debugSetBootWarm(false);
+    PluginRegistry.instance.debugHttpClient = null;
+    PluginScriptDiskStore.resetForTest();
+    if (await diskRoot.exists()) {
+      await diskRoot.delete(recursive: true);
+    }
   });
 
   group('applyLeanManifestUrls', () {
@@ -206,71 +218,71 @@ void main() {
   });
 
   group('PluginInstallPromptService', () {
-    test('enqueues batch install for added packs', () async {
-      await _seedPacks(const []);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
+    test('auto-installs added packs without batch prompt', () async {
+      const url = 'https://cdn.example/new/manifest.json';
+      await _seedPacks([
+        {
+          'sourceUrl': url,
+          'packId': 'new',
+          'name': 'New Pack',
+          'version': '0.0.0',
+          'plugins': const [],
+        },
+      ]);
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        final path = req.url.path;
+        if (path.endsWith('manifest.json')) {
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'new',
+              'name': 'New Pack',
+              'version': '1.0.0',
+              'plugins': [
+                {
+                  'id': 'p1',
+                  'name': 'P1',
+                  'entry': 'p1.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path.endsWith('p1.js')) {
+          return http.Response(
+            'function extract(ctx) { return []; }',
+            200,
+            headers: {'content-type': 'text/javascript'},
+          );
+        }
+        return http.Response('nf', 404);
+      });
+
+      await PluginInstallPromptService.applyCloudLeanDiff(
         const LeanApplyResult(
           added: [
             LeanPackDelta(
-              manifestUrl: 'https://cdn.example/new/manifest.json',
+              manifestUrl: url,
               name: 'New Pack',
             ),
           ],
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
-      final batch = ShellBus.pendingPluginBatchInstall.value;
-      expect(batch, isNotNull);
-      expect(batch!.candidates, hasLength(1));
-      expect(batch.candidates.first.kind, PluginPackPromptKind.install);
-      expect(batch.candidates.first.fromRemoteProfile, isTrue);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
       expect(
-        batch.candidates.first.manifestUrl,
-        'https://cdn.example/new/manifest.json',
-      );
-    });
-
-    test('skips deferred install URLs', () async {
-      const url = 'https://cdn.example/later/manifest.json';
-      await DeferredRemoteInstallStore.defer(url);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
-        const LeanApplyResult(
-          added: [LeanPackDelta(manifestUrl: url, name: 'Later')],
+        await PluginScriptDiskStore.loadEngineScript(
+          sourceUrl: url,
+          pluginId: 'p1',
         ),
+        'function extract(ctx) { return []; }',
       );
-      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
-      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
-    test('skips already pending-purge uninstalls', () async {
-      const url = '/tmp/forja-gone/manifest.json';
-      await _seedPacks([
-        {
-          'sourceUrl': url,
-          'packId': 'gone',
-          'name': 'Gone',
-          'version': '1.0.0',
-          'plugins': [
-            {
-              'id': 'p1',
-              'name': 'P1',
-              'entry': 'p1.js',
-              'kind': 'http',
-            },
-          ],
-        },
-      ]);
-      await PendingRemotePurgeStore.defer(url);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
-        const LeanApplyResult(
-          removed: [LeanPackDelta(manifestUrl: url, name: 'Gone')],
-        ),
-      );
-      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
-      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
-    });
-
-    test('skips install prompt for local packs already on disk', () async {
+    test('skips install when pack already on disk', () async {
       const url = '/tmp/forja-ready/manifest.json';
       await _seedPacks([
         {
@@ -288,18 +300,28 @@ void main() {
           ],
         },
       ]);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
+      var fetched = false;
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        fetched = true;
+        return http.Response('nf', 404);
+      });
+      await PluginInstallPromptService.applyCloudLeanDiff(
         const LeanApplyResult(
           added: [LeanPackDelta(manifestUrl: url, name: 'Ready')],
         ),
       );
-      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(fetched, isFalse);
       expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
-    test('skips enqueue during boot warm', () async {
+    test('skips during boot warm', () async {
       PluginInstallCoordinator.debugSetBootWarm(true);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
+      var fetched = false;
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        fetched = true;
+        return http.Response('nf', 404);
+      });
+      await PluginInstallPromptService.applyCloudLeanDiff(
         const LeanApplyResult(
           added: [
             LeanPackDelta(
@@ -309,39 +331,14 @@ void main() {
           ],
         ),
       );
-      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(fetched, isFalse);
       expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
-    test('groups install and uninstall into one batch', () async {
-      await _seedPacks([
-        {
-          'sourceUrl': '/tmp/forja-gone/manifest.json',
-          'packId': 'gone',
-          'name': 'Gone',
-          'version': '1.0.0',
-          'plugins': [
-            {
-              'id': 'p1',
-              'name': 'P1',
-              'entry': 'p1.js',
-              'kind': 'http',
-            },
-          ],
-        },
-      ]);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
+    test('does not enqueue uninstall confirm for removed packs', () async {
+      await _seedPacks(const []);
+      await PluginInstallPromptService.applyCloudLeanDiff(
         const LeanApplyResult(
-          added: [
-            LeanPackDelta(
-              manifestUrl: 'https://cdn.example/a/manifest.json',
-              name: 'A',
-            ),
-            LeanPackDelta(
-              manifestUrl: 'https://cdn.example/b/manifest.json',
-              name: 'B',
-            ),
-          ],
           removed: [
             LeanPackDelta(
               manifestUrl: '/tmp/forja-gone/manifest.json',
@@ -351,56 +348,12 @@ void main() {
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
-      final batch = ShellBus.pendingPluginBatchInstall.value;
-      expect(batch, isNotNull);
-      expect(batch!.candidates, hasLength(3));
-      expect(
-        batch.candidates.where((c) => c.kind == PluginPackPromptKind.install),
-        hasLength(2),
-      );
-      expect(
-        batch.candidates.where((c) => c.kind == PluginPackPromptKind.uninstall),
-        hasLength(1),
-      );
-      expect(batch.hasRemoteProfile, isTrue);
-    });
-
-    test('merges a second lean diff into the pending batch', () async {
-      await _seedPacks(const []);
-      await PluginInstallPromptService.enqueueFromLeanDiff(
-        const LeanApplyResult(
-          added: [
-            LeanPackDelta(
-              manifestUrl: 'https://cdn.example/a/manifest.json',
-              name: 'A',
-            ),
-          ],
-        ),
-      );
-      await PluginInstallPromptService.enqueueFromLeanDiff(
-        const LeanApplyResult(
-          added: [
-            LeanPackDelta(
-              manifestUrl: 'https://cdn.example/b/manifest.json',
-              name: 'B',
-            ),
-          ],
-        ),
-      );
-      final batch = ShellBus.pendingPluginBatchInstall.value;
-      expect(batch!.candidates, hasLength(2));
-      expect(
-        batch.candidates.map((c) => c.manifestUrl).toSet(),
-        {
-          'https://cdn.example/a/manifest.json',
-          'https://cdn.example/b/manifest.json',
-        },
-      );
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
   });
 
-  group('Forja export', () {
-    test('omits pending-purge URLs', () async {
+  group('exportForjaCompact omits pending-purge URLs', () {
+    test('pending purge packs are not exported', () async {
       const url = '/tmp/forja-export/manifest.json';
       await _seedPacks([
         {
@@ -419,8 +372,9 @@ void main() {
         },
       ]);
       await PendingRemotePurgeStore.defer(url);
-      final compact = await SyncDomainBridge.instance.exportForja();
-      expect(compact['packs'], isNull);
+      final payload = await SyncDomainBridge.instance.exportForja();
+      final packs = payload['packs'] as List? ?? const [];
+      expect(packs, isEmpty);
     });
   });
 }

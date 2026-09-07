@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
-import 'protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 /// In-memory catalog response cache.
 ///

@@ -1,4 +1,4 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
 /// Match-detail Providers rows — same TTL idea as Live TV IPTV sports cache.
 const _providersResultsCacheTtl = Duration(minutes: 30);
@@ -66,9 +66,9 @@ void _clearProvidersResultsCache() {
 }
 
 mixin _LiveMatchesPlayback
-    on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
+    on ConsumerState<LiveSportsStreamsPage>, _LiveMatchesData {
   @override
-  _LiveSportsHubPageState get _s => this as _LiveSportsHubPageState;
+  _LiveSportsStreamsPageState get _s => this as _LiveSportsStreamsPageState;
 
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(

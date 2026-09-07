@@ -1433,8 +1433,9 @@ class SyncDomainBridge {
     return _exportForjaCompact();
   }
 
-  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network.**
-  /// Mid-session: enqueue install/uninstall confirms. Boot: silent hydrate/purge.
+  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** for
+  /// the lean apply itself. Always purges removed packs on this device, then
+  /// mid-session auto-downloads adds (boot warm hydrates via coordinator).
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
     await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
@@ -1442,12 +1443,11 @@ class SyncDomainBridge {
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
-    final boot = PluginInstallCoordinator.instance.isBootWarm;
     final result = await EngineService.instance.applyLeanManifestUrls(
       rows,
-      purgeRemovedImmediately: boot,
+      purgeRemovedImmediately: true,
     );
-    await PluginInstallPromptService.enqueueFromLeanDiff(result);
+    await PluginInstallPromptService.applyCloudLeanDiff(result);
     return result;
   }
 }

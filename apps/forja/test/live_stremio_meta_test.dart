@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/live_matches/streams/data/live_stremio_meta.dart';
+import 'package:forja/shared/live/data/live_stremio_meta.dart';
 
 void main() {
   group('stremioMetaLooksLive', () {

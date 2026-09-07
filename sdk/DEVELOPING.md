@@ -411,14 +411,14 @@ Add a shell tab with **`nav`** on a catalog plugin:
   "tabId": "my_hub",
   "label": "My Hub",
   "order": 25,
-  "icon": "forja://asset/nav/anime",
+  "icon": "icons/nav.png",
   "accent": "#FB7185"
 }
 ```
 
 Omit pack-owned Feature defaults — when a hub pack contributes a new `tabId`, the host turns that Feature **on** automatically. Users can still hide it under Settings → Features.
 
-Icons must use **`forja://asset/nav/…`** URIs (host asset catalog), not Flutter `assets/` paths.
+Prefer a **pack-relative** icon (`icons/nav.png`). Omit `icon` for the Material default. Never Flutter `assets/` or `forja://asset` URIs.
 
 ### Capabilities
 

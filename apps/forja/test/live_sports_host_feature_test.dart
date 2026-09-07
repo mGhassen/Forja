@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/live_matches/browse/live_sports_browse_shell.dart';
-import 'package:forja/features/live_matches/live_sports_host_layout.dart';
-import 'package:forja/features/live_matches/live_sports_host.dart';
-import 'package:forja/shared/catalog/host_list_registry.dart';
+import 'package:forja/features/live_sports/live_sports_host_layout.dart';
+import 'package:forja/features/live_sports/live_sports_host.dart';
+import 'package:forja/shared/catalog/services/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
 
 void main() {
@@ -50,7 +49,11 @@ void main() {
 
   test('host-default layout is live_schedule list (RFC-084)', () {
     expect(
-      LiveSportsBrowseShell.matchesLayout(kLiveSportsHostDefaultLayout),
+      CatalogKitTypes.treeContains(
+        kLiveSportsHostDefaultLayout,
+        slot: CatalogKitTypes.list,
+        listSource: LiveSportsHost.listSourceId,
+      ),
       isTrue,
     );
     final root = kLiveSportsHostDefaultLayout.first;
@@ -59,15 +62,16 @@ void main() {
     expect(root['style'], 'list');
   });
 
-  test('live_schedule registers CatalogKitListSource with host body', () {
+  test('live_schedule registers list source without host body', () {
     final source = CatalogHostListRegistry.resolve(sourceId: 'live_schedule');
     expect(source, isNotNull);
-    expect(source!.wantsHostBody, isTrue);
+    expect(source!.wantsHostBody, isFalse);
     expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
   });
 
   test('live_schedule registers streams panel host', () {
-    final panel = CatalogHostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
+    final panel =
+        CatalogHostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
     expect(panel, isNotNull);
     expect(panel!.listSourceId, LiveSportsHost.listSourceId);
   });

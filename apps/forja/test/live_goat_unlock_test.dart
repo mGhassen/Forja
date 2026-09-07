@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live_goat_unlock.dart';
+import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 
 void main() {
   group('LiveGoatUnlock.playbackHeadersForSlot', () {

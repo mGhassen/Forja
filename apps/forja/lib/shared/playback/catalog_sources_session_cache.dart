@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/catalog_extract_context.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 
 /// Tab, chip, and toolbar state for catalog Sources (player overlay).

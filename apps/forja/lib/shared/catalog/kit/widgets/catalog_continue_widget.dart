@@ -9,7 +9,7 @@ import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_secti
 import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:rust/rust.dart' show WatchHistoryService, canResumeFromSavedProgress;

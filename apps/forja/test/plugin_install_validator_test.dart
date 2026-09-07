@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_contract.dart';
-import 'package:forja/shared/engine/plugin_install_validator.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/plugin_script_disk_store.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_contract.dart';
+import 'package:forja/shared/engine/packs/plugin_install_validator.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';

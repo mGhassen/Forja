@@ -1,5 +1,5 @@
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/live_matches/streams/play/live_embed_webview_proxy.dart';
+import 'package:forja/shared/live/play/live_embed_webview_proxy.dart';
 
 void main() {
   group('liveEmbedRewriteM3u8Absolute', () {

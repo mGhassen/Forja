@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/live_matches/catalog/live_schedule_filters.dart';
-import 'package:forja/features/live_matches/streams/data/live_schedule_source.dart';
-import 'package:forja/features/live_matches/browse/live_sports_browse_shell.dart';
-import 'package:forja/features/live_matches/streams/play/live_engine.dart';
-import 'package:forja/features/live_matches/streams/play/live_play_kit.dart';
-import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/live/data/live_schedule_filters.dart';
+import 'package:forja/shared/live/data/live_schedule_source.dart';
+import 'package:forja/shared/live/play/live_engine.dart';
+import 'package:forja/shared/live/play/live_play_kit.dart';
+import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/engine/engine.dart';
 
@@ -43,8 +42,6 @@ class LiveScheduleCatalogPage implements CatalogKitListPage {
 final liveScheduleCatalogProvider =
     FutureProvider.autoDispose<LiveScheduleCatalogPage>((ref) async {
   final filters = ref.watch(liveScheduleFiltersProvider);
-  // Sport chip filters in the browse shell via entriesForKind — load all sports
-  // for the active catalog, then kit kind menu narrows the list.
   final rows = await loadLiveScheduleRows(
     LiveScheduleQuery(
       catalogFilter: filters.catalogFilter,
@@ -88,8 +85,11 @@ String _sportKindForMeta(CatalogMetaItem meta) {
 }
 
 /// Kit list backend for `source: live_schedule` (My List peer).
-final class LiveScheduleCatalogSource implements CatalogKitListSource {
-  const LiveScheduleCatalogSource._();
+///
+/// [wantsHostBody] stays false — [CatalogShell] + [CatalogKitListWidget] own
+/// browse; streams panel is [LiveSportsStreamsPanelHost].
+final class LiveScheduleCatalogSource extends CatalogKitListSource {
+  const LiveScheduleCatalogSource._() : super();
 
   static const instance = LiveScheduleCatalogSource._();
 
@@ -100,27 +100,7 @@ final class LiveScheduleCatalogSource implements CatalogKitListSource {
   String? get hubPluginId => LiveSportsHost.hubPluginId;
 
   @override
-  bool get wantsHostBody => true;
-
-  @override
-  Widget? buildHostBody({
-    required String tabId,
-    required String pluginId,
-    required List<Map<String, dynamic>> layoutWidgets,
-    required int refreshEpoch,
-    required bool shellTabVisible,
-  }) =>
-      LiveSportsBrowseShell(
-        pluginId: pluginId,
-        tabId: tabId,
-        layoutWidgets: layoutWidgets,
-        shellTabVisible: shellTabVisible,
-        refreshEpoch: refreshEpoch,
-      );
-
-  @override
   AsyncValue<CatalogKitListPage> watchPage(WidgetRef ref, String status) {
-    // [status] unused — Live filters live in [liveScheduleFiltersProvider].
     return ref.watch(liveScheduleCatalogProvider).when(
           data: AsyncData.new,
           error: AsyncError.new,
@@ -143,8 +123,8 @@ final class LiveScheduleCatalogSource implements CatalogKitListSource {
     BuildContext context,
     CatalogKitListEntry entry,
   ) async {
-    // Panel selection is owned by [CatalogKitListWidget] / browse shell.
-    // Cross-route opens still use [LivePlayKit].
+    // Panel selection is owned by [CatalogKitListWidget] when a panel host
+    // is registered. Cross-route opens still use [LivePlayKit].
   }
 
   @override

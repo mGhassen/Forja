@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
-| **Current slice** | Hub Features auto-on for new packs — A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
+| **Current slice** | Pack-owned nav icons — host `assets/images/nav` removed; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -141,6 +141,18 @@ Packs reference host icons by Forja URI only. Real Flutter paths stay in the app
 |--:|----|-------------|--------|
 | 1 | R70-A39 | `ForjaHostAssets` maps `forja://asset/nav/*` → bundled nav PNGs; unknown / raw `assets/` resolve to null | ✅ |
 | 2 | R70-A40 | Official hub manifests use `forja://asset/nav/…`; `PluginNavRegistry.refresh` resolves via catalog (no `startsWith('assets/')`) | ✅ |
+
+---
+
+## Acceptance (pack-owned nav icons)
+
+Supersedes the host-PNG reading of R70-A39 / R70-A40. Hub glyphs live in packs; host core tabs use Material only.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A60 | Host ships no `assets/images/nav` — `ForjaHostAssets` is Material default only | ✅ |
+| 2 | R70-A61 | Hub `nav.icon` is pack-relative or http(s) only — `forja://asset` rejected by contract | ✅ |
+| 3 | R70-A62 | Core IPTV / Live Sports destinations use Material icons; Live Sports pack bitmap overrides when installed | ✅ |
 
 ---
 
@@ -337,21 +349,20 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 
 Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tmdb` (details fetch, movie↔tv fallback) before title search via `ctx.host.tmdb.match`, and fall back to `ctx.fetch` + injected `config.apiKey`. Source plugins may call kit enrich inline **or** declare a companion via `"enrich": "<pluginId>"` — host runs `action: enrich` after `rail`/`details` and caches the merged payload (R70-A42–A44, R70-A49–A50: Asian Drama `enrich-tmdb`, Anime `anime-enrich-tmdb`; hub hero client uses the same scored matcher as details). CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
 
-### Host / pack nav icons (R70-A39+)
+### Host / pack nav icons (R70-A39+ · superseded by R70-A60+)
 
 Hub `nav.icon` may be:
 
-1. **Pack-relative** (preferred) — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Bitmaps are **tinted** to the rail mute/accent color (`BlendMode.srcIn`) — ship opaque single-color / silhouette art.
-2. **Host asset URI** — `"forja://asset/nav/…"`. Host maps to bundled `assets/images/nav/…` and tints to the rail color (single-color glyphs).
-3. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/catalog/forja_host_assets.dart) (`Icons.grid_view_rounded`).
+1. **Pack-relative** — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Bitmaps are **tinted** to the rail mute/accent color (`BlendMode.srcIn`) — ship opaque single-color / silhouette art.
+2. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/catalog/assets/forja_host_assets.dart) (`Icons.grid_view_rounded`).
 
 ```json
 "icon": "icons/nav.png"
 ```
 
-Forbidden: Flutter `assets/…` paths from the pack, and `..` traversal.
+Forbidden: Flutter `assets/…` paths, `forja://asset/…` host glyph URIs, and `..` traversal.
 
-`ForjaHostAssets.catalog` remains the allow-list for host URIs only. Packs should ship `icons/nav.png` (or similar) instead of requiring a host catalog entry.
+Host core tabs (IPTV, Settings, Live Sports seed) use Material `IconData` on `NavDestination`. Packs never require a host PNG catalog entry.
 
 ### Play contract (browse vs provider JS)
 
@@ -372,6 +383,20 @@ Legacy Dart/Rust webstreaming sniff, dedicated anime/drama players, and built-in
 - `config.videoId` for Arabic providers (`larozaa`, `dimatoon`, `brstej`)
 
 Shared kit: [`hub_play_context.dart`](../../apps/forja/lib/shared/playback/hub_play_context.dart), [`hub_details_play.dart`](../../apps/forja/lib/shared/catalog/kit/details/hub_details_play.dart).
+
+### Host folder layout (post-ship organize)
+
+Core modules from R70-C01–C04 live under subfolders; historical component paths above stay as shipped. Current map:
+
+| Folder | Files |
+|--------|-------|
+| `shared/catalog/protocol/` | `protocol.dart`, `filter.dart`, `deeplink.dart`, `catalog_hub_capabilities.dart` |
+| `shared/catalog/services/` | `cache.dart`, `runtime.dart`, `plugin_nav.dart`, `host_list_registry.dart`, `catalog_details_fetch.dart`, `catalog_watch_history.dart` |
+| `shared/catalog/assets/` | `forja_host_assets.dart`, `catalog_pack_assets.dart` |
+| `shared/catalog/utils/` | `hub_cover_urls.dart` |
+| `shared/catalog/kit/` · `shell/` | unchanged |
+
+Barrel: [`catalog.dart`](../../apps/forja/lib/shared/catalog/catalog.dart).
 
 ### Related
 

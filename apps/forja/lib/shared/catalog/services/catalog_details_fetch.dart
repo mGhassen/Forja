@@ -1,6 +1,7 @@
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+
+import 'runtime.dart';
 
 /// Pack `details` action — generic metadata fetch (no feature services).
 ///

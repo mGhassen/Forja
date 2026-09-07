@@ -1,9 +1,9 @@
-# 228 — Boot skips pack install prompt when hub Features on but packs lean
+# 228 — Cloud packs auto-install (no install confirm)
 
 **Status:** open  
 **Priority:** P0  
 **Severity:** Critical  
-**Area:** `BootNeeds` · `PluginInstallCoordinator` · splash / profile warm
+**Area:** `BootNeeds` · `PluginInstallCoordinator` · cloud lean sync
 
 ## Status at a glance
 
@@ -19,10 +19,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I228-T01 | `BootNeeds`: Features hub ids + pending lean disk → `needsForjaPluginWarm` (no `isContributed` filter) | ✅ |
-| 2 | I228-T02 | Splash: prompt **new** lean stubs once; silent-repair packs with plugin index already on device | ✅ |
-| 3 | I228-T03 | Mid-session cloud add still uses batch confirm; Install later stays deferred (no cold-boot clear) | ✅ |
-| 4 | I228-T04 | Unit tests: BootNeeds; lean prompt vs silent repair | ✅ |
+| 1 | I228-T01 | `BootNeeds`: Features hub ids + pending lean → warm runs | ✅ |
+| 2 | I228-T02 | Splash silent-downloads all membership packs needing disk; clear deferred | ✅ |
+| 3 | I228-T03 | Mid-session cloud add/remove: auto-install / silent purge + toast (View → Forja Packs); update prompts stay | ✅ |
+| 4 | I228-T04 | Unit tests + changelog / feature docs | ✅ |
 
 ---
 
@@ -30,19 +30,14 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I228-A01 | Web adds pack → app prompts once → Install → next cold start silent (no re-ask); scripts on disk | ⬜ |
-| 2 | I228-A02 | Features hub ids on + lean stubs → warm runs (no `skip (no VOD/catalog tab)`); new lean prompts after splash | ⬜ |
-| 3 | I228-A03 | Install later stays Install later across cold starts until user Downloads | ⬜ |
+| 1 | I228-A01 | Web adds pack → other device auto-downloads; toast “installed” with View → Forja Packs | ⬜ |
+| 2 | I228-A02 | Cold start with pending lean membership hydrates on splash (no install confirm) | ⬜ |
+| 3 | I228-A03 | Pack updates still toast + Update confirm; manual `forja://` / Settings Install still ask | ⬜ |
 
 ---
 
 ## Summary
 
-**Symptom:** App opens with placeholder hub icons and pending packs; no install flow — or (wrong fix) re-prompted every boot.
+**Contract:** Cloud membership = download on this device. No install/uninstall confirm for profile sync. Toast after install/remove (View opens Forja Packs). **Updates** still ask.
 
-**Root cause:**
-
-1. `BootNeeds` filtered Features with `isContributed` → lean stubs → IPTV-only warm skip.
-2. Lifecycle must be: **new lean** → ask once → on yes persist full pack (plugin index + scripts) → **next splash silent-repair** if scripts missing. Never re-ask for packs already installed on device. **Install later** stays deferred.
-
-**After:** BootNeeds mirrors Features ids; splash prompts empty-plugin lean only; packs with plugins silent-hydrate; deferred untouched on cold boot.
+**Related:** BootNeeds chicken-egg (Features hubs without contributed nav) still fixed so splash warm runs.

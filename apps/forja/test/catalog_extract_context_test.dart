@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/catalog_extract_context.dart';
-import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
+import 'package:forja/shared/engine/models/models.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({required int id, String mediaType = 'tv'}) => Movie(

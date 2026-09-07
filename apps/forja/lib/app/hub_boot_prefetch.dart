@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/catalog/filter.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/protocol/filter.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/catalog/services/runtime.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
 import 'package:rust/rust.dart';
 

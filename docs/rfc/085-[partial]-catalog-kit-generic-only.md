@@ -50,7 +50,7 @@
 | Layer | Owns |
 |-------|------|
 | Kit | Generic widgets + nameless list contract |
-| `CatalogHostListRegistry` (`shared/catalog/`) | Opaque source-id → feature-owned `CatalogKitListSource` |
+| `CatalogHostListRegistry` (`shared/catalog/services/`) | Opaque source-id → feature-owned `CatalogKitListSource` |
 | `features/my_list/` | Local + Simkl merge, open, pin |
 | `features/live_matches/` | Schedule browse / play god-page (until RFC-073 thins it) |
 | Hub packs | Layout composition; opaque `source` ids they own |

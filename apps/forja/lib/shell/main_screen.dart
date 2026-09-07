@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
@@ -21,7 +21,7 @@ import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -143,6 +143,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         key: key,
         pluginId: child.pluginId,
         tabId: child.tabId,
+        hostLayout: child.hostLayout,
       );
     }
     return KeyedSubtree(key: key, child: child);

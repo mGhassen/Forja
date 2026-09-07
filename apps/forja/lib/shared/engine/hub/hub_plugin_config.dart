@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/runtime.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/catalog/services/runtime.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:rust/rust.dart';
 
 /// Hub plugin manifest helpers — mirror lists, base URL activation (host-agnostic).

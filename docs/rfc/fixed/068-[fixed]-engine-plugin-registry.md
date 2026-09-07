@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** [RFC-067](067-[fixed]-forjahq-remote-plugin-pack.md)  
-**Area:** `apps/forja/lib/shared/engine/plugin_registry.dart`, Settings → Sources → Forja
+**Area:** `apps/forja/lib/shared/engine/packs/plugin_registry.dart`, Settings → Sources → Forja
 
 ## Status at a glance
 
@@ -52,3 +52,15 @@ Professionalize the Forja engine pack lifecycle: a dedicated **PluginRegistry** 
 
 - [RFC-067](067-[fixed]-forjahq-remote-plugin-pack.md)
 - [RFC-060](060-[fixed]-enginejs-sources-forja-tab.md)
+
+### Host folder layout (post-ship organize)
+
+| Folder | Owns |
+|--------|------|
+| `shared/engine/models/` | `EnginePlugin`, categories, ids, lean apply |
+| `shared/engine/runtime/` | `EngineService`, JS runtime, polyfills |
+| `shared/engine/packs/` | registry, install, official packs, prompts, disk store, deeplink |
+| `shared/engine/hub/` | catalog extract context, hub plugin config |
+| `shared/engine/live/` | GOAT/GASM unlock + live sport capabilities |
+
+Barrel: [`engine.dart`](../../apps/forja/lib/shared/engine/engine.dart).

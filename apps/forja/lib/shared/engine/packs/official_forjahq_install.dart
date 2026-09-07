@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/official_forjahq_packs.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/plugin_install_prompt.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
-import 'package:forja/features/live_matches/streams/play/live_play_kit.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/live/play/live_play_kit.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from
 /// double-tap / re-click while the first navigation is alive.

@@ -1,8 +1,8 @@
 /// Machine-readable EngineJS pack contracts — `plugins/sdk/schema/*.json`.
 library;
 
-import 'package:forja/shared/catalog/catalog_pack_assets.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/assets/catalog_pack_assets.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 /// Validates pack manifests at install time (mirrors [manifest.schema.json]).
 abstract final class PluginContract {
@@ -111,18 +111,18 @@ abstract final class PluginContract {
         if (icon != null) {
           final s = icon.toString().trim();
           if (s.isNotEmpty) {
-            if (s.startsWith('assets/') || s.contains('..')) {
+            if (s.startsWith('assets/') ||
+                s.startsWith('forja://') ||
+                s.contains('..')) {
               throw FormatException(
                 'plugin $id nav.icon must be pack-relative (icons/…) '
-                'or forja://asset/… — not Flutter assets/ or ..',
+                'or http(s) — not Flutter assets/ or forja://asset',
               );
             }
-            final ok = s.startsWith('forja://asset/') ||
-                CatalogPackAssets.isPackNavIcon(s);
-            if (!ok) {
+            if (!CatalogPackAssets.isPackNavIcon(s)) {
               throw FormatException(
                 'plugin $id nav.icon must be pack-relative (icons/…) '
-                'or forja://asset/…',
+                'or http(s)',
               );
             }
           }

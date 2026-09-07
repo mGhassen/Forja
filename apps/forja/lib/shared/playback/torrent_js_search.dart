@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/runtime.dart';
-import 'package:forja/shared/engine/service.dart';
+import 'package:forja/shared/engine/runtime/runtime.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:rust/rust.dart';
 
 /// Sync [TorrentSearchCatalog] from installed `kind: torrent` plugins.

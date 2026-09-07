@@ -1,4 +1,4 @@
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
 
 /// Opaque catalog play state passed through player + engine auto-play.
 class CatalogPlaySession {

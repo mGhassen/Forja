@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/protocol/filter.dart';
 import 'package:forja/shared/catalog/kit/details/catalog_play_filters.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/catalog/services/runtime.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// One pack-declared top-bar menu tab (`filters.menus[]`).

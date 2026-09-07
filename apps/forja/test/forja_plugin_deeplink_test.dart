@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/forja_plugin_deeplink.dart';
+import 'package:forja/shared/engine/packs/forja_plugin_deeplink.dart';
 
 void main() {
   group('ForjaPluginDeepLink', () {

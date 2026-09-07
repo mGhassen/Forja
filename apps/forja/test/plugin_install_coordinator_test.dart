@@ -2,16 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'package:forja/shared/engine/plugin_script_disk_store.dart';
-import 'package:forja/shared/engine/remote_pack_intent_store.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Directory diskRoot;
   late PluginRegistry registry;
 
@@ -26,6 +27,7 @@ void main() {
     PluginScriptDiskStore.debugRoot = diskRoot;
     registry = PluginRegistry.instance;
     registry.debugHttpClient = null;
+    ShellBus.splashDismissed.value = true;
   });
 
   tearDown(() async {
@@ -219,7 +221,8 @@ void main() {
     expect(PluginInstallCoordinator.instance.progress.value, isNull);
   });
 
-  test('ensureAllInstalled skips deferred remote install URLs', () async {
+  test('ensureAllInstalled clears deferred and silent-downloads lean packs',
+      () async {
     const url = 'https://coord.example/later/manifest.json';
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2': jsonEncode([
@@ -252,9 +255,35 @@ void main() {
     );
     await DeferredRemoteInstallStore.defer(url);
 
-    var fetched = false;
     registry.debugHttpClient = MockClient((req) async {
-      fetched = true;
+      final path = req.url.path;
+      if (path.endsWith('manifest.json')) {
+        return http.Response(
+          jsonEncode({
+            'schema': 1,
+            'id': 'later',
+            'name': 'Later Pack',
+            'version': '1.0.0',
+            'plugins': [
+              {
+                'id': 'p1',
+                'name': 'P1',
+                'entry': 'p1.js',
+                'kind': 'http',
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (path.endsWith('p1.js')) {
+        return http.Response(
+          'function extract(ctx) { return []; }',
+          200,
+          headers: {'content-type': 'text/javascript'},
+        );
+      }
       return http.Response('nf', 404);
     });
 
@@ -262,16 +291,15 @@ void main() {
       notifyUpdates: false,
       awaitCloudLean: false,
       includeNuvio: false,
-      promptBeforeInstall: false,
     );
 
-    expect(fetched, isFalse);
+    expect(await DeferredRemoteInstallStore.contains(url), isFalse);
     expect(
       await PluginScriptDiskStore.loadEngineScript(
         sourceUrl: url,
         pluginId: 'p1',
       ),
-      isNull,
+      'function extract(ctx) { return []; }',
     );
   });
 
@@ -569,8 +597,7 @@ void main() {
     expect(update.remoteVersion, '1.7.0');
   });
 
-  test('ensureAllInstalled prompts new lean stubs when promptBeforeInstall',
-      () async {
+  test('ensureAllInstalled silent-downloads new lean stubs', () async {
     const url = 'https://coord.example/new-lean/manifest.json';
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2': jsonEncode([
@@ -588,10 +615,37 @@ void main() {
       'nuvio_addons_kv_v1': '1',
     });
     ShellBus.resetPluginInstallQueueForTest();
+    ShellBus.splashDismissed.value = true;
 
-    var fetched = false;
     registry.debugHttpClient = MockClient((req) async {
-      fetched = true;
+      final path = req.url.path;
+      if (path.endsWith('manifest.json')) {
+        return http.Response(
+          jsonEncode({
+            'schema': 1,
+            'id': 'new-lean',
+            'name': 'New Lean',
+            'version': '1.0.0',
+            'plugins': [
+              {
+                'id': 'p1',
+                'name': 'P1',
+                'entry': 'p1.js',
+                'kind': 'http',
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (path.endsWith('p1.js')) {
+        return http.Response(
+          'function extract(ctx) { return []; }',
+          200,
+          headers: {'content-type': 'text/javascript'},
+        );
+      }
       return http.Response('nf', 404);
     });
 
@@ -599,11 +653,17 @@ void main() {
       notifyUpdates: false,
       awaitCloudLean: false,
       includeNuvio: false,
-      promptBeforeInstall: true,
     );
 
-    expect(fetched, isFalse);
-    expect(ShellBus.pendingPluginInstall.value?.manifestUrl, url);
+    expect(ShellBus.pendingPluginInstall.value, isNull);
+    expect(ShellBus.pendingPluginBatchInstall.value, isNull);
+    expect(
+      await PluginScriptDiskStore.loadEngineScript(
+        sourceUrl: url,
+        pluginId: 'p1',
+      ),
+      'function extract(ctx) { return []; }',
+    );
   });
 
   test('ensureAllInstalled silent-repairs already-installed missing scripts',

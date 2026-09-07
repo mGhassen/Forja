@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:path/path.dart' as p;
 
 void main() {

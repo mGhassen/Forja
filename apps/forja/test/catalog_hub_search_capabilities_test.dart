@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/catalog_hub_capabilities.dart';
+import 'package:forja/shared/catalog/protocol/catalog_hub_capabilities.dart';
 import 'package:forja/shared/catalog/kit/chrome/hub_search_filters.dart';
-import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/models/models.dart';
 
 void main() {
   group('CatalogHubCapabilities + EnginePlugin.hasCapability', () {

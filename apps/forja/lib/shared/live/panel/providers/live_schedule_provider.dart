@@ -1,4 +1,4 @@
-part of '../live_sports_hub_page.dart';
+part of '../live_sports_streams_page.dart';
 
 /// Primary match-list fetch — catalog schedule only (RFC-073; no mode family).
 final liveMatchesPrimaryLoadProvider =

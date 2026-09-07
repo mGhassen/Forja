@@ -8,9 +8,9 @@ import 'package:forja/features/iptv/screens/iptv_series_episode_list.dart';
 import 'package:forja/shared/design/src/forja_toast.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 
 /// Build hub seed meta from a portal stream (host prefetches episodes for series).
 CatalogMetaItem catalogMetaFromIptvStream({

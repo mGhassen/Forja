@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/live_matches/catalog/live_schedule_catalog_source.dart';
-import 'package:forja/features/live_matches/catalog/live_sports_streams_panel_host.dart';
-import 'package:forja/shared/catalog/host_list_registry.dart';
+import 'package:forja/features/live_sports/catalog/live_sports_list_source.dart';
+import 'package:forja/features/live_sports/catalog/live_sports_streams_panel_host.dart';
+import 'package:forja/shared/catalog/services/host_list_registry.dart';
 
 /// Live Sports product constants + Forja platform registration.
 ///

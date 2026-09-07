@@ -1,7 +1,7 @@
-import 'package:forja/shared/catalog/hub_cover_urls.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/utils/hub_cover_urls.dart';
+import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/catalog/services/runtime.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 
 Map<String, dynamic> hubDetailsParams(CatalogMetaItem seed) {

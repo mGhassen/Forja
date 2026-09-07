@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Confirm overlay listing plugin packs with pending version bumps.
