@@ -262,10 +262,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
     final previousId = _currentTabId;
     final id = _visibleIds[index];
+    final sameTab = previousId == id;
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
       VerticalFiltersRegistry.onLeaveTab(previousId);
-    } else if (previousId == id) {
+    } else if (sameTab) {
       VerticalFiltersRegistry.onNavRepress(id);
     }
     // Same-tab Home re-select must not dismiss the provider panel.
@@ -286,7 +287,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // keep-alive element → Riverpod ancestor lookup / inactive-elements assert).
       if (_currentTabId != id) return;
       _notifyTabShown(id);
-      _refreshTabIfStale(id);
+      // Re-tap active tab = force reload (hubs / IPTV / …).
+      _refreshTabIfStale(id, force: sameTab);
     });
   }
 

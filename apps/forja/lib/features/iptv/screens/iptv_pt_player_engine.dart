@@ -346,6 +346,31 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     src = resolved;
     src = await _refreshStalkerPlayUrl(src);
     _s._applyLiveRecoveryModeForCurrentSource(src: src);
+    final headers = <String, String>{
+      'User-Agent': _IptvPtPlayerScreenState._ua,
+      ...src.headers,
+    };
+    final kind = _liveSourceKindFor(src);
+    final useProxy = _livePlaybackProfile && kind.useContinuityProxy;
+    var playUrl = src.url;
+    if (useProxy) {
+      final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
+        onUpstreamReconnected: _onProxyUpstreamReconnected,
+      );
+      final local = await proxy.start(
+        upstreamUrl: src.url,
+        headers: headers,
+        maxQueueBytes: _continuityProxyMaxQueueBytes(),
+      );
+      playUrl = local.toString();
+      debugPrint(
+        '[IPTV Player] continuity proxy ($kind, '
+        '${_s._exoBackend ? 'exo' : 'lavf=off'})',
+      );
+    } else {
+      await _s._liveContinuityProxy?.stop();
+    }
+
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
       _s._exoCueTexts.value = const [];
@@ -359,14 +384,11 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
           maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
         }
       }
-      final headers = <String, String>{
-        'User-Agent': _IptvPtPlayerScreenState._ua,
-        ...src.headers,
-      };
+      // Loopback proxy already has CDN headers — do not forward them to Exo.
       await ExoPlayerBridge.open(
         viewId: _s._exoViewId!,
-        url: src.url,
-        headers: headers,
+        url: playUrl,
+        headers: useProxy ? const <String, String>{} : headers,
         live: live,
         maxVideoHeight: maxHeight,
         maxVideoBitrate: maxBitrate,
@@ -384,32 +406,15 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       _s._stallFrameDropBaseline = -1;
       _s._stallPaintWatchSince = null;
       await resetPlayerAudioForNewOpen(player);
-      final headers = <String, String>{
-        'User-Agent': _IptvPtPlayerScreenState._ua,
-        ...src.headers,
-      };
-      var playUrl = src.url;
-      final kind = _liveSourceKindFor(src);
       // Live MediaKit: Xtream TS uses the localhost continuity relay; Stremio /
       // engine plugins open directly with their own headers + lavf reconnect.
-      if (_livePlaybackProfile && kind.useContinuityProxy) {
-        final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
-          onUpstreamReconnected: _onProxyUpstreamReconnected,
-        );
-        final local = await proxy.start(
-          upstreamUrl: src.url,
-          headers: headers,
-          maxQueueBytes: _continuityProxyMaxQueueBytes(),
-        );
-        playUrl = local.toString();
-        debugPrint('[IPTV Player] continuity proxy ($kind, lavf=off)');
+      if (useProxy) {
         await player.open(Media(playUrl));
         final np = player.platform;
         if (np is NativePlayer) {
           await _applyStreamLavfReconnect(np, continuityProxy: true);
         }
       } else {
-        await _s._liveContinuityProxy?.stop();
         debugPrint('[IPTV Player] direct open ($kind)');
         final np = player.platform;
         if (np is NativePlayer) {

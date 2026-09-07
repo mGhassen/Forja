@@ -75,6 +75,8 @@ class _KitShellState extends State<KitShell>
 
   List<Map<String, dynamic>> _widgets = const [];
   String? _error;
+  /// Feed/rail upstream failure after layout succeeded (e.g. AniList 403).
+  String? _catalogDataError;
   bool _loading = true;
 
   /// Hero bleed rail loaded — `null` loading, `true` has items, `false` empty.
@@ -111,6 +113,9 @@ class _KitShellState extends State<KitShell>
 
   /// Next [_railFuture] miss goes through `forceRefresh`.
   bool _forceNextRails = false;
+
+  /// Bumped when rail/feed memo is cleared so [KitSection] soft-reloads.
+  int _railReloadEpoch = 0;
 
   /// Bumped on shell tab refresh for host-owned widgets (My List).
   int _hostRefreshEpoch = 0;
@@ -220,8 +225,14 @@ class _KitShellState extends State<KitShell>
     _feedCacheKey = '';
     _feedLoadFuture = null;
     _bleedPopulated = null;
+    _railReloadEpoch++;
     _rowPrefetchLane.reset();
   }
+
+  String get _railReloadToken => '$_chromeFilterEpoch|$_railReloadEpoch';
+
+  bool get _holdEmptyCatalogStructure =>
+      _catalogDataError != null && _pageUsesFeed;
 
   KitRowPrefetchSlot _prefetchSlot(int index) =>
       KitRowPrefetchSlot(lane: _rowPrefetchLane, index: index);
@@ -597,13 +608,30 @@ class _KitShellState extends State<KitShell>
 
   String _errorMessage(MetaError? error) {
     if (error == null) return 'Could not load ${widget.pluginId}';
-    if (error.message.isNotEmpty) return error.message;
+    final msg = error.message.trim();
+    if (msg.isNotEmpty) {
+      final lower = msg.toLowerCase();
+      if (lower.contains('temporarily disabled') ||
+          lower.contains('severe stability')) {
+        return 'Server is down';
+      }
+      return msg;
+    }
     return switch (error.code) {
       MetaErrorCode.authRequired => 'Sign in to use this hub',
       MetaErrorCode.authExpired => 'Session expired. Sign in again.',
       MetaErrorCode.rateLimit => 'Rate limited. Try again shortly.',
       _ => 'Could not load ${widget.pluginId} (${error.code.wire})',
     };
+  }
+
+  void _toastCatalogServerDown(String message) {
+    ForjaToast.error(
+      message,
+      actionLabel: 'Refresh',
+      onAction: () => unawaited(onShellTabRefresh(force: true)),
+      duration: const Duration(seconds: 8),
+    );
   }
 
   int _railPageSizeHint(Map<String, dynamic> spec) {
@@ -730,11 +758,35 @@ class _KitShellState extends State<KitShell>
       ),
       forceRefresh: forceRefresh,
     );
-    if (!envelope.ok) return const {};
+    if (!envelope.ok) {
+      final msg = _errorMessage(envelope.error);
+      final toast = _catalogDataError != msg;
+      if (mounted) {
+        setState(() => _catalogDataError = msg);
+        if (toast) _toastCatalogServerDown(msg);
+      }
+      return const {};
+    }
     final data = envelope.data;
-    if (data == null) return const {};
+    if (data == null) {
+      const msg = 'Server is down';
+      final toast = _catalogDataError != msg;
+      if (mounted) {
+        setState(() => _catalogDataError = msg);
+        if (toast) _toastCatalogServerDown(msg);
+      }
+      return const {};
+    }
     final rails = data['rails'];
-    if (rails is! Map) return const {};
+    if (rails is! Map) {
+      const msg = 'Server is down';
+      final toast = _catalogDataError != msg;
+      if (mounted) {
+        setState(() => _catalogDataError = msg);
+        if (toast) _toastCatalogServerDown(msg);
+      }
+      return const {};
+    }
     final out = <String, List<MetaItem>>{};
     for (final entry in rails.entries) {
       final items = entry.value;
@@ -744,6 +796,9 @@ class _KitShellState extends State<KitShell>
           if (it is Map)
             MetaItem.fromJson(Map<String, dynamic>.from(it)),
       ];
+    }
+    if (mounted && _catalogDataError != null) {
+      setState(() => _catalogDataError = null);
     }
     return out;
   }
@@ -1027,13 +1082,15 @@ class _KitShellState extends State<KitShell>
   }) {
     final id = (spec['id'] ?? '').toString();
     final aspect = _aspectOf(spec);
-    final reload = _chromeFilterEpoch;
+    final reload = _railReloadToken;
+    final holdEmpty = _holdEmptyCatalogStructure;
     final numbered = showRank || _isNumbered(spec);
     if (_isVertical(spec)) {
       return _VerticalHubRail(
         key: ValueKey('vhub:$id'),
         title: (spec['title'] ?? '').toString(),
         reloadToken: reload,
+        holdEmptyStructure: holdEmpty,
         fetchPage: (page) => _fetchRailPage(spec, page: page),
         prefetchSlot: prefetch,
         showRank: numbered,
@@ -1055,6 +1112,7 @@ class _KitShellState extends State<KitShell>
       key: ValueKey('rail:$id'),
       title: (spec['title'] ?? '').toString(),
       reloadToken: reload,
+      holdEmptyStructure: holdEmpty,
       lazy: true,
       fetchPage: (page) => _fetchRailPage(
         spec,
@@ -1096,6 +1154,7 @@ class _KitShellState extends State<KitShell>
       pageBottomChild: pageBottomChild,
       bleedRowId: bleedRowId,
       prefetchSlot: prefetch,
+      holdEmptyStructure: _holdEmptyCatalogStructure,
     );
   }
 
@@ -1337,7 +1396,8 @@ class _KitShellState extends State<KitShell>
             KitSection<MetaItem>(
               key: ValueKey('mood-results:$id:$selected'),
               title: '',
-              reloadToken: _chromeFilterEpoch,
+              reloadToken: _railReloadToken,
+              holdEmptyStructure: _holdEmptyCatalogStructure,
               fetchPage: (page) => _fetchRailPage(resultsSpec, page: page),
               pageSizeHint: _railPageSizeHint(spec),
               itemKey: (item) => item.id,
@@ -1563,7 +1623,8 @@ class _KitShellState extends State<KitShell>
           : KitSection<MetaItem>(
               key: ValueKey('bleed:${bleed['id']}'),
               title: (bleed['title'] ?? '').toString(),
-              reloadToken: _chromeFilterEpoch,
+              reloadToken: _railReloadToken,
+              holdEmptyStructure: _holdEmptyCatalogStructure,
               fetchPage: (page) =>
                   _fetchRailPage(bleed, page: page, useFeedBatch: page == 1),
               pageSizeHint: _railPageSizeHint(bleed),
@@ -1656,6 +1717,7 @@ class _CatalogHeroSection extends StatefulWidget {
     this.pageBottomChild,
     this.bleedRowId,
     this.prefetchSlot,
+    this.holdEmptyStructure = false,
   });
 
   final Future<List<MetaItem>> future;
@@ -1665,6 +1727,7 @@ class _CatalogHeroSection extends StatefulWidget {
   final Widget? pageBottomChild;
   final String? bleedRowId;
   final KitRowPrefetchSlot? prefetchSlot;
+  final bool holdEmptyStructure;
 
   @override
   State<_CatalogHeroSection> createState() => _CatalogHeroSectionState();
@@ -1719,6 +1782,12 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       );
     }
     if (items.isEmpty) {
+      if (widget.holdEmptyStructure) {
+        return homeCinematicHeroShimmer(
+          context,
+          pageBottomBleed: widget.pageBottomChild != null,
+        );
+      }
       // Loaded empty — show bleed if any. Shimmer here looks like a hung hub.
       return widget.pageBottomChild ?? const SizedBox.shrink();
     }
@@ -1749,6 +1818,7 @@ class _VerticalHubRail extends StatefulWidget {
     this.tvRowId,
     this.tvRowOrder = 0,
     this.reloadToken,
+    this.holdEmptyStructure = false,
   });
 
   final String title;
@@ -1761,6 +1831,7 @@ class _VerticalHubRail extends StatefulWidget {
   final String? tvRowId;
   final int tvRowOrder;
   final String? reloadToken;
+  final bool holdEmptyStructure;
 
   @override
   State<_VerticalHubRail> createState() => _VerticalHubRailState();
@@ -1810,7 +1881,12 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
           return homeLoadingShimmer(homeMovieRowSkeleton(context));
         }
         final items = _items;
-        if (items.isEmpty) return const SizedBox.shrink();
+        if (items.isEmpty) {
+          if (widget.holdEmptyStructure) {
+            return homeLoadingShimmer(homeMovieRowSkeleton(context));
+          }
+          return const SizedBox.shrink();
+        }
         final pad = shellHomeSectionHorizontalPadding(context);
         final rowId = widget.tvRowId;
         final column = Column(

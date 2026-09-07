@@ -10,7 +10,13 @@ mixin _IptvPtPlayerLiveProxy on _IptvPtPlayerEngineCore {
 
   void _onProxyUpstreamReconnected() {
     unawaited(() async {
-      if (_s._disposed || _s._exoBackend || _recoveryInFlight) return;
+      if (_s._disposed || _recoveryInFlight) return;
+      // Exo reads loopback; LoadControl cushion plays through CDN reopen
+      // (no mpv demuxer nudge). MediaKit path below.
+      if (_s._exoBackend) {
+        debugPrint('[IPTV Proxy] exo play-through reconnect');
+        return;
+      }
       if (!_s._playerAlive) return;
       _armTransientHwDecodeIgnore();
       try {

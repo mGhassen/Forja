@@ -4,15 +4,17 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-/// Live HTTP TS continuity: mpv reads loopback; we reopen the CDN when it
-/// closes the socket without tearing down mpv's connection.
+/// Live HTTP TS continuity: player reads loopback; we reopen the CDN when it
+/// closes the socket without tearing down the player's connection.
 ///
-/// On reconnect, Xtream often restarts a few seconds *behind* the previous
-/// socket end — piping that raw would look like a replay. We:
-/// 1. Keep a multi-second read-ahead queue so mpv rarely underruns mid-reconnect
-/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap) before feeding mpv
-/// 3. Notify [onUpstreamReconnected] so the player can nudge playback (no flush
-///    while demuxer still has a healthy ahead cushion — play-through)
+/// Used by MediaKit and ExoPlayer for Xtream / M3U live (not Stalker —
+/// create_link must mint a fresh URL). On reconnect, Xtream often restarts a
+/// few seconds *behind* the previous socket end — piping that raw would look
+/// like a replay. We:
+/// 1. Keep a multi-second read-ahead queue so the player rarely underruns mid-reconnect
+/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap) before feeding the player
+/// 3. Notify [onUpstreamReconnected] so MediaKit can nudge playback (Exo plays
+///    through LoadControl cushion — no drop-buffers)
 class IptvLiveContinuityProxy {
   IptvLiveContinuityProxy({this.onUpstreamReconnected});
 

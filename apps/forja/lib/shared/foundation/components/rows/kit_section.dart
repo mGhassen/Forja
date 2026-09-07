@@ -36,9 +36,10 @@ class KitSection<T> extends StatefulWidget {
     this.prefetchSlot,
     this.onFirstPageLoaded,
     this.reloadToken,
+    this.holdEmptyStructure = false,
   }) : assert(
          future != null || items != null || fetchPage != null,
-         'Provide future, fetchPage, or items',
+         'Provide future, items, or fetchPage',
        );
 
   final String title;
@@ -60,6 +61,8 @@ class KitSection<T> extends StatefulWidget {
   final void Function(int itemCount)? onFirstPageLoaded;
   /// When this changes, refetch [fetchPage] but keep the last painted row.
   final String? reloadToken;
+  /// Keep section chrome/skeleton when the page loaded empty (upstream down).
+  final bool holdEmptyStructure;
   final KitPosterCard Function(BuildContext context, T item, int index)
   cardBuilder;
 
@@ -111,7 +114,8 @@ class _KitSectionState<T> extends State<KitSection<T>> {
     }
     if (oldWidget.reloadToken != widget.reloadToken ||
         oldWidget.lazy != widget.lazy ||
-        oldWidget.pageSizeHint != widget.pageSizeHint) {
+        oldWidget.pageSizeHint != widget.pageSizeHint ||
+        oldWidget.holdEmptyStructure != widget.holdEmptyStructure) {
       _softReload(keepVisible: widget.lazy && _visibleActivated);
     }
   }
@@ -321,7 +325,7 @@ class _KitSectionState<T> extends State<KitSection<T>> {
     if (list.isNotEmpty) {
       return _wrapLazyGate(context, _buildRow(context, list));
     }
-    if (_loading) {
+    if (_loading || widget.holdEmptyStructure) {
       return _wrapLazyGate(context, _rowSkeleton(context));
     }
     return _wrapLazyGate(context, const SizedBox.shrink());
@@ -350,7 +354,7 @@ class _KitSectionState<T> extends State<KitSection<T>> {
 
         if (list.isNotEmpty) return _buildRow(context, list);
 
-        if (loading || !snapshot.hasData) {
+        if (loading || !snapshot.hasData || widget.holdEmptyStructure) {
           return _rowSkeleton(context);
         }
         return const SizedBox.shrink();

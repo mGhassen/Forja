@@ -13,6 +13,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
@@ -62,11 +63,24 @@ private const val LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 4_000
 private const val LIVE_TARGET_OFFSET_MS = 8_000L
 private const val LIVE_MIN_OFFSET_MS = 3_000L
 private const val LIVE_MAX_OFFSET_MS = 25_000L
-/** Live edge catch-up speed — HD/FHD only. 4K disables (audio stutter). */
+// Android TV (Xiaomi A11 etc.): sit further behind the edge + deeper LoadControl
+// so CDN jitter / continuity-proxy overlap skip does not clockwork-rebuffer.
+// Live speed catch-up stays off on ATV — 0.97–1.03 drains the cushion and
+// re-triggers STATE_BUFFERING (issue 233).
+private const val LIVE_ATV_MIN_BUFFER_MS = 25_000
+private const val LIVE_ATV_MAX_BUFFER_MS = 70_000
+private const val LIVE_ATV_BUFFER_FOR_PLAYBACK_MS = 2_500
+private const val LIVE_ATV_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 3_500
+private const val LIVE_ATV_TARGET_OFFSET_MS = 18_000L
+private const val LIVE_ATV_MIN_OFFSET_MS = 8_000L
+private const val LIVE_ATV_MAX_OFFSET_MS = 40_000L
+/** Live edge catch-up speed — phone HD/FHD only. ATV + 4K lock to 1.0. */
 private const val LIVE_SPEED_MIN = 0.97f
 private const val LIVE_SPEED_MAX = 1.03f
 private const val LIVE_UHD_MIN_HEIGHT = 2160
 private const val LIVE_UHD_MIN_WIDTH = 3840
+/** After each rebuffer, sit further from the edge (default Media3 is 500ms). */
+private const val LIVE_TARGET_OFFSET_INCREMENT_ON_REBUFFER_MS = 2_000L
 
 // Home VOD. Media3 stock gives no back buffer at all, so every backward seek
 // re-fetched from the CDN (issue 151). The byte allocator still caps the real
@@ -113,13 +127,17 @@ class ExoPlayerHost(
     private var liveSpeedDisabledForUhd: Boolean? = null
 
     /**
-     * Live edge catch-up. Returns 1.0 for UHD so 4K does not warble audio;
-     * HD/FHD keep DefaultLivePlaybackSpeedControl (issue 138).
+     * Live edge catch-up. Returns 1.0 on Android TV (periodic rebuffer cycle)
+     * and for UHD (audio warble — issue 138). Phone HD/FHD keep
+     * DefaultLivePlaybackSpeedControl.
      */
     private val liveSpeedControl = object : LivePlaybackSpeedControl {
         private val inner = DefaultLivePlaybackSpeedControl.Builder()
             .setFallbackMinPlaybackSpeed(LIVE_SPEED_MIN)
             .setFallbackMaxPlaybackSpeed(LIVE_SPEED_MAX)
+            .setTargetLiveOffsetIncrementOnRebufferMs(
+                LIVE_TARGET_OFFSET_INCREMENT_ON_REBUFFER_MS,
+            )
             .build()
 
         override fun setLiveConfiguration(liveConfiguration: MediaItem.LiveConfiguration) {
@@ -138,7 +156,9 @@ class ExoPlayerHost(
             liveOffsetUs: Long,
             bufferedDurationUs: Long,
         ): Float {
-            if (liveSpeedDisabledForUhd == true) return 1f
+            if (isTelevisionContext(context) || liveSpeedDisabledForUhd == true) {
+                return 1f
+            }
             return inner.getAdjustedPlaybackSpeed(liveOffsetUs, bufferedDurationUs)
         }
 
@@ -363,12 +383,17 @@ class ExoPlayerHost(
         val builder = mediaItemBuilder(url, subtitles, options)
 
         val loadControl = if (options.live) {
+            val atv = isTelevisionContext(context)
             DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    LIVE_MIN_BUFFER_MS,
-                    LIVE_MAX_BUFFER_MS,
-                    LIVE_BUFFER_FOR_PLAYBACK_MS,
-                    LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                    if (atv) LIVE_ATV_MIN_BUFFER_MS else LIVE_MIN_BUFFER_MS,
+                    if (atv) LIVE_ATV_MAX_BUFFER_MS else LIVE_MAX_BUFFER_MS,
+                    if (atv) LIVE_ATV_BUFFER_FOR_PLAYBACK_MS else LIVE_BUFFER_FOR_PLAYBACK_MS,
+                    if (atv) {
+                        LIVE_ATV_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                    } else {
+                        LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                    },
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
@@ -512,15 +537,25 @@ class ExoPlayerHost(
             }
         }
         // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
-        // Speed catch-up stays on; UHD locks it off via [liveSpeedControl].
+        // Phone keeps speed catch-up; ATV locks 1.0 (issue 233); UHD also via
+        // [liveSpeedControl].
         if (options.live) {
+            val atv = isTelevisionContext(context)
+            val speedMin = if (atv) 1.0f else LIVE_SPEED_MIN
+            val speedMax = if (atv) 1.0f else LIVE_SPEED_MAX
             builder.setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder()
-                    .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
-                    .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
-                    .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
-                    .setMinPlaybackSpeed(LIVE_SPEED_MIN)
-                    .setMaxPlaybackSpeed(LIVE_SPEED_MAX)
+                    .setTargetOffsetMs(
+                        if (atv) LIVE_ATV_TARGET_OFFSET_MS else LIVE_TARGET_OFFSET_MS,
+                    )
+                    .setMinOffsetMs(
+                        if (atv) LIVE_ATV_MIN_OFFSET_MS else LIVE_MIN_OFFSET_MS,
+                    )
+                    .setMaxOffsetMs(
+                        if (atv) LIVE_ATV_MAX_OFFSET_MS else LIVE_MAX_OFFSET_MS,
+                    )
+                    .setMinPlaybackSpeed(speedMin)
+                    .setMaxPlaybackSpeed(speedMax)
                     .build(),
             )
         }
@@ -770,7 +805,16 @@ class ExoPlayerHost(
     )
 
     private fun trackList(tracks: Tracks, type: Int): List<Map<String, Any?>> {
+        // Adaptive ABR marks every candidate in the group selected. For Auto
+        // video, only the track matching the currently playing format gets
+        // the checkmark (quality menu + IPTV stats).
+        val playingVideo =
+            if (type == C.TRACK_TYPE_VIDEO && videoAuto) player?.videoFormat else null
+        val selectedVideoIndex =
+            if (playingVideo != null) indexOfBestVideoMatch(tracks, playingVideo) else -1
+
         val out = ArrayList<Map<String, Any?>>()
+        var videoIndex = 0
         for (gi in 0 until tracks.groups.size) {
             val group = tracks.groups[gi]
             if (group.type != type) continue
@@ -798,12 +842,18 @@ class ExoPlayerHost(
                         }
                     }
                 }
+                val selected = when {
+                    type == C.TRACK_TYPE_VIDEO && videoAuto ->
+                        videoIndex == selectedVideoIndex
+                    else -> group.isTrackSelected(ti)
+                }
+                if (type == C.TRACK_TYPE_VIDEO) videoIndex++
                 out.add(
                     mapOf(
                         "id" to id,
                         "label" to label,
                         "language" to (format.language ?: ""),
-                        "selected" to group.isTrackSelected(ti),
+                        "selected" to selected,
                         "height" to format.height,
                         "bitrate" to format.bitrate,
                     ),
@@ -811,6 +861,48 @@ class ExoPlayerHost(
             }
         }
         return out
+    }
+
+    /** Best match to [playing] among supported video tracks; -1 if none score. */
+    private fun indexOfBestVideoMatch(tracks: Tracks, playing: Format): Int {
+        var bestIndex = -1
+        var bestScore = 0
+        var index = 0
+        for (gi in 0 until tracks.groups.size) {
+            val group = tracks.groups[gi]
+            if (group.type != C.TRACK_TYPE_VIDEO) continue
+            for (ti in 0 until group.length) {
+                if (!group.isTrackSupported(ti)) continue
+                val score = videoFormatMatchScore(group.getTrackFormat(ti), playing)
+                if (score > bestScore) {
+                    bestScore = score
+                    bestIndex = index
+                }
+                index++
+            }
+        }
+        return bestIndex
+    }
+
+    private fun videoFormatMatchScore(candidate: Format, playing: Format): Int {
+        var score = 0
+        if (candidate.height > 0 && playing.height > 0 && candidate.height == playing.height) {
+            score += 100
+        }
+        if (candidate.width > 0 && playing.width > 0 && candidate.width == playing.width) {
+            score += 10
+        }
+        if (candidate.bitrate > 0 && playing.bitrate > 0) {
+            if (candidate.bitrate == playing.bitrate) {
+                score += 50
+            } else {
+                // Prefer closer bitrate when several variants share a height.
+                val delta = kotlin.math.abs(candidate.bitrate - playing.bitrate)
+                val proximity = (40 - (delta / 50_000).coerceAtMost(40)).toInt()
+                if (proximity > 0) score += proximity
+            }
+        }
+        return score
     }
 
     private fun parseTrackId(id: String): Triple<Int, Int, Int>? {

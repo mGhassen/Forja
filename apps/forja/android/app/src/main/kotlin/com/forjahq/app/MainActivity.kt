@@ -45,7 +45,8 @@ class MainActivity : AudioServiceActivity() {
     }
 
     // Belt-and-suspenders with ForjaApplication: Impeller OpenGLES on leanback
-    // (Skia glyph atlas corruption; MediaKit stays on mediacodec_embed).
+    // (Skia glyph atlas corruption). MediaKit uses mediacodec_embed + SurfaceTexture
+    // producers (FlutterRenderer.debugForceSurfaceProducerGlTextures in Application).
     override fun getFlutterShellArgs(): FlutterShellArgs {
         val args = super.getFlutterShellArgs()
         if (isAndroidTv()) {

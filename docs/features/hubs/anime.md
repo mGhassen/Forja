@@ -23,6 +23,7 @@ Tap **Anime** in the navigation bar.
 
 ## Tips
 
+- Browse rails need the hub’s catalog API. If it fails, the page layout stays (skeletons); a toast offers **Refresh**. Re-tap the Anime tab to reload.
 - On **desktop**, drag-select hub and details hero titles to copy them.
 - Hero paints from AniList in parallel; TMDB backdrops + logo swap in when enrich returns (English title match, season suffixes stripped).
 - Reorder sources under **Settings → Playback → Anime provider order** — default starts with **Megaplay**, then pinned **AniKoto**, VidNest / AllAnime, **VidLink** (MAL + webstreaming), Miruro pipes.

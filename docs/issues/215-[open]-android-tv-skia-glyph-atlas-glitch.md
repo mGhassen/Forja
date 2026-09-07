@@ -50,17 +50,17 @@ Physical Android TV showed **GPU garbage** where Flutter `Text` and Material ico
 
 Phones unchanged (default Impeller / Vulkan). MediaKit keeps `vo=mediacodec_embed` (no Impeller EGL for video). `scripts/atv-run.sh` no longer passes `--no-enable-impeller`.
 
-Not a Flutter engine root fix. If MediaKit goes black again under Impeller OpenGLES, keep Exo as the default path and reopen MediaKit surface work — do not re-enable Skia as the UI fix ([no-hide-as-fix](../../.cursor/rules/no-hide-as-fix.mdc)).
+Not a Flutter engine root fix. MediaKit black under Impeller OpenGLES on API 29+ Amlogic is tracked in [114](114-[open]-android-tv-movie-mediakit-audio-only.md) **I114-T05** (`debugForceSurfaceProducerGlTextures` → SurfaceTexture producers). Do not re-enable Skia as the UI fix ([no-hide-as-fix](../../.cursor/rules/no-hide-as-fix.mdc)).
 
 ## Related
 
-- [114](114-[open]-android-tv-movie-mediakit-audio-only.md) — prior Impeller-off for MediaKit  
+- [114](114-[open]-android-tv-movie-mediakit-audio-only.md) — prior Impeller-off for MediaKit; SurfaceTexture producers (T05)  
 - [176](176-[workaround]-macos-intel-metal-text-glitch.md) — macOS Intel glyph garbage  
 - [031](031-[workaround]-android-tv-webview-gles-crash.md) — WebView GLES (separate)
 
 ## Verify
 
-1. Logcat on boot: Impeller OpenGLES (not Skia) for leanback  
+1. Logcat on boot: Impeller OpenGLES (not Skia) for leanback; `SurfaceTexture producers` line from `ForjaApplication`  
 2. Browse Home → open a title — body text and icons readable  
-3. Play with MediaKit — video + audio  
-4. Phone: Impeller path unchanged
+3. Play with MediaKit — video + audio (Xiaomi Android 11 + Toshiba Android 7)  
+4. Phone: Impeller path unchanged (no `debugForceSurfaceProducerGlTextures`)

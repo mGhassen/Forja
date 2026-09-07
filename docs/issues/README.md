@@ -135,7 +135,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |
 | [112-[fixed]-…](fixed/112-[fixed]-iptv-share-self-contained-tokens.md) | IPTV share: self-contained `F1.` tokens | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [113-[open]-…](113-[open]-android-tv-trailer-player-white-screen.md) | Android TV trailer player white screen | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [114-[open]-…](114-[open]-android-tv-movie-mediakit-audio-only.md) | Android TV movie MediaKit audio-only | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [114-[open]-…](114-[open]-android-tv-movie-mediakit-audio-only.md) | Android TV movie MediaKit audio-only | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [115-[open]-…](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) | Android TV IPTV Player menu mpv SIGSEGV | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [116-[open]-…](116-[open]-android-tv-live-matches-embed-cors-native-handoff.md) | Android TV Live Matches embed CORS → native handoff | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 21/21 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -249,6 +249,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Cloud packs auto-install (no install confirm) | P0 | Critical | open | 4/4 · A 0/3 | — |
 | [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 3/3 · A 0/1 | — |
+| [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
+| [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
+| [233-[fixed]-…](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md) | ATV Exo IPTV periodic buffering (Xiaomi / no continuity proxy) | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
