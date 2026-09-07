@@ -2,13 +2,6 @@ part of '../live_sports_hub_page.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
-/// Leanback TV — not desktop D-pad (which also uses focusable mood chips).
-bool _liveMatchesLeanbackOnly(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity;
-
-/// Grid (card catalog) vs vertical timeline layout for the body.
-enum _LiveMatchesView { grid, timeline }
-
 String _liveMatchClockHm(DateTime dt) =>
     '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 

@@ -10,8 +10,8 @@ import 'package:logging/logging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/shared/audio/audiobook_player_service.dart';
-import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/features/archive/audio/audiobook_player_service.dart';
+import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker/simkl_service.dart';

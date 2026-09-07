@@ -246,6 +246,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [225-[open]-…](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) | Official pack install aborts batch / skips hub nav refresh | P0 | Critical | open | 4/4 · A 0/2 | — |
 | [226-[fixed]-…](fixed/226-[fixed]-live-sports-stuck-loading-after-pack-update.md) | Live Sports stuck Loading catalogs after pack update | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [227-[open]-…](227-[open]-uninstall-hub-pack-leaves-navbar-ghost.md) | Uninstall hub pack leaves navbar ghost tab | P1 | High | open | 3/3 · A 0/2 | — |
+| [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Boot skips pack warm / wrong re-prompt for lean hubs | P0 | Critical | open | 4/4 · A 0/3 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

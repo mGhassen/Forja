@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/live_matches/catalog/live_schedule_catalog_source.dart';
-import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
-import 'package:forja/features/live_matches/live_schedule/data/live_schedule_source.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_browse_shell.dart';
+import 'package:forja/features/live_matches/streams/data/live_prefs.dart';
+import 'package:forja/features/live_matches/streams/data/live_schedule_source.dart';
+import 'package:forja/features/live_matches/browse/live_sports_browse_shell.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';

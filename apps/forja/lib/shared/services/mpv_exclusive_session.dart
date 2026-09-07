@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:media_kit/media_kit.dart';
-import 'package:forja/shared/audio/audiobook_player_service.dart';
-import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/features/archive/audio/audiobook_player_service.dart';
+import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 /// macOS bundles libmpv as [Mpv.framework] with ObjC classes (Application,

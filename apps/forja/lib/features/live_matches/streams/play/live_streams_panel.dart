@@ -351,16 +351,13 @@ class _LiveMatchStreamsPanelState
             if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
         ];
         unawaited(
-          IptvPtPlayerScreen.open(
+          openForjaLiveNativePlayer(
             context,
-            IptvPtPlayerScreen(
-              sources: ordered,
-              title: _displayMatch.title,
-              subtitle: _displayMatch.categoryLabel,
-              titleTracksSource: true,
-              engineContext: BuiltInPlayerContext.live,
-              liveSourceKind: IptvLiveSourceKind.stremio,
-            ),
+            sources: ordered,
+            title: _displayMatch.title,
+            subtitle: _displayMatch.categoryLabel,
+            engineContext: BuiltInPlayerContext.live,
+            liveSourceKind: IptvLiveSourceKind.stremio,
           ),
         );
         return;
@@ -375,16 +372,13 @@ class _LiveMatchStreamsPanelState
     // the player failover list (WatchFooty must not silently become Streamed).
     if (picked.liveSourceKind == IptvLiveSourceKind.stremio) {
       unawaited(
-        IptvPtPlayerScreen.open(
+        openForjaLiveNativePlayer(
           context,
-          IptvPtPlayerScreen(
-            sources: [picked],
-            title: _displayMatch.title,
-            subtitle: _displayMatch.categoryLabel,
-            titleTracksSource: true,
-            engineContext: BuiltInPlayerContext.live,
-            liveSourceKind: IptvLiveSourceKind.stremio,
-          ),
+          sources: [picked],
+          title: _displayMatch.title,
+          subtitle: _displayMatch.categoryLabel,
+          engineContext: BuiltInPlayerContext.live,
+          liveSourceKind: IptvLiveSourceKind.stremio,
         ),
       );
       return;

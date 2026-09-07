@@ -1011,17 +1011,14 @@ mixin _LiveMatchesPlayback
       return;
     }
     final kind = resolved.first.liveSourceKind ?? IptvLiveSourceKind.iptvXtream;
-    await IptvPtPlayerScreen.open(
+    await openForjaLiveNativePlayer(
       context,
-      IptvPtPlayerScreen(
-        sources: resolved,
-        title: _iptvSportsMatchChromeTitle(match),
-        subtitle: resolved.first.pickerTitle,
-        logoUrl: resolved.first.logoUrl,
-        titleTracksSource: true,
-        engineContext: BuiltInPlayerContext.iptv,
-        liveSourceKind: kind,
-      ),
+      sources: resolved,
+      title: _iptvSportsMatchChromeTitle(match),
+      subtitle: resolved.first.pickerTitle,
+      logoUrl: resolved.first.logoUrl,
+      engineContext: BuiltInPlayerContext.iptv,
+      liveSourceKind: kind,
     );
   }
 
@@ -1419,24 +1416,15 @@ mixin _LiveMatchesPlayback
     if (!mounted) return;
     _releaseLiveMatchesItemFocusIfHeld();
 
-    try {
-      if (PlatformInfo.isAndroidTv) {
-        await PlatformChannel.releaseUnderlayPlatformViewFocus();
-      }
-      if (!mounted) return;
-      await IptvPtPlayerScreen.open(
-        context,
-        IptvPtPlayerScreen(
-          sources: sources,
-          title: title,
-          subtitle: subtitle,
-          titleTracksSource: true,
-          engineContext: BuiltInPlayerContext.live,
-          liveSourceKind: IptvLiveSourceKind.liveEngine,
-          liveEngineResolveSource: _resolveIptvPlaySourceFromCatalog,
-        ),
-      );
-    } catch (_) {}
+    await openForjaLiveNativePlayer(
+      context,
+      sources: sources,
+      title: title,
+      subtitle: subtitle,
+      engineContext: BuiltInPlayerContext.live,
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveEngineResolveSource: _resolveIptvPlaySourceFromCatalog,
+    );
   }
 
   Future<bool> _tryEngineStreamedOpen(

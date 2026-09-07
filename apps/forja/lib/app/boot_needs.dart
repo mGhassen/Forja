@@ -1,5 +1,6 @@
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
@@ -24,6 +25,7 @@ class BootNeeds {
     required this.playSourceNuvio,
     required this.playSourceEngine,
     required this.vodTab,
+    this.pendingPackDisk = false,
   });
 
   final List<String> visibleNavIds;
@@ -55,19 +57,26 @@ class BootNeeds {
   /// Any tab that can open VOD details / Sources.
   final bool vodTab;
 
+  /// Profile lean packs still need script download (even IPTV-only Features).
+  final bool pendingPackDisk;
+
   /// Install/warm Forja engine plugin packs at boot (hub, providers, torrent, nuvio).
   ///
-  /// IPTV + Live Matches alone defer pack install to first use (Live Matches,
-  /// Settings → Forja Sports, VOD Sources) — no splash download banner.
+  /// IPTV + Live Matches alone defer pack install to first use **unless** the
+  /// profile already has lean stubs awaiting download (cloud membership).
   bool get needsForjaPluginWarm =>
-      catalogTab || engine || torrent || nuvio;
+      catalogTab || engine || torrent || nuvio || pendingPackDisk;
 
-  /// Any contributed catalog hub tab (VOD browse — not Live Sports).
+  /// Any Features rail slot that is not host-core IPTV / Live / Settings.
+  ///
+  /// Includes hub ids whose packs are not contributed yet (lean stubs) — same
+  /// set MainScreen paints with placeholder icons. Do **not** require
+  /// [PluginNavRegistry.isHubTab] / [PluginNavRegistry.isContributed].
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
-    if (id == 'live_matches') return false;
+    if (id == 'settings') return false;
     if (PluginNavRegistry.coreShellNavIds.contains(id)) return false;
-    return PluginNavRegistry.isHubTab(id);
+    return true;
   }
 
   /// Catalog hub tab contributed by an installed enabled pack ([PluginNavRegistry.refresh]).
@@ -90,16 +99,36 @@ class BootNeeds {
       return 'Warming catalog…';
     }
     if (catalogTab) return 'Warming catalog…';
+    if (pendingPackDisk) return 'Loading plugins…';
     return 'Just a moment…';
+  }
+
+  static Future<bool> anyPackNeedsDiskInstall() async {
+    final registry = PluginRegistry.instance;
+    final packs = await registry.listPacksRaw();
+    for (final pack in packs) {
+      if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (await registry.packNeedsDiskInstall(pack)) return true;
+    }
+    return false;
   }
 
   static Future<BootNeeds> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
     await PluginNavRegistry.refresh();
     var nav = await s.getNavbarConfig();
+    nav = nav.where((id) => !archivedNavIds.contains(id)).toList();
+    // Mirror MainScreen: trust Features `visibleIds`. Do not filter with
+    // [PluginNavRegistry.isContributed] — lean stubs leave hubs uncontributed
+    // while Features still shows Home / Anime / … (placeholder rail icons).
+    final addonFeatures = await s.listAvailableAddonFeatureNavIds();
+    final addonSet = addonFeatures.toSet();
     nav = nav
-        .where((id) => !archivedNavIds.contains(id))
-        .where(PluginNavRegistry.isContributed)
+        .where(
+          (id) =>
+              !SettingsService.addonGatedNavIds.contains(id) ||
+              addonSet.contains(id),
+        )
         .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       nav = nav
@@ -112,6 +141,7 @@ class BootNeeds {
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
+    final pendingPackDisk = await anyPackNeedsDiskInstall();
     final hubTab = nav.any(isVodNavId);
     final catalogTab = hubTab;
     final vodTab = hubTab;
@@ -121,6 +151,7 @@ class BootNeeds {
       hubTab: hubTab,
       catalogTab: catalogTab,
       vodTab: vodTab,
+      pendingPackDisk: pendingPackDisk,
       playSourceTorrent: playSourceTorrent,
       playSourceStremio: playSourceStremio,
       playSourceNuvio: playSourceNuvio,
@@ -135,7 +166,7 @@ class BootNeeds {
   @override
   String toString() =>
       'BootNeeds(nav=$visibleNavIds, vodTab=$vodTab, hubTab=$hubTab, '
-      'catalogTab=$catalogTab, '
+      'catalogTab=$catalogTab, pendingPackDisk=$pendingPackDisk, '
       'torrent=$torrent (flag=$playSourceTorrent), '
       'stremio=$stremio (flag=$playSourceStremio), '
       'nuvio=$nuvio (flag=$playSourceNuvio), '

@@ -1,10 +1,10 @@
-# Live Matches
+# Live Sports
 
 > Watch live sports and events from aggregated stream sources.
 
 ## What it is
 
-Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts catalog kit for browse: `kit.list` + `source: live_schedule` → dense match rows (`CatalogKitListWidget`). Selecting a match opens the host **Providers** / **Live TV** streams panel beside the list. An optional ForjaHQ Live Sports hub pack can replace the layout tree; resolve and play stay host-owned.
+Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts catalog kit for browse: dense match rows from the Live Sports schedule. Selecting a match opens the **Providers** / **Live TV** streams panel beside the list. Play uses Forja’s shared native player (same as IPTV Live). An optional ForjaHQ Live Sports hub pack can replace the layout tree; resolve and play stay host-owned.
 
 Schedules and streams come from **Forja Live** engine catalogs (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional), installed **Stremio** sport addons, and **Forja Sports** (catalog schedule matched to your Xtream portal).
 
@@ -20,11 +20,11 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 - Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout. Hover / D-pad focus use a gray ink fill; the **open** match (streams panel) stays green — tint fill, left rail, title / viewers / chevron. On **Android TV**, D-pad walks the list; **→** opens into the streams panel when a match is selected.
 - Tap a **live** match to open a **right panel** (~40% width on desktop/TV) with **Providers** (Forja Live + Stremio) and **Live TV** (Xtream-matched channels). Channel cards are **one per row** (full panel width). The panel sits under the sport category bar and shrinks only the match list — categories stay full width. There is no separate details page on the standard path. On TV, D-pad moves Reload / Close → Providers / Live TV → stream cards (and Live TV categories); **←** returns to the match list.
 - Use the **reload** control next to Close in the streams panel header to force a fresh Providers / Live TV search — bypasses the ~30 minute source cache. Leaving the app and coming back does **not** re-search an open panel; tap reload when you want a new search. Installing or removing a Stremio addon invalidates the cache for the next open / reload (the open panel keeps its current list until you reload).
-- Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live). Providers unlock to HLS before open (WatchFooty sportsembed, Streamed/PPV GOAT, …). If unlock fails, you get **No playable stream** — the player does not open an embed page or reconnect forever on HTML.
+- Tap a stream row in the panel to play in Forja’s **native** live player (never an embed WebView for Forja Live). Providers unlock to HLS before open (WatchFooty sportsembed, Streamed/PPV GOAT, …). If unlock fails, you get **No playable stream** — the player does not open an embed page or reconnect forever on HTML.
 - Hover / D-pad focus any **Providers** row for a short pause — grey then green/red left strip. Ready Streamed / WatchFooty / Stremio HLS probe with Referer headers. Catalog embed / pending rows still show the strip (green = listed, not a CDN check).
 - **Live TV** portal channels probe on hover the same way as IPTV Live (resolve play URL via the portal, then alive-check).
-- Use **Catalog** / **Schedule** in the top bar (and **Portals** when Forja Sports is enabled). Use **Search** next to **Refresh** to filter the match list by team or title. **Portals** overlays the match list and the streams panel. While catalogs are still loading, **Refresh** is replaced by a short progress line (current catalog + count). With **Settings → Addons → Live Sports → Merge matching events** on, you may also see **Merging catalogs…**. **Refresh** returns when the schedule is ready.
-- Filter by sport chips when more than one sport is in the schedule; **24/7** covers always-on channels. The chip row shows only what fits at full size and scrolls horizontally for the rest (no shrinking).
+- Filter by sport chips when more than one sport is in the schedule; **24/7** covers always-on channels. The chip row shows only what fits at full size and scrolls horizontally for the rest (no shrinking). Catalog / Schedule / Portals top-bar sheets from the old god page are gone — schedule comes from enabled live catalogs; Forja Sports matching still runs when that addon is on.
+- Pull-to-refresh / shell refresh reloads the match list. With **Settings → Addons → Live Sports → Merge matching events** on, matching events across catalogs may collapse into one row.
 - On phone, the streams panel is a near-full-width sheet; on desktop/TV it takes **40%** of the width and pushes the match list (not the category chips).
 
 ## Tips

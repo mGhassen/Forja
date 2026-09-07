@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/live_matches/catalog/live_schedule_catalog_source.dart';
 import 'package:forja/features/live_matches/catalog/live_schedule_filters.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_hub_page.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_widget.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
@@ -12,10 +12,9 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-/// Host composition for Live Sports — **kit list** + thin chrome + streams panel.
+/// Live Sports tab body — kit match list + Forja streams panel service.
 ///
-/// Browse is [CatalogKitListWidget] (`style: list` → [HubLiveMatchDenseTile]).
-/// Play / Providers / Live TV stay in [LiveSportsHubPage] panel-only mode.
+/// Browse: [CatalogKitListWidget]. Panel: [CatalogHostListRegistry.resolvePanel].
 class LiveSportsBrowseShell extends ConsumerStatefulWidget {
   const LiveSportsBrowseShell({
     super.key,
@@ -161,41 +160,30 @@ class _LiveSportsBrowseShellState extends ConsumerState<LiveSportsBrowseShell> {
                   ref.read(liveScheduleSelectedEntryProvider.notifier).state =
                       entry;
                 },
-                sidePanel: _selected == null
-                    ? null
-                    : Material(
-                        color: ForjaShellColors.surfaceElevated,
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              left: BorderSide(
-                                color: ForjaShellColors.borderSubtle,
-                              ),
-                            ),
-                          ),
-                          child: LiveSportsHubPage(
-                            key: ValueKey('kit-panel-${_selected!.meta.id}'),
-                            layoutWidgets: widget.layoutWidgets,
-                            parentShellVisible: widget.shellTabVisible,
-                            refreshEpoch: widget.refreshEpoch,
-                            panelOnly: true,
-                            kitPanelRow: _selected!.legacyRow,
-                            onPanelClosed: () {
-                              setState(() => _selected = null);
-                              ref
-                                  .read(
-                                    liveScheduleSelectedEntryProvider.notifier,
-                                  )
-                                  .state = null;
-                            },
-                          ),
-                        ),
-                      ),
+                sidePanel: _buildStreamsPanel(),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget? _buildStreamsPanel() {
+    final entry = _selected;
+    if (entry == null) return null;
+    final host = CatalogHostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
+    if (host == null) return null;
+    return host.buildSidePanel(
+      context: context,
+      entry: entry,
+      layoutWidgets: widget.layoutWidgets,
+      shellTabVisible: widget.shellTabVisible,
+      refreshEpoch: widget.refreshEpoch,
+      onClosed: () {
+        setState(() => _selected = null);
+        ref.read(liveScheduleSelectedEntryProvider.notifier).state = null;
+      },
     );
   }
 

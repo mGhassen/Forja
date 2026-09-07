@@ -189,8 +189,7 @@ mixin _LiveMatchesForjaLive
   }
 
   void _invalidateLiveMatchesGridCache() {
-    _s._liveMatchesGridCacheRevision++;
-    _s._cachedLiveMatchesGridEntries = null;
+    // Browse grid cache removed — call sites kept for Forja Live loader.
   }
 
   List<_StreamedMatch> _streamedMatchesWithoutForjaLiveCatalog(String filterId) {

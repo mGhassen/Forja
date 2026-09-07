@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
+import 'package:forja/features/live_matches/streams/data/live_prefs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Catalog / sport / schedule-horizon filters for Live Sports kit browse.

@@ -16,7 +16,9 @@ void main() {
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 
       expect(BootNeeds.isVodNavId('test_hub_a'), isTrue);
-      expect(BootNeeds.isVodNavId('mylist'), isFalse);
+      // Features rail slot awaiting pack nav (not yet contributed).
+      expect(BootNeeds.isVodNavId('mylist'), isTrue);
+      expect(BootNeeds.isVodNavId('anime'), isTrue);
       expect(BootNeeds.isVodNavId('iptv'), isFalse);
       expect(BootNeeds.isVodNavId('live_matches'), isFalse);
       expect(BootNeeds.isVodNavId('settings'), isFalse);
@@ -59,7 +61,7 @@ void main() {
       expect(needs.needsForjaPluginWarm, isFalse);
     });
 
-    test('needsForjaPluginWarm true when catalog or VOD engines on', () {
+    test('needsForjaPluginWarm true when catalog, engines, or pending packs', () {
       const liveOnly = BootNeeds(
         visibleNavIds: ['iptv', 'live_matches'],
         hubTab: false,
@@ -76,6 +78,23 @@ void main() {
       );
       expect(liveOnly.needsForjaPluginWarm, isFalse);
 
+      const liveOnlyPending = BootNeeds(
+        visibleNavIds: ['iptv', 'live_matches'],
+        hubTab: false,
+        catalogTab: false,
+        torrent: false,
+        stremio: false,
+        nuvio: false,
+        engine: false,
+        playSourceTorrent: false,
+        playSourceStremio: false,
+        playSourceNuvio: false,
+        playSourceEngine: false,
+        vodTab: false,
+        pendingPackDisk: true,
+      );
+      expect(liveOnlyPending.needsForjaPluginWarm, isTrue);
+
       const withHub = BootNeeds(
         visibleNavIds: ['test_hub_a', 'iptv'],
         hubTab: true,
@@ -91,6 +110,25 @@ void main() {
         vodTab: true,
       );
       expect(withHub.needsForjaPluginWarm, isTrue);
+
+      // Features shows Home while pack not contributed yet.
+      const ghostHubs = BootNeeds(
+        visibleNavIds: ['home', 'anime', 'iptv', 'live_matches'],
+        hubTab: true,
+        catalogTab: true,
+        torrent: false,
+        stremio: false,
+        nuvio: false,
+        engine: false,
+        playSourceTorrent: false,
+        playSourceStremio: false,
+        playSourceNuvio: false,
+        playSourceEngine: false,
+        vodTab: true,
+        pendingPackDisk: true,
+      );
+      expect(ghostHubs.needsForjaPluginWarm, isTrue);
+      expect(BootNeeds.isVodNavId('home'), isTrue);
     });
   });
 

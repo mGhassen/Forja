@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/audio/music_storage_service.dart';
-import 'package:forja/shared/audio/lyrics_service.dart';
+import 'package:forja/features/archive/audio/music_storage_service.dart';
+import 'package:forja/features/archive/audio/lyrics_service.dart';
 
 class MusicDownloaderService {
   static final MusicDownloaderService _instance = MusicDownloaderService._internal();

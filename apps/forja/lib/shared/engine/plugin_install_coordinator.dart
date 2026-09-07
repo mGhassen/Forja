@@ -94,6 +94,8 @@ class PluginInstallCoordinator {
   /// In-flight manual installs keyed by manifest URL (sequential batch safe).
   final Map<String, Future<EnginePack>> _manualByUrl = {};
   bool _bootWarm = false;
+  /// Set when [promptPendingPackInstalls] enqueues — blocks post-splash re-queue.
+  bool _pendingInstallPromptOffered = false;
 
   /// True while splash / [ensureAllInstalled] owns hydrate + silent purge.
   bool get isBootWarm => _bootWarm;
@@ -330,6 +332,9 @@ class PluginInstallCoordinator {
     bool awaitCloudLean = false,
     // Ignored — Nuvio never silent-hydrates (Settings install / refresh only).
     bool includeNuvio = true,
+    /// When true: brand-new lean stubs (empty plugins) prompt once.
+    /// Packs already installed on this device (plugin index present) always
+    /// silent-repair missing scripts on splash — never re-ask.
     bool promptBeforeInstall = true,
   }) {
     return _inFlight ??= _run(
@@ -348,6 +353,7 @@ class PluginInstallCoordinator {
     required bool promptBeforeInstall,
   }) async {
     _bootWarm = true;
+    _pendingInstallPromptOffered = false;
     final registry = PluginRegistry.instance;
 
     try {
@@ -382,29 +388,34 @@ class PluginInstallCoordinator {
     await PendingRemotePurgeStore.clearAll();
 
     final packs = await registry.listPacksRaw();
-    final jobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];
+    final silentJobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];
+    final newLean = <EnginePack>[];
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
       if (await DeferredRemoteInstallStore.contains(pack.sourceUrl)) continue;
-      if (await registry.packNeedsDiskInstall(pack)) {
-        jobs.add((pack: pack, isUpdate: false, forceRefresh: true));
+      if (!await registry.packNeedsDiskInstall(pack)) continue;
+      // Empty plugins = cloud lean stub never installed on this device.
+      // Plugin index present = user already accepted install — splash repair.
+      if (pack.plugins.isEmpty && promptBeforeInstall) {
+        newLean.add(pack);
+      } else {
+        silentJobs.add((pack: pack, isUpdate: false, forceRefresh: true));
       }
     }
 
-    if (jobs.isNotEmpty && promptBeforeInstall) {
-      await promptPendingPackInstalls(
-        packsOverride: [for (final job in jobs) job.pack],
+    if (newLean.isNotEmpty) {
+      await promptPendingPackInstalls(packsOverride: newLean);
+      debugPrint(
+        '[PluginInstall] ${newLean.length} new lean pack(s) — user prompt',
       );
-      jobs.clear();
-      debugPrint('[PluginInstall] deferred pending packs — user prompt');
     }
 
     var completed = 0;
-    final total = jobs.length;
-    debugPrint('[PluginInstall] ${jobs.length} pack job(s)');
+    final total = silentJobs.length;
+    debugPrint('[PluginInstall] ${silentJobs.length} silent repair job(s)');
 
-    for (final job in jobs) {
+    for (final job in silentJobs) {
       final pack = job.pack;
       final url = pack.sourceUrl;
       try {
@@ -489,6 +500,7 @@ class PluginInstallCoordinator {
         .toList(growable: false);
     if (pending.isEmpty) return;
 
+    _pendingInstallPromptOffered = true;
     if (pending.length == 1) {
       final only = pending.first;
       ShellBus.enqueuePluginInstall(

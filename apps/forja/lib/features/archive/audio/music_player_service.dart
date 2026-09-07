@@ -6,10 +6,10 @@ import 'package:media_kit/media_kit.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/audio/music_storage_service.dart';
-import 'package:forja/shared/audio/audio_handler.dart';
-import 'package:forja/shared/audio/lyrics_service.dart';
-import 'package:forja/shared/audio/audiobook_player_service.dart';
+import 'package:forja/features/archive/audio/music_storage_service.dart';
+import 'package:forja/features/archive/audio/audio_handler.dart';
+import 'package:forja/features/archive/audio/lyrics_service.dart';
+import 'package:forja/features/archive/audio/audiobook_player_service.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 

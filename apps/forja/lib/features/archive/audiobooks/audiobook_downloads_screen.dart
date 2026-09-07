@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja/shared/audio/audiobook_download_service.dart';
+import 'package:forja/features/archive/audio/audiobook_download_service.dart';
 import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart';
-import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';

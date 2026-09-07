@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_browse_shell.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_host_layout.dart';
+import 'package:forja/features/live_matches/browse/live_sports_browse_shell.dart';
+import 'package:forja/features/live_matches/live_sports_host_layout.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
@@ -64,6 +64,12 @@ void main() {
     expect(source, isNotNull);
     expect(source!.wantsHostBody, isTrue);
     expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
+  });
+
+  test('live_schedule registers streams panel host', () {
+    final panel = CatalogHostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
+    expect(panel, isNotNull);
+    expect(panel!.listSourceId, LiveSportsHost.listSourceId);
   });
 
   test('pack builder overwrites core live_matches when registry has hub', () {

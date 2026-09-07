@@ -232,7 +232,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 
 ---
 
-## Host orchestration (`shared/playback/`, `shared/audio/`, `shared/catalog/`)
+## Host orchestration (`shared/playback/`, `features/archive/audio/`, `shared/catalog/`)
 
 | Component | Path | Role | Target |
 |-----------|------|------|--------|
@@ -241,10 +241,10 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `PlayerStreamExtractCache` | `player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
 | `HistoryPlaybackResume` | `history_playback_resume.dart` | C11 resume routing | ✅ Host |
 | `BestSimilarScraper` | `shared/catalog/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
-| `MusicPlayerService` | `shared/audio/music_player_service.dart` | C6 audio playback UI glue | ✅ Host |
-| `MusicStorageService` / `MusicDownloaderService` | `shared/audio/` | C6/C9 local files | ✅ Host |
-| `LyricsService` | `shared/audio/lyrics_service.dart` | C1 via engine | ✅ Thin host over engine |
-| `AudiobookPlayerService` / `AudiobookDownloadService` | `shared/audio/` | C6 host playback | ✅ Host |
+| `MusicPlayerService` | `features/archive/audio/music_player_service.dart` | C6 audio playback UI glue (archived) | ✅ Host |
+| `MusicStorageService` / `MusicDownloaderService` | `features/archive/audio/` | C6/C9 local files (archived) | ✅ Host |
+| `LyricsService` | `features/archive/audio/lyrics_service.dart` | C1 via engine (archived) | ✅ Thin host over engine |
+| `AudiobookPlayerService` / `AudiobookDownloadService` | `features/archive/audio/` | C6 host playback (archived) | ✅ Host |
 | `CastingService` | `shared/casting/` | C12 AirPlay/Chromecast (RFC-005) | ✅ Host |
 | `SyncService` | `shared/sync/` | C12 LAN sync (RFC-013) | ✅ Host |
 

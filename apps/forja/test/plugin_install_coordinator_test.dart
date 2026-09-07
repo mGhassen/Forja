@@ -568,4 +568,119 @@ void main() {
     expect(update!.installedVersion, '1.6.0');
     expect(update.remoteVersion, '1.7.0');
   });
+
+  test('ensureAllInstalled prompts new lean stubs when promptBeforeInstall',
+      () async {
+    const url = 'https://coord.example/new-lean/manifest.json';
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'new-lean',
+          'name': 'New Lean',
+          'version': '0.0.0',
+          'plugins': const [],
+        },
+      ]),
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      'nuvio_scripts_disk_v1_migrated': true,
+      'nuvio_addons_kv_v1': '1',
+    });
+    ShellBus.resetPluginInstallQueueForTest();
+
+    var fetched = false;
+    registry.debugHttpClient = MockClient((req) async {
+      fetched = true;
+      return http.Response('nf', 404);
+    });
+
+    await PluginInstallCoordinator.instance.ensureAllInstalled(
+      notifyUpdates: false,
+      awaitCloudLean: false,
+      includeNuvio: false,
+      promptBeforeInstall: true,
+    );
+
+    expect(fetched, isFalse);
+    expect(ShellBus.pendingPluginInstall.value?.manifestUrl, url);
+  });
+
+  test('ensureAllInstalled silent-repairs already-installed missing scripts',
+      () async {
+    const url = 'https://coord.example/repair/manifest.json';
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'repair',
+          'name': 'Repair Pack',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      'nuvio_scripts_disk_v1_migrated': true,
+      'nuvio_addons_kv_v1': '1',
+    });
+    ShellBus.resetPluginInstallQueueForTest();
+
+    registry.debugHttpClient = MockClient((req) async {
+      final path = req.url.path;
+      if (path.endsWith('manifest.json')) {
+        return http.Response(
+          jsonEncode({
+            'schema': 1,
+            'id': 'repair',
+            'name': 'Repair Pack',
+            'version': '1.0.0',
+            'plugins': [
+              {
+                'id': 'p1',
+                'name': 'P1',
+                'entry': 'p1.js',
+                'kind': 'http',
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (path.endsWith('p1.js')) {
+        return http.Response(
+          'function extract(ctx) { return []; }',
+          200,
+          headers: {'content-type': 'text/javascript'},
+        );
+      }
+      return http.Response('nf', 404);
+    });
+
+    await PluginInstallCoordinator.instance.ensureAllInstalled(
+      notifyUpdates: false,
+      awaitCloudLean: false,
+      includeNuvio: false,
+      promptBeforeInstall: true,
+    );
+
+    expect(ShellBus.pendingPluginInstall.value, isNull);
+    expect(ShellBus.pendingPluginBatchInstall.value, isNull);
+    expect(
+      await PluginScriptDiskStore.loadEngineScript(
+        sourceUrl: url,
+        pluginId: 'p1',
+      ),
+      'function extract(ctx) { return []; }',
+    );
+  });
 }

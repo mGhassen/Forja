@@ -14,8 +14,9 @@ import 'package:rust/rust.dart';
 /// Intro / profile splash should pass [startPlaySources]: false and
 /// [startTorrent]: false so LocalServer / Nuvio / torrent stay
 /// off the animation floor. ForjaHQ packs (+ hub layout/rails prefetch) await
-/// only when [BootNeeds.needsForjaPluginWarm] — IPTV/Live-only profiles skip
-/// the download banner and hydrate on first catalog/Live Matches use.
+/// only when [BootNeeds.needsForjaPluginWarm]. Splash silently re-hydrates
+/// packs already installed on this device; brand-new lean stubs prompt once
+/// (after splash). IPTV/Live-only with no pending packs skips.
 class ProfileEngineWarm {
   ProfileEngineWarm._();
 
@@ -55,7 +56,8 @@ class ProfileEngineWarm {
               notifyUpdates: true,
               includeNuvio: needs.nuvio,
               awaitCloudLean: true,
-              promptBeforeInstall: false,
+              // New lean stubs → confirm once; already-installed → silent repair.
+              promptBeforeInstall: true,
             )
             .catchError((Object e) {
               debugPrint('[Init] Plugin install error (non-fatal): $e');
@@ -67,7 +69,10 @@ class ProfileEngineWarm {
         }
       }
     } else if (awaitOfficialPacks) {
-      debugPrint('[Init] PluginInstallCoordinator skip (no VOD/catalog tab)');
+      debugPrint(
+        '[Init] PluginInstallCoordinator skip '
+        '(no VOD/catalog tab and no pending packs)',
+      );
     }
 
     if (prefetchDefaultHub && needs.catalogTab) {
