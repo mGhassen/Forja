@@ -3,11 +3,11 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
-/// Dense live-match row for [`KitTypes.list`] `style: list`.
+/// Dense schedule/event row for [`KitTypes.list`] `style: list`.
 ///
 /// Reads presentation only — no pack ids. Driven by title/meta/airing/viewers.
-class LiveMatchDenseTile extends StatefulWidget {
-  const LiveMatchDenseTile({
+class KitEventDenseTile extends StatefulWidget {
+  const KitEventDenseTile({
     super.key,
     required this.title,
     required this.meta,
@@ -37,10 +37,10 @@ class LiveMatchDenseTile extends StatefulWidget {
   final VoidCallback? onRightEdge;
 
   @override
-  State<LiveMatchDenseTile> createState() => _LiveMatchDenseTileState();
+  State<KitEventDenseTile> createState() => _KitEventDenseTileState();
 }
 
-class _LiveMatchDenseTileState extends State<LiveMatchDenseTile> {
+class _KitEventDenseTileState extends State<KitEventDenseTile> {
   bool _focused = false;
   bool _hovered = false;
 
@@ -179,8 +179,8 @@ class _LiveMatchDenseTileState extends State<LiveMatchDenseTile> {
   }
 }
 
-/// Subtitle line for a live [MetaItem]-shaped presentation.
-String hubLiveMatchDenseMetaLine({
+/// Subtitle line for an event [MetaItem]-shaped presentation.
+String kitEventDenseMetaLine({
   required bool airing,
   String? startsAt,
   String? badge,

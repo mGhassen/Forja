@@ -24,19 +24,27 @@ class KitSourcesRow {
     required this.id,
     required this.title,
     this.subtitle,
+    this.footer,
     this.badges = const [],
     this.viewerCount,
     this.payload,
+    this.onHoverProbe,
+    this.probeHealthCache,
   });
 
   final String id;
   final String title;
   final String? subtitle;
+  /// Right-side muted text (e.g. embed host).
+  final String? footer;
   final List<String> badges;
   final int? viewerCount;
 
   /// Opaque play/resolve payload (feature/service owned).
   final Object? payload;
+
+  final Future<bool> Function()? onHoverProbe;
+  final bool? probeHealthCache;
 }
 
 /// Pack-agnostic sources side panel (tabs + rows + reload/close).
@@ -219,20 +227,23 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   Widget _tabs(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: HeroPillSegmentedChoice<String>(
-        selected: _tabId,
-        onSelected: _selectTab,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tabsRowId,
-        tvItemIndexStart: 0,
-        segments: [
-          for (var i = 0; i < widget.tabs.length; i++)
-            HeroPillSegment(
-              value: widget.tabs[i].id,
-              label: widget.tabs[i].label,
-              icon: i == 0 ? Icons.stream_rounded : Icons.list_alt_rounded,
-            ),
-        ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: HeroPillSegmentedChoice<String>(
+          selected: _tabId,
+          onSelected: _selectTab,
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tabsRowId,
+          tvItemIndexStart: 0,
+          segments: [
+            for (var i = 0; i < widget.tabs.length; i++)
+              HeroPillSegment(
+                value: widget.tabs[i].id,
+                label: widget.tabs[i].label,
+                icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -274,14 +285,28 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
         final row = rows[i];
+        final footer = (row.footer ?? '').trim();
         return SourcesPanelChannelTile(
           title: row.title,
           provider: row.subtitle,
           badges: row.badges,
           viewerCount: row.viewerCount,
+          footer: footer.isEmpty
+              ? null
+              : Text(
+                  footer,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
           tvTabId: widget.tvTabId,
           tvRowId: widget.listRowId,
           tvItemIndex: i,
+          onHoverProbe: row.onHoverProbe,
+          probeHealthCache: row.probeHealthCache,
           onPlay: () => unawaited(widget.onPlayRow(row)),
         );
       },

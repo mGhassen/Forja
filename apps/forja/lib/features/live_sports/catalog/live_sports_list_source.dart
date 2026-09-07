@@ -43,10 +43,11 @@ class LiveScheduleCatalogPage implements KitListPage {
 final liveScheduleCatalogProvider =
     FutureProvider.autoDispose<LiveScheduleCatalogPage>((ref) async {
   final filters = ref.watch(liveScheduleFiltersProvider);
+  // Sport chips filter client-side — never re-fetch the whole schedule.
   final rows = await loadLiveScheduleRows(
     LiveScheduleQuery(
       catalogFilter: filters.catalogFilter,
-      sportFilter: filters.sportFilter,
+      sportFilter: 'all',
       scheduleHorizon: filters.scheduleHorizon,
     ),
   );
@@ -114,7 +115,7 @@ final class LiveScheduleCatalogSource extends KitListSource {
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
     final catalog = filters['catalog'];
     final horizon = filters['horizon'];
-    final sport = filters['kind'] ?? filters['sport'];
+    // Sport/kind is client-side via kit.list entriesForKind — do not reload.
     final current = ref.read(liveScheduleFiltersProvider);
     final notifier = ref.read(liveScheduleFiltersProvider.notifier);
     if (catalog != null &&
@@ -126,9 +127,6 @@ final class LiveScheduleCatalogSource extends KitListSource {
         horizon.isNotEmpty &&
         horizon != current.scheduleHorizon) {
       notifier.setScheduleHorizon(horizon);
-    }
-    if (sport != null && sport.isNotEmpty && sport != current.sportFilter) {
-      notifier.setSportFilter(sport);
     }
   }
 

@@ -24,6 +24,7 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
             'items': [
               {'id': 'all', 'label': 'All'},
             ],
+            'dynamicCatalogs': true,
           },
           {
             'id': 'horizon',

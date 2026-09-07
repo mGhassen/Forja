@@ -7,11 +7,9 @@ function liveSportsCatalogActions() {
       id: 'catalog',
       label: 'Catalog',
       icon: 'filter',
+      dynamicCatalogs: true,
       items: [
         { id: 'all', label: 'All' },
-        { id: 'streamed', label: 'Streamed' },
-        { id: 'ppv', label: 'PPV' },
-        { id: 'streamfree', label: 'StreamFree' },
       ],
     },
     {

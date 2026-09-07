@@ -6,9 +6,9 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
-/// Landscape live-match card (Continue-Watching proportions) — cards pack grid.
-class LiveMatchCard extends StatefulWidget {
-  const LiveMatchCard({
+/// Landscape schedule/event card (Continue-Watching proportions) — cards pack grid.
+class KitEventCard extends StatefulWidget {
+  const KitEventCard({
     super.key,
     required this.match,
     required this.onTap,
@@ -17,7 +17,7 @@ class LiveMatchCard extends StatefulWidget {
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
-    this.tvTabId = 'live_sports_cards',
+    this.tvTabId = 'kit_cards',
     this.tvRowId = 'schedule',
     this.tvZone = ShellTvZone.grid,
     this.viewersOverride,
@@ -61,10 +61,10 @@ class LiveMatchCard extends StatefulWidget {
       shellMovieCardRowGap(context).clamp(8.0, 12.0);
 
   @override
-  State<LiveMatchCard> createState() => _LiveMatchCardState();
+  State<KitEventCard> createState() => _KitEventCardState();
 }
 
-class _LiveMatchCardState extends State<LiveMatchCard> {
+class _KitEventCardState extends State<KitEventCard> {
   bool _hovered = false;
   bool _focused = false;
 
@@ -84,8 +84,8 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
       context: context,
     );
     final viewers = _viewers;
-    final posterUrl = liveMatchImageUrl(m.poster);
-    final time = liveMatchTimeLabel(m);
+    final posterUrl = kitEventImageUrl(m.poster);
+    final time = kitEventTimeLabel(m);
     final schedule = liveMatchScheduleLabel(m);
 
     final Widget card;
@@ -97,7 +97,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _TeamBadge(
-                badge: liveMatchImageUrl(m.homeBadge ?? ''),
+                badge: kitEventImageUrl(m.homeBadge ?? ''),
                 name: m.homeTeam!,
                 showName: false,
                 radius: 16,
@@ -114,7 +114,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                 ),
               ),
               _TeamBadge(
-                badge: liveMatchImageUrl(m.awayBadge ?? ''),
+                badge: kitEventImageUrl(m.awayBadge ?? ''),
                 name: m.awayTeam!,
                 showName: false,
                 radius: 16,
@@ -233,7 +233,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   _TeamBadge(
-                                    badge: liveMatchImageUrl(m.homeBadge ?? ''),
+                                    badge: kitEventImageUrl(m.homeBadge ?? ''),
                                     name: m.homeTeam!,
                                     showName: false,
                                   ),
@@ -254,7 +254,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                                     ),
                                   ),
                                   _TeamBadge(
-                                    badge: liveMatchImageUrl(m.awayBadge ?? ''),
+                                    badge: kitEventImageUrl(m.awayBadge ?? ''),
                                     name: m.awayTeam!,
                                     showName: false,
                                   ),
@@ -315,8 +315,8 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: SizedBox(
-        width: LiveMatchCard.cardWidth(context),
-        height: LiveMatchCard.cardHeight(context),
+        width: KitEventCard.cardWidth(context),
+        height: KitEventCard.cardHeight(context),
         child: card,
       ),
     );
@@ -324,7 +324,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
 }
 
 /// Resolve relative Streamed / pack badge paths to absolute URLs.
-String liveMatchImageUrl(String path) {
+String kitEventImageUrl(String path) {
   if (path.isEmpty) return '';
   if (path.startsWith('http')) return path;
   const base = 'https://streamed.pk';
@@ -332,7 +332,7 @@ String liveMatchImageUrl(String path) {
   return '$base/api/images/badge/$path.webp';
 }
 
-String liveMatchTimeLabel(MatchEvent m) {
+String kitEventTimeLabel(MatchEvent m) {
   if (m.isLive) return 'live';
   if (m.dateMs <= 0) return '';
   final dt = DateTime.fromMillisecondsSinceEpoch(m.dateMs);

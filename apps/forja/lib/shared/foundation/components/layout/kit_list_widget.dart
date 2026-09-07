@@ -3,8 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/components/cards/live_match_card.dart';
-import 'package:forja/shared/foundation/components/cards/live_match_dense_tile.dart';
+import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
+import 'package:forja/shared/foundation/components/cards/kit_event_dense_tile.dart';
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_entry_details.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
@@ -257,10 +257,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       final filters = <String, String>{};
       final catalog = scope.selectedId(catalogMenuId);
       final horizon = scope.selectedId(horizonMenuId);
-      final kindSel = scope.selectedId(widget.kindMenuId);
       if (catalog != null) filters['catalog'] = catalog;
       if (horizon != null) filters['horizon'] = horizon;
-      if (kindSel != null) filters['kind'] = kindSel;
+      // Kind/sport stays in layout scope only (entriesForKind) — no reload.
       if (filters.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -465,9 +464,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         final meta = entry.meta;
         final airing = meta.airing == true;
         final selected = selectedId != null && selectedId == meta.id;
-        return LiveMatchDenseTile(
+        return KitEventDenseTile(
           title: meta.name,
-          meta: hubLiveMatchDenseMetaLine(
+          meta: kitEventDenseMetaLine(
             airing: airing,
             startsAt: meta.startsAt,
             badge: meta.badge,
@@ -551,7 +550,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                     final match = MatchEvent.fromLegacyRow(entry.legacyRow);
                     return Align(
                       alignment: Alignment.topCenter,
-                      child: LiveMatchCard(
+                      child: KitEventCard(
                         match: match,
                         gridIndex: index,
                         gridColumns: grid.columns,
@@ -820,9 +819,9 @@ _HomeGrid _liveCardsGrid(
   double maxWidth, {
   double chromeTop = 0,
 }) {
-  final cardW = LiveMatchCard.cardWidth(context);
-  final cardH = LiveMatchCard.cardHeight(context);
-  final gap = LiveMatchCard.gridGap(context);
+  final cardW = KitEventCard.cardWidth(context);
+  final cardH = KitEventCard.cardHeight(context);
+  final gap = KitEventCard.gridGap(context);
   final leading = shellHomeSectionHorizontalPadding(context);
   final trailing = leading;
   final inner = math.max(0.0, maxWidth - leading - trailing);

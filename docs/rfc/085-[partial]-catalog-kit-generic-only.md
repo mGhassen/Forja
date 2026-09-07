@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **17 / 17** acceptance |
-| **Current slice** | `shared/widgets` absorbed into foundation — peer package deleted |
+| **Progress** | **4 / 4** components · **18 / 18** acceptance |
+| **Current slice** | Foundation UI cards drop product names (`KitEventCard` / `KitEventDenseTile`) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -54,14 +54,15 @@
 | 15 | R85-A15 | Foundation files/types drop `catalog_` / `hub_` product scent — UI `kit_*` / `Kit*`, protocol `meta_*` / `Meta*` (`KitShell`, `MetaItem`, `MetaRuntime`, …) | ✅ |
 | 16 | R85-A16 | App-wide leftover rename: `widgets/kit_details`, `TvKitRow`, `isKitPlugin` / live feed APIs, `PlayContext.metaItem`/`metaOpen`/`kitEpisodes`, `PlayerKitEpisode`, `KitChromeTopBar` | ✅ |
 | 17 | R85-A17 | `shared/widgets` deleted — contents under `foundation/primitives` (brand/chrome/tv/desktop) + `foundation/components` (hero/posters/details/media_details/lists/packs/playback/search/update/account); hub re-export shims removed | ✅ |
+| 18 | R85-A18 | Foundation UI cards: `LiveMatchCard` / `LiveMatchDenseTile` → `KitEventCard` / `KitEventDenseTile` (`kit_event_*`); no product-named card widgets under `components/` | ✅ |
 
 ---
 
 ## Summary
 
-**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. Product names stay out of kit folders. No `shared/live/`, peer `shared/design/`, or peer `shared/widgets/`.
+**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. Product names stay out of kit folders and kit UI types. No `shared/live/` peer package, peer `shared/design/`, or peer `shared/widgets/`.
 
-**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; `LiveMatchCard` under `foundation/components/`; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
 
 **Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts; live resolve/schedule orchestration lives under `foundation/services/live`.
 

@@ -128,7 +128,7 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 
 ### Shipped this slice
 
-- Tab mounts **`KitShell`** + host layout → **`KitListWidget`** (`style: list` → `LiveMatchDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
+- Tab mounts **`KitShell`** + host layout → **`KitListWidget`** (`style: list` → `KitEventDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
 - Sport chips via kit list; panel via `HostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → **`KitSourcesPanel`** + **`MatchStreams`**
 - Host sports libs under `shared/foundation/services/live/` (`live_stream_engine`, `match_streams`, `iptv_sports_match`, schedule/team/stremio helpers); feature prefs/filters under `features/live_sports/`
 - Feature folder stays thin (host + layout + list source + panel host); opaque ids `live_matches` / `live_schedule` unchanged
