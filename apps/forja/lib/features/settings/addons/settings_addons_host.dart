@@ -285,13 +285,18 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     _busy = true;
     setState(() => _optimisticEnabled = next);
     try {
-      await setAddonMasterEnabled(
+      final applied = await setAddonMasterEnabled(
         ref,
         context,
         addonId: widget.meta.id,
         val: next,
       );
-      if (widget.meta.id == SettingsAddonId.lan && mounted) {
+      if (!mounted) return;
+      if (!applied) {
+        setState(() => _optimisticEnabled = null);
+        return;
+      }
+      if (widget.meta.id == SettingsAddonId.lan) {
         setState(() => _lanEnabled = next);
       }
     } catch (e, st) {
@@ -299,6 +304,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       if (mounted) setState(() => _optimisticEnabled = null);
     } finally {
       _busy = false;
+      if (mounted && _optimisticEnabled != null) {
+        setState(() => _optimisticEnabled = null);
+      }
     }
   }
 

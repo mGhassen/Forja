@@ -30,6 +30,8 @@ abstract class CatalogKitListPage {
 ///
 /// Register via [CatalogHostListRegistry] — kit never hardcodes product ids.
 abstract class CatalogKitListSource {
+  const CatalogKitListSource();
+
   String get id;
 
   /// Catalog hub plugin id used to pipe enrich companions (may be null).

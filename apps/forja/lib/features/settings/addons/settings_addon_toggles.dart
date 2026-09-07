@@ -43,7 +43,10 @@ String? addonFeatureNavId(String addonId) => switch (addonId) {
 };
 
 /// Writes Addons master enable — call from the row OK / click.
-Future<void> setAddonMasterEnabled(
+///
+/// Returns `false` when the user cancelled (e.g. P2P ack) so callers can clear
+/// optimistic UI instead of leaving the switch stuck on.
+Future<bool> setAddonMasterEnabled(
   WidgetRef ref,
   BuildContext context, {
   required String addonId,
@@ -60,7 +63,7 @@ Future<void> setAddonMasterEnabled(
     final snap = ref.read(settingsPlaybackProvider).valueOrNull;
     if (snap?.p2pAcknowledged != true) {
       final ok = await ensureP2pStreamingAcknowledged(context);
-      if (!ok || !context.mounted) return;
+      if (!ok || !context.mounted) return false;
       await notifier.patch((s) => s.copyWith(p2pAcknowledged: true));
     }
   }
@@ -68,12 +71,15 @@ Future<void> setAddonMasterEnabled(
   final featureNavId = addonFeatureNavId(addonId);
   switch (addonId) {
     case SettingsAddonId.torrent:
+      notePreferencesDirty();
       await settings.setPlaySourceTorrentEnabled(val);
       await notifier.patch((s) => s.copyWith(playSourceTorrent: val));
     case SettingsAddonId.stremio:
+      notePreferencesDirty();
       await settings.setPlaySourceStremioEnabled(val);
       await notifier.patch((s) => s.copyWith(playSourceStremio: val));
     case SettingsAddonId.nuvio:
+      notePreferencesDirty();
       await settings.setPlaySourceNuvioEnabled(val);
       await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
     case SettingsAddonId.debrid:
@@ -102,6 +108,7 @@ Future<void> setAddonMasterEnabled(
   } else {
     schedulePreferencesSyncPush();
   }
+  return true;
 }
 
 /// Master on/off chrome for an addon in the Addons list.
@@ -174,13 +181,18 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     _busy = true;
     setState(() => _optimisticEnabled = val);
     try {
-      await setAddonMasterEnabled(
+      final applied = await setAddonMasterEnabled(
         ref,
         context,
         addonId: widget.addonId,
         val: val,
       );
-      if (widget.addonId == SettingsAddonId.lan && mounted) {
+      if (!mounted) return;
+      if (!applied) {
+        setState(() => _optimisticEnabled = null);
+        return;
+      }
+      if (widget.addonId == SettingsAddonId.lan) {
         setState(() => _lanEnabled = val);
       }
     } catch (e, st) {
@@ -189,6 +201,11 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       rethrow;
     } finally {
       _busy = false;
+      // Always drop optimistic after the write attempt so UI follows KV /
+      // providers (avoids switch stuck ON while Sources sees play-source off).
+      if (mounted && _optimisticEnabled != null) {
+        setState(() => _optimisticEnabled = null);
+      }
     }
   }
 

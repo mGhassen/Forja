@@ -42,6 +42,13 @@ class SyncDomainBridge {
   int _navigationLocalGen = 0;
   int _navigationSyncedGen = 0;
 
+  /// Same contract for playback prefs (`play_source_*`). Soft pull must not
+  /// re-apply cloud Stremio/Nuvio/Torrent off over a just-enabled Addons toggle
+  /// before the prefs push lands — Sources then hid those kind tabs while the
+  /// Addons switch still looked ON (optimistic UI).
+  int _preferencesLocalGen = 0;
+  int _preferencesSyncedGen = 0;
+
   /// After a successful Features/Addons nav upsert — skip soft-pull **nav apply**
   /// for a short window so a lagging read does not crush what we just pushed.
   DateTime? _lastNavigationPushAt;
@@ -124,6 +131,8 @@ class SyncDomainBridge {
     cancelPendingPushes();
     _navigationLocalGen = 0;
     _navigationSyncedGen = 0;
+    _preferencesLocalGen = 0;
+    _preferencesSyncedGen = 0;
     _lastNavigationPushAt = null;
     _cloudPayloadCache = null;
     final defaults = PlatformDefaults.forProfile(
@@ -237,11 +246,13 @@ class SyncDomainBridge {
       try {
         final pending = Set<String>.from(_pushTimers.keys);
         final navDirty = _navigationLocalGen != _navigationSyncedGen;
+        final prefsDirty = _preferencesLocalGen != _preferencesSyncedGen;
         cancelPendingPushes();
         // Flush local edits before pull so cloud SoT soft-pull can apply web
         // changes without racing an unsynced Features/Addons enable (224).
         final flush = <String>{...pending};
         if (navDirty) flush.add(_domainNavigation);
+        if (prefsDirty) flush.add(_domainPreferences);
         if (flush.isNotEmpty) {
           await pushAllLocal(
             pushIptvIfLocalEmpty: false,
@@ -358,8 +369,11 @@ class SyncDomainBridge {
   }) async {
     if (!SyncService.instance.isSignedIn) return;
     final navGenAtStart = _navigationLocalGen;
+    final prefsGenAtStart = _preferencesLocalGen;
     final overlayNav =
         overlayDomains == null || overlayDomains.contains(_domainNavigation);
+    final overlayPrefs = overlayDomains == null ||
+        overlayDomains.contains(_domainPreferences);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
@@ -384,6 +398,9 @@ class SyncDomainBridge {
         '[Sync] navigation upsert ok visibleIds=$ids '
         'tabOrder=${nav is Map ? nav['tabOrder'] : null}',
       );
+    }
+    if (overlayPrefs && prefsGenAtStart == _preferencesLocalGen) {
+      _preferencesSyncedGen = prefsGenAtStart;
     }
     final pushIptv =
         overlayDomains == null || overlayDomains.contains(_domainIptv);
@@ -421,6 +438,14 @@ class SyncDomainBridge {
   void noteNavigationDirty() {
     if (_navigationLocalGen == _navigationSyncedGen) {
       _navigationLocalGen++;
+    }
+  }
+
+  /// Mark playback prefs dirty before play-source KV write so soft pull cannot
+  /// re-apply cloud `play_source_*=false` over a just-enabled Stremio/Nuvio row.
+  void notePreferencesDirty() {
+    if (_preferencesLocalGen == _preferencesSyncedGen) {
+      _preferencesLocalGen++;
     }
   }
 
@@ -469,6 +494,7 @@ class SyncDomainBridge {
   Future<void> scheduleAddonFeatureAndNavSyncPush() async {
     if (!SyncService.instance.isSignedIn) return;
     noteNavigationDirty();
+    notePreferencesDirty();
     _pushTimers.remove(_domainPreferences)?.cancel();
     _pushTimers.remove(_domainNavigation)?.cancel();
     await pushAllLocal(
@@ -727,6 +753,8 @@ class SyncDomainBridge {
       // true is idempotent and covers any caller that reset without that wipe.
       _navigationLocalGen = 0;
       _navigationSyncedGen = 0;
+      _preferencesLocalGen = 0;
+      _preferencesSyncedGen = 0;
       _lastNavigationPushAt = null;
       // Keep [_cloudPayloadCache] — resetLocalFirst still applies [payload]
       // from the pull that seeded the cache.
@@ -754,6 +782,26 @@ class SyncDomainBridge {
         }
         pb.remove('addon_feature_iptv');
         pb.remove('addon_feature_live_matches');
+      }
+      // Same for Stremio / Nuvio / Direct torrent master toggles.
+      final prefsEditPending =
+          !resetLocalFirst && _preferencesLocalGen != _preferencesSyncedGen;
+      if (prefsEditPending) {
+        const playSourceKeys = [
+          'play_source_torrent_enabled',
+          'play_source_stremio_enabled',
+          'play_source_nuvio_enabled',
+          'play_source_webstreaming_enabled',
+        ];
+        if (playSourceKeys.any(pb.containsKey)) {
+          debugPrint(
+            '[Sync] skip play_source_* apply — local Addons play-source '
+            'edit not synced yet',
+          );
+        }
+        for (final key in playSourceKeys) {
+          pb.remove(key);
+        }
       }
       await importPreferences(pb);
     }
@@ -1407,8 +1455,16 @@ class SyncDomainBridge {
 void scheduleIptvSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainIptv);
 
-Future<void> schedulePreferencesSyncPush() =>
-    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainPreferences);
+Future<void> schedulePreferencesSyncPush() {
+  SyncDomainBridge.instance.notePreferencesDirty();
+  return SyncDomainBridge.instance.schedulePush(
+    SyncDomainBridge._domainPreferences,
+  );
+}
+
+/// Call before writing play-source toggles so soft pulls cannot wipe them.
+void notePreferencesDirty() =>
+    SyncDomainBridge.instance.notePreferencesDirty();
 
 /// Immediate prefs + nav push for Addons IPTV / Live (unlock + rail together).
 Future<void> scheduleAddonFeatureAndNavSyncPush() =>
