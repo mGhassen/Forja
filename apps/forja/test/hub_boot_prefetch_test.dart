@@ -20,7 +20,7 @@ void main() {
       expect(BootNeeds.isVodNavId('mylist'), isTrue);
       expect(BootNeeds.isVodNavId('anime'), isTrue);
       expect(BootNeeds.isVodNavId('iptv'), isFalse);
-      expect(BootNeeds.isVodNavId('live_matches'), isFalse);
+      expect(BootNeeds.isVodNavId('live_sports'), isFalse);
       expect(BootNeeds.isVodNavId('settings'), isFalse);
     });
 
@@ -44,7 +44,7 @@ void main() {
 
     test('openingStatusLabel for live/iptv-only', () {
       const needs = BootNeeds(
-        visibleNavIds: ['iptv', 'live_matches'],
+        visibleNavIds: ['iptv', 'live_sports'],
         hubTab: false,
         catalogTab: false,
         torrent: false,
@@ -63,7 +63,7 @@ void main() {
 
     test('needsForjaPluginWarm true when catalog, engines, or pending packs', () {
       const liveOnly = BootNeeds(
-        visibleNavIds: ['iptv', 'live_matches'],
+        visibleNavIds: ['iptv', 'live_sports'],
         hubTab: false,
         catalogTab: false,
         torrent: false,
@@ -79,7 +79,7 @@ void main() {
       expect(liveOnly.needsForjaPluginWarm, isFalse);
 
       const liveOnlyPending = BootNeeds(
-        visibleNavIds: ['iptv', 'live_matches'],
+        visibleNavIds: ['iptv', 'live_sports'],
         hubTab: false,
         catalogTab: false,
         torrent: false,
@@ -113,7 +113,7 @@ void main() {
 
       // Features shows Home while pack not contributed yet.
       const ghostHubs = BootNeeds(
-        visibleNavIds: ['home', 'anime', 'iptv', 'live_matches'],
+        visibleNavIds: ['home', 'anime', 'iptv', 'live_sports'],
         hubTab: true,
         catalogTab: true,
         torrent: false,

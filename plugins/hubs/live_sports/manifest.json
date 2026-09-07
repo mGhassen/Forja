@@ -50,7 +50,7 @@
             "id": "forjaSportsEnabled",
             "type": "toggle",
             "label": "Enable Forja Sports",
-            "subtitle": "Show the Forja Sports server in Live Matches",
+            "subtitle": "Show the Forja Sports server in Live Sports",
             "default": true
           },
           {

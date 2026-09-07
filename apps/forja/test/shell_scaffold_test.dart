@@ -611,7 +611,7 @@ void main() {
       hubC,
       hubB,
       'iptv',
-      'live_matches',
+      'live_sports',
       'settings',
     ];
     await pumpScaffold(
@@ -998,14 +998,14 @@ void main() {
     expect(navDestinations.containsKey(hubB), isTrue);
     expect(navDestinations.containsKey(hubC), isTrue);
     expect(navDestinations.containsKey('iptv'), isTrue);
-    expect(navDestinations.containsKey('live_matches'), isFalse);
+    expect(navDestinations.containsKey('live_sports'), isFalse);
     expect(navDestinations.containsKey('settings'), isTrue);
     expect(navDestinations.containsKey('mylist'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
     // Fresh install rail is empty (RFC-081) — IPTV / hubs via Addons / packs.
     expect(SettingsService.defaultVisibleNavIds, isEmpty);
-    expect(PluginNavRegistry.isContributed('live_matches'), isFalse);
-    expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_matches')));
+    expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
+    expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_sports')));
   });
 
   test('archived nav ids are not registered in shell', () {

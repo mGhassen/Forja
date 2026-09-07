@@ -168,14 +168,14 @@ void main() {
       SettingsService.configurePlatformProfile(PlatformProfile.phone);
       final service = SettingsService();
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-      await service.setNavbarConfig(['iptv', 'live_matches']);
+      await service.setNavbarConfig(['iptv', 'live_sports']);
       await service.setPlaySourceEngineEnabled(true);
       await service.setPlaySourceStremioEnabled(true);
       await service.setPlaySourceNuvioEnabled(true);
       await service.setPlaySourceTorrentEnabled(true);
 
       final v = await SettingsVisibility.resolve(service);
-      // live_matches is a pack hub id → counts as VOD for settings visibility.
+      // live_sports is a pack hub id → counts as VOD for settings visibility.
       expect(v.vodTab, isTrue);
       expect(v.iptvNav, isTrue);
       expect(v.playSourceEngine, isTrue);

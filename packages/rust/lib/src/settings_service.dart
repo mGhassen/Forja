@@ -1773,7 +1773,7 @@ class SettingsService {
   ///
   /// No-op if any [activeHubIds] tab is already visible (intentional Features
   /// hide / partial config — not a full strip). Callers pass VOD/hub ids only
-  /// (including `live_matches`). Does not auto-insert Addons-gated `iptv`.
+  /// (including `live_sports`). Does not auto-insert Addons-gated `iptv`.
   Future<void> ensureActiveDefaultHubsVisible({
     required Set<String> activeHubIds,
     bool notify = true,
