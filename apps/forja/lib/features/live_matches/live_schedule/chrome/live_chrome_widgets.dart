@@ -158,7 +158,7 @@ class _LiveMatchesRefreshTopBarButtonState
 
   @override
   Widget build(BuildContext context) {
-    final fg = _active ? Colors.white : Colors.white70;
+    final fg = _active ? ForjaShellColors.brandGreen : Colors.white70;
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -247,7 +247,7 @@ const _kLiveMatchSearchCollapsed = 40.0;
 const _kLiveMatchSearchExpanded = 240.0;
 
 /// Top-bar match search — icon expands to a field (desktop + TV browse field).
-class _LiveMatchesSearchTopBarControl extends StatelessWidget {
+class _LiveMatchesSearchTopBarControl extends StatefulWidget {
   const _LiveMatchesSearchTopBarControl({
     required this.open,
     required this.controller,
@@ -275,35 +275,60 @@ class _LiveMatchesSearchTopBarControl extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   @override
+  State<_LiveMatchesSearchTopBarControl> createState() =>
+      _LiveMatchesSearchTopBarControlState();
+}
+
+class _LiveMatchesSearchTopBarControlState
+    extends State<_LiveMatchesSearchTopBarControl> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+        context: context,
+      );
+
+  @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (!open) {
-      if (!tv) {
-        return IconButton(
-          tooltip: 'Search matches',
-          icon: const Icon(Icons.search_rounded, color: Colors.white70),
-          onPressed: onOpen,
-        );
-      }
+    if (!widget.open) {
+      final fg =
+          _active ? ForjaShellColors.brandGreen : Colors.white70;
       return shellFocusableTap(
         context: context,
-        onTap: onOpen,
+        onTap: widget.onOpen,
         borderRadius: 24,
         scaleOnFocus: 1.0,
         suppressInkHover: true,
-        focusNode: iconFocusNode,
+        focusNode: widget.iconFocusNode,
         tvTabId: _LiveSportsHubPageState._tabId,
         tvRowId: _LiveSportsHubPageState._topBarRowId,
-        tvItemIndex: tvItemIndex,
+        tvItemIndex: widget.tvItemIndex,
         tvZone: ShellTvZone.topBar,
-        onDownEdge: onDownEdge,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge ?? () {},
-        child: const Tooltip(
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge ?? () {},
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          if (focused) {
+            ShellTvFocusCoordinator.saveFocus(
+              _LiveSportsHubPageState._tabId,
+              ShellTvFocusMemory(
+                zone: ShellTvZone.topBar,
+                node: widget.iconFocusNode,
+              ),
+            );
+          }
+        },
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
+        child: Tooltip(
           message: 'Search matches',
           child: Padding(
-            padding: EdgeInsets.all(8),
-            child: Icon(Icons.search_rounded, color: Colors.white70),
+            padding: const EdgeInsets.all(8),
+            child: Icon(Icons.search_rounded, color: fg),
           ),
         ),
       );
@@ -326,11 +351,11 @@ class _LiveMatchesSearchTopBarControl extends StatelessWidget {
             Expanded(
               child: tv
                   ? TvBrowseTextField(
-                      controller: controller,
-                      focusNode: fieldFocusNode,
-                      onChanged: onChanged,
-                      onEscape: onClose,
-                      onSubmitted: (_) => fieldFocusNode.unfocus(),
+                      controller: widget.controller,
+                      focusNode: widget.fieldFocusNode,
+                      onChanged: widget.onChanged,
+                      onEscape: widget.onClose,
+                      onSubmitted: (_) => widget.fieldFocusNode.unfocus(),
                       browsePlaceholder: 'Search matches…',
                       browseHintStyle: TextStyle(
                         color: Colors.white.withValues(alpha: 0.38),
@@ -345,10 +370,10 @@ class _LiveMatchesSearchTopBarControl extends StatelessWidget {
                       ),
                     )
                   : TextField(
-                      controller: controller,
-                      focusNode: fieldFocusNode,
-                      onChanged: onChanged,
-                      onSubmitted: (_) => fieldFocusNode.unfocus(),
+                      controller: widget.controller,
+                      focusNode: widget.fieldFocusNode,
+                      onChanged: widget.onChanged,
+                      onSubmitted: (_) => widget.fieldFocusNode.unfocus(),
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       cursorColor: ForjaShellColors.sectionAccent,
                       decoration: InputDecoration(
@@ -370,7 +395,7 @@ class _LiveMatchesSearchTopBarControl extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
-              onPressed: onClose,
+              onPressed: widget.onClose,
             ),
           ],
         ),

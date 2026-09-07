@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **22 / 22** acceptance |
-| **Current slice** | Desktop in-app mini shipped — keep-play + resize · chrome auto-hide · phone deferred |
+| **Progress** | **9 / 9** components · **24 / 24** acceptance |
+| **Current slice** | Desktop in-app mini shipped — keep-play · chrome auto-hide · Close top-right · phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,6 +57,8 @@
 | 20 | R83-A20 | OS minimize / app background while mini active does not auto-pause | ✅ |
 | 21 | R83-A21 | Mini: `buildModalBarrier` is empty while active — default null-color `ModalBarrier` is `HitTestBehavior.opaque` and blocked shell clicks under the transparent route | ✅ |
 | 22 | R83-A22 | Mini chrome (buttons + grip) auto-hides after ~3s idle; hover / tap / D-pad focus reveals; stays while focused or resizing | ✅ |
+| 23 | R83-A23 | Mini Close control is top-right (not bottom row) | ✅ |
+| 24 | R83-A24 | Mini has no visible top-left resize grip (fixed default corner size) | ✅ |
 
 ---
 
@@ -67,9 +69,9 @@ In-app mini player: Escape (when enabled) shrinks the player to a corner **insid
 ### Goals
 
 - Keep playing on demote (pause only from mini chrome); skip lifecycle pause while mini
-- Drag-resize corner (16:9)
 - Expand restores full-player shell freeze (`enterPlayerSurface`)
 - Three chrome D-pad doors only — never catalog Down to mini
+- Close top-right; no visible resize grip (fixed default size)
 
 ### Related
 

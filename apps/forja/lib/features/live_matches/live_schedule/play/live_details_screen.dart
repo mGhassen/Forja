@@ -786,16 +786,16 @@ class _LiveMatchDetailsScreenState
             listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
             builder: (context, _) {
               final busy = _activeCtrl.searching;
-              return shellFocusableTap(
-                context: context,
-                onTap: busy ? null : _retryActiveTab,
-                borderRadius: 16,
-                scaleOnFocus: 1.0,
+              return _LivePanelChromeIcon(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Reload sources',
+                enabled: !busy,
                 listIndex: 0,
                 tvTabId: tvFocus ? _LiveSportsHubPageState._tabId : null,
-                tvRowId:
-                    tvFocus ? _LiveSportsHubPageState._streamsChromeRowId : null,
-                tvItemIndex: tvFocus ? 0 : null,
+                tvRowId: tvFocus
+                    ? _LiveSportsHubPageState._streamsChromeRowId
+                    : null,
+                onTap: busy ? null : _retryActiveTab,
                 onLeftEdge: tvFocus ? _focusMatchListFromPanel : null,
                 onDownEdge: tvFocus
                     ? () => ShellTvFocusCoordinator.focusRowItem(
@@ -804,29 +804,17 @@ class _LiveMatchDetailsScreenState
                           0,
                         )
                     : null,
-                child: Tooltip(
-                  message: 'Reload sources',
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.refresh_rounded,
-                      color: busy ? Colors.white24 : Colors.white70,
-                    ),
-                  ),
-                ),
               );
             },
           ),
-          shellFocusableTap(
-            context: context,
-            onTap: () => widget.host.closeMatchStreamsPanel(),
-            borderRadius: 16,
-            scaleOnFocus: 1.0,
+          _LivePanelChromeIcon(
+            icon: Icons.close_rounded,
+            tooltip: 'Close',
             listIndex: 1,
             tvTabId: tvFocus ? _LiveSportsHubPageState._tabId : null,
             tvRowId:
                 tvFocus ? _LiveSportsHubPageState._streamsChromeRowId : null,
-            tvItemIndex: tvFocus ? 1 : null,
+            onTap: () => widget.host.closeMatchStreamsPanel(),
             onDownEdge: tvFocus
                 ? () => ShellTvFocusCoordinator.focusRowItem(
                       _LiveSportsHubPageState._tabId,
@@ -834,10 +822,6 @@ class _LiveMatchDetailsScreenState
                       0,
                     )
                 : null,
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(Icons.close_rounded, color: Colors.white70),
-            ),
           ),
         ],
       );
@@ -1496,7 +1480,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     final playAll = allForPlay ?? sources;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Side panel (~40% width): one card per row so titles stay readable.
+        // Side panel: one card per row so titles stay readable.
         // Full-page details: two columns when the body is wide enough.
         final crossCount =
             widget.inlineHero || constraints.maxWidth < 720 ? 1 : 2;
@@ -1771,6 +1755,84 @@ class _LiveTvCategoryRailRowState extends State<_LiveTvCategoryRailRow> {
   }
 }
 
+
+/// Side-panel Reload / Close — idle muted; hover + focus use brand green.
+class _LivePanelChromeIcon extends StatefulWidget {
+  const _LivePanelChromeIcon({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    this.enabled = true,
+    this.listIndex = 0,
+    this.tvTabId,
+    this.tvRowId,
+    this.onLeftEdge,
+    this.onDownEdge,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final bool enabled;
+  final int listIndex;
+  final String? tvTabId;
+  final String? tvRowId;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_LivePanelChromeIcon> createState() => _LivePanelChromeIconState();
+}
+
+class _LivePanelChromeIconState extends State<_LivePanelChromeIcon> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _active => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+        context: context,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.enabled && widget.onTap != null;
+    final Color fg;
+    if (!enabled) {
+      fg = Colors.white24;
+    } else if (_active) {
+      fg = ForjaShellColors.brandGreen;
+    } else {
+      fg = Colors.white70;
+    }
+
+    Widget child = Padding(
+      padding: const EdgeInsets.all(8),
+      child: Icon(widget.icon, color: fg),
+    );
+    if (widget.tooltip != null) {
+      child = Tooltip(message: widget.tooltip!, child: child);
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: enabled ? widget.onTap : null,
+      borderRadius: 16,
+      scaleOnFocus: 1.0,
+      suppressInkHover: true,
+      listIndex: widget.listIndex,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvTabId != null ? widget.listIndex : null,
+      onLeftEdge: widget.onLeftEdge,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
+      child: child,
+    );
+  }
+}
 
 Future<void> _openLiveMatchDetails({
   required _LiveSportsPlayHost host,

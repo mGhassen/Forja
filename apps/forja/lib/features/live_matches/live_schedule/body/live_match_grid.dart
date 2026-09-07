@@ -497,14 +497,16 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         asSidePanel: true,
       ),
     );
-    // Desktop / TV: match list 60% + panel 40% (chips stay full-bleed above).
+    // Desktop: list 60% + panel 40%. Android TV: 50/50 for readable sources.
     if (useSideSplit) {
+      final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
+      final listFlex = 100 - panelFlex;
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 60, child: content),
+          Expanded(flex: listFlex, child: content),
           Expanded(
-            flex: 40,
+            flex: panelFlex,
             child: Material(
               color: ForjaShellColors.surfaceElevated,
               child: DecoratedBox(

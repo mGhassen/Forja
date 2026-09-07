@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
-/// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close + resize.
+/// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close.
 ///
 /// Auto-hides after idle (same 3s as desktop full-player chrome). Hover, tap,
 /// or D-pad focus on the mini reveals it again.
@@ -46,7 +46,6 @@ class InAppMiniPlayerChrome extends StatefulWidget {
 class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
   bool _chromeVisible = true;
   Timer? _hideTimer;
-  bool _resizing = false;
 
   bool get _anyMiniFocused =>
       widget.rootFocus.hasFocus ||
@@ -111,16 +110,16 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
     if (!_chromeVisible) {
       setState(() => _chromeVisible = true);
     }
-    if (!_anyMiniFocused && !_resizing) {
+    if (!_anyMiniFocused) {
       _scheduleHide();
     }
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    if (_anyMiniFocused || _resizing) return;
+    if (_anyMiniFocused) return;
     _hideTimer = Timer(InAppMiniPlayerChrome.hideAfter, () {
-      if (!mounted || _anyMiniFocused || _resizing) return;
+      if (!mounted || _anyMiniFocused) return;
       setState(() => _chromeVisible = false);
     });
   }
@@ -160,7 +159,7 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
             onEnter: (_) => _reveal(),
             onHover: (_) => _reveal(),
             onExit: (_) {
-              if (!_anyMiniFocused && !_resizing) _scheduleHide();
+              if (!_anyMiniFocused) _scheduleHide();
             },
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -169,22 +168,19 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
                 fit: StackFit.expand,
                 children: [
                   Positioned(
-                    left: 0,
-                    top: 0,
+                    right: 4,
+                    top: 4,
                     child: AnimatedOpacity(
                       opacity: _chromeVisible ? 1 : 0,
                       duration: const Duration(milliseconds: 220),
                       child: IgnorePointer(
                         ignoring: !_chromeVisible,
-                        child: _MiniResizeGrip(
-                          onDragStart: () {
-                            _resizing = true;
-                            _reveal();
-                          },
-                          onDragEnd: () {
-                            _resizing = false;
-                            _scheduleHide();
-                          },
+                        child: _MiniFocusButton(
+                          focusNode: widget.closeFocus,
+                          order: 3,
+                          icon: Icons.close_rounded,
+                          tooltip: 'Close',
+                          onTap: widget.onClose,
                         ),
                       ),
                     ),
@@ -230,14 +226,6 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
                                   tooltip: 'Expand',
                                   onTap: widget.onExpand,
                                 ),
-                                const SizedBox(width: 6),
-                                _MiniFocusButton(
-                                  focusNode: widget.closeFocus,
-                                  order: 3,
-                                  icon: Icons.close_rounded,
-                                  tooltip: 'Close',
-                                  onTap: widget.onClose,
-                                ),
                               ],
                             ),
                           ),
@@ -253,91 +241,6 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
       ),
     );
   }
-}
-
-/// Top-left drag grip — mini is anchored bottom-right, so this corner grows it.
-class _MiniResizeGrip extends StatefulWidget {
-  const _MiniResizeGrip({
-    this.onDragStart,
-    this.onDragEnd,
-  });
-
-  final VoidCallback? onDragStart;
-  final VoidCallback? onDragEnd;
-
-  @override
-  State<_MiniResizeGrip> createState() => _MiniResizeGripState();
-}
-
-class _MiniResizeGripState extends State<_MiniResizeGrip> {
-  double? _startWidth;
-  double? _startDx;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeUpLeftDownRight,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (d) {
-          widget.onDragStart?.call();
-          _startWidth = InAppMiniPlayerController.instance.size.value.width;
-          _startDx = d.globalPosition.dx;
-        },
-        onPanUpdate: (d) {
-          final startW = _startWidth;
-          final startDx = _startDx;
-          if (startW == null || startDx == null) return;
-          // Drag left → wider (bottom-right anchored).
-          final delta = startDx - d.globalPosition.dx;
-          InAppMiniPlayerController.instance.setSizeWidth(startW + delta);
-        },
-        onPanEnd: (_) {
-          _startWidth = null;
-          _startDx = null;
-          widget.onDragEnd?.call();
-        },
-        onPanCancel: () {
-          _startWidth = null;
-          _startDx = null;
-          widget.onDragEnd?.call();
-        },
-        child: const SizedBox(
-          width: 28,
-          height: 28,
-          child: CustomPaint(painter: _CornerResizePainter()),
-        ),
-      ),
-    );
-  }
-}
-
-class _CornerResizePainter extends CustomPainter {
-  const _CornerResizePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.55)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    const inset = 6.0;
-    const arm = 10.0;
-    canvas.drawLine(
-      const Offset(inset, inset),
-      const Offset(inset + arm, inset),
-      paint,
-    );
-    canvas.drawLine(
-      const Offset(inset, inset),
-      const Offset(inset, inset + arm),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MiniFocusButton extends StatelessWidget {
