@@ -45,3 +45,10 @@ RFC-087 kept schedule/stream orchestration under foundation. That put product sc
 
 - [RFC-087](087-[fixed]-live-sports-pack-only.md) — pack-only tab (location of host services corrected here)
 - [RFC-085](../085-[partial]-catalog-kit-generic-only.md) — foundation purity
+
+
+---
+
+## Superseded location (RFC-091)
+
+`shared/host/live_sports/` was deleted. Live schedule / IPTV sports Dart adapters live under `features/iptv/sports/`; hubs own MetaRuntime `feed`. See [RFC-091](../091-[fixed]-live-sports-explode-host-to-packs.md).

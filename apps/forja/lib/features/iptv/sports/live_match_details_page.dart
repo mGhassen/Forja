@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
-import 'package:forja/shared/host/live_sports/live_sports_streams_panel_host.dart';
+import 'package:forja/features/iptv/sports/live_sports_streams_panel_host.dart';
 import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';

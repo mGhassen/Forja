@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** [RFC-073](073-[fixed]-live-sports-kit-ownership.md) · [RFC-081](081-[fixed]-host-only-platform-nav-defaults.md) · [RFC-086](086-[fixed]-addons-packs-feature-vs-navbar.md)  
-**Area:** `plugins/hubs/live_sports*`, `shared/host/live_sports/`, shell nav
+**Area:** `plugins/hubs/live_sports*`, `features/iptv/sports/`, shell nav
 
 ## Status at a glance
 
@@ -43,13 +43,13 @@
 
 ## Summary
 
-**Product rule:** Live Sports is **only a plugin**. Host may keep generic schedule/stream **services** under foundation. There is no host feature product root and no core-shell tab without a hub pack.
+**Product rule:** Live Sports is **only a plugin**. Host may keep schedule/stream **adapters** under `features/iptv/sports/` (RFC-091). There is no host feature product root and no core-shell tab without a hub pack.
 
 | Layer | Owns |
 |-------|------|
 | `plugins/hubs/live_sports*` | Tab `nav` + `layout` (list+panel and/or cards) |
 | `plugins/live/**` | Catalog scrape + stream resolve |
-| `shared/host/live_sports/` | Opaque `live_schedule`, MatchStreams, IPTV sports match, prefs/filters, panel host (RFC-090) |
+| `features/iptv/sports/` | Opaque `live_schedule` adapter, LiveProviderStreams, IPTV sports match, prefs/filters, panel (RFC-091) |
 | Host shell | IPTV + Settings only as core — **not** `live_matches` |
 
 Supersedes [RFC-084](../canceled/084-[canceled]-live-sports-host-feature-kit.md) (host core tab + default layout).

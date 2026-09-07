@@ -8,18 +8,18 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/foundation/blocks/play/live_play.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/host/live_sports/iptv_sports_config.dart';
-import 'package:forja/shared/host/live_sports/iptv_sports_match.dart';
-import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/sports/iptv_sports_config.dart';
+import 'package:forja/features/iptv/sports/live_stream_engine.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/lib/stremio_live_meta.dart';
 import 'package:rust/rust.dart'
     show BuiltInPlayerContext, SettingsService, StremioAddonFeatures, StremioService;
 
-/// Host match-stream resolve + play (RFC-073). No UI / panel parts.
-abstract final class MatchStreams {
-  MatchStreams._();
+/// Live resolve + Stremio providers + native play (RFC-091).
+/// Live TV portal matching is [IptvSportsMatchService] — not this class.
+abstract final class LiveProviderStreams {
+  LiveProviderStreams._();
 
   static const _providersCacheTtl = Duration(minutes: 30);
   static final Map<String, _ProvidersCacheEntry> _providersCache = {};
@@ -62,14 +62,14 @@ abstract final class MatchStreams {
       final forja = await _loadForjaLiveProviders(match);
       await addBatch(forja);
     } catch (e, st) {
-      debugPrint('[MatchStreams] Forja Live providers error: $e\n$st');
+      debugPrint('[LiveProviderStreams] Forja Live providers error: $e\n$st');
     }
 
     try {
       final stremio = await _loadStremioProviders(match);
       await addBatch(stremio);
     } catch (e, st) {
-      debugPrint('[MatchStreams] Stremio providers error: $e\n$st');
+      debugPrint('[LiveProviderStreams] Stremio providers error: $e\n$st');
     }
 
     if (out.isNotEmpty) {
@@ -79,20 +79,6 @@ abstract final class MatchStreams {
       );
     }
     return out;
-  }
-
-  /// Live TV rail: portal channel match via [IptvSportsMatchService].
-  static Future<List<IptvPlaySource>> loadIptvChannels(
-    Map<String, dynamic> legacyRow, {
-    bool force = false,
-  }) async {
-    final match = MatchEvent.fromLegacyRow(legacyRow);
-    try {
-      return await IptvSportsMatchService.resolveStreams(match, force: force);
-    } catch (e, st) {
-      debugPrint('[MatchStreams] IPTV sports resolve error: $e\n$st');
-      return const [];
-    }
   }
 
   /// Open native player for a picked row (Providers unlock or IPTV Stalker link).
@@ -154,7 +140,7 @@ abstract final class MatchStreams {
           choices.add(_StreamChoice(match: m, stream: stream));
         }
       } catch (e) {
-        debugPrint('[MatchStreams] resolve ${ref.source}/${ref.id}: $e');
+        debugPrint('[LiveProviderStreams] resolve ${ref.source}/${ref.id}: $e');
       }
     }
 
@@ -421,7 +407,7 @@ abstract final class MatchStreams {
     try {
       catalog = await _fetchStremioSportMatches();
     } catch (e) {
-      debugPrint('[MatchStreams] Stremio catalog error: $e');
+      debugPrint('[LiveProviderStreams] Stremio catalog error: $e');
       return const [];
     }
     final hits = catalog.where((m) => _stremioCatalogEventMatch(match, m)).toList();
@@ -431,7 +417,7 @@ abstract final class MatchStreams {
         try {
           return await _stremioPlaySourcesFor(hit);
         } catch (e) {
-          debugPrint('[MatchStreams] Stremio addon resolve error: $e');
+          debugPrint('[LiveProviderStreams] Stremio addon resolve error: $e');
           return const <IptvPlaySource>[];
         }
       }),
@@ -478,7 +464,7 @@ abstract final class MatchStreams {
         );
       }
     } catch (e) {
-      debugPrint('[MatchStreams] Stremio stream error: $e');
+      debugPrint('[LiveProviderStreams] Stremio stream error: $e');
     }
     return out;
   }
@@ -557,7 +543,7 @@ abstract final class MatchStreams {
           }
         } catch (e) {
           debugPrint(
-            '[MatchStreams] Stremio catalog error ($baseUrl/$catalogId): $e',
+            '[LiveProviderStreams] Stremio catalog error ($baseUrl/$catalogId): $e',
           );
         }
       }
@@ -1089,7 +1075,7 @@ abstract final class MatchStreams {
         },
       );
     } catch (e) {
-      debugPrint('[MatchStreams] unlock ${ref.source}/${ref.id}: $e');
+      debugPrint('[LiveProviderStreams] unlock ${ref.source}/${ref.id}: $e');
       return null;
     }
     for (final row in rows) {

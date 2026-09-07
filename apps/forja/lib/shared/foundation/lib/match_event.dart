@@ -59,7 +59,7 @@ class MatchStream {
       );
 }
 
-/// Public match / fixture DTO for [MatchStreams] + IPTV sports matching.
+/// Public match / fixture DTO for [LiveProviderStreams] + IPTV sports matching.
 class MatchEvent {
   const MatchEvent({
     required this.id,

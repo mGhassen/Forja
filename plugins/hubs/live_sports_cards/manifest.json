@@ -23,7 +23,8 @@
       ],
       "capabilities": [
         "nav",
-        "layout"
+        "layout",
+        "feed"
       ],
       "nav": {
         "tabId": "live_sports_cards",

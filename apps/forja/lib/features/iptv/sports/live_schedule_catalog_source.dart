@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/host/live_sports/live_play_kit.dart';
-import 'package:forja/shared/host/live_sports/live_sports_host.dart';
-import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
-import 'package:forja/shared/host/live_sports/schedule_filters.dart';
-import 'package:forja/shared/host/live_sports/schedule_list_source.dart';
+import 'package:forja/features/iptv/sports/live_play_kit.dart';
+import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
+import 'package:forja/features/iptv/sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/sports/schedule_filters.dart';
+import 'package:forja/features/iptv/sports/schedule_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/foundation/services/meta/runtime.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Selected kit list entry for list+panel chrome.
@@ -43,6 +45,8 @@ final liveScheduleCatalogProvider =
     FutureProvider.autoDispose<LiveScheduleCatalogPage>((ref) async {
   final filters = ref.watch(liveScheduleFiltersProvider);
   // Sport chips filter client-side — never re-fetch the whole schedule.
+  // Engine-feed adapter: catalog plugins via runLiveFeed, then hub MetaRuntime
+  // `feed` (pack may filter/reshape `scheduleItems`).
   final rows = await loadLiveScheduleRows(
     LiveScheduleQuery(
       catalogFilter: filters.catalogFilter,
@@ -51,10 +55,40 @@ final liveScheduleCatalogProvider =
       scheduleHorizon: filters.scheduleHorizon,
     ),
   );
+  final rowsById = <String, Map<String, dynamic>>{
+    for (final row in rows)
+      if ((row['id'] ?? '').toString().trim().isNotEmpty)
+        (row['id'] ?? '').toString().trim(): row,
+  };
+  var metas = <MetaItem>[
+    for (final row in rows) liveMetaFromScheduleRow(row),
+  ]..removeWhere((m) => m.id.isEmpty);
+
+  final hubId =
+      await PluginNavRegistry.pluginIdForEngineType(LiveScheduleKit.engineType);
+  if (hubId != null && hubId.isNotEmpty) {
+    try {
+      final env = await MetaRuntime.instance.run(
+        pluginId: hubId,
+        action: 'feed',
+        params: {
+          'scheduleItems': rows,
+          'catalogFilter': filters.catalogFilter,
+          'scheduleStatus': filters.scheduleStatus.name,
+          'scheduleHorizon': filters.scheduleHorizon.name,
+        },
+      );
+      if (env.ok && env.items.isNotEmpty) {
+        metas = env.items;
+      }
+    } catch (e, st) {
+      debugPrint('[live_schedule] hub feed: $e\n$st');
+    }
+  }
+
   final entries = <KitListEntry>[];
   final sports = <String>{};
-  for (final row in rows) {
-    final meta = liveMetaFromScheduleRow(row);
+  for (final meta in metas) {
     if (meta.id.isEmpty) continue;
     final kind = _sportKindForMeta(meta);
     if (kind.isNotEmpty && kind != 'all' && kind != 'live_match') {
@@ -63,9 +97,13 @@ final liveScheduleCatalogProvider =
     entries.add(
       KitListEntry(
         meta: meta,
-        legacyRow: row,
+        legacyRow: rowsById[meta.id] ??
+            <String, dynamic>{'id': meta.id, 'title': meta.name},
         kind: kind.isEmpty ? 'live_match' : kind,
-        pluginId: (row['pluginId'] ?? row['livePluginId'] ?? '').toString(),
+        pluginId: (rowsById[meta.id]?['pluginId'] ??
+                rowsById[meta.id]?['livePluginId'] ??
+                '')
+            .toString(),
       ),
     );
   }
@@ -87,17 +125,17 @@ String _sportKindForMeta(MetaItem meta) {
   return 'live_match';
 }
 
-/// Kit list backend for `source: live_schedule` (My List peer).
+/// Kit list backend for opaque `live_schedule`.
 ///
-/// [wantsHostBody] stays false — [KitShell] + [KitListWidget] own
-/// browse; streams panel is [LiveSportsStreamsPanelHost].
+/// Engine-feed + hub MetaRuntime `feed` adapter (RFC-091). Browse chrome is
+/// pack layout; streams panel is [LiveSportsStreamsPanelHost].
 final class LiveScheduleCatalogSource extends KitListSource {
   const LiveScheduleCatalogSource._() : super();
 
   static const instance = LiveScheduleCatalogSource._();
 
   @override
-  String get id => LiveSportsHost.listSourceId;
+  String get id => LiveScheduleKit.listSourceId;
 
   @override
   String? get hubPluginId => null;

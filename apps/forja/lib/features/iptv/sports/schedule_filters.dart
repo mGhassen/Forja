@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/host/live_sports/live_prefs.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_window.dart';
+import 'package:forja/features/iptv/sports/live_prefs.dart';
+import 'package:forja/features/iptv/sports/live_schedule_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Catalog / sport / schedule-window filters for Live Sports kit browse.
@@ -131,10 +131,9 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
   }
 }
 
-/// Shared TV focus row ids for Live Sports browse chrome (RFC-073 A07).
-/// Zone ids only — not pack nav tab ids.
-abstract final class LiveSportsTvRows {
-  LiveSportsTvRows._();
+/// Shared TV focus row ids for schedule browse chrome.
+abstract final class ScheduleTvFocus {
+  ScheduleTvFocus._();
 
   static const focusZone = 'live_sports';
   static const topBar = 'live-top-bar';

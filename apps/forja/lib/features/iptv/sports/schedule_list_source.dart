@@ -1,13 +1,13 @@
-import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
-import 'package:forja/shared/host/live_sports/live_sports_host.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_window.dart';
+import 'package:forja/features/iptv/sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
+import 'package:forja/features/iptv/sports/live_schedule_window.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Feature schedule source ids (opaque to kit).
 abstract final class LiveSportsListSources {
   LiveSportsListSources._();
 
-  static const liveSchedule = LiveSportsHost.listSourceId;
+  static const liveSchedule = LiveScheduleKit.listSourceId;
 
   static LiveScheduleSource? resolve(String sourceId) {
     if (sourceId == liveSchedule) return const LiveScheduleListSource();

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/live_sports/live_prefs.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_catalog_source.dart';
-import 'package:forja/shared/host/live_sports/live_sports_host.dart';
-import 'package:forja/shared/host/live_sports/schedule_list_source.dart';
+import 'package:forja/features/iptv/sports/live_prefs.dart';
+import 'package:forja/features/iptv/sports/live_schedule_catalog_source.dart';
+import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
+import 'package:forja/features/iptv/sports/schedule_list_source.dart';
 import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
@@ -10,8 +10,8 @@ import 'package:forja/shared/foundation/protocol/protocol.dart';
 void main() {
   setUp(() {
     HostListRegistry.debugReset();
-    LiveSportsHost.debugReset();
-    LiveSportsHost.ensureRegistered();
+    LiveScheduleKit.debugReset();
+    LiveScheduleKit.ensureRegistered();
   });
 
   group('Live schedule kit.list source', () {
@@ -35,7 +35,7 @@ void main() {
         KitTypes.treeContains(
           layout,
           slot: KitTypes.list,
-          listSource: LiveSportsHost.listSourceId,
+          listSource: LiveScheduleKit.listSourceId,
         ),
         isTrue,
       );
@@ -44,7 +44,7 @@ void main() {
       expect(source, isNotNull);
       expect(source, same(LiveScheduleCatalogSource.instance));
       expect(source!.wantsHostBody, isFalse);
-      expect(source.id, LiveSportsHost.listSourceId);
+      expect(source.id, LiveScheduleKit.listSourceId);
       expect(
         LiveSportsListSources.resolve(LiveSportsListSources.liveSchedule),
         isNotNull,

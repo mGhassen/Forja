@@ -2,8 +2,8 @@
 ///
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
 /// Services domains: `meta/` · `registry/` · `nav/` · `pack/` · `follow/` · `watch/`.
-/// Product hub tabs are pack-owned. Live Sports host glue lives under
-/// `shared/host/live_sports/` (not here).
+/// Product hub tabs are pack-owned. Live schedule / IPTV sports glue lives under
+/// `features/iptv/sports/` (RFC-091) — not foundation.
 library;
 
 export 'primitives/primitives.dart';

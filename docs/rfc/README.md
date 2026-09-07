@@ -112,6 +112,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [088-[fixed]-…](fixed/088-[fixed]-my-list-pack-only.md) | My List pack-only (no host feature root) | v1.4 | fixed | **Complete** · **3 / 3** · **5 / 5** | — |
 | [089-[fixed]-…](fixed/089-[fixed]-pack-addon-settings.md) | Pack-contributed Addon settings | v1.4 | fixed | **Complete** · **5 / 5** · **8 / 8** + **5 / 5** Setup | — |
 | [090-[fixed]-…](fixed/090-[fixed]-live-sports-host-outside-foundation.md) | Live Sports host outside foundation | v1.4 | fixed | **Complete** · **2 / 2** · **4 / 4** | — |
+| [091-[fixed]-…](fixed/091-[fixed]-live-sports-explode-host-to-packs.md) | Explode Live Sports host → packs MetaRuntime | v1.4 | fixed | **Complete** · **4 / 4** · **12 / 12** | — |
 
 ## Related
 

@@ -36,11 +36,11 @@ import '../../components/meta/meta_movie.dart';
 import '../../components/rows/kit_row_prefetch.dart';
 import '../../components/rows/kit_section.dart';
 import '../../protocol/filter.dart';
-import '../../services/plugin_nav.dart';
+import '../../services/nav/plugin_nav.dart';
 import '../../protocol/protocol.dart';
-import '../../services/runtime.dart';
+import '../../services/meta/runtime.dart';
 import '../../components/chrome/chrome_filters.dart';
-import '../../services/host_list_registry.dart';
+import '../../services/registry/host_list_registry.dart';
 import '../../components/layout/kit_list_source.dart';
 import 'kit_open.dart';
 

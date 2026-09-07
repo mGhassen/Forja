@@ -6,22 +6,21 @@ import 'package:forja/shared/foundation/services/registry/host_list_registry.dar
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/registry/meta_surface_open.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/host/live_sports/live_catalog_sheet.dart';
-import 'package:forja/shared/host/live_sports/live_play_kit.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_catalog_source.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_sheet.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_window.dart';
-import 'package:forja/shared/host/live_sports/live_sports_streams_panel_host.dart';
-import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
-import 'package:forja/shared/host/live_sports/schedule_filters.dart';
+import 'package:forja/features/iptv/sports/live_catalog_sheet.dart';
+import 'package:forja/features/iptv/sports/live_play_kit.dart';
+import 'package:forja/features/iptv/sports/live_schedule_catalog_source.dart';
+import 'package:forja/features/iptv/sports/live_schedule_sheet.dart';
+import 'package:forja/features/iptv/sports/live_schedule_window.dart';
+import 'package:forja/features/iptv/sports/live_sports_streams_panel_host.dart';
+import 'package:forja/features/iptv/sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/sports/schedule_filters.dart';
 
-/// Live Sports host services — list source + streams panel + kit hooks.
+/// Kit boot registration for opaque `live_schedule` + streams panel.
 ///
-/// Packs set `kit.list { source: "live_schedule" }`. Host never binds a
-/// shipped hub plugin id or pack nav tab id. Lives under `shared/host/` —
-/// not foundation (RFC-090).
-abstract final class LiveSportsHost {
-  LiveSportsHost._();
+/// Packs set `kit.list { source: "live_schedule" }`. Lives under
+/// `features/iptv/sports/` (RFC-091) — not `shared/host/` / foundation.
+abstract final class LiveScheduleKit {
+  LiveScheduleKit._();
 
   /// Host service id for [HostListRegistry] / pack `source`.
   static const listSourceId = 'live_schedule';

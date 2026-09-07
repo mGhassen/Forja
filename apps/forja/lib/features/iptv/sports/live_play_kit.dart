@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/host/live_sports/live_sports_host.dart';
+import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Play / details entry for Live Sports meta (`open.surface: live`).
@@ -27,7 +27,7 @@ abstract final class LivePlayKit {
   }
 
   static Future<void> _requestLiveTab() async {
-    final tab = await LiveSportsHost.resolveTabId();
+    final tab = await LiveScheduleKit.resolveTabId();
     if (tab == null || tab.isEmpty) return;
     ShellBus.requestTab.value = tab;
   }

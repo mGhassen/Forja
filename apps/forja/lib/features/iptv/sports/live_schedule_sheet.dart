@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/host/live_sports/live_catalog_sheet.dart';
-import 'package:forja/shared/host/live_sports/live_schedule_window.dart';
+import 'package:forja/features/iptv/sports/live_catalog_sheet.dart';
+import 'package:forja/features/iptv/sports/live_schedule_window.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 

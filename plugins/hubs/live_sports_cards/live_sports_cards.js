@@ -1,5 +1,5 @@
-// Live Sports hub — cards + details page skin.
-// Same opaque `live_schedule` source; different kit composition.
+// Live Sports Cards hub — landscape cards + details skin.
+// Same MetaRuntime feed contract as live_sports (scheduleItems).
 
 function liveSportsCatalogActions() {
   return [
@@ -16,7 +16,6 @@ function liveSportsCatalogActions() {
       id: 'horizon',
       label: 'Schedule',
       icon: 'schedule',
-      // Host owns Status × Horizon sheet; token is `status|horizon`.
       default: 'both|24h',
       items: [
         { id: 'both|24h', label: '24h' },
@@ -64,17 +63,36 @@ function liveSportsCardsLayout() {
   };
 }
 
+function liveSportsFeedItems(params) {
+  var raw = params && params.scheduleItems;
+  if (!Array.isArray(raw)) return [];
+  var out = [];
+  for (var i = 0; i < raw.length; i++) {
+    var row = raw[i];
+    if (!row || typeof row !== 'object') continue;
+    out.push(row);
+  }
+  return out;
+}
+
 function extract(ctx) {
   var action = hubAction(ctx);
+  var params = hubParams(ctx);
   if (action === 'layout') {
     return hubOk('layout', liveSportsCardsLayout(), {
       maxAge: 3600,
       swr: 86400,
     });
   }
+  if (action === 'feed' || action === 'rail') {
+    return hubItems(action, liveSportsFeedItems(params), {
+      maxAge: 60,
+      swr: 300,
+    });
+  }
   return hubFail(
     action,
     'INVALID_ACTION',
-    'live-sports-cards hub exposes layout for the Live Sports Cards tab',
+    'live-sports-cards hub: layout + feed/rail only',
   );
 }

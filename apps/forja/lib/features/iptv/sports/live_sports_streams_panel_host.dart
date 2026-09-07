@@ -3,16 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/host/live_sports/live_match_details_page.dart';
-import 'package:forja/shared/host/live_sports/live_sports_host.dart';
+import 'package:forja/features/iptv/sports/iptv_sports_match.dart';
+import 'package:forja/features/iptv/sports/live_match_details_page.dart';
+import 'package:forja/features/iptv/sports/live_provider_streams.dart';
+import 'package:forja/features/iptv/sports/live_schedule_kit.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/host/live_sports/match_streams.dart';
 
-/// Thin registry host — wires [KitSourcesPanel] to [MatchStreams] only.
-/// Layout composition (list+panel vs cards+details) belongs in pack JS + kit.
+/// Thin registry host — Providers via live resolve packs; Live TV via
+/// [IptvSportsMatchService] (RFC-091).
 final class LiveSportsStreamsPanelHost implements KitPanelHost {
   const LiveSportsStreamsPanelHost();
 
@@ -22,7 +24,7 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
   static const liveTvTab = 'live_tv';
 
   @override
-  String get listSourceId => LiveSportsHost.listSourceId;
+  String get listSourceId => LiveScheduleKit.listSourceId;
 
   @override
   Widget? buildDetailsPage({
@@ -60,8 +62,10 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
     IptvLazyUrlHealthProbe? healthProbe,
   }) async {
     final sources = tabId == liveTvTab
-        ? await MatchStreams.loadIptvChannels(legacyRow)
-        : await MatchStreams.loadProviders(legacyRow);
+        ? await IptvSportsMatchService.resolveStreams(
+            MatchEvent.fromLegacyRow(legacyRow),
+          )
+        : await LiveProviderStreams.loadProviders(legacyRow);
     return [
       for (var i = 0; i < sources.length; i++)
         _rowForSource(
@@ -139,7 +143,7 @@ final class LiveSportsStreamsPanelHost implements KitPanelHost {
   }) async {
     final payload = kitRow.payload;
     if (payload is! _PlayPayload) return;
-    await MatchStreams.play(
+    await LiveProviderStreams.play(
       context,
       sources: payload.sources,
       picked: payload.picked,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
+import 'package:forja/features/iptv/sports/live_stream_engine.dart';
 
 void main() {
   group('liveEnginePreferDirectPlayback', () {
