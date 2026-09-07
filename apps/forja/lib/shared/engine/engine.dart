@@ -22,6 +22,6 @@ export 'runtime/runtime.dart';
 export 'runtime/service.dart';
 
 /// Catalog hub wire types — `runCatalog` returns these envelopes. Cache /
-/// runtime / shell live behind `shared/catalog/catalog.dart` so the engine
+/// runtime / shell live behind `shared/foundation/catalog.dart` so the engine
 /// barrel stays widget-free.
-export '../catalog/protocol/protocol.dart';
+export '../foundation/protocol/protocol.dart';

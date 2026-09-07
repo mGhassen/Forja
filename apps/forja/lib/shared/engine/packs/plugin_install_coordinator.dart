@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';

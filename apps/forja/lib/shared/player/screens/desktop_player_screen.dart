@@ -24,7 +24,7 @@ import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
@@ -57,7 +57,7 @@ import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart'
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_stats_card.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
@@ -69,7 +69,7 @@ import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
+import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -110,9 +110,9 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? providers;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
-  final List<PlayerHubEpisode>? hubEpisodes;
+  final List<PlayerKitEpisode>? episodes;
   final num? hubEpisodeNumber;
-  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)?
@@ -150,7 +150,7 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
     this.providers,
     this.onNextEpisode,
     this.hasNextEpisode = false,
-    this.hubEpisodes,
+    this.episodes,
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,

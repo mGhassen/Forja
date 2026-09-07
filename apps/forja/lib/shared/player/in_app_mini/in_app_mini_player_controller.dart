@@ -15,11 +15,14 @@ class InAppMiniPlayerController {
       InAppMiniPlayerController._();
 
   static const Size defaultSize = Size(320, 180);
+  static const double aspectRatio = 16 / 9;
+  static const double minWidth = 240;
+  static const double maxWidth = 720;
 
   /// True while a VOD or IPTV player is demoted to the in-app corner.
   final ValueNotifier<bool> active = ValueNotifier<bool>(false);
 
-  /// Corner size (16:9).
+  /// Corner size (16:9). Drag the top-left corner to resize (no visible grip).
   final ValueNotifier<Size> size = ValueNotifier<Size>(defaultSize);
 
   /// Session callbacks bound by the living player screen.
@@ -52,6 +55,12 @@ class InAppMiniPlayerController {
       }
       _session = null;
     }
+  }
+
+  /// Clamp width and lock 16:9.
+  void setSizeWidth(double width) {
+    final w = width.clamp(minWidth, maxWidth);
+    size.value = Size(w, w / aspectRatio);
   }
 
   /// Demote without pausing. Caller must already be the full player and setting on.

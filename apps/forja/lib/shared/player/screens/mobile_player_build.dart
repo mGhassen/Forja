@@ -351,10 +351,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   order: const NumericFocusOrder(1),
                   child: PlayerTopBar(
                     title: _s._displayTitle,
-                    season: widget.hubEpisodes != null
+                    season: widget.episodes != null
                         ? null
                         : widget.selectedSeason,
-                    episode: widget.hubEpisodes != null
+                    episode: widget.episodes != null
                         ? null
                         : widget.selectedEpisode,
                     episodeLine: _s._hubEpisodeLine,
@@ -419,10 +419,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 )
               : PlayerTopBar(
                   title: _s._displayTitle,
-                  season: widget.hubEpisodes != null
+                  season: widget.episodes != null
                       ? null
                       : widget.selectedSeason,
-                  episode: widget.hubEpisodes != null
+                  episode: widget.episodes != null
                       ? null
                       : widget.selectedEpisode,
                   episodeLine: _s._hubEpisodeLine,
@@ -485,10 +485,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       alignment: Alignment.centerLeft,
                       child: PlayerPausedHero(
                         movie: _s._displayMovie!,
-                        season: widget.hubEpisodes != null
+                        season: widget.episodes != null
                             ? null
                             : widget.selectedSeason,
-                        episode: widget.hubEpisodes != null
+                        episode: widget.episodes != null
                             ? null
                             : widget.selectedEpisode,
                         episodeLine: _s._hubEpisodeLine,

@@ -1,29 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/features/live_sports/catalog/live_match_details_page.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_panel_host.dart';
-import 'package:forja/shared/catalog/kit/panel/catalog_kit_sources_panel.dart';
-import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/live/match/match_streams.dart';
+import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
+import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/live/match_streams.dart';
 
-/// Thin registry host — wires [CatalogKitSourcesPanel] to [MatchStreams] only.
+/// Thin registry host — wires [KitSourcesPanel] to [MatchStreams] only.
 /// Layout composition (list+panel vs cards+details) belongs in pack JS + kit.
-final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {
+final class LiveSportsStreamsPanelHost implements KitPanelHost {
   const LiveSportsStreamsPanelHost();
 
   static const instance = LiveSportsStreamsPanelHost();
 
-  static const _providersTab = 'providers';
-  static const _liveTvTab = 'live_tv';
+  static const providersTab = 'providers';
+  static const liveTvTab = 'live_tv';
 
   @override
   String get listSourceId => LiveSportsHost.listSourceId;
 
   @override
+  Widget? buildDetailsPage({
+    required BuildContext context,
+    required KitListEntry entry,
+    required List<Map<String, dynamic>> layoutWidgets,
+    required int refreshEpoch,
+  }) {
+    return LiveMatchDetailsPage(
+      entry: entry,
+      refreshEpoch: refreshEpoch,
+    );
+  }
+
+  @override
   Widget buildSidePanel({
     required BuildContext context,
-    required CatalogKitListEntry entry,
+    required KitListEntry entry,
     required List<Map<String, dynamic>> layoutWidgets,
     required bool shellTabVisible,
     required int refreshEpoch,
@@ -45,33 +59,33 @@ final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {
             left: BorderSide(color: ForjaShellColors.borderSubtle),
           ),
         ),
-        child: CatalogKitSourcesPanel(
+        child: KitSourcesPanel(
           key: ValueKey('live-panel-${entry.meta.id}'),
           title: title.isEmpty ? 'Streams' : title,
           subtitle: subtitle.isEmpty ? null : subtitle,
           tabs: const [
-            CatalogKitSourcesTab(id: _providersTab, label: 'Providers'),
-            CatalogKitSourcesTab(id: _liveTvTab, label: 'Live TV'),
+            KitSourcesTab(id: providersTab, label: 'Providers'),
+            KitSourcesTab(id: liveTvTab, label: 'Live TV'),
           ],
-          initialTabId: _providersTab,
+          initialTabId: providersTab,
           onClosed: onClosed,
-          loadTab: (tabId) => _loadTab(row, tabId),
-          onPlayRow: (kitRow) => _playRow(context, kitRow, title: title),
+          loadTab: (tabId) => loadTab(row, tabId),
+          onPlayRow: (kitRow) => playRow(context, kitRow, title: title),
         ),
       ),
     );
   }
 
-  static Future<List<CatalogKitSourcesRow>> _loadTab(
+  static Future<List<KitSourcesRow>> loadTab(
     Map<String, dynamic> legacyRow,
     String tabId,
   ) async {
-    final sources = tabId == _liveTvTab
+    final sources = tabId == liveTvTab
         ? await MatchStreams.loadIptvChannels(legacyRow)
         : await MatchStreams.loadProviders(legacyRow);
     return [
       for (var i = 0; i < sources.length; i++)
-        CatalogKitSourcesRow(
+        KitSourcesRow(
           id: '${tabId}_$i',
           title: sources[i].pickerTitle,
           subtitle: sources[i].pickerSubtitle ?? sources[i].liveProviderBadge,
@@ -86,9 +100,9 @@ final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {
     ];
   }
 
-  static Future<void> _playRow(
+  static Future<void> playRow(
     BuildContext context,
-    CatalogKitSourcesRow kitRow, {
+    KitSourcesRow kitRow, {
     required String title,
   }) async {
     final payload = kitRow.payload;

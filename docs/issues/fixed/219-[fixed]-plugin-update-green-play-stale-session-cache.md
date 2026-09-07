@@ -38,7 +38,7 @@
 
 ## Summary
 
-After a plugin pack update, hub `CatalogCache` was wiped but **Sources session RAM** kept `fetchedPluginIds` (including empties) for ~30 minutes. Green Play seeded from that cache, treated empty fetches as terminal, and showed **“None of the Forja plugins returned a working stream”** without re-running the new pack scripts. The green wifi icon on that screen is the resolve-failure badge (not a separate control).
+After a plugin pack update, hub `MetaCache` was wiped but **Sources session RAM** kept `fetchedPluginIds` (including empties) for ~30 minutes. Green Play seeded from that cache, treated empty fetches as terminal, and showed **“None of the Forja plugins returned a working stream”** without re-running the new pack scripts. The green wifi icon on that screen is the resolve-failure badge (not a separate control).
 
 **Root fix:** invalidate Sources session + player extract caches whenever a pack installs, removes, or a local checkout script body changes; green Play also strips empty fetched markers before the race so in-session empties can retry.
 

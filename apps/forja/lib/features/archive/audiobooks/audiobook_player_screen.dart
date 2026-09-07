@@ -6,7 +6,7 @@ import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart
 import 'package:forja/features/archive/audio/audiobook_player_service.dart';
 import 'package:forja/features/archive/audio/audiobook_download_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 class AudiobookPlayerScreen extends StatefulWidget {
   final Audiobook audiobook;

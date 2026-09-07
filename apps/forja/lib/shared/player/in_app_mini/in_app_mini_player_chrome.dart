@@ -8,7 +8,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 /// Corner chrome for in-Forja mini player: Play/Pause, Expand, Close.
 ///
 /// Auto-hides after idle (same 3s as desktop full-player chrome). Hover, tap,
-/// or D-pad focus on the mini reveals it again.
+/// or D-pad focus on the mini reveals it again. Top-left drag still resizes
+/// (no visible grip icon).
 ///
 /// Never calls OS/window PiP ([PipService]).
 class InAppMiniPlayerChrome extends StatefulWidget {
@@ -46,6 +47,7 @@ class InAppMiniPlayerChrome extends StatefulWidget {
 class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
   bool _chromeVisible = true;
   Timer? _hideTimer;
+  bool _resizing = false;
 
   bool get _anyMiniFocused =>
       widget.rootFocus.hasFocus ||
@@ -110,16 +112,16 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
     if (!_chromeVisible) {
       setState(() => _chromeVisible = true);
     }
-    if (!_anyMiniFocused) {
+    if (!_anyMiniFocused && !_resizing) {
       _scheduleHide();
     }
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    if (_anyMiniFocused) return;
+    if (_anyMiniFocused || _resizing) return;
     _hideTimer = Timer(InAppMiniPlayerChrome.hideAfter, () {
-      if (!mounted || _anyMiniFocused) return;
+      if (!mounted || _anyMiniFocused || _resizing) return;
       setState(() => _chromeVisible = false);
     });
   }
@@ -159,7 +161,7 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
             onEnter: (_) => _reveal(),
             onHover: (_) => _reveal(),
             onExit: (_) {
-              if (!_anyMiniFocused) _scheduleHide();
+              if (!_anyMiniFocused && !_resizing) _scheduleHide();
             },
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -167,6 +169,24 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
+                  // Invisible top-left drag hit — no grip icon; resize cursor only.
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: IgnorePointer(
+                      ignoring: !_chromeVisible,
+                      child: _MiniResizeHit(
+                        onDragStart: () {
+                          _resizing = true;
+                          _reveal();
+                        },
+                        onDragEnd: () {
+                          _resizing = false;
+                          _scheduleHide();
+                        },
+                      ),
+                    ),
+                  ),
                   Positioned(
                     right: 4,
                     top: 4,
@@ -238,6 +258,59 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Invisible top-left drag hit — mini is anchored bottom-right, so this corner grows it.
+class _MiniResizeHit extends StatefulWidget {
+  const _MiniResizeHit({
+    this.onDragStart,
+    this.onDragEnd,
+  });
+
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
+
+  @override
+  State<_MiniResizeHit> createState() => _MiniResizeHitState();
+}
+
+class _MiniResizeHitState extends State<_MiniResizeHit> {
+  double? _startWidth;
+  double? _startDx;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeUpLeftDownRight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (d) {
+          widget.onDragStart?.call();
+          _startWidth = InAppMiniPlayerController.instance.size.value.width;
+          _startDx = d.globalPosition.dx;
+        },
+        onPanUpdate: (d) {
+          final startW = _startWidth;
+          final startDx = _startDx;
+          if (startW == null || startDx == null) return;
+          // Drag left → wider (bottom-right anchored).
+          final delta = startDx - d.globalPosition.dx;
+          InAppMiniPlayerController.instance.setSizeWidth(startW + delta);
+        },
+        onPanEnd: (_) {
+          _startWidth = null;
+          _startDx = null;
+          widget.onDragEnd?.call();
+        },
+        onPanCancel: () {
+          _startWidth = null;
+          _startDx = null;
+          widget.onDragEnd?.call();
+        },
+        child: const SizedBox(width: 28, height: 28),
       ),
     );
   }

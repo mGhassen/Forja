@@ -265,7 +265,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     final isTv = widget.movie?.mediaType == 'tv';
     final hasEpisodePicker =
         (isTv && widget.movie != null) ||
-        (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
+        (widget.episodes != null && widget.episodes!.isNotEmpty);
     final hasStreamPicker = _s._hasStreamPicker;
     final hasTorrentSources = _s._usesCatalogSourcesPanel;
     final catalogSourceLines =
@@ -300,8 +300,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           right: 0,
           child: PlayerTopBar(
             title: _s._displayTitle,
-            season: widget.hubEpisodes != null ? null : widget.selectedSeason,
-            episode: widget.hubEpisodes != null ? null : widget.selectedEpisode,
+            season: widget.episodes != null ? null : widget.selectedSeason,
+            episode: widget.episodes != null ? null : widget.selectedEpisode,
             episodeLine: _s._hubEpisodeLine,
             statusActions: _s._hasError
                 ? PlayerTopStatusActions(
@@ -372,10 +372,10 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       alignment: Alignment.centerLeft,
                       child: PlayerPausedHero(
                         movie: _s._displayMovie!,
-                        season: widget.hubEpisodes != null
+                        season: widget.episodes != null
                             ? null
                             : widget.selectedSeason,
-                        episode: widget.hubEpisodes != null
+                        episode: widget.episodes != null
                             ? null
                             : widget.selectedEpisode,
                         episodeLine: _s._hubEpisodeLine,

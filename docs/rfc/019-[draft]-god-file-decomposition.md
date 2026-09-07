@@ -44,7 +44,7 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 | [`iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Phase E done — routing orchestrator; 7 `iptv_pt_widgets_*.dart` part files |
 | [`iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart) | 288 | Player orchestrator; `iptv_pt_player_engine.dart`, `iptv_pt_player_ui.dart` mixins |
 | [`iptv_controller.dart`](../../apps/forja/lib/features/iptv/controller/iptv_controller.dart) | 477 | ChangeNotifier orchestrator; portal/browser/live/channels/nav mixins + models part |
-| [`live_sports_streams_page.dart`](../../apps/forja/lib/shared/live/panel/live_sports_streams_page.dart) | — | Live Sports streams panel (RFC-073) |
+| [`live_sports_streams_page.dart`](../../apps/forja/lib/shared/foundation/services/live/panel/live_sports_streams_page.dart) | — | Live Sports streams panel (RFC-073) |
 | [`search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator; `search_search.dart`, `search_tv.dart`, `search_build.dart`, `search_widgets.dart` |
 | [`anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator; `anime_screen_feed.dart`, `anime_screen_build.dart`, `anime_widgets.dart` |
 | [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/screens/mobile_player_screen.dart) | 387 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources×4/episodes/build mixins |

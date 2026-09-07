@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
@@ -849,7 +849,7 @@ abstract final class ShellTvFocusCoordinator {
 
   // --- Row registry ---
 
-  /// Last [TvCatalogRow] (or caller) that registered each row. PageView hero
+  /// Last [TvKitRow] (or caller) that registered each row. PageView hero
   /// slides remount the same rowId in one frame — a deactivating sibling must
   /// not wipe the active slide's registration.
   static final Map<String, Object> _rowOwners = {};
@@ -1654,7 +1654,7 @@ void shellTvEnsureVisibleItem(
 /// top) — mid-screen rows stay put.
 void shellTvRevealCatalogRowFocus(
   BuildContext context, {
-  double bottomInsetFraction = ShellTokens.tvCatalogRowFocusBottomInsetFraction,
+  double bottomInsetFraction = ShellTokens.tvKitRowFocusBottomInsetFraction,
   double extraBottomPx = 0,
   double extraTopPx = 0,
 }) {

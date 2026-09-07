@@ -2,7 +2,7 @@
 
 **Status:** draft  
 **Depends on:** RFC-023 (app shell), RFC-025 (flat cinematic shell)  
-**Area:** `apps/forja/lib/shared/design/`, `apps/forja/lib/shell/adapters/`
+**Area:** `apps/forja/lib/shared/foundation/primitives/`, `apps/forja/lib/shell/adapters/`
 
 ## Status at a glance
 

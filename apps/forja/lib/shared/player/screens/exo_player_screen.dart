@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
@@ -17,7 +17,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -76,7 +76,7 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
     this.externalSubtitles,
     this.onNextEpisode,
     this.hasNextEpisode = false,
-    this.hubEpisodes,
+    this.episodes,
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
@@ -106,9 +106,9 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>>? externalSubtitles;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
-  final List<PlayerHubEpisode>? hubEpisodes;
+  final List<PlayerKitEpisode>? episodes;
   final num? hubEpisodeNumber;
-  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
   final Map<String, dynamic>? providers;
@@ -1011,13 +1011,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
-    if (widget.hubEpisodes != null &&
-        widget.hubEpisodes!.isNotEmpty &&
+    if (widget.episodes != null &&
+        widget.episodes!.isNotEmpty &&
         widget.onHubEpisodeSelected != null) {
       PlayerPopupPanel.dismiss();
-      await PlayerHubEpisodePanel.show(
+      await PlayerKitEpisodePanel.show(
         context: context,
-        episodes: widget.hubEpisodes!,
+        episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
           setState(() => _loadingNextEp = true);
@@ -1076,7 +1076,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           episode: episode,
           stremioId: widget.stremioId,
           session: widget.enginePlaySession,
-          hubEpisodes: widget.hubEpisodes,
+          episodes: widget.episodes,
         );
       } finally {
         if (mounted) {
@@ -1116,7 +1116,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           magnetLink: widget.magnetLink,
           stremioId: widget.stremioId,
           stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-          torrentEp: catalogOpenTorrentEp(
+          torrentEp: metaOpenTorrentEp(
             widget.enginePlaySession?.effectiveOpen,
           ),
         );
@@ -1155,8 +1155,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           providers: catalog ? null : widget.providers,
           sources: catalog ? null : resolved.sources,
           enginePlaySession: widget.enginePlaySession,
-          hubEpisodes: widget.hubEpisodes,
-          hubEpisodeNumber: widget.hubEpisodes != null ? episode : null,
+          episodes: widget.episodes,
+          hubEpisodeNumber: widget.episodes != null ? episode : null,
           onNextEpisode: widget.onNextEpisode,
           hasNextEpisode: widget.hasNextEpisode,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
@@ -1508,7 +1508,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool get _hasEpisodePicker {
     final isTv = widget.movie?.mediaType == 'tv';
     return (isTv && widget.movie != null) ||
-        (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
+        (widget.episodes != null && widget.episodes!.isNotEmpty);
   }
 
   @override
@@ -1604,10 +1604,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   order: const NumericFocusOrder(1),
                   child: PlayerTopBar(
                     title: widget.title,
-                    season: widget.hubEpisodes != null
+                    season: widget.episodes != null
                         ? null
                         : widget.selectedSeason,
-                    episode: widget.hubEpisodes != null
+                    episode: widget.episodes != null
                         ? null
                         : widget.selectedEpisode,
                     episodeLine: _episodeLine,
@@ -1669,10 +1669,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 )
               : PlayerTopBar(
                   title: widget.title,
-                  season: widget.hubEpisodes != null
+                  season: widget.episodes != null
                       ? null
                       : widget.selectedSeason,
-                  episode: widget.hubEpisodes != null
+                  episode: widget.episodes != null
                       ? null
                       : widget.selectedEpisode,
                   episodeLine: _episodeLine,
@@ -1719,10 +1719,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       alignment: Alignment.centerLeft,
                       child: PlayerPausedHero(
                         movie: widget.movie!,
-                        season: widget.hubEpisodes != null
+                        season: widget.episodes != null
                             ? null
                             : widget.selectedSeason,
-                        episode: widget.hubEpisodes != null
+                        episode: widget.episodes != null
                             ? null
                             : widget.selectedEpisode,
                         episodeLine: _episodeLine,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/live/embed/embed_webview_proxy.dart';
+import 'package:forja/shared/foundation/lib/embed_webview_proxy.dart';
 
 void main() {
   group('liveEmbedRewriteM3u8Absolute', () {

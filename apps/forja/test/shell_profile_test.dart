@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 void main() {
   Future<void> pumpProfile(

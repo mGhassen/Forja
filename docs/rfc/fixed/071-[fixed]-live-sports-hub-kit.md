@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-065](../065-[open]-live-forja-scrapers.md) · [RFC-062](../062-[open]-native-iptv-sports-matching.md)  
-**Area:** `shared/catalog/kit/sources/live_schedule/`, `plugins/hubs/live_sports/`, `CatalogShell`
+**Area:** `shared/foundation/components/sources/live_schedule/`, `plugins/hubs/live_sports/`, `KitShell`
 
 ## Status at a glance
 
@@ -20,14 +20,14 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R71-C01 | `kit.live.*` layout types + protocol live meta fields | ✅ |
-| 2 | R71-C02 | `shared/catalog/kit/live/` chrome / body / data / play modules | ✅ |
+| 2 | R71-C02 | `shared/foundation/components/live/` chrome / body / data / play modules | ✅ |
 | 3 | R71-C03 | `LiveModeRegistry` + `LiveScheduleSource` (Forja Live / Forja Sports / Stremio) | ✅ |
 | 4 | R71-C04 | `plugins/hubs/live_sports/` pack (`nav` + `layout`) | ✅ |
-| 5 | R71-C05 | `CatalogShell` wiring + nav migration off `coreShellNavIds` | ✅ |
+| 5 | R71-C05 | `KitShell` wiring + nav migration off `coreShellNavIds` | ✅ |
 | 6 | R71-C06 | `open.surface: live` + LivePlayKit; retire `features/live_matches/` | ✅ |
 | 7 | R71-C07 | Domain under `kit/sources/live_schedule/` (not product-named kit types) | ✅ |
 | 8 | R71-C08 | Pack layout uses only generic `kit.stack` / `kit.menu` / `kit.list` | ✅ |
-| 9 | R71-C09 | Remove `kit.live.*` from `CatalogKitTypes` + CatalogShell | ✅ |
+| 9 | R71-C09 | Remove `kit.live.*` from `KitTypes` + KitShell | ✅ |
 
 ---
 
@@ -58,10 +58,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R71-A17 | No `kit.live.*` types in host `CatalogKitTypes` / CatalogShell | ✅ |
+| 1 | R71-A17 | No `kit.live.*` types in host `KitTypes` / KitShell | ✅ |
 | 2 | R71-A18 | Live domain lives under `kit/sources/live_schedule/` (My List pattern) | ✅ |
 | 3 | R71-A19 | Pack layout = `kit.stack` + `kit.list { source: live_schedule }` (+ optional `kit.menu`) | ✅ |
-| 4 | R71-A20 | CatalogShell mounts live host when layout has `kit.list` + `source: live_schedule` | ✅ |
+| 4 | R71-A20 | KitShell mounts live host when layout has `kit.list` + `source: live_schedule` | ✅ |
 | 5 | R71-A21 | Host tests assert generic layout + source id — not `kit.live.*` contracts | ✅ |
 
 ---

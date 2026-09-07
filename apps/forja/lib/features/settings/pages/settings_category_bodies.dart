@@ -24,7 +24,7 @@ import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
@@ -34,7 +34,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 
 /// Builds the body for a Settings category (lazy - only when selected / pushed).
 Widget buildSettingsCategoryBody(
@@ -810,7 +810,7 @@ class _SettingsNavigationPageBodyState
                     );
 
                     if (tv && itemCount > 0) {
-                      row = TvCatalogRow(
+                      row = TvKitRow(
                         tabId: 'settings',
                         rowId: rowId,
                         sortOrder: index,

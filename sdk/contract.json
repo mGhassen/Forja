@@ -25,7 +25,7 @@
   },
   "hostParity": {
     "dart": {
-      "catalogProtocol": "apps/forja/lib/shared/catalog/protocol/protocol.dart",
+      "catalogProtocol": "apps/forja/lib/shared/foundation/protocol/protocol.dart",
       "manifestParser": "apps/forja/lib/shared/engine/models/models.dart",
       "manifestValidator": "apps/forja/lib/shared/engine/packs/plugin_contract.dart",
       "vodStreamParser": "packages/rust/lib/src/models/stream_source.dart",
@@ -33,6 +33,6 @@
     }
   },
   "fixtures": {
-    "catalog": "../hubs/fixtures/"
+    "catalog": "fixtures/"
   }
 }

@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/my_list/catalog/my_list_catalog_open.dart';
 import 'package:forja/features/my_list/catalog/my_list_merge.dart';
 import 'package:forja/features/my_list/my_list_host.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/services/runtime.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_list_item.dart';
+import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/foundation/services/runtime.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/lists/providers/external_lists_providers.dart';
 import 'package:forja/shared/lists/providers/my_list_providers.dart';
 
@@ -74,7 +74,7 @@ Map<String, dynamic> overlayMyListEnrichFields(
     'kisskhId',
     'tmdbId',
     'pluginId',
-    'catalogOpen',
+    'metaOpen',
   ]) {
     final v = current[key];
     if (v != null) out[key] = v;
@@ -135,7 +135,7 @@ Future<List<Map<String, dynamic>>> enrichMyListRowsWithCache(
 
   if (missItems.isNotEmpty) {
     final enrichFn = enrich ??
-        (items) => CatalogRuntime.instance.enrichLegacyListItems(
+        (items) => MetaRuntime.instance.enrichLegacyListItems(
               sourcePluginId: myListHubPluginId,
               items: items,
             );
@@ -195,7 +195,7 @@ class MyListEnrichEpochNotifier extends Notifier<int> {
   }
 }
 
-class MyListCatalogPage implements CatalogKitListPage {
+class MyListCatalogPage implements KitListPage {
   const MyListCatalogPage({
     required this.films,
     required this.tv,
@@ -204,10 +204,10 @@ class MyListCatalogPage implements CatalogKitListPage {
     required this.loadingSimkl,
   });
 
-  final List<CatalogKitListEntry> films;
-  final List<CatalogKitListEntry> tv;
-  final List<CatalogKitListEntry> anime;
-  final List<CatalogKitListEntry> asianDrama;
+  final List<KitListEntry> films;
+  final List<KitListEntry> tv;
+  final List<KitListEntry> anime;
+  final List<KitListEntry> asianDrama;
   final bool loadingSimkl;
 
   @override
@@ -218,7 +218,7 @@ class MyListCatalogPage implements CatalogKitListPage {
   bool get loadingRemote => loadingSimkl;
 
   @override
-  List<CatalogKitListEntry> entriesForKind(String? kind) {
+  List<KitListEntry> entriesForKind(String? kind) {
     if (kind == null) {
       return [...films, ...tv, ...anime, ...asianDrama];
     }
@@ -238,11 +238,11 @@ MyListCatalogPage myListCatalogPageFromRows(
   String status, {
   required bool loadingSimkl,
 }) {
-  final entries = <CatalogKitListEntry>[];
+  final entries = <KitListEntry>[];
   for (final row in enriched) {
-    final meta = catalogMetaFromLegacyListItem(row);
+    final meta = metaItemFromLegacyListItem(row);
     entries.add(
-      CatalogKitListEntry(
+      KitListEntry(
         meta: meta,
         legacyRow: row,
         kind: myListItemKind(row),
@@ -252,10 +252,10 @@ MyListCatalogPage myListCatalogPageFromRows(
     );
   }
 
-  final films = <CatalogKitListEntry>[];
-  final tv = <CatalogKitListEntry>[];
-  final anime = <CatalogKitListEntry>[];
-  final asianDrama = <CatalogKitListEntry>[];
+  final films = <KitListEntry>[];
+  final tv = <KitListEntry>[];
+  final anime = <KitListEntry>[];
+  final asianDrama = <KitListEntry>[];
   for (final entry in entries) {
     switch (entry.kind) {
       case 'anime':
@@ -344,7 +344,7 @@ final myListCatalogProvider =
       );
     });
 
-final class MyListCatalogSource extends CatalogKitListSource {
+final class MyListCatalogSource extends KitListSource {
   const MyListCatalogSource._();
 
   static const instance = MyListCatalogSource._();
@@ -356,7 +356,7 @@ final class MyListCatalogSource extends CatalogKitListSource {
   String? get hubPluginId => myListHubPluginId;
 
   @override
-  AsyncValue<CatalogKitListPage> watchPage(WidgetRef ref, String status) {
+  AsyncValue<KitListPage> watchPage(WidgetRef ref, String status) {
     return ref.watch(myListCatalogProvider(status));
   }
 
@@ -385,14 +385,14 @@ final class MyListCatalogSource extends CatalogKitListSource {
   @override
   Future<void> openEntry(
     BuildContext context,
-    CatalogKitListEntry entry,
+    KitListEntry entry,
   ) =>
       openMyListCatalogEntry(context, entry);
 
   @override
   Widget? buildEntryPin(
     BuildContext context,
-    CatalogKitListEntry entry,
+    KitListEntry entry,
     String tabStatus,
   ) =>
       myListEntryPin(context, entry, tabStatus);

@@ -6,14 +6,14 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_hub_episodes.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+import 'package:forja/shared/foundation/blocks/play/kit_episodes.dart';
+import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/foundation/blocks/play/play_session.dart';
 
-export 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
-import 'package:forja/shared/catalog/kit/play/sources_request_context.dart';
+export 'package:forja/shared/foundation/blocks/play/play_session.dart';
+import 'package:forja/shared/foundation/blocks/play/sources_request_context.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
@@ -46,7 +46,7 @@ bool isEngineSavedProgress(Map<String, dynamic>? progress) =>
 /// Prefer explicit [stremioId], else bag `imdb` from Sources middleware.
 String? stremioIdFromSourcesBag({
   required Movie movie,
-  CatalogPlaySession? session,
+  PlaySession? session,
   String? stremioId,
   int? season,
   int? episode,
@@ -55,8 +55,8 @@ String? stremioIdFromSourcesBag({
   if (explicit != null && explicit.isNotEmpty) return explicit;
   final bag = buildSourcesRequestContext(
     movie: movie,
-    catalogMeta: session?.catalogMeta,
-    catalogOpen: session?.effectiveOpen,
+    meta: session?.meta,
+    open: session?.effectiveOpen,
     season: season,
     episode: episode,
     episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
@@ -78,11 +78,11 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   required int episode,
   String? stremioId,
   EnginePlaySession? session,
-  List<PlayerHubEpisode>? hubEpisodes,
+  List<PlayerKitEpisode>? episodes,
 }) {
   final s = session;
   final extract = engineExtractContext(
-    catalogOpen: s?.effectiveOpen,
+    open: s?.effectiveOpen,
     movie: movie,
     episode: episode,
     episodeVideoId: s?.episodeVideoIdFor(episode),
@@ -103,33 +103,33 @@ Future<void> switchEpisodeViaEngineAutoPlay({
       season: season,
       episode: episode,
     ),
-    loadingSubtitle: s?.hasCatalogContext == true
+    loadingSubtitle: s?.hasMetaContext == true
         ? 'EP $episode'
         : 'Season $season · Episode $episode',
-    catalogPlaySession: s,
-    hubEpisodes: hubEpisodes,
+    playSession: s,
+    episodes: episodes,
     hubEpisodeNumber: episode,
   );
 }
 
-String? engineCategoryForSession(CatalogPlaySession? session, Movie movie) {
+String? engineCategoryForSession(PlaySession? session, Movie movie) {
   if (session?.effectiveOpen != null) {
     return engineExtractContext(
-      catalogOpen: session!.effectiveOpen,
+      open: session!.effectiveOpen,
       movie: movie,
     ).panelCategory;
   }
   return null;
 }
 
-Future<void> Function(PlayerHubEpisode episode)? _hubEngineEpisodePicker({
+Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
   required BuildContext context,
   required Movie movie,
   required EnginePlaySession? session,
-  required List<PlayerHubEpisode>? hubEpisodes,
+  required List<PlayerKitEpisode>? episodes,
   int? season,
 }) {
-  if (session == null || hubEpisodes == null || hubEpisodes.isEmpty) {
+  if (session == null || episodes == null || episodes.isEmpty) {
     return null;
   }
   return (ep) async {
@@ -140,7 +140,7 @@ Future<void> Function(PlayerHubEpisode episode)? _hubEngineEpisodePicker({
       season: season ?? 1,
       episode: ep.number.round(),
       session: session,
-      hubEpisodes: hubEpisodes,
+      episodes: episodes,
     );
   };
 }
@@ -173,9 +173,9 @@ Future<void> runEngineAutoPlay({
   Duration? startPosition,
   String? loadingSubtitle,
   String? stremioId,
-  CatalogPlaySession? catalogPlaySession,
-  @Deprecated('Use catalogPlaySession') CatalogPlaySession? enginePlaySession,
-  List<PlayerHubEpisode>? hubEpisodes,
+  PlaySession? playSession,
+  @Deprecated('Use playSession') PlaySession? enginePlaySession,
+  List<PlayerKitEpisode>? episodes,
   num? hubEpisodeNumber,
 
   /// Resume: re-extract this plugin first (from watch history `sourceId`).
@@ -200,9 +200,9 @@ Future<void> runEngineAutoPlay({
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
-  final session = catalogPlaySession ?? enginePlaySession;
+  final session = playSession ?? enginePlaySession;
   final extract = engineExtractContext(
-    catalogOpen: session?.effectiveOpen,
+    open: session?.effectiveOpen,
     movie: movie,
     episode: episode,
     episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
@@ -211,7 +211,7 @@ Future<void> runEngineAutoPlay({
   final category = extract.panelCategory;
   final resolveType = extract.resolveType;
   final activeSession = session ??
-      CatalogPlaySession(
+      PlaySession(
         malId: malId,
         audioCategory: audioCategory,
       );
@@ -220,9 +220,9 @@ Future<void> runEngineAutoPlay({
     mediaType: movie.mediaType,
     season: season,
     episode: episode,
-    catalogOpen: activeSession.effectiveOpen,
+    open: activeSession.effectiveOpen,
     pluginId: activeSession.pluginId,
-    metaId: activeSession.catalogMeta?.id,
+    metaId: activeSession.meta?.id,
     malId: extract.intVal('malId') ?? malId,
     audioCategory: audioCategory ?? activeSession.audioCategory,
     episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
@@ -490,7 +490,7 @@ Future<void> runEngineAutoPlay({
       if (playAborted() || race.isCompleted) return;
       if (!pluginIds.contains(pluginId)) return;
 
-      final rows = sortEngineCatalogStreamRows(pluginStreams);
+      final rows = sortEngineMetaStreamRows(pluginStreams);
       if (rows.isEmpty) {
         statusById[pluginId] = StreamProviderProbeStatus.failed;
         publishProbes();
@@ -551,8 +551,8 @@ Future<void> runEngineAutoPlay({
           : null;
       final src = buildSourcesRequestContext(
         movie: movie,
-        catalogMeta: activeSession.catalogMeta,
-        catalogOpen: activeSession.effectiveOpen,
+        meta: activeSession.meta,
+        open: activeSession.effectiveOpen,
         season: season,
         episode: episode,
         episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
@@ -569,7 +569,7 @@ Future<void> runEngineAutoPlay({
           title: movie.title,
           year: year,
           movie: movie,
-          catalogOpen: activeSession.effectiveOpen,
+          open: activeSession.effectiveOpen,
           episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
           audioCategory: audioCategory ?? activeSession.audioCategory,
           allowHostFallback: false,
@@ -704,7 +704,7 @@ Future<void> runEngineAutoPlay({
           episode: episode,
         ),
         enginePlaySession: activeSession,
-        hubEpisodes: hubEpisodes,
+        episodes: episodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
         loadingDialogContext: loadingSession.dialogContext,
         fadeOutNotifier: fadeOutNotifier,
@@ -751,7 +751,7 @@ Future<void> runEngineAutoPlay({
           episode: episode,
         ),
         enginePlaySession: activeSession,
-        hubEpisodes: hubEpisodes,
+        episodes: episodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
         loadingSession: loadingSession,
         isAborted: playAborted,
@@ -788,8 +788,8 @@ Future<void> runEngineAutoPlay({
         stremioId: stremioId,
         preferredPluginId: preferredPluginId,
         savedStreamUrl: savedStreamUrl,
-        catalogPlaySession: activeSession,
-        hubEpisodes: hubEpisodes,
+        playSession: activeSession,
+        episodes: episodes,
         hubEpisodeNumber: hubEpisodeNumber,
         selectedPluginIds: selectedPluginIds,
         packs: packs,
@@ -838,7 +838,7 @@ Future<void> _playFromProbedSources({
   required Duration? startPosition,
   required String? stremioId,
   EnginePlaySession? enginePlaySession,
-  List<PlayerHubEpisode>? hubEpisodes,
+  List<PlayerKitEpisode>? episodes,
   num? hubEpisodeNumber,
   required BuildContext? loadingDialogContext,
   required ValueNotifier<bool> fadeOutNotifier,
@@ -853,12 +853,12 @@ Future<void> _playFromProbedSources({
   final primary = sources.first;
   final ctx = loadingDialogContext;
   final epNum = hubEpisodeNumber ?? episode;
-  final playMovie = movieWithResolvedHubArt(movie);
-  final playHubEpisodes = await ensureHubCatalogEpisodes(
+  final playMovie = movieWithResolvedArt(movie);
+  final playHubEpisodes = await ensureKitEpisodes(
     pluginId: enginePlaySession?.pluginId,
-    metaId: enginePlaySession?.catalogMeta?.id,
-    catalogMeta: enginePlaySession?.catalogMeta,
-    hubEpisodes: hubEpisodes,
+    metaId: enginePlaySession?.meta?.id,
+    meta: enginePlaySession?.meta,
+    episodes: episodes,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
   if (!context.mounted) return;
@@ -866,21 +866,21 @@ Future<void> _playFromProbedSources({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
-    hubEpisodes: playHubEpisodes,
+    episodes: playHubEpisodes,
   );
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
-    hubEpisodes: playHubEpisodes,
+    episodes: playHubEpisodes,
     season: season,
   );
   Future<void> openPlayer() async {
-    await seedHubEngineWatchHistory(
+    await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
-      hubEpisodes: playHubEpisodes,
+      episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
     await AppRouter.openPlayer(
@@ -900,7 +900,7 @@ Future<void> _playFromProbedSources({
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,
       enginePlaySession: enginePlaySession,
-      hubEpisodes: playHubEpisodes,
+      episodes: playHubEpisodes,
       hubEpisodeNumber: epNum,
       onHubEpisodeSelected: onHubEpisodeSelected,
       onSaveProgress: onSaveProgress,
@@ -930,7 +930,7 @@ Future<void> _playResolveRow({
   required PlaybackProfile profile,
   required String? stremioId,
   EnginePlaySession? enginePlaySession,
-  List<PlayerHubEpisode>? hubEpisodes,
+  List<PlayerKitEpisode>? episodes,
   num? hubEpisodeNumber,
   required StreamLoadingSession loadingSession,
   required bool Function() isAborted,
@@ -967,12 +967,12 @@ Future<void> _playResolveRow({
   final ctx = loadingSession.dialogContext;
   final fadeOutNotifier = loadingSession.fadeOutNotifier;
   final epNum = hubEpisodeNumber ?? episode;
-  final playMovie = movieWithResolvedHubArt(movie);
-  final playHubEpisodes = await ensureHubCatalogEpisodes(
+  final playMovie = movieWithResolvedArt(movie);
+  final playHubEpisodes = await ensureKitEpisodes(
     pluginId: enginePlaySession?.pluginId,
-    metaId: enginePlaySession?.catalogMeta?.id,
-    catalogMeta: enginePlaySession?.catalogMeta,
-    hubEpisodes: hubEpisodes,
+    metaId: enginePlaySession?.meta?.id,
+    meta: enginePlaySession?.meta,
+    episodes: episodes,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
   if (!context.mounted) return;
@@ -980,21 +980,21 @@ Future<void> _playResolveRow({
     session: enginePlaySession,
     movie: playMovie,
     episodeNumber: epNum,
-    hubEpisodes: playHubEpisodes,
+    episodes: playHubEpisodes,
   );
   final onHubEpisodeSelected = _hubEngineEpisodePicker(
     context: context,
     movie: playMovie,
     session: enginePlaySession,
-    hubEpisodes: playHubEpisodes,
+    episodes: playHubEpisodes,
     season: season,
   );
   Future<void> openPlayer() async {
-    await seedHubEngineWatchHistory(
+    await seedEngineWatchHistory(
       session: enginePlaySession,
       movie: playMovie,
       episodeNumber: epNum,
-      hubEpisodes: playHubEpisodes,
+      episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
     await AppRouter.openPlayer(
@@ -1012,7 +1012,7 @@ Future<void> _playResolveRow({
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,
       enginePlaySession: enginePlaySession,
-      hubEpisodes: playHubEpisodes,
+      episodes: playHubEpisodes,
       hubEpisodeNumber: epNum,
       onHubEpisodeSelected: onHubEpisodeSelected,
       onSaveProgress: onSaveProgress,

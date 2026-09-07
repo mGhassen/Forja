@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/channel_guide/iptv_channel_guide.dart';
@@ -33,7 +33,7 @@ import 'package:forja/features/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
-import 'package:forja/shared/catalog/host/catalog_iptv_open.dart';
+import 'package:forja/shared/foundation/blocks/shell/iptv_open.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'iptv_pt_player_screen.dart';
 
@@ -189,7 +189,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       case IptvView.portalList:
       case IptvView.sectionPick:
       case IptvView.browser:
-        return _IptvCatalogShell(
+        return _IptvKitShell(
           ctrl: ctrl,
           compact: _isCompact(context),
           wide: _isWide(context),
@@ -197,14 +197,14 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       case IptvView.episodeList:
       case IptvView.movieDetails:
         // Details open as shell overlays (Home-style MediaDetailsTv).
-        return _IptvCatalogShell(
+        return _IptvKitShell(
           ctrl: ctrl,
           compact: _isCompact(context),
           wide: _isWide(context),
         );
       case IptvView.channelsHub:
       case IptvView.channelResults:
-        return _IptvCatalogShell(
+        return _IptvKitShell(
           ctrl: ctrl,
           compact: _isCompact(context),
           wide: _isWide(context),

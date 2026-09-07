@@ -5,7 +5,7 @@ import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';

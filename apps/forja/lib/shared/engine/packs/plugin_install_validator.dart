@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/models/models.dart';
 
 /// Pre-disk install checks — manifest shape is validated earlier via
@@ -110,7 +110,7 @@ abstract final class PluginInstallValidator {
 
   static void _validateCatalogVersions(EnginePack pack) {
     for (final plugin in pack.plugins) {
-      if (!plugin.isHubCatalog) continue;
+      if (!plugin.isKitPlugin) continue;
       final kit = plugin.kit;
       if (kit != null && kit > hostKitVersion) {
         throw FormatException(

@@ -12,7 +12,7 @@ import 'package:forja/features/archive/audio/music_storage_service.dart';
 import 'package:forja/features/archive/audio/music_downloader_service.dart';
 import 'music_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 class MusicScreen extends StatefulWidget {
   const MusicScreen({super.key});

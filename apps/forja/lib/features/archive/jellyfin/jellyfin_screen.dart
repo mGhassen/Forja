@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/archive/jellyfin/catalog/jellyfin_service.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/widgets/chrome/hover_scale.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/chrome/shell_card_play_overlay.dart';

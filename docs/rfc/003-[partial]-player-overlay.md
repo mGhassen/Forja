@@ -2,7 +2,7 @@
 
 **Status:** partial — player shipped; overlay stubs not wired  
 **Depends on:** RFC-011 (v1.0 player shell)  
-**Area:** `apps/forja/lib/shared/player/`, `shared/design/src/player_overlay.dart`, `shared/design/src/server_grid.dart`
+**Area:** `apps/forja/lib/shared/player/`, `shared/foundation/primitives/forja_player_overlay.dart`, `shared/foundation/primitives/forja_server_grid.dart`
 
 ## Status at a glance
 
@@ -22,8 +22,8 @@
 | 1 | R03-C01 | Player entry (`player_screen.dart`) | ✅ |
 | 2 | R03-C02 | Desktop player | ✅ |
 | 3 | R03-C03 | Mobile player | ✅ |
-| 4 | R03-C04 | Overlay panel (`player_overlay.dart`) | ⬜ |
-| 5 | R03-C05 | Server grid (`server_grid.dart`) | ⬜ |
+| 4 | R03-C04 | Overlay panel (`forja_player_overlay.dart`) | ⬜ |
+| 5 | R03-C05 | Server grid (`forja_server_grid.dart`) | ⬜ |
 | 6 | R03-C06 | Navigation (`openPlayer()`) | ✅ |
 
 ---

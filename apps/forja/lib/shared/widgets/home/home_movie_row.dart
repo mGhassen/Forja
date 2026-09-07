@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home/movie_poster_card.dart';
@@ -127,7 +127,7 @@ class HomeMovieRow extends StatelessWidget {
             },
           );
 
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: tabId,
       rowId: rowId,
       sortOrder: tvRowOrder,

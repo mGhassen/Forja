@@ -6,13 +6,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
-import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
-import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/foundation/components/rows/kit_section.dart';
+import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
+import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';
@@ -501,7 +501,7 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
 
     final row = Row(
       children: [
-        HubDetailsPlayRow(
+        KitDetailsPlayRow(
           label: canResumeSelected
               ? 'استئناف الحلقة $_selectedEpisode'
               : 'تشغيل الحلقة $_selectedEpisode',
@@ -705,14 +705,14 @@ class _AnimeArabicDetailsScreenState extends State<AnimeArabicDetailsScreen> {
     required int tvRowOrder,
     VoidCallback? tvFocusUp,
   }) {
-    return HubCatalogSection<ArabicAnimeCard>(
+    return KitSection<ArabicAnimeCard>(
       title: 'أنميات مشابهة',
       items: a.related,
       tvTabId: _tvNav ? MediaDetailsTv.tabId : null,
       tvRowId: 'related',
       tvRowOrder: tvRowOrder,
       tvFocusUp: tvFocusUp,
-      cardBuilder: (context, card, index) => HubPosterCard(
+      cardBuilder: (context, card, index) => KitPosterCard(
         imageUrl: card.cover ?? '',
         title: card.title,
         onTap: () {

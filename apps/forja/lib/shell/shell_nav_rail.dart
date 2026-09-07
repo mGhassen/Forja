@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -859,7 +859,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   late final FocusNode _focusNode;
 
   bool get _hasVerticalFilters =>
-      CatalogVerticalFiltersRegistry.hasFilters(widget.destination.id);
+      VerticalFiltersRegistry.hasFilters(widget.destination.id);
 
   @override
   void initState() {
@@ -901,9 +901,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   void _scheduleProviderMenuReveal() {
     if (!_hasVerticalFilters) return;
     _providerRevealTimer?.cancel();
-    _providerRevealTimer = Timer(CatalogVerticalFiltersRegistry.menuHoverDelay, () {
+    _providerRevealTimer = Timer(VerticalFiltersRegistry.menuHoverDelay, () {
       if (!mounted) return;
-      CatalogVerticalFiltersRegistry.showMenu(widget.destination.id);
+      VerticalFiltersRegistry.showMenu(widget.destination.id);
     });
   }
 
@@ -919,7 +919,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       if (!mounted || !_hover) return;
       setState(() => _typing = true);
     });
-    CatalogVerticalFiltersRegistry.cancelMenuHide(widget.destination.id);
+    VerticalFiltersRegistry.cancelMenuHide(widget.destination.id);
     _scheduleProviderMenuReveal();
   }
 
@@ -928,8 +928,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     _revealTimer?.cancel();
     _providerRevealTimer?.cancel();
     _providerRevealTimer = null;
-    if (CatalogVerticalFiltersRegistry.menuVisibleFor(widget.destination.id).value) {
-      CatalogVerticalFiltersRegistry.scheduleMenuHide(widget.destination.id);
+    if (VerticalFiltersRegistry.menuVisibleFor(widget.destination.id).value) {
+      VerticalFiltersRegistry.scheduleMenuHide(widget.destination.id);
     }
     setState(() {
       _hover = false;
@@ -1108,11 +1108,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
-                CatalogVerticalFiltersRegistry.menuHoldDelay,
+                VerticalFiltersRegistry.menuHoldDelay,
                 () {
                   if (!mounted) return;
                   _providerHoldFired = true;
-                  CatalogVerticalFiltersRegistry.showMenu(widget.destination.id);
+                  VerticalFiltersRegistry.showMenu(widget.destination.id);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     ShellTvFocus.focusVerticalFilterRail();
                   });
@@ -1139,7 +1139,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
             final arrow = event.logicalKey;
             if (arrow == LogicalKeyboardKey.arrowRight) {
               if (_hasVerticalFilters &&
-                  CatalogVerticalFiltersRegistry.menuVisibleFor(
+                  VerticalFiltersRegistry.menuVisibleFor(
                     widget.destination.id,
                   ).value &&
                   ShellTvFocus.focusVerticalFilterRail()) {
@@ -1181,7 +1181,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                     onTap: _enterPageFromNav,
                     onLongPress: _hasVerticalFilters
                         ? () {
-                            CatalogVerticalFiltersRegistry.showMenu(
+                            VerticalFiltersRegistry.showMenu(
                               widget.destination.id,
                             );
                           }

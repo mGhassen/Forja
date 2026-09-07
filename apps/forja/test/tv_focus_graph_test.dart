@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -29,14 +29,14 @@ void main() {
     ShellTvFocusCoordinator.clearTab('home');
   });
 
-  testWidgets('TvCatalogRow registers and unregisters with the coordinator',
+  testWidgets('TvKitRow registers and unregisters with the coordinator',
       (tester) async {
     final node0 = FocusNode(debugLabel: 'item-0');
     final node1 = FocusNode(debugLabel: 'item-1');
 
     await tester.pumpWidget(
       _wrapTv(
-        TvCatalogRow(
+        TvKitRow(
           rowId: 'featured',
           sortOrder: 0,
           itemCount: 2,
@@ -118,7 +118,7 @@ void main() {
                 );
               },
             ),
-            TvCatalogRow(
+            TvKitRow(
               rowId: 'mood-results',
               sortOrder: 4,
               itemCount: 1,
@@ -193,7 +193,7 @@ void main() {
         Column(
           children: [
             Focus(focusNode: nav, child: const SizedBox(width: 40, height: 40)),
-            TvCatalogRow(
+            TvKitRow(
               rowId: 'popular',
               sortOrder: 1,
               itemCount: 1,

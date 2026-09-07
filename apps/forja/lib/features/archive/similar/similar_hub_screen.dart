@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/archive/similar/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'similar_results_screen.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 enum _MediaFilter { all, movies, tv }
 

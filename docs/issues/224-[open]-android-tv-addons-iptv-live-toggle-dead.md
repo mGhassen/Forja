@@ -29,7 +29,7 @@
 | 7 | I224-T07 | Keep Settings visibility across reload so Addons body is not remounted mid-toggle | ✅ |
 | 8 | I224-T08 | Serialize navbar RMW (`setNavbarTabVisible`) so rapid IPTV then Live Sports OK cannot wipe the first write | ✅ |
 | 9 | I224-T09 | `noteNavigationDirty()` before navbar KV write so Addons soft-pull cannot apply empty cloud mid-enable | ✅ |
-| 10 | I224-T10 | Addons/Features/Packs: row OK activates; details chevron on the right; Features D-pad uses per-row `TvCatalogRow` columns | ✅ |
+| 10 | I224-T10 | Addons/Features/Packs: row OK activates; details chevron on the right; Features D-pad uses per-row `TvKitRow` columns | ✅ |
 | 11 | I224-T11 | Row activate calls `setAddonMasterEnabled` directly (no mid-build `_flip` callback — silent no-op) | ✅ |
 | 12 | I224-T12 | Soft pull refuses cloud nav that shrinks local tabs; heal hollow cloud with a nav push | ✅ |
 | 13 | I224-T13 | Features toggles use `setNavbarTabVisible` RMW + serialize saves; skip hydrate mid-write | ✅ |

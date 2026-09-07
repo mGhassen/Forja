@@ -1,15 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/lists/providers/external_lists_providers.dart';
 import 'package:forja/shared/lists/providers/my_list_providers.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 
 /// Generic list-follow target — keyed by hub [pluginId] + opaque [open].
-class CatalogListFollowTarget {
-  const CatalogListFollowTarget({
+class ListFollowTarget {
+  const ListFollowTarget({
     required this.pluginId,
     required this.open,
     required this.title,
@@ -22,7 +22,7 @@ class CatalogListFollowTarget {
   });
 
   final String pluginId;
-  final CatalogOpen open;
+  final MetaOpen open;
   final String title;
   final String posterPath;
   final double voteAverage;
@@ -38,8 +38,8 @@ class CatalogListFollowTarget {
 
   int? get mediaIdInt => open.idInt;
 
-  CatalogListFollowTarget copyWith({int? tmdbId, String? tmdbMediaType}) {
-    return CatalogListFollowTarget(
+  ListFollowTarget copyWith({int? tmdbId, String? tmdbMediaType}) {
+    return ListFollowTarget(
       pluginId: pluginId,
       open: open,
       title: title,
@@ -52,13 +52,13 @@ class CatalogListFollowTarget {
     );
   }
 
-  static CatalogListFollowTarget? fromMeta({
+  static ListFollowTarget? fromMeta({
     required String pluginId,
-    required CatalogMetaItem meta,
+    required MetaItem meta,
   }) {
     final open = meta.open;
     if (open == null) return null;
-    return CatalogListFollowTarget(
+    return ListFollowTarget(
       pluginId: pluginId,
       open: open,
       title: meta.name,
@@ -72,15 +72,15 @@ class CatalogListFollowTarget {
   }
 }
 
-/// Back-compat alias — migrate imports to [CatalogListFollowTarget].
-typedef HubListFollowTarget = CatalogListFollowTarget;
+/// Back-compat alias — migrate imports to [ListFollowTarget].
+typedef HubListFollowTarget = ListFollowTarget;
 
 class HubListFollow {
   HubListFollow._();
 
   /// Drama rows may lack TMDB on browse cards; reuse a stored match after details.
   @visibleForTesting
-  static CatalogListFollowTarget resolveSimklTarget(CatalogListFollowTarget t) {
+  static ListFollowTarget resolveSimklTarget(ListFollowTarget t) {
     if (t.tmdbId != null) return t;
     if (t.resolvedMediaType != 'drama') return t;
     final stored = MyListService().itemOf(t.uniqueId);
@@ -93,7 +93,7 @@ class HubListFollow {
   }
 
   static Future<bool> setStatus(
-    CatalogListFollowTarget raw,
+    ListFollowTarget raw,
     String to, {
     ProviderContainer? container,
   }) async {
@@ -161,7 +161,7 @@ class HubListFollow {
     return ok;
   }
 
-  static Future<void> markWatchingOnPlay(CatalogListFollowTarget raw) async {
+  static Future<void> markWatchingOnPlay(ListFollowTarget raw) async {
     await MyListService().ensureLoaded();
     final uid = raw.uniqueId;
     if (MyListService().contains(uid)) {
@@ -172,7 +172,7 @@ class HubListFollow {
   }
 
   static Future<void> syncEpisodeWatched(
-    CatalogListFollowTarget raw, {
+    ListFollowTarget raw, {
     required int episode,
     bool watched = true,
   }) async {
@@ -180,7 +180,7 @@ class HubListFollow {
   }
 
   static Future<void> syncSeasonWatched(
-    CatalogListFollowTarget raw, {
+    ListFollowTarget raw, {
     required List<int> episodes,
     bool watched = true,
   }) async {
@@ -241,7 +241,7 @@ class HubListFollow {
     }
   }
 
-  static Future<void> clearProgress(CatalogListFollowTarget raw) async {
+  static Future<void> clearProgress(ListFollowTarget raw) async {
     if (!await SimklService().isLoggedIn()) return;
     if (raw.resolvedMediaType == 'anime' && raw.mediaIdInt != null) {
       await SimklService().clearWatched(

@@ -1,8 +1,8 @@
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:rust/rust.dart';
 
-/// Resolved engine extract inputs from pack [CatalogOpen.extract].
+/// Resolved engine extract inputs from pack [MetaOpen.extract].
 class EngineExtractContext {
   const EngineExtractContext({
     required this.resolveType,
@@ -40,7 +40,7 @@ int? extractCtxInt(Map<String, dynamic> ctx, String key) {
 }
 
 EngineExtractContext _mergeEpisodeIntoCtx(
-  CatalogOpenExtract spec,
+  MetaOpenExtract spec,
   int? episode,
   String? episodeVideoId,
 ) {
@@ -64,13 +64,12 @@ EngineExtractContext _mergeEpisodeIntoCtx(
 
 /// Build extract + panel category from catalog open and/or movie/TV details hints.
 EngineExtractContext engineExtractContext({
-  CatalogOpen? catalogOpen,
+  MetaOpen? open,
   required Movie movie,
   int? episode,
   String? episodeVideoId,
   String? panelCategoryHint,
 }) {
-  final open = catalogOpen;
   if (open != null) {
     return _mergeEpisodeIntoCtx(
       open.effectiveExtract,
@@ -94,8 +93,8 @@ EngineExtractContext engineExtractContext({
 }
 
 /// Opaque session-cache segment for a hub title/episode.
-String catalogOpenCacheKey(
-  CatalogOpen open, {
+String metaOpenCacheKey(
+  MetaOpen open, {
   required String pluginId,
   int? episode,
   String? audioCategory,
@@ -134,19 +133,19 @@ bool _looksLikeProviderSlug(String id) {
   return false;
 }
 
-/// Merges [catalogOpen] extract when present; otherwise TMDB-details hints only.
+/// Merges [metaOpen] extract when present; otherwise TMDB-details hints only.
 ({String type, String panelCategory, Map<String, dynamic> ctx})
     resolveEngineExtractInputs({
   required String type,
   required Movie? movie,
-  CatalogOpen? catalogOpen,
+  MetaOpen? open,
   String? episodeVideoId,
   int? episode,
   String? panelCategoryHint,
 }) {
-  if (catalogOpen != null && movie != null) {
+  if (open != null && movie != null) {
     final ctx = engineExtractContext(
-      catalogOpen: catalogOpen,
+      open: open,
       movie: movie,
       episode: episode,
       episodeVideoId: episodeVideoId,

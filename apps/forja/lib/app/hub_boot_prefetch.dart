@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/catalog/protocol/filter.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/services/runtime.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
+import 'package:forja/shared/foundation/protocol/filter.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/services/runtime.dart';
+import 'package:forja/shared/foundation/components/chrome/chrome_filters.dart';
 import 'package:rust/rust.dart';
 
-/// Prefetch default hub layout + first-paint rails into [CatalogCache].
+/// Prefetch default hub layout + first-paint rails into [MetaCache].
 ///
 /// Driven by pack `layout` (`feed: true` or widgets above Continue) — never a
 /// hardcoded home/anime/asian_drama rail list.
@@ -22,9 +22,9 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
   if (pluginId == null || pluginId.isEmpty) return;
 
   debugPrint('[Init] Prefetch hub ($tabId → $pluginId)');
-  late final CatalogEnvelope layoutEnv;
+  late final MetaEnvelope layoutEnv;
   try {
-    layoutEnv = await CatalogRuntime.instance.run(
+    layoutEnv = await MetaRuntime.instance.run(
       pluginId: pluginId,
       action: 'layout',
       params: {'page': tabId},
@@ -44,7 +44,7 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
   if (pageUsesFeed(page)) {
     debugPrint('[Init] Prefetch hub feed ($tabId)');
     try {
-      await CatalogRuntime.instance.run(
+      await MetaRuntime.instance.run(
         pluginId: pluginId,
         action: 'feed',
         params: catalogParamsWithFilters(
@@ -77,7 +77,7 @@ Future<void> _prefetchRail(
   String rail,
 ) async {
   try {
-    await CatalogRuntime.instance.run(
+    await MetaRuntime.instance.run(
       pluginId: pluginId,
       action: 'rail',
       params: catalogParamsWithFilters(
@@ -99,11 +99,11 @@ Future<String?> resolveDefaultHubTab(
 }) async {
   final nav = needs.visibleNavIds;
   final defaultTab = await (settings ?? SettingsService()).getDefaultNavTab();
-  if (nav.contains(defaultTab) && PluginNavRegistry.isHubTab(defaultTab)) {
+  if (nav.contains(defaultTab) && PluginNavRegistry.isKitTab(defaultTab)) {
     return defaultTab;
   }
   for (final id in nav) {
-    if (PluginNavRegistry.isHubTab(id)) return id;
+    if (PluginNavRegistry.isKitTab(id)) return id;
   }
   return null;
 }

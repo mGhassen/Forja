@@ -115,8 +115,8 @@ abstract final class EngineCategories {
   static String groupKey(EnginePlugin plugin) {
     final types = plugin.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains(iptv)) return iptv;
-    if (plugin.isHubCatalog) return hubCatalog;
-    if (plugin.isLiveCatalog) return liveCatalog;
+    if (plugin.isKitPlugin) return hubCatalog;
+    if (plugin.isLiveFeedPlugin) return liveCatalog;
     if (plugin.isLivePlugin || plugin.isLiveSport || plugin.isLive) {
       return livePlugin;
     }
@@ -155,7 +155,7 @@ abstract final class EngineCategories {
   }
 
   static String liveSourceGroupKey(EnginePlugin plugin) {
-    if (plugin.isLiveCatalog) return liveCatalog;
+    if (plugin.isLiveFeedPlugin) return liveCatalog;
     return livePlugin;
   }
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/chrome/horizontal_scroller.dart';
@@ -49,7 +49,7 @@ class MoviePosterRow extends StatefulWidget {
     BuildContext context, {
     bool compactTop = false,
   }) {
-    return shellCatalogSectionHeight(
+    return shellKitSectionHeight(
       context,
       compactTop: compactTop,
       cardHeight: MoviePosterCard.cardHeight(context),
@@ -185,7 +185,7 @@ class _MoviePosterRowStaticState extends State<MoviePosterRowStatic> {
       context,
       compact: widget.compactTop,
     );
-    return TvCatalogRow(
+    return TvKitRow(
       rowId: _rowId,
       sortOrder: widget.tvRowOrder,
       itemCount: movies.length,

@@ -5,8 +5,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
 import 'package:forja/features/iptv/data/storage.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
@@ -81,9 +81,9 @@ abstract final class SettingsDataCleaner {
 
   static Future<void> clearContinueWatching() async {
     await WatchHistoryService().clearAll();
-    final plugins = await PluginNavRegistry.listHubPlugins(requireEnabled: false);
+    final plugins = await PluginNavRegistry.listKitPlugins(requireEnabled: false);
     for (final plugin in plugins) {
-      await CatalogWatchHistory.clear(plugin.id);
+      await WatchHistory.clear(plugin.id);
     }
   }
 

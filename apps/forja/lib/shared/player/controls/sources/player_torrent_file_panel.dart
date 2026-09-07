@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -333,7 +333,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     );
 
     if (!tv) return list;
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: SourcesPanelTv.tabId,
       rowId: SourcesPanelTv.listRowId,
       sortOrder: SourcesPanelTv.listSort,

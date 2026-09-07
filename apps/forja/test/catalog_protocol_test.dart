@@ -3,16 +3,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/catalog.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
+import 'package:forja/shared/foundation/foundation.dart';
+import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shell/nav_destination.dart';
 import 'package:forja/shell/shell_bus.dart';
 
-/// `plugins/hubs/fixtures/<name>.json` — test cwd is `apps/forja`.
+/// `sdk/fixtures/<name>.json` — test cwd is `apps/forja`.
 dynamic loadHubFixture(String name) {
-  final file = File('../../plugins/hubs/fixtures/$name.json');
+  final file = File('../../sdk/fixtures/$name.json');
   expect(file.existsSync(), isTrue, reason: 'missing fixture ${file.path}');
   return jsonDecode(file.readAsStringSync());
 }
@@ -93,21 +93,21 @@ void main() {
     test('maps error codes and retryability', () {
       final envelope = parseEnvelope(loadHubFixture('tmdb_auth_required'));
       expect(envelope!.ok, isFalse);
-      expect(envelope.error!.code, CatalogErrorCode.authRequired);
+      expect(envelope.error!.code, MetaErrorCode.authRequired);
       expect(envelope.error!.code.isAuth, isTrue);
       expect(envelope.error!.isRetryable, isFalse);
       expect(
-        CatalogErrorCode.tryParse('RATE_LIMIT'),
-        CatalogErrorCode.rateLimit,
+        MetaErrorCode.tryParse('RATE_LIMIT'),
+        MetaErrorCode.rateLimit,
       );
       expect(
-        CatalogErrorCode.tryParse('rate_limit'),
-        CatalogErrorCode.rateLimit,
+        MetaErrorCode.tryParse('rate_limit'),
+        MetaErrorCode.rateLimit,
         reason: 'casing is normalized',
       );
-      expect(CatalogErrorCode.tryParse('nope'), isNull);
-      expect(CatalogErrorCode.upstream.retryableByDefault, isTrue);
-      expect(CatalogErrorCode.notFound.retryableByDefault, isFalse);
+      expect(MetaErrorCode.tryParse('nope'), isNull);
+      expect(MetaErrorCode.upstream.retryableByDefault, isTrue);
+      expect(MetaErrorCode.notFound.retryableByDefault, isFalse);
     });
   });
 
@@ -129,7 +129,7 @@ void main() {
     });
 
     test('resolves namespaced tmdb ids from the id string', () {
-      final item = CatalogMetaItem.fromJson({
+      final item = MetaItem.fromJson({
         'id': 'tmdb:movie:603',
         'type': 'movie',
         'name': 'The Matrix',
@@ -145,7 +145,7 @@ void main() {
 
     test('round-trips through json', () {
       final item = parseEnvelope(loadHubFixture('anilist_rail'))!.items.first;
-      final again = CatalogMetaItem.fromJson(item.toJson());
+      final again = MetaItem.fromJson(item.toJson());
       expect(again.toJson(), item.toJson());
     });
   });
@@ -174,26 +174,26 @@ void main() {
 
   group('filter AST', () {
     test('drops empty nodes and unwraps single nodes', () {
-      expect(CatalogFilterAst.andFilters([null, null]), isNull);
+      expect(MetaFilterAst.andFilters([null, null]), isNull);
       expect(
-        CatalogFilterAst.andFilters([CatalogFilterAst.eq('genre', 'Action')]),
+        MetaFilterAst.andFilters([MetaFilterAst.eq('genre', 'Action')]),
         {'field': 'genre', 'op': 'eq', 'value': 'Action'},
       );
     });
 
     test('groups multiple leaves under and', () {
-      final ast = CatalogFilterAst.andFilters([
-        CatalogFilterAst.inList('genre', ['Action']),
-        CatalogFilterAst.eq('year', 2026),
+      final ast = MetaFilterAst.andFilters([
+        MetaFilterAst.inList('genre', ['Action']),
+        MetaFilterAst.eq('year', 2026),
       ]);
       expect(ast!['op'], 'and');
       expect(ast['nodes'], hasLength(2));
     });
 
     test('parse rejects leaves without a field or value', () {
-      expect(CatalogFilterAst.parse({'op': 'eq', 'value': 1}), isNull);
-      expect(CatalogFilterAst.parse({'field': 'genre'}), isNull);
-      expect(CatalogFilterAst.parse({'op': 'and', 'nodes': []}), isNull);
+      expect(MetaFilterAst.parse({'op': 'eq', 'value': 1}), isNull);
+      expect(MetaFilterAst.parse({'field': 'genre'}), isNull);
+      expect(MetaFilterAst.parse({'op': 'and', 'nodes': []}), isNull);
     });
 
     test('merges chrome selections into params', () {
@@ -245,9 +245,9 @@ void main() {
       const tabId = 'anime';
       ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
-      CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
+      VerticalFiltersRegistry.selectedIdFor(tabId).value = null;
       final before = catalogChromeFilterEpoch(tabId);
-      CatalogPackFiltersRegistry.revision.value++;
+      PackFiltersRegistry.revision.value++;
       expect(catalogChromeFilterEpoch(tabId), before);
     });
 
@@ -255,7 +255,7 @@ void main() {
       const tabId = 'anime';
       ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
-      CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
+      VerticalFiltersRegistry.selectedIdFor(tabId).value = null;
       final before = catalogChromeFilterEpoch(tabId);
       ShellBus.hubSelectedMenuIdFor(tabId).value = 'films';
       expect(catalogChromeFilterEpoch(tabId), isNot(before));
@@ -267,7 +267,7 @@ void main() {
     const tabId = 'anime';
 
     setUp(() {
-      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+      PackFiltersRegistry.seedFromJson('anilist', {
         'menus': [
           {
             'id': 'films',
@@ -307,7 +307,7 @@ void main() {
     tearDown(() {
       ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
-      CatalogPackFiltersRegistry.clearForTest();
+      PackFiltersRegistry.clearForTest();
     });
 
     test('genre category does not hide type-filter rails', () {
@@ -342,15 +342,15 @@ void main() {
   });
 
   group('cache', () {
-    setUp(CatalogCache.instance.wipeAll);
+    setUp(MetaCache.instance.wipeAll);
 
     test('key is stable across param order', () {
-      final a = CatalogCache.keyFor(
+      final a = MetaCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'rail': 'trending', 'limit': 20},
       );
-      final b = CatalogCache.keyFor(
+      final b = MetaCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'limit': 20, 'rail': 'trending'},
@@ -360,29 +360,29 @@ void main() {
     });
 
     test('auth subject and params change the key', () {
-      final base = CatalogCache.keyFor(pluginId: 'p', action: 'rail');
+      final base = MetaCache.keyFor(pluginId: 'p', action: 'rail');
       expect(
-        CatalogCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
+        MetaCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
         isNot(base),
       );
       expect(
-        CatalogCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
+        MetaCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
         isNot(base),
       );
     });
 
     test('honours maxAge then the swr window', () {
       const key = 'k';
-      CatalogCache.instance.put(
+      MetaCache.instance.put(
         key: key,
         pluginId: 'anilist',
         data: const {'items': []},
-        hints: const CatalogCacheHints(
+        hints: const MetaCacheHints(
           maxAge: Duration(seconds: 1),
           swr: Duration(minutes: 5),
         ),
       );
-      final entry = CatalogCache.instance.get(key)!;
+      final entry = MetaCache.instance.get(key)!;
       expect(entry.isFresh, isTrue);
       expect(entry.isExpired, isFalse);
 
@@ -399,31 +399,31 @@ void main() {
     });
 
     test('wipePlugin drops only that plugin', () {
-      CatalogCache.instance.put(
+      MetaCache.instance.put(
         key: 'a',
         pluginId: 'anilist',
         data: const {},
       );
-      CatalogCache.instance.put(key: 'b', pluginId: 'kisskh-hub', data: const {});
-      CatalogCache.instance.wipePlugin('anilist');
-      expect(CatalogCache.instance.get('a'), isNull);
-      expect(CatalogCache.instance.get('b'), isNotNull);
+      MetaCache.instance.put(key: 'b', pluginId: 'kisskh-hub', data: const {});
+      MetaCache.instance.wipePlugin('anilist');
+      expect(MetaCache.instance.get('a'), isNull);
+      expect(MetaCache.instance.get('b'), isNotNull);
     });
 
     test('pack version change wipes everything', () {
-      CatalogCache.instance.syncHubPackVersion('forjahq-home', '1.0.0');
-      CatalogCache.instance.put(key: 'a', pluginId: 'anilist', data: const {});
-      CatalogCache.instance.syncHubPackVersion('forjahq-home', '1.0.0');
-      expect(CatalogCache.instance.get('a'), isNotNull);
-      CatalogCache.instance.syncHubPackVersion('forjahq-home', '1.0.1');
-      expect(CatalogCache.instance.get('a'), isNull);
+      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      MetaCache.instance.put(key: 'a', pluginId: 'anilist', data: const {});
+      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      expect(MetaCache.instance.get('a'), isNotNull);
+      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.1');
+      expect(MetaCache.instance.get('a'), isNull);
     });
   });
 
   group('enrich cache skip', () {
     test('details skips when kit marker set', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'details',
           {
             'meta': {
@@ -439,7 +439,7 @@ void main() {
 
     test('details does not skip on legacy tmdb backdrop alone', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'details',
           {
             'meta': {
@@ -456,7 +456,7 @@ void main() {
 
     test('spotlight rail skips on legacy tmdb backdrop', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'rail',
           {
             'items': [
@@ -476,7 +476,7 @@ void main() {
 
     test('details does not skip bare ids.tmdb', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'details',
           {
             'meta': {
@@ -492,7 +492,7 @@ void main() {
 
     test('spotlight rail skips when head items enriched', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'rail',
           {
             'items': [
@@ -510,7 +510,7 @@ void main() {
 
     test('non-spotlight rail never skips', () {
       expect(
-        CatalogRuntime.envelopeAlreadyEnriched(
+        MetaRuntime.envelopeAlreadyEnriched(
           'rail',
           {
             'items': [
@@ -526,7 +526,7 @@ void main() {
 
   group('deep links', () {
     test('parses plugin, action and id', () {
-      final link = CatalogDeepLink.parse(
+      final link = MetaDeepLink.parse(
         'forja://catalog/anilist/details?id=anilist%3A21&from=home',
       )!;
       expect(link.pluginId, 'anilist');
@@ -536,22 +536,22 @@ void main() {
     });
 
     test('defaults the action to details', () {
-      expect(CatalogDeepLink.parse('forja://catalog/tmdb')?.action, 'details');
+      expect(MetaDeepLink.parse('forja://catalog/tmdb')?.action, 'details');
     });
 
     test('rejects other schemes and hosts', () {
-      expect(CatalogDeepLink.parse('https://catalog/anilist/details'), isNull);
-      expect(CatalogDeepLink.parse('forja://player/anilist'), isNull);
-      expect(CatalogDeepLink.parse('forja://catalog'), isNull);
+      expect(MetaDeepLink.parse('https://catalog/anilist/details'), isNull);
+      expect(MetaDeepLink.parse('forja://player/anilist'), isNull);
+      expect(MetaDeepLink.parse('forja://catalog'), isNull);
     });
 
     test('round-trips through a uri', () {
-      const link = CatalogDeepLink(
+      const link = MetaDeepLink(
         pluginId: 'kisskh-hub',
         action: 'details',
         id: 'kisskh:10633',
       );
-      expect(CatalogDeepLink.parse(link.toString())!.id, 'kisskh:10633');
+      expect(MetaDeepLink.parse(link.toString())!.id, 'kisskh:10633');
     });
   });
 
@@ -608,7 +608,7 @@ void main() {
       expect(byId['enrich-tmdb']!.hasCapability('nav'), isFalse);
 
       for (final plugin in byId.values) {
-        expect(plugin.isHubCatalog, isTrue, reason: plugin.id);
+        expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
         expect(plugin.isExtractable, isFalse, reason: plugin.id);
         expect(plugin.needsScript, isTrue, reason: plugin.id);
         expect(plugin.kit, hostKitVersion, reason: plugin.id);
@@ -661,7 +661,7 @@ void main() {
         'IPTV · Iptv Vod',
       );
       for (final plugin in iptv.plugins) {
-        expect(plugin.isHubCatalog, isTrue, reason: plugin.id);
+        expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
         expect(plugin.types, contains('iptv'), reason: plugin.id);
         expect(plugin.hasCapability('nav'), isFalse, reason: plugin.id);
       }
@@ -696,7 +696,7 @@ void main() {
       final specs = [
         for (final p in loadAllHubPlugins())
           if (p.nav != null)
-            CatalogNavSpec.fromPluginNav(
+            MetaNavSpec.fromPluginNav(
               p.nav,
               pluginId: p.id,
               fallbackLabel: p.name,
@@ -719,8 +719,8 @@ void main() {
 
       // Host seed empty for VOD hubs; live_matches is core (RFC-084).
       PluginNavRegistry.seedBuiltIns();
-      expect(PluginNavRegistry.isHubTab('live_matches'), isFalse);
-      expect(PluginNavRegistry.isHubTab('settings'), isFalse);
+      expect(PluginNavRegistry.isKitTab('live_matches'), isFalse);
+      expect(PluginNavRegistry.isKitTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
       expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
@@ -740,7 +740,7 @@ void main() {
       final specs = [
         for (final p in loadAllHubPlugins())
           if (p.nav != null)
-            CatalogNavSpec.fromPluginNav(
+            MetaNavSpec.fromPluginNav(
               p.nav,
               pluginId: p.id,
               fallbackLabel: p.name,
@@ -775,7 +775,7 @@ void main() {
           reason: '${s.tabId} must not use host forja://asset URIs',
         );
         expect(
-          CatalogPackAssets.isPackNavIcon(icon),
+          PackAssets.isPackNavIcon(icon),
           isTrue,
           reason: '${s.tabId} icon $icon must be pack-relative or http(s)',
         );
@@ -783,7 +783,7 @@ void main() {
 
       expect(
         PluginNavRegistry.iconDataFor(
-          CatalogNavSpec.fromPluginNav(
+          MetaNavSpec.fromPluginNav(
             {
               'tabId': 'no_icon_hub',
               'label': 'No Icon',
@@ -799,21 +799,21 @@ void main() {
       final cartoonIcon =
           File('../../plugins/hubs/cartoon/icons/nav.png').resolveSymbolicLinksSync();
       expect(
-        CatalogPackAssets.resolveNavIconDisplay(
+        PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'icons/nav.png',
         ),
         cartoonIcon,
       );
       expect(
-        CatalogPackAssets.resolveNavIconDisplay(
+        PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'forja://asset/nav/home',
         ),
         isNull,
       );
       expect(
-        CatalogPackAssets.resolveNavIconDisplay(
+        PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'assets/images/nav/home.png',
         ),
@@ -854,7 +854,7 @@ void main() {
         'enrich': 'enrich-companion-test',
       });
       final again = EnginePlugin.fromJson(plugin.toJson());
-      expect(again.isHubCatalog, isTrue);
+      expect(again.isKitPlugin, isTrue);
       expect(again.capabilities, ['nav', 'rail']);
       expect(again.nav!['tabId'], 'custom_tab');
       expect(again.enrich, 'enrich-companion-test');

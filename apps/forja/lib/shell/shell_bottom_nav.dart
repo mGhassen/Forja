@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 class ShellBottomNav extends StatelessWidget {
@@ -43,8 +43,8 @@ class ShellBottomNav extends StatelessWidget {
                   splashColor: ForjaShellColors.inkSplash,
                   onTap: () => onItemTapped(idx),
                   onLongPress:
-                      CatalogVerticalFiltersRegistry.hasFilters(id)
-                      ? () => CatalogVerticalFiltersRegistry.showMenu(id)
+                      VerticalFiltersRegistry.hasFilters(id)
+                      ? () => VerticalFiltersRegistry.showMenu(id)
                       : null,
                   child: SizedBox(
                     width: ShellTokens.bottomNavItemWidth,

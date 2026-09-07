@@ -265,7 +265,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   String get _displayTitle => _s._displayMovie?.title ?? widget.title;
 
   String? get _hubEpisodeLine {
-    if (widget.hubEpisodes == null) return null;
+    if (widget.episodes == null) return null;
     final n = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (n == null) return null;
     return 'Episode ${n == n.truncateToDouble() ? n.toInt() : n}';
@@ -275,7 +275,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       widget.episodeOverview ?? _s._episodeOverview;
 
   Future<void> _loadHeroMetadata() async {
-    if (widget.hubEpisodes != null) return;
+    if (widget.episodes != null) return;
     final movie = widget.movie;
     if (movie == null) return;
     final metadata = await loadPlayerHeroMetadata(

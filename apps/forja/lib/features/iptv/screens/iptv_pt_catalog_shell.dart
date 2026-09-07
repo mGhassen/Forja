@@ -1,7 +1,7 @@
 part of 'iptv_pt_screen.dart';
 
-class _IptvCatalogShell extends StatelessWidget {
-  const _IptvCatalogShell({
+class _IptvKitShell extends StatelessWidget {
+  const _IptvKitShell({
     required this.ctrl,
     required this.compact,
     required this.wide,

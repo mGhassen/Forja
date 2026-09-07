@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
@@ -22,7 +22,7 @@ class EngineService {
   static final EngineService instance = EngineService._();
 
   static bool isInternalLiveCatalog(EnginePlugin plugin) =>
-      plugin.supportsLiveCatalog;
+      plugin.supportsLiveFeed;
 
   static String catalogFilterId(EnginePlugin catalog) => catalog.id;
 
@@ -50,7 +50,7 @@ class EngineService {
   int _extractGeneration = 0;
   int _liveCatalogGeneration = 0;
   int _catalogGeneration = 0;
-  EngineRuntime? _liveCatalogRuntime;
+  EngineRuntime? _liveMetaRuntime;
 
   static const _liveResolveMaxParallel = 1;
   int _liveResolveInFlight = 0;
@@ -102,13 +102,13 @@ class EngineService {
 
   void cancelLiveCatalog() {
     _liveCatalogGeneration++;
-    _abortLiveCatalogRuntime();
+    _abortLiveMetaRuntime();
     Engine.cancelLiveMatchesFetch();
   }
 
-  void _abortLiveCatalogRuntime() {
-    final rt = _liveCatalogRuntime;
-    _liveCatalogRuntime = null;
+  void _abortLiveMetaRuntime() {
+    final rt = _liveMetaRuntime;
+    _liveMetaRuntime = null;
     if (rt == null) return;
     rt.abortPendingWork();
     rt.dispose();
@@ -264,7 +264,7 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveCatalog) {
+        if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveFeed) {
           continue;
         }
         if (!await PluginRegistry.instance.isLiveCapabilityActive(
@@ -307,13 +307,13 @@ class EngineService {
     return out;
   }
 
-  Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
+  Future<List<EnginePlugin>> listEnabledLiveFeedPlugins() async {
     await ensureOfficialInstalled();
     final out = await listLiveSportCatalogPlugins();
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || p.isLiveSportPlugin || !p.enabled || !p.isLiveCatalog) {
+        if (!p.isHttp || p.isLiveSportPlugin || !p.enabled || !p.isLiveFeedPlugin) {
           continue;
         }
         out.add(p);
@@ -330,7 +330,7 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (p.isHubCatalog && p.enabled) out.add(p);
+        if (p.isKitPlugin && p.enabled) out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -356,7 +356,7 @@ class EngineService {
     if (gen != _catalogGeneration) return null;
     final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
     if (hit == null ||
-        !hit.plugin.isHubCatalog ||
+        !hit.plugin.isKitPlugin ||
         !hit.pack.isPluginActive(hit.plugin)) {
       debugPrint('[catalog] $pluginId not an active catalog plugin');
       return null;
@@ -728,7 +728,7 @@ class EngineService {
     required String tmdbId,
     required String type,
     Movie? movie,
-    CatalogOpen? catalogOpen,
+    MetaOpen? open,
     int? episode,
     String? episodeVideoId,
     int? season,
@@ -742,7 +742,7 @@ class EngineService {
     final resolved = resolveEngineExtractInputs(
       type: type,
       movie: movie,
-      catalogOpen: catalogOpen,
+      open: open,
       episodeVideoId: episodeVideoId,
       episode: episode,
       panelCategoryHint: type,
@@ -1018,12 +1018,12 @@ class EngineService {
   }
 
   /// Run one live sport plugin catalog action.
-  Future<List<Map<String, dynamic>>> runLiveCatalog({
+  Future<List<Map<String, dynamic>>> runLiveFeed({
     required EnginePlugin catalogPlugin,
     Map<String, dynamic> extraConfig = const {},
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (!catalogPlugin.supportsLiveCatalog &&
+    if (!catalogPlugin.supportsLiveFeed &&
         !catalogPlugin.supportsLiveBroadcast) {
       return [];
     }
@@ -1033,7 +1033,7 @@ class EngineService {
 
     final hit = PluginRegistry.packPluginFromPacks(packs, catalogPlugin.id);
     if (hit != null && catalogPlugin.isLiveSportPlugin) {
-      final catalogActive = catalogPlugin.supportsLiveCatalog &&
+      final catalogActive = catalogPlugin.supportsLiveFeed &&
           await PluginRegistry.instance.isLiveCapabilityActive(
             pack: hit.pack,
             plugin: catalogPlugin,
@@ -1080,7 +1080,7 @@ class EngineService {
     if (gen != _liveCatalogGeneration) return [];
 
     final runtime = EngineRuntime.fork();
-    _liveCatalogRuntime = runtime;
+    _liveMetaRuntime = runtime;
     try {
       await _syncHopsForRuntime(runtime, packs);
       if (gen != _liveCatalogGeneration) return [];
@@ -1099,8 +1099,8 @@ class EngineService {
       if (gen != _liveCatalogGeneration) return [];
       return _postProcessLivePluginRows(raw);
     } finally {
-      if (identical(_liveCatalogRuntime, runtime)) {
-        _liveCatalogRuntime = null;
+      if (identical(_liveMetaRuntime, runtime)) {
+        _liveMetaRuntime = null;
       }
       runtime.dispose();
     }
@@ -1248,7 +1248,7 @@ class EngineService {
     required String tmdbId,
     required String type,
     Movie? movie,
-    CatalogOpen? catalogOpen,
+    MetaOpen? open,
     int? episode,
     String? episodeVideoId,
     int? season,
@@ -1260,7 +1260,7 @@ class EngineService {
     final resolved = resolveEngineExtractInputs(
       type: type,
       movie: movie,
-      catalogOpen: catalogOpen,
+      open: open,
       episodeVideoId: episodeVideoId,
       episode: episode,
       panelCategoryHint: type,
@@ -1316,7 +1316,7 @@ class EngineService {
         title: title,
         year: year,
         movie: movie,
-        catalogOpen: catalogOpen,
+        open: open,
         episodeVideoId: episodeVideoId,
         audioCategory: audioCategory,
         allowHostFallback: allowHostFallback,

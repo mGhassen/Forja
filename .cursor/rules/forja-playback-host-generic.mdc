@@ -20,8 +20,8 @@ catalog ids (AniList, KissKh, Arabic video ids).
 ## MUST
 
 - Work from **generic inputs**: `Movie`, stream rows, `pluginId` (engine extract only),
-  optional **opaque** `CatalogMetaItem` / `CatalogOpen` **passed through** to engine or
-  `CatalogWatchHistory` without interpreting `surface`.
+  optional **opaque** `MetaItem` / `MetaOpen` **passed through** to engine or
+  `WatchHistory` without interpreting `surface`.
 - Call `EngineService.runPlugin` / `runPluginIsolated` with resolve args produced by
   **engine layer** helpers — not computed inside playback via `switch (surface)`.
 - Keep session cache keys stable using **`catalogOpen` (surface+id) or pluginId+metaId** —
@@ -39,8 +39,8 @@ catalog ids (AniList, KissKh, Arabic video ids).
   `hubEngineResolveParams`, `engineCategoryForOpen`, or similar in this folder.
 - Add files like `hub_open_engine.dart` that map surfaces → upstream ids.
 - Keep hub-only modules here long term: `hub_play_context.dart`, `hub_engine_watch_history.dart`,
-  `hub_drama_player_episodes.dart`, `catalog_play_resolve.dart` → belong under
-  **`shared/catalog/kit/play/`**.
+  `hub_drama_player_episodes.dart`, `play_resolve.dart` → belong under
+  **`shared/foundation/blocks/play/`**.
 - Call `TmdbApi` or pack upstream APIs from playback.
 - Default scraper/provider names (`larozaa`, …).
 
@@ -75,7 +75,7 @@ if (category == EngineCategories.drama) { … }
 ```dart
 await EngineService.instance.runPluginIsolated(
   pluginId: pluginId,
-  catalogOpen: open,
+  open: open,
   episodeVideoId: episodeIds[ep],
   …,
 );
@@ -83,13 +83,13 @@ await EngineService.instance.runPluginIsolated(
 
 **Right** — engine (`shared/engine/**`) maps `catalogOpen` → JS extract context once.
 
-**Right** — catalog kit play builds `CatalogPlayContext(pluginId, meta, open, episodeIds)`
+**Right** — catalog kit play builds `PlayContext(pluginId, meta, open, episodeIds)`
 and hands off to engine + player.
 
 ---
 
 ## Before changing this folder
 
-1. Is this hub/pack-specific? → move to `catalog/kit/play` or `engine/`.
+1. Is this hub/pack-specific? → move to `foundation/blocks/play` or `engine/`.
 2. Does it need `anime`/`drama`/`kisskh`/`anilist`? → **stop** — engine or pack only.
 3. Does it only open/probe/cache streams? → OK here.

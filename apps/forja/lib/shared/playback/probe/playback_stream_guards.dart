@@ -284,18 +284,18 @@ String catalogStreamRowProgressKey(Map<String, dynamic> stream) {
   return '$url|$quality|$name';
 }
 
-String? _pendingCatalogStreamRowKey;
+String? _pendingMetaStreamRowKey;
 
 /// Bind the catalog row opened next so the first watch-history save records
 /// [catalogStreamRowProgressKey].
-void bindPendingCatalogStreamRowKey(Map<String, dynamic> stream) {
-  _pendingCatalogStreamRowKey = catalogStreamRowProgressKey(stream);
+void bindPendingMetaStreamRowKey(Map<String, dynamic> stream) {
+  _pendingMetaStreamRowKey = catalogStreamRowProgressKey(stream);
 }
 
 /// Consumed once when persisting watch progress from the player.
-String? takePendingCatalogStreamRowKey() {
-  final key = _pendingCatalogStreamRowKey;
-  _pendingCatalogStreamRowKey = null;
+String? takePendingMetaStreamRowKey() {
+  final key = _pendingMetaStreamRowKey;
+  _pendingMetaStreamRowKey = null;
   return key;
 }
 

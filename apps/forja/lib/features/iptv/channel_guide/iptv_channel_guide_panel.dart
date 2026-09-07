@@ -9,7 +9,7 @@ import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';

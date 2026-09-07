@@ -19,6 +19,7 @@ When enabled, **Escape** (after the usual hide-chrome / leave-fullscreen steps) 
 - Browse the shell while the mini sits in the bottom-right corner (video keeps playing)
 - **Play** / **Pause** on the mini chrome (bottom)
 - Mini chrome hides after a few seconds of idle — hover or tap the mini to show it again
+- Drag the top-left corner (resize cursor, no grip icon) to grow/shrink 16:9
 - **Expand** — full player again (shell freezes like a normal player session)
 - **Close** (top-right) — stop playback and leave the player
 - Minimize the Forja window while mini is active — playback keeps going

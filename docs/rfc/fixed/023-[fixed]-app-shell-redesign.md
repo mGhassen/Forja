@@ -5,7 +5,7 @@
 **Target version:** [0.8.1](../backlog/done/0.8.1-[done].md) *(core tabs shipped)*  
 **Scope:** **desktop only** — rail, immersive chrome, body-only tabs, core tab UX *(shipped — tags `v0.8.0`, `v0.8.1`)*  
 **Depends on:** RFC-001 (monorepo), RFC-011 (v1.0 MVP shell shipped)  
-**Area:** `apps/forja/lib/shell/`, `apps/forja/lib/shared/design/`
+**Area:** `apps/forja/lib/shell/`, `apps/forja/lib/shared/foundation/primitives/`
 
 ## Status at a glance
 
@@ -24,7 +24,7 @@
 |--:|----|-------------|--------|
 | 1 | R23-C01 | `NavDestination` typed registry; remove settings `_navMeta` duplicate | ✅ |
 | 2 | R23-C02 | `ShellScaffold` / `ShellNavRail` / `ShellBottomNav` / `ShellBody` extracted from `MainScreen` | ✅ |
-| 3 | R23-C03 | `shell_tokens.dart` wired into nav chrome | ✅ |
+| 3 | R23-C03 | `forja_shell_tokens.dart` wired into nav chrome | ✅ |
 | 4 | R23-C04 | Home + Settings + Search body-only; Search uses `ShellSearchBar` in shell | ✅ |
 | 5 | R23-C05 | All other nav tab roots body-only (no nested shell `Scaffold`) | ✅ |
 
@@ -74,7 +74,7 @@ Rework the primary app shell so menu, background, and body are owned once — no
 
 3. **Nested scaffolds** — Shell `Scaffold` wrapped tab widgets that each returned their own `Scaffold` (fixed for all nav tab roots in 0.8.0).
 
-4. **Unwired design stubs** — [`shared/design/`](../../apps/forja/lib/shared/design/) now wired via `shell_tokens`.
+4. **Unwired design stubs** — [`shared/foundation/primitives/`](../../apps/forja/lib/shared/foundation/primitives/) now wired via `shell_tokens`.
 
 ## Goals
 

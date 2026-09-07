@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/live_sports/catalog/live_sports_list_source.dart';
 import 'package:forja/features/live_sports/live_prefs.dart';
-import 'package:forja/shared/live/schedule/schedule_catalog_source.dart';
+import 'package:forja/shared/foundation/services/live/schedule_list_source.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
-import 'package:forja/shared/catalog/services/host_list_registry.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/components/layout/kit_types.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 void main() {
   setUp(() {
-    CatalogHostListRegistry.debugReset();
+    HostListRegistry.debugReset();
     LiveSportsHost.debugReset();
     LiveSportsHost.ensureRegistered();
   });
@@ -32,15 +32,15 @@ void main() {
         },
       ];
       expect(
-        CatalogKitTypes.treeContains(
+        KitTypes.treeContains(
           layout,
-          slot: CatalogKitTypes.list,
+          slot: KitTypes.list,
           listSource: LiveSportsHost.listSourceId,
         ),
         isTrue,
       );
-      expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
-      final source = CatalogHostListRegistry.resolve(sourceId: 'live_schedule');
+      expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
+      final source = HostListRegistry.resolve(sourceId: 'live_schedule');
       expect(source, isNotNull);
       expect(source, same(LiveScheduleCatalogSource.instance));
       expect(source!.wantsHostBody, isFalse);
@@ -52,14 +52,14 @@ void main() {
     });
 
     test('generic kit types only — no product-named live slots', () {
-      expect(CatalogKitTypes.normalize('kit.stack'), CatalogKitTypes.stack);
-      expect(CatalogKitTypes.normalize('kit.list'), CatalogKitTypes.list);
-      expect(CatalogKitTypes.normalize('kit.topBar'), CatalogKitTypes.topBar);
+      expect(KitTypes.normalize('kit.stack'), KitTypes.stack);
+      expect(KitTypes.normalize('kit.list'), KitTypes.list);
+      expect(KitTypes.normalize('kit.topBar'), KitTypes.topBar);
       expect(
-        CatalogKitTypes.normalize('kit.categoryBar'),
-        CatalogKitTypes.categoryBar,
+        KitTypes.normalize('kit.categoryBar'),
+        KitTypes.categoryBar,
       );
-      expect(CatalogKitTypes.normalize('kit.live.mode'), 'kit.live.mode');
+      expect(KitTypes.normalize('kit.live.mode'), 'kit.live.mode');
     });
   });
 
@@ -71,9 +71,9 @@ void main() {
     });
   });
 
-  group('CatalogMetaItem live fields', () {
+  group('MetaItem live fields', () {
     test('parses airing, starts_at, viewers, sources', () {
-      final item = CatalogMetaItem.fromJson({
+      final item = MetaItem.fromJson({
         'id': 'test-a:1',
         'type': 'live_match',
         'name': 'Team A vs Team B',
@@ -124,12 +124,12 @@ void main() {
       expect(liveScheduleRowInHorizon(row, item, 'all'), isTrue);
     });
 
-    test('HubLiveScheduleSource resolves live_schedule id', () {
+    test('LiveScheduleListSource resolves live_schedule id', () {
       expect(
         LiveSportsListSources.resolve('live_schedule'),
-        isA<HubLiveScheduleSource>(),
+        isA<LiveScheduleListSource>(),
       );
-      expect(const HubLiveScheduleSource().id, 'live_schedule');
+      expect(const LiveScheduleListSource().id, 'live_schedule');
     });
   });
 }

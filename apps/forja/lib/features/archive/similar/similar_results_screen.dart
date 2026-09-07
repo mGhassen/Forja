@@ -18,7 +18,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:forja/features/archive/similar/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 class SimilarResultsScreen extends StatefulWidget {
   final int bsId;

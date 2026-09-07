@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/host/catalog_vertical_filters.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shell/player_surface_chrome_stub.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_body.dart';
@@ -11,7 +11,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   tearDown(() {
-    CatalogVerticalFiltersRegistry.clearForTest();
+    VerticalFiltersRegistry.clearForTest();
     ShellBus.clearHideGlobalNav();
     ShellBus.restoreImageCacheAfterPlayback();
     ShellBus.requestSettingsCategory.value = null;
@@ -81,34 +81,34 @@ void main() {
   });
 
   test('ShellBus provider menu show + top logo clear filter', () {
-    CatalogVerticalFiltersRegistry.register(
-      CatalogVerticalFiltersSpec(
+    VerticalFiltersRegistry.register(
+      VerticalFiltersSpec(
         widgetId: 'watch_providers',
         tabId: 'home',
         pluginId: 'tmdb',
         packSourceUrl: '',
         showSelectedInTopBar: true,
         options: [
-          CatalogVerticalFilterOption(
+          VerticalFilterOption(
             id: 'netflix',
             label: 'Netflix',
             logo: 'logos/netflix.svg',
             tileColor: const Color(0xFF000000),
-            filter: CatalogFilterAst.eq('watch_provider', 8),
+            filter: MetaFilterAst.eq('watch_provider', 8),
           ),
         ],
       ),
     );
     ShellBus.homeProviderMenuVisible.value = false;
-    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = null;
+    VerticalFiltersRegistry.selectedIdFor('home').value = null;
 
     ShellBus.showHomeProviderMenu();
     expect(ShellBus.homeProviderMenuVisible.value, isTrue);
 
-    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
+    VerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
     ShellBus.onTopProviderLogoTap();
     expect(ShellBus.homeProviderMenuVisible.value, isTrue);
-    expect(CatalogVerticalFiltersRegistry.selectedIdFor('home').value, isNull);
+    expect(VerticalFiltersRegistry.selectedIdFor('home').value, isNull);
 
     ShellBus.homeProviderMenuVisible.value = false;
     ShellBus.onTopProviderLogoTap();

@@ -113,7 +113,7 @@ Details screens live under `features/home/` but are app-wide routes. Player stil
 ## Goals
 
 - **Module clarity:** `features/media/` owns detail + streaming detail screens
-- **Visual parity:** [`ShellTokens`](../../apps/forja/lib/shared/design/src/shell_tokens.dart) + [`ForjaShellColors`](../../apps/forja/lib/shared/design/src/forja_shell_colors.dart) — flat ghost buttons, underline tabs, no `BackdropFilter`
+- **Visual parity:** [`ShellTokens`](../../apps/forja/lib/shared/foundation/primitives/src/forja_shell_tokens.dart) + [`ForjaShellColors`](../../apps/forja/lib/shared/foundation/primitives/src/forja_shell_colors.dart) — flat ghost buttons, underline tabs, no `BackdropFilter`
 - **Functional parity:** All torrent, Stremio, Nuvio, debrid, and WebStreamr paths behave as today
 - **Play flow:** Details → player handoff preserves sources, resume position, season/episode context
 

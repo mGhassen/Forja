@@ -15,7 +15,7 @@ Flutter binary. The app **installs, caches, and runs** them at runtime via
 
 | Pack tree | Role | Host entry |
 |-----------|------|------------|
-| `plugins/hubs/**` | Browse catalogs (home, anime, drama, …) | `CatalogRuntime.run(pluginId, action, …)` |
+| `plugins/hubs/**` | Browse catalogs (home, anime, drama, …) | `MetaRuntime.run(pluginId, action, …)` |
 | `plugins/providers/**` | Stream extractors (VidLink, Megaplay, …) | `EngineService.runPlugin(…)` |
 | `plugins/live/**` | Live matches / schedules | Engine live APIs |
 | `plugins/catalog/**` | Stremio-style catalog addons | Engine catalog |
@@ -51,10 +51,10 @@ packages/rust/     ← native playback / torrent / resolve engine
 | Layer | Path (typical) | May know pack/upstream? |
 |-------|----------------|-------------------------|
 | **Hub packs** | `plugins/hubs/**` | **Yes** — full |
-| **Catalog host** | `shared/catalog/**`, `CatalogShell`, `catalog_open` | **No** — render + route on `open.surface` only |
-| **Catalog kit play** | `shared/catalog/kit/**` | **No** — build play args from `CatalogMetaItem` + `pluginId`; pass `CatalogOpen` opaque |
+| **Catalog host** | `shared/foundation/**`, `KitShell`, `catalog_open` | **No** — render + route on `open.surface` only |
+| **Catalog kit play** | `shared/foundation/blocks/play/**` | **No** — build play args from `MetaItem` + `pluginId`; pass `MetaOpen` opaque |
 | **Playback** | `shared/playback/**` | **No** — generic VOD orchestration only (see playback rule) |
-| **Engine host** | `shared/engine/**` | Plugin ids + `engine.json` types for **extract**; map `CatalogOpen` → JS context **here only** when calling `runPlugin` |
+| **Engine host** | `shared/engine/**` | Plugin ids + `engine.json` types for **extract**; map `MetaOpen` → JS context **here only** when calling `runPlugin` |
 | **Feature screens** | `features/anime`, `asian_drama`, … | Legacy; **new hub work uses catalog kit**, not new feature forks |
 | **Shell seed** | `PluginNavRegistry` seed | Boot-only default `pluginId` per tab until pack `nav` refresh — **not** business logic |
 
@@ -78,13 +78,13 @@ Every openable hub meta must carry:
 
 Host rules:
 
-1. **`openCatalogMetaItem`** — switch **only** on `open.surface` → push hub details or
+1. **`openMetaItem`** — switch **only** on `open.surface` → push hub details or
    TMDB details. Never on `ids.anilist`, pack id, or scraper name.
 2. **Pass through** `open.id` + extras — do not remap via `numericId('kisskh')` etc.
 3. **Details / play** — use `meta.videos`, poster, background as returned; enrich via
-   pack `enrich` companion (`CatalogRuntime` pipe), not host `TmdbApi` (see catalog rule).
+   pack `enrich` companion (`MetaRuntime` pipe), not host `TmdbApi` (see catalog rule).
 4. **Engine extract** — when play needs upstream ids, **`EngineService`** (or engine
-   helper) derives them from `CatalogOpen` + episode video id **once** at the
+   helper) derives them from `MetaOpen` + episode video id **once** at the
    `runPlugin` boundary — not in `shared/playback/**`.
 
 Allowed host-only id scheme (not a pack): **`tmdb`** for Home movie/tv rows when
@@ -111,8 +111,8 @@ Unless explicitly listed as boot seed or engine extract boundary:
 
 ```
 Pack meta (open + videos)
-  → catalog/kit/play: CatalogPlayContext(pluginId, meta, open, episodeVideoIds)
-  → engine: runPlugin(pluginId, catalogOpen: open, …)  // maps open → JS ctx here
+  → catalog/kit/play: PlayContext(pluginId, meta, open, episodeVideoIds)
+  → engine: runPlugin(pluginId, open: open, …)  // maps open → JS ctx here
   → playback: probe streams, open player, save progress  // no surface switches
 ```
 
@@ -123,16 +123,16 @@ Playback receives **streams + Movie + optional catalog watch hooks** — not “
 ## When adding a hub or provider
 
 1. Change **`plugins/**`** (manifest, JS, enrich).
-2. If new **host route** needed → add one `open.surface` handler in `catalog_open.dart`.
+2. If new **host route** needed → add one `open.surface` handler in `kit_open.dart`.
 3. If extract needs new context → extend **engine** `runPlugin` input, not playback.
-4. Do **not** add pack branches to `shared/playback/**` or `catalog_play_resolve.dart`.
+4. Do **not** add pack branches to `shared/playback/**` or `play_resolve.dart`.
 
 ---
 
 ## Legacy debt — do not extend
 
-- `shared/playback/hub_*`, `catalog_play_resolve.dart` — pack-scented; migrate to
+- `shared/playback/hub_*`, `play_resolve.dart` — pack-scented; migrate to
   `catalog/kit/play/` + engine boundary; do not add `anime`/`drama` switches.
 - `PluginNavRegistry` empty seed + pack `nav` / cache — no baked hub plugin ids.
-- `hub_details_sections.dart` TMDB host fetch — migrate to pack enrich.
+- `kit_details_sections.dart` TMDB host fetch — migrate to pack enrich.
 - Partial refactors that rename fields but keep `switch (surface)` in playback — **reject**.

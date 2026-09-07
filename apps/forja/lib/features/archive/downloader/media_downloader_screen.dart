@@ -11,7 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 class MediaDownloaderScreen extends StatefulWidget {
   const MediaDownloaderScreen({super.key});

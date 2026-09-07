@@ -9,13 +9,13 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/host/hub_catalog_top_bar.dart';
-import 'package:forja/shared/catalog/host/catalog_vertical_filters_rail.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
-import 'package:forja/shared/catalog/host/catalog_vertical_filters.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/widgets/brand/forja_profile_avatar.dart';
 import 'package:rust/src/settings_service.dart';
 
@@ -44,7 +44,7 @@ void main() {
   const visibleIds = [hubA, hubB, 'settings'];
 
   void seedHomePackFilters() {
-    CatalogPackFiltersRegistry.seedFromJson('test-provider-a', {
+    PackFiltersRegistry.seedFromJson('test-provider-a', {
       'menus': [
         {
           'id': 'films',
@@ -71,20 +71,20 @@ void main() {
   }
 
   void seedHomeVerticalFilters() {
-    CatalogVerticalFiltersRegistry.register(
-      CatalogVerticalFiltersSpec(
+    VerticalFiltersRegistry.register(
+      VerticalFiltersSpec(
         widgetId: 'watch_providers',
         tabId: hubA,
         pluginId: 'test-provider-a',
         packSourceUrl: '',
         showSelectedInTopBar: true,
         options: [
-          CatalogVerticalFilterOption(
+          VerticalFilterOption(
             id: 'netflix',
             label: 'Netflix',
             logo: 'assets/watch_providers/netflix.svg',
             tileColor: const Color(0xFF000000),
-            filter: CatalogFilterAst.eq('watch_provider', 8),
+            filter: MetaFilterAst.eq('watch_provider', 8),
           ),
         ],
       ),
@@ -114,8 +114,8 @@ void main() {
         ),
       },
     );
-    CatalogVerticalFiltersRegistry.clearForTest();
-    CatalogPackFiltersRegistry.clearForTest();
+    VerticalFiltersRegistry.clearForTest();
+    PackFiltersRegistry.clearForTest();
     seedHomePackFilters();
     seedHomeVerticalFilters();
     ShellBus.hubSelectedMenuIdFor(hubA).value = null;
@@ -123,7 +123,7 @@ void main() {
     ShellBus.hubHeroHeightFor(hubA).value = 0;
     ShellBus.hubScrollOffsetFor(hubA).value = 0;
     ShellBus.selectedWatchProviderId.value = null;
-    CatalogVerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
+    VerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
@@ -208,7 +208,7 @@ void main() {
     );
 
     expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byType(PluginHubCatalogTopBar), findsNothing);
+    expect(find.byType(PluginKitTopBar), findsNothing);
     expect(find.byType(ShellBottomNav), findsNothing);
     expect(find.text('Films'), findsNothing);
   });
@@ -218,24 +218,24 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
 
-    expect(find.byType(PluginHubCatalogTopBar), findsOneWidget);
+    expect(find.byType(PluginKitTopBar), findsOneWidget);
     expect(find.text('Films'), findsOneWidget);
     expect(find.text('Series'), findsOneWidget);
   });
 
   testWidgets(
-    'PluginHubCatalogTopBar drops Films when tabId changes to hub without chrome',
+    'PluginKitTopBar drops Films when tabId changes to hub without chrome',
     (tester) async {
       // hubA has vertical filters → VOD chrome. hubB has none. State must not
       // keep painting Search/Films after a hub switch (Live Sports regression).
       await pumpScaffold(
         tester,
-        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
         size: const Size(1200, 800),
         profile: ShellProfile.desktop,
       );
@@ -244,7 +244,7 @@ void main() {
       await pumpScaffold(
         tester,
         desktopScaffold(
-          shellTopBar: PluginHubCatalogTopBar(
+          shellTopBar: PluginKitTopBar(
             key: ValueKey(hubB),
             tabId: hubB,
           ),
@@ -260,10 +260,10 @@ void main() {
     },
   );
 
-  testWidgets('PluginHubCatalogTopBar Categories menu sets genre filter', (tester) async {
+  testWidgets('PluginKitTopBar Categories menu sets genre filter', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -277,12 +277,12 @@ void main() {
     expect(ShellBus.hubSelectedCategoryIdFor(hubA).value, 'action');
   });
 
-  testWidgets('PluginHubCatalogTopBar Films tap toggles pack menu id', (
+  testWidgets('PluginKitTopBar Films tap toggles pack menu id', (
     tester,
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -300,14 +300,14 @@ void main() {
     expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
   });
 
-  testWidgets('PluginHubCatalogTopBar shows provider rail when menu visible', (
+  testWidgets('PluginKitTopBar shows provider rail when menu visible', (
     tester,
   ) async {
-    CatalogVerticalFiltersRegistry.menuVisibleFor(hubA).value = true;
+    VerticalFiltersRegistry.menuVisibleFor(hubA).value = true;
     await pumpScaffold(
       tester,
       desktopScaffold(
-        shellTopBar: const PluginHubCatalogTopBar(tabId: hubA),
+        shellTopBar: const PluginKitTopBar(tabId: hubA),
         selectedIndex: 0,
       ),
       size: const Size(1200, 800),
@@ -315,31 +315,31 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(CatalogVerticalFiltersRail), findsOneWidget);
+    expect(find.byType(VerticalFiltersRail), findsOneWidget);
   });
 
-  testWidgets('PluginHubCatalogTopBar shows selected provider logo before Films', (
+  testWidgets('PluginKitTopBar shows selected provider logo before Films', (
     tester,
   ) async {
     ShellBus.selectedWatchProviderId.value = 8; // legacy — logo uses registry
-    CatalogVerticalFiltersRegistry.selectedIdFor(hubA).value = 'netflix';
+    VerticalFiltersRegistry.selectedIdFor(hubA).value = 'netflix';
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
     await tester.pump();
 
-    expect(find.byType(CatalogVerticalFilterTopBarLogo), findsOneWidget);
+    expect(find.byType(VerticalFilterTopBarLogo), findsOneWidget);
   });
 
-  testWidgets('PluginHubCatalogTopBar slides away after scrolling past hero height', (
+  testWidgets('PluginKitTopBar slides away after scrolling past hero height', (
     tester,
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -348,7 +348,7 @@ void main() {
       final transforms = tester
           .widgetList<Transform>(
             find.descendant(
-              of: find.byType(PluginHubCatalogTopBar),
+              of: find.byType(PluginKitTopBar),
               matching: find.byType(Transform),
             ),
           )
@@ -374,7 +374,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -429,7 +429,7 @@ void main() {
     (tester) async {
       await pumpScaffold(
         tester,
-        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
         size: const Size(800, 800),
       );
 
@@ -800,7 +800,7 @@ void main() {
         .widgetList<Offstage>(find.byType(Offstage, skipOffstage: false))
         .firstWhere((o) => o.offstage);
     expect(offstage.offstage, isTrue);
-    expect(find.byType(PluginHubCatalogTopBar), findsNothing);
+    expect(find.byType(PluginKitTopBar), findsNothing);
   });
 
   testWidgets(

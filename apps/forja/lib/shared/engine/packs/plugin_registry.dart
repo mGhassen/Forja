@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/services/cache.dart';
+import 'package:forja/shared/foundation/services/cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
@@ -208,7 +208,7 @@ class PluginRegistry {
       };
     }
     if (pack.plugins.any((p) => p.types.contains('iptv'))) return packKindIptv;
-    if (pack.plugins.any((p) => p.isHubCatalog)) return packKindHubs;
+    if (pack.plugins.any((p) => p.isKitPlugin)) return packKindHubs;
     if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {
       return packKindLive;
     }
@@ -1036,16 +1036,16 @@ class PluginRegistry {
     await _savePacks(all);
     final hubSlot = forjaHqSlot(manifestUrl);
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
-      CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
+      MetaCache.instance.syncPackVersion(pack.packId, pack.version);
     }
     // Scripts may change at the same semver — always drop cached catalog answers.
     for (final p in pack.plugins) {
-      CatalogCache.instance.wipePlugin(p.id);
+      MetaCache.instance.wipePlugin(p.id);
       _localScriptDigests.remove(p.id);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
-      CatalogCache.instance.wipeAll();
+      MetaCache.instance.wipeAll();
     }
     // Green Play / Sources RAM + resume extracts must not keep pre-update empties.
     _invalidatePlaybackCachesAfterPackChange();
@@ -1101,7 +1101,7 @@ class PluginRegistry {
     for (final pack in victim) {
       await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
       for (final p in pack.plugins) {
-        CatalogCache.instance.wipePlugin(p.id);
+        MetaCache.instance.wipePlugin(p.id);
       }
     }
     await _savePacks(all);
@@ -1321,7 +1321,7 @@ class PluginRegistry {
   }) async {
     if (kDebugMode &&
         (plugin.isTorrent ||
-            plugin.isHubCatalog ||
+            plugin.isKitPlugin ||
             plugin.id.startsWith('catalog-') ||
             plugin.supportsLiveBroadcast ||
             plugin.isLiveResolve)) {
@@ -1330,7 +1330,7 @@ class PluginRegistry {
         devUrl = devTorrentManifestUrl();
       } else if (plugin.isLiveResolve) {
         devUrl = devLiveManifestUrl();
-      } else if (plugin.isHubCatalog) {
+      } else if (plugin.isKitPlugin) {
         devUrl = _asLocalFile(sourceUrl)?.path;
       } else {
         devUrl = devCatalogManifestUrl();
@@ -1454,7 +1454,7 @@ class PluginRegistry {
     _localScriptDigests[id] = digest;
     if (prev == null) return;
     debugPrint('[engine] $id script changed — invalidating caches');
-    CatalogCache.instance.wipePlugin(id);
+    MetaCache.instance.wipePlugin(id);
     _invalidatePlaybackCachesAfterPackChange();
     notifyChanged();
   }

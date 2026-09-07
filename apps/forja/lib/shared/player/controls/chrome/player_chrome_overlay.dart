@@ -11,7 +11,7 @@ import 'package:forja/shared/widgets/hero/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/media_details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 

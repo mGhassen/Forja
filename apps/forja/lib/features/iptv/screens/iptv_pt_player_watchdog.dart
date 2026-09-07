@@ -295,10 +295,27 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     return false;
   }
 
+  /// Buffering chrome up + demuxer near-empty past underrun grace.
+  ///
+  /// [estimated-vf-fps] can still pulse while TextureSW starves (Stalker
+  /// macOS) — that must not block soft-reopen forever.
+  bool get _sustainedEmptyBufferingUnderrun {
+    if (!_playbackStarted) return false;
+    final since = _s._bufferingSince;
+    if (since == null) return false;
+    if (_s._cacheAheadSecs >=
+        _IptvPtPlayerScreenState._liveEmptyUnderrunCacheSecs) {
+      return false;
+    }
+    return DateTime.now().difference(since) >=
+        _IptvPtPlayerScreenState._liveEmptyBufferingUnderrun;
+  }
+
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
     if (_stallWithoutPlayhead) return false;
     if (_bufferingHardWall) return false;
+    if (_sustainedEmptyBufferingUnderrun) return false;
     // After cold open: empty demuxer + no feed = dead even if VO still pulses
     // (MediaKit live can keep estimated-fps / playhead ticks while S3 TLS
     // resets and cache sits at 0 — web keeps refetching; we must reopen).
@@ -307,7 +324,8 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         openedAt != null &&
         DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
     if (pastColdOpen &&
-        _s._cacheAheadSecs < 0.5 &&
+        _s._cacheAheadSecs <
+            _IptvPtPlayerScreenState._liveEmptyUnderrunCacheSecs &&
         !_networkStillFeeding) {
       return false;
     }
@@ -386,9 +404,15 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       if (_s._socketTroublePending && _bufferedRecovery) return;
 
       // Detector 1: long buffering — only if cache is empty / not working.
-      final bufferGrace = _s._lastPos > Duration.zero
-          ? const Duration(milliseconds: 12000)
-          : const Duration(milliseconds: 25000);
+      // Empty underrun (cache < 0.5s): shorter grace so Stalker/direct live
+      // soft-reopens instead of forever `skip recovery … working` on fps pulse.
+      final emptyUnderrun = _s._cacheAheadSecs <
+          _IptvPtPlayerScreenState._liveEmptyUnderrunCacheSecs;
+      final bufferGrace = emptyUnderrun
+          ? _IptvPtPlayerScreenState._liveEmptyBufferingUnderrun
+          : (_s._lastPos > Duration.zero
+              ? const Duration(milliseconds: 12000)
+              : const Duration(milliseconds: 25000));
       if (_s._userPlayWhenReady &&
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
@@ -424,7 +448,9 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         // Stall ON: also reopen on VO freeze with a full demuxer cushion.
         // Stall OFF (Stalker Auto): only empty-cache underrun — do not wipe a
         // healthy cushion when playhead sits at 0.
-        if (_playheadRecentlyMoved) {
+        // Empty underrun: fps pulse must not abort — detector 1 / soft
+        // reopen owns recovery (macOS Stalker TextureSW stutter).
+        if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
           _s._livePaintMissStreak = 0;
           return;
         }

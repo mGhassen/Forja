@@ -1,8 +1,8 @@
 /// Machine-readable EngineJS pack contracts — `plugins/sdk/schema/*.json`.
 library;
 
-import 'package:forja/shared/catalog/assets/catalog_pack_assets.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 /// Validates pack manifests at install time (mirrors [manifest.schema.json]).
 abstract final class PluginContract {
@@ -119,7 +119,7 @@ abstract final class PluginContract {
                 'or http(s) — not Flutter assets/ or forja://asset',
               );
             }
-            if (!CatalogPackAssets.isPackNavIcon(s)) {
+            if (!PackAssets.isPackNavIcon(s)) {
               throw FormatException(
                 'plugin $id nav.icon must be pack-relative (icons/…) '
                 'or http(s)',
@@ -132,7 +132,7 @@ abstract final class PluginContract {
   }
 
   /// Throws [FormatException] when [raw] is not a catalog envelope list/map.
-  static void validateCatalogEnvelope(dynamic raw) {
+  static void validateMetaEnvelope(dynamic raw) {
     final env = _envelopeMap(raw);
     if (env == null) {
       throw const FormatException('catalog response is not an envelope');

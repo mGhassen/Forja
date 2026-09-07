@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I78-T01 | Add `ForjaSwitch` + `forjaSwitchThemeData` in `shared/design/` | ✅ |
+| 1 | I78-T01 | Add `ForjaSwitch` + `forjaSwitchThemeData` in `shared/foundation/primitives/` | ✅ |
 | 2 | I78-T02 | Wire `AppTheme.switchTheme` to shared tokens | ✅ |
 | 3 | I78-T03 | Migrate settings / player / audiobook raw `Switch` call sites to `ForjaSwitch` | ✅ |
 | 4 | I78-T04 | Drop ad-hoc Nuvio `SwitchListTile` thumb override (inherits theme) | ✅ |

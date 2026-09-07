@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/services/runtime.dart';
+import 'package:forja/shared/foundation/services/runtime.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:rust/rust.dart';
@@ -15,7 +15,7 @@ abstract final class HubPluginConfig {
     EnginePlugin? inactive;
     for (final pack in packs) {
       for (final plugin in pack.plugins) {
-        if (!plugin.isHubCatalog) continue;
+        if (!plugin.isKitPlugin) continue;
         final navTab = (plugin.nav?['tabId'] ?? '').toString().trim();
         if (navTab != want) continue;
         if (pack.isPluginActive(plugin)) return plugin;
@@ -111,7 +111,7 @@ abstract final class HubPluginConfig {
   static Future<void> activateMirrorBaseUrl(String baseUrl) async {
     final pluginId = await _dramaHubPluginId();
     if (pluginId == null) return;
-    await CatalogRuntime.instance.run(
+    await MetaRuntime.instance.run(
       pluginId: pluginId,
       action: 'activate_base_url',
       params: {'base_url': baseUrl},
@@ -124,7 +124,7 @@ abstract final class HubPluginConfig {
     final base = baseUrlForHost(hostOrId);
     if (kDebugMode) debugPrint('[HubPluginConfig] probe $base …');
     try {
-      final env = await CatalogRuntime.instance.run(
+      final env = await MetaRuntime.instance.run(
         pluginId: pluginId,
         action: 'probe_base_url',
         params: {'base_url': base},

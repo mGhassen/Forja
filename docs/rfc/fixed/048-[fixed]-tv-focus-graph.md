@@ -21,7 +21,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R48-C01 | `TvFocusGraph` — tab-scoped facade over `ShellTvFocusCoordinator` rows/memory | ✅ |
-| 2 | R48-C02 | `TvCatalogRow` — owns register/unregister + injects tab/row meta | ✅ |
+| 2 | R48-C02 | `TvKitRow` — owns register/unregister + injects tab/row meta | ✅ |
 | 3 | R48-C03 | `TvChipStrip` — chip strip edges + chip↔results helpers | ✅ |
 | 4 | R48-C04 | `TvHeroActions` — tab defaults / hero reveal bind | ✅ |
 | 5 | R48-C05 | `TvGrid` — multi-column results grid (`ShellTvZone.grid` + `moveInGrid`) | ✅ |
@@ -47,8 +47,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 7 | R48-A07 | Anime / Asian Drama `HubCatalogSection` + CW + anime mood on `TvCatalogRow` / `TvChipStrip` | ✅ |
-| 8 | R48-A08 | `TvGrid` recipe for Search results (+ helpers `TvCatalogRow`, `TvFocusGraph`) | ✅ |
+| 7 | R48-A07 | Anime / Asian Drama `KitSection` + CW + anime mood on `TvKitRow` / `TvChipStrip` | ✅ |
+| 8 | R48-A08 | `TvGrid` recipe for Search results (+ helpers `TvKitRow`, `TvFocusGraph`) | ✅ |
 | 9 | R48-A09 | `TvOverlayScope` for player menus / sources / subtitle settings / handoff picker | ✅ |
 
 ---
@@ -57,8 +57,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 10 | R48-A10 | Live Matches wrapped in `TvFocusGraph`; sport/CDN chips `TvChipStrip`; card grids `TvGrid`; sheets/timeline `TvCatalogRow`; `TvHeroActions.bind` | ✅ |
-| 11 | R48-A11 | IPTV tab `TvFocusGraph` + `TvHeroActions`; browser categories/streams via `iptvCatalogRow`; EPG channels `TvCatalogRow` | ✅ |
+| 10 | R48-A10 | Live Matches wrapped in `TvFocusGraph`; sport/CDN chips `TvChipStrip`; card grids `TvGrid`; sheets/timeline `TvKitRow`; `TvHeroActions.bind` | ✅ |
+| 11 | R48-A11 | IPTV tab `TvFocusGraph` + `TvHeroActions`; browser categories/streams via `iptvCatalogRow`; EPG channels `TvKitRow` | ✅ |
 
 ---
 
@@ -67,9 +67,9 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 12 | R48-A12 | My List `TvFocusGraph` + `TvGrid` for posters | ✅ |
-| 13 | R48-A13 | Settings hub categories `TvCatalogRow` + `TvHeroActions`; provider priority on recipes; detail panes keep `ShellTvLinearFocusScope` | ✅ |
-| 14 | R48-A14 | Hub search (`HubSearchPage`) + shared details rows (cast / trailers / play / torrent actions / season picker / home top bar) on recipes; `MediaDetailsTvScope` uses `TvFocusGraph` + `TvHeroActions` | ✅ |
-| 15 | R48-A15 | Player episode panel list registers via `TvCatalogRow` (vertical); no dispose-time raw unregister | ✅ |
+| 13 | R48-A13 | Settings hub categories `TvKitRow` + `TvHeroActions`; provider priority on recipes; detail panes keep `ShellTvLinearFocusScope` | ✅ |
+| 14 | R48-A14 | Hub search (`KitSearchPage`) + shared details rows (cast / trailers / play / torrent actions / season picker / home top bar) on recipes; `MediaDetailsTvScope` uses `TvFocusGraph` + `TvHeroActions` | ✅ |
+| 15 | R48-A15 | Player episode panel list registers via `TvKitRow` (vertical); no dispose-time raw unregister | ✅ |
 
 ---
 
@@ -77,7 +77,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 16 | R48-A16 | Live Matches embed player chrome on `TvFocusGraph` + `TvCatalogRow` (no `iptvSyncRow` / dispose unregister) | ✅ |
+| 16 | R48-A16 | Live Matches embed player chrome on `TvFocusGraph` + `TvKitRow` (no `iptvSyncRow` / dispose unregister) | ✅ |
 | 17 | R48-A17 | Profile chooser uses `TvOverlayScope` (linear D-pad host) | ✅ |
 
 ---
@@ -108,7 +108,7 @@ Flutter has no TV focus framework. RFC-028 shipped `ShellTvFocusCoordinator` as 
 ```
 Screen / overlay
   └── TvFocusGraph (tab) | TvOverlayScope (menus)
-        └── Recipes (TvCatalogRow | TvChipStrip | TvHeroActions | TvGrid)
+        └── Recipes (TvKitRow | TvChipStrip | TvHeroActions | TvGrid)
               └── FocusableControl / shellFocusableTap
 ```
 

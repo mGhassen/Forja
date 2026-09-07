@@ -3,7 +3,7 @@ import 'package:forja/shared/playback/probe/sources_panel_stream_probe.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
 
-List<Map<String, dynamic>> sortEngineCatalogStreamRows(
+List<Map<String, dynamic>> sortEngineMetaStreamRows(
   List<Map<String, dynamic>> rows,
 ) {
   final copy = List<Map<String, dynamic>>.from(rows);
@@ -32,7 +32,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
 }) async {
   final useDebrid = await settings.useDebridForStreams();
   final debridService = await settings.getDebridService();
-  var ordered = sortEngineCatalogStreamRows(rows);
+  var ordered = sortEngineMetaStreamRows(rows);
   if (preferFirst != null) {
     final preferUrl = preferFirst['url']?.toString();
     ordered = [
@@ -124,7 +124,7 @@ Future<Map<String, dynamic>?> firstEngineCatalogResolveRow({
 }) async {
   final useDebrid = await settings.useDebridForStreams();
   final debridService = await settings.getDebridService();
-  for (final row in sortEngineCatalogStreamRows(rows)) {
+  for (final row in sortEngineMetaStreamRows(rows)) {
     final check = classifyStremioStream(
       row,
       profile,

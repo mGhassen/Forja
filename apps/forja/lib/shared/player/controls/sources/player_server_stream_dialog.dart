@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -74,7 +74,7 @@ class PlayerServerStreamDialog {
     PlayerPopupPanel.dismiss();
     PlayerStreamMenu.dismiss();
     PlayerEpisodePanel.dismiss();
-    PlayerHubEpisodePanel.dismiss();
+    PlayerKitEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
     PlayerSubtitleDialog.dismiss();

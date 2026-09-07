@@ -1,21 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/play/sources_request_context.dart';
-import 'package:forja/shared/catalog/kit/play/stremio_stream_id.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/blocks/play/sources_request_context.dart';
+import 'package:forja/shared/foundation/blocks/play/stremio_stream_id.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 void main() {
   group('buildSourcesRequestContext', () {
     test('merges meta.ids + extract + movie imdb; nuvio needs tmdb', () {
-      final meta = CatalogMetaItem(
+      final meta = MetaItem(
         id: 'hub:1',
         type: 'anime',
         name: 'Test Show',
         ids: const {'anilist': '21', 'tmdb': '123', 'imdb': 'tt0111161'},
-        open: const CatalogOpen(
+        open: const MetaOpen(
           surface: 'anime',
           id: '21',
-          extract: CatalogOpenExtract(
+          extract: MetaOpenExtract(
             resolveType: 'anime',
             panelCategory: 'anime',
             ctx: {'anilistId': 21},
@@ -34,8 +34,8 @@ void main() {
       );
       final ctx = buildSourcesRequestContext(
         movie: movie,
-        catalogMeta: meta,
-        catalogOpen: meta.open,
+        meta: meta,
+        open: meta.open,
         season: 1,
         episode: 2,
       );
@@ -50,15 +50,15 @@ void main() {
     });
 
     test('without ids.tmdb does not invent tmdb from hub open id', () {
-      final meta = CatalogMetaItem(
+      final meta = MetaItem(
         id: 'hub:99',
         type: 'anime',
         name: 'No Tmdb',
         ids: const {'anilist': '99'},
-        open: const CatalogOpen(
+        open: const MetaOpen(
           surface: 'anime',
           id: '99',
-          extract: CatalogOpenExtract(
+          extract: MetaOpenExtract(
             resolveType: 'anime',
             panelCategory: 'anime',
             ctx: {'anilistId': 99},
@@ -77,8 +77,8 @@ void main() {
       );
       final ctx = buildSourcesRequestContext(
         movie: movie,
-        catalogMeta: meta,
-        catalogOpen: meta.open,
+        meta: meta,
+        open: meta.open,
       );
       expect(ctx.hasTmdb, isFalse);
       expect(ctx.engine?.tmdbId, isNull);

@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/widgets/media_details/episode_air_date.dart';
 import 'package:forja/shared/widgets/media_details/episode_range_bar.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
@@ -549,7 +549,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
 
     Widget result = body;
     if (tv && !_loading && visible.isNotEmpty) {
-      result = TvCatalogRow(
+      result = TvKitRow(
         tabId: _kEpisodeTvTabId,
         rowId: _kEpisodeTvListRowId,
         sortOrder: 1,
@@ -683,7 +683,7 @@ class _SeasonDropdown extends StatelessWidget {
 }
 
 /// Right-side sliding panel for hub players (anime, Asian drama).
-class PlayerHubEpisodePanel {
+class PlayerKitEpisodePanel {
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
 
@@ -700,9 +700,9 @@ class PlayerHubEpisodePanel {
 
   static Future<void> show({
     required BuildContext context,
-    required List<PlayerHubEpisode> episodes,
+    required List<PlayerKitEpisode> episodes,
     required num currentEpisode,
-    required Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected,
+    required Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected,
     String? fallbackBackdropPath,
     String? fallbackPosterPath,
   }) {
@@ -741,9 +741,9 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
     this.fallbackPosterPath,
   });
 
-  final List<PlayerHubEpisode> episodes;
+  final List<PlayerKitEpisode> episodes;
   final num currentEpisode;
-  final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
   final String? fallbackBackdropPath;
   final String? fallbackPosterPath;
@@ -791,9 +791,9 @@ class _HubEpisodePanelBody extends StatefulWidget {
     this.fallbackPosterPath,
   });
 
-  final List<PlayerHubEpisode> episodes;
+  final List<PlayerKitEpisode> episodes;
   final num currentEpisode;
-  final Future<void> Function(PlayerHubEpisode episode) onEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
   final String? fallbackBackdropPath;
   final String? fallbackPosterPath;
@@ -820,14 +820,14 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   List<EpisodeRange> get _episodeRanges =>
       buildEpisodeRangesForNumbers(_episodeNumbers);
 
-  List<PlayerHubEpisode> get _chunkEpisodes =>
+  List<PlayerKitEpisode> get _chunkEpisodes =>
       filterEpisodeChunkByNumber(
         widget.episodes,
         (e) => e.number is int ? e.number as int : e.number.toInt(),
         _episodeChunk,
       );
 
-  List<PlayerHubEpisode> get _visibleEpisodes {
+  List<PlayerKitEpisode> get _visibleEpisodes {
     final q = _searchQuery.trim().toLowerCase();
     if (q.isEmpty) return _chunkEpisodes;
     return _chunkEpisodes.where((ep) {
@@ -967,7 +967,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     });
   }
 
-  Future<void> _select(PlayerHubEpisode episode) async {
+  Future<void> _select(PlayerKitEpisode episode) async {
     if (episode.notShippedYet) return;
     if (episode.number == widget.currentEpisode) {
       widget.onClose();
@@ -1090,7 +1090,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
 
     Widget result = body;
     if (tv && visible.isNotEmpty) {
-      result = TvCatalogRow(
+      result = TvKitRow(
         tabId: _kEpisodeTvTabId,
         rowId: _kEpisodeTvListRowId,
         sortOrder: 1,
@@ -1322,11 +1322,11 @@ class _EpisodeRow extends StatelessWidget {
   }
 
   static String? _resolvedThumbnail(dynamic thumbnail) {
-    return resolveHubEpisodeArtUrl(thumbnail?.toString(), still: true);
+    return resolveEpisodeArtUrl(thumbnail?.toString(), still: true);
   }
 
   static String? _resolvedShowArt(String? backdropPath, String? posterPath) {
-    return resolveHubEpisodeArtUrl(
+    return resolveEpisodeArtUrl(
       backdropPath?.trim().isNotEmpty == true ? backdropPath : posterPath,
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 

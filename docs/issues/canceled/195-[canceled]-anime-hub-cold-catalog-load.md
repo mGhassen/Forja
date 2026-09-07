@@ -3,7 +3,7 @@
 **Status:** canceled  
 **Priority:** P2  
 **Severity:** Medium  
-**Area:** CatalogShell · `plugins/hubs/anilist.js` (was `anime_catalog_provider` / `AnimeScreen`)  
+**Area:** KitShell · `plugins/hubs/anilist.js` (was `anime_catalog_provider` / `AnimeScreen`)  
 **Reported:** 2026-08-22
 
 ## Status at a glance
@@ -45,7 +45,7 @@ Opening the Anime tab showed a long skeleton because first paint waited on `anim
 
 ## Why canceled
 
-RFC-070 **A20** deleted `AnimeScreen` / `anime_catalog_provider`. Browse is **CatalogShell** + hubs pack `anilist` — rails fetch in parallel per widget; `CatalogRuntime` already caches envelopes (ETag / TTL / SWR). Symptom tasks T01–T03 applied only to the retired Dart hub.
+RFC-070 **A20** deleted `AnimeScreen` / `anime_catalog_provider`. Browse is **KitShell** + hubs pack `anilist` — rails fetch in parallel per widget; `MetaRuntime` already caches envelopes (ETag / TTL / SWR). Symptom tasks T01–T03 applied only to the retired Dart hub.
 
 Remaining pack-side batch GraphQL (old T04) is optional pack work, not this issue’s Dart screen.
 

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 const _maxMagnetAttempts = 5;
@@ -30,7 +30,7 @@ class TorrentSearchPass {
 }
 
 /// Pack sets `open.torrentEp: true` → search `Title 05` (not `SxxExx`).
-bool catalogOpenTorrentEp(CatalogOpen? open) =>
+bool metaOpenTorrentEp(MetaOpen? open) =>
     open?.extraBool('torrentEp') ?? false;
 
 /// TV torrent query passes.

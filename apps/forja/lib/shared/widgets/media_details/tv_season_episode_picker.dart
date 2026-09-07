@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -503,7 +503,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     if (hasMultiSeason) {
       final seasonRow = _buildSeasonRow(tabId);
       seasonSection = (tabId != null && widget.tvSeasonRowId != null)
-          ? TvCatalogRow(
+          ? TvKitRow(
               tabId: tabId,
               rowId: _seasonRowId,
               sortOrder: widget.tvRowOrderBase,
@@ -520,7 +520,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     } else if (_visibleEpisodes.isNotEmpty) {
       final episodeRow = _buildEpisodeRow(tabId);
       episodeSection = (tabId != null && widget.tvEpisodeRowId != null)
-          ? TvCatalogRow(
+          ? TvKitRow(
               tabId: tabId,
               rowId: _episodeRowId,
               sortOrder: episodeRowOrder,

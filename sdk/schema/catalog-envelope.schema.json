@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forja.app/plugins/sdk/schema/catalog-envelope.schema.json",
   "title": "Forja catalog hub response envelope",
-  "description": "Return value of catalog kind extract(ctx). Host parser: parseEnvelope in shared/catalog/protocol/protocol.dart.",
+  "description": "Return value of catalog kind extract(ctx). Host parser: parseEnvelope in shared/foundation/protocol/protocol.dart.",
   "oneOf": [
     {
       "type": "array",

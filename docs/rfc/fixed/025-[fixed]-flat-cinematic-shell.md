@@ -5,7 +5,7 @@
 **Target version:** [1.0.0 Bab Souika](../backlog/done/1.0.0-[done].md)  
 **Scope (slice 1):** **desktop only** — hover-expand rail, flat shell bg, Home hero layout  
 **Depends on:** [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) (shell structure shipped), [RFC-016](016-[partial]-lazy-tab-mounting.md) (lazy tabs)  
-**Area:** `apps/forja/lib/shell/`, `apps/forja/lib/features/home/`, `apps/forja/lib/shared/design/`
+**Area:** `apps/forja/lib/shell/`, `apps/forja/lib/features/home/`, `apps/forja/lib/shared/foundation/primitives/`
 
 ## Status at a glance
 
@@ -25,7 +25,7 @@
 |--:|----|-------------|--------|
 | 1 | R25-C01 | `ShellNavRail` → hover-expand overlay rail (icon-only collapsed; labels overlay body) | ✅ |
 | 2 | R25-C02 | `ShellScaffold` layout: `Stack` full-bleed body; remove `_ambientGlows`; unified `bgDark` | ✅ |
-| 3 | R25-C03 | `shell_tokens.dart`: rail collapsed/expanded widths, hero layout ratios, gradient stops | ✅ |
+| 3 | R25-C03 | `forja_shell_tokens.dart`: rail collapsed/expanded widths, hero layout ratios, gradient stops | ✅ |
 | 4 | R25-C04 | Home hero: 2/3-right backdrop + left text panel (extract `home_hero.dart` optional) | ✅ |
 
 ---
@@ -178,7 +178,7 @@ Indicators: vertical dots on right edge (desktop); keep existing horizontal bars
 
 Mobile hero layout unchanged in slice 1.
 
-### Tokens ([`shell_tokens.dart`](../../apps/forja/lib/shared/design/src/shell_tokens.dart))
+### Tokens ([`forja_shell_tokens.dart`](../../apps/forja/lib/shared/foundation/primitives/src/forja_shell_tokens.dart))
 
 Add (values tuned during implementation):
 

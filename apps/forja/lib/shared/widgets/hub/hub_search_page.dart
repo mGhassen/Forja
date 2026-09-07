@@ -1,1 +1,1 @@
-export 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
+export 'package:forja/shared/foundation/components/chrome/kit_search_page.dart';

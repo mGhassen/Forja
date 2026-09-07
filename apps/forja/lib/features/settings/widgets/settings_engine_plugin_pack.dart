@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -281,8 +281,8 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
                 pluginId: p.id,
                 enabled: val,
               );
-              if (val && p.isHubCatalog) {
-                final spec = CatalogNavSpec.fromPluginNav(
+              if (val && p.isKitPlugin) {
+                final spec = MetaNavSpec.fromPluginNav(
                   p.nav,
                   pluginId: p.id,
                   fallbackLabel: p.name,
@@ -421,7 +421,7 @@ class _SettingsLiveSportCapabilityTabsState
   }
 
   String _defaultTab() {
-    final hasCatalog = widget.plugins.any((p) => p.supportsLiveCatalog);
+    final hasCatalog = widget.plugins.any((p) => p.supportsLiveFeed);
     return hasCatalog ? _tabCatalog : _tabProvider;
   }
 
@@ -444,7 +444,7 @@ class _SettingsLiveSportCapabilityTabsState
 
   List<String> get _tabs {
     final out = <String>[];
-    if (widget.plugins.any((p) => p.supportsLiveCatalog)) {
+    if (widget.plugins.any((p) => p.supportsLiveFeed)) {
       out.add(_tabCatalog);
     }
     if (widget.plugins.any((p) => p.supportsLiveResolve)) {
@@ -457,7 +457,7 @@ class _SettingsLiveSportCapabilityTabsState
     final next = <String, ({bool catalog, bool resolve})>{};
     for (final p in widget.plugins) {
       if (!p.isLiveSportPlugin) continue;
-      final catalog = p.supportsLiveCatalog
+      final catalog = p.supportsLiveFeed
           ? await EngineService.instance.liveCapabilityEnabled(
               sourceUrl: widget.sourceUrl,
               plugin: p,
@@ -495,7 +495,7 @@ class _SettingsLiveSportCapabilityTabsState
     final showTabs = tabs.length > 1;
     final catalogPlugins = [
       for (final p in widget.plugins)
-        if (p.isLiveSportPlugin && p.supportsLiveCatalog) p,
+        if (p.isLiveSportPlugin && p.supportsLiveFeed) p,
     ];
     final providerPlugins = [
       for (final p in widget.plugins)

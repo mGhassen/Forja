@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 
@@ -142,7 +142,7 @@ class CatalogSourcesSessionCache {
 
   /// Stable key for a title/episode Sources session.
   ///
-  /// Prefer [catalogOpen] so hub tabs stay on one key when TMDB enrichment
+  /// Prefer [metaOpen] so hub tabs stay on one key when TMDB enrichment
   /// flips `movie.id` / `mediaType`. Episode is always scoped for hubs;
   /// [audioCategory] splits SUB/DUB when set.
   static String cacheKey({
@@ -150,7 +150,7 @@ class CatalogSourcesSessionCache {
     required String mediaType,
     int? season,
     int? episode,
-    CatalogOpen? catalogOpen,
+    MetaOpen? open,
     String? pluginId,
     String? metaId,
     int? malId,
@@ -162,11 +162,11 @@ class CatalogSourcesSessionCache {
     final audioSuffix =
         (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
 
-    final open = catalogOpen;
-    if (open != null) {
+    final resolvedOpen = open;
+    if (resolvedOpen != null) {
       final pid = (pluginId ?? '').trim();
-      return catalogOpenCacheKey(
-        open,
+      return metaOpenCacheKey(
+        resolvedOpen,
         pluginId: pid.isNotEmpty ? pid : 'catalog',
         episode: ep,
         audioCategory: audioCategory,

@@ -105,13 +105,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               children: [
                 for (final token
                     in _s._filters.tokenActions(_s._onFiltersChanged))
-                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
+                  KitSearchFilterToken(label: token.$1, onClear: token.$2),
               ],
             ),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: HubSearchFilterLens(
+          child: KitSearchFilterLens(
             open: _s._filtersOpen,
             filters: _s._filters,
             onFiltersChanged: _s._onFiltersChanged,
@@ -218,7 +218,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                             ? Align(
                                 key: const ValueKey('search-filter-lens'),
                                 alignment: Alignment.topLeft,
-                                child: HubSearchFilterLens(
+                                child: KitSearchFilterLens(
                                   open: true,
                                   filters: _s._filters,
                                   onFiltersChanged: _s._onFiltersChanged,
@@ -348,7 +348,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               runSpacing: 8,
               children: [
                 for (final token in _s._filters.tokenActions(_s._onFiltersChanged))
-                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
+                  KitSearchFilterToken(label: token.$1, onClear: token.$2),
               ],
             ),
           ),
@@ -413,7 +413,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       return const SizedBox.shrink();
     }
 
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: 'search',
       rowId: 'helpers',
       sortOrder: 0,
@@ -643,13 +643,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 children: [
                   for (final token
                       in _s._filters.tokenActions(_s._onFiltersChanged))
-                    HubSearchFilterToken(label: token.$1, onClear: token.$2),
+                    KitSearchFilterToken(label: token.$1, onClear: token.$2),
                 ],
               ),
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: HubSearchFilterLens(
+            child: KitSearchFilterLens(
               open: _s._filtersOpen,
               filters: _s._filters,
               onFiltersChanged: _s._onFiltersChanged,

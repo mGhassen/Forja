@@ -15,7 +15,7 @@ shared/widgets/hero/            # titles, meta, cinematic hero, overview, banner
 shared/widgets/media_details/   # details page, cast/trailers, torrent sources, episodes
 shared/widgets/home/            # home rows, posters, atmosphere, loading skeleton
 shared/widgets/hub/             # hub catalog section / poster / search (legacy)
-shared/widgets/hub_details/     # hub details chrome / play / sources
+shared/widgets/kit_details/     # hub details chrome / play / sources
 shared/widgets/chrome/           # focusable tap, scroller, overlays, mood chip
 shared/widgets/desktop/         # window chrome / focus / geometry
 shared/widgets/tv/              # browse text field, search overlay
@@ -68,7 +68,7 @@ MediaDetailsScrollPage(
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
 
-Do **not** put app-shell or catalog-host code under `shared/widgets/`. App frame → `lib/shell/`. Hub tab host → `shared/catalog/host/`.
+Do **not** put app-shell or catalog-host code under `shared/widgets/`. App frame → `lib/shell/`. Hub tab host → `shared/foundation/blocks/shell/`.
 
 ## Do not
 

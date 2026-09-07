@@ -8,7 +8,7 @@ alwaysApply: true
 **Full model:** [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
 
 Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
-(`apps/forja/lib/shared/catalog/**`, CatalogShell, `catalog_open`) must stay
+(`apps/forja/lib/shared/foundation/**`, KitShell, `catalog_open`) must stay
 **pack-agnostic**.
 
 A hub pack may use **any** upstream catalog system (TMDB today, something else
@@ -22,11 +22,11 @@ Hardcoding or branching on:
 - Scraper / source names: `larozaa`, `dimatoon`, `brstej`, …
 - Pack-specific `ids.*` keys to decide behavior (`numericId('anilist')`, `ids['larozaa']`, …)
 - **Upstream API clients in the host** — no `TmdbApi`, no `getTvSeasonDetails`, no title
-  search/match, no enrich logic keyed off `ids.tmdb` inside `shared/catalog/**`
+  search/match, no enrich logic keyed off `ids.tmdb` inside `shared/foundation/**`
 
 **Wrong:** `switch (type) { case 'arabic': parse ids.larozaa / dimatoon / brstej }`  
 **Wrong:** `openAnimeDetails` only if `numericId('anilist')`  
-**Wrong:** `HubDetailsScreen` calling `TmdbApi().getRichDetails` / season stills / backdrop fetch  
+**Wrong:** `KitDetailsScreen` calling `TmdbApi().getRichDetails` / season stills / backdrop fetch  
 **Wrong:** host `loadTmdbSeasonExtras` to patch `meta.videos` after details  
 **Wrong:** seeding Feature docs / shell with scraper hostnames as Dart constants for open
 
@@ -34,9 +34,9 @@ Hardcoding or branching on:
 
 - Read **opaque fields** plugins already put on meta (`poster`, `background`, `videos`,
   `tmdbMediaType`, `ids` map) — do not interpret them to call upstream APIs
-- `resolveHubCoverUrl` / `hubImageUrl` — turn plugin-supplied absolute URLs (or legacy
+- `resolveCoverUrl` / `kitImageUrl` — turn plugin-supplied absolute URLs (or legacy
   relative paths) into loadable image URLs; no match/search/enrich
-- `CatalogRuntime` **pipe enrich** — run companion plugin declared on source (`enrich` field);
+- `MetaRuntime` **pipe enrich** — run companion plugin declared on source (`enrich` field);
   host merges returned `meta` / `items`; host does not implement enrich itself
 
 ## Enrich companions (plugin-owned)
@@ -51,7 +51,7 @@ Source plugins declare a companion, e.g. `"enrich": "anime-enrich-tmdb"`.
 | Cast / trailers / recommendations rows | enrich plugin adds `details.rails` or meta fields — **not** host `TmdbApi` |
 | Which upstream API (TMDB vs other) | **Only** the enrich plugin pack |
 
-Host after `CatalogRuntime.run(action: details)`:
+Host after `MetaRuntime.run(action: details)`:
 
 1. Use `envelope.meta` as returned (already piped through enrich).
 2. Render `meta.videos` in episode picker — **no second upstream fetch**.
@@ -70,7 +70,7 @@ Plugins put a host **surface** on every openable meta:
 }
 ```
 
-Host `openCatalogMetaItem` / list-pin helpers **only** switch on `open.surface`
+Host `openMetaItem` / list-pin helpers **only** switch on `open.surface`
 (host feature routes). Opaque `open.id` + extras are passed through.
 
 Allowed host id scheme (not a pack): **`tmdb`** for movie/tv when `open` is
@@ -81,8 +81,8 @@ absent and `type` is `movie`/`tv` (Home TMDB rows — not hub enrich).
 | Layer | May know scrapers / pack ids / upstream APIs |
 |-------|---------------------------------------------|
 | `plugins/hubs/**` JS | Yes — emit `open`, layout, enrich |
-| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work uses `shared/catalog` kit** |
-| `shared/catalog/**`, CatalogShell open path | **No** |
+| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work uses `shared/foundation` kit** |
+| `shared/foundation/**`, KitShell open path | **No** |
 
 ## Seed / nav
 
@@ -98,10 +98,10 @@ Do **not** hardcode hub tab ids (`anime`, `asian_drama`, …) into
 2. Put all upstream enrich (images, episode stills, extra rows) in the pack or its
    **enrich companion** — not in Dart host.
 3. If a new **host surface** is needed, add one route handler — not scraper names.
-4. Do **not** teach `catalog_open.dart` about the pack’s upstream sites.
+4. Do **not** teach `kit_open.dart` about the pack’s upstream sites.
 
 ## Legacy debt (do not extend)
 
-`hub_details_sections.dart` still has `hubLoadTmdbRich` / `hubTmdbHeroBackdropUrls`
+`kit_details_sections.dart` still has `kitLoadTmdbRich` / `kitTmdbHeroBackdropUrls`
 (host `TmdbApi`). **Do not add more.** New enrich belongs in plugins; migrate these
 to pack-returned `rails` / meta when touched.

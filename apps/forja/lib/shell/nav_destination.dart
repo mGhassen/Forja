@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/assets/catalog_pack_assets.dart';
+import 'package:forja/shared/foundation/lib/pack_assets.dart';
 
 class NavDestination {
   const NavDestination({
@@ -68,7 +68,7 @@ class NavDestinationIcon extends StatelessWidget {
         errorBuilder: fallback,
       );
     }
-    final file = CatalogPackAssets.asLocalFile(asset) ?? File(asset);
+    final file = PackAssets.asLocalFile(asset) ?? File(asset);
     if (!file.existsSync()) return _materialIcon();
     return Image.file(
       file,

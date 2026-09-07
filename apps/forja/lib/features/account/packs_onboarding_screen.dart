@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/platform/platform_info.dart';

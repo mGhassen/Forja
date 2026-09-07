@@ -221,7 +221,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 |---------|------|
 | `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
 | `HubListFollow`, `ListFollowFromWatched` | `shared/lists/` |
-| `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/live/` |
+| `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/foundation/services/live/` |
 
 ---
 
@@ -238,7 +238,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 
 ---
 
-## Host orchestration (`shared/playback/`, `features/archive/audio/`, `shared/catalog/`)
+## Host orchestration (`shared/playback/`, `features/archive/audio/`, `shared/foundation/`)
 
 | Component | Path | Role | Target |
 |-----------|------|------|--------|
@@ -246,7 +246,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 | `DomainStreamProviderResolver` | `domain_playback_resolve.dart` | C11 domain → engine jobs | ✅ Host |
 | `PlayerStreamExtractCache` | `shared/playback/cache/player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
 | `HistoryPlaybackResume` | `shared/playback/open/history_playback_resume.dart` | C11 resume routing | ✅ Host |
-| `BestSimilarScraper` | `shared/catalog/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
+| `BestSimilarScraper` | `shared/foundation/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
 | `MusicPlayerService` | `features/archive/audio/music_player_service.dart` | C6 audio playback UI glue (archived) | ✅ Host |
 | `MusicStorageService` / `MusicDownloaderService` | `features/archive/audio/` | C6/C9 local files (archived) | ✅ Host |
 | `LyricsService` | `features/archive/audio/lyrics_service.dart` | C1 via engine (archived) | ✅ Thin host over engine |
@@ -266,7 +266,7 @@ Each hub owns **vertical browse + stream orchestration** for its tab. Metadata f
 | `KissKhService` | `asian_drama/catalog/` | `kisskh` catalog API | `KissKhExtractor` (WebView C3), watch history | ✅ |
 | `MangaService` | `manga/catalog/` | `manga` fetch+parse | Likes (`SharedPreferences`) | ✅ |
 | `BooksService` | `books/catalog/` | `books` | — | ✅ |
-| `BestSimilarScraper` | `shared/catalog/` | `catalog` | TMDB poster enrichment in home/similar screens | ✅ |
+| `BestSimilarScraper` | `shared/foundation/` | `catalog` | TMDB poster enrichment in home/similar screens | ✅ |
 | `AnimeArabicService` | `anime_arabic/catalog/` | Mega proxy (Rust) | `AnimeArabicExtractor` (iframe scrape) | Port parse → engine where possible |
 | Arabic hub | `plugins/hubs/arabic` | pack JS | thin details/player + embed resolve | ✅ pack owns scrape |
 | `ComicsService` + `ReadComicsOnlineScraper` | `comics/catalog/` | — | C2 scrape | Port → engine |

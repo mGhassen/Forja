@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/lists/providers/my_list_providers.dart';
 import 'package:forja/features/my_list/catalog/my_list_catalog_source.dart';
 import 'package:forja/features/my_list/catalog/my_list_merge.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_list_item.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 
 void main() {
   tearDown(clearMyListEnrichCache);
@@ -44,7 +44,7 @@ void main() {
           'title': 'Test',
           'posterPath': '',
           'voteAverage': 0,
-          'catalogOpen': {'surface': 'anime', 'id': '42'},
+          'metaOpen': {'surface': 'anime', 'id': '42'},
         }),
         isTrue,
       );
@@ -284,7 +284,7 @@ void main() {
       expect(filtered, isEmpty);
     });
 
-    test('drops simkl anime when local catalogOpen status differs', () {
+    test('drops simkl anime when local open status differs', () {
       final simkl = [
         {'anilistId': 99, 'mediaType': 'anime', 'title': 'A'},
       ];
@@ -295,7 +295,7 @@ void main() {
           'mediaType': 'anime',
           'listStatus': 'completed',
           'title': 'A',
-          'catalogOpen': {'surface': 'anime', 'id': '99'},
+          'metaOpen': {'surface': 'anime', 'id': '99'},
         },
       ];
       final filtered = filterSimklByLocal(simkl, local, 'watching', {});
@@ -324,14 +324,14 @@ void main() {
     });
   });
 
-  group('catalogMetaFromLegacyListItem', () {
+  group('metaItemFromLegacyListItem', () {
     test('builds tmdb open for stored catalog row', () {
-      final meta = catalogMetaFromLegacyListItem({
+      final meta = metaItemFromLegacyListItem({
         'uniqueId': 'catalog_test-hub_99',
         'pluginId': 'test-hub',
         'metaId': 'test-hub:99',
         'title': 'Hub Title',
-        'catalogOpen': {
+        'metaOpen': {
           'surface': 'anime',
           'id': '99',
           'extract': {
@@ -361,7 +361,7 @@ void main() {
         myListItemKind({
           'mediaType': 'drama',
           'title': 'Hub drama',
-          'catalogOpen': {
+          'metaOpen': {
             'surface': 'drama',
             'id': '42',
             'extract': {

@@ -11,7 +11,7 @@ import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -478,7 +478,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     }
 
     if (!tv) return body;
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: 'settings',
       rowId: rowId,
       sortOrder: widget.sortOrder,

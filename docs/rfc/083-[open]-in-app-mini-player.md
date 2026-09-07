@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **24 / 24** acceptance |
-| **Current slice** | Desktop in-app mini shipped — keep-play · chrome auto-hide · Close top-right · phone deferred |
+| **Progress** | **9 / 9** components · **25 / 25** acceptance |
+| **Current slice** | Desktop in-app mini shipped — keep-play · chrome auto-hide · Close top-right · invisible drag resize · phone deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -59,6 +59,7 @@
 | 22 | R83-A22 | Mini chrome (buttons + grip) auto-hides after ~3s idle; hover / tap / D-pad focus reveals; stays while focused or resizing | ✅ |
 | 23 | R83-A23 | Mini Close control is top-right (not bottom row) | ✅ |
 | 24 | R83-A24 | Mini has no visible top-left resize grip (fixed default corner size) | ✅ |
+| 25 | R83-A25 | Top-left corner drag still resizes 16:9 (~240–720px) with no visible grip icon | ✅ |
 
 ---
 
@@ -71,7 +72,7 @@ In-app mini player: Escape (when enabled) shrinks the player to a corner **insid
 - Keep playing on demote (pause only from mini chrome); skip lifecycle pause while mini
 - Expand restores full-player shell freeze (`enterPlayerSurface`)
 - Three chrome D-pad doors only — never catalog Down to mini
-- Close top-right; no visible resize grip (fixed default size)
+- Close top-right; no visible resize grip; top-left drag still resizes 16:9
 
 ### Related
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 /// Browser-style left-edge back chevron that fills with [progress] (0..1).
 class DesktopSwipeBackIndicator extends StatelessWidget {

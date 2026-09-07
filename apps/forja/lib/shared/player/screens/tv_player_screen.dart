@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';
 import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
@@ -28,7 +28,7 @@ class TvPlayerScreen extends StatelessWidget {
     this.providers,
     this.onNextEpisode,
     this.hasNextEpisode = false,
-    this.hubEpisodes,
+    this.episodes,
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
@@ -65,9 +65,9 @@ class TvPlayerScreen extends StatelessWidget {
   final Map<String, dynamic>? providers;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
-  final List<PlayerHubEpisode>? hubEpisodes;
+  final List<PlayerKitEpisode>? episodes;
   final num? hubEpisodeNumber;
-  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
@@ -104,7 +104,7 @@ class TvPlayerScreen extends StatelessWidget {
       providers: providers,
       onNextEpisode: onNextEpisode,
       hasNextEpisode: hasNextEpisode,
-      hubEpisodes: hubEpisodes,
+      episodes: episodes,
       hubEpisodeNumber: hubEpisodeNumber,
       onHubEpisodeSelected: onHubEpisodeSelected,
       episodeOverview: episodeOverview,

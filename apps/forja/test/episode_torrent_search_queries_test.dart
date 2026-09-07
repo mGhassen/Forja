@@ -1,34 +1,34 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/resolvers/episode_torrent_resolver.dart';
 
 void main() {
-  group('catalogOpenTorrentEp', () {
+  group('metaOpenTorrentEp', () {
     test('reads open.torrentEp', () {
-      final open = CatalogOpen.fromJson({
+      final open = MetaOpen.fromJson({
         'surface': 'hub-x',
         'id': '1',
         'torrentEp': true,
       });
-      expect(catalogOpenTorrentEp(open), isTrue);
+      expect(metaOpenTorrentEp(open), isTrue);
     });
 
     test('default is SxxExx search', () {
-      final open = CatalogOpen.fromJson({
+      final open = MetaOpen.fromJson({
         'surface': 'hub-x',
         'id': '1',
       });
-      expect(catalogOpenTorrentEp(open), isFalse);
-      expect(catalogOpenTorrentEp(null), isFalse);
+      expect(metaOpenTorrentEp(open), isFalse);
+      expect(metaOpenTorrentEp(null), isFalse);
     });
 
     test('surface alone does not enable torrentEp', () {
-      final open = CatalogOpen.fromJson({
+      final open = MetaOpen.fromJson({
         'surface': 'anime',
         'id': '99',
         'extract': {'resolveType': 'anime', 'panelCategory': 'anime'},
       });
-      expect(catalogOpenTorrentEp(open), isFalse);
+      expect(metaOpenTorrentEp(open), isFalse);
     });
   });
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
@@ -29,7 +29,7 @@ class ShellBus {
       _hubSelectedCategoryIds.putIfAbsent(tabId, () => ValueNotifier(null));
 
   /// TMDB watch-provider filter for Home (`null` = all providers).
-  /// Deprecated — use [CatalogVerticalFiltersRegistry] for hub tabs.
+  /// Deprecated — use [VerticalFiltersRegistry] for hub tabs.
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(
     null,
   );
@@ -38,7 +38,7 @@ class ShellBus {
   /// Session UI only — not persisted. Hide on leave-tab, tap-outside, or
   /// desktop unhover after [homeProviderMenuHideDelay].
   static ValueNotifier<bool> get homeProviderMenuVisible =>
-      CatalogVerticalFiltersRegistry.menuVisibleFor('home');
+      VerticalFiltersRegistry.menuVisibleFor('home');
 
   /// [TapRegion.groupId] for the panel + top-bar selected-provider mark.
   static const Object homeProviderMenuTapGroup = Object();
@@ -55,29 +55,29 @@ class ShellBus {
   static const Duration homeProviderMenuHideDelay = Duration(seconds: 1);
 
   static void cancelHomeProviderMenuHide() {
-    CatalogVerticalFiltersRegistry.cancelMenuHide('home');
+    VerticalFiltersRegistry.cancelMenuHide('home');
   }
 
   static void scheduleHomeProviderMenuHide() {
-    CatalogVerticalFiltersRegistry.scheduleMenuHide('home');
+    VerticalFiltersRegistry.scheduleMenuHide('home');
   }
 
   static void showHomeProviderMenu() {
-    CatalogVerticalFiltersRegistry.showMenu('home');
+    VerticalFiltersRegistry.showMenu('home');
   }
 
   static void hideHomeProviderMenu() {
-    CatalogVerticalFiltersRegistry.hideMenu('home');
+    VerticalFiltersRegistry.hideMenu('home');
   }
 
   /// Top-bar selected-filter mark: open panel, or clear filter if already open.
   static void onTopProviderLogoTap() {
-    CatalogVerticalFiltersRegistry.onTopLogoTap('home');
+    VerticalFiltersRegistry.onTopLogoTap('home');
   }
 
   /// Leaving a hub tab hides the panel; filter stays until cleared.
   static void onLeaveHomeTab() {
-    CatalogVerticalFiltersRegistry.onLeaveTab('home');
+    VerticalFiltersRegistry.onLeaveTab('home');
   }
 
   /// Hub feed vertical scroll — catalog top bar hide anchor.

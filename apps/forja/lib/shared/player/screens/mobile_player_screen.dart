@@ -57,7 +57,7 @@ import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_quality_menu.dart';
@@ -65,9 +65,9 @@ import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart'
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
+import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -111,9 +111,9 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? providers;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
-  final List<PlayerHubEpisode>? hubEpisodes;
+  final List<PlayerKitEpisode>? episodes;
   final num? hubEpisodeNumber;
-  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)?
@@ -152,7 +152,7 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
     this.providers,
     this.onNextEpisode,
     this.hasNextEpisode = false,
-    this.hubEpisodes,
+    this.episodes,
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,

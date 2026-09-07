@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 /// Tab-scoped TV focus graph — declarative facade over [ShellTvFocusCoordinator].
 ///
 /// Feature screens wrap content in [TvFocusGraph] and use recipes
-/// ([TvCatalogRow], [TvChipStrip], [TvHeroActions]) instead of calling
+/// ([TvKitRow], [TvChipStrip], [TvHeroActions]) instead of calling
 /// `shellTvRegisterRow` / chip edge helpers directly.
 class TvFocusGraph extends InheritedWidget {
   const TvFocusGraph({
@@ -98,8 +98,8 @@ abstract final class TvHeroActions {
 }
 
 /// Provides [tabId] / [rowId] to descendants built inside a catalog row.
-class TvCatalogRowScope extends InheritedWidget {
-  const TvCatalogRowScope({
+class TvKitRowScope extends InheritedWidget {
+  const TvKitRowScope({
     super.key,
     required this.tabId,
     required this.rowId,
@@ -109,11 +109,11 @@ class TvCatalogRowScope extends InheritedWidget {
   final String tabId;
   final String rowId;
 
-  static TvCatalogRowScope? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<TvCatalogRowScope>();
+  static TvKitRowScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TvKitRowScope>();
 
   @override
-  bool updateShouldNotify(TvCatalogRowScope oldWidget) =>
+  bool updateShouldNotify(TvKitRowScope oldWidget) =>
       tabId != oldWidget.tabId || rowId != oldWidget.rowId;
 }
 
@@ -124,8 +124,8 @@ bool tvFocusGraphShouldRegister(BuildContext context) {
 }
 
 /// Owns coordinator row register/unregister for a horizontal (or vertical) catalog row.
-class TvCatalogRow extends StatefulWidget {
-  const TvCatalogRow({
+class TvKitRow extends StatefulWidget {
+  const TvKitRow({
     super.key,
     required this.rowId,
     required this.sortOrder,
@@ -149,10 +149,10 @@ class TvCatalogRow extends StatefulWidget {
   final Widget child;
 
   @override
-  State<TvCatalogRow> createState() => _TvCatalogRowState();
+  State<TvKitRow> createState() => _TvKitRowState();
 }
 
-class _TvCatalogRowState extends State<TvCatalogRow> {
+class _TvKitRowState extends State<TvKitRow> {
   String? _registeredTabId;
   String? _registeredRowId;
 
@@ -211,7 +211,7 @@ class _TvCatalogRowState extends State<TvCatalogRow> {
   }
 
   @override
-  void didUpdateWidget(TvCatalogRow oldWidget) {
+  void didUpdateWidget(TvKitRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.rowId != widget.rowId ||
         oldWidget.tabId != widget.tabId ||
@@ -229,7 +229,7 @@ class _TvCatalogRowState extends State<TvCatalogRow> {
 
   @override
   Widget build(BuildContext context) {
-    return TvCatalogRowScope(
+    return TvKitRowScope(
       tabId: _tabId,
       rowId: widget.rowId,
       child: widget.child,
@@ -381,7 +381,7 @@ class _TvChipStripState extends State<TvChipStrip> {
 
   @override
   Widget build(BuildContext context) {
-    return TvCatalogRowScope(
+    return TvKitRowScope(
       tabId: _tabId,
       rowId: widget.rowId,
       child: widget.builder(context, _edgesFor),

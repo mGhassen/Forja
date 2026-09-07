@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/live_sports/catalog/live_sports_list_source.dart';
 import 'package:forja/features/live_sports/catalog/live_sports_streams_panel_host.dart';
-import 'package:forja/shared/catalog/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/host_list_registry.dart';
 
 /// Live Sports product constants + Forja platform registration.
 ///
@@ -20,14 +20,14 @@ abstract final class LiveSportsHost {
   static void ensureRegistered() {
     if (_registered) return;
     _registered = true;
-    CatalogHostListRegistry.register(
+    HostListRegistry.register(
       LiveScheduleCatalogSource.instance,
       pluginId: hubPluginId,
     );
-    CatalogHostListRegistry.registerPanel(LiveSportsStreamsPanelHost.instance);
+    HostListRegistry.registerPanel(LiveSportsStreamsPanelHost.instance);
   }
 
-  /// Test helper — allows [ensureRegistered] after [CatalogHostListRegistry.debugReset].
+  /// Test helper — allows [ensureRegistered] after [HostListRegistry.debugReset].
   @visibleForTesting
   static void debugReset() {
     _registered = false;

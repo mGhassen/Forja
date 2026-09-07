@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/lan/lan_server_service.dart';

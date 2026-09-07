@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 /// Blinking text caret for TV search browse mode.
 class TvBlinkingCaret extends StatefulWidget {

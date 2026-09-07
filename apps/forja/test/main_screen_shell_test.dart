@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:rust/rust.dart';
 
 import 'helpers/rust_test_init.dart';

@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Forja design system (RFC-025)
 
-**Source of truth:** `apps/forja/lib/shared/design/` — import via `package:forja/shared/design/design.dart`.
+**Source of truth:** `apps/forja/lib/shared/foundation/primitives/` — import via `package:forja/shared/foundation/primitives/primitives.dart`.
 
 ## Visual language
 

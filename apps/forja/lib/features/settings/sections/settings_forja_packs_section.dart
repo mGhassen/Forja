@@ -9,9 +9,9 @@ import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -312,7 +312,7 @@ class _SettingsForjaPacksSectionState
               }
               final panelPlugins = [
                 for (final p in pack.plugins)
-                  if (p.isHttp || p.isHubCatalog || p.isTorrent) p,
+                  if (p.isHttp || p.isKitPlugin || p.isTorrent) p,
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final liveSportPlugins = [
@@ -592,8 +592,8 @@ class _SettingsForjaPacksSectionState
     final settings = SettingsService();
     final tabs = <String>[];
     for (final pl in pack.plugins) {
-      if (!pl.isHubCatalog || !pl.enabled) continue;
-      final spec = CatalogNavSpec.fromPluginNav(
+      if (!pl.isKitPlugin || !pl.enabled) continue;
+      final spec = MetaNavSpec.fromPluginNav(
         pl.nav,
         pluginId: pl.id,
         fallbackLabel: pl.name,
@@ -615,8 +615,8 @@ class _SettingsForjaPacksSectionState
     final settings = SettingsService();
     final tabs = <String>[];
     for (final pl in pack.plugins) {
-      if (!pl.isHubCatalog) continue;
-      final spec = CatalogNavSpec.fromPluginNav(
+      if (!pl.isKitPlugin) continue;
+      final spec = MetaNavSpec.fromPluginNav(
         pl.nav,
         pluginId: pl.id,
         fallbackLabel: pl.name,

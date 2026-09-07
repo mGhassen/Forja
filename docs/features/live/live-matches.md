@@ -4,14 +4,14 @@
 
 ## What it is
 
-Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts **CatalogShell** with a kit layout composed of generic primitives:
+Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts **KitShell** with a kit layout composed of generic primitives:
 
 - **Top bar** — Catalog / Schedule filter badges + Refresh
-- **Category bar** — sport chips (dynamic from the schedule)
+- **Category bar** — sport mood circles with icons (dynamic from the schedule)
 - **List** — dense match rows
 - **Right panel** — Providers / Live TV streams for the selected match
 
-Optional hub packs restyle that composition (same schedule source). **ForjaHQ Live Sports** overrides the host **Live Sports** tab (list + panel). **ForjaHQ Live Sports Cards** adds a separate **Live Sports Cards** tab (card grid + details). Both can be installed together.
+Optional hub packs restyle that composition (same schedule source). **ForjaHQ Live Sports** overrides the host **Live Sports** tab (list + panel). **ForjaHQ Live Sports Cards** adds a separate **Live Sports Cards** tab (landscape cards + hero details). Both can be installed together.
 
 Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture).
 
@@ -25,9 +25,9 @@ You do **not** need a Live Sports hub pack for the **Live Sports** tab to appear
 ## What you can do
 
 - Browse a **list of matches** (time, teams, status) on the default / list pack. Tap a match to open the **right panel** (~40% width on desktop/TV) with **Providers** and **Live TV**. On phone the panel is a near-full-width sheet.
-- Use **Catalog** / **Schedule** badges in the top bar to narrow sources and time window. **Refresh** reloads the schedule.
-- Filter by **sport chips** in the category bar when more than one sport is in the list. **24/7** covers always-on channels.
-- On the **Live Sports Cards** tab (Cards pack), browse a poster grid and open a **details** page (same streams panel body as the side panel).
+- Use **Catalog** / **Schedule** badges in the top bar to narrow sources and time window (named catalog chips come from the Live Sports hub pack; host default is **All** + horizon). **Refresh** reloads the schedule.
+- Filter by **sport circles** in the category bar when more than one sport is in the list. **24/7** covers always-on channels.
+- On the **Live Sports Cards** tab (Cards pack), browse a **landscape match card** grid and open a **full-bleed details** page (hero + Providers / Live TV) — same streams as the side panel, not a plain scaffold.
 - Tap a stream row to play in Forja’s **native** live player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream**.
 - Pull-to-refresh / shell refresh reloads the match list. With **Settings → Addons → Live Sports → Merge matching events** on, matching events across catalogs may collapse into one row.
 

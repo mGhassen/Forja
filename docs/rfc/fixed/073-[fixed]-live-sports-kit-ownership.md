@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** [RFC-071](071-[fixed]-live-sports-hub-kit.md) · [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-062](../062-[open]-native-iptv-sports-matching.md)  
-**Area:** `features/live_sports/`, `shared/live/`, `plugins/hubs/live_sports/`, host services
+**Area:** `features/live_sports/`, `shared/foundation/services/live/`, `plugins/hubs/live_sports/`, host services
 
 ## Status at a glance
 
@@ -21,7 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | R73-C01 | Remove `LiveModeRegistry` / `_LiveMatchesServer` / mode prefs — capability flags only | ✅ |
 | 2 | R73-C02 | Browse chrome as generic kit composition (catalog/horizon sheets, sport chips, grid) — not a full-page host takeover | ✅ |
-| 3 | R73-C03 | Match details as kit details — Providers / Live TV via CatalogKitSourcesPanel + MatchStreams | ✅ |
+| 3 | R73-C03 | Match details as kit details — Providers / Live TV via KitSourcesPanel + MatchStreams | ✅ |
 | 4 | R73-C04 | Host service `iptv_sports_match` (portal channel search) callable from hub/details flow | ✅ |
 
 ---
@@ -63,7 +63,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R73-A13 | Streams panel registered on `CatalogHostListRegistry` — browse resolves by opaque source id | ✅ |
+| 1 | R73-A13 | Streams panel registered on `HostListRegistry` — browse resolves by opaque source id | ✅ |
 | 2 | R73-A14 | Live Sports play paths open via kit `openForjaLiveNativePlayer` (shared `IptvPtPlayerScreen`) | ✅ |
 
 ---
@@ -75,7 +75,7 @@
 | 1 | R73-A15 | Delete unreachable full-browse hub UI; `LiveSportsHubPage` is panel-only | ✅ |
 | 2 | R73-A16 | Rename `live_schedule/` → `streams/`; browse shell under `browse/` | ✅ |
 | 3 | R73-A17 | Detach streams panel + play from hub `part` library (no god State) | ✅ |
-| 4 | R73-A18 | Feature folder My List–thin — no `streams/` under feature; panel in `shared/live/panel` | ✅ |
+| 4 | R73-A18 | Feature folder My List–thin — no `streams/` under feature; panel in `shared/foundation/services/live/panel` | ✅ |
 
 ---
 
@@ -84,18 +84,18 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R73-A19 | `MatchStreams` service loads Providers / Live TV from kit `legacyRow`; play via `openForjaLiveNativePlayer` | ✅ |
-| 2 | R73-A20 | Thin `LiveSportsStreamsPanelHost` builds `CatalogKitSourcesPanel` only — no `LiveSportsStreamsPage` | ✅ |
-| 3 | R73-A21 | `shared/live/panel/` deleted; remaining live libs under `shared/services/sports/` (+ feature prefs/filters); no `shared/live/` tree | ✅ |
+| 2 | R73-A20 | Thin `LiveSportsStreamsPanelHost` builds `KitSourcesPanel` only — no `LiveSportsStreamsPage` | ✅ |
+| 3 | R73-A21 | `shared/foundation/services/live/panel/` deleted; remaining live libs under `shared/services/sports/` (+ feature prefs/filters); no `shared/foundation/services/live/` tree | ✅ |
 
 ---
 
 ## Acceptance (live libs domain home)
 
-Supersedes the **parking path** in R73-A21 only. Panel silo (`shared/live/panel/`) stays gone. Host live/sports libs move out of the `services/` grab-bag.
+Supersedes the **parking path** in R73-A21 only. Panel silo (`shared/foundation/services/live/panel/`) stays gone. Host live/sports libs move out of the `services/` grab-bag.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R73-A22 | Host live/sports libs under `shared/live/`; `shared/services/` keeps `app/` · `update/` · `tracker` only | ✅ |
+| 1 | R73-A22 | Host live/sports libs under `shared/foundation/services/live/`; `shared/services/` keeps `app/` · `update/` · `tracker` only | ✅ |
 
 ---
 
@@ -128,20 +128,20 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 
 ### Shipped this slice
 
-- Tab mounts **`CatalogShell`** + host layout → **`CatalogKitListWidget`** (`style: list` → `HubLiveMatchDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
-- Sport chips via kit list; panel via `CatalogHostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → **`CatalogKitSourcesPanel`** + **`MatchStreams`**
-- Host sports libs under `shared/live/` (`live_stream_engine`, `match_streams`, `iptv_sports_match`, schedule/team/stremio helpers); feature prefs/filters under `features/live_sports/`
+- Tab mounts **`KitShell`** + host layout → **`KitListWidget`** (`style: list` → `LiveMatchDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
+- Sport chips via kit list; panel via `HostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → **`KitSourcesPanel`** + **`MatchStreams`**
+- Host sports libs under `shared/foundation/services/live/` (`live_stream_engine`, `match_streams`, `iptv_sports_match`, schedule/team/stremio helpers); feature prefs/filters under `features/live_sports/`
 - Feature folder stays thin (host + layout + list source + panel host); opaque ids `live_matches` / `live_schedule` unchanged
 - Kit play service `openForjaLiveNativePlayer` — MatchStreams uses it (peer of portal `catalog_iptv_play`)
 - `IptvSportsMatchService` — Live TV / broadcast match path (pack `sportMatchGame`; standalone library)
-- `HubLiveScheduleSource` / `loadLiveScheduleRows` — engine catalog → `CatalogMetaItem`
-- Timeline view **deleted**; browse shell **deleted**; **`shared/live/panel/` silo deleted** (R73-A21); libs restored under `shared/live/` (R73-A22)
+- `LiveScheduleListSource` / `loadLiveScheduleRows` — engine catalog → `MetaItem`
+- Timeline view **deleted**; browse shell **deleted**; **`shared/foundation/services/live/panel/` silo deleted** (R73-A21); libs restored under `shared/foundation/services/live/` (R73-A22)
 
 
 ### Shipped (pack data + kit + host services)
 
 - Kit chrome: `catalog` + `horizon` menus on host default layout and hub pack layout; prefs hydrate defaults; horizon filters `loadLiveScheduleRows`
-- `open.surface: live` → `LivePlayKit` tab switch + `CatalogKitListWidget` pending select opens streams panel
+- `open.surface: live` → `LivePlayKit` tab switch + `KitListWidget` pending select opens streams panel
 - Catalog pack prelude `_wire.js` stamps `kind` / `startsAt` / `open`; host mapper prefers those keys
 - `MatchStreams` resolve is engine-plugin only (no host streamed.pk invent / Rust `streamed_streams` fallback)
 - Host ESPN browse merge API removed; Live TV IPTV matching uses pack `sportMatchGame` + broadcast plugins

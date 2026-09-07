@@ -1,1 +1,1 @@
-export 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
+export 'package:forja/shared/foundation/components/rows/kit_section.dart';

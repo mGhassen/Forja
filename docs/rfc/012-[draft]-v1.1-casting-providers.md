@@ -41,9 +41,9 @@ Wire existing stubs into `shared/player/`:
 
 | Component | Path | Action |
 |-----------|------|--------|
-| `PlayerOverlayPanel` | `shared/design/src/player_overlay.dart` | Mount in desktop/mobile player |
-| `ServerGrid` | `shared/design/src/server_grid.dart` | Connect to `StreamResolver.switchProvider()` |
-| `ForjaPosterCard` | `shared/design/src/poster_card.dart` | Use in browse rails (optional) |
+| `PlayerOverlayPanel` | `shared/foundation/primitives/forja_player_overlay.dart` | Mount in desktop/mobile player |
+| `ServerGrid` | `shared/foundation/primitives/forja_server_grid.dart` | Connect to `StreamResolver.switchProvider()` |
+| `ForjaPosterCard` | `shared/foundation/primitives/forja_poster_card.dart` | Use in browse rails (optional) |
 
 Controls: Previous/Next, AutoNext, Details, Shuffle, PiP, Cast (picker), Watch Party (disabled).
 

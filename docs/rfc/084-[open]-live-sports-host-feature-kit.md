@@ -32,11 +32,11 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R84-A01 | Addons ON with no Live Sports hub pack → Live Sports tab visible | ✅ |
-| 2 | R84-A02 | Core builder mounts kit / `LiveSportsHubPage` with host-default layout (not `CatalogShellLoader`) | ✅ |
+| 2 | R84-A02 | Core builder mounts kit / `LiveSportsHubPage` with host-default layout (not `KitShellLoader`) | ✅ |
 | 3 | R84-A03 | Browse is dense match list — not card grid | ✅ |
 | 4 | R84-A04 | Match select opens right streams panel (Providers / Live TV); no details route | ✅ |
 | 5 | R84-A05 | Play from panel uses native player only | ✅ |
-| 6 | R84-A06 | Enabled hub with `nav.tabId: live_matches` replaces builder with pack `CatalogShell` layout | ✅ |
+| 6 | R84-A06 | Enabled hub with `nav.tabId: live_matches` replaces builder with pack `KitShell` layout | ✅ |
 | 7 | R84-A07 | Disabling hub pack does not strip `live_matches` from navbar when user kept it visible | ✅ |
 | 8 | R84-A08 | Feature doc + changelog describe host feature + list/panel | ✅ |
 | 9 | R84-A09 | TV: D-pad walks dense match list + side streams panel (chrome, tabs, cats, cards); ←/→ between list and panel | ✅ |

@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/live_sports/live_sports_host_layout.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
-import 'package:forja/shared/catalog/services/host_list_registry.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/components/layout/kit_types.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
 
 void main() {
   setUp(() {
-    CatalogHostListRegistry.debugReset();
+    HostListRegistry.debugReset();
     LiveSportsHost.debugReset();
     PluginNavRegistry.seedBuiltIns();
     LiveSportsHost.ensureRegistered();
@@ -17,7 +17,7 @@ void main() {
   test('live_matches is core shell — contributed without a hub pack', () {
     expect(PluginNavRegistry.coreShellNavIds, contains('live_matches'));
     expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
-    expect(PluginNavRegistry.isHubTab('live_matches'), isFalse);
+    expect(PluginNavRegistry.isKitTab('live_matches'), isFalse);
     expect(coreNavDestinations.containsKey('live_matches'), isTrue);
     expect(coreNavTabBuilders.containsKey('live_matches'), isTrue);
     expect(navDestinations['live_matches']?.label, 'Live Sports');
@@ -49,47 +49,47 @@ void main() {
 
   test('host-default layout is topBar + categoryBar + list+panel', () {
     expect(
-      CatalogKitTypes.treeContains(
+      KitTypes.treeContains(
         kLiveSportsHostDefaultLayout,
-        slot: CatalogKitTypes.list,
+        slot: KitTypes.list,
         listSource: LiveSportsHost.listSourceId,
       ),
       isTrue,
     );
     expect(
-      CatalogKitTypes.treeContains(
+      KitTypes.treeContains(
         kLiveSportsHostDefaultLayout,
-        slot: CatalogKitTypes.topBar,
+        slot: KitTypes.topBar,
       ),
       isTrue,
     );
     expect(
-      CatalogKitTypes.treeContains(
+      KitTypes.treeContains(
         kLiveSportsHostDefaultLayout,
-        slot: CatalogKitTypes.categoryBar,
+        slot: KitTypes.categoryBar,
       ),
       isTrue,
     );
     final stack = kLiveSportsHostDefaultLayout.first;
-    expect(stack['type'], CatalogKitTypes.stack);
+    expect(stack['type'], KitTypes.stack);
     final children = stack['children'] as List;
     final list = children.last as Map;
-    expect(list['type'], CatalogKitTypes.list);
+    expect(list['type'], KitTypes.list);
     expect(list['source'], LiveSportsHost.listSourceId);
     expect(list['style'], 'list');
     expect(list['open'], 'panel');
   });
 
   test('live_schedule registers list source without host body', () {
-    final source = CatalogHostListRegistry.resolve(sourceId: 'live_schedule');
+    final source = HostListRegistry.resolve(sourceId: 'live_schedule');
     expect(source, isNotNull);
     expect(source!.wantsHostBody, isFalse);
-    expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
+    expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
   });
 
   test('live_schedule registers streams panel host', () {
     final panel =
-        CatalogHostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
+        HostListRegistry.resolvePanel(LiveSportsHost.listSourceId);
     expect(panel, isNotNull);
     expect(panel!.listSourceId, LiveSportsHost.listSourceId);
   });
@@ -101,7 +101,7 @@ void main() {
       },
       tabPluginIds: const {'live_matches': 'test-live-hub'},
     );
-    expect(PluginNavRegistry.isHubTab('live_matches'), isTrue);
+    expect(PluginNavRegistry.isKitTab('live_matches'), isTrue);
     expect(navTabBuilders.containsKey('live_matches'), isTrue);
     expect(PluginNavRegistry.builders.containsKey('live_matches'), isTrue);
   });

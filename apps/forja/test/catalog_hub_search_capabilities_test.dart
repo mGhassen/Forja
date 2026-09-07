@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/catalog_hub_capabilities.dart';
-import 'package:forja/shared/catalog/kit/chrome/hub_search_filters.dart';
+import 'package:forja/shared/foundation/protocol/pack_capabilities.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_search_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 
 void main() {
-  group('CatalogHubCapabilities + EnginePlugin.hasCapability', () {
+  group('PackCapabilities + EnginePlugin.hasCapability', () {
     EnginePlugin plugin(List<String> caps) => EnginePlugin.fromJson({
           'id': 'test-hub-a',
           'name': 'Test Hub',
@@ -16,9 +16,9 @@ void main() {
 
     test('search alone does not imply structured_search', () {
       final p = plugin(const ['nav', 'search', 'filters']);
-      expect(p.hasCapability(CatalogHubCapabilities.search), isTrue);
-      expect(p.hasCapability(CatalogHubCapabilities.filters), isTrue);
-      expect(p.hasCapability(CatalogHubCapabilities.structuredSearch), isFalse);
+      expect(p.hasCapability(PackCapabilities.search), isTrue);
+      expect(p.hasCapability(PackCapabilities.filters), isTrue);
+      expect(p.hasCapability(PackCapabilities.structuredSearch), isFalse);
     });
 
     test('structured_search is opt-in via capabilities', () {
@@ -27,7 +27,7 @@ void main() {
         'structured_search',
         'filters',
       ]);
-      expect(p.hasCapability(CatalogHubCapabilities.structuredSearch), isTrue);
+      expect(p.hasCapability(PackCapabilities.structuredSearch), isTrue);
       expect(p.hasCapability('STRUCTURED_SEARCH'), isTrue);
     });
 
@@ -37,13 +37,13 @@ void main() {
         'host_search',
         'structured_search',
       ]);
-      expect(p.hasCapability(CatalogHubCapabilities.hostSearch), isTrue);
-      expect(p.hasCapability(CatalogHubCapabilities.structuredSearch), isTrue);
+      expect(p.hasCapability(PackCapabilities.hostSearch), isTrue);
+      expect(p.hasCapability(PackCapabilities.structuredSearch), isTrue);
     });
 
     test('missing search capability is false', () {
       final p = plugin(const ['nav', 'rail']);
-      expect(p.hasCapability(CatalogHubCapabilities.search), isFalse);
+      expect(p.hasCapability(PackCapabilities.search), isFalse);
     });
   });
 

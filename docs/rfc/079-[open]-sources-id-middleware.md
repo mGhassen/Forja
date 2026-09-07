@@ -21,7 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | R79-C01 | `SourcesRequestContext` bag merge + engine / torrent / nuvio slices | ✅ |
 | 2 | R79-C02 | Stremio projector (`idPrefixes` → bag scheme → stream id) | ✅ |
-| 3 | R79-C03 | Sources panel + hub play pass `CatalogMetaItem` through middleware | ✅ |
+| 3 | R79-C03 | Sources panel + hub play pass `MetaItem` through middleware | ✅ |
 | 4 | R79-C04 | Torrent JS ctx accepts opaque `ids` map | ✅ |
 
 ---
@@ -43,7 +43,7 @@
 
 ## Summary
 
-Catalog packs emit opaque id bags; Sources kinds need different inputs. One host middleware merges `meta.ids` + `CatalogOpen.extract.ctx` + Movie fallbacks and projects fixed slices for Forja providers, torrents, and Nuvio. Stremio resolution is a separate projector that reads each addon's `idPrefixes`.
+Catalog packs emit opaque id bags; Sources kinds need different inputs. One host middleware merges `meta.ids` + `MetaOpen.extract.ctx` + Movie fallbacks and projects fixed slices for Forja providers, torrents, and Nuvio. Stremio resolution is a separate projector that reads each addon's `idPrefixes`.
 
 ## Goals
 

@@ -168,7 +168,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 21/21 · A 0/17 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 23/23 · A 0/19 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match + cache tiers) | P2 | Medium | open | 4/6 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -226,7 +226,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [204-[fixed]-…](fixed/204-[fixed]-home-rail-cross-row-dedupe.md) | Home rails dedupe + backfill across rows | P2 | Medium | fixed | Complete · 7/7 · A 6/6 | — |
 | [205-[open]-…](205-[open]-mid-watch-network-drop-remount.md) | Mid-watch network drop → remount (not Failed/Retry) | P1 | High | open | 5/5 · A 0/2 | — |
 | [206-[fixed]-…](fixed/206-[fixed]-simkl-smart-sync-delta-cw-cap.md) | Simkl smart sync delta + CW cap | P2 | Medium | fixed | Complete · 4/4 · A 0/3 | — |
-| [207-[open]-…](207-[open]-macos-iptv-live-recovery-process-crash.md) | macOS IPTV live recovery → process crash | P1 | High | open | 6/6 · A 0/4 | — |
+| [207-[open]-…](207-[open]-macos-iptv-live-recovery-process-crash.md) | macOS IPTV live recovery → process crash | P1 | High | open | 7/7 · A 0/5 | — |
 | [208-[fixed]-…](fixed/208-[fixed]-iptv-stalker-misclassified-as-xtream-proxy.md) | Stalker live mis-tagged as Xtream proxy | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [209-[fixed]-…](fixed/209-[fixed]-forja-sports-stalker-create-link-all-channels.md) | Forja Sports Stalker mints all channel links before open | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |

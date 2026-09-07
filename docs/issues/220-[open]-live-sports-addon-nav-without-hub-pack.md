@@ -32,7 +32,7 @@
 |--:|----|-------------|--------|
 | 1 | I220-A01 | Addons → Live Sports ON with no hub pack → rail shows Live Sports | ✅ |
 | 2 | I220-A02 | Tap match → right panel Providers/Live TV (not full details page) | ✅ |
-| 3 | I220-A03 | Hub pack enabled still overrides layout via CatalogShell | ✅ |
+| 3 | I220-A03 | Hub pack enabled still overrides layout via KitShell | ✅ |
 
 ---
 

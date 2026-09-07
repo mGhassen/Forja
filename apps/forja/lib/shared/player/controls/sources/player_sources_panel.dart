@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
-import 'package:forja/shared/catalog/kit/play/sources_request_context.dart';
-import 'package:forja/shared/catalog/kit/play/stremio_stream_id.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
+import 'package:forja/shared/foundation/blocks/play/sources_request_context.dart';
+import 'package:forja/shared/foundation/blocks/play/stremio_stream_id.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -69,8 +69,8 @@ class PlayerSourcesPanel {
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
     String? currentAddonBaseUrl,
-    CatalogOpen? catalogOpen,
-    CatalogMetaItem? catalogMeta,
+    MetaOpen? open,
+    MetaItem? meta,
     int? malId,
     String? episodeVideoId,
 
@@ -112,8 +112,8 @@ class PlayerSourcesPanel {
           currentPlayingRowKey: currentPlayingRowKey,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
-          catalogOpen: catalogOpen,
-          catalogMeta: catalogMeta,
+          open: open,
+          meta: meta,
           malId: malId,
           episodeVideoId: episodeVideoId,
           engineCategory: engineCategory,
@@ -146,8 +146,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentPlayingRowKey,
     this.preferredKind,
     this.currentAddonBaseUrl,
-    this.catalogOpen,
-    this.catalogMeta,
+    this.open,
+    this.meta,
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
@@ -165,8 +165,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentPlayingRowKey;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
-  final CatalogOpen? catalogOpen;
-  final CatalogMetaItem? catalogMeta;
+  final MetaOpen? open;
+  final MetaItem? meta;
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
@@ -216,8 +216,8 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentPlayingRowKey: widget.currentPlayingRowKey,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
-          catalogOpen: widget.catalogOpen,
-          catalogMeta: widget.catalogMeta,
+          open: widget.open,
+          meta: widget.meta,
           malId: widget.malId,
           episodeVideoId: widget.episodeVideoId,
           engineCategory: widget.engineCategory,
@@ -246,8 +246,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentPlayingRowKey,
     this.preferredKind,
     this.currentAddonBaseUrl,
-    this.catalogOpen,
-    this.catalogMeta,
+    this.open,
+    this.meta,
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
@@ -264,8 +264,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentPlayingRowKey;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
-  final CatalogOpen? catalogOpen;
-  final CatalogMetaItem? catalogMeta;
+  final MetaOpen? open;
+  final MetaItem? meta;
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
@@ -330,9 +330,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// Soft Forja panel bucket. Prefer explicit hub category; else infer from
   /// the playing `engine:` plugin so player Sources reuse chip prefs.
   String get _enginePanelCategory {
-    if (widget.catalogOpen != null) {
+    if (widget.open != null) {
       return engineExtractContext(
-        catalogOpen: widget.catalogOpen,
+        open: widget.open,
         movie: widget.movie,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
@@ -371,9 +371,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   /// Engine extract type — opaque string from pack `open.extract.resolveType`.
   String get _engineResolveType {
-    if (widget.catalogOpen != null) {
+    if (widget.open != null) {
       return engineExtractContext(
-        catalogOpen: widget.catalogOpen,
+        open: widget.open,
         movie: widget.movie,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
@@ -1197,7 +1197,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     mediaType: widget.movie.mediaType,
     season: widget.season,
     episode: widget.episode,
-    catalogOpen: widget.catalogOpen,
+    open: widget.open,
     malId: widget.malId,
     audioCategory: widget.animeAudioCategory,
     episodeVideoId:
@@ -1314,7 +1314,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _ensureStremioLoaded({bool force = false}) {
-    final customBase = widget.catalogOpen?.extraString('stremioAddonBaseUrl');
+    final customBase = widget.open?.extraString('stremioAddonBaseUrl');
     if (customBase != null && customBase.isNotEmpty) {
       if (!_showsStremio) return;
       setState(() => _selectedSourceId = customBase);
@@ -2445,8 +2445,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
 
     final addonName =
-        widget.catalogOpen?.extraString('stremioAddonName') ?? 'Addon';
-    var type = widget.catalogOpen?.extraString('stremioType') ??
+        widget.open?.extraString('stremioAddonName') ?? 'Addon';
+    var type = widget.open?.extraString('stremioType') ??
         (widget.movie.mediaType == 'tv' ? 'series' : 'movie');
     var streamId = stremioId;
     if (type == 'series' &&
@@ -2758,7 +2758,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
-        catalogOpen: widget.catalogOpen,
+        open: widget.open,
         episodeVideoId: widget.episodeVideoId,
         audioCategory: widget.animeAudioCategory,
         allowHostFallback: false,
@@ -2932,20 +2932,20 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return d.length >= 4 ? d.substring(0, 4) : '';
   }
 
-  CatalogMetaItem? get _resolvedCatalogMeta =>
-      widget.catalogMeta ?? catalogMetaItemForMovie(widget.movie);
+  MetaItem? get _resolvedCatalogMeta =>
+      widget.meta ?? metaItemForMovie(widget.movie);
 
   SourcesRequestContext get _sourcesCtx => buildSourcesRequestContext(
         movie: widget.movie,
-        catalogMeta: _resolvedCatalogMeta,
-        catalogOpen: widget.catalogOpen,
+        meta: _resolvedCatalogMeta,
+        open: widget.open,
         season: widget.season,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
         panelCategoryHint: widget.engineCategory,
       );
 
-  bool get _torrentEp => catalogOpenTorrentEp(widget.catalogOpen);
+  bool get _torrentEp => metaOpenTorrentEp(widget.open);
 
   Future<List<TorrentResult>> _searchJackett({
     required bool isTv,
@@ -3744,7 +3744,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ),
       );
       if (!SourcesPanelTv.isTv(context)) return loading;
-      return TvCatalogRow(
+      return TvKitRow(
         tabId: SourcesPanelTv.tabId,
         rowId: SourcesPanelTv.listRowId,
         sortOrder: SourcesPanelTv.listSort,
@@ -3926,7 +3926,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
 
     if (!tv) return panelList;
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: SourcesPanelTv.tabId,
       rowId: SourcesPanelTv.listRowId,
       sortOrder: SourcesPanelTv.listSort,

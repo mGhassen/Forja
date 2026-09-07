@@ -2,7 +2,7 @@
 
 **Status:** draft  
 **Depends on:** [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) (tokens / buttons), [issue 078](../issues/fixed/078-[fixed]-switches-not-in-design-system.md) (`ForjaSwitch` shipped)  
-**Area:** `apps/forja/lib/shared/design/`, call sites across settings / player / hubs
+**Area:** `apps/forja/lib/shared/foundation/primitives/`, call sites across settings / player / hubs
 
 ## Status at a glance
 
@@ -31,7 +31,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R35-A01 | Changing `ForjaSwitch` / `ForjaSlider` tokens updates all in-scope toggles and sliders | ⬜ |
-| 2 | R35-A02 | No new raw `Switch(` / ad-hoc `Slider` color overrides outside `shared/design/` | ⬜ |
+| 2 | R35-A02 | No new raw `Switch(` / ad-hoc `Slider` color overrides outside `shared/foundation/primitives/` | ⬜ |
 | 3 | R35-A03 | Settings, player chrome, and hub screens use shared controls (or inherit theme) | ⬜ |
 | 4 | R35-A04 | Cursor rule `forja-design-system.mdc` lists each control + when to use it | ⬜ |
 | 5 | R35-A05 | Feature docs unchanged unless user-visible look changes | ⬜ |
@@ -43,7 +43,7 @@
 
 RFC-025 shipped shell tokens and buttons. Issue 078 added `ForjaSwitch` so toggles share one style. Most other interactive chrome (sliders, list tiles, one-off Material color knobs) is still local.
 
-This RFC finishes the **controls** slice of the design system: extract remaining primitives into `shared/design/`, wire theme defaults, migrate call sites, and keep the rule file as the contract so the next redesign is one place.
+This RFC finishes the **controls** slice of the design system: extract remaining primitives into `shared/foundation/primitives/`, wire theme defaults, migrate call sites, and keep the rule file as the contract so the next redesign is one place.
 
 ## Goals
 

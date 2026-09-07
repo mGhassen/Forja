@@ -69,7 +69,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R17-A22 | Intro / profile splash **awaits** official ForjaHQ packs (6 required; Arabic optional) before dismiss | ✅ |
-| 2 | R17-A23 | Splash prefetches default hub `layout` (Home, else first visible hub) into CatalogCache | ✅ |
+| 2 | R17-A23 | Splash prefetches default hub `layout` (Home, else first visible hub) into MetaCache | ✅ |
 | 3 | R17-A24 | LocalServer / WebStreamr / Nuvio / Torrent still start **post**-dismiss (unchanged) | ✅ |
 
 ---

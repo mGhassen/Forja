@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/archive/jellyfin/catalog/jellyfin_service.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
 import 'package:forja/shared/widgets/chrome/hover_scale.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 

@@ -8,7 +8,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';

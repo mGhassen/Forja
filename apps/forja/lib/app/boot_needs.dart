@@ -1,5 +1,5 @@
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
@@ -71,7 +71,7 @@ class BootNeeds {
   ///
   /// Includes hub ids whose packs are not contributed yet (lean stubs) — same
   /// set MainScreen paints with placeholder icons. Do **not** require
-  /// [PluginNavRegistry.isHubTab] / [PluginNavRegistry.isContributed].
+  /// [PluginNavRegistry.isKitTab] / [PluginNavRegistry.isContributed].
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
     if (id == 'settings') return false;
@@ -82,7 +82,7 @@ class BootNeeds {
   /// Catalog hub tab contributed by an installed enabled pack ([PluginNavRegistry.refresh]).
   static bool isHubNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
-    return PluginNavRegistry.isHubTab(id);
+    return PluginNavRegistry.isKitTab(id);
   }
 
   /// Splash hold line after boot work finishes early.

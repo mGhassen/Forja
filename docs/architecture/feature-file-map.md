@@ -38,7 +38,7 @@
 | **anime** | 17 | ~7,100 | `catalog/anime_service.dart` (1,648) + `widgets/` |
 | **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
-| **live_sports** | 4 | thin host | `live_sports_host.dart` + catalog list/panel; panel in `shared/live/` |
+| **live_sports** | 4 | thin host | `live_sports_host.dart` + catalog list/panel; panel in `shared/foundation/services/live/` |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
 | **anime_arabic** | 6 | ~3,900 | `anime_arabic_screen.dart` (1,313) |
 | **search** | 6 | ~2,007 | `search_widgets.dart` (609) + `search_screen.dart` (109) |
@@ -58,7 +58,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
-| [`features/live_sports/catalog/live_sports_streams_panel_host.dart`](../../apps/forja/lib/features/live_sports/catalog/live_sports_streams_panel_host.dart) | — | Live Sports streams panel host | In | Thin feature `features/live_sports/`; UI = `CatalogKitSourcesPanel`; service = `MatchStreams` |
+| [`features/live_sports/catalog/live_sports_streams_panel_host.dart`](../../apps/forja/lib/features/live_sports/catalog/live_sports_streams_panel_host.dart) | — | Live Sports streams panel host | In | Thin feature `features/live_sports/`; UI = `KitSourcesPanel`; service = `MatchStreams` |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
@@ -80,7 +80,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done — see Tier 1c |
-| [`iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
+| [`iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvKitChromeTopBar` + `IptvPortalPanel` in parts |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
 | [`iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart) | 288 | Orchestrator | In | State + lifecycle; engine/ui mixins |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
@@ -132,7 +132,7 @@ Paths relative to `apps/forja/lib/features/`.
 | 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
 | 815 | iptv | `iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
 | 93 | iptv | `iptv/screens/iptv_pt_browser_sidebar.dart` | Category sidebar row | In |
-| 786 | iptv | `iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
+| 786 | iptv | `iptv/screens/iptv_kit_chrome_top_bar.dart` | Catalog top bar + shelf tabs | In |
 | 736 | iptv | `iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
 | 712 | live_matches | `live_matches/live_matches_build.dart` | Build mixin | In |
 | 705 | live_matches | `live_matches/live_matches_models.dart` | Models + API | In |
@@ -147,7 +147,7 @@ Paths relative to `apps/forja/lib/features/`.
 | 152 | iptv | `iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
 | 137 | iptv | `iptv/screens/iptv_pt_widgets_section.dart` | Section pick (legacy) | In |
 | 137 | iptv | `iptv/screens/iptv_pt_widgets_common.dart` | App bar + chips | In |
-| 76 | iptv | `iptv/screens/iptv_pt_catalog_shell.dart` | Catalog shell | In |
+| 76 | iptv | `iptv/screens/iptv_pt_kit_shell.dart` | Catalog shell | In |
 | 235 | live_matches | `live_matches/live_matches_playback.dart` | Playback mixin | In |
 | 94 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
 | 609 | search | `search/search_widgets.dart` | Cards + my-list buttons | In |
@@ -284,7 +284,7 @@ flowchart TB
 
 | Layer | Location | Owns | Does NOT own |
 |-------|----------|------|--------------|
-| Shell / profile | `shared/design/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvCatalogRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
+| Shell / profile | `shared/foundation/primitives/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
 | Shared presentation | `shared/widgets/` | Reusable UI + callbacks | State machines, routing |
 | Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
 
@@ -378,11 +378,11 @@ features/settings/
 ```
 features/iptv/
   screens/iptv_pt_screen.dart       # 152 — routing only (Phase E done)
-  screens/iptv_pt_catalog_shell.dart
+  screens/iptv_pt_kit_shell.dart
   screens/iptv_pt_browser_*.dart      # view, sidebar, streams
   screens/iptv_pt_widgets_*.dart    # channels, episode, portal, section, common
   screens/iptv_catalog_workspace.dart   # 67 — shelf constants + part directives
-  screens/iptv_catalog_top_bar.dart
+  screens/iptv_kit_chrome_top_bar.dart
   screens/iptv_catalog_portal_panel.dart
   screens/iptv_catalog_portal_form.dart
   screens/iptv_catalog_portal_widgets.dart

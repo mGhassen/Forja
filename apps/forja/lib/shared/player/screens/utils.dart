@@ -4,16 +4,16 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
     show
         catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
         catalogStreamRowMatchesSavedProgress,
-        bindPendingCatalogStreamRowKey,
+        bindPendingMetaStreamRowKey,
         catalogStreamRowProgressKey,
-        takePendingCatalogStreamRowKey,
+        takePendingMetaStreamRowKey,
         durableStreamCatalogUrl,
         enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
@@ -27,7 +27,7 @@ export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
         streamSourceProgressKey;
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
@@ -1214,7 +1214,7 @@ String? catalogStreamAddonIdentity(Map<String, dynamic> stream) {
   String? catalogSourceKind,
   String? currentSourceTitle,
   String? catalogAddonName,
-  CatalogOpen? catalogOpen,
+  MetaOpen? open,
   int? malId,
   String? audioCategory,
   String? episodeVideoId,
@@ -1234,7 +1234,7 @@ String? catalogStreamAddonIdentity(Map<String, dynamic> stream) {
           mediaType: movie.mediaType,
           season: season,
           episode: episode,
-          catalogOpen: catalogOpen,
+          open: open,
           malId: malId,
           audioCategory: audioCategory,
           episodeVideoId: episodeVideoId,
@@ -1324,7 +1324,7 @@ String catalogSourcesButtonLabel({
   String? catalogSourceKind,
   String? currentSourceTitle,
   String? catalogAddonName,
-  CatalogOpen? catalogOpen,
+  MetaOpen? open,
   int? malId,
   String? audioCategory,
   String? episodeVideoId,
@@ -1344,7 +1344,7 @@ String catalogSourcesButtonLabel({
     catalogSourceKind: catalogSourceKind,
     currentSourceTitle: currentSourceTitle,
     catalogAddonName: catalogAddonName,
-    catalogOpen: catalogOpen,
+    open: open,
     malId: malId,
     audioCategory: audioCategory,
     episodeVideoId: episodeVideoId,
@@ -3406,7 +3406,7 @@ Future<bool> validateStreamSourceForCheck({
 }
 
 /// Index of [current] in a flat hub episode list, or null if not found.
-int? hubEpisodeIndex(List<PlayerHubEpisode> episodes, num current) {
+int? hubEpisodeIndex(List<PlayerKitEpisode> episodes, num current) {
   for (var i = 0; i < episodes.length; i++) {
     if (episodes[i].number == current) return i;
   }
@@ -3415,7 +3415,7 @@ int? hubEpisodeIndex(List<PlayerHubEpisode> episodes, num current) {
 
 /// Whether hub playback has a previous / next list entry for [current].
 ({bool hasPrev, bool hasNext}) adjacentHubEpisodeFlags(
-  List<PlayerHubEpisode>? episodes,
+  List<PlayerKitEpisode>? episodes,
   num? current,
 ) {
   if (episodes == null || episodes.isEmpty || current == null) {

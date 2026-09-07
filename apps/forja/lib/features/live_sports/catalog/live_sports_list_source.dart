@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/live_sports/schedule_filters.dart';
-import 'package:forja/shared/live/schedule/schedule_catalog_source.dart';
-import 'package:forja/shared/live/play/live_stream_engine.dart';
-import 'package:forja/shared/live/play/live_play_kit.dart';
+import 'package:forja/shared/foundation/services/live/schedule_list_source.dart';
+import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
+import 'package:forja/shared/foundation/services/live/live_play_kit.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
+import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Selected kit list entry for list+panel chrome.
 final liveScheduleSelectedEntryProvider =
-    StateProvider<CatalogKitListEntry?>((ref) => null);
+    StateProvider<KitListEntry?>((ref) => null);
 
-class LiveScheduleCatalogPage implements CatalogKitListPage {
+class LiveScheduleCatalogPage implements KitListPage {
   const LiveScheduleCatalogPage({
     required this.entries,
     required this.loadingRemote,
     this.sportIds = const [],
   });
 
-  final List<CatalogKitListEntry> entries;
+  final List<KitListEntry> entries;
   final List<String> sportIds;
 
   @override
@@ -29,7 +30,7 @@ class LiveScheduleCatalogPage implements CatalogKitListPage {
   int get totalCount => entries.length;
 
   @override
-  List<CatalogKitListEntry> entriesForKind(String? kind) {
+  List<KitListEntry> entriesForKind(String? kind) {
     if (kind == null || kind.isEmpty || kind == 'all') return entries;
     final want = kind.toLowerCase();
     return [
@@ -49,7 +50,7 @@ final liveScheduleCatalogProvider =
       scheduleHorizon: filters.scheduleHorizon,
     ),
   );
-  final entries = <CatalogKitListEntry>[];
+  final entries = <KitListEntry>[];
   final sports = <String>{};
   for (final row in rows) {
     final meta = liveMetaFromScheduleRow(row);
@@ -59,7 +60,7 @@ final liveScheduleCatalogProvider =
       sports.add(kind);
     }
     entries.add(
-      CatalogKitListEntry(
+      KitListEntry(
         meta: meta,
         legacyRow: row,
         kind: kind.isEmpty ? 'live_match' : kind,
@@ -75,7 +76,7 @@ final liveScheduleCatalogProvider =
   );
 });
 
-String _sportKindForMeta(CatalogMetaItem meta) {
+String _sportKindForMeta(MetaItem meta) {
   for (final g in meta.genres) {
     final t = g.trim().toLowerCase();
     if (t.isNotEmpty) return t;
@@ -87,9 +88,9 @@ String _sportKindForMeta(CatalogMetaItem meta) {
 
 /// Kit list backend for `source: live_schedule` (My List peer).
 ///
-/// [wantsHostBody] stays false — [CatalogShell] + [CatalogKitListWidget] own
+/// [wantsHostBody] stays false — [KitShell] + [KitListWidget] own
 /// browse; streams panel is [LiveSportsStreamsPanelHost].
-final class LiveScheduleCatalogSource extends CatalogKitListSource {
+final class LiveScheduleCatalogSource extends KitListSource {
   const LiveScheduleCatalogSource._() : super();
 
   static const instance = LiveScheduleCatalogSource._();
@@ -101,7 +102,7 @@ final class LiveScheduleCatalogSource extends CatalogKitListSource {
   String? get hubPluginId => LiveSportsHost.hubPluginId;
 
   @override
-  AsyncValue<CatalogKitListPage> watchPage(WidgetRef ref, String status) {
+  AsyncValue<KitListPage> watchPage(WidgetRef ref, String status) {
     return ref.watch(liveScheduleCatalogProvider).when(
           data: AsyncData.new,
           error: AsyncError.new,
@@ -147,7 +148,7 @@ final class LiveScheduleCatalogSource extends CatalogKitListSource {
   @override
   Future<void> openEntry(
     BuildContext context,
-    CatalogKitListEntry entry,
+    KitListEntry entry,
   ) async {
     // Browse open is kit-owned (panel vs details from pack layout).
   }
@@ -155,13 +156,13 @@ final class LiveScheduleCatalogSource extends CatalogKitListSource {
   @override
   Widget? buildEntryPin(
     BuildContext context,
-    CatalogKitListEntry entry,
+    KitListEntry entry,
     String tabStatus,
   ) =>
       null;
 
   /// Open from outside the browse shell (other hubs).
-  static void openMetaCrossHub(BuildContext context, CatalogMetaItem item) {
-    LivePlayKit.openFromCatalogMeta(context, item);
+  static void openMetaCrossHub(BuildContext context, MetaItem item) {
+    LivePlayKit.openFromMeta(context, item);
   }
 }

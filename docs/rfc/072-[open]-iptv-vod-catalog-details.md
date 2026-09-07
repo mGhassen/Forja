@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-070](070-[partial]-catalog-hub-protocol.md)  
-**Area:** `features/iptv/`, `shared/catalog/`, `plugins/iptv/vod/`
+**Area:** `features/iptv/`, `shared/foundation/`, `plugins/iptv/vod/`
 
 ## Status at a glance
 
@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R72-C01 | `plugins/iptv/vod/` — `iptv-vod` details + `iptv-enrich-tmdb` companion | ✅ |
-| 2 | R72-C02 | `catalog_iptv_open.dart` — seed meta, `openIptvVodDetails`, portal resolve | ✅ |
+| 2 | R72-C02 | `iptv_open.dart` — seed meta, `openIptvVodDetails`, portal resolve | ✅ |
 | 3 | R72-C03 | `hub_details_play` IPTV portal play branch; hide Sources for `resolveType: iptv` | ✅ |
 | 4 | R72-C04 | Remove custom IPTV detail screens; portal-filtered More Like This on kit | ✅ |
 
@@ -30,7 +30,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R72-A01 | IPTV movie/series tap opens `HubDetailsScreen` via `iptv-vod` plugin | ✅ |
+| 1 | R72-A01 | IPTV movie/series tap opens `KitDetailsScreen` via `iptv-vod` plugin | ✅ |
 | 2 | R72-A02 | Root details are portal-only (title, icon, episodes); TMDB via enrich companion only | ✅ |
 | 3 | R72-A03 | Play resolves portal URL in `IptvPtPlayerScreen` — no Sources panel | ✅ |
 | 4 | R72-A04 | More Like This intersects portal catalog; taps reopen IPTV hub details | ✅ |

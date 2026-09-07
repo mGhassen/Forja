@@ -253,7 +253,7 @@ mixin _DesktopPlayerSources
     PlayerStreamMenu.dismiss();
     PlayerPopupPanel.dismiss();
     PlayerEpisodePanel.dismiss();
-    PlayerHubEpisodePanel.dismiss();
+    PlayerKitEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
     // Exit / failover must not restore focus onto chrome that is going away.
@@ -456,7 +456,7 @@ mixin _DesktopPlayerSources
       catalogSourceKind: _s._catalogSourceKind,
       currentSourceTitle: _playingSourceTitle(),
       catalogAddonName: _s._catalogAddonName,
-      catalogOpen: session?.effectiveOpen,
+      open: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),

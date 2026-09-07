@@ -111,7 +111,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   bool get _isNextEpisodeAvailable =>
       (widget.onNextEpisode != null && widget.hasNextEpisode) ||
-      (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) ||
+      (widget.episodes != null && widget.episodes!.isNotEmpty) ||
       (widget.movie != null &&
           _isSeriesMediaType(widget.movie!.mediaType) &&
           widget.selectedSeason != null &&
@@ -293,12 +293,12 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (_s._isLoadingNextEp) return;
 
     final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
-    if (widget.hubEpisodes != null &&
+    if (widget.episodes != null &&
         widget.onHubEpisodeSelected != null &&
         current != null) {
-      final idx = hubEpisodeIndex(widget.hubEpisodes!, current);
+      final idx = hubEpisodeIndex(widget.episodes!, current);
       if (idx == null || idx <= 0) return;
-      final prev = widget.hubEpisodes![idx - 1];
+      final prev = widget.episodes![idx - 1];
       _beginEpisodeLoading(
         label: 'Episode ${prev.displayNumber}',
         status: 'Loading previous episode…',
@@ -470,7 +470,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   Future<({int season, int episode})?> _computeNextEpisode({
     bool silent = false,
   }) async {
-    final hub = widget.hubEpisodes;
+    final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
       final idx = hubEpisodeIndex(hub, hubCurrent);
@@ -541,7 +541,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<({int season, int episode})?> _computePreviousEpisode() async {
-    final hub = widget.hubEpisodes;
+    final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
       final idx = hubEpisodeIndex(hub, hubCurrent);
@@ -587,8 +587,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _refreshAdjacentEpisodeFlags() async {
     final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
-    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
-      final flags = adjacentHubEpisodeFlags(widget.hubEpisodes, current);
+    if (widget.episodes != null && widget.episodes!.isNotEmpty) {
+      final flags = adjacentHubEpisodeFlags(widget.episodes, current);
       if (!mounted) return;
       setState(() {
         _s._hasPrevEpisodeAdjacent = flags.hasPrev;
@@ -660,7 +660,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           episode: episode,
           stremioId: widget.stremioId,
           session: widget.enginePlaySession,
-          hubEpisodes: widget.hubEpisodes,
+          episodes: widget.episodes,
         );
       } finally {
         if (mounted) {
@@ -706,7 +706,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           stremioId: widget.stremioId,
           stremioAddonBaseUrl:
               _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
-          torrentEp: catalogOpenTorrentEp(
+          torrentEp: metaOpenTorrentEp(
             widget.enginePlaySession?.effectiveOpen,
           ),
         );
@@ -742,8 +742,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           providers: catalog ? null : widget.providers,
           sources: catalog ? null : resolved.sources,
           enginePlaySession: widget.enginePlaySession,
-          hubEpisodes: widget.hubEpisodes,
-          hubEpisodeNumber: widget.hubEpisodes != null ? episode : null,
+          episodes: widget.episodes,
+          hubEpisodeNumber: widget.episodes != null ? episode : null,
           onNextEpisode: widget.onNextEpisode,
           hasNextEpisode: widget.hasNextEpisode,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
@@ -770,13 +770,13 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
-    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
+    if (widget.episodes != null && widget.episodes!.isNotEmpty) {
       if (!mounted) return;
       PlayerPopupPanel.dismiss();
       final useHubCallback = widget.onHubEpisodeSelected != null;
-      PlayerHubEpisodePanel.show(
+      PlayerKitEpisodePanel.show(
         context: context,
-        episodes: widget.hubEpisodes!,
+        episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
           if (useHubCallback) {

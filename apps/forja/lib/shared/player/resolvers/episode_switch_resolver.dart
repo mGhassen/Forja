@@ -2,7 +2,7 @@ import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/resolvers/episode_torrent_resolver.dart';
 import 'package:rust/rust.dart';
 
-export 'episode_torrent_resolver.dart' show catalogOpenTorrentEp;
+export 'episode_torrent_resolver.dart' show metaOpenTorrentEp;
 
 class EpisodeSwitchResult {
   final String streamUrl;

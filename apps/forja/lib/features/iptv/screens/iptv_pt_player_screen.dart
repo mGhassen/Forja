@@ -39,9 +39,9 @@ import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
-import 'package:forja/shared/live/play/live_stream_engine.dart';
-import 'package:forja/shared/live/iptv/iptv_sports_config.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
+import 'package:forja/shared/foundation/services/live/iptv_sports_config.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
@@ -50,7 +50,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
@@ -894,6 +894,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Soft reopen when live stays paused with empty cache this long.
   static const Duration _liveEmptyPauseReopen = Duration(seconds: 5);
+
+  /// Sustained Buffering + near-empty demuxer: fps paint pulse alone is not
+  /// "working" (Stalker / direct live SW underrun). Soft-reopen can fire.
+  static const Duration _liveEmptyBufferingUnderrun = Duration(seconds: 5);
+
+  /// Demuxer ahead below this during Buffering ⇒ empty underrun (not healthy).
+  static const double _liveEmptyUnderrunCacheSecs = 0.5;
 
   /// Tunables ask for ~30 s readahead. Anything far above that is almost
   /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not

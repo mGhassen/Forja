@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 
 /// Right-side sliding panel shell for torrent / addon source picking.

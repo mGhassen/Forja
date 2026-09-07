@@ -5,14 +5,14 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv_title_clean.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
-import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
-import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/kit_details/kit_details_hero.dart';
+import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details/media_details_scroll_page.dart';
 import 'package:forja/shared/widgets/media_details/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details/tv_season_episode_picker.dart';
@@ -379,7 +379,7 @@ class _IptvSeriesEpisodeListScreenState
             topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
             backgroundColor: AppTheme.bgDark,
             sections: const [],
-            hero: HubDetailsHero(
+            hero: KitDetailsHero(
               backdropUrl: icon,
               backdropUrls: heroBackdrops,
               title: _displayTitle,
@@ -397,7 +397,7 @@ class _IptvSeriesEpisodeListScreenState
               actionRow: DetailsHeroTvActionScope(
                 tabId: MediaDetailsTv.tabId,
                 itemCount: 1,
-                child: HubDetailsPlayRow(
+                child: KitDetailsPlayRow(
                   label: 'Play Ep $_selectedEpisode',
                   enabled:
                       _episodeAt(_selectedSeasonIndex, _selectedEpisode) !=

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/adapters/desktop_shell.dart';
 import 'package:forja/shell/adapters/mobile_shell.dart';
 import 'package:forja/shell/adapters/tv_shell.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 /// Single platform switch - picks the shell adapter from [ShellScope.profile].
 class ShellHost extends StatelessWidget {

@@ -64,7 +64,7 @@ Set<String> myListItemHideKeys(Map<String, dynamic> item) {
   if (anilist is int) keys.add('anilist_$anilist');
   final kisskh = item['kisskhId'];
   if (kisskh is int) keys.add('kisskh_$kisskh');
-  final open = item['catalogOpen'];
+  final open = item['metaOpen'];
   if (open is Map) {
     final surface = open['surface']?.toString().trim() ?? '';
     final id = open['id']?.toString().trim() ?? '';

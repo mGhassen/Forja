@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HubListFollow.resolveSimklTarget', () {
-    CatalogListFollowTarget dramaTarget({int? tmdbId}) {
-      return CatalogListFollowTarget(
+    ListFollowTarget dramaTarget({int? tmdbId}) {
+      return ListFollowTarget(
         pluginId: 'test-drama-hub',
-        open: const CatalogOpen(
+        open: const MetaOpen(
           surface: 'drama',
           id: '42',
-          extract: CatalogOpenExtract(
+          extract: MetaOpenExtract(
             resolveType: 'drama',
             panelCategory: 'drama',
             ctx: {'kisskhId': 42},

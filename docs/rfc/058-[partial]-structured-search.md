@@ -57,8 +57,8 @@
 |--:|----|-------------|--------|
 | 1 | R58-A12 | Pack capability `structured_search` mounts kit filter lens; host never branches on pluginId/tabId | ✅ |
 | 2 | R58-A13 | Home hub pack declares `structured_search` and runs structured parse + multi/discover in `tmdb.js` `search` | ✅ |
-| 3 | R58-A14 | Kit `CatalogSearchScreen` merges chrome `filters` into search params when pack has `filters` | ✅ |
-| 4 | R58-A15 | Filter lens lives in `shared/catalog/kit/chrome/hub_search_filters.dart`; archive SearchScreen reuses it | ✅ |
+| 3 | R58-A14 | Kit `KitSearchScreen` merges chrome `filters` into search params when pack has `filters` | ✅ |
+| 4 | R58-A15 | Filter lens lives in `shared/foundation/components/chrome/kit_search_filters.dart`; archive SearchScreen reuses it | ✅ |
 
 ---
 

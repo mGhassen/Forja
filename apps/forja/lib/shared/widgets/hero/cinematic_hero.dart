@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/home/movie_poster_row.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -16,8 +16,8 @@ import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
 import 'package:forja/shared/lists/follow/hub_list_follow.dart';
-import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
-import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/foundation/components/rows/kit_section.dart';
+import 'package:forja/shared/widgets/kit_details/kit_details_play_row.dart';
 import 'package:forja/shared/widgets/lists/hub_list_status_hero.dart';
 import 'package:forja/shared/widgets/lists/my_list_button.dart';
 import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
@@ -61,7 +61,7 @@ class HubHeroSlide {
   final String? badge;
   /// Human status for the meta row (Upcoming, Airing, …).
   final String? statusChip;
-  /// Premiere hint for [HubDetailsUpcomingNotice] when not playable yet.
+  /// Premiere hint for [KitDetailsUpcomingNotice] when not playable yet.
   final String? upcomingReleaseLabel;
   final bool isUpcoming;
   final List<String> genres;
@@ -398,7 +398,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   double _firstCatalogRowHeight(BuildContext context) {
     return widget.firstCatalogRowHeight ??
         (_isHub
-            ? HubCatalogSection.sectionHeight(context, compactTop: true)
+            ? KitSection.sectionHeight(context, compactTop: true)
             : MoviePosterRow.sectionHeight(context, compactTop: true));
   }
 
@@ -1071,7 +1071,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final topBar = _desktopTopBarBleed(context);
     final firstRowHeight = _firstCatalogRowHeight(context);
     final nextRowPeek = (_isHub
-            ? HubCatalogSection.sectionHeight(context)
+            ? KitSection.sectionHeight(context)
             : MoviePosterRow.sectionHeight(context)) *
         shellHeroNextRowPeekFraction(context);
     final reservedBelow = shellHomeRowSpacing(context) +
@@ -1838,7 +1838,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: HubDetailsUpcomingNotice(
+      child: KitDetailsUpcomingNotice(
         releaseDateLabel: heroItem.upcomingReleaseLabel,
       ),
     );

@@ -2508,7 +2508,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _scheduleHideControls();
     final hub = [
       for (final e in eps)
-        PlayerHubEpisode(
+        PlayerKitEpisode(
           number: _hubEpisodeKey(e),
           title: e.title.trim().isEmpty
               ? 'Episode ${e.episode}'
@@ -2520,7 +2520,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final current = (_s._playingSeason != null && _s._playingEpisode != null)
         ? _s._playingSeason! * 10000 + _s._playingEpisode!
         : hub.first.number;
-    await PlayerHubEpisodePanel.show(
+    await PlayerKitEpisodePanel.show(
       context: context,
       episodes: hub,
       currentEpisode: current,

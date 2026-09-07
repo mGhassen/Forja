@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/catalog/services/catalog_details_fetch.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_list_item.dart';
+import 'package:forja/shared/foundation/services/details_fetch.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/lists/providers/external_lists_providers.dart';
 import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -270,7 +270,7 @@ class ListFollowFromWatched {
       catalog: target.pluginId,
     )).length;
     if (watched <= 0) return false;
-    final meta = await fetchCatalogMetaDetails(
+    final meta = await fetchMetaDetails(
       pluginId: target.pluginId,
       metaId: item['metaId']?.toString() ?? '${target.pluginId}:$mediaId',
     );

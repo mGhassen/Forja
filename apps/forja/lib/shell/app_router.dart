@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_movie_meta.dart';
+import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_movie_meta.dart';
 import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
@@ -130,14 +130,14 @@ class AppRouter {
     BuildContext context,
     Map<String, dynamic> item,
   ) async {
-    final resolved = await PluginNavRegistry.resolveHubPluginId(
+    final resolved = await PluginNavRegistry.resolveKitPluginId(
       tabId: await SettingsService().getDefaultNavTab(),
     );
     if (resolved == null || !context.mounted) return null;
-    return openHubDetails<T>(
+    return openKitDetails<T>(
       context,
       pluginId: resolved,
-      item: catalogMetaFromStremioSearchResult(item),
+      item: metaItemFromStremioSearchResult(item),
     );
   }
 
@@ -152,15 +152,15 @@ class AppRouter {
     String? pluginId,
     String? shellTabId,
   }) async {
-    final resolved = await PluginNavRegistry.resolveHubPluginId(
+    final resolved = await PluginNavRegistry.resolveKitPluginId(
       pluginId: pluginId,
       tabId: shellTabId ?? await SettingsService().getDefaultNavTab(),
     );
     if (resolved == null || !context.mounted) return null;
     final meta = stremioItem != null
-        ? catalogMetaFromStremioItem(stremioItem, movie)
-        : catalogMetaFromMovie(movie);
-    return openHubDetails<T>(
+        ? metaItemFromStremioItem(stremioItem, movie)
+        : metaItemFromMovie(movie);
+    return openKitDetails<T>(
       context,
       pluginId: resolved,
       item: meta,
@@ -271,9 +271,9 @@ class AppRouter {
     String? stremioAddonBaseUrl,
     Future<void> Function()? onNextEpisode,
     bool hasNextEpisode = false,
-    List<PlayerHubEpisode>? hubEpisodes,
+    List<PlayerKitEpisode>? episodes,
     num? hubEpisodeNumber,
-    Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected,
+    Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected,
     String? episodeOverview,
     Future<void> Function(Duration position, Duration duration)? onSaveProgress,
     Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned,
@@ -351,7 +351,7 @@ class AppRouter {
             stremioAddonBaseUrl: stremioAddonBaseUrl,
             onNextEpisode: onNextEpisode,
             hasNextEpisode: hasNextEpisode,
-            hubEpisodes: hubEpisodes,
+            episodes: episodes,
             hubEpisodeNumber: hubEpisodeNumber,
             onHubEpisodeSelected: onHubEpisodeSelected,
             episodeOverview: episodeOverview,

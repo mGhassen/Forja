@@ -41,10 +41,19 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         final p = _s._player?.platform;
         if (p is! NativePlayer) return;
 
-        debugPrint('[IPTV Player] live-edge snap (force=$allowForce)');
+        // Never drop-buffers on a weak/empty cushion — flushes the only
+        // media left and turns underrun stutter into a hard freeze (I148).
+        final cacheOk = _s._cacheAheadSecs >=
+            _IptvPtPlayerScreenState._minHealthyCacheSecs;
+        debugPrint(
+          '[IPTV Player] live-edge snap (force=$allowForce'
+          '${cacheOk ? '' : ', skip drop-buffers'}'
+          ' cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+        );
         // drop-buffers while MediaCodec is still configuring 4K surfaces
         // force-closes physical ATV (issue 155). First paint only seeks.
-        final dropBuffers = !_s._atvMediaKit || _playbackStarted;
+        final dropBuffers =
+            cacheOk && (!_s._atvMediaKit || _playbackStarted);
         if (dropBuffers) {
           _armTransientHwDecodeIgnore();
           await p.command(['drop-buffers']);

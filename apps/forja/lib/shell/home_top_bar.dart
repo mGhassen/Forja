@@ -1,1 +1,1 @@
-export 'package:forja/shared/catalog/host/hub_catalog_top_bar.dart';
+export 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:http/http.dart' as http;

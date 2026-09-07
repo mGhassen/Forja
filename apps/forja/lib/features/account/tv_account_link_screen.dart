@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 

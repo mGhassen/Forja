@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 void main() {
   group('hubMetaIsUpcoming', () {
     test('NOT_YET_RELEASED status is upcoming', () {
-      const meta = CatalogMetaItem(
+      const meta = MetaItem(
         id: 'test:1',
         type: 'drama',
         name: 'Soon',
@@ -15,7 +15,7 @@ void main() {
     });
 
     test('future premiere with no episodes is upcoming', () {
-      final meta = CatalogMetaItem(
+      final meta = MetaItem(
         id: 'test:2',
         type: 'drama',
         name: 'Later',
@@ -25,7 +25,7 @@ void main() {
     });
 
     test('all future episode stubs is show-level upcoming', () {
-      final meta = CatalogMetaItem(
+      final meta = MetaItem(
         id: 'test:3',
         type: 'drama',
         name: 'Weekly',
@@ -33,14 +33,14 @@ void main() {
         releaseInfo: '2025',
       );
       const videos = [
-        CatalogVideo(
+        MetaVideo(
           id: '1',
           title: 'Ep 1',
           episode: 1,
           airDate: '2099-06-14',
           aired: false,
         ),
-        CatalogVideo(
+        MetaVideo(
           id: '2',
           title: 'Ep 2',
           episode: 2,
@@ -52,20 +52,20 @@ void main() {
     });
 
     test('mixed aired and future episodes is not show-level upcoming', () {
-      const meta = CatalogMetaItem(
+      const meta = MetaItem(
         id: 'test:4',
         type: 'drama',
         name: 'Airing',
       );
       const videos = [
-        CatalogVideo(
+        MetaVideo(
           id: '1',
           title: 'Ep 1',
           episode: 1,
           airDate: '2020-01-01',
           aired: true,
         ),
-        CatalogVideo(
+        MetaVideo(
           id: '2',
           title: 'Ep 2',
           episode: 2,
@@ -80,7 +80,7 @@ void main() {
   group('hubEpisodeMaps', () {
     test('passes air_date and aired to episode picker maps', () {
       const videos = [
-        CatalogVideo(
+        MetaVideo(
           id: 'v1',
           title: 'Pilot',
           episode: 1,
@@ -99,19 +99,19 @@ void main() {
 
   group('hubMergeDetailsSeed', () {
     test('keeps seed poster when details poster empty', () {
-      const seed = CatalogMetaItem(
+      const seed = MetaItem(
         id: 'brstej:watch:abc',
         type: 'arabic',
         name: 'Show',
         poster: 'https://example.com/seed.jpg',
         description: 'from list',
       );
-      const details = CatalogMetaItem(
+      const details = MetaItem(
         id: 'brstej:watch:abc',
         type: 'arabic',
         name: 'Show',
         videos: [
-          CatalogVideo(id: '1', title: 'Ep 1', episode: 1),
+          MetaVideo(id: '1', title: 'Ep 1', episode: 1),
         ],
       );
       final merged = hubMergeDetailsSeed(details, seed);
@@ -122,13 +122,13 @@ void main() {
     });
 
     test('prefers details artwork when present', () {
-      const seed = CatalogMetaItem(
+      const seed = MetaItem(
         id: 'brstej:watch:abc',
         type: 'arabic',
         name: 'Show',
         poster: 'https://example.com/seed.jpg',
       );
-      const details = CatalogMetaItem(
+      const details = MetaItem(
         id: 'brstej:watch:abc',
         type: 'arabic',
         name: 'Show',
@@ -145,7 +145,7 @@ void main() {
 
   group('hubMetaPremiereDateLabel', () {
     test('formats ISO premiere for hero notice', () {
-      const meta = CatalogMetaItem(
+      const meta = MetaItem(
         id: 'test:5',
         type: 'drama',
         name: 'Premiere',
@@ -155,15 +155,15 @@ void main() {
     });
 
     test('falls back to earliest episode air date', () {
-      const meta = CatalogMetaItem(
+      const meta = MetaItem(
         id: 'test:6',
         type: 'drama',
         name: 'Stubs',
         releaseInfo: '2025',
       );
       const videos = [
-        CatalogVideo(id: '2', title: 'Ep 2', episode: 2, airDate: '2099-06-21'),
-        CatalogVideo(id: '1', title: 'Ep 1', episode: 1, airDate: '2099-06-14'),
+        MetaVideo(id: '2', title: 'Ep 2', episode: 2, airDate: '2099-06-21'),
+        MetaVideo(id: '1', title: 'Ep 1', episode: 1, airDate: '2099-06-14'),
       ];
       expect(
         hubMetaPremiereDateLabel(meta, videos: videos),

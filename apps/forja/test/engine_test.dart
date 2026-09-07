@@ -178,7 +178,7 @@ void main() {
         'protocol': 1,
         'kit': 1,
       });
-      expect(hub.isHubCatalog, isTrue);
+      expect(hub.isKitPlugin, isTrue);
       expect(hub.isExtractable, isFalse);
       expect(EngineCategories.groupKey(hub), EngineCategories.hubCatalog);
       expect(
@@ -200,7 +200,7 @@ void main() {
         'protocol': 1,
         'kit': 1,
       });
-      expect(iptvVod.isHubCatalog, isTrue);
+      expect(iptvVod.isKitPlugin, isTrue);
       expect(EngineCategories.groupKey(iptvVod), EngineCategories.iptv);
       expect(
         EngineCategories.groupLabel(EngineCategories.iptv),
@@ -224,7 +224,7 @@ void main() {
         'capabilities': ['catalog'],
       });
       expect(liveSched.isLiveSportPlugin, isTrue);
-      expect(liveSched.supportsLiveCatalog, isTrue);
+      expect(liveSched.supportsLiveFeed, isTrue);
       expect(liveSched.supportsLiveResolve, isFalse);
     });
   });
@@ -2156,9 +2156,9 @@ void main() {
         ];
         for (final id in catalogIds) {
           final p = plugins.firstWhere((e) => e.id == id);
-          expect(p.isLiveCatalog, isTrue);
+          expect(p.isLiveFeedPlugin, isTrue);
           expect(p.isLiveSportPlugin, isFalse);
-          expect(p.supportsLiveCatalog, isTrue);
+          expect(p.supportsLiveFeed, isTrue);
           expect(p.supportsLiveResolve, isFalse);
         }
         for (final id in liveIds) {
@@ -2167,7 +2167,7 @@ void main() {
           expect(p.isLivePlugin, isFalse, reason: id);
           expect(p.isLiveSportPlugin, isFalse, reason: id);
           expect(p.supportsLiveResolve, isTrue, reason: id);
-          expect(p.supportsLiveCatalog, isFalse, reason: id);
+          expect(p.supportsLiveFeed, isFalse, reason: id);
         }
         final streamedCatalog =
             plugins.firstWhere((e) => e.id == 'catalog-streamed');

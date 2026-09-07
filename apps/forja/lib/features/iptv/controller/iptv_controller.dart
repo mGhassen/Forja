@@ -12,7 +12,7 @@ import 'package:forja/features/iptv/m3u/m3u_store.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shell/shell_bus.dart';
 part 'iptv_controller_portal.dart';
 part 'iptv_controller_browser.dart';
@@ -137,7 +137,7 @@ class IptvController extends ChangeNotifier
   /// In-session catalog cache - static so tab eviction / new [IptvController]
   /// does not force a re-fetch. Shelves are also persisted via
   /// [IptvCatalogDiskStore] so app restart can skip network when warm.
-  static final Map<String, _CatalogSnap> _sharedCatalogCache = () {
+  static final Map<String, _CatalogSnap> _sharedMetaCache = () {
     final map = <String, _CatalogSnap>{};
     IptvCatalogDiskStore.onClearAll = map.clear;
     return map;
@@ -148,11 +148,11 @@ class IptvController extends ChangeNotifier
       {};
 
   /// Drop session catalog snaps (disk clear is separate).
-  static void clearSharedCatalogCaches() {
-    _sharedCatalogCache.clear();
+  static void clearSharedMetaCaches() {
+    _sharedMetaCache.clear();
   }
 
-  Map<String, _CatalogSnap> get _catalogCache => _sharedCatalogCache;
+  Map<String, _CatalogSnap> get _catalogCache => _sharedMetaCache;
 
   Map<String, IptvCatalogLoadProgress> get portalCatalogStats =>
       _sharedPortalCatalogStats;

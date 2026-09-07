@@ -2,7 +2,7 @@
 
 **Status:** partial  
 **Depends on:** [RFC-068](fixed/068-[fixed]-engine-plugin-registry.md) · [RFC-069](fixed/069-[fixed]-official-plugins-split.md)  
-**Area:** `shared/catalog/`, `EngineService`, `PluginRegistry`, `shell/nav_config.dart`, `plugins/hubs/`
+**Area:** `shared/foundation/`, `EngineService`, `PluginRegistry`, `shell/nav_config.dart`, `plugins/hubs/`
 
 ## Status at a glance
 
@@ -19,16 +19,16 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-C01 | `shared/catalog/protocol.dart` — envelope, error codes, meta item, filter AST, layout validation, nav spec | ✅ |
-| 2 | R70-C02 | `shared/catalog/cache.dart` — keyed cache with etag / maxAge / SWR + pack-version wipe | ✅ |
-| 3 | R70-C03 | `shared/catalog/runtime.dart` — `CatalogRuntime.run` (cache read, background revalidate, `notModified`) | ✅ |
-| 4 | R70-C04 | `shared/catalog/{filter,plugin_nav,deeplink}.dart` | ✅ |
-| 5 | R70-C05 | `EnginePlugin` `protocol` / `kit` / `capabilities` / `nav` + `isHubCatalog` / `needsScript` | ✅ |
+| 1 | R70-C01 | `shared/foundation/protocol.dart` — envelope, error codes, meta item, filter AST, layout validation, nav spec | ✅ |
+| 2 | R70-C02 | `shared/foundation/cache.dart` — keyed cache with etag / maxAge / SWR + pack-version wipe | ✅ |
+| 3 | R70-C03 | `shared/foundation/runtime.dart` — `MetaRuntime.run` (cache read, background revalidate, `notModified`) | ✅ |
+| 4 | R70-C04 | `shared/foundation/{filter,plugin_nav,deeplink}.dart` | ✅ |
+| 5 | R70-C05 | `EnginePlugin` `protocol` / `kit` / `capabilities` / `nav` + `isKitPlugin` / `needsScript` | ✅ |
 | 6 | R70-C06 | `EngineService.runCatalog` + `listHubCatalogPlugins` (Rust EngineJS, flutter_js fallback) | ✅ |
 | 7 | R70-C07 | `PluginRegistry` `hubs` slot — `FORJA_HQ_HUBS_MANIFEST_URL`, `forjahq-hubs` pack id | ✅ |
-| 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
+| 8 | R70-C08 | `KitShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
 | 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
-| 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](host/catalog_shell.dart) composes layout only | ✅ |
+| 10 | R70-C10 | `shared/foundation/components/` — rows, cards, host widgets, chrome; [KitShell](host/kit_shell.dart) composes layout only | ✅ |
 | 11 | R70-C11 | `host.my_list` kit widget + `forjahq-my-list` hub pack | ✅ |
 
 ---
@@ -61,15 +61,15 @@
 |--:|----|-------------|--------|
 | 1 | R70-A16 | `hero` widget renders the shared cinematic hero (not a poster rail) | ✅ |
 | 2 | R70-A17 | `host.continue` renders host-owned Continue Watching | ✅ |
-| 3 | R70-A18 | Hub top bar / search (`HubCatalogTopBar`, `hub_search_page`) wired to the `search` action | ✅ |
+| 3 | R70-A18 | Hub top bar / search (`HubKitChromeTopBar`, `hub_search_page`) wired to the `search` action | ✅ |
 | 4 | R70-A19 | `details` action feeds the details screens instead of a synthesized card | ✅ |
 | 5 | R70-A20 | Legacy `HomeScreen` / `AnimeScreen` / `AsianDramaScreen` / `ArabicScreen` retired | ✅ |
-| 6 | R70-A21 | Hub top-bar Films / Series / Categories feed `filter` into `rail` (CatalogShell + hubs pack) | ✅ |
+| 6 | R70-A21 | Hub top-bar Films / Series / Categories feed `filter` into `rail` (KitShell + hubs pack) | ✅ |
 | 7 | R70-A22 | One official pack per hub page — `forjahq-home` / `forjahq-anime` / `forjahq-asian-drama` (+ 3 dart-defines) | ✅ |
 | 8 | R70-A23 | Arabic is its own pack (`forjahq-arabic` / `FORJA_HQ_ARABIC_MANIFEST_URL`) — not nested under Home | ✅ |
 | 9 | R70-A24 | Settings → Forja lists `kind: catalog` under **Hubs** (not Live **Catalog** / Movie & TV) | ✅ |
 | 10 | R70-A25 | Asian Drama hub plugin id is `kisskh-hub` — no collision with providers extract `kisskh` | ✅ |
-| 11 | R70-A26 | Hub pack layouts + CatalogShell match pre-cutover row order / mood circles / hero bleed / Asian landscape + TMDB Popular (host Because/Trakt/genre rows still open) | ✅ |
+| 11 | R70-A26 | Hub pack layouts + KitShell match pre-cutover row order / mood circles / hero bleed / Asian landscape + TMDB Popular (host Because/Trakt/genre rows still open) | ✅ |
 | 12 | R70-A27 | Every hub with `nav` registers Settings → Features; plugin enable (Sources) is independent of Features show/hide | ✅ |
 
 ---
@@ -86,13 +86,13 @@ Disabled hubs must leave Features / rail (supersedes the “keep Features row wh
 
 ## Acceptance (host enrich slice)
 
-Pack-owned enrichment — host exposes reusable match APIs; plugins compose (AniList+TMDB, KissKH+TMDB, …). No CatalogShell `if (tabId == anime)` hardcode.
+Pack-owned enrichment — host exposes reusable match APIs; plugins compose (AniList+TMDB, KissKH+TMDB, …). No KitShell `if (tabId == anime)` hardcode.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R70-A28 | `ctx.host.tmdb.match({ title, year, type })` on EngineJS + flutter_js invokers | ✅ |
 | 2 | R70-A29 | Shared kit helpers `hubTmdbMatch` / `hubEnrichTmdb` / `hubApplyTmdbHit` | ✅ |
-| 3 | R70-A30 | Anime spotlight rail enriches via kit/host (CatalogShell anime TMDB hardcode removed) | ✅ |
+| 3 | R70-A30 | Anime spotlight rail enriches via kit/host (KitShell anime TMDB hardcode removed) | ✅ |
 | 4 | R70-A31 | Asian Drama spotlight rail enriches via kit/host (backdrop + synopsis/rating when KissKH omits them) | ✅ |
 
 ---
@@ -103,7 +103,7 @@ Source hub JS stays data-only. Pack declares `"enrich": "<pluginId>"`; host pipe
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A42 | `EnginePlugin.enrich` + `CatalogRuntime` pipes `rail`/`details` items/meta through companion `enrich` before cache | ✅ |
+| 1 | R70-A42 | `EnginePlugin.enrich` + `MetaRuntime` pipes `rail`/`details` items/meta through companion `enrich` before cache | ✅ |
 | 2 | R70-A43 | Asian Drama: `kisskh.js` standalone; `enrich_tmdb.js` + manifest `enrich: enrich-tmdb` (spotlight + details meta) | ✅ |
 | 3 | R70-A44 | Anime: `anilist.js` standalone; `enrich_tmdb.js` + manifest `enrich: anime-enrich-tmdb` (spotlight + details meta) | ✅ |
 | 4 | R70-A49 | `hubEnrichTmdb` prefers `meta.ids.tmdb` (fetch by id, movie↔tv fallback) before title search — same as details | ✅ |
@@ -124,12 +124,12 @@ Source hub JS stays data-only. Pack declares `"enrich": "<pluginId>"`; host pipe
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A33 | Splash prefetches default hub layout + first-paint rails into `CatalogCache` (Home: spotlight/featured/popular/new_releases; Anime/Asian Drama: hero + bleed) | ✅ |
+| 1 | R70-A33 | Splash prefetches default hub layout + first-paint rails into `MetaCache` (Home: spotlight/featured/popular/new_releases; Anime/Asian Drama: hero + bleed) | ✅ |
 | 2 | R70-A34 | `tmdb::match_json` process cache (30m TTL, 256 cap) so hub enrich reuses TMDB match hits across revalidate / hubs | ✅ |
 | 3 | R70-A35 | Details TMDB enrich keyed by KissKH id via `HubTmdbEnrichCache` — reopen skips rematch + paint-gate animation (`instant`) | ✅ |
 | 4 | R70-A36 | Hub hero View details uses pack open (`onDetails`) for anime/drama — TMDB enrich must not set `movie` (null `onOpenDetails` was a silent no-op) | ✅ |
 | 5 | R70-A37 | `AnimeService` process-caches `getDetails` / `getSeasons` / TMDB match+rich; AniList `_query` backs off on HTTP 429 | ✅ |
-| 6 | R70-A38 | CatalogShell memoizes rail/hero Futures by chrome+mood; sections keep last paint — rebuild / tab return does not shimmer-reload | ✅ |
+| 6 | R70-A38 | KitShell memoizes rail/hero Futures by chrome+mood; sections keep last paint — rebuild / tab return does not shimmer-reload | ✅ |
 
 ---
 
@@ -175,9 +175,9 @@ Optional Arabic pack — browse/search/details/stream from Larozaa + DimaToon + 
 |--:|----|-------------|--------|
 | 1 | R70-A45 | `arabic.js` rails: Larozaa categories + Brstej latest (no longer empty stub) | ✅ |
 | 2 | R70-A46 | Arabic hub `search` merges Larozaa + DimaToon + Brstej | ✅ |
-| 3 | R70-A47 | Hub metas declare `open: { surface, id, … }`; host `openCatalogMetaItem` switches only on surface (no pack/scraper id keys) | ✅ |
+| 3 | R70-A47 | Hub metas declare `open: { surface, id, … }`; host `openMetaItem` switches only on surface (no pack/scraper id keys) | ✅ |
 | 4 | R70-A48 | Hub open uses shell meta immediately (no await pack `details`/enrich); same plugin+id re-entry ignored until route pops — no double details / 429 stall | ✅ |
-| 5 | R70-A51 | Arabic hub `details` returns `meta.videos` (opaque ids); host details UI loads via `CatalogRuntime` only — no host scrapers | ✅ |
+| 5 | R70-A51 | Arabic hub `details` returns `meta.videos` (opaque ids); host details UI loads via `MetaRuntime` only — no host scrapers | ✅ |
 | 6 | R70-A52 | Arabic providers extract direct HLS/MP4 in JS (Larozaa/Brstej unpack embed pages); host plays like Videasy — no `arabic_embed` hop | ✅ |
 | 7 | R70-A53 | Host `ArabicService` / scraper string switches deleted; Arabic pack owns site HTML | ✅ |
 
@@ -189,7 +189,7 @@ Pack `capabilities` activate hub Search chrome — host uses `EnginePlugin.hasCa
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A54 | Capability `search` shows top-bar Search and opens `CatalogSearchScreen`; omit → no Search tab | ✅ |
+| 1 | R70-A54 | Capability `search` shows top-bar Search and opens `KitSearchScreen`; omit → no Search tab | ✅ |
 | 2 | R70-A55 | Capability `filters` merges `catalogChromeFilters` into search `params.filter` | ✅ |
 | 3 | R70-A56 | Capability `structured_search` mounts kit filter lens; pack owns DSL parse/execution | ✅ |
 | 4 | R70-A57 | Home `tmdb` pack declares `structured_search` + structured `search` in JS; Anime/KissKh omit it | ✅ |
@@ -205,8 +205,8 @@ Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugi
 |--:|----|-------------|--------|
 | 1 | R70-A60 | My List tab from `forjahq-my-list` pack nav — not hardcoded core shell | ✅ |
 | 2 | R70-A61 | Status + kind chrome + per-kind horizontal rails | ✅ |
-| 3 | R70-A62 | Items render as `CatalogMetaItem` + `HubPosterCard` + list-follow pin | ✅ |
-| 4 | R70-A63 | Simkl rows TMDB-enriched at provider boundary; opens via `openCatalogMetaItem` / legacy bridge | ✅ |
+| 3 | R70-A62 | Items render as `MetaItem` + `KitPosterCard` + list-follow pin | ✅ |
+| 4 | R70-A63 | Simkl rows TMDB-enriched at provider boundary; opens via `openMetaItem` / legacy bridge | ✅ |
 | 5 | R70-A64 | Simkl auth / sync / scrobble remain Dart host (no JS plugin) | ✅ |
 
 ---
@@ -228,7 +228,7 @@ Films / Series / Categories on Arabic, Brstej, كرتون, and Kids — pack `fi
 | 1 | R70-A66 | Arabic (`arabic-hub`) declares `filters.menus` + Larozaa `fields` cats; chrome refilters feed/rails | ✅ |
 | 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters.menus` + curated `fields` cats; category pages group episodes | ✅ |
 | 3 | R70-A68 | كرتون (`dimatoon-hub`) declares letter `fields` only (no menus) — Search + Categories | ✅ |
-| 4 | R70-A69 | Host `CatalogTopBar` renders pack `menus[]` (any count) — no hardcoded Films/Series enum chrome | ✅ |
+| 4 | R70-A69 | Host `KitChromeTopBar` renders pack `menus[]` (any count) — no hardcoded Films/Series enum chrome | ✅ |
 | 5 | R70-A70 | Kids (`dimakids-hub`) declares Films/Series `menus` + letter `fields`; Search + Categories | ✅ |
 
 ---
@@ -261,7 +261,7 @@ Desktop + Android TV D-pad — mark A15 ✅ only after this list is run:
 
 | Check | Desktop | ATV |
 |-------|---------|-----|
-| Home / Anime / Asian Drama / Arabic open via CatalogShell | ⬜ | ⬜ |
+| Home / Anime / Asian Drama / Arabic open via KitShell | ⬜ | ⬜ |
 | Hero + Continue Watching + rails paint | ⬜ | ⬜ |
 | Films / Series / Categories refetch rails (Home / Anime / Asian Drama) | ⬜ | ⬜ |
 | Hub Search opens pack `search` | ⬜ | ⬜ |
@@ -326,7 +326,7 @@ Hub search **capabilities** (manifest `capabilities[]` — host never hardcodes 
 
 | Capability | Host |
 |---|---|
-| `search` | Top-bar Search + pack [CatalogSearchScreen] (or host overlay if `host_search`) |
+| `search` | Top-bar Search + pack [KitSearchScreen] (or host overlay if `host_search`) |
 | `host_search` | Shared host Search overlay (Cmd+F / RFC-058 + addons) — top-bar and shortcut same entry |
 | `filters` | Browse chrome AST also applied on pack search params |
 | `structured_search` | Tune / filter lens on kit pack search; pack parses RFC-058 query tokens |
@@ -335,17 +335,17 @@ Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`, `host.popular_a
 
 ### Host widget kit (R70-C10)
 
-Dart UI for hub plugins lives under `shared/catalog/kit/` — not in feature browse screens:
+Dart UI for hub plugins lives under `shared/foundation/components/` — not in feature browse screens:
 
 | Folder | Role |
 |--------|------|
-| `kit/cards/` | `HomeMovieCard`, `HubPosterCard` (+ My List pin) |
-| `kit/rows/` | `HomeMovieSection`, `HubCatalogSection` (horizontal / numbered / vertical) |
+| `kit/cards/` | `HomeMovieCard`, `KitPosterCard` (+ My List pin) |
+| `kit/rows/` | `HomeMovieSection`, `KitSection` (horizontal / numbered / vertical) |
 | `kit/home/` | Home-only sections: mood, continue, because |
 | `kit/host/` | `host.*` layout slots: continue router, trakt, genre rows, popular Asian, … |
 | `kit/chrome/` | Vertical filters, chrome filter AST bridge, hub search page |
-| `kit/meta/` | `CatalogMetaItem` → `Movie` for TMDB home rows |
-| `shell/` | `CatalogShell` composition + open/search only |
+| `kit/meta/` | `MetaItem` → `Movie` for TMDB home rows |
+| `shell/` | `KitShell` composition + open/search only |
 
 Legacy import paths (`features/home/widgets/*`, `shared/widgets/hub/*`) re-export the kit for gradual migration.
 
@@ -358,14 +358,14 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 // → { id, mediaType, name, year, poster, backdrop } | null
 ```
 
-Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tmdb` (details fetch, movie↔tv fallback) before title search via `ctx.host.tmdb.match`, and fall back to `ctx.fetch` + injected `config.apiKey`. Source plugins may call kit enrich inline **or** declare a companion via `"enrich": "<pluginId>"` — host runs `action: enrich` after `rail`/`details` and caches the merged payload (R70-A42–A44, R70-A49–A50: Asian Drama `enrich-tmdb`, Anime `anime-enrich-tmdb`; hub hero client uses the same scored matcher as details). CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
+Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tmdb` (details fetch, movie↔tv fallback) before title search via `ctx.host.tmdb.match`, and fall back to `ctx.fetch` + injected `config.apiKey`. Source plugins may call kit enrich inline **or** declare a companion via `"enrich": "<pluginId>"` — host runs `action: enrich` after `rail`/`details` and caches the merged payload (R70-A42–A44, R70-A49–A50: Asian Drama `enrich-tmdb`, Anime `anime-enrich-tmdb`; hub hero client uses the same scored matcher as details). KitShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `MetaCache` (R70-A33) — BootCache replacement.
 
 ### Host / pack nav icons (R70-A39+ · superseded by R70-A60+)
 
 Hub `nav.icon` may be:
 
 1. **Pack-relative** — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Bitmaps are **tinted** to the rail mute/accent color (`BlendMode.srcIn`) — ship opaque single-color / silhouette art.
-2. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/catalog/assets/forja_host_assets.dart) (`Icons.grid_view_rounded`).
+2. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/foundation/lib/forja_host_assets.dart) (`Icons.grid_view_rounded`).
 
 ```json
 "icon": "icons/nav.png"
@@ -393,7 +393,7 @@ Legacy Dart/Rust webstreaming sniff, dedicated anime/drama players, and built-in
 - `config.dramaId` / `config.episodeId` for provider `kisskh` (from hub details KissKH ids)
 - `config.videoId` for Arabic providers (`larozaa`, `dimatoon`, `brstej`)
 
-Shared kit: [`hub_play_context.dart`](../../apps/forja/lib/shared/playback/hub_play_context.dart), [`hub_details_play.dart`](../../apps/forja/lib/shared/catalog/kit/details/hub_details_play.dart).
+Shared kit: [`hub_play_context.dart`](../../apps/forja/lib/shared/playback/hub_play_context.dart), [`kit_details_play.dart`](../../apps/forja/lib/shared/foundation/blocks/details/kit_details_play.dart).
 
 ### Host folder layout (post-ship organize)
 
@@ -401,16 +401,16 @@ Core modules from R70-C01–C04 live under subfolders; historical component path
 
 | Folder | Files |
 |--------|-------|
-| `shared/catalog/protocol/` | `protocol.dart`, `filter.dart`, `deeplink.dart`, `catalog_hub_capabilities.dart` |
-| `shared/catalog/services/` | `cache.dart`, `runtime.dart`, `plugin_nav.dart`, `host_list_registry.dart`, `catalog_details_fetch.dart`, `catalog_watch_history.dart` |
-| `shared/catalog/assets/` | `forja_host_assets.dart`, `catalog_pack_assets.dart` |
-| `shared/catalog/utils/` | `hub_cover_urls.dart` |
-| `shared/catalog/host/` | `CatalogShell`, open/search — hub tab host (not `lib/shell/`) |
-| `shared/catalog/kit/` | layout, chrome, details, play, `sections/` (continue/because) |
+| `shared/foundation/protocol/` | `protocol.dart`, `filter.dart`, `deeplink.dart`, `pack_capabilities.dart` |
+| `shared/foundation/services/` | `cache.dart`, `runtime.dart`, `plugin_nav.dart`, `host_list_registry.dart`, `details_fetch.dart`, `watch_history.dart`, `live/` (schedule/match/IPTV orchestration) |
+| `shared/foundation/lib/` | assets, cover URLs, match models/parse, schedule filters, embed helpers |
+| `shared/foundation/primitives/` | app-wide atoms (tokens, ShellScope, buttons, chips) + kit leaf widgets (`primitives.dart`) |
+| `shared/foundation/components/` | layout, chrome, cards, rows, sections, panel, meta |
+| `shared/foundation/blocks/` | `shell/` (KitShell, open/search), `details/`, `play/` (VOD) |
 
-Layer names: `lib/shell/` = app frame · `catalog/host/` = hub tab · `widgets/chrome/` = shared chrome atoms.
+Layer names: `lib/shell/` = app frame · `foundation/blocks/shell/` = hub tab · `widgets/chrome/` = shared chrome atoms.
 
-Barrel: [`catalog.dart`](../../apps/forja/lib/shared/catalog/catalog.dart).
+Barrel: [`foundation.dart`](../../apps/forja/lib/shared/foundation/foundation.dart).
 
 ### Related
 

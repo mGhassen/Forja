@@ -4,7 +4,7 @@ import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 
 /// IPTV-style Portals chip (top-right). Shared by IPTV catalog + Live Matches.

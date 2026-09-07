@@ -57,7 +57,7 @@ mixin _DesktopPlayerLifecycle
     }
     _s._catalogAddonName = seedAddon;
     _s._catalogSourceKind = _initialCatalogSourceKind();
-    _s._catalogStreamRowKey = takePendingCatalogStreamRowKey();
+    _s._catalogStreamRowKey = takePendingMetaStreamRowKey();
     // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
@@ -216,7 +216,7 @@ mixin _DesktopPlayerLifecycle
       _s._onProbeScoringChanged();
       _s._startHideTimer();
       _s._fetchSubtitles();
-      if (widget.movie != null && widget.hubEpisodes == null) {
+      if (widget.movie != null && widget.episodes == null) {
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -633,9 +633,9 @@ mixin _DesktopPlayerLifecycle
 
     if (!usesHomeWatchHistory(
       movie: widget.movie,
-      hubEpisodes: widget.hubEpisodes,
+      episodes: widget.episodes,
       onSaveProgress: widget.onSaveProgress,
-      catalogPlaySession: widget.enginePlaySession,
+      playSession: widget.enginePlaySession,
     )) {
       if (!isBgPause) _s._historySaved = true;
       return;

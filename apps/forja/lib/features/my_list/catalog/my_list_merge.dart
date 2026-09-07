@@ -14,14 +14,14 @@ String myListItemKind(Map<String, dynamic> item) {
   if (mt == 'anime') return 'anime';
   if (mt == 'asian_drama' || mt == 'drama') return 'asian_drama';
   if (item['kisskhId'] != null) return 'asian_drama';
-  if (_myListCatalogOpenIsDrama(item['catalogOpen'])) return 'asian_drama';
+  if (_myListMetaOpenIsDrama(item['metaOpen'])) return 'asian_drama';
   if (simkl == 'movies') return 'movie';
   if (simkl == 'shows') return 'tv';
   if (mt == 'tv' || mt == 'series') return 'tv';
   return 'movie';
 }
 
-bool _myListCatalogOpenIsDrama(Object? openRaw) {
+bool _myListMetaOpenIsDrama(Object? openRaw) {
   if (openRaw is! Map) return false;
   final open = Map<String, dynamic>.from(openRaw);
   final surface = (open['surface'] ?? '').toString();
@@ -114,7 +114,7 @@ Map<String, dynamic>? _localMatch(
         myListItemHideKeys(local).intersection(remoteKeys).isNotEmpty) {
       return local;
     }
-    final openId = _catalogOpenIdInt(local['catalogOpen']);
+    final openId = _metaOpenIdInt(local['metaOpen']);
     if (openId != null && remoteOpenIds.contains(openId)) {
       return local;
     }
@@ -132,7 +132,7 @@ Map<String, dynamic>? _localMatch(
   return null;
 }
 
-int? _catalogOpenIdInt(Object? openRaw) {
+int? _metaOpenIdInt(Object? openRaw) {
   if (openRaw is! Map) return null;
   return myListAsInt(openRaw['id']);
 }

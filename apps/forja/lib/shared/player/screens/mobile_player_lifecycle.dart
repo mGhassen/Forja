@@ -52,7 +52,7 @@ mixin _MobilePlayerLifecycle
     }
     _s._catalogAddonName = seedAddon;
     _s._catalogSourceKind = _initialCatalogSourceKind();
-    _s._catalogStreamRowKey = takePendingCatalogStreamRowKey();
+    _s._catalogStreamRowKey = takePendingMetaStreamRowKey();
     // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
@@ -763,9 +763,9 @@ mixin _MobilePlayerLifecycle
     if (widget.movie == null ||
         !usesHomeWatchHistory(
           movie: widget.movie,
-          hubEpisodes: widget.hubEpisodes,
+          episodes: widget.episodes,
           onSaveProgress: widget.onSaveProgress,
-          catalogPlaySession: widget.enginePlaySession,
+          playSession: widget.enginePlaySession,
         )) {
       return;
     }

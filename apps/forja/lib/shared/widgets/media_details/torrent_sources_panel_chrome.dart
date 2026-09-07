@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -257,7 +257,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     );
 
     if (_tv && _kindCount > 0) {
-      kind = TvCatalogRow(
+      kind = TvKitRow(
         tabId: SourcesPanelTv.tabId,
         rowId: SourcesPanelTv.kindRowId,
         sortOrder: SourcesPanelTv.kindSort,
@@ -287,7 +287,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         tvRowId: _tv ? SourcesPanelTv.providersRowId : null,
       );
       if (_tv) {
-        providers = TvCatalogRow(
+        providers = TvKitRow(
           tabId: SourcesPanelTv.tabId,
           rowId: SourcesPanelTv.providersRowId,
           sortOrder: SourcesPanelTv.providersSort,

@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
+import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
-import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
 import 'package:forja/shared/player/screens/exo_player_screen.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';
 import 'package:forja/shared/player/screens/tv_player_screen.dart';
 import 'package:forja/shared/player/screens/desktop_player_screen.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/chrome/loading_overlay.dart';
@@ -46,9 +46,9 @@ class PlayerScreen extends StatefulWidget {
   final bool hasNextEpisode;
 
   /// Hub players (anime, Asian drama): flat episode list + switch handler.
-  final List<PlayerHubEpisode>? hubEpisodes;
+  final List<PlayerKitEpisode>? episodes;
   final num? hubEpisodeNumber;
-  final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
+  final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
 
   /// Forja Auto session — next/prev reuses [switchEpisodeViaEngineAutoPlay].
@@ -93,7 +93,7 @@ class PlayerScreen extends StatefulWidget {
     this.stremioAddonBaseUrl,
     this.onNextEpisode,
     this.hasNextEpisode = false,
-    this.hubEpisodes,
+    this.episodes,
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
@@ -235,9 +235,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (movie == null || position.inMilliseconds < 5000) return;
     if (!usesHomeWatchHistory(
       movie: movie,
-      hubEpisodes: widget.hubEpisodes,
+      episodes: widget.episodes,
       onSaveProgress: widget.onSaveProgress,
-      catalogPlaySession: widget.enginePlaySession,
+      playSession: widget.enginePlaySession,
     )) {
       return;
     }
@@ -457,7 +457,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           externalSubtitles: widget.externalSubtitles,
           onNextEpisode: widget.onNextEpisode,
           hasNextEpisode: widget.hasNextEpisode,
-          hubEpisodes: widget.hubEpisodes,
+          episodes: widget.episodes,
           hubEpisodeNumber: widget.hubEpisodeNumber,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
           episodeOverview: widget.episodeOverview,
@@ -494,7 +494,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         providers: widget.providers,
         onNextEpisode: widget.onNextEpisode,
         hasNextEpisode: widget.hasNextEpisode,
-        hubEpisodes: widget.hubEpisodes,
+        episodes: widget.episodes,
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
@@ -536,7 +536,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           externalSubtitles: widget.externalSubtitles,
           onNextEpisode: widget.onNextEpisode,
           hasNextEpisode: widget.hasNextEpisode,
-          hubEpisodes: widget.hubEpisodes,
+          episodes: widget.episodes,
           hubEpisodeNumber: widget.hubEpisodeNumber,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
           episodeOverview: widget.episodeOverview,
@@ -573,7 +573,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         providers: widget.providers,
         onNextEpisode: widget.onNextEpisode,
         hasNextEpisode: widget.hasNextEpisode,
-        hubEpisodes: widget.hubEpisodes,
+        episodes: widget.episodes,
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
@@ -614,7 +614,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         providers: widget.providers,
         onNextEpisode: widget.onNextEpisode,
         hasNextEpisode: widget.hasNextEpisode,
-        hubEpisodes: widget.hubEpisodes,
+        episodes: widget.episodes,
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,

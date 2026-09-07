@@ -5,22 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/host/catalog_shell.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/shell_empty_features_screen.dart';
-import 'package:forja/shared/catalog/host/hub_catalog_top_bar.dart';
+import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_find_shortcut.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -120,7 +120,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       }
       final key = _keyForTab(id);
       final child = builder();
-      if (child is CatalogShell) {
+      if (child is KitShell) {
         return _tabWithKey(key, child);
       }
       if (key != null &&
@@ -135,11 +135,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
     return tab;
   }
 
-  /// Hub [CatalogShell] must own the tab [GlobalKey] so [ShellTabRefresh] works.
+  /// Hub [KitShell] must own the tab [GlobalKey] so [ShellTabRefresh] works.
   Widget _tabWithKey(GlobalKey<State<StatefulWidget>>? key, Widget child) {
     if (key == null) return child;
-    if (child is CatalogShell) {
-      return CatalogShell(
+    if (child is KitShell) {
+      return KitShell(
         key: key,
         pluginId: child.pluginId,
         tabId: child.tabId,
@@ -266,9 +266,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final id = _visibleIds[index];
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
-      CatalogVerticalFiltersRegistry.onLeaveTab(previousId);
+      VerticalFiltersRegistry.onLeaveTab(previousId);
     } else if (previousId == id) {
-      CatalogVerticalFiltersRegistry.onNavRepress(id);
+      VerticalFiltersRegistry.onNavRepress(id);
     }
     // Same-tab Home re-select must not dismiss the provider panel.
     setState(() {
@@ -347,7 +347,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final run = () async {
       final changed = await PluginNavRegistry.refresh();
       if (!mounted) return;
-      // Pack scripts can change without nav shape changes. Hub CatalogShell is
+      // Pack scripts can change without nav shape changes. Hub KitShell is
       // keep-alive + 15m stale window — mark stale (and remount builders when
       // nav actually changed) so returning to Home / Anime / … reloads rails.
       _invalidateHubTabsAfterPackChange(remountBuilders: changed);
@@ -372,12 +372,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _tabCache.remove(id);
       _mountedTabIds.remove(id);
       _tabLru.remove(id);
-      // Drop GlobalKey so a new CatalogShell State is created (same key would
+      // Drop GlobalKey so a new KitShell State is created (same key would
       // reparent and keep the old memoized rails).
       _tabKeys.remove(id);
     }
     final current = _currentTabId;
-    if (current != null && PluginNavRegistry.isHubTab(current)) {
+    if (current != null && PluginNavRegistry.isKitTab(current)) {
       _refreshTabIfStale(current, force: true);
     }
   }
@@ -669,7 +669,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (ShellBus.shellOverlayHasPage.value) return;
 
     final tabId = _currentTabId;
-    if (tabId == null || !PluginNavRegistry.isHubTab(tabId)) return;
+    if (tabId == null || !PluginNavRegistry.isKitTab(tabId)) return;
 
     final ctx = _shellScopedContext;
     if (ctx == null || !ctx.mounted) return;
@@ -678,7 +678,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (pluginId == null || !ctx.mounted) return;
 
     final label = PluginNavRegistry.destinations[tabId]?.label;
-    await openHubCatalogSearch(
+    await openKitSearch(
       ctx,
       pluginId: pluginId,
       tabId: tabId,
@@ -718,17 +718,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
-        final showCatalogTopBar = config.showHomeTopBar &&
+        final showKitChromeTopBar = config.showHomeTopBar &&
             !ShellBus.shellOverlayHasPage.value;
         final Widget? shellTopBar;
-        if (!showCatalogTopBar) {
+        if (!showKitChromeTopBar) {
           shellTopBar = null;
         } else {
           shellTopBar = switch (_currentTabId) {
             null => null,
             // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
-            final id when PluginNavRegistry.isHubTab(id) =>
-              PluginHubCatalogTopBar(key: ValueKey(id), tabId: id),
+            final id when PluginNavRegistry.isKitTab(id) =>
+              PluginKitTopBar(key: ValueKey(id), tabId: id),
             _ => null,
           };
         }

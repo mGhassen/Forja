@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/lists/providers/external_lists_providers.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -313,7 +313,7 @@ class _MediaDetailsTorrentActionRowState
     final tabId = widget.tvTabId;
     if (tabId == null) return child;
 
-    return TvCatalogRow(
+    return TvKitRow(
       tabId: tabId,
       rowId: MediaDetailsTv.heroRowId,
       sortOrder: MediaDetailsTv.heroRowSortOrder,

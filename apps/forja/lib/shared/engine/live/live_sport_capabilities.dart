@@ -27,7 +27,7 @@ abstract final class LiveSportCapabilities {
       return plugin.defaultCapabilities[cap] ?? false;
     }
     if (cap != catalog && cap != resolve) return false;
-    if (cap == catalog && !plugin.supportsLiveCatalog) return false;
+    if (cap == catalog && !plugin.supportsLiveFeed) return false;
     if (cap == resolve && !plugin.supportsLiveResolve) return false;
     return plugin.defaultCapabilities[cap] ?? false;
   }

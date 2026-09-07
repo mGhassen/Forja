@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
-import 'package:forja/shared/catalog/kit/details/catalog_play_filters.dart';
+import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
+import 'package:forja/shared/foundation/blocks/details/play_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 void main() {
   group('catalog play filters', () {
-    tearDown(CatalogPackFiltersRegistry.clearForTest);
+    tearDown(PackFiltersRegistry.clearForTest);
 
     test('parses pack filters.play grouped audio', () {
-      CatalogPackFiltersRegistry.seedFromJson('test-hub-pack', {
+      PackFiltersRegistry.seedFromJson('test-hub-pack', {
         'play': [
           {
             'id': 'audio',
@@ -23,7 +23,7 @@ void main() {
         ],
       });
 
-      final specs = CatalogPackFiltersRegistry.playFiltersFor('test-hub-pack');
+      final specs = PackFiltersRegistry.playFiltersFor('test-hub-pack');
       expect(specs, hasLength(1));
       expect(specs.first.field, 'category');
       expect(specs.first.initialValue(null), 'sub');
@@ -40,12 +40,12 @@ void main() {
 
   group('pack category filters', () {
     tearDown(() {
-      CatalogPackFiltersRegistry.clearForTest();
+      PackFiltersRegistry.clearForTest();
       ShellBus.hubSelectedCategoryIdFor('home').value = null;
     });
 
     test('tmdb moods resolve to mood id, not display label', () {
-      CatalogPackFiltersRegistry.seedFromJson('tmdb', {
+      PackFiltersRegistry.seedFromJson('tmdb', {
         'fields': [
           {
             'field': 'genre',
@@ -64,7 +64,7 @@ void main() {
       });
 
       ShellBus.hubSelectedCategoryIdFor('home').value = 'horror';
-      final filters = CatalogPackFiltersRegistry.activeFilters(
+      final filters = PackFiltersRegistry.activeFilters(
         pluginId: 'tmdb',
         tabId: 'home',
       );
@@ -77,7 +77,7 @@ void main() {
     });
 
     test('kisskh countries resolve to country value, not mood id', () {
-      CatalogPackFiltersRegistry.seedFromJson('kisskh-hub', {
+      PackFiltersRegistry.seedFromJson('kisskh-hub', {
         'fields': [
           {
             'field': 'country',
@@ -101,14 +101,14 @@ void main() {
       });
 
       final categories =
-          CatalogPackFiltersRegistry.categoriesFor('kisskh-hub');
+          PackFiltersRegistry.categoriesFor('kisskh-hub');
       expect(categories.map((e) => e.label), [
         'South Korea',
         'Japan',
       ]);
 
       ShellBus.hubSelectedCategoryIdFor('asian_drama').value = 'korea';
-      final filters = CatalogPackFiltersRegistry.activeFilters(
+      final filters = PackFiltersRegistry.activeFilters(
         pluginId: 'kisskh-hub',
         tabId: 'asian_drama',
       );
@@ -122,7 +122,7 @@ void main() {
     });
 
     test('anime moods resolve to upstream genre name', () {
-      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+      PackFiltersRegistry.seedFromJson('anilist', {
         'fields': [
           {
             'field': 'genre',
@@ -140,7 +140,7 @@ void main() {
       });
 
       ShellBus.hubSelectedCategoryIdFor('anime').value = 'shonen';
-      final filters = CatalogPackFiltersRegistry.activeFilters(
+      final filters = PackFiltersRegistry.activeFilters(
         pluginId: 'anilist',
         tabId: 'anime',
       );
@@ -153,7 +153,7 @@ void main() {
     });
 
     test('anilist categories list pack genre options', () {
-      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+      PackFiltersRegistry.seedFromJson('anilist', {
         'fields': [
           {
             'field': 'genre',
@@ -185,12 +185,12 @@ void main() {
         ],
       });
 
-      final categories = CatalogPackFiltersRegistry.categoriesFor('anilist');
+      final categories = PackFiltersRegistry.categoriesFor('anilist');
       expect(categories.map((e) => e.label), ['Shōnen', 'Romance']);
     });
 
     test('anime romance uses upstream genre, not mood id', () {
-      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+      PackFiltersRegistry.seedFromJson('anilist', {
         'fields': [
           {
             'field': 'genre',
@@ -208,7 +208,7 @@ void main() {
       });
 
       ShellBus.hubSelectedCategoryIdFor('anime').value = 'romance';
-      final filters = CatalogPackFiltersRegistry.activeFilters(
+      final filters = PackFiltersRegistry.activeFilters(
         pluginId: 'anilist',
         tabId: 'anime',
       );
@@ -222,7 +222,7 @@ void main() {
     });
 
     test('menusFor drives chrome; legacy media synthesizes menus', () {
-      CatalogPackFiltersRegistry.seedFromJson('letters-only', {
+      PackFiltersRegistry.seedFromJson('letters-only', {
         'fields': [
           {
             'field': 'letter',
@@ -232,9 +232,9 @@ void main() {
           },
         ],
       });
-      expect(CatalogPackFiltersRegistry.menusFor('letters-only'), isEmpty);
+      expect(PackFiltersRegistry.menusFor('letters-only'), isEmpty);
 
-      CatalogPackFiltersRegistry.seedFromJson('both-menus', {
+      PackFiltersRegistry.seedFromJson('both-menus', {
         'menus': [
           {
             'id': 'films',
@@ -254,20 +254,20 @@ void main() {
         ],
       });
       expect(
-        CatalogPackFiltersRegistry.menusFor('both-menus').map((e) => e.id),
+        PackFiltersRegistry.menusFor('both-menus').map((e) => e.id),
         ['films', 'series', 'ramadan'],
       );
 
-      CatalogPackFiltersRegistry.seedFromJson('legacy-media', {
+      PackFiltersRegistry.seedFromJson('legacy-media', {
         'media': {
           'series': {'op': 'eq', 'field': 'kind', 'value': 'series'},
         },
       });
       expect(
-        CatalogPackFiltersRegistry.menusFor('legacy-media').map((e) => e.id),
+        PackFiltersRegistry.menusFor('legacy-media').map((e) => e.id),
         ['series'],
       );
-      expect(CatalogPackFiltersRegistry.menusFor('legacy-media').single.label, 'Series');
+      expect(PackFiltersRegistry.menusFor('legacy-media').single.label, 'Series');
     });
   });
 }

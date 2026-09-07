@@ -243,7 +243,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     PlayerStreamMenu.dismiss();
     PlayerPopupPanel.dismiss();
     PlayerEpisodePanel.dismiss();
-    PlayerHubEpisodePanel.dismiss();
+    PlayerKitEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
     // Exit / failover must not restore focus onto chrome that is going away.
@@ -446,7 +446,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       catalogSourceKind: _s._catalogSourceKind,
       currentSourceTitle: _playingSourceTitle(),
       catalogAddonName: _s._catalogAddonName,
-      catalogOpen: session?.effectiveOpen,
+      open: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),
@@ -467,7 +467,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
 
   bool get _hasEpisodePicker =>
       (widget.movie?.mediaType == 'tv' && widget.movie != null) ||
-      (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
+      (widget.episodes != null && widget.episodes!.isNotEmpty);
 
   /// Magnet or Stremio/Nuvio catalog play - link button opens Sources panel.
   bool get _usesCatalogSourcesPanel {

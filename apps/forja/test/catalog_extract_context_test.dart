@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:rust/rust.dart';
@@ -16,17 +16,17 @@ Movie _movie({required int id, String mediaType = 'tv'}) => Movie(
 
 void main() {
   test('episodeVideoId overwrites show-level extract ctx videoId', () {
-    final open = CatalogOpen(
+    final open = MetaOpen(
       surface: 'arabic',
       id: 'serShow',
-      extract: const CatalogOpenExtract(
+      extract: const MetaOpenExtract(
         resolveType: 'arabic',
         panelCategory: 'arabic',
         ctx: {'videoId': 'serShow', 'source': 'larozaa'},
       ),
     );
     final ctx = engineExtractContext(
-      catalogOpen: open,
+      open: open,
       movie: _movie(id: 1),
       episode: 3,
       episodeVideoId: 'larozaa:999',
@@ -50,17 +50,17 @@ void main() {
   });
 
   test('show-level videoId kept when episodeVideoId absent', () {
-    final open = CatalogOpen(
+    final open = MetaOpen(
       surface: 'arabic',
       id: 'movieVid',
-      extract: const CatalogOpenExtract(
+      extract: const MetaOpenExtract(
         resolveType: 'arabic',
         panelCategory: 'arabic',
         ctx: {'videoId': 'movieVid', 'source': 'larozaa'},
       ),
     );
     final ctx = engineExtractContext(
-      catalogOpen: open,
+      open: open,
       movie: _movie(id: 2, mediaType: 'movie'),
     );
     expect(ctx.ctx['videoId'], 'movieVid');

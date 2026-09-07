@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -54,7 +54,7 @@ class PlayerSubtitleDialog {
     PlayerPopupPanel.dismiss();
     PlayerStreamMenu.dismiss();
     PlayerEpisodePanel.dismiss();
-    PlayerHubEpisodePanel.dismiss();
+    PlayerKitEpisodePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     PlayerTorrentFilePanel.dismiss();
     playerChromeCancelSeekScrubs();

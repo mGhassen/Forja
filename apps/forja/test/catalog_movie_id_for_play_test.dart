@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
+import 'package:forja/shared/foundation/blocks/play/play_resolve.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 void main() {
   group('catalogMovieIdForPlay', () {
     test('prefers enrich ids.tmdb over hub open.id', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'kisskh:13422',
         'type': 'drama',
         'name': 'Test Drama',
@@ -27,7 +27,7 @@ void main() {
     });
 
     test('falls back to open.id when ids.tmdb missing', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'kisskh:13422',
         'type': 'drama',
         'name': 'Test Drama',
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('home tmdb open.id still works without ids map', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'tmdb:tv:1396',
         'type': 'tv',
         'name': 'Breaking Bad',
@@ -57,11 +57,11 @@ void main() {
         },
       });
       expect(catalogMovieIdForPlay(meta), 1396);
-      expect(catalogMetaToMovie(meta)?.id, 1396);
+      expect(metaItemToMovie(meta)?.id, 1396);
     });
 
     test('hub play context keeps enriched episode stills for player panel', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'test-hub:1',
         'type': 'drama',
         'name': 'Test Series',
@@ -82,20 +82,20 @@ void main() {
         ],
       });
       final ctx = catalogPlayContextFromMeta(meta: meta);
-      expect(ctx.hubEpisodes, isNotNull);
-      expect(ctx.hubEpisodes!.length, 2);
+      expect(ctx.kitEpisodes, isNotNull);
+      expect(ctx.kitEpisodes!.length, 2);
       expect(
-        ctx.hubEpisodes![0].thumbnailUrl,
+        ctx.kitEpisodes![0].thumbnailUrl,
         'https://image.tmdb.org/t/p/w300/still1.jpg',
       );
       expect(
-        ctx.hubEpisodes![1].thumbnailUrl,
+        ctx.kitEpisodes![1].thumbnailUrl,
         contains('still2.jpg'),
       );
     });
 
     test('TMDB episode video id does not pin selectedPluginIds', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'tmdb:tv:215704',
         'type': 'tv',
         'name': 'The Gentlemen',
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('provider-scoped episode video id pins selectedPluginIds', () {
-      final meta = CatalogMetaItem.fromJson({
+      final meta = MetaItem.fromJson({
         'id': 'larozaa:ser1',
         'type': 'series',
         'name': 'Test Arabic',

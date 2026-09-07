@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
 
 /// Details-only series / anime / drama watched aggregate.
 class WatchSeriesProgress extends StatelessWidget {

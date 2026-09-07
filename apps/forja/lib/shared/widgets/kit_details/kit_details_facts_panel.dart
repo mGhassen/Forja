@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
+
+/// Right-column production metadata panel for hub details heroes (anime, Asian drama).
+/// Visual match for [HeroFactsPanel] on movie/TV details.
+class KitDetailsFactsPanel extends StatelessWidget {
+  const KitDetailsFactsPanel({super.key, required this.entries});
+
+  final List<MapEntry<String, String>> entries;
+
+  bool get hasContent =>
+      entries.any((e) => e.key.trim().isNotEmpty && e.value.trim().isNotEmpty);
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = entries
+        .where((e) => e.key.trim().isNotEmpty && e.value.trim().isNotEmpty)
+        .toList(growable: false);
+    if (visible.isEmpty) return const SizedBox.shrink();
+
+    const radius = 12.0;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < visible.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                i == 0 ? 16 : 10,
+                20,
+                i == visible.length - 1 ? 16 : 10,
+              ),
+              child: _KitFactRow(label: visible[i].key, value: visible[i].value),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _KitFactRow extends StatelessWidget {
+  const _KitFactRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final valueLines = tv ? 2 : 1;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.45),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: valueLines,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

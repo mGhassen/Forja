@@ -1,1 +1,1 @@
-export 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
+export 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';

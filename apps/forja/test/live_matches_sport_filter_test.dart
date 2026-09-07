@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/live/schedule/schedule_sport_filter.dart';
+import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 
 void main() {
   group('normalizeLiveSportId', () {
@@ -96,10 +96,10 @@ void main() {
     });
   });
 
-  group('iframeCatalogStreamIsAlwaysOn', () {
+  group('iframeMetaStreamIsAlwaysOn', () {
     test('honors always_live even with expired start/end', () {
       expect(
-        iframeCatalogStreamIsAlwaysOn(
+        iframeMetaStreamIsAlwaysOn(
           alwaysLive: true,
           categoryName: '24/7 Streams',
           startsAt: 1737176400,
@@ -112,7 +112,7 @@ void main() {
 
     test('honors 24/7 category without always_live flag', () {
       expect(
-        iframeCatalogStreamIsAlwaysOn(
+        iframeMetaStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: '24/7 Streams',
           startsAt: 1737176400,
@@ -125,7 +125,7 @@ void main() {
 
     test('zero start/end with iframe is always-on', () {
       expect(
-        iframeCatalogStreamIsAlwaysOn(
+        iframeMetaStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: 'Football',
           startsAt: 0,
@@ -138,7 +138,7 @@ void main() {
 
     test('scheduled non-24/7 match is not always-on', () {
       expect(
-        iframeCatalogStreamIsAlwaysOn(
+        iframeMetaStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: 'Football',
           startsAt: 1737176400,
@@ -169,13 +169,13 @@ void main() {
     });
   });
 
-  group('iframeCatalogStreamIsLive', () {
+  group('iframeMetaStreamIsLive', () {
     const start = 1_000_000;
     const end = 1_010_000;
 
     test('true inside scheduled window', () {
       expect(
-        iframeCatalogStreamIsLive(
+        iframeMetaStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -189,7 +189,7 @@ void main() {
 
     test('true with viewers after start within grace past ends_at', () {
       expect(
-        iframeCatalogStreamIsLive(
+        iframeMetaStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -203,7 +203,7 @@ void main() {
 
     test('true with viewers shortly before start (clock skew / early doors)', () {
       expect(
-        iframeCatalogStreamIsLive(
+        iframeMetaStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -217,7 +217,7 @@ void main() {
 
     test('true with viewers far before start (lobby / wrong device clock)', () {
       expect(
-        iframeCatalogStreamIsLive(
+        iframeMetaStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -231,7 +231,7 @@ void main() {
 
     test('false with viewers long after ends_at grace', () {
       expect(
-        iframeCatalogStreamIsLive(
+        iframeMetaStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,

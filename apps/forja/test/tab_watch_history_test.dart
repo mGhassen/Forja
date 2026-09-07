@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
-import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/foundation/services/watch_history.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({required int id, String mediaType = 'movie'}) => Movie(
@@ -86,7 +86,7 @@ void main() {
         'mediaType': 'tv',
         'updatedAt': 1000,
       });
-      expect(isHomeWatchHistoryCatalogEntry(entry), isTrue);
+      expect(isHomeWatchHistoryEntry(entry), isTrue);
       expect(entry['metaId'], '42_S1_E3');
       expect(entry['episodeNumber'], 3);
       expect(entry['positionMs'], 120000);

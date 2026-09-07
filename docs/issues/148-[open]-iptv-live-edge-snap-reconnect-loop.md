@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **21 / 21** fix · **0 / 17** acceptance |
-| **Current slice** | Live continuity proxy + macOS/Linux software decode; device smoke outstanding |
+| **Progress** | **23 / 23** fix · **0 / 19** acceptance |
+| **Current slice** | Empty-cache snap + fps-hold underrun gates; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -42,6 +42,8 @@
 | 19 | I148-T19 | Stop fake `working` logs on empty cache; grace only while feeding/cushion; empty pause soft-reopens at 5s + Buffering chrome | ✅ |
 | 20 | I148-T20 | Live MediaKit: `cache-pause=no`, `demuxer-max-back-bytes=1MiB`, `reconnect_delay_max=30` — CDN socket closes must not hard-pause; underrun freezes without back-buffer replay | ✅ |
 | 21 | I148-T21 | Live MediaKit continuity proxy (localhost TS relay) + macOS/Linux live software decode — CDN closes never reach mpv; no VT death spiral every ~15s | ✅ |
+| 22 | I148-T22 | Live-edge snap: never `drop-buffers` when demuxer cache < `_minHealthyCacheSecs` (log `skip drop-buffers`) | ✅ |
+| 23 | I148-T23 | Stable: sustained Buffering + cache < 0.5s (≥5s, past first paint) is not `_streamWorking` — fps/`estimated-vf-fps` pulse must not forever `skip recovery … working`; empty-underrun detector grace = 5s | ✅ |
 
 ---
 
@@ -66,12 +68,16 @@
 | 15 | I148-A15 | After repeated CDN `ends prematurely`: no `silent self-pause` hard recovery loop; log shows `self-pause` hold / live VT hold; picture resumes without recreate thrash | ⬜ |
 | 16 | I148-A16 | Live MediaKit: channel plays through multiple `ends prematurely` without visible pause/reconnect thrash; no silent ~15s replay on underrun | ⬜ |
 | 17 | I148-A17 | Live MediaKit logs `[IPTV Proxy] upstream reconnected` on CDN close while picture keeps playing (no mpv `ends prematurely` / self-pause recovery) | ⬜ |
+| 18 | I148-A18 | Live-edge snap with cache < 2s logs `skip drop-buffers` and does not flush an empty cushion | ⬜ |
+| 19 | I148-A19 | macOS Stalker Stable: sustained Buffering + cache≈0 with fps still pulsing soft-reopens within ~5–8s (fresh `create_link`) — no endless `skip recovery (buffering) — working` | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T22 / T23).** Stalker (no continuity proxy) + macOS TextureSW: demuxer cache stuck at ~0 while `estimated-vf-fps` pulsed → forever `skip recovery (buffering) — working`, then force live-edge `drop-buffers` on the empty cushion. Snap now skips drop-buffers when cache < 2s; sustained empty Buffering (≥5s past first paint) is not `_streamWorking`.
 
 > **Status update (I148-T21).** ffmpeg-in-mpv reconnect could not absorb Xtream socket closes: buffer dumped, VT failed, soft reopen every ~15s. Live MediaKit now opens a **localhost continuity proxy**; mpv never sees upstream EOF. macOS/Linux live forces software decode (Windows already did).
 

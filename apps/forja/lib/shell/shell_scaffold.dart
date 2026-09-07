@@ -4,9 +4,9 @@ import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters_rail.dart';
-import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
+import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -186,7 +186,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
         if (!emptyFeaturesGate &&
             widget.visibleIds.isNotEmpty &&
             widget.selectedIndex < widget.visibleIds.length &&
-            CatalogVerticalFiltersRegistry.hasFilters(
+            VerticalFiltersRegistry.hasFilters(
               widget.visibleIds[widget.selectedIndex],
             ))
           Positioned(
@@ -199,7 +199,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: CatalogVerticalFiltersRail(
+                child: VerticalFiltersRail(
                   tabId: widget.visibleIds[widget.selectedIndex],
                 ),
               ),

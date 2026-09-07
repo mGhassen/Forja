@@ -2,14 +2,14 @@
 
 **Status:** partial  
 **Depends on:** [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md)  
-**Area:** `shared/catalog/kit/`, `features/my_list/`, `features/live_matches/`, hub packs
+**Area:** `shared/foundation/`, `features/my_list/`, `features/live_sports/`, hub packs
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **8 / 8** acceptance |
-| **Current slice** | Kit primitives for pack-composed skins (`kit.topBar`, `kit.categoryBar`, list `open`) |
+| **Progress** | **4 / 4** components · **16 / 16** acceptance |
+| **Current slice** | App-wide hub/catalog scent purge (`kit_details`, `TvKitRow`, `isKitPlugin`, …) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R85-C01 | Kit holds only generic layout/chrome/cards/play — no product folders | ✅ |
-| 2 | R85-C02 | `CatalogHostListRegistry` outside kit — features register opaque source ids | ✅ |
+| 2 | R85-C02 | `HostListRegistry` outside kit — features register opaque source ids | ✅ |
 | 3 | R85-C03 | My List domain under `features/my_list/` | ✅ |
 | 4 | R85-C04 | Live Sports domain under `features/live_matches/` | ✅ |
 
@@ -30,8 +30,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R85-A01 | No `my_list/` or `live_schedule/` under `shared/catalog/kit/` | ✅ |
-| 2 | R85-A02 | No hardcoded `CatalogKitListSources.myList` / `.liveSchedule` product switch inside kit | ✅ |
+| 1 | R85-A01 | No `my_list/` or `live_schedule/` under `shared/foundation/components/` | ✅ |
+| 2 | R85-A02 | No hardcoded `KitListSources.myList` / `.liveSchedule` product switch inside kit | ✅ |
 | 3 | R85-A03 | `kit.list` resolves data via host registry + optional opaque `source` / hub `pluginId` — default is not `my_list` | ✅ |
 | 4 | R85-A04 | Sources-panel middleware not under a product `kit/sources/` dump folder | ✅ |
 | 5 | R85-A05 | Pack layouts compose generic kit widgets; product source ids live in packs/features only | ✅ |
@@ -41,13 +41,28 @@
 
 ---
 
+## Acceptance (foundation + live evacuate)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 9 | R85-A09 | `shared/catalog` renamed to `shared/foundation` with shadcn folders (`primitives` / `components` / `blocks` / `protocol` / `services` / `lib`) | ✅ |
+| 10 | R85-A10 | `shared/live` deleted — models/helpers in `foundation/lib`, orchestration in `foundation/services/live` | ✅ |
+| 11 | R85-A11 | Host has no pack-id live branches (`liveonsat` / `livesoccertv` / streamed·ppv·streamfree menus); packs + opaque `broadcastBySource` only | ✅ |
+| 12 | R85-A12 | `foundation/primitives/` holds leaf atoms (`action_chip`, `chip_row`, `underline_tab`, `status_tabs`); composers stay in `components/` | ✅ |
+| 13 | R85-A13 | `shared/design` deleted — app-wide atoms live in `foundation/primitives/` (`primitives.dart` barrel); no peer `shared/design` package | ✅ |
+| 14 | R85-A14 | Host-owned primitive files use `forja_*` prefix (`forja_action_chip`, `forja_shell_tokens`, …); kit leaf classes `ForjaActionChip` / `ForjaChipRow` / `ForjaUnderlineTab` / `ForjaStatusTabs` | ✅ |
+| 15 | R85-A15 | Foundation files/types drop `catalog_` / `hub_` product scent — UI `kit_*` / `Kit*`, protocol `meta_*` / `Meta*` (`KitShell`, `MetaItem`, `MetaRuntime`, …) | ✅ |
+| 16 | R85-A16 | App-wide leftover rename: `widgets/kit_details`, `TvKitRow`, `isKitPlugin` / live feed APIs, `PlayContext.metaItem`/`metaOpen`/`kitEpisodes`, `PlayerKitEpisode`, `KitChromeTopBar` | ✅ |
+
+---
+
 ## Summary
 
-**Rule:** `shared/catalog/kit/` is reusable UI atoms only (stack, menu, tabs, list grid, rows, cards, chrome, topBar, categoryBar, details/play helpers). Opening kit must never reveal product names (`my_list`, `live_schedule`).
+**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope) and kit composers live here. Product names stay out of kit folders. No `shared/live/` or peer `shared/design/`.
 
-**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; pack ids hardcoded in host Dart; design system as a sibling of foundation.
 
-**Right:** packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts.
+**Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts; live resolve/schedule orchestration lives under `foundation/services/live`.
 
 ### Related
 

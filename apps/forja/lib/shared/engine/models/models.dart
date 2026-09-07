@@ -59,7 +59,7 @@ class EnginePlugin {
   /// Declared hub features (`nav`, `search`, `host_search`, `structured_search`, `details`, `filters`, `auth`, …).
   final List<String> capabilities;
 
-  /// Nav contribution — parsed by `CatalogNavSpec.fromPluginNav`.
+  /// Nav contribution — parsed by `MetaNavSpec.fromPluginNav`.
   final Map<String, dynamic>? nav;
 
   /// Optional companion catalog plugin id for post-rail / post-details enrich.
@@ -82,10 +82,10 @@ class EnginePlugin {
   bool get isTorrent => kind == 'torrent';
 
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
-  bool get isHubCatalog => kind == 'catalog';
+  bool get isKitPlugin => kind == 'catalog';
 
   /// Pack install must cache JS for this plugin.
-  bool get needsScript => isHttp || isHop || isHubCatalog || isTorrent;
+  bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;
 
   bool hasCapability(String name) {
     final want = name.trim().toLowerCase();
@@ -95,21 +95,21 @@ class EnginePlugin {
 
   /// Unified live sport plugins (`types: live_sport`, not hub `kind: catalog`).
   bool get isLiveSportPlugin =>
-      types.contains('live_sport') && !isHubCatalog;
+      types.contains('live_sport') && !isKitPlugin;
 
   /// Legacy schedule plugins (`types: catalog`, not hub `kind: catalog`).
-  bool get isLiveCatalog => types.contains('catalog') && !isHubCatalog;
+  bool get isLiveFeedPlugin => types.contains('catalog') && !isKitPlugin;
   bool get isLivePlugin => types.contains('plugins');
   bool get isLiveSport => types.contains('live_sport');
   /// Resolve-only entries in `plugins/live/manifest.json` (`types: live`).
   bool get isLiveResolve => types.contains('live');
 
-  bool get supportsLiveCatalog =>
-      isLiveSportPlugin ? hasCapability('catalog') : isLiveCatalog;
+  bool get supportsLiveFeed =>
+      isLiveSportPlugin ? hasCapability('catalog') : isLiveFeedPlugin;
 
   /// IPTV broadcast channel hints on catalog rows (`broadcast` capability).
   bool get supportsLiveBroadcast =>
-      (isLiveSportPlugin || isLiveCatalog) && hasCapability('broadcast');
+      (isLiveSportPlugin || isLiveFeedPlugin) && hasCapability('broadcast');
 
   bool get supportsLiveResolve =>
       isLiveSportPlugin
@@ -119,13 +119,13 @@ class EnginePlugin {
   /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
   bool get isLive =>
       isLiveSportPlugin ||
-      isLiveCatalog ||
+      isLiveFeedPlugin ||
       isLiveResolve ||
       isLivePlugin ||
       isLiveSport;
 
   /// Sources chips: HTTP VOD only — hops and hub catalogs are never chips.
-  bool get isExtractable => isHttp && !isHubCatalog;
+  bool get isExtractable => isHttp && !isKitPlugin;
 
   /// Movie/TV Sources → Forja — not Live Matches plugins.
   bool get isVodCatalog => isExtractable && !isLive;

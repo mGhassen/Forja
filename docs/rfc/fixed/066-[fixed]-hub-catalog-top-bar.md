@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R66-C01 | Shared `CatalogTopBar` chrome (tabs, categories menu, search, scroll-hide, TV focus) | ✅ |
+| 1 | R66-C01 | Shared `KitChromeTopBar` chrome (tabs, categories menu, search, scroll-hide, TV focus) | ✅ |
 | 2 | R66-C02 | ShellBus + hero/scroll publish for Anime / Asian Drama | ✅ |
 | 3 | R66-C03 | Anime hub: Films / Series / genre Categories filter + top bar | ✅ |
 | 4 | R66-C04 | Asian Drama hub: Films / Series / country Categories filter + top bar | ✅ |

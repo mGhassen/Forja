@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_list_item.dart';
-import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
+import 'package:forja/shared/foundation/services/watch_history.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1307,16 +1307,16 @@ class SimklService {
         await PluginNavRegistry.pluginIdForEngineType('drama') ?? '';
     if (hubPlugin.isEmpty) return false;
 
-    final existing = await CatalogWatchHistory.getAll(hubPlugin);
+    final existing = await WatchHistory.getAll(hubPlugin);
     final already = existing.any((entry) {
       if (entry['metaId']?.toString() == '$hubPlugin:$tmdbId') return true;
-      final meta = CatalogWatchHistory.metaFromEntry(entry);
+      final meta = WatchHistory.metaFromEntry(entry);
       return meta?.numericId('tmdb') == tmdbId;
     });
     if (already) return false;
 
     try {
-      final meta = catalogMetaFromLegacyListItem({
+      final meta = metaItemFromLegacyListItem({
         'pluginId': hubPlugin,
         'tmdbId': tmdbId,
         'imdbId': ?imdbId,
@@ -1325,7 +1325,7 @@ class SimklService {
         'posterPath': posterPath,
         'backdropPath': backdropPath,
       });
-      await CatalogWatchHistory.record(
+      await WatchHistory.record(
         pluginId: hubPlugin,
         meta: meta,
         episodeNumber: episode,
@@ -1347,11 +1347,11 @@ class SimklService {
     final hubPlugin =
         await PluginNavRegistry.pluginIdForEngineType('anime') ?? '';
     if (hubPlugin.isEmpty) return 0;
-    final existing = await CatalogWatchHistory.getAll(hubPlugin);
+    final existing = await WatchHistory.getAll(hubPlugin);
     if (existing.any((e) => e['metaId'] == '$hubPlugin:$anilistId')) return 0;
     try {
       final title = (media['title'] as String?)?.trim() ?? 'Anime';
-      final meta = catalogMetaFromLegacyListItem({
+      final meta = metaItemFromLegacyListItem({
         ...item,
         'pluginId': hubPlugin,
         'anilistId': anilistId,
@@ -1360,7 +1360,7 @@ class SimklService {
       });
       final runtimeMin = _asInt(media['runtime']) ?? 24;
       final duration = Duration(minutes: runtimeMin);
-      await CatalogWatchHistory.record(
+      await WatchHistory.record(
         pluginId: hubPlugin,
         meta: meta,
         episodeNumber: point.episode,

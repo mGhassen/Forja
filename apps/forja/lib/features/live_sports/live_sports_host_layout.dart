@@ -1,19 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/host/catalog_shell.dart';
+import 'package:forja/shared/foundation/components/layout/kit_types.dart';
+import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 
 /// Host-default kit layout when no Live Sports hub pack contributes `layout`.
 ///
 /// Composes generic kit primitives only (same shape as the list+panel pack).
 const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
   {
-    'type': CatalogKitTypes.stack,
+    'type': KitTypes.stack,
     'id': 'page',
     'expand': true,
     'children': [
       {
-        'type': CatalogKitTypes.topBar,
+        'type': KitTypes.topBar,
         'id': 'chrome',
         'focusDown': 'kind',
         'actions': [
@@ -23,9 +23,6 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
             'icon': 'filter',
             'items': [
               {'id': 'all', 'label': 'All'},
-              {'id': 'streamed', 'label': 'Streamed'},
-              {'id': 'ppv', 'label': 'PPV'},
-              {'id': 'streamfree', 'label': 'StreamFree'},
             ],
           },
           {
@@ -51,7 +48,7 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
         ],
       },
       {
-        'type': CatalogKitTypes.categoryBar,
+        'type': KitTypes.categoryBar,
         'id': 'kind',
         'source': LiveSportsHost.listSourceId,
         'dynamic': true,
@@ -60,7 +57,7 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
         'focusDown': 'schedule',
       },
       {
-        'type': CatalogKitTypes.list,
+        'type': KitTypes.list,
         'id': 'schedule',
         'source': LiveSportsHost.listSourceId,
         'style': 'list',
@@ -74,8 +71,8 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
   },
 ];
 
-/// Core shell builder for [live_matches] — CatalogShell + host layout (no pack).
-Widget liveSportsCoreTabBuilder() => CatalogShell(
+/// Core shell builder for [live_matches] — KitShell + host layout (no pack).
+Widget liveSportsCoreTabBuilder() => KitShell(
       pluginId: '',
       tabId: LiveSportsHost.tabId,
       hostLayout: kLiveSportsHostDefaultLayout,

@@ -8,7 +8,7 @@ import 'package:forja/features/archive/audio/music_storage_service.dart';
 import 'package:forja/features/archive/audio/music_downloader_service.dart';
 import 'package:forja/features/archive/audio/lyrics_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 enum PlayerView { art, lyrics, related }
 

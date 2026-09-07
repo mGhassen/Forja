@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/packs/plugin_contract.dart';
 
-/// Repo-root `plugins/` — test cwd is `apps/forja`.
+/// Repo-root paths — test cwd is `apps/forja`.
 File _repoFile(String rel) => File('../../$rel');
 
 Map<String, dynamic> _readJson(String rel) {
@@ -22,18 +22,18 @@ dynamic _readJsonAny(String rel) {
 void main() {
   group('plugin SDK contract index', () {
     test('contract.json lists schema files that exist', () {
-      final contract = _readJson('plugins/sdk/contract.json');
+      final contract = _readJson('sdk/contract.json');
       expect(contract['schema'], 1);
       expect(contract['kitVersion'], 1);
       expect(contract['protocolVersion'], 1);
       final schemas = contract['schemas'] as Map;
       for (final entry in schemas.entries) {
-        final path = 'plugins/sdk/${entry.value}';
+        final path = 'sdk/${entry.value}';
         expect(_repoFile(path).existsSync(), isTrue, reason: path);
       }
       final kits = contract['kits'] as Map;
       for (final entry in kits.entries) {
-        final path = 'plugins/sdk/${entry.value}';
+        final path = 'sdk/${entry.value}';
         expect(_repoFile(path).existsSync(), isTrue, reason: path);
       }
     });
@@ -112,16 +112,16 @@ void main() {
 
   group('catalog fixtures', () {
     final fixtures = [
-      'plugins/hubs/fixtures/anilist_layout.json',
-      'plugins/hubs/fixtures/anilist_rail.json',
-      'plugins/hubs/fixtures/kisskh_rail.json',
-      'plugins/hubs/fixtures/tmdb_auth_required.json',
-      'plugins/hubs/fixtures/unsupported_kit.json',
+      'sdk/fixtures/anilist_layout.json',
+      'sdk/fixtures/anilist_rail.json',
+      'sdk/fixtures/kisskh_rail.json',
+      'sdk/fixtures/tmdb_auth_required.json',
+      'sdk/fixtures/unsupported_kit.json',
     ];
 
     for (final path in fixtures) {
       test('validates envelope $path', () {
-        PluginContract.validateCatalogEnvelope(_readJsonAny(path));
+        PluginContract.validateMetaEnvelope(_readJsonAny(path));
       });
     }
   });

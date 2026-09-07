@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/catalog/services/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
@@ -232,8 +232,8 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     final settings = SettingsService();
     final tabs = <String>[];
     for (final pl in pack.plugins) {
-      if (!pl.isHubCatalog || !pl.enabled) continue;
-      final spec = CatalogNavSpec.fromPluginNav(
+      if (!pl.isKitPlugin || !pl.enabled) continue;
+      final spec = MetaNavSpec.fromPluginNav(
         pl.nav,
         pluginId: pl.id,
         fallbackLabel: pl.name,
@@ -254,8 +254,8 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     final settings = SettingsService();
     final tabs = <String>[];
     for (final pl in pack.plugins) {
-      if (!pl.isHubCatalog) continue;
-      final spec = CatalogNavSpec.fromPluginNav(
+      if (!pl.isKitPlugin) continue;
+      final spec = MetaNavSpec.fromPluginNav(
         pl.nav,
         pluginId: pl.id,
         fallbackLabel: pl.name,

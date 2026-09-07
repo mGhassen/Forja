@@ -1,0 +1,104 @@
+import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
+import 'package:forja/shared/foundation/blocks/play/kit_episodes.dart';
+import 'package:forja/shared/foundation/blocks/play/play_context.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
+import 'package:rust/rust.dart';
+
+/// Catalog kit boundary — maps pack [MetaItem] → play args.
+PlayContext catalogPlayContextFromMeta({
+  required MetaItem meta,
+  String? pluginId,
+  MetaVideo? episode,
+  int? episodeNumber,
+  int? season,
+  String? episodeVideoId,
+  List<MetaVideo>? videos,
+  Map<String, dynamic> extras = const {},
+  String? audioCategory,
+  Duration? startPosition,
+  Set<String>? selectedPluginIds,
+}) {
+  final vids = videos ?? meta.videos;
+  final ep = episode;
+  final epNum = ep?.episode ?? episodeNumber ?? 1;
+  final seasonNum = ep?.season ?? season ?? 1;
+  final isMovie = _metaIsMovie(meta);
+  final isTv = !isMovie && vids.length > 1;
+  final open = meta.open;
+
+  final videoId = episodeVideoId ?? ep?.id;
+  final providerFromVideo = videoId != null
+      ? providerIdFromEpisodeVideoId(videoId)
+      : null;
+
+  var episodeIds = _videoIdByEpisode(vids);
+  if (videoId != null && videoId.isNotEmpty) {
+    episodeIds = {...episodeIds, epNum: videoId};
+  }
+
+  if (selectedPluginIds == null && providerFromVideo != null) {
+    selectedPluginIds = {providerFromVideo};
+  }
+
+  final malId = open?.effectiveExtract.intVal('malId') ??
+      int.tryParse(open?.extraString('mal') ?? '');
+
+  return PlayContext(
+    movie: _playMovieFor(meta, videos: vids),
+    pluginId: pluginId,
+    metaItem: meta,
+    metaOpen: open,
+    season: isTv ? seasonNum : null,
+    episode: isTv ? epNum : (isMovie ? null : epNum),
+    malId: malId,
+    episodeVideoIdByNumber: episodeIds,
+    audioCategory: audioCategory ?? extras['category']?.toString(),
+    kitEpisodes: isTv
+        ? episodesFromMeta(meta.copyWith(videos: vids))
+        : null,
+    selectedPluginIds: selectedPluginIds,
+    startPosition: startPosition,
+    loadingSubtitle: isMovie ? null : 'EP $epNum',
+  );
+}
+
+bool _metaIsMovie(MetaItem item) {
+  if (item.open?.extraBool('movie') == true) return true;
+  if ((item.badge ?? '').toUpperCase() == 'MOVIE') return true;
+  if (item.type == 'movie') return true;
+  final fmt = (item.badge ?? '').toUpperCase();
+  return fmt == 'MOVIE' || item.tmdbMediaType == 'movie';
+}
+
+Movie _playMovieFor(MetaItem item, {List<MetaVideo>? videos}) {
+  final isMovie = _metaIsMovie(item);
+  final poster = item.poster.trim();
+  final backdrop = item.background.trim();
+  final eps = videos ?? item.videos;
+  final imdb = item.ids['imdb']?.toString();
+  return Movie(
+    id: catalogMovieIdForPlay(item),
+    imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
+    title: item.name,
+    posterPath: catalogPosterPathForMovie(poster),
+    backdropPath: catalogPosterPathForMovie(
+      backdrop.isNotEmpty ? backdrop : poster,
+    ),
+    voteAverage: item.rating ?? 0,
+    releaseDate: item.releaseInfo,
+    overview: item.description,
+    mediaType: isMovie ? 'movie' : 'tv',
+    numberOfEpisodes: eps.isNotEmpty ? eps.length : (item.episodes ?? 0),
+  );
+}
+
+Map<int, String> _videoIdByEpisode(List<MetaVideo> videos) {
+  final out = <int, String>{};
+  for (final v in videos) {
+    final ep = v.episode ?? out.length + 1;
+    if (v.id.isNotEmpty) out[ep] = v.id;
+  }
+  return out;
+}
+

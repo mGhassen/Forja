@@ -247,7 +247,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     notifyListeners();
 
     for (final k in keys) {
-      _c._invalidatePortalCatalogCache(k);
+      _c._invalidatePortalMetaCache(k);
       _c._newPortalKeys.remove(k);
       _c._portalRecencyKeys.remove(k);
     }
@@ -289,7 +289,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
   }
 
   Future<void> deletePortal(String key) async {
-    _c._invalidatePortalCatalogCache(key);
+    _c._invalidatePortalMetaCache(key);
     _c.selected
       ..clear()
       ..add(key);
@@ -339,7 +339,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
     final v = verified.withLabel(label);
     final wasActive = _c.activePortal?.key == existing.key;
-    _c._invalidatePortalCatalogCache(existing.key);
+    _c._invalidatePortalMetaCache(existing.key);
     final next = _c.verified
         .where((x) => x.key != existing.key)
         .toList();

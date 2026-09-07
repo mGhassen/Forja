@@ -1,45 +1,45 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/host/catalog_legacy_movie_meta.dart';
-import 'package:forja/shared/catalog/host/catalog_open.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/blocks/shell/legacy_movie_meta.dart';
+import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:rust/rust.dart';
 
 void main() {
   group('catalog_open routing', () {
     test('movie/tv resolveType uses hub details', () {
-      const open = CatalogOpen(
+      const open = MetaOpen(
         surface: 'tmdb',
         id: '603',
         extras: {'mediaType': 'movie'},
-        extract: CatalogOpenExtract(
+        extract: MetaOpenExtract(
           resolveType: 'movie',
           panelCategory: 'movie',
           ctx: {'tmdbId': 603},
         ),
       );
-      expect(catalogOpenUsesHubDetails(open), isTrue);
+      expect(metaOpenUsesKitDetails(open), isTrue);
     });
 
     test('stremio surface uses hub details', () {
-      const open = CatalogOpen(
+      const open = MetaOpen(
         surface: 'stremio',
         id: 'custom:abc',
         extras: {'stremioAddonBaseUrl': 'https://addon.example/manifest.json'},
       );
-      expect(catalogOpenUsesHubDetails(open), isTrue);
+      expect(metaOpenUsesKitDetails(open), isTrue);
     });
 
     test('explicit detailsRoute uses feature escape hatch', () {
-      const open = CatalogOpen(
+      const open = MetaOpen(
         surface: 'tmdb',
         id: '603',
         extras: {'detailsRoute': 'legacy'},
       );
-      expect(catalogOpenUsesHubDetails(open), isFalse);
+      expect(metaOpenUsesKitDetails(open), isFalse);
     });
 
     test('stremio search row keeps addon id and catalog addon url', () {
-      final meta = catalogMetaFromStremioSearchResult({
+      final meta = metaItemFromStremioSearchResult({
         'id': 'anilist:12345',
         'type': 'series',
         'name': 'Test Anime',
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('legacy movie meta uses tmdb route not plugin id', () {
-      final meta = catalogMetaFromMovie(
+      final meta = metaItemFromMovie(
         Movie(
           id: 603,
           title: 'The Matrix',

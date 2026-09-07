@@ -556,7 +556,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         (streamId != null && streamId.isNotEmpty) ? streamId : null;
   }
 
-  void _invalidatePortalCatalogCache(String portalKey) {
+  void _invalidatePortalMetaCache(String portalKey) {
     final prefix = '$portalKey|';
     _c._catalogCache.removeWhere((k, _) => k.startsWith(prefix));
     unawaited(IptvCatalogShelfCache.removePortal(portalKey));

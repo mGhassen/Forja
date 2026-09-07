@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I161-T01 | `SourcesPanelTv` graph + `TvOverlayScope` / `ExcludeFocus` underlay on details Sources | ✅ |
-| 2 | I161-T02 | Kind / provider / search / close edges; remove Cancel autofocus trap; register `TvCatalogRow`s | ✅ |
+| 2 | I161-T02 | Kind / provider / search / close edges; remove Cancel autofocus trap; register `TvKitRow`s | ✅ |
 | 3 | I161-T03 | Source tiles register vertical list row (`tvItemIndex` + ensureVisible) | ✅ |
 | 4 | I161-T04 | In-player Sources panel uses same graph (no nested overlay scope) | ✅ |
 | 5 | I161-T05 | In-player torrent file picker list + close D-pad | ✅ |
@@ -50,7 +50,7 @@
 
 ## Summary
 
-On **Android TV**, opening the torrent **Sources** panel left D-pad on the page underneath (details Play / player chrome). Kind tabs had `tvRowId` without a registered `TvCatalogRow` / `onDownEdge`, so `shellTvHandleRowArrows` **swallowed ↓** before spatial focus could leave the strip.
+On **Android TV**, opening the torrent **Sources** panel left D-pad on the page underneath (details Play / player chrome). Kind tabs had `tvRowId` without a registered `TvKitRow` / `onDownEdge`, so `shellTvHandleRowArrows` **swallowed ↓** before spatial focus could leave the strip.
 
 **Root fix:** isolated `SourcesPanelTv` tab graph (kind → providers → search/filters → vertical list), contain + underlay `ExcludeFocus` on details, same graph for in-player Sources and torrent file picker.
 
@@ -60,7 +60,7 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 
 **I161-T09:** closing Sources left D-pad on an empty overlay scope (panel nodes unmounted, details still `ExcludeFocus` for a frame). Back now restores the Play control that opened the panel (retries after ExcludeFocus lifts). Playback-start close does not steal Play under the player.
 
-**I161-T10:** after leaving the player, the in-player Sources / torrent-file `TvCatalogRow` `dispose` unregisters the shared `sources-panel` / `sources-list` handle. Reopening details Sources still focused list-0, but ↓ was `handled` without moving (`moveVerticalInTab` failed, spatial never ran). Arrow resolvers now return ignored on a failed move so spatial can walk the list; `_request` uses the overlay `FocusScope` like claim does.
+**I161-T10:** after leaving the player, the in-player Sources / torrent-file `TvKitRow` `dispose` unregisters the shared `sources-panel` / `sources-list` handle. Reopening details Sources still focused list-0, but ↓ was `handled` without moving (`moveVerticalInTab` failed, spatial never ran). Arrow resolvers now return ignored on a failed move so spatial can walk the list; `_request` uses the overlay `FocusScope` like claim does.
 
 **I161-T11:** search had ↑/↓ only — → never reached the Filters tune control. Opening Filters also left D-pad on the Sources chrome. Search → now focuses Filters; Filters overlay uses `TvOverlayScope` + autofocus; dismiss restores the Filters button (Sources Back still restores Play).
 

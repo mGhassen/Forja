@@ -29,7 +29,7 @@
 | 6 | I120-T06 | IPTV catalog chrome unmounts while `playerSurfaceActive` (screen State kept for Back / I123 focus) | ✅ |
 | 7 | I120-T07 | Image-cache trim/cap (16 MB / 80) after `playerSurfaceActive` notify so the IPTV grid is already gone; restore on leave; ShellBody pauses selected-tab tickers | ✅ |
 | 8 | I120-T08 | Skip IPTV catalog health probes while the player is up; ATV MediaKit demuxer sample every 8 s when cache is healthy | ✅ |
-| 9 | I120-T09 | `PlayerSurfaceChromeStub`: hub details / CatalogShell / hub search / IPTV series details drop chrome while player active (State kept) | ✅ |
+| 9 | I120-T09 | `PlayerSurfaceChromeStub`: hub details / KitShell / hub search / IPTV series details drop chrome while player active (State kept) | ✅ |
 | 10 | I120-T10 | `enterPlayerSurface` (0→1): cancel engine extracts/torrent/live catalog + Nuvio scrapers + sync deferred pushes | ✅ |
 | 11 | I120-T11 | Unit tests for chrome stub + cancel-on-enter | ✅ |
 
@@ -55,6 +55,6 @@ Lazy tab mount ([RFC-016](../rfc/016-[partial]-lazy-tab-mounting.md)) + LRU ([RF
 
 **Follow-up (T06–T08):** I120 still left the IPTV catalog **laid out** under the opaque player. `trimImageCacheForPlayback` then made every still-mounted `CachedNetworkImage` refill GPU — a decode hitch mid-play on physical ATV. The IPTV tab now drops catalog chrome (not the screen `State`) while the player is up, image trim waits a frame, the cache stays capped until leave, health probes no-op, and ATV MediaKit slows healthy demuxer FFI.
 
-**Follow-up (T09–T11):** Same chrome-stub for VOD/hub details + CatalogShell under Home→details→Play, plus cancel leftover engine/Nuvio/sync work on enter so decode is not fighting JS/HTTP.
+**Follow-up (T09–T11):** Same chrome-stub for VOD/hub details + KitShell under Home→details→Play, plus cancel leftover engine/Nuvio/sync work on enter so decode is not fighting JS/HTTP.
 
 **Related:** [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) · [RFC-024](../rfc/024-[partial]-tab-cache-eviction-stale.md) · [platforms](../features/getting-started/platforms.md)

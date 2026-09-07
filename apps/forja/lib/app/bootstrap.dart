@@ -39,7 +39,7 @@ import 'package:forja/shared/engine/packs/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/plugin_pack_update_prompt_host.dart';
 import 'package:forja/shared/widgets/packs/plugin_install_progress_banner.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_geometry.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';

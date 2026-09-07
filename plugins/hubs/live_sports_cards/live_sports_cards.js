@@ -56,7 +56,7 @@ function liveSportsCardsLayout() {
             }),
             kitList('schedule', {
               source: 'live_schedule',
-              style: 'grid',
+              style: 'cards',
               open: 'details',
               expand: true,
               kindMenu: 'kind',
