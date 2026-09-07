@@ -61,6 +61,21 @@ abstract class KitListSource {
 
   AsyncValue<KitListPage> watchPage(WidgetRef ref, String status);
 
+  /// Snapshot without listening — for chrome that must not [watch] beside
+  /// [KitListWidget] (sibling markNeedsBuild during build).
+  /// Override when [listenPage] is used; default throws.
+  AsyncValue<KitListPage> readPage(WidgetRef ref, String status) {
+    throw UnsupportedError('$runtimeType.readPage');
+  }
+
+  /// Subscribe to page updates without [watch] during build.
+  /// Default no-ops; sources that share a provider with the list override.
+  void listenPage(
+    WidgetRef ref,
+    String status,
+    void Function(AsyncValue<KitListPage> next) onChange,
+  ) {}
+
   void setupSideEffects(WidgetRef ref, String status);
 
   void invalidateOnRefresh(WidgetRef ref);

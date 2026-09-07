@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_category_circle_meta.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
+import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
@@ -22,7 +23,7 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 ///
 /// When [dynamic] is true and [source] resolves a [KitListSource], unique
 /// entry kinds are appended after static [items] (with an `all` chip first).
-class KitCategoryBar extends ConsumerWidget {
+class KitCategoryBar extends ConsumerStatefulWidget {
   const KitCategoryBar({
     super.key,
     required this.tabId,
@@ -36,14 +37,26 @@ class KitCategoryBar extends ConsumerWidget {
   final String pluginId;
   final int sortOrder;
 
-  String get _widgetId => (spec['id'] ?? 'kind').toString();
+  @override
+  ConsumerState<KitCategoryBar> createState() => _KitCategoryBarState();
+}
+
+class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
+  KitListPage? _dynamicPage;
+
+  String get _widgetId => (widget.spec['id'] ?? 'kind').toString();
+
+  void _applyPage(KitListPage? page) {
+    if (!mounted || identical(page, _dynamicPage)) return;
+    setState(() => _dynamicPage = page);
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final scope = KitLayoutScope.of(context);
-    final staticItems = kitItemsFromSpec(spec);
-    final dynamic = spec['dynamic'] == true;
-    final sourceId = (spec['source'] ?? '').toString().trim();
+    final staticItems = kitItemsFromSpec(widget.spec);
+    final dynamic = widget.spec['dynamic'] == true;
+    final sourceId = (widget.spec['source'] ?? '').toString().trim();
 
     var kinds = <({String id, String label})>[
       for (final i in staticItems) i,
@@ -52,15 +65,26 @@ class KitCategoryBar extends ConsumerWidget {
     if (dynamic) {
       final source = HostListRegistry.resolve(
         sourceId: sourceId.isEmpty ? null : sourceId,
-        pluginId: pluginId.isEmpty ? null : pluginId,
+        pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
       );
       if (source != null) {
         final status =
             scope.selectedId('status') ??
-            spec['defaultStatus']?.toString() ??
+            widget.spec['defaultStatus']?.toString() ??
             'plantowatch';
-        final pageAsync = source.watchPage(ref, status);
-        final page = pageAsync.asData?.value;
+        // Do not [watchPage] here — KitListWidget watches the same provider.
+        // Dual watch flushes listeners mid-list-build → markNeedsBuild during build.
+        source.listenPage(ref, status, (async) {
+          final page = async.asData?.value;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _applyPage(page);
+          });
+        });
+        final seed = source.readPage(ref, status).asData?.value;
+        if (_dynamicPage == null && seed != null) {
+          _dynamicPage = seed;
+        }
+        final page = _dynamicPage;
         if (page != null) {
           final found = <String>{};
           for (final e in page.entriesForKind(null)) {
@@ -88,12 +112,12 @@ class KitCategoryBar extends ConsumerWidget {
     if (kinds.isEmpty) return const SizedBox.shrink();
 
     final selected = scope.selectedId(_widgetId) ??
-        spec['default']?.toString() ??
+        widget.spec['default']?.toString() ??
         kinds.first.id;
-    final focusDownId = (spec['focusDown'] ?? '').toString().trim();
+    final focusDownId = (widget.spec['focusDown'] ?? '').toString().trim();
     final focusUp = kitFocusEdge(
-      tabId,
-      spec['focusUp']?.toString(),
+      widget.tabId,
+      widget.spec['focusUp']?.toString(),
       last: true,
     );
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -126,7 +150,7 @@ class KitCategoryBar extends ConsumerWidget {
               accent: meta.accent,
               selected: on,
               listIndex: i,
-              tvTabId: tabId,
+              tvTabId: widget.tabId,
               tvRowId: _widgetId,
               onTap: () {
                 if (!on) {
@@ -138,7 +162,7 @@ class KitCategoryBar extends ConsumerWidget {
               onLeftEdge: edges?.onLeft,
               onRightEdge: edges?.onRight,
               onDownEdge: edges?.onDown ??
-                  kitFocusEdge(tabId, focusDownId),
+                  kitFocusEdge(widget.tabId, focusDownId),
               onUpEdge: focusUp ?? edges?.onUp,
             );
           }
@@ -175,9 +199,9 @@ class KitCategoryBar extends ConsumerWidget {
 
           if (tvFocus) {
             return TvChipStrip(
-              tabId: tabId,
+              tabId: widget.tabId,
               rowId: _widgetId,
-              sortOrder: sortOrder,
+              sortOrder: widget.sortOrder,
               itemCount: kinds.length,
               resultsRowId: resultsRowId,
               builder: (context, edgesFor) => centeredRow(

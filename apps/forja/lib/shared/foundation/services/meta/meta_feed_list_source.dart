@@ -154,6 +154,33 @@ final class MetaFeedListSource extends KitListSource {
   }
 
   @override
+  AsyncValue<KitListPage> readPage(WidgetRef ref, String status) {
+    return ref.read(metaFeedCatalogProvider).when(
+          data: AsyncData.new,
+          error: AsyncError.new,
+          loading: AsyncLoading.new,
+        );
+  }
+
+  @override
+  void listenPage(
+    WidgetRef ref,
+    String status,
+    void Function(AsyncValue<KitListPage> next) onChange,
+  ) {
+    ref.listen<AsyncValue<MetaFeedCatalogPage>>(metaFeedCatalogProvider,
+        (prev, next) {
+      onChange(
+        next.when(
+          data: AsyncData.new,
+          error: AsyncError.new,
+          loading: AsyncLoading.new,
+        ),
+      );
+    });
+  }
+
+  @override
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
     final catalog = filters['catalog'];
     final horizon = filters['horizon'];

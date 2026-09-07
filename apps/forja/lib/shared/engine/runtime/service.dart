@@ -415,27 +415,34 @@ class EngineService {
       }
     }
 
-    // Always try EngineJS first (Home/TMDB feed/rail — no liveFeed bridge).
-    // Live Sports feed needs ctx.host.liveFeed.load → EngineJS unsupported →
-    // flutter_js fallback below.
-    final viaRust = await _runLiveEngineRustJs(
-      plugin: plugin,
-      config: config,
-      action: action,
-      params: catalogCtx,
-      timeout: timeout,
-      gen: gen,
-      generation: () => _catalogGeneration,
-    );
-    if (viaRust != null) {
-      final envelope = _firstEnvelopeMap(viaRust);
-      if (envelope != null) return envelope;
+    // Home/TMDB: EngineJS-first (no liveFeed). Live Sports hubs call
+    // ctx.host.liveFeed.load — EngineJS has no bridge, but still returns an
+    // ok envelope with items:[] (plugin short-circuits), so "unsupported"
+    // never fires. Skip EngineJS for those packs and use flutter_js only.
+    if (!plugin.needsLiveFeedHost) {
+      final viaRust = await _runLiveEngineRustJs(
+        plugin: plugin,
+        config: config,
+        action: action,
+        params: catalogCtx,
+        timeout: timeout,
+        gen: gen,
+        generation: () => _catalogGeneration,
+      );
+      if (viaRust != null) {
+        final envelope = _firstEnvelopeMap(viaRust);
+        if (envelope != null) return envelope;
+        if (gen != _catalogGeneration) return null;
+        debugPrint(
+          '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
+        );
+      }
       if (gen != _catalogGeneration) return null;
+    } else {
       debugPrint(
-        '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
+        '[catalog] ${plugin.id} $action needs liveFeed — flutter_js',
       );
     }
-    if (gen != _catalogGeneration) return null;
 
     final previous = _catalogFlutterJsTail;
     final gate = Completer<void>();

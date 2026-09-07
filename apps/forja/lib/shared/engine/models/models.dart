@@ -88,6 +88,11 @@ class EnginePlugin {
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isKitPlugin => kind == 'catalog';
 
+  /// Hub feed that calls `ctx.host.liveFeed.load` (Live Sports packs).
+  /// EngineJS has no liveFeed bridge yet — [EngineService.runCatalog] must use
+  /// flutter_js for these plugins.
+  bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
+
   /// Pack install must cache JS for this plugin.
   bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;
 

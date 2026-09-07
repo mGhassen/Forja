@@ -763,9 +763,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }
 
   Widget _emptyState(BuildContext context, {String? kind}) {
-    final filtered = kind != null;
+    final filtered = kind != null && kind.isNotEmpty && kind != 'all';
     String? kindLabel;
-    if (kind != null) {
+    if (filtered) {
       final kindSpec =
           KitLayoutScope.maybeOf(context)?.widgetSpecFor(widget.kindMenuId);
       if (kindSpec != null) {

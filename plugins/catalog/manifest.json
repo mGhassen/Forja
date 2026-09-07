@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "id": "forjahq-catalog",
-  "name": "ForjaHQ Catalog",
-  "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
+  "name": "ForjaHQ Live Sports Catalog",
+  "description": "Live Sports schedule catalogs (Streamed, PPV, ESPN, …).",
   "author": "ForjaHQ",
   "version": "1.9.6",
   "prelude": "_wire.js",

@@ -77,8 +77,9 @@ function liveSportsShapeRow(row) {
 function liveSportsLoadFeed(ctx, params) {
   var host = ctx && ctx.host;
   var liveFeed = host && host.liveFeed;
+  // Missing bridge → reject (empty ok envelope would skip host flutter_js fallback).
   if (!liveFeed || typeof liveFeed.load !== 'function') {
-    return Promise.resolve([]);
+    return Promise.reject(new Error('HOST_LIVE_FEED_REQUIRED'));
   }
   return Promise.resolve(
     liveFeed.load({

@@ -40,7 +40,9 @@
 
 **Root (before fix):** `runCatalog` forced flutter_js for every `feed`/`rail` (`preferFlutterJs`) so Live Sports could call `ctx.host.liveFeed.load`. Home TMDB feed does not need that bridge — boot prefetch + KitShell both forked main-thread JSC, then `dispose()` freed the VM while JSC still drained microtasks.
 
-**Symptom fix:** EngineJS-first for all catalog actions (Live Sports still falls back when EngineJS has no `liveFeed`); serialize catalog flutter_js forks; always settle (pump + short delay) before dropping the JSC heap.
+**Symptom fix:** EngineJS-first for catalog actions that do not need `liveFeed` (Home/TMDB). Serialize catalog flutter_js forks; always settle (pump + short delay) before dropping the JSC heap.
+
+**Follow-up:** [236](./236-[fixed]-live-sports-feed-empty-enginejs.md) — Live Sports hubs must skip EngineJS (`needsLiveFeedHost`); empty ok envelopes from missing `liveFeed` skipped flutter_js fallback.
 
 **Still open (broader):** [190](../190-[open]-forja-engine-parallel-jsc-crash.md) / RFC-064 — remaining flutter_js Engine paths off main-thread JSC.
 
