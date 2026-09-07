@@ -36,7 +36,7 @@ host-http = { path = "../archive/host-http" }
 media-extra = { path = "../archive/media-extra" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
-live-matches = { path = "../live-matches" }
+live-sports = { path = "../live-sports" }
 engine = { path = "../engine" }
 uniffi = { workspace = true }
 serde = { workspace = true }

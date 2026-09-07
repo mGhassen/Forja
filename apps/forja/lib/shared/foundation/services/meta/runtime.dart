@@ -26,6 +26,7 @@ class MetaRuntime {
     Map<String, dynamic> params = const {},
     Map<String, dynamic>? auth,
     String? authSubject,
+    String? packSourceUrl,
     bool forceRefresh = false,
     Duration timeout = const Duration(seconds: 45),
   }) async {
@@ -34,6 +35,7 @@ class MetaRuntime {
       action: action,
       params: params,
       authSubject: authSubject,
+      packSourceUrl: packSourceUrl,
     );
     final cached = forceRefresh ? null : MetaCache.instance.get(key);
 
@@ -41,6 +43,7 @@ class MetaRuntime {
       return _pipeEnrichCached(
         cacheKey: key,
         sourcePluginId: pluginId,
+        packSourceUrl: packSourceUrl,
         action: action,
         params: params,
         auth: auth,
@@ -52,6 +55,7 @@ class MetaRuntime {
       _reviveInBackground(
         key: key,
         pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
         action: action,
         params: params,
         auth: auth,
@@ -61,6 +65,7 @@ class MetaRuntime {
       return _pipeEnrichCached(
         cacheKey: key,
         sourcePluginId: pluginId,
+        packSourceUrl: packSourceUrl,
         action: action,
         params: params,
         auth: auth,
@@ -79,6 +84,7 @@ class MetaRuntime {
     final future = _fetch(
       key: key,
       pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: action,
       params: params,
       auth: auth,
@@ -99,11 +105,13 @@ class MetaRuntime {
     required String action,
     required Map<String, dynamic> params,
     Map<String, dynamic>? auth,
+    String? packSourceUrl,
     MetaCacheEntry? entry,
     required Duration timeout,
   }) async {
     final raw = await EngineService.instance.runCatalog(
       pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: action,
       params: params,
       auth: auth,
@@ -115,6 +123,7 @@ class MetaRuntime {
         return _pipeEnrichCached(
           cacheKey: key,
           sourcePluginId: pluginId,
+          packSourceUrl: packSourceUrl,
           action: action,
           params: params,
           auth: auth,
@@ -135,6 +144,7 @@ class MetaRuntime {
         return _pipeEnrichCached(
           cacheKey: key,
           sourcePluginId: pluginId,
+          packSourceUrl: packSourceUrl,
           action: action,
           params: params,
           auth: auth,
@@ -161,6 +171,7 @@ class MetaRuntime {
       return _pipeEnrichCached(
         cacheKey: key,
         sourcePluginId: pluginId,
+        packSourceUrl: packSourceUrl,
         action: action,
         params: params,
         auth: auth,
@@ -176,6 +187,7 @@ class MetaRuntime {
         return _pipeEnrichCached(
           cacheKey: key,
           sourcePluginId: pluginId,
+          packSourceUrl: packSourceUrl,
           action: action,
           params: params,
           auth: auth,
@@ -225,6 +237,7 @@ class MetaRuntime {
   Future<MetaEnvelope> _pipeEnrichCached({
     required String cacheKey,
     required String sourcePluginId,
+    String? packSourceUrl,
     required String action,
     required Map<String, dynamic> params,
     Map<String, dynamic>? auth,
@@ -239,6 +252,7 @@ class MetaRuntime {
     }
     final enriched = await _pipeEnrich(
       sourcePluginId: sourcePluginId,
+      packSourceUrl: packSourceUrl,
       action: action,
       params: params,
       auth: auth,
@@ -261,6 +275,7 @@ class MetaRuntime {
   /// the companion enrich plugin declared as [EnginePlugin.enrich].
   Future<MetaEnvelope> _pipeEnrich({
     required String sourcePluginId,
+    String? packSourceUrl,
     required String action,
     required Map<String, dynamic> params,
     Map<String, dynamic>? auth,
@@ -276,7 +291,10 @@ class MetaRuntime {
       return envelope;
     }
 
-    final source = await _resolvePlugin(sourcePluginId);
+    final source = await _resolvePlugin(
+      sourcePluginId,
+      packSourceUrl: packSourceUrl,
+    );
     final enrichId = source?.enrich?.trim() ?? '';
     if (enrichId.isEmpty || enrichId == sourcePluginId) return envelope;
 
@@ -286,6 +304,7 @@ class MetaRuntime {
     if (action == 'feed') {
       return _pipeEnrichFeed(
         sourcePluginId: sourcePluginId,
+        packSourceUrl: packSourceUrl,
         enrichId: enrichId,
         params: params,
         auth: auth,
@@ -308,6 +327,7 @@ class MetaRuntime {
 
     final merged = await _mergeEnrichAnswer(
       sourcePluginId: sourcePluginId,
+      packSourceUrl: packSourceUrl,
       enrichId: enrichId,
       action: action,
       data: data,
@@ -328,6 +348,7 @@ class MetaRuntime {
 
   Future<MetaEnvelope> _pipeEnrichFeed({
     required String sourcePluginId,
+    String? packSourceUrl,
     required String enrichId,
     required Map<String, dynamic> params,
     Map<String, dynamic>? auth,
@@ -338,7 +359,10 @@ class MetaRuntime {
     final railsRaw = data['rails'];
     if (railsRaw is! Map || railsRaw.isEmpty) return envelope;
 
-    final enrichPlugin = await _resolvePlugin(enrichId);
+    final enrichPlugin = await _resolvePlugin(
+      enrichId,
+      packSourceUrl: packSourceUrl,
+    );
     final railIds = _enrichRailIds(enrichPlugin);
     final mergedRails = <String, dynamic>{
       for (final entry in railsRaw.entries) entry.key.toString(): entry.value,
@@ -349,6 +373,7 @@ class MetaRuntime {
       if (items is! List || items.isEmpty) continue;
       final out = await _mergeEnrichAnswer(
         sourcePluginId: sourcePluginId,
+        packSourceUrl: packSourceUrl,
         enrichId: enrichId,
         action: 'rail',
         data: const {'items': []},
@@ -394,6 +419,7 @@ class MetaRuntime {
 
   Future<Map<String, dynamic>?> _mergeEnrichAnswer({
     required String sourcePluginId,
+    String? packSourceUrl,
     required String enrichId,
     required String action,
     required Map<String, dynamic> data,
@@ -408,6 +434,7 @@ class MetaRuntime {
       }
       raw = await EngineService.instance.runCatalog(
         pluginId: enrichId,
+        packSourceUrl: packSourceUrl,
         action: 'enrich',
         params: enrichParams,
         auth: auth,
@@ -533,14 +560,22 @@ class MetaRuntime {
     ];
   }
 
-  Future<EnginePlugin?> _resolvePlugin(String pluginId) async {
+  Future<EnginePlugin?> _resolvePlugin(
+    String pluginId, {
+    String? packSourceUrl,
+  }) async {
     final packs = await EngineService.instance.listPacks();
-    return PluginRegistry.packPluginFromPacks(packs, pluginId)?.plugin;
+    return PluginRegistry.packPluginFromPacks(
+      packs,
+      pluginId,
+      sourceUrl: packSourceUrl,
+    )?.plugin;
   }
 
   void _reviveInBackground({
     required String key,
     required String pluginId,
+    String? packSourceUrl,
     required String action,
     required Map<String, dynamic> params,
     Map<String, dynamic>? auth,
@@ -552,6 +587,7 @@ class MetaRuntime {
       _fetch(
             key: key,
             pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
             action: action,
             params: params,
             auth: auth,

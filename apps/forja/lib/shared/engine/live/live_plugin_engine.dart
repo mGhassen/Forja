@@ -5,12 +5,12 @@ import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
-/// Live Matches engine plugin orchestration (RFC-065).
+/// Live plugin catalog / resolve meta cache (RFC-065).
 ///
 /// Site origins, labels, and native unlock paths come from plugin/catalog
 /// **config** — not a hardcoded list of third-party plugin ids.
-class LiveMatchesEngine {
-  LiveMatchesEngine._();
+class LivePluginEngine {
+  LivePluginEngine._();
 
   static final Map<String, String> _originByPluginId = {};
   static final Map<String, String> _nameByPluginId = {};
@@ -459,7 +459,7 @@ class LiveMatchesEngine {
       }
       return all.map((row) => Map<String, dynamic>.from(row)).toList();
     } catch (e) {
-      debugPrint('[LiveMatchesEngine] catalog: $e');
+      debugPrint('[LivePluginEngine] catalog: $e');
       return all;
     }
   }

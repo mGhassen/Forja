@@ -106,14 +106,21 @@
         }
       }
     },
-    "nav": {
-      "type": "object",
-      "required": ["tabId", "label"],
-      "additionalProperties": true,
-      "properties": {
-        "tabId": { "type": "string", "minLength": 1 },
+      "nav": {
+        "type": "object",
+        "required": ["label"],
+        "additionalProperties": true,
+        "properties": {
+        "tabId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional legacy label. Features/rail chrome id is host-owned from the install URL (RFC-094). Omit for new packs."
+        },
         "label": { "type": "string", "minLength": 1 },
-        "order": { "type": "number" },
+        "order": {
+          "type": "number",
+          "description": "Deprecated for Features/navbar. Host appends new hub tabs at the end. Optional legacy hub-scan sort only."
+        },
         "icon": {
           "type": "string",
           "minLength": 1,

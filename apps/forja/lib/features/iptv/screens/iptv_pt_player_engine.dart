@@ -457,7 +457,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     if (refresh && !iptvLiveEngineCanForceRefresh(src)) return src;
     final resolve = widget.liveEngineResolveSource;
     if (resolve == null) {
-      LiveMatchesEngine.engineResolveFailed();
+      LivePluginEngine.engineResolveFailed();
       return null;
     }
     final idx = _s._sourceIdx;
@@ -474,7 +474,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         forceRefresh: refresh,
       );
       if (resolved == null || !iptvLiveEnginePlayUrlReady(resolved.url)) {
-        LiveMatchesEngine.engineResolveFailed();
+        LivePluginEngine.engineResolveFailed();
         return null;
       }
       if (idx >= 0 && idx < _s._sources.length) {

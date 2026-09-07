@@ -3,7 +3,7 @@
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
   "description": "Larozaa Arabic movies and TV hub.",
-  "version": "1.4.3",
+  "version": "1.4.5",
   "tags": [
     "arabic"
   ],
@@ -30,9 +30,7 @@
         "details"
       ],
       "nav": {
-        "tabId": "arabic",
         "label": "Arabic",
-        "order": 40,
         "icon": "icons/nav.png",
         "accent": "#7BA737"
       },

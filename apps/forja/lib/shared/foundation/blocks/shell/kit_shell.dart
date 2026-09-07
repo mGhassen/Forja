@@ -53,6 +53,7 @@ class KitShell extends StatefulWidget {
     super.key,
     required this.pluginId,
     this.tabId,
+    this.packSourceUrl,
     this.hostLayout,
   });
 
@@ -60,6 +61,9 @@ class KitShell extends StatefulWidget {
 
   /// Shell nav id — used for the layout page key (defaults to `home`).
   final String? tabId;
+
+  /// Install URL for this hub pack (RFC-094). Disambiguates duplicate plugin ids.
+  final String? packSourceUrl;
 
   /// Host-owned layout when no hub pack contributes widgets (e.g. Live Sports
   /// core tab). Skips pack `layout` when [pluginId] is empty.
@@ -278,7 +282,10 @@ class _KitShellState extends State<KitShell>
       setState(() => _error = null);
     }
 
-    final enabled = await PluginNavRegistry.isKitPluginEnabled(widget.pluginId);
+    final enabled = await PluginNavRegistry.isKitPluginEnabled(
+      widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+    );
     if (!mounted) return;
     if (!enabled) {
       setState(() {
@@ -292,6 +299,7 @@ class _KitShellState extends State<KitShell>
 
     final envelope = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
       action: 'layout',
       params: {'page': _pageKey},
       forceRefresh: forceRefresh,
@@ -316,10 +324,11 @@ class _KitShellState extends State<KitShell>
 
     final pluginEntry = await PluginRegistry.instance.findPlugin(
       widget.pluginId,
+      sourceUrl: widget.packSourceUrl,
     );
     _applyLayoutPage(
       envelope.data!,
-      packSourceUrl: pluginEntry?.pack.sourceUrl,
+      packSourceUrl: widget.packSourceUrl ?? pluginEntry?.pack.sourceUrl,
       pluginEntry: pluginEntry,
     );
   }
@@ -689,6 +698,7 @@ class _KitShellState extends State<KitShell>
     }
     final envelope = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
       action: action,
       params: catalogParamsWithFilters(
         params,
@@ -748,6 +758,7 @@ class _KitShellState extends State<KitShell>
   }) async {
     final envelope = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
       action: 'feed',
       params: catalogParamsWithFilters(
         const {},
@@ -1939,6 +1950,7 @@ class KitShellLoader extends StatefulWidget {
 
 class _KitShellLoaderState extends State<KitShellLoader> {
   String? _pluginId;
+  String? _packSourceUrl;
   Object? _error;
 
   @override
@@ -1950,12 +1962,16 @@ class _KitShellLoaderState extends State<KitShellLoader> {
   Future<void> _resolve() async {
     try {
       final id = await PluginNavRegistry.pluginIdForTab(widget.tabId);
+      final url = await PluginNavRegistry.packSourceUrlForTab(widget.tabId);
       if (!mounted) return;
       if (id == null || id.isEmpty) {
         setState(() => _error = 'Hub pack not installed');
         return;
       }
-      setState(() => _pluginId = id);
+      setState(() {
+        _pluginId = id;
+        _packSourceUrl = url;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e);
@@ -1966,7 +1982,11 @@ class _KitShellLoaderState extends State<KitShellLoader> {
   Widget build(BuildContext context) {
     final pluginId = _pluginId;
     if (pluginId != null) {
-      return KitShell(pluginId: pluginId, tabId: widget.tabId);
+      return KitShell(
+        pluginId: pluginId,
+        tabId: widget.tabId,
+        packSourceUrl: _packSourceUrl,
+      );
     }
     if (_error != null) {
       return ShellErrorRetryPanel(

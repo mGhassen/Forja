@@ -39,7 +39,7 @@ pub enum JobKind {
     IptvProbeStream = 7,
     TorrentStream = 8,
     Seek111477Start = 9,
-    LiveMatchesFetch = 12,
+    LiveSportsFetch = 12,
     IptvRedditCatalog = 13,
     IptvXtream = 14,
     EngineJsExtract = 15,
@@ -95,7 +95,7 @@ pub fn cancel_all() {
         .kinds
         .iter()
         .filter_map(|(&id, &k)| {
-            if k == JobKind::LiveMatchesFetch as u32 {
+            if k == JobKind::LiveSportsFetch as u32 {
                 None
             } else {
                 Some(id)
@@ -118,8 +118,8 @@ pub fn cancel_all() {
 }
 
 /// Tab hide / catalog refresh — abort schedule fetches only.
-pub fn cancel_live_matches_fetch() {
-    cancel_kind(JobKind::LiveMatchesFetch as u32);
+pub fn cancel_live_sports_fetch() {
+    cancel_kind(JobKind::LiveSportsFetch as u32);
 }
 
 /// Cancel only jobs of [kind] (e.g. [JobKind::EngineJsExtract]).
@@ -243,14 +243,14 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             .await
             .map_err(|e| e.to_string())?
         }
-        k if k == JobKind::LiveMatchesFetch as u32 => {
+        k if k == JobKind::LiveSportsFetch as u32 => {
             let req: RequestJsonPayload =
                 serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let request_json = req.request_json;
             let token = utils::engine_cancel::cancellation_token();
             tokio::task::spawn_blocking(move || {
                 utils::engine_cancel::attach_job_token(token);
-                Ok(live_matches::fetch_json(&request_json))
+                Ok(live_sports::fetch_json(&request_json))
             })
             .await
             .map_err(|e| e.to_string())?

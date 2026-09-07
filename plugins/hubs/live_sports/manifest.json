@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.8",
+  "version": "1.0.10",
   "tags": [
     "sports",
     "live"
@@ -28,9 +28,7 @@
         "settings"
       ],
       "nav": {
-        "tabId": "live_sports",
         "label": "Live Sports",
-        "order": 20,
         "icon": "icons/nav.png",
         "accent": "#FB923C"
       },
@@ -89,27 +87,90 @@
               "UFC"
             ],
             "options": [
-              { "id": "NBA", "label": "NBA" },
-              { "id": "WNBA", "label": "WNBA" },
-              { "id": "NCAAMB", "label": "NCAA Men's Basketball" },
-              { "id": "NCAAWB", "label": "NCAA Women's Basketball" },
-              { "id": "NFL", "label": "NFL" },
-              { "id": "NCAAFB", "label": "NCAA Football" },
-              { "id": "MLB", "label": "MLB" },
-              { "id": "NHL", "label": "NHL" },
-              { "id": "EPL", "label": "Premier League" },
-              { "id": "MLS", "label": "MLS" },
-              { "id": "LALIGA", "label": "La Liga" },
-              { "id": "SERIEA", "label": "Serie A" },
-              { "id": "BUNDESLIGA", "label": "Bundesliga" },
-              { "id": "LIGUE1", "label": "Ligue 1" },
-              { "id": "UCL", "label": "Champions League" },
-              { "id": "EUROPA", "label": "Europa League" },
-              { "id": "EREDIVISIE", "label": "Eredivisie" },
-              { "id": "LIGAPORTUGAL", "label": "Primeira Liga" },
-              { "id": "LIGAMX", "label": "Liga MX" },
-              { "id": "WORLDCUP", "label": "FIFA World Cup" },
-              { "id": "UFC", "label": "UFC" }
+              {
+                "id": "NBA",
+                "label": "NBA"
+              },
+              {
+                "id": "WNBA",
+                "label": "WNBA"
+              },
+              {
+                "id": "NCAAMB",
+                "label": "NCAA Men's Basketball"
+              },
+              {
+                "id": "NCAAWB",
+                "label": "NCAA Women's Basketball"
+              },
+              {
+                "id": "NFL",
+                "label": "NFL"
+              },
+              {
+                "id": "NCAAFB",
+                "label": "NCAA Football"
+              },
+              {
+                "id": "MLB",
+                "label": "MLB"
+              },
+              {
+                "id": "NHL",
+                "label": "NHL"
+              },
+              {
+                "id": "EPL",
+                "label": "Premier League"
+              },
+              {
+                "id": "MLS",
+                "label": "MLS"
+              },
+              {
+                "id": "LALIGA",
+                "label": "La Liga"
+              },
+              {
+                "id": "SERIEA",
+                "label": "Serie A"
+              },
+              {
+                "id": "BUNDESLIGA",
+                "label": "Bundesliga"
+              },
+              {
+                "id": "LIGUE1",
+                "label": "Ligue 1"
+              },
+              {
+                "id": "UCL",
+                "label": "Champions League"
+              },
+              {
+                "id": "EUROPA",
+                "label": "Europa League"
+              },
+              {
+                "id": "EREDIVISIE",
+                "label": "Eredivisie"
+              },
+              {
+                "id": "LIGAPORTUGAL",
+                "label": "Primeira Liga"
+              },
+              {
+                "id": "LIGAMX",
+                "label": "Liga MX"
+              },
+              {
+                "id": "WORLDCUP",
+                "label": "FIFA World Cup"
+              },
+              {
+                "id": "UFC",
+                "label": "UFC"
+              }
             ]
           }
         ]

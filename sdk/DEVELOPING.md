@@ -408,15 +408,15 @@ Add a shell tab with **`nav`** on a catalog plugin:
 
 ```json
 "nav": {
-  "tabId": "my_hub",
   "label": "My Hub",
-  "order": 25,
   "icon": "icons/nav.png",
   "accent": "#FB7185"
 }
 ```
 
-Omit pack-owned Feature defaults — when a hub pack contributes a new `tabId`, the host turns that Feature **on** automatically. Users can still hide it under Settings → Features.
+Do **not** set `tabId` or Features/navbar order — the host owns chrome ids from the install URL and appends new hub tabs at the end. `nav.tabId` / `nav.order` are legacy optional only.
+
+When a hub pack contributes nav, the host turns that Feature **on** automatically. Users can still hide it under Settings → Features.
 
 Prefer a **pack-relative** icon (`icons/nav.png`). Omit `icon` for the Material default. Never Flutter `assets/` or `forja://asset` URIs.
 
@@ -492,8 +492,8 @@ Reference hubs: [`hubs/home/tmdb.js`](hubs/home/tmdb.js), [`hubs/anime/anilist.j
 1. Host `manifest.json` + every `entry` / `prelude` file on HTTPS (same directory tree). GitHub raw works for public packs.
 2. List those paths in manifest **`bundle`** (array of relative paths) so install knows what to download.
 3. Give users the **manifest URL**.
-4. **Never reuse a plugin `id` that exists in another installed pack** — install is rejected.
-5. Prefer a stable pack `id` and semver `version` per release.
+4. Plugin `id` must be unique **inside your pack** only. The host scopes scripts and Features chrome by **install URL** — two community packs may share the same plugin id. Prefer a stable pack `id` and semver `version` per release.
+5. `nav.tabId` is a **local label** for multi-tab packs. Features / rail ids for community packs are **host-owned** (`p_<urlHash>_…`). Official ForjaHQ `plugins/hubs/…` URLs keep the author tabId for prefs stability.
 
 Signed manifests / sha256 verification are **not** implemented yet — distribute from sources you trust.
 
@@ -526,7 +526,7 @@ Run desktop with `--dart-define-from-file=../../.env` so hub TMDB match works.
 
 ## Checklist before sharing a pack
 
-- [ ] Unique pack `id` and plugin `id`s across the ecosystem you target
+- [ ] Pack `id` stable; plugin `id`s unique **inside** this pack (not across the whole internet)
 - [ ] Every `entry` / `prelude` path resolves from the manifest URL
 - [ ] `version` bumped
 - [ ] VOD plugins return `[]` on miss, not throw (throws become `[]` after log)

@@ -129,16 +129,12 @@ Paths relative to `apps/forja/lib/features/`.
 | 809 | iptv | `iptv/screens/iptv_pt_browser_streams.dart` | Stream cards + EPG widgets | In |
 | 798 | iptv | `iptv/screens/iptv_pt_browser_view.dart` | Browser view state | In |
 | 797 | iptv | `iptv/screens/iptv_pt_player_engine.dart` | Player engine mixin | In |
-| 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
 | 815 | iptv | `iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
 | 93 | iptv | `iptv/screens/iptv_pt_browser_sidebar.dart` | Category sidebar row | In |
 | 786 | iptv | `iptv/screens/iptv_kit_chrome_top_bar.dart` | Catalog top bar + shelf tabs | In |
 | 736 | iptv | `iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
-| 712 | live_matches | `live_matches/live_matches_build.dart` | Build mixin | In |
-| 705 | live_matches | `live_matches/live_matches_models.dart` | Models + API | In |
 | 570 | iptv | `iptv/screens/iptv_pt_widgets_portal.dart` | Portal list (legacy) | In |
 | 358 | iptv | `iptv/screens/iptv_catalog_portal_panel.dart` | Portal side panel | In |
-| 360 | live_matches | `live_matches/live_matches_data.dart` | Data mixin | In |
 | 66 | iptv | `iptv/screens/iptv_catalog_workspace.dart` | Library root | In |
 | 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
 | 288 | iptv | `iptv/screens/iptv_pt_player_screen.dart` | Player orchestrator | In |
@@ -148,8 +144,6 @@ Paths relative to `apps/forja/lib/features/`.
 | 137 | iptv | `iptv/screens/iptv_pt_widgets_section.dart` | Section pick (legacy) | In |
 | 137 | iptv | `iptv/screens/iptv_pt_widgets_common.dart` | App bar + chips | In |
 | 76 | iptv | `iptv/screens/iptv_pt_kit_shell.dart` | Catalog shell | In |
-| 235 | live_matches | `live_matches/live_matches_playback.dart` | Playback mixin | In |
-| 94 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
 | 609 | search | `search/search_widgets.dart` | Cards + my-list buttons | In |
 | 547 | search | `search/search_build.dart` | Build mixin | In |
 | 397 | search | `search/search_tv.dart` | TV focus mixin | In |

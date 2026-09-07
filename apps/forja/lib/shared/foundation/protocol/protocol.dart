@@ -823,7 +823,8 @@ class MetaNavSpec {
     }
     final tabId = (nav['tabId'] ?? '').toString().trim();
     final label = (nav['label'] ?? fallbackLabel ?? '').toString().trim();
-    if (tabId.isEmpty || label.isEmpty) return null;
+    // tabId optional (RFC-094) — host derives Features/rail id from install URL.
+    if (label.isEmpty) return null;
     return MetaNavSpec(
       tabId: tabId,
       label: label,
@@ -834,5 +835,5 @@ class MetaNavSpec {
     );
   }
 
-  bool get isValid => tabId.isNotEmpty && label.isNotEmpty;
+  bool get isValid => label.isNotEmpty;
 }

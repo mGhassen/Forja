@@ -4,7 +4,7 @@
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "tags": [
     "lists"
   ],
@@ -26,9 +26,7 @@
       ],
       "enrich": "my-list-enrich-tmdb",
       "nav": {
-        "tabId": "mylist",
         "label": "My List",
-        "order": 15,
         "icon": "icons/nav.png",
         "accent": "#FBBF24"
       },

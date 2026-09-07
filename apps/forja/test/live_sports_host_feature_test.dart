@@ -21,15 +21,12 @@ void main() {
     expect(coreNavDestinations.containsKey('live_sports'), isFalse);
     expect(coreNavTabBuilders.containsKey('live_sports'), isFalse);
     expect(SettingsService.addonGatedNavIds, isNot(contains('live_sports')));
-    // Retired tab id must not reappear as host core either.
-    expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_matches')));
   });
 
   test('Features inventory omits iptv until Addons activates it', () {
     final off = PluginNavRegistry.featureTabIds();
     expect(off, isNot(contains('iptv')));
     expect(off, isNot(contains('live_sports')));
-    expect(off, isNot(contains('live_matches')));
     expect(off, isNot(contains('settings')));
     expect(off, isNot(contains('home')));
 

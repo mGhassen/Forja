@@ -68,17 +68,15 @@ class KitScheduleFiltersNotifier extends Notifier<KitScheduleFilters> {
 
   Future<void> _hydrate() async {
     final prefs = await SharedPreferences.getInstance();
-    final catalog = (await KitSchedulePrefs.getStringMigrated(
+    final catalog = (await KitSchedulePrefs.getString(
           prefs,
           KitSchedulePrefs.catalogFilterKey,
-          KitSchedulePrefs.legacyCatalogFilterKey,
         ))
             ?.trim() ??
         'all';
-    final scheduleRaw = (await KitSchedulePrefs.getStringMigrated(
+    final scheduleRaw = (await KitSchedulePrefs.getString(
       prefs,
       KitSchedulePrefs.scheduleKey,
-      KitSchedulePrefs.legacyScheduleKey,
     ))
         ?.trim();
     final window = kitScheduleWindowFromPref(scheduleRaw) ??

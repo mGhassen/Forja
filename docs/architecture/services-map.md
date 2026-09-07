@@ -34,7 +34,7 @@
 | Search | `search` | `TmdbApi` |
 | Anime | `anime` | `AnimeService` → `anime` ✅ |
 | Asian Drama | `asian_drama` | `KissKhService` → `kisskh` ✅ |
-| Live Matches | `live_matches` | `live-matches` ✅ |
+| Live Matches | `live_sports` | `live-matches` ✅ |
 | IPTV | `iptv` | `iptv` Reddit + probe ✅ |
 | Lists | `mylist` | `MyListService`, watch history (host + engine) |
 | Settings | `settings` | Host prefs / platform |
@@ -57,7 +57,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 |------|-------------|------------|
 | KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
 | Anime extractors (archived) | `crates/archive/anime/extractors/*` | Superseded by `plugins/providers/**` JS |
-| Live matches fetch | `crates/live-matches` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
+| Live sports fetch | `crates/live-sports` · `live_sports_fetch_json` | IPTV portal sports match + pack resolve — no host Live Sports screen |
 | IPTV Reddit scraper | `crates/iptv` (`reddit_catalog` + `portal_extract`) · `scrape_page` | Thin `IptvScraper` host glue |
 
 | Anime Anikoto resolve (archived) | `crates/archive/anime/resolve/*` | Superseded by provider packs |
@@ -142,12 +142,12 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 
 ---
 
-### P2 — IPTV + live matches + Jellyfin cleanup
+### P2 — IPTV + live sports + Jellyfin cleanup
 
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
-| `live_matches_models.dart` fetch fns | ~200 | `live-matches` | Streamed.pk + MutStreams + CDN APIs | ✅ |
+| IPTV portal sports match | ~1k | `live-sports` + `features/iptv/portal_sports/` | Fixture→channel match | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
 ---

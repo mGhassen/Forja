@@ -342,8 +342,8 @@ pub unsafe extern "C" fn ffi_iptv_probe_stream_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_live_matches_fetch_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::live_matches_fetch_json(from_c_str(request_json)))
+pub unsafe extern "C" fn ffi_live_sports_fetch_json(request_json: *const c_char) -> *mut c_char {
+    to_c_string(crate::live_sports_fetch_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

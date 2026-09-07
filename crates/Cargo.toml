@@ -17,7 +17,7 @@ members = [
     "media-metadata",
     "indexer",
     "debrid",
-    "live-matches",
+    "live-sports",
     "engine",
     "archive/jellyfin",
     "archive/music",

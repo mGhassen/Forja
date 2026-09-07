@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:rust/rust.dart';
 
@@ -17,7 +18,12 @@ abstract final class HubPluginConfig {
       for (final plugin in pack.plugins) {
         if (!plugin.isKitPlugin) continue;
         final navTab = (plugin.nav?['tabId'] ?? '').toString().trim();
-        if (navTab != want) continue;
+        if (navTab.isEmpty) continue;
+        final hostId = PluginRegistry.hostNavId(
+          sourceUrl: pack.sourceUrl,
+          authorTabId: navTab,
+        );
+        if (navTab != want && hostId != want) continue;
         if (pack.isPluginActive(plugin)) return plugin;
         inactive ??= plugin;
       }

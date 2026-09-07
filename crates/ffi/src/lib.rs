@@ -49,7 +49,7 @@ fn engine_cancel_jobs_of_kind(kind: u32) {
 
 fn engine_prepare_shutdown() {
     utils::engine_cancel::request_shutdown();
-    engine_jobs::cancel_live_matches_fetch();
+    engine_jobs::cancel_live_sports_fetch();
     engine_jobs::cancel_all();
 }
 
@@ -276,9 +276,9 @@ fn iptv_probe_stream_json(url: String, timeout_secs: u64) -> String {
     iptv::stream_probe::probe_stream_alive_json(&url, timeout_secs)
 }
 
-fn live_matches_fetch_json(request_json: String) -> String {
+fn live_sports_fetch_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    live_matches::fetch_json(&request_json)
+    live_sports::fetch_json(&request_json)
 }
 
 fn iptv_reddit_catalog_json(request_json: String) -> String {

@@ -148,6 +148,47 @@ class PluginRegistry {
         slot != 'iptv-vod';
   }
 
+  /// Features / rail id for a hub `nav` contribution (RFC-094).
+  ///
+  /// Host owns chrome ids. Packs may omit `nav.tabId`.
+  /// - Official `plugins/hubs/<slot>/…` → stable Features id from URL slot
+  /// - Community / arbitrary URL → `p_<urlHash>` (+ optional local label)
+  static String hostNavId({
+    required String sourceUrl,
+    required String authorTabId,
+  }) {
+    final slot = forjaHqSlot(sourceUrl);
+    final local = authorTabId.trim();
+    if (slot != null) {
+      // Legacy manifests may still declare tabId — prefer it for prefs continuity.
+      if (local.isNotEmpty) return local;
+      return officialHubNavIdForSlot(slot) ?? slot;
+    }
+    final hash = EnginePack.urlHash(sourceUrl);
+    final sanitized = local.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    if (sanitized.isEmpty) return 'p_$hash';
+    return 'p_${hash}_$sanitized';
+  }
+
+  /// Stable Features/rail id for an official hub folder under `plugins/hubs/`.
+  @visibleForTesting
+  static String? officialHubNavIdForSlot(String slot) {
+    const map = {
+      'home': 'home',
+      'anime': 'anime',
+      'asian_drama': 'asian_drama',
+      'arabic': 'arabic',
+      'kids': 'kids',
+      'cartoon': 'cartoon',
+      'aflem': 'aflem',
+      'live_sports': 'live_sports',
+      'live_sports_cards': 'live_sports_cards',
+      // Folder is my_list; Features key stayed `mylist`.
+      'my_list': 'mylist',
+    };
+    return map[slot];
+  }
+
   /// IPTV VOD details pack — catalog protocol, not a shell hub tab.
   static bool isIptvVodManifestSlot(String? slot) => slot == 'iptv-vod';
 
@@ -843,22 +884,9 @@ class PluginRegistry {
       );
     }
 
-    // Refuse plugin id collisions with other packs. Same ForjaHQ slot
-    // (providers/live/catalog) may overlap — cloud vs `.env` dual install.
-    final slot = forjaHqSlot(manifestUrl);
-    for (final other in all) {
-      if (other.sourceUrl == manifestUrl) continue;
-      if (slot != null && forjaHqSlot(other.sourceUrl) == slot) continue;
-      final otherIds = {for (final p in other.plugins) p.id};
-      for (final p in pack.plugins) {
-        if (otherIds.contains(p.id)) {
-          throw Exception(
-            'plugin id "${p.id}" already installed from ${other.name} '
-            '(${other.sourceUrl})',
-          );
-        }
-      }
-    }
+    // Plugin ids are pack-local (RFC-094). Scripts/disk already key by
+    // urlHash+pluginId. Cross-pack duplicates are allowed — resolve with
+    // sourceUrl at run time. Same ForjaHQ slot (cloud vs `.env`) still OK.
 
     final scripts = <String, String>{}; // pluginId -> body
     final preludes = <String, String>{}; // prelude path -> body
@@ -1469,10 +1497,13 @@ class PluginRegistry {
   /// Resolve [pluginId] to owning pack + plugin (prefer active).
   static ({EnginePack pack, EnginePlugin plugin})? packPluginFromPacks(
     List<EnginePack> packs,
-    String pluginId,
-  ) {
+    String pluginId, {
+    String? sourceUrl,
+  }) {
+    final wantUrl = sourceUrl?.trim() ?? '';
     ({EnginePack pack, EnginePlugin plugin})? inactive;
     for (final pack in packs) {
+      if (wantUrl.isNotEmpty && pack.sourceUrl != wantUrl) continue;
       for (final p in pack.plugins) {
         if (p.id != pluginId) continue;
         if (pack.isPluginActive(p)) return (pack: pack, plugin: p);
@@ -1483,12 +1514,19 @@ class PluginRegistry {
   }
 
   /// Resolve [pluginId] to its owning pack + plugin.
-  /// Prefers an active plugin when the same id exists in multiple packs
-  /// (dev `.env` + disabled cloud shadow).
+  ///
+  /// Pass [sourceUrl] when known (hub KitShell / community packs). Without it,
+  /// prefers an active plugin when the same id exists in multiple packs
+  /// (dev `.env` + disabled cloud shadow; legacy provider path).
   Future<({EnginePack pack, EnginePlugin plugin})?> findPlugin(
-    String pluginId,
-  ) async =>
-      packPluginFromPacks(await listPacksRaw(), pluginId);
+    String pluginId, {
+    String? sourceUrl,
+  }) async =>
+      packPluginFromPacks(
+        await listPacksRaw(),
+        pluginId,
+        sourceUrl: sourceUrl,
+      );
 
   Future<void>? _hydrateLeanInFlight;
 

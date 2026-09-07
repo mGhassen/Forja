@@ -29,6 +29,8 @@ abstract final class PluginNavRegistry {
   static Map<String, Color> _accents = {};
   static Map<String, TabBuilder> _builders = {};
   static Map<String, String> _tabPluginIds = {};
+  /// Host Features/rail id → pack install URL (RFC-094).
+  static Map<String, String> _tabPackUrls = {};
   static bool _seeded = false;
   static bool _testNavLocked = false;
   /// Set when [refresh] skips an empty-hub prefs wipe because packs are still
@@ -63,6 +65,16 @@ abstract final class PluginNavRegistry {
 
   static bool isCoreShell(String id) => coreShellNavIds.contains(id);
 
+  /// Features / rail id — see [PluginRegistry.hostNavId] (RFC-094).
+  static String hostNavId({
+    required String sourceUrl,
+    required String authorTabId,
+  }) =>
+      PluginRegistry.hostNavId(
+        sourceUrl: sourceUrl,
+        authorTabId: authorTabId,
+      );
+
   /// Drop pack hub tab ids that are not in the installed pack index.
   ///
   /// Keeps [coreShellNavIds] + Addons-gated host tabs (`iptv`). When no hub
@@ -74,7 +86,10 @@ abstract final class PluginNavRegistry {
     List<String> ids,
   ) async {
     final hubs = await listNavHubs(requireEnabled: false);
-    final installedHubIds = {for (final h in hubs) h.$3.tabId};
+    final installedHubIds = {
+      for (final h in hubs)
+        hostNavId(sourceUrl: h.$1.sourceUrl, authorTabId: h.$3.tabId),
+    };
     if (installedHubIds.isEmpty) return List<String>.from(ids);
     return [
       for (final id in ids)
@@ -96,6 +111,7 @@ abstract final class PluginNavRegistry {
     _destinations = {};
     _accents = {};
     _tabPluginIds = {};
+    _tabPackUrls = {};
     _builders = {};
     _seeded = true;
   }
@@ -105,6 +121,7 @@ abstract final class PluginNavRegistry {
   static void seedTestHubNav({
     Map<String, NavDestination>? destinations,
     Map<String, String>? tabPluginIds,
+    Map<String, String>? tabPackUrls,
   }) {
     _testNavLocked = true;
     _deferredEmptyHubNavSync = false;
@@ -142,6 +159,7 @@ abstract final class PluginNavRegistry {
             'test_hub_c': 'test-provider-c',
           },
     );
+    _tabPackUrls = Map<String, String>.from(tabPackUrls ?? const {});
     _builders = {
       for (final tabId in _destinations.keys)
         tabId: () => KitShellLoader(tabId: tabId),
@@ -173,6 +191,7 @@ abstract final class PluginNavRegistry {
         jsonEncode({
           'version': 1,
           'tabPluginIds': _tabPluginIds,
+          'tabPackUrls': _tabPackUrls,
           'destinations': destinationRows,
           'accents': {
             for (final e in _accents.entries)
@@ -191,7 +210,18 @@ abstract final class PluginNavRegistry {
       for (final e in rawIds.entries) {
         final k = e.key.toString();
         final v = e.value?.toString() ?? '';
-        if (k.isNotEmpty && v.isNotEmpty) tabPluginIds[k] = v;
+        if (k.isEmpty || v.isEmpty) continue;
+        tabPluginIds.putIfAbsent(k, () => v);
+      }
+    }
+    final tabPackUrls = <String, String>{};
+    final rawUrls = json['tabPackUrls'];
+    if (rawUrls is Map) {
+      for (final e in rawUrls.entries) {
+        final k = e.key.toString();
+        final v = e.value?.toString() ?? '';
+        if (k.isEmpty || v.isEmpty) continue;
+        tabPackUrls.putIfAbsent(k, () => v);
       }
     }
     final dests = <String, NavDestination>{};
@@ -200,8 +230,10 @@ abstract final class PluginNavRegistry {
       for (final raw in rawDests) {
         if (raw is! Map) continue;
         final m = Map<String, dynamic>.from(raw);
-        final tabId = m['tabId']?.toString() ?? '';
-        if (tabId.isEmpty) continue;
+        final rawTabId = m['tabId']?.toString() ?? '';
+        if (rawTabId.isEmpty) continue;
+        final tabId = rawTabId;
+        if (dests.containsKey(tabId)) continue;
         final iconAsset = m['iconAsset']?.toString();
         final material =
             ForjaHostAssets.defaultNavIcon;
@@ -212,6 +244,8 @@ abstract final class PluginNavRegistry {
           label: m['label']?.toString() ?? tabId,
           iconAsset: iconAsset,
         );
+        final packUrl = m['packSourceUrl']?.toString() ?? '';
+        if (packUrl.isNotEmpty) tabPackUrls.putIfAbsent(tabId, () => packUrl);
       }
     }
     final accents = <String, Color>{};
@@ -223,7 +257,12 @@ abstract final class PluginNavRegistry {
         final h = hex.startsWith('#') ? hex.substring(1) : hex;
         if (h.length == 6) {
           final v = int.tryParse(h, radix: 16);
-          if (v != null) accents[e.key.toString()] = Color(0xFF000000 | v);
+          if (v != null) {
+            accents.putIfAbsent(
+              e.key.toString(),
+              () => Color(0xFF000000 | v),
+            );
+          }
         }
       }
     }
@@ -231,6 +270,7 @@ abstract final class PluginNavRegistry {
       destinations: dests,
       accents: accents,
       tabPluginIds: tabPluginIds,
+      tabPackUrls: tabPackUrls,
     );
   }
 
@@ -238,12 +278,17 @@ abstract final class PluginNavRegistry {
     _destinations = snap.destinations;
     _accents = snap.accents;
     _tabPluginIds = Map<String, String>.from(snap.tabPluginIds);
+    _tabPackUrls = Map<String, String>.from(snap.tabPackUrls);
     _builders = {
       for (final tabId in _destinations.keys)
         tabId: () {
           final pluginId = _tabPluginIds[tabId];
           if (pluginId != null && pluginId.isNotEmpty) {
-            return KitShell(pluginId: pluginId, tabId: tabId);
+            return KitShell(
+              pluginId: pluginId,
+              tabId: tabId,
+              packSourceUrl: _tabPackUrls[tabId],
+            );
           }
           return KitShellLoader(tabId: tabId);
         },
@@ -381,7 +426,8 @@ abstract final class PluginNavRegistry {
     // Anime tab whenever destinations were mid-refresh (ATV rail empty while
     // Features still showed ON — 224).
     final installedHubTabIds = <String>{
-      for (final (_, _, nav) in installed) nav.tabId,
+      for (final (pack, _, nav) in installed)
+        hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId),
     };
     final packKnownHubTabIds = <String>{
       ...installedHubTabIds,
@@ -399,6 +445,7 @@ abstract final class PluginNavRegistry {
       _accents = {};
       _builders = {};
       _tabPluginIds = {};
+      _tabPackUrls = {};
       _seeded = true;
       await _clearNavSnapshot();
       // No packs left — drop hub tabs from the rail (orphan wipe only).
@@ -422,35 +469,46 @@ abstract final class PluginNavRegistry {
     final accents = <String, Color>{};
     final builders = <String, TabBuilder>{};
     final tabPluginIds = <String, String>{};
+    final tabPackUrls = <String, String>{};
     final extras = <String>[];
     final cacheRows = <Map<String, dynamic>>[];
 
     for (final (pack, pl, nav) in hubs) {
+      final railId = hostNavId(
+        sourceUrl: pack.sourceUrl,
+        authorTabId: nav.tabId,
+      );
       final iconAsset = PackAssets.resolveNavIconDisplay(
         packSourceUrl: pack.sourceUrl,
         icon: nav.icon,
       );
       final material = iconDataFor(nav);
-      dests[nav.tabId] = NavDestination(
-        id: nav.tabId,
+      dests[railId] = NavDestination(
+        id: railId,
         icon: material,
         activeIcon: material,
         label: nav.label,
         iconAsset: iconAsset,
       );
-      builders[nav.tabId] = () =>
-          KitShell(pluginId: pl.id, tabId: nav.tabId);
-      tabPluginIds[nav.tabId] = pl.id;
+      builders[railId] = () => KitShell(
+            pluginId: pl.id,
+            tabId: railId,
+            packSourceUrl: pack.sourceUrl,
+          );
+      tabPluginIds[railId] = pl.id;
+      tabPackUrls[railId] = pack.sourceUrl;
       final accent = accentFor(nav);
-      if (accent != null) accents[nav.tabId] = accent;
-      if (!SettingsService.allNavIds.contains(nav.tabId)) {
-        extras.add(nav.tabId);
+      if (accent != null) accents[railId] = accent;
+      if (!SettingsService.allNavIds.contains(railId)) {
+        extras.add(railId);
       }
       cacheRows.add({
-        'tabId': nav.tabId,
+        'tabId': railId,
+        'authorTabId': nav.tabId,
         'label': nav.label,
         'icon': nav.icon,
         'iconAsset': iconAsset,
+        'packSourceUrl': pack.sourceUrl,
       });
     }
 
@@ -458,12 +516,14 @@ abstract final class PluginNavRegistry {
         !_mapEq(_destinations, dests) ||
         !_colorMapEq(_accents, accents) ||
         !_builderKeysEq(_builders, builders) ||
-        !_tabPluginIdsEq(_tabPluginIds, tabPluginIds);
+        !_tabPluginIdsEq(_tabPluginIds, tabPluginIds) ||
+        !_tabPluginIdsEq(_tabPackUrls, tabPackUrls);
 
     _destinations = dests;
     _accents = accents;
     _builders = builders;
     _tabPluginIds = tabPluginIds;
+    _tabPackUrls = tabPackUrls;
     _seeded = true;
 
     if (extras.isNotEmpty) {
@@ -575,6 +635,11 @@ abstract final class PluginNavRegistry {
     return _tabPluginIds[tabId];
   }
 
+  static String? packSourceUrlForTabSync(String tabId) {
+    _ensureSeeded();
+    return _tabPackUrls[tabId];
+  }
+
   static String? tabIdForPluginSync(String pluginId) {
     _ensureSeeded();
     for (final e in _tabPluginIds.entries) {
@@ -587,11 +652,27 @@ abstract final class PluginNavRegistry {
     _ensureSeeded();
     final cached = _tabPluginIds[tabId];
     if (cached != null && cached.isNotEmpty) return cached;
-    for (final (_, pl, nav) in await listNavHubs(requireEnabled: true)) {
-      if (nav.tabId == tabId) return pl.id;
+    for (final (pack, pl, nav) in await listNavHubs(requireEnabled: true)) {
+      if (hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId) ==
+          tabId) {
+        return pl.id;
+      }
     }
     final plugin = await HubPluginConfig.catalogPluginForTab(tabId);
     return plugin?.id;
+  }
+
+  static Future<String?> packSourceUrlForTab(String tabId) async {
+    _ensureSeeded();
+    final cached = _tabPackUrls[tabId];
+    if (cached != null && cached.isNotEmpty) return cached;
+    for (final (pack, _, nav) in await listNavHubs(requireEnabled: true)) {
+      if (hostNavId(sourceUrl: pack.sourceUrl, authorTabId: nav.tabId) ==
+          tabId) {
+        return pack.sourceUrl;
+      }
+    }
+    return null;
   }
 
   /// First enabled hub whose pack declares [typeToken] in `engine.types`.
@@ -637,12 +718,16 @@ abstract final class PluginNavRegistry {
     return null;
   }
 
-  static Future<bool> isKitPluginEnabled(String pluginId) async {
+  static Future<bool> isKitPluginEnabled(
+    String pluginId, {
+    String? packSourceUrl,
+  }) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
     final hit = PluginRegistry.packPluginFromPacks(
       await EngineService.instance.listPacks(),
       want,
+      sourceUrl: packSourceUrl,
     );
     if (hit == null || !hit.plugin.isKitPlugin) return false;
     return hit.pack.isPluginActive(hit.plugin);
@@ -712,9 +797,11 @@ class _NavSnapshot {
     required this.destinations,
     required this.accents,
     required this.tabPluginIds,
+    this.tabPackUrls = const {},
   });
 
   final Map<String, NavDestination> destinations;
   final Map<String, Color> accents;
   final Map<String, String> tabPluginIds;
+  final Map<String, String> tabPackUrls;
 }

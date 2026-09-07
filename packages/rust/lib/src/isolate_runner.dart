@@ -88,8 +88,8 @@ Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
       'timeout_secs': timeoutSecs,
     });
 
-Future<String> runLiveMatchesFetchJson(String requestJson) => EngineJobs.run(
-  EngineAsyncJob.liveMatchesFetch,
+Future<String> runLiveSportsFetchJson(String requestJson) => EngineJobs.run(
+  EngineAsyncJob.liveSportsFetch,
   {'requestJson': requestJson},
 );
 

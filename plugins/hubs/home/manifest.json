@@ -4,7 +4,7 @@
   "name": "ForjaHQ Home",
   "description": "TMDB movie and TV catalog for the Home tab.",
   "author": "ForjaHQ",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "tags": [
     "home",
     "movies",
@@ -33,9 +33,7 @@
         "filters"
       ],
       "nav": {
-        "tabId": "home",
         "label": "Home",
-        "order": 10,
         "icon": "icons/nav.png",
         "accent": "#1CE783"
       },

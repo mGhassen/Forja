@@ -12,7 +12,7 @@ const _legacyPackSeededDefaultNavIds = [
   'asian_drama',
   'anime',
   'iptv',
-  'live_matches',
+  'live_sports',
   'mylist',
 ];
 
@@ -329,7 +329,7 @@ void main() {
       'anime',
       'asian_drama',
       'iptv',
-      'live_matches',
+      'live_sports',
       'mylist',
     ]);
     await kvSetStringList(
@@ -377,7 +377,7 @@ void main() {
       'anime',
       'asian_drama',
       'iptv',
-      'live_matches',
+      'live_sports',
       'mylist',
     ]);
     await kvSetStringList(
@@ -405,7 +405,7 @@ void main() {
         'anime',
         'asian_drama',
         'iptv',
-        'live_matches',
+        'live_sports',
         'mylist',
       ]);
       await kvSetStringList(
@@ -437,7 +437,7 @@ void main() {
         'anime',
         'asian_drama',
         'iptv',
-        'live_matches',
+        'live_sports',
         'mylist',
       ]);
       await kvSetStringList(
@@ -487,7 +487,7 @@ void main() {
         'asian_drama',
         'anime',
         'iptv',
-        'live_matches',
+        'live_sports',
         'mylist',
       ]);
       await kvSetStringList(
@@ -510,6 +510,7 @@ void main() {
       expect(nav, isNot(contains('search')));
     },
   );
+
 
   test('default nav tab persists and resolves startup index', () async {
     final service = SettingsService();
@@ -563,14 +564,14 @@ void main() {
   test('navbar tab order keeps hidden tabs in place', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    SettingsService.registerExtraNavIds(const ['live_matches', 'home']);
+    SettingsService.registerExtraNavIds(const ['live_sports', 'home']);
     await service.setNavbarConfig(
       const ['iptv'],
-      tabOrder: const ['live_matches', 'iptv', 'home'],
+      tabOrder: const ['live_sports', 'iptv', 'home'],
     );
 
     expect((await service.getNavbarTabOrder()).take(3).toList(), [
-      'live_matches',
+      'live_sports',
       'iptv',
       'home',
     ]);
@@ -761,7 +762,7 @@ void main() {
       'home',
       'anime',
       'iptv',
-      'live_matches',
+      'live_sports',
     ]);
     await service.setDefaultNavTab('home');
 
@@ -772,24 +773,24 @@ void main() {
       allowEmptyActiveStrip: true,
     );
 
-    // Hub orphans stripped; iptv (core) + live_matches (pack tab still in
+    // Hub orphans stripped; iptv (core) + live_sports (pack tab still in
     // visible, not in knownHubIds) remain.
-    expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
+    expect(await service.getNavbarConfig(), ['iptv', 'live_sports']);
     expect(await service.getDefaultNavTab(), 'iptv');
   });
 
   test('addon feature flags migrate from navbar visibleIds', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    await service.setNavbarConfig(const ['iptv', 'live_matches']);
+    await service.setNavbarConfig(const ['iptv', 'live_sports']);
     expect(await service.isAddonFeatureEnabled('iptv'), isTrue);
     // Live Sports is pack-only (RFC-093) — retired capability always false.
     expect(
       await service.isAddonFeatureEnabled(SettingsService.liveSportsAddonFeatureId),
       isFalse,
     );
-    expect(await service.isAddonFeatureEnabled('live_matches'), isFalse);
-    expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
+    expect(await service.isAddonFeatureEnabled('live_sports'), isFalse);
+    expect(await service.getNavbarConfig(), ['iptv', 'live_sports']);
   });
 
   test('concurrent setNavbarTabVisible keeps both tabs', () async {
@@ -799,10 +800,10 @@ void main() {
 
     final results = await Future.wait([
       service.setNavbarTabVisible('iptv', true),
-      service.setNavbarTabVisible('live_matches', true),
+      service.setNavbarTabVisible('live_sports', true),
     ]);
 
-    expect(results.last, containsAll(['iptv', 'live_matches']));
-    expect(await service.getNavbarConfig(), containsAll(['iptv', 'live_matches']));
+    expect(results.last, containsAll(['iptv', 'live_sports']));
+    expect(await service.getNavbarConfig(), containsAll(['iptv', 'live_sports']));
   });
 }

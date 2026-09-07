@@ -138,10 +138,6 @@ class SettingsService {
   /// Retired (RFC-093) — Live Sports is pack-only; kept for sync key strip.
   // ignore: unused_field
   static const String _addonFeatureLiveSportsKey = 'addon_feature_live_sports';
-  /// Pre–RFC-087 / pre–capability rename storage key.
-  // ignore: unused_field
-  static const String _addonFeatureLiveMatchesLegacyKey =
-      'addon_feature_live_matches';
   /// One-shot: set addon feature flags from prior one-bit `navbar_config`.
   static const String _addonFeatureFromNavMigratedKey =
       'addon_feature_from_nav_v1';
@@ -799,8 +795,7 @@ class SettingsService {
   Future<bool> isAddonFeatureEnabled(String featureId) async {
     await ensureAddonFeaturesMigratedFromNav();
     // Live Sports is pack-only (RFC-093) — never gate on retired KV.
-    if (featureId == liveSportsAddonFeatureId ||
-        featureId == 'live_matches') {
+    if (featureId == liveSportsAddonFeatureId) {
       return false;
     }
     final key = _addonFeatureKey(featureId);
@@ -812,8 +807,7 @@ class SettingsService {
 
   Future<void> setAddonFeatureEnabled(String featureId, bool enabled) async {
     await ensureAddonFeaturesMigratedFromNav();
-    if (featureId == liveSportsAddonFeatureId ||
-        featureId == 'live_matches') {
+    if (featureId == liveSportsAddonFeatureId) {
       return;
     }
     final key = _addonFeatureKey(featureId);
@@ -1519,7 +1513,6 @@ class SettingsService {
   static const String _navbarShell089Key = 'navbar_shell_089';
   static const String _navbarShell090Key = 'navbar_shell_090';
   static const String _navbarShell091Key = 'navbar_shell_091';
-  static const String _navbarShell092Key = 'navbar_shell_092';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Process-local rail mirror. KV readback was returning [] immediately after
@@ -1567,18 +1560,7 @@ class SettingsService {
     'mylist',
   ];
 
-  /// Rewrite retired hub tab id → current pack `nav.tabId`.
-  static List<String> _migrateLiveMatchesTabId(List<String> ids) {
-    if (!ids.contains('live_matches')) return ids;
-    final out = <String>[];
-    final seen = <String>{};
-    for (final id in ids) {
-      final next = id == 'live_matches' ? 'live_sports' : id;
-      if (!seen.add(next)) continue;
-      out.add(next);
-    }
-    return out;
-  }
+
 
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
@@ -1598,7 +1580,7 @@ class SettingsService {
       'anime',
       'asian_drama',
       'iptv',
-      'live_matches',
+      'live_sports',
       'mylist',
     ],
     [
@@ -1607,7 +1589,7 @@ class SettingsService {
       'asian_drama',
       'anime',
       'iptv',
-      'live_matches',
+      'live_sports',
       'mylist',
     ],
     [
@@ -1616,7 +1598,7 @@ class SettingsService {
       'anime',
       'asian_drama',
       'iptv',
-      'live_matches',
+      'live_sports',
       'mylist',
     ],
   ];
@@ -1638,7 +1620,7 @@ class SettingsService {
     'anime',
     'asian_drama',
     'iptv',
-    'live_matches',
+    'live_sports',
     'mylist',
   ];
 
@@ -1649,7 +1631,7 @@ class SettingsService {
     'asian_drama',
     'anime',
     'iptv',
-    'live_matches',
+    'live_sports',
     'mylist',
   ];
 
@@ -2025,7 +2007,6 @@ class SettingsService {
       await kvSetString(_navbarShell089Key, '1');
       await kvSetString(_navbarShell090Key, '1');
       await kvSetString(_navbarShell091Key, '1');
-      await kvSetString(_navbarShell092Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -2197,27 +2178,6 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell091Key, '1');
-    }
-    if (!await kvHasKey(_navbarShell092Key)) {
-      // Hub pack tabId rename: live_matches → live_sports.
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        final migrated = _migrateLiveMatchesTabId(raw);
-        if (!listEquals(migrated, raw)) {
-          await kvSetStringList(_navbarConfigKey, migrated);
-        }
-      }
-      if (await kvHasKey(_navbarKnownIdsKey)) {
-        final known = await kvGetStringList(
-          _navbarKnownIdsKey,
-          fallback: const [],
-        );
-        final migratedKnown = _migrateLiveMatchesTabId(known);
-        if (!listEquals(migratedKnown, known)) {
-          await kvSetStringList(_navbarKnownIdsKey, migratedKnown);
-        }
-      }
-      await kvSetString(_navbarShell092Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

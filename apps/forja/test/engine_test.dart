@@ -361,6 +361,34 @@ void main() {
       );
     });
 
+    test('hostNavId is host-owned from URL — packs need no tabId', () {
+      expect(
+        PluginRegistry.hostNavId(
+          sourceUrl:
+              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/anime/manifest.json',
+          authorTabId: '',
+        ),
+        'anime',
+      );
+      expect(
+        PluginRegistry.hostNavId(
+          sourceUrl:
+              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/my_list/manifest.json',
+          authorTabId: '',
+        ),
+        'mylist',
+      );
+      const community = 'https://cdn.example.com/packs/my-anime/manifest.json';
+      expect(
+        PluginRegistry.hostNavId(sourceUrl: community, authorTabId: ''),
+        'p_${PluginRegistry.urlHash(community)}',
+      );
+      expect(
+        PluginRegistry.hostNavId(sourceUrl: community, authorTabId: 'anime'),
+        isNot('anime'),
+      );
+    });
+
     test('compareEngineSemver orders major.minor.patch', () {
       expect(compareEngineSemver('1.5.11', '1.5.12'), lessThan(0));
       expect(compareEngineSemver('1.5.12', '1.5.11'), greaterThan(0));
@@ -525,7 +553,7 @@ void main() {
       );
     });
 
-    test('refuses plugin id collision across packs', () async {
+    test('allows duplicate plugin ids across packs (URL-scoped)', () async {
       const urlA = 'https://a.example/manifest.json';
       const urlB = 'https://b.example/manifest.json';
       SharedPreferences.setMockInitialValues({
@@ -557,6 +585,7 @@ void main() {
               'id': 'pack-b',
               'name': 'B',
               'version': '1.0.0',
+              'bundle': ['b.js'],
               'plugins': [
                 {
                   'id': 'videasy',
@@ -570,18 +599,22 @@ void main() {
             headers: {'content-type': 'application/json'},
           );
         }
+        if (req.url.toString() == 'https://b.example/b.js') {
+          return http.Response('module.exports = {}', 200);
+        }
         return http.Response('not found', 404);
       });
-      expect(
-        () => registry.install(urlB),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('already installed'),
-          ),
-        ),
+      final pack = await registry.install(urlB);
+      expect(pack.packId, 'pack-b');
+      final packs = await registry.listPacksRaw();
+      expect(packs.where((p) => p.plugins.any((pl) => pl.id == 'videasy')),
+          hasLength(2));
+      final fromB = PluginRegistry.packPluginFromPacks(
+        packs,
+        'videasy',
+        sourceUrl: urlB,
       );
+      expect(fromB?.pack.sourceUrl, urlB);
     });
 
     test('applyOfficialKeepSet disables GitHub shadows; leaves keep enabled as-is',

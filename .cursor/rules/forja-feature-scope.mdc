@@ -22,7 +22,6 @@ Plus shared playback/shell that those tabs use (player, sources used by Home/Sea
 
 ## Out of scope — do not touch unless asked
 
-- Arabic / Anime Arabic tabs and extractors (`arabic`, `anime_arabic`, Larozaa, DimaToon, Brstej, …)
 - Amri
 - Books, music, comics, manga, audiobooks
 - Jellyfin, downloader, magnet (unless user asks)

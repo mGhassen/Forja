@@ -105,7 +105,7 @@ abstract final class PluginContract {
           throw FormatException('plugin $id nav must be an object');
         }
         final navMap = Map<String, dynamic>.from(nav);
-        _requireString(navMap, 'tabId');
+        // tabId optional — host owns Features/rail ids (RFC-094).
         _requireString(navMap, 'label');
         final icon = navMap['icon'];
         if (icon != null) {

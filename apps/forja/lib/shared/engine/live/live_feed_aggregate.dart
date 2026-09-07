@@ -41,7 +41,7 @@ class LiveFeedQuery {
 Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   LiveFeedQuery query,
 ) async {
-  await LiveMatchesEngine.warmPluginMeta();
+  await LivePluginEngine.warmPluginMeta();
   final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
   if (plugins.isEmpty) return const [];
 

@@ -329,9 +329,9 @@ class RustLib {
     return _readString(_native.ffi_iptv_probe_stream_json(urlPtr, timeoutSecs));
   });
 
-  String liveMatchesFetchJson(String requestJson) => using((arena) {
+  String liveSportsFetchJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_live_matches_fetch_json(ptr));
+    return _readString(_native.ffi_live_sports_fetch_json(ptr));
   });
 
   String iptvRedditCatalogJson(String requestJson) => using((arena) {
@@ -788,9 +788,9 @@ final class _FfiNative {
             'ffi_iptv_probe_stream_json',
           )
           .asFunction(),
-      ffi_live_matches_fetch_json = lib
+      ffi_live_sports_fetch_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_live_matches_fetch_json',
+            'ffi_live_sports_fetch_json',
           )
           .asFunction(),
       ffi_iptv_reddit_catalog_json = lib
@@ -1141,7 +1141,7 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
   ffi_iptv_probe_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_live_matches_fetch_json;
+  ffi_live_sports_fetch_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_iptv_reddit_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)

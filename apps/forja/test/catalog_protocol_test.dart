@@ -693,29 +693,50 @@ void main() {
     });
 
     test('nav specs map plugins onto hub tabs', () {
-      final specs = [
-        for (final p in loadAllHubPlugins())
-          if (p.nav != null)
-            MetaNavSpec.fromPluginNav(
-              p.nav,
-              pluginId: p.id,
-              fallbackLabel: p.name,
-            )!,
-      ];
-      final byTab = {for (final s in specs) s.tabId: s};
-      expect(byTab['home']!.pluginId, 'tmdb');
-      expect(byTab['anime']!.pluginId, 'anilist');
-      expect(byTab['asian_drama']!.pluginId, 'kisskh-hub');
-      expect(byTab['arabic']!.pluginId, 'arabic-hub');
-      expect(byTab['mylist']!.pluginId, 'my-list-hub');
-      expect(byTab['mylist']!.icon, 'icons/nav.png');
-      expect(byTab['live_sports']!.pluginId, 'live-sports-hub');
-      expect(byTab['live_sports']!.icon, 'icons/nav.png');
-      expect(byTab['cartoon']!.pluginId, 'dimatoon-hub');
-      expect(byTab['cartoon']!.icon, 'icons/nav.png');
-      expect(byTab['live_sports']!.accent, '#FB923C');
-      expect(byTab['home']!.accent, '#1CE783');
-      expect(byTab['home']!.order, 10);
+      final byRail = <String, MetaNavSpec>{};
+      for (final dir in [
+        'home',
+        'anime',
+        'asian_drama',
+        'arabic',
+        'cartoon',
+        'aflem',
+        'my_list',
+        'live_sports',
+      ]) {
+        final pack = EnginePack.fromJson(
+          loadHubPackManifest(dir),
+          sourceUrl: 'file:///plugins/hubs/$dir/manifest.json',
+        );
+        for (final p in pack.plugins) {
+          if (p.nav == null) continue;
+          final spec = MetaNavSpec.fromPluginNav(
+            p.nav,
+            pluginId: p.id,
+            fallbackLabel: p.name,
+          )!;
+          final rail = PluginRegistry.hostNavId(
+            sourceUrl: pack.sourceUrl,
+            authorTabId: spec.tabId,
+          );
+          byRail[rail] = spec;
+        }
+      }
+      expect(byRail['home']!.pluginId, 'tmdb');
+      expect(byRail['anime']!.pluginId, 'anilist');
+      expect(byRail['asian_drama']!.pluginId, 'kisskh-hub');
+      expect(byRail['arabic']!.pluginId, 'arabic-hub');
+      expect(byRail['mylist']!.pluginId, 'my-list-hub');
+      expect(byRail['mylist']!.icon, 'icons/nav.png');
+      expect(byRail['live_sports']!.pluginId, 'live-sports-hub');
+      expect(byRail['live_sports']!.icon, 'icons/nav.png');
+      expect(byRail['cartoon']!.pluginId, 'dimatoon-hub');
+      expect(byRail['cartoon']!.icon, 'icons/nav.png');
+      expect(byRail['live_sports']!.accent, '#FB923C');
+      expect(byRail['home']!.accent, '#1CE783');
+      expect(byRail['home']!.order, 100);
+      // Packs omit tabId — chrome id comes from install URL slot.
+      expect(byRail['home']!.tabId, isEmpty);
 
       // Host seed empty — Live Sports is pack-owned (RFC-087).
       PluginNavRegistry.seedBuiltIns();
@@ -743,47 +764,67 @@ void main() {
     });
 
     test('nav icons are pack-relative — never assets/ or forja://asset', () {
-      final specs = [
-        for (final p in loadAllHubPlugins())
-          if (p.nav != null)
-            MetaNavSpec.fromPluginNav(
-              p.nav,
-              pluginId: p.id,
-              fallbackLabel: p.name,
-            )!,
-      ];
-      final byTab = {for (final s in specs) s.tabId: s};
+      final byRail = <String, MetaNavSpec>{};
+      for (final dir in [
+        'home',
+        'anime',
+        'asian_drama',
+        'arabic',
+        'cartoon',
+        'aflem',
+        'my_list',
+        'live_sports',
+      ]) {
+        final pack = EnginePack.fromJson(
+          loadHubPackManifest(dir),
+          sourceUrl: 'file:///plugins/hubs/$dir/manifest.json',
+        );
+        for (final p in pack.plugins) {
+          if (p.nav == null) continue;
+          final spec = MetaNavSpec.fromPluginNav(
+            p.nav,
+            pluginId: p.id,
+            fallbackLabel: p.name,
+          )!;
+          final rail = PluginRegistry.hostNavId(
+            sourceUrl: pack.sourceUrl,
+            authorTabId: spec.tabId,
+          );
+          byRail[rail] = spec;
+        }
+      }
 
-      expect(byTab['home']!.icon, 'icons/nav.png');
-      expect(byTab['anime']!.icon, 'icons/nav.png');
-      expect(byTab['asian_drama']!.icon, 'icons/nav.png');
-      expect(byTab['cartoon']!.icon, 'icons/nav.png');
-      expect(byTab['mylist']!.icon, 'icons/nav.png');
+      expect(byRail['home']!.icon, 'icons/nav.png');
+      expect(byRail['anime']!.icon, 'icons/nav.png');
+      expect(byRail['asian_drama']!.icon, 'icons/nav.png');
+      expect(byRail['cartoon']!.icon, 'icons/nav.png');
+      expect(byRail['mylist']!.icon, 'icons/nav.png');
 
-      for (final s in specs) {
+      for (final e in byRail.entries) {
+        final s = e.value;
         final icon = s.icon;
         if (icon == null || icon.isEmpty) {
           expect(
             PluginNavRegistry.iconDataFor(s),
             ForjaHostAssets.defaultNavIcon,
-            reason: '${s.tabId} missing icon → default Material',
+            reason: '${e.key} missing icon → default Material',
           );
           continue;
         }
         expect(
           icon.startsWith('assets/'),
           isFalse,
-          reason: '${s.tabId} must not leak Flutter asset paths',
+          reason: '${e.key} must not leak Flutter asset paths',
         );
         expect(
           icon.startsWith('forja://'),
           isFalse,
-          reason: '${s.tabId} must not use host forja://asset URIs',
+          reason: '${e.key} must not use host forja://asset URIs',
         );
         expect(
           PackAssets.isPackNavIcon(icon),
           isTrue,
-          reason: '${s.tabId} icon $icon must be pack-relative or http(s)',
+          reason: '${e.key} icon $icon must be pack-relative or http(s)',
         );
       }
 
@@ -791,7 +832,6 @@ void main() {
         PluginNavRegistry.iconDataFor(
           MetaNavSpec.fromPluginNav(
             {
-              'tabId': 'no_icon_hub',
               'label': 'No Icon',
             },
             pluginId: 'test-hub-2',

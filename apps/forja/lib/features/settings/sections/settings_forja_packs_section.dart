@@ -599,7 +599,12 @@ class _SettingsForjaPacksSectionState
       );
       if (spec == null || !spec.isValid) continue;
       if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(spec.tabId);
+      tabs.add(
+        PluginNavRegistry.hostNavId(
+          sourceUrl: pack.sourceUrl,
+          authorTabId: spec.tabId,
+        ),
+      );
     }
     if (tabs.isEmpty) return;
     noteNavigationDirty();
@@ -622,7 +627,12 @@ class _SettingsForjaPacksSectionState
       );
       if (spec == null || !spec.isValid) continue;
       if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(spec.tabId);
+      tabs.add(
+        PluginNavRegistry.hostNavId(
+          sourceUrl: pack.sourceUrl,
+          authorTabId: spec.tabId,
+        ),
+      );
     }
     if (tabs.isEmpty) return;
     noteNavigationDirty();

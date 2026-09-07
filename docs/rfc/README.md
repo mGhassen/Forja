@@ -115,6 +115,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [091-[fixed]-…](fixed/091-[fixed]-live-sports-explode-host-to-packs.md) | Explode Live Sports host → packs MetaRuntime | v1.4 | fixed | **Complete** · **4 / 4** · **12 / 12** | — |
 | [092-[fixed]-…](fixed/092-[fixed]-delete-root-app-live-sports.md) | Delete root-app Live Sports — packs only | v1.4 | fixed | **Complete** · **3 / 3** · **8 / 8** | — |
 | [093-[fixed]-…](fixed/093-[fixed]-live-sports-no-host-addon.md) | Live Sports — no host Addons row | v1.4 | fixed | **Complete** · **6 / 6** · **10 / 10** · **3 / 3** discovery | — |
+| [094-[partial]-…](094-[partial]-community-pack-url-scoped-ids.md) | Community packs — URL-scoped identity | v1.4 | partial | **3 / 4** · **8 / 8** hub · **0 / 4** ⏭️ providers | — |
 
 ## Related
 

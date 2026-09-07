@@ -46,7 +46,7 @@ abstract final class LiveResolveStreams {
     final out = <IptvPlaySource>[];
     final seen = <String>{};
 
-    await LiveMatchesEngine.warmPluginMeta();
+    await LivePluginEngine.warmPluginMeta();
 
     Future<void> addBatch(List<IptvPlaySource> batch) async {
       for (final s in batch) {
@@ -156,7 +156,7 @@ abstract final class LiveResolveStreams {
     MatchEvent match,
     MatchSourceRef source,
   ) async {
-    final pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+    final pluginId = LivePluginEngine.cachedProviderResolvePluginId(
       match.livePluginId,
     );
     if (pluginId.isEmpty) return const [];
@@ -165,7 +165,7 @@ abstract final class LiveResolveStreams {
     if (meta.isNotEmpty) {
       final pluginSource = source.source.trim().isNotEmpty
           ? source.source.trim().toLowerCase()
-          : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+          : LivePluginEngine.cachedResolveSourceToken(pluginId);
       final out = <MatchStream>[];
       final seen = <String>{};
       for (var i = 0; i < meta.length; i++) {
@@ -207,7 +207,7 @@ abstract final class LiveResolveStreams {
     );
     if (rows.isEmpty) {
       if (source.iframe.trim().isNotEmpty) {
-        final token = LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+        final token = LivePluginEngine.cachedResolveSourceToken(pluginId);
         return [
           MatchStream(
             id: source.id,
@@ -226,7 +226,7 @@ abstract final class LiveResolveStreams {
 
     final pluginSource = source.source.trim().isNotEmpty
         ? source.source.trim().toLowerCase()
-        : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+        : LivePluginEngine.cachedResolveSourceToken(pluginId);
     final out = <MatchStream>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
@@ -369,7 +369,7 @@ abstract final class LiveResolveStreams {
 
   static String _serverLabelFor(MatchEvent match) {
     if (match.isMut) return 'Mut';
-    final name = LiveMatchesEngine.cachedPluginDisplayName(match.livePluginId);
+    final name = LivePluginEngine.cachedPluginDisplayName(match.livePluginId);
     return name.isEmpty ? 'Live' : name;
   }
 
@@ -387,7 +387,7 @@ abstract final class LiveResolveStreams {
       'livePluginId': match.livePluginId,
       'isForjaLive': match.isForjaLive,
       'isMut': match.isMut,
-      'isIframeCatalog': LiveMatchesEngine.cachedIsIframeLive(
+      'isIframeCatalog': LivePluginEngine.cachedIsIframeLive(
         match.livePluginId,
       ),
       'hd': stream.hd,
@@ -773,7 +773,7 @@ abstract final class LiveResolveStreams {
     final handoff = resolved;
     final handoffUrl = handoff?.url.trim() ?? '';
     if (handoff == null || !iptvLiveEnginePlayUrlReady(handoffUrl)) {
-      LiveMatchesEngine.engineResolveFailed();
+      LivePluginEngine.engineResolveFailed();
       return;
     }
     await openForjaLiveNativePlayer(
@@ -824,7 +824,7 @@ abstract final class LiveResolveStreams {
     var pluginId = (params['livePluginId'] ?? '').toString().trim();
     if (pluginId.isEmpty && params['isIframeCatalog'] == true) {
       pluginId =
-          LiveMatchesEngine.cachedIframeProviderResolvePluginId() ?? '';
+          LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
     }
     return MatchEvent(
       id: (params['eventId'] ?? '').toString(),
@@ -918,7 +918,7 @@ abstract final class LiveResolveStreams {
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
+          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -934,16 +934,16 @@ abstract final class LiveResolveStreams {
     }
 
     final iframeCatalog =
-        LiveMatchesEngine.cachedIsIframeLive(match.livePluginId);
+        LivePluginEngine.cachedIsIframeLive(match.livePluginId);
     final catalogReferer = iframeCatalog
-        ? await LiveMatchesEngine.iframeLiveWebReferer()
+        ? await LivePluginEngine.iframeLiveWebReferer()
         : (embed.isNotEmpty
             ? (_forjaLiveCdnReferer(embed) ??
-                await LiveMatchesEngine.pluginReferer(
+                await LivePluginEngine.pluginReferer(
                   match.livePluginId,
                   embedUrl: embed,
                 ))
-            : await LiveMatchesEngine.pluginReferer(match.livePluginId));
+            : await LivePluginEngine.pluginReferer(match.livePluginId));
 
     if (embed.isNotEmpty &&
         RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
@@ -962,7 +962,7 @@ abstract final class LiveResolveStreams {
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
+          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -974,16 +974,16 @@ abstract final class LiveResolveStreams {
     }
 
     onProgress?.call('Unlocking source…');
-    var pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+    var pluginId = LivePluginEngine.cachedProviderResolvePluginId(
       match.livePluginId,
     );
     if (pluginId.isEmpty && iframeCatalog) {
       pluginId =
-          LiveMatchesEngine.cachedIframeProviderResolvePluginId() ?? '';
+          LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
     }
     LiveEngineResolveResult? result;
     if (pluginId.isNotEmpty) {
-      result = await LiveMatchesEngine.resolve(
+      result = await LivePluginEngine.resolve(
         pluginId: pluginId,
         params: {
           if (embed.isNotEmpty) 'embedUrl': embed,
@@ -1026,7 +1026,7 @@ abstract final class LiveResolveStreams {
     if (!direct) onProgress?.call('Preparing playback…');
     final playUrl = direct
         ? result.url
-        : await LiveMatchesEngine.proxyPlayUrl(
+        : await LivePluginEngine.proxyPlayUrl(
             url: result.url,
             headers: headers,
           );
@@ -1047,7 +1047,7 @@ abstract final class LiveResolveStreams {
   }) async {
     final ref = _sourceRefForStream(match, stream);
     if (ref == null) return null;
-    final pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+    final pluginId = LivePluginEngine.cachedProviderResolvePluginId(
       match.livePluginId,
     );
     if (pluginId.isEmpty) return null;
@@ -1084,7 +1084,7 @@ abstract final class LiveResolveStreams {
       if (url.isEmpty || !iptvLiveEnginePlayUrlReady(url)) continue;
       final pluginSource = stream.source.trim().isNotEmpty
           ? stream.source.trim().toLowerCase()
-          : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+          : LivePluginEngine.cachedResolveSourceToken(pluginId);
       final hit = _streamFromResolveRow(
         row: row,
         source: ref,

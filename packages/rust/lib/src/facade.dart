@@ -110,10 +110,10 @@ abstract final class Engine {
     RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.engineJsExtract);
   }
 
-  /// Abort in-flight live-matches schedule/catalog fetches (tab hide / refresh).
-  static void cancelLiveMatchesFetch() {
+  /// Abort in-flight live-sports schedule/catalog fetches (tab hide / refresh).
+  static void cancelLiveSportsFetch() {
     if (!isReady) return;
-    RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.liveMatchesFetch);
+    RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.liveSportsFetch);
   }
 
   /// Tear down worker isolates and async job polling before process exit.

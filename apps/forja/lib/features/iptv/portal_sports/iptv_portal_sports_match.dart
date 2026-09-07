@@ -331,7 +331,7 @@ class LiveBroadcastHints {
 }
 
 void _logBroadcastHints(String message) {
-  debugPrint('[LiveMatches] broadcast hints: $message');
+  debugPrint('[IptvPortalSports] broadcast hints: $message');
 }
 
 List<String> _broadcastSearchTokens({
@@ -490,7 +490,7 @@ Future<List<Map<String, dynamic>>> _liveBroadcastPluginRowsCached(
       );
       return copy;
     } catch (e) {
-      debugPrint('[LiveMatches] broadcast plugin ${plugin.id} failed: $e');
+      debugPrint('[IptvPortalSports] broadcast plugin ${plugin.id} failed: $e');
       _logBroadcastHints('${plugin.id} fetch error: $e');
       return const <Map<String, dynamic>>[];
     } finally {
@@ -728,7 +728,7 @@ Future<List<Map<String, dynamic>>> _fetchLiveBroadcastIndex() async {
     );
     return _liveBroadcastIndex;
   } catch (e) {
-    debugPrint('[LiveMatches] broadcast catalog index failed: $e');
+    debugPrint('[IptvPortalSports] broadcast catalog index failed: $e');
     return _liveBroadcastIndex;
   }
 }
@@ -855,7 +855,7 @@ List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
   return List<IptvPlaySource>.from(hit.sources);
 }
 
-bool _liveMatchesJsonCancelled(Map<String, dynamic> parsed) =>
+bool _liveSportsJsonCancelled(Map<String, dynamic> parsed) =>
     (parsed['error'] ?? '').toString() == 'cancelled';
 
 void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
@@ -936,7 +936,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     final cached = _iptvSportsStreamsCacheGet(cacheKey);
     if (cached != null) {
       debugPrint(
-        '[LiveMatches] IPTV sports: cache hit (${cached.length} channels) '
+        '[IptvPortalSports] IPTV sports: cache hit (${cached.length} channels) '
         'ttl=${_iptvSportsStreamsCacheTtl.inMinutes}m key=$cacheKey',
       );
       final logos = await _ensureIptvSportsLogos(cached, portalKey);
@@ -967,7 +967,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   final title = (game['title'] ?? match.title).toString().trim();
   if (home.isEmpty && away.isEmpty && title.isEmpty) {
     debugPrint(
-      '[LiveMatches] IPTV sports: no title/teams/keywords for "${match.title}"',
+      '[IptvPortalSports] IPTV sports: no title/teams/keywords for "${match.title}"',
     );
     return [];
   }
@@ -1014,11 +1014,11 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
         }
       }
 
-      final fastRaw = await runLiveMatchesFetchJson(
+      final fastRaw = await runLiveSportsFetchJson(
         jsonEncode({...requestBase, 'skip_epg': true}),
       );
       final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
-      if (_liveMatchesJsonCancelled(fastParsed)) {
+      if (_liveSportsJsonCancelled(fastParsed)) {
         return <IptvPlaySource>[];
       }
       if (!fastParsed.containsKey('error')) {
@@ -1035,7 +1035,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       var epgOffset = 0;
       var epgMore = true;
       while (epgMore) {
-        final raw = await runLiveMatchesFetchJson(
+        final raw = await runLiveSportsFetchJson(
           jsonEncode({
             ...requestBase,
             'epg_offset': epgOffset,
@@ -1044,13 +1044,13 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
           }),
         );
         final parsed = jsonDecode(raw) as Map<String, dynamic>;
-        if (_liveMatchesJsonCancelled(parsed)) {
+        if (_liveSportsJsonCancelled(parsed)) {
           return accumulated;
         }
         if (parsed.containsKey('error')) {
-          if (!_liveMatchesJsonCancelled(parsed)) {
+          if (!_liveSportsJsonCancelled(parsed)) {
             debugPrint(
-              '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
+              '[IptvPortalSports] IPTV sports streams error: ${parsed['error']}',
             );
           }
           break;
@@ -1207,11 +1207,11 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
       }
     }
   } catch (e) {
-    debugPrint('[LiveMatches] IPTV catalog logo lookup failed: $e');
+    debugPrint('[IptvPortalSports] IPTV catalog logo lookup failed: $e');
   }
   if (byId.isEmpty && byName.isEmpty && byEpgId.isEmpty) {
     debugPrint(
-      '[LiveMatches] IPTV sports catalog enrich: empty — open IPTV once '
+      '[IptvPortalSports] IPTV sports catalog enrich: empty — open IPTV once '
       'to cache channel metadata',
     );
     return sources;
@@ -1274,7 +1274,7 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
       }(),
   ];
   debugPrint(
-    '[LiveMatches] IPTV sports catalog enrich: logos $logosFilled/${sources.length} '
+    '[IptvPortalSports] IPTV sports catalog enrich: logos $logosFilled/${sources.length} '
     'epg $epgFilled/${sources.length} (ids=${byId.length} epg=${byEpgId.length})',
   );
   return out;

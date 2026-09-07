@@ -700,7 +700,6 @@ class SyncDomainBridge {
         if (!overlayAddonFeatures) {
           localPb.remove('addon_feature_iptv');
           localPb.remove('addon_feature_live_sports');
-          localPb.remove('addon_feature_live_matches');
         }
         final remotePb = remote['playback'] is Map
             ? Map<String, dynamic>.from(remote['playback'] as Map)
@@ -853,8 +852,7 @@ class SyncDomainBridge {
           !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
       if (addonEditPending) {
         if (pb.containsKey('addon_feature_iptv') ||
-            pb.containsKey('addon_feature_live_sports') ||
-            pb.containsKey('addon_feature_live_matches')) {
+            pb.containsKey('addon_feature_live_sports')) {
           debugPrint(
             '[Sync] skip addon_feature_* apply — local Addons/Features '
             'edit not synced yet',
@@ -862,7 +860,6 @@ class SyncDomainBridge {
         }
         pb.remove('addon_feature_iptv');
         pb.remove('addon_feature_live_sports');
-        pb.remove('addon_feature_live_matches');
       }
       // Same for Stremio / Nuvio / Direct torrent master toggles.
       final prefsEditPending =

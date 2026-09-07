@@ -23,7 +23,7 @@ namespace forja {
     string decode_xtream_text(string text);
     string iptv_portal_share_encode(string url, string username, string password, string platform, string user_agent);
     string iptv_portal_share_decode(string token);
-    string live_matches_fetch_json(string request_json);
+    string live_sports_fetch_json(string request_json);
     string iptv_reddit_catalog_json(string request_json);
     string parse_xtream_categories_json(string json);
     string parse_xtream_streams_json(string json, string section);

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models/models.dart';
 
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 
@@ -17,14 +18,20 @@ class MetaCache {
   final Map<String, MetaCacheEntry> _entries = {};
   final Map<String, String> _hubPackVersions = {};
 
-  /// `pluginId|action|paramsHash|authSubject`
+  /// `pluginId|packHash|action|paramsHash|authSubject`
   static String keyFor({
     required String pluginId,
     required String action,
     Map<String, dynamic> params = const {},
     String? authSubject,
-  }) =>
-      '$pluginId|$action|${paramsHash(params)}|${authSubject ?? ''}';
+    String? packSourceUrl,
+  }) {
+    final pack =
+        (packSourceUrl == null || packSourceUrl.trim().isEmpty)
+            ? ''
+            : EnginePack.urlHash(packSourceUrl);
+    return '$pluginId|$pack|$action|${paramsHash(params)}|${authSubject ?? ''}';
+  }
 
   /// Stable short hash of [params] — key order must not change the key.
   static String paramsHash(Map<String, dynamic> params) {

@@ -103,7 +103,7 @@ class EngineService {
   void cancelLiveCatalog() {
     _liveCatalogGeneration++;
     _abortLiveMetaRuntime();
-    Engine.cancelLiveMatchesFetch();
+    Engine.cancelLiveSportsFetch();
   }
 
   void _abortLiveMetaRuntime() {
@@ -349,12 +349,17 @@ class EngineService {
     Map<String, dynamic> params = const {},
     Map<String, dynamic>? auth,
     Map<String, dynamic>? cache,
+    String? packSourceUrl,
     Duration timeout = const Duration(seconds: 45),
   }) async {
     final gen = _catalogGeneration;
     final packs = await listPacks();
     if (gen != _catalogGeneration) return null;
-    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    final hit = PluginRegistry.packPluginFromPacks(
+      packs,
+      pluginId,
+      sourceUrl: packSourceUrl,
+    );
     if (hit == null ||
         !hit.plugin.isKitPlugin ||
         !hit.pack.isPluginActive(hit.plugin)) {

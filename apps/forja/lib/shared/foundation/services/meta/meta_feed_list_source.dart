@@ -181,7 +181,7 @@ final class MetaFeedListSource extends KitListSource {
   @override
   void invalidateOnRefresh(WidgetRef ref) {
     EngineService.instance.cancelLiveCatalog();
-    LiveMatchesEngine.warmPluginMeta();
+    LivePluginEngine.warmPluginMeta();
     ref.invalidate(metaFeedCatalogProvider);
   }
 

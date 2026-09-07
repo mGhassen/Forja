@@ -139,7 +139,7 @@ function navigationPayload(variant) {
         'anime',
         'asian_drama',
         'iptv',
-        'live_matches',
+        'live_sports',
         'mylist',
       ],
       defaultTab: 'home',

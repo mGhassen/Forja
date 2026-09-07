@@ -111,8 +111,6 @@ export type PreferencesPayload = {
   addon_feature_iptv?: boolean
   /** @deprecated RFC-093 — Live Sports is pack-only; stripped on write. */
   addon_feature_live_sports?: boolean
-  /** @deprecated */
-  addon_feature_live_matches?: boolean
 }
 
 export type ProvidersPayload = {
@@ -213,7 +211,7 @@ export const ARCHIVED_NAV_IDS = new Set([
 /** Display-only hints when a pack tab id is already in cloud — not an inventory. */
 const NAV_LABEL_HINTS: Record<string, string> = {
   iptv: 'IPTV',
-  live_matches: 'Live Matches',
+  live_sports: 'Live Sports',
   home: 'Home',
   anime: 'Anime',
   asian_drama: 'Asian Drama',
@@ -570,7 +568,6 @@ function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload 
   } else {
     out.addon_feature_iptv = p.addon_feature_iptv
   }
-  delete out.addon_feature_live_matches
   delete out.addon_feature_live_sports
   return out
 }

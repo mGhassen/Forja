@@ -36,7 +36,7 @@ abstract final class KitLiveBoot {
     HostListRegistry.register(MetaFeedListSource.liveSchedule);
     HostListRegistry.registerPanel(KitResolvePanelHost.instance);
     MetaSurfaceOpen.register(LiveSurfaceOpen.surface, LiveSurfaceOpen.openFromMeta);
-    matchEventAiringOnlyLiveCheck = LiveMatchesEngine.cachedAiringOnlyLive;
+    matchEventAiringOnlyLiveCheck = LivePluginEngine.cachedAiringOnlyLive;
     _registerTopBarHooks();
   }
 
