@@ -177,14 +177,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         if (!_s._ready) return;
         unawaited(_s._skip(10));
       },
-      onVolumeUp: () {
-        if (!_s._ready) return;
-        unawaited(_s._setVolume((_s._volume + 10).clamp(0, 100)));
-      },
-      onVolumeDown: () {
-        if (!_s._ready) return;
-        unawaited(_s._setVolume((_s._volume - 10).clamp(0, 100)));
-      },
       onToggleControls: () {
         setState(() => _s._showControls = !_s._showControls);
         if (_s._showControls) {

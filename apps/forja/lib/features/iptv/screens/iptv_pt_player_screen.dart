@@ -1228,6 +1228,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _volume = prefs.volume;
     _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
     _muted = prefs.volume == 0;
+    // Leanback has no chrome volume — remote drives system volume. Softvol must
+    // stay audible; a prior softvol mute (old HW remap) would look like "dead remote".
+    if (PlatformInfo.isAndroidTv && _volume <= 0) {
+      _volume = _volumeBeforeMute > 0 ? _volumeBeforeMute : 100.0;
+      _muted = false;
+      unawaited(IptvStore.savePlayerVolume(_volume));
+    }
     _liveRecoveryModeSetting = prefs.liveRecoveryMode;
     _applyLiveRecoveryModeForCurrentSource();
     try {

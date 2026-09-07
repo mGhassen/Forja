@@ -14,8 +14,6 @@ PlayerTvRemoteKeyHandler _handler({
   VoidCallback? onShowControls,
   VoidCallback? onSeekBack,
   VoidCallback? onSeekForward,
-  VoidCallback? onVolumeUp,
-  VoidCallback? onVolumeDown,
   VoidCallback? onToggleControls,
   VoidCallback? onFocusBack,
   VoidCallback? onFocusPlay,
@@ -26,8 +24,6 @@ PlayerTvRemoteKeyHandler _handler({
     onShowControls: onShowControls ?? () {},
     onSeekBack: onSeekBack ?? () {},
     onSeekForward: onSeekForward ?? () {},
-    onVolumeUp: onVolumeUp ?? () {},
-    onVolumeDown: onVolumeDown ?? () {},
     onToggleControls: onToggleControls ?? () {},
     onFocusBack: onFocusBack ?? () {},
     onFocusPlay: onFocusPlay ?? () {},
@@ -96,27 +92,27 @@ void main() {
       expect(toggled, 1);
     });
 
-    test('hardware volume keys always adjust volume', () {
-      var up = 0;
-      var down = 0;
-      final handler = _handler(
-        onVolumeUp: () => up++,
-        onVolumeDown: () => down++,
-      );
+    test('hardware volume keys are not consumed (system volume)', () {
+      final handler = _handler();
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.audioVolumeUp), showControls: true),
-        isTrue,
+        isFalse,
       );
       expect(
         handler.handle(
           _key(LogicalKeyboardKey.audioVolumeDown),
           showControls: true,
         ),
-        isTrue,
+        isFalse,
       );
-      expect(up, 1);
-      expect(down, 1);
+      expect(
+        handler.handle(
+          _key(LogicalKeyboardKey.audioVolumeUp),
+          showControls: false,
+        ),
+        isFalse,
+      );
     });
 
     test('arrow left/right seek when chrome is hidden', () {
@@ -184,10 +180,8 @@ void main() {
 
     test('arrow up focuses back when chrome is hidden', () {
       var focusBack = 0;
-      var volumeUp = 0;
       final handler = _handler(
         onFocusBack: () => focusBack++,
-        onVolumeUp: () => volumeUp++,
       );
 
       expect(
@@ -195,15 +189,12 @@ void main() {
         isTrue,
       );
       expect(focusBack, 1);
-      expect(volumeUp, 0);
     });
 
     test('arrow down focuses play when chrome is hidden', () {
       var focusPlay = 0;
-      var volumeDown = 0;
       final handler = _handler(
         onFocusPlay: () => focusPlay++,
-        onVolumeDown: () => volumeDown++,
       );
 
       expect(
@@ -211,7 +202,6 @@ void main() {
         isTrue,
       );
       expect(focusPlay, 1);
-      expect(volumeDown, 0);
     });
 
     test('arrow up/down do not reclaim chrome when controls visible', () {
@@ -271,8 +261,6 @@ void main() {
             onShowControls: () {},
             onSeekBack: () => seekBack++,
             onSeekForward: () => seekForward++,
-            onVolumeUp: () {},
-            onVolumeDown: () {},
             onToggleControls: () {},
             onFocusBack: () {},
             onFocusPlay: () {},
@@ -326,8 +314,6 @@ void main() {
               onShowControls: () {},
               onSeekBack: () => seekBack++,
               onSeekForward: () => seekForward++,
-              onVolumeUp: () {},
-              onVolumeDown: () {},
               onToggleControls: () {},
               onFocusBack: () {},
               onFocusPlay: () {
@@ -397,8 +383,6 @@ void main() {
               onShowControls: () {},
               onSeekBack: () {},
               onSeekForward: () {},
-              onVolumeUp: () {},
-              onVolumeDown: () {},
               onToggleControls: () {},
               onFocusBack: () {},
               onFocusPlay: () => focusPlay++,
@@ -457,8 +441,6 @@ void main() {
                   onShowControls: () {},
                   onSeekBack: () {},
                   onSeekForward: () {},
-                  onVolumeUp: () {},
-                  onVolumeDown: () {},
                   onToggleControls: () {},
                   onFocusBack: () {},
                   onFocusPlay: () {},
@@ -660,8 +642,6 @@ void main() {
                       onShowControls: () {},
                       onSeekBack: () {},
                       onSeekForward: () {},
-                      onVolumeUp: () {},
-                      onVolumeDown: () {},
                       onToggleControls: () {},
                       onFocusBack: () {},
                       onFocusPlay: () {},

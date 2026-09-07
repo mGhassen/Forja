@@ -2471,8 +2471,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           unawaited(_seekRelative(const Duration(seconds: -10))),
       onSeekForward: () =>
           unawaited(_seekRelative(const Duration(seconds: 10))),
-      onVolumeUp: () => unawaited(_setVolume(_volume + 10)),
-      onVolumeDown: () => unawaited(_setVolume(_volume - 10)),
       onToggleControls: _toggleControls,
       onFocusBack: () {
         _revealChrome();

@@ -118,22 +118,6 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
     });
   }
 
-  void _nudgeTvVolume(double delta) {
-    final next = (_s._volume + delta).clamp(0.0, 150.0);
-    _s._volume = next;
-    _s._player.setVolume(_s._mpvVolume);
-    setState(() {
-      _s._showVolumeIndicator = true;
-      _s._showBrightnessIndicator = false;
-    });
-    _s._indicatorHideTimer?.cancel();
-    _s._indicatorHideTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() => _s._showVolumeIndicator = false);
-      }
-    });
-  }
-
   void _toggleLock() {
     setState(() {
       _s._isLocked = !_s._isLocked;

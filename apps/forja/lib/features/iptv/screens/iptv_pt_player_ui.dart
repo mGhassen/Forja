@@ -1113,12 +1113,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             unawaited(_s._engineSeek(target));
             _scheduleHideControls();
           },
-          onVolumeUp: () {
-            setState(() => _s._setCachedVolume((_s._volume + 5).clamp(0, 100)));
-          },
-          onVolumeDown: () {
-            setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
-          },
           onToggleControls: _toggleControls,
           onFocusBack: () => _revealControlsAndFocus(back: true),
           onFocusPlay: () => _revealControlsAndFocus(back: false),
