@@ -358,8 +358,14 @@ class _BrowserViewState extends State<_BrowserView> {
     final panelClosed = _wasPortalPanelOpen && !panelOpen;
     _wasPortalPanelOpen = panelOpen;
     final search = widget.ctrl.browserSearch.trim();
+    final searchChanged = search != _lastBrowserSearch;
     final clearedSearch = _lastBrowserSearch.isNotEmpty && search.isEmpty;
     _lastBrowserSearch = search;
+    // Keep the category rail pinned to top while filtering — do not remount
+    // the scroll view (a search-tied ValueKey stole focus every keystroke).
+    if (searchChanged && _categoryScroll.hasClients) {
+      _categoryScroll.jumpTo(0);
+    }
     if (_tvFloatingCategoryId != null &&
         !widget.ctrl.canReorderLiveCategories) {
       _setTvFloatingCategory(null);
@@ -377,6 +383,9 @@ class _BrowserViewState extends State<_BrowserView> {
       if (clearedSearch) {
         _scrollCategorySidebarToSelected();
       }
+      // Search chrome owns focus while open — never land on categories/streams
+      // mid-type (highlight restore was stealing the field after each letter).
+      if (widget.ctrl.browserSearchOpen) return;
       if (panelClosed && !_needsPortal) {
         _focusCatalogGroup();
         return;
@@ -1442,8 +1451,8 @@ class _BrowserViewState extends State<_BrowserView> {
             );
           }
 
-          // Remount when search changes so a prior scroll offset doesn't leave
-          // the short filtered list floating mid-viewport.
+          // Stable key — search filtering jumps [_categoryScroll] to 0 in
+          // [_onCtrlChanged] instead of remounting (remount stole search focus).
           final jumpCats = [
             for (final c in cats)
               if (!IptvLiveCatalog.isSyntheticId(c.id)) c,
@@ -1463,7 +1472,9 @@ class _BrowserViewState extends State<_BrowserView> {
             child: IptvTvScrollbar(
               controller: _categoryScroll,
               child: CustomScrollView(
-                key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+                key: ValueKey(
+                  'browser-cats|${ctrl.activePortal?.key}|${ctrl.activeSection?.name}',
+                ),
                 controller: _categoryScroll,
                 scrollCacheExtent: ScrollCacheExtent.pixels(
                   rowExtent * _categoryScrollCacheRows,

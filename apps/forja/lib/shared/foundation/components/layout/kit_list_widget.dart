@@ -664,6 +664,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }
 
   Widget _loadingGrid(BuildContext context) {
+    if (widget.isDenseList) return _loadingDenseList(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final grid = widget.isMatchCards
@@ -710,6 +711,54 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           ),
         );
       },
+    );
+  }
+
+  Widget _loadingDenseList(BuildContext context) {
+    final leading = ShellTokens.compactChromeLeadingInset(context);
+    // Vary bar widths so shimmer rows don't look like one solid block.
+    const titleWidths = <double>[220, 180, 260, 200, 240, 170, 210, 190];
+    const metaWidths = <double>[120, 90, 140, 110, 100, 130, 95, 125];
+    return homeLoadingShimmer(
+      ListView.separated(
+        padding: EdgeInsets.fromLTRB(
+          leading,
+          4 + _hoistedTopBarInset(context),
+          ShellTokens.bodyHorizontalPadding,
+          shellTvKitScrollBottomGap(context),
+        ),
+        itemCount: titleWidths.length,
+        separatorBuilder: (_, _) => Divider(
+          height: 1,
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+        ),
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    homeTitleBarSkeleton(
+                      context,
+                      width: titleWidths[index % titleWidths.length],
+                      height: 14,
+                    ),
+                    const SizedBox(height: 6),
+                    homeTitleBarSkeleton(
+                      context,
+                      width: metaWidths[index % metaWidths.length],
+                      height: 12,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

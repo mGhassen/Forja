@@ -32,6 +32,9 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   bool _searchToolHovered = false;
   bool _searchCloseFocused = false;
   bool _searchCloseHovered = false;
+  /// Skip chrome setState when only [IptvController.browserSearch] text changes.
+  String _lastBrowserSearchText = '';
+  bool _lastBrowserSearchOpen = false;
   AnimationStatusListener? _focusSearchToolOnCollapse;
   bool _sortToolFocused = false;
   bool _sortToolHovered = false;
@@ -63,6 +66,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   void initState() {
     super.initState();
     _searchCtrl.text = ctrl.browserSearch;
+    _lastBrowserSearchText = ctrl.browserSearch;
+    _lastBrowserSearchOpen = ctrl.browserSearchOpen;
     _searchAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -122,6 +127,16 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       _closeSearch();
     }
     final open = ctrl.browserSearchOpen;
+    final searchText = ctrl.browserSearch;
+    // TextField already owns [\_searchCtrl] — rebuilding chrome on every
+    // keystroke fought IME / edit focus.
+    final onlySearchText = open &&
+        _lastBrowserSearchOpen &&
+        searchText != _lastBrowserSearchText;
+    _lastBrowserSearchText = searchText;
+    _lastBrowserSearchOpen = open;
+    if (onlySearchText) return;
+
     final wasExpanded = _searchAnim.value > 0 ||
         _searchAnim.status != AnimationStatus.dismissed;
     _syncSearchChromeRow();
