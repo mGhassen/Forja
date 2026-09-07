@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
-import 'package:forja/shared/foundation/services/live/live_play_kit.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/services/meta_surface_open.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from
 /// double-tap / re-click while the first navigation is alive.
@@ -16,7 +16,8 @@ String catalogTmdbImagePath(String url) {
 }
 
 bool metaOpenUsesKitDetails(MetaOpen open) =>
-    !_openUsesFeatureDetailsRoute(open) && open.surface != 'live';
+    !_openUsesFeatureDetailsRoute(open) &&
+    MetaSurfaceOpen.resolve(open.surface) == null;
 
 bool _openUsesFeatureDetailsRoute(MetaOpen open) {
   final route = open.extraString('detailsRoute') ??
@@ -38,9 +39,20 @@ Future<void> openMetaItem(
   if (!_metaOpenInFlight.add(key)) return;
   try {
     if (!context.mounted) return;
-    if (item.open?.surface == 'live' || item.type == 'live_match') {
-      LivePlayKit.openFromMeta(context, item);
+    final surface = item.open?.surface.trim() ?? '';
+    final surfaceHandler =
+        surface.isEmpty ? null : MetaSurfaceOpen.resolve(surface);
+    if (surfaceHandler != null) {
+      surfaceHandler(context, item);
       return;
+    }
+    // Opaque type token some packs use without `open.surface`.
+    if (item.type == 'live_match') {
+      final live = MetaSurfaceOpen.resolve('live');
+      if (live != null) {
+        live(context, item);
+        return;
+      }
     }
     await openKitDetails(
       context,

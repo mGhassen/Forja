@@ -2,30 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/services/live/live_catalog_sheet.dart';
-import 'package:forja/shared/foundation/services/live/live_schedule_sheet.dart';
-import 'package:forja/shared/foundation/services/live/live_schedule_window.dart';
-import 'package:forja/shared/foundation/services/live/schedule_filters.dart';
+import 'package:forja/shared/foundation/services/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
-/// Enabled live catalog plugins for the Catalog filter sheet.
-final liveCatalogFilterOptionsProvider =
+/// Dynamic catalog options from [KitTopBarHostHooks.loadCatalogOptions].
+final kitTopBarCatalogOptionsProvider =
     FutureProvider.autoDispose<List<({String id, String label})>>((ref) async {
-  final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
-  return [
-    for (final p in plugins)
-      (
-        id: EngineService.normalizeLiveSportPluginId(p.id),
-        label: p.name.trim().isEmpty ? p.id : p.name.trim(),
-      ),
-  ];
+  final loader = KitTopBarHostHooks.loadCatalogOptions;
+  if (loader == null) return const [];
+  return loader();
 });
 
-/// Layout widget [`kit.topBar`] — IPTV-style Catalog / Schedule / Refresh chrome.
+/// Layout widget [`kit.topBar`] — Catalog / Schedule / Refresh chrome.
+///
+/// Product sheets (Live Sports catalog/schedule) register via
+/// [KitTopBarHostHooks] — this widget stays pack-agnostic.
 class KitTopBarActions extends ConsumerWidget {
   const KitTopBarActions({
     super.key,
@@ -57,8 +52,10 @@ class KitTopBarActions extends ConsumerWidget {
     if (actions.isEmpty) return const SizedBox.shrink();
     final scope = KitLayoutScope.of(context);
     final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
-    final catalogsAsync = ref.watch(liveCatalogFilterOptionsProvider);
-    final scheduleFilters = ref.watch(liveScheduleFiltersProvider);
+    final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
+    final horizonPref = scope.selectedId('horizon') ??
+        scope.selectedId('schedule') ??
+        scope.selectedId('time');
 
     return TvKitRow(
       tabId: tabId,
@@ -79,13 +76,12 @@ class KitTopBarActions extends ConsumerWidget {
               if (i > 0) const SizedBox(width: 8),
               _buildAction(
                 context,
-                ref,
                 scope,
                 actions[i],
                 index: i,
                 focusDown: focusDown,
                 catalogOptions: catalogsAsync.asData?.value ?? const [],
-                scheduleFilters: scheduleFilters,
+                horizonPref: horizonPref,
               ),
             ],
             const Spacer(),
@@ -97,19 +93,20 @@ class KitTopBarActions extends ConsumerWidget {
 
   Widget _buildAction(
     BuildContext context,
-    WidgetRef ref,
     KitLayoutScope scope,
     Map<String, dynamic> action, {
     required int index,
     required VoidCallback? focusDown,
     required List<({String id, String label})> catalogOptions,
-    required LiveScheduleFilters scheduleFilters,
+    required String? horizonPref,
   }) {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString();
     final isRefresh = verb == 'refresh' || id == 'refresh';
     final isSchedule = id == 'horizon' || id == 'schedule' || id == 'time';
     final icon = _iconFor(action);
+    final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
+    final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
 
     if (isRefresh) {
       return ForjaActionChip(
@@ -126,16 +123,12 @@ class KitTopBarActions extends ConsumerWidget {
     }
 
     return ForjaActionChip(
-      label: isSchedule
-          ? liveScheduleChipLabel(
-              status: scheduleFilters.scheduleStatus,
-              horizon: scheduleFilters.scheduleHorizon,
-            )
+      label: isSchedule && scheduleLabel != null
+          ? scheduleLabel(horizonPref)
           : _chipLabel(scope, action, catalogOptions: catalogOptions),
       icon: icon,
-      selected: isSchedule
-          ? scheduleFilters.scheduleStatus != LiveScheduleStatus.both ||
-              scheduleFilters.scheduleHorizon != LiveScheduleHorizon.h24
+      selected: isSchedule && scheduleSelected != null
+          ? scheduleSelected(horizonPref)
           : _isSelected(scope, action),
       tvTabId: tabId,
       tvRowId: _widgetId,
@@ -145,7 +138,7 @@ class KitTopBarActions extends ConsumerWidget {
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
         isSchedule
-            ? _onSchedule(context, ref, scope)
+            ? _onSchedule(context, scope, horizonPref: horizonPref)
             : id == 'catalog'
                 ? _onCatalog(context, scope, catalogOptions: catalogOptions)
                 : _onAction(
@@ -224,34 +217,37 @@ class KitTopBarActions extends ConsumerWidget {
       catalogOptions: catalogOptions,
     );
     if (items.isEmpty) return;
-    final picked = await showLiveCatalogSheet(
-      context,
-      current: scope.selectedId('catalog') ?? 'all',
-      options: items,
-    );
+    final opener = KitTopBarHostHooks.openCatalogSheet;
+    final picked = opener != null
+        ? await opener(
+            context,
+            current: scope.selectedId('catalog') ?? 'all',
+            options: items,
+          )
+        : await _genericPicker(
+            context,
+            title: 'Catalog',
+            sheetId: 'catalog',
+            current: scope.selectedId('catalog') ?? 'all',
+            items: items,
+          );
     if (picked == null || !context.mounted) return;
     scope.onSelect('catalog', picked, toggle: false);
   }
 
   Future<void> _onSchedule(
     BuildContext context,
-    WidgetRef ref,
-    KitLayoutScope scope,
-  ) async {
-    final filters = ref.read(liveScheduleFiltersProvider);
-    final notifier = ref.read(liveScheduleFiltersProvider.notifier);
-    await showLiveScheduleSheet(
+    KitLayoutScope scope, {
+    required String? horizonPref,
+  }) async {
+    final opener = KitTopBarHostHooks.openScheduleSheet;
+    if (opener == null) return;
+    await opener(
       context,
-      status: filters.scheduleStatus,
-      horizon: filters.scheduleHorizon,
-      onChanged: ({status, horizon}) {
-        unawaited(
-          notifier.setScheduleWindow(status: status, horizon: horizon).then((_) {
-            if (!context.mounted) return;
-            final next = ref.read(liveScheduleFiltersProvider);
-            scope.onSelect('horizon', next.schedulePref, toggle: false);
-          }),
-        );
+      currentPref: horizonPref ?? 'both|24h',
+      onChanged: (pref) {
+        if (!context.mounted) return;
+        scope.onSelect('horizon', pref, toggle: false);
       },
     );
   }
@@ -274,12 +270,29 @@ class KitTopBarActions extends ConsumerWidget {
     if (items.isEmpty) return;
 
     final title = (action['label'] ?? id).toString();
-    final picked = await showModalBottomSheet<String>(
+    final picked = await _genericPicker(
+      context,
+      title: title,
+      sheetId: id,
+      current: scope.selectedId(id) ?? 'all',
+      items: items,
+    );
+    if (picked == null || !context.mounted) return;
+    scope.onSelect(id, picked, toggle: false);
+  }
+
+  Future<String?> _genericPicker(
+    BuildContext context, {
+    required String title,
+    required String sheetId,
+    required String current,
+    required List<({String id, String label, String? subtitle})> items,
+  }) {
+    return showModalBottomSheet<String>(
       context: context,
       backgroundColor: ForjaShellColors.surfaceElevated,
       isScrollControlled: true,
       builder: (ctx) {
-        final selected = scope.selectedId(id) ?? 'all';
         final maxHeight = MediaQuery.sizeOf(ctx).height * 0.7;
         return SafeArea(
           child: Padding(
@@ -312,17 +325,17 @@ class KitTopBarActions extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     for (var i = 0; i < items.length; i++)
-                      LiveFilterSheetOption(
+                      KitFilterSheetOption(
                         label: items[i].label,
                         subtitle: items[i].subtitle,
-                        selected: items[i].id == selected ||
-                            (selected.isEmpty && items[i].id == 'all'),
+                        selected: items[i].id == current ||
+                            (current.isEmpty && items[i].id == 'all'),
                         icon: items[i].id == 'all'
                             ? Icons.grid_view_rounded
                             : Icons.tune_rounded,
                         onSelected: () => Navigator.pop(ctx, items[i].id),
-                        tvTabId: 'kit_top_bar_sheet_$id',
-                        tvRowId: 'kit-sheet-$id',
+                        tvTabId: 'kit_top_bar_sheet_$sheetId',
+                        tvRowId: 'kit-sheet-$sheetId',
                         tvItemIndex: i,
                       ),
                   ],
@@ -333,7 +346,5 @@ class KitTopBarActions extends ConsumerWidget {
         );
       },
     );
-    if (picked == null || !context.mounted) return;
-    scope.onSelect(id, picked, toggle: false);
   }
 }

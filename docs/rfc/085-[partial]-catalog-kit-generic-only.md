@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **22 / 22** acceptance |
-| **Current slice** | Peer `shared/tv` → `foundation/tv` (D-pad coordinator / focus graph) |
+| **Progress** | **4 / 4** components · **23 / 23** acceptance |
+| **Current slice** | Live Sports host evacuated to `shared/host/live_sports/` (RFC-090) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -59,18 +59,20 @@
 | 20 | R85-A20 | Peer `shared/lists/` deleted — follow + providers under `foundation/services/follow/` (`list_follow.dart` / `ListFollow` / `ListFollowTarget`); no `HubListFollow` alias | ✅ |
 | 21 | R85-A21 | Peer `shared/search/` + `components/search/` deleted — `SearchRecentQueries` + `RecentSearchHelperTile` live under `components/chrome/` with `kit_search_*` (not a service) | ✅ |
 | 22 | R85-A22 | Peer `shared/tv/` deleted — D-pad stack under `foundation/tv/` (`shell_tv_coordinator`, `shell_tv_focus`, `tv_focus_graph`, …); browse atoms stay in `primitives/tv/` | ✅ |
+| 23 | R85-A23 | Live Sports product host evacuated from `foundation/services/live/` → `shared/host/live_sports/`; kit uses `MetaSurfaceOpen` + `KitTopBarHostHooks` only (RFC-090) | ✅ |
 
 ---
 
 ## Summary
 
-**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. D-pad / leanback focus lives under `foundation/tv/`. Product names stay out of kit folders and kit UI types. No peer `shared/live/`, `shared/design/`, `shared/widgets/`, `shared/lists/`, `shared/search/`, or `shared/tv/`. No product folders under `components/` (`lists/`, live-match cards, lone `search/`, …).
+**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. D-pad / leanback focus lives under `foundation/tv/`. Product names stay out of kit folders and kit UI types. No peer `shared/live/`, `shared/design/`, `shared/widgets/`, `shared/lists/`, `shared/search/`, or `shared/tv/`. No product folders under `components/` (`lists/`, live-match cards, lone `search/`, …). Live Sports host glue is `shared/host/live_sports/` — not under foundation services.
 
-**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; `LiveMatchCard` or `MyListButton` under `foundation/components/`; peer `shared/lists/`, `shared/search/`, or `shared/tv/`; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; `LiveMatchCard` or `MyListButton` under `foundation/components/`; peer `shared/lists/`, `shared/search/`, or `shared/tv/`; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation; Live Sports orchestration under `foundation/services/live/`.
 
-**Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts; live resolve/schedule orchestration lives under `foundation/services/live`.
+**Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; host modules register opaque list sources + panel data hosts + surface/top-bar hooks; live resolve/schedule orchestration lives under `shared/host/live_sports/`.
 
 ### Related
 
 - [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md) — live schedule kit ownership complete
 - [RFC-070](070-[partial]-catalog-hub-protocol.md) — hub protocol
+- [RFC-090](fixed/090-[fixed]-live-sports-host-outside-foundation.md) — Live Sports host path outside foundation

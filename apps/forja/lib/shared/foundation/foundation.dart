@@ -1,8 +1,9 @@
 /// Foundation — app-wide base: primitives, kit, protocol, services.
 ///
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
-/// Product hub tabs are pack-owned. List / Live Sports kit services live under
-/// `services/follow/` and `services/live/` (RFC-087 · RFC-088).
+/// Product hub tabs are pack-owned. Live Sports host glue lives under
+/// `shared/host/live_sports/` (not here). My List follow stays in
+/// `services/follow/` (RFC-088).
 library;
 
 export 'primitives/primitives.dart';
@@ -14,6 +15,8 @@ export 'protocol/filter.dart';
 export 'protocol/protocol.dart';
 export 'services/cache.dart';
 export 'services/host_list_registry.dart';
+export 'services/kit_top_bar_host_hooks.dart';
+export 'services/meta_surface_open.dart';
 export 'services/plugin_nav.dart';
 export 'services/runtime.dart';
 export 'blocks/shell/kit_open.dart';
@@ -24,6 +27,7 @@ export 'components/cards/kit_event_card.dart';
 export 'components/cards/kit_event_dense_tile.dart';
 export 'components/chrome/chrome_filters.dart';
 export 'components/chrome/kit_category_bar.dart';
+export 'components/chrome/kit_filter_sheet_option.dart';
 export 'components/chrome/kit_top_bar_actions.dart';
 export 'components/chrome/vertical_filters.dart';
 export 'components/chrome/vertical_filters_rail.dart';
@@ -58,9 +62,6 @@ export 'components/layout/kit_panel_host.dart';
 export 'components/panel/kit_sources_panel.dart';
 export 'blocks/play/stremio_stream_id.dart';
 export 'components/meta/meta_movie.dart';
-export 'services/live/live_play_kit.dart';
-export 'services/live/match_streams.dart';
-export 'services/live/schedule_list_source.dart';
 export 'services/follow/list_follow.dart';
 export 'services/follow/list_follow_from_watched.dart';
 export 'services/follow/list_providers.dart';

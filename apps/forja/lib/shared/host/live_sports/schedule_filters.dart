@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/live/live_prefs.dart';
-import 'package:forja/shared/foundation/services/live/live_schedule_window.dart';
+import 'package:forja/shared/host/live_sports/live_prefs.dart';
+import 'package:forja/shared/host/live_sports/live_schedule_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Catalog / sport / schedule-window filters for Live Sports kit browse.

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/live/live_play_kit.dart';
-import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
-import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
-import 'package:forja/shared/foundation/services/live/schedule_filters.dart';
-import 'package:forja/shared/foundation/services/live/schedule_list_source.dart';
+import 'package:forja/shared/host/live_sports/live_play_kit.dart';
+import 'package:forja/shared/host/live_sports/live_sports_host.dart';
+import 'package:forja/shared/host/live_sports/live_stream_engine.dart';
+import 'package:forja/shared/host/live_sports/schedule_filters.dart';
+import 'package:forja/shared/host/live_sports/schedule_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/engine/engine.dart';
 

@@ -1,6 +1,8 @@
-import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
 import 'package:forja/shared/foundation/lib/match_team_parse.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
+
+/// Optional host hook — Live Sports engine may mark catalogs as airing-only.
+bool Function(String pluginId)? matchEventAiringOnlyLiveCheck;
 
 /// Opaque source ref on a schedule / match row (plugin resolve input).
 class MatchSourceRef {
@@ -121,7 +123,9 @@ class MatchEvent {
 
   bool get isLive {
     if (isAlwaysOn || airing) return true;
-    if (LiveMatchesEngine.cachedAiringOnlyLive(livePluginId)) return false;
+    if (matchEventAiringOnlyLiveCheck?.call(livePluginId) == true) {
+      return false;
+    }
     if (dateMs <= 0) return false;
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
     final now = DateTime.now();

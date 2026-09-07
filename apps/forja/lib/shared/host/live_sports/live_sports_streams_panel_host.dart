@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/foundation/services/live/live_match_details_page.dart';
-import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
+import 'package:forja/shared/host/live_sports/live_match_details_page.dart';
+import 'package:forja/shared/host/live_sports/live_sports_host.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/services/live/match_streams.dart';
+import 'package:forja/shared/host/live_sports/match_streams.dart';
 
 /// Thin registry host — wires [KitSourcesPanel] to [MatchStreams] only.
 /// Layout composition (list+panel vs cards+details) belongs in pack JS + kit.
