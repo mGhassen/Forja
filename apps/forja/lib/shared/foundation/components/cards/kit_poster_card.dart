@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
@@ -40,7 +40,7 @@ class KitPosterCard extends StatelessWidget {
   final double? rating;
   final int? rank;
   final String? badge;
-  final HubListFollowTarget? listTarget;
+  final ListFollowTarget? listTarget;
   final Widget? listPin;
   final int? listIndex;
   final int? gridIndex;

@@ -157,7 +157,7 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | Asian Drama | `lib/features/asian_drama/providers/asian_drama_providers.dart` |
 | IPTV | `lib/features/iptv/providers/iptv_controller_provider.dart` |
 | Live Matches | `lib/shared/foundation/services/live/panel/providers/live_schedule_provider.dart` |
-| My List | `lib/shared/lists/providers/my_list_providers.dart` |
+| My List | `lib/shared/foundation/services/follow/list_providers.dart` |
 | Settings visibility | `lib/features/settings/providers/settings_visibility_provider.dart` |
 | Settings panels (playback, debrid, webstreamr, nav, trackers, …) | `lib/features/settings/providers/settings_panel_providers.dart` |
 | Stremio addons | `lib/features/settings/providers/stremio_addons_provider.dart` |
@@ -165,7 +165,7 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | IPTV player boot / EPG / M3U | `lib/features/iptv/providers/iptv_player_providers.dart` |
 | Player auto + subtitle prefs | `lib/shared/player/providers/player_prefs_providers.dart` |
 | Home Trakt / Stremio rails | `lib/features/home/providers/home_tracker_providers.dart` |
-| External lists (Simkl gate + watchlist) | `lib/shared/lists/providers/external_lists_providers.dart` |
+| External lists (Simkl gate + watchlist) | `lib/shared/foundation/services/follow/external_list_providers.dart` |
 | Details meta / resolve | `lib/features/media/details/providers/details_providers.dart` |
 | Details play session (Direct / torrent / Stremio / Nuvio) | `lib/features/media/details/providers/details_play_session.dart` |
 | Player resolve status + sources session | `lib/shared/player/providers/player_resolve_providers.dart` |

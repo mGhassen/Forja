@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a hub-style list screen you can scroll. The **ForjaHQ My List** pack (`plugins/hubs/my_list`) declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Host services own local bookmarks and Simkl merge (`MyListService` + `shared/lists/`).
+My List is a hub-style list screen you can scroll. The **ForjaHQ My List** pack (`plugins/hubs/my_list`) declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Host services own local bookmarks and Simkl merge (`MyListService` + `shared/foundation/services/follow/`).
 
 ## How to open it
 

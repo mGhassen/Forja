@@ -15,7 +15,7 @@ import 'package:forja/shared/foundation/components/hero/hero_title.dart';
 import 'package:forja/shared/foundation/components/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/foundation/components/hero/hero_overview_text.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
 import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
@@ -73,7 +73,7 @@ class HubHeroSlide {
   final String? matchTitle;
   /// Home / TMDB hub — drives [MyListHeroStatusPill] (pin).
   final Movie? movie;
-  final HubListFollowTarget? listTarget;
+  final ListFollowTarget? listTarget;
   final VoidCallback onDetails;
 }
 
@@ -118,7 +118,7 @@ class _HeroItem {
   final List<String> backdropUrls;
   final VoidCallback onDetails;
   final Movie? movie;
-  final HubListFollowTarget? listTarget;
+  final ListFollowTarget? listTarget;
 
   factory _HeroItem.fromMovie(Movie movie, List<String> backdropUrls) {
     return _HeroItem(

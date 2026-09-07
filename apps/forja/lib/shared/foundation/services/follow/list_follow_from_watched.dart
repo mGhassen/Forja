@@ -2,15 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/services/details_fetch.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
-import 'package:forja/shared/lists/providers/external_lists_providers.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 
 /// Bumps My List + Simkl list buckets from episode watched marks / movie play.
 ///
 /// History sync stays in [syncEpisodeWatchedToTrackers] /
-/// [HubListFollow.syncEpisodeWatched]. This only moves list status:
+/// [ListFollow.syncEpisodeWatched]. This only moves list status:
 /// - first mark (or Plan to Watch) → Watching
 /// - all episodes marked → Completed
 /// - unmark while Completed → Watching
@@ -62,7 +62,7 @@ class ListFollowFromWatched {
   }
 
   static Future<void> applyHub({
-    required HubListFollowTarget target,
+    required ListFollowTarget target,
     required int watchedCount,
     required int totalEpisodes,
     required bool episodeNowWatched,
@@ -80,12 +80,12 @@ class ListFollowFromWatched {
       episodeNowWatched: episodeNowWatched,
     );
     if (to == null) return;
-    await HubListFollow.setStatus(target, to, container: container);
+    await ListFollow.setStatus(target, to, container: container);
   }
 
   /// Same watched/total math as details hero progress — keeps the pin in sync.
   static Future<void> reconcileHub({
-    required HubListFollowTarget target,
+    required ListFollowTarget target,
     required int watchedCount,
     required int totalEpisodes,
     ProviderContainer? container,
@@ -117,7 +117,7 @@ class ListFollowFromWatched {
     );
   }
 
-  /// Movie play start — same rules as [HubListFollow.markWatchingOnPlay].
+  /// Movie play start — same rules as [ListFollow.markWatchingOnPlay].
   static Future<void> markMovieWatchingOnPlay(
     Movie movie, {
     ProviderContainer? container,
@@ -353,7 +353,7 @@ class ListFollowFromWatched {
 
   /// After hub auto-mark returns true.
   static Future<void> applyHubAfterAutoMark({
-    required HubListFollowTarget target,
+    required ListFollowTarget target,
     required int mediaId,
     required String catalog,
     required int totalEpisodes,

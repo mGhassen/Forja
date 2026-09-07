@@ -21,7 +21,7 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -310,7 +310,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       meta: show,
     );
     if (listTarget != null) {
-      await HubListFollow.clearProgress(listTarget);
+      await ListFollow.clearProgress(listTarget);
     }
 
     final ep = (progress['episodeNumber'] as num?)?.toInt() ?? _selectedEpisode;

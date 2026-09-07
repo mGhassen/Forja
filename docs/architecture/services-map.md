@@ -220,7 +220,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 | Service | Path |
 |---------|------|
 | `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
-| `HubListFollow`, `ListFollowFromWatched` | `shared/lists/` |
+| `ListFollow`, `ListFollowFromWatched` | `shared/foundation/services/follow/` |
 | `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/foundation/services/live/` |
 
 ---

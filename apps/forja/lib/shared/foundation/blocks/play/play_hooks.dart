@@ -2,8 +2,8 @@ import 'package:forja/shared/foundation/blocks/play/play_session.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/watch_history.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
-import 'package:forja/shared/lists/follow/list_follow_from_watched.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
 /// Hub tab media types — episodic catalog rows, not Home TMDB watch history.
@@ -247,7 +247,7 @@ Future<void> _syncEpisodeWatched({
           meta: meta,
         );
         if (target == null) return;
-        HubListFollow.syncEpisodeWatched(target, episode: ep);
+        ListFollow.syncEpisodeWatched(target, episode: ep);
         await ListFollowFromWatched.applyHubAfterAutoMark(
           target: target,
           mediaId: mediaId,

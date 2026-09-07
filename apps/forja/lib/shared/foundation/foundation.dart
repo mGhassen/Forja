@@ -60,4 +60,8 @@ export 'components/meta/meta_movie.dart';
 export 'services/live/live_play_kit.dart';
 export 'services/live/match_streams.dart';
 export 'services/live/schedule_list_source.dart';
+export 'services/follow/list_follow.dart';
+export 'services/follow/list_follow_from_watched.dart';
+export 'services/follow/list_providers.dart';
+export 'services/follow/external_list_providers.dart';
 export 'lib/match_event.dart';

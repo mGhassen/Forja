@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/lists/providers/external_lists_providers.dart';
-import 'package:forja/shared/lists/providers/my_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/list_providers.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';
@@ -72,11 +72,8 @@ class ListFollowTarget {
   }
 }
 
-/// Back-compat alias — migrate imports to [ListFollowTarget].
-typedef HubListFollowTarget = ListFollowTarget;
-
-class HubListFollow {
-  HubListFollow._();
+class ListFollow {
+  ListFollow._();
 
   /// Drama rows may lack TMDB on browse cards; reuse a stored match after details.
   @visibleForTesting

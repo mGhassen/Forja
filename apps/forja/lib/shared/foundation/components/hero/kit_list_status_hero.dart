@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 
 /// Details hero pin — same glass **+** + floating status menu as movie rows.
@@ -15,7 +15,7 @@ class KitListStatusHero extends StatelessWidget {
     this.enabled = true,
   });
 
-  final HubListFollowTarget target;
+  final ListFollowTarget target;
   final String? tvTabId;
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
@@ -30,7 +30,7 @@ class KitListStatusHero extends StatelessWidget {
     try {
       container = ProviderScope.containerOf(context, listen: false);
     } catch (_) {}
-    return HubListFollow.setStatus(target, to, container: container);
+    return ListFollow.setStatus(target, to, container: container);
   }
 
   @override

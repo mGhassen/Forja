@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('HubListFollow.resolveSimklTarget', () {
+  group('ListFollow.resolveSimklTarget', () {
     ListFollowTarget dramaTarget({int? tmdbId}) {
       return ListFollowTarget(
         pluginId: 'test-drama-hub',
@@ -27,12 +27,12 @@ void main() {
 
     test('returns target unchanged when TMDB is on meta', () {
       final t = dramaTarget(tmdbId: 99);
-      expect(HubListFollow.resolveSimklTarget(t).tmdbId, 99);
+      expect(ListFollow.resolveSimklTarget(t).tmdbId, 99);
     });
 
     test('returns target unchanged when drama has no stored TMDB', () {
       final t = dramaTarget();
-      expect(HubListFollow.resolveSimklTarget(t).tmdbId, isNull);
+      expect(ListFollow.resolveSimklTarget(t).tmdbId, isNull);
     });
   });
 }

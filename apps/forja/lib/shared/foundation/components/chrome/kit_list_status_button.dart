@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/lists/providers/external_lists_providers.dart';
-import 'package:forja/shared/lists/providers/my_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/list_providers.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/lists/follow/hub_list_follow.dart';
+import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -104,7 +104,7 @@ class KitListStatusButton extends StatelessWidget {
 
   const KitListStatusButton.follow({
     super.key,
-    required HubListFollowTarget this.followTarget,
+    required ListFollowTarget this.followTarget,
     this.iconSize,
     this.iconColor,
     this.iconColorActive,
@@ -128,7 +128,7 @@ class KitListStatusButton extends StatelessWidget {
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
-  final HubListFollowTarget? followTarget;
+  final ListFollowTarget? followTarget;
   final bool useHeartIcon;
   final Color? iconColor;
   final Color? iconColorActive;
@@ -156,7 +156,7 @@ class KitListStatusButton extends StatelessWidget {
           try {
             container = ProviderScope.containerOf(context, listen: false);
           } catch (_) {}
-          return HubListFollow.setStatus(followTarget!, to, container: container);
+          return ListFollow.setStatus(followTarget!, to, container: container);
         },
       );
     }

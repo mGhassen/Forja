@@ -8,8 +8,8 @@ import 'package:forja/features/my_list/my_list_host.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/services/runtime.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
-import 'package:forja/shared/lists/providers/external_lists_providers.dart';
-import 'package:forja/shared/lists/providers/my_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
+import 'package:forja/shared/foundation/services/follow/list_providers.dart';
 
 /// Hub plugin id for the default My List pack (`plugins/hubs/my_list`).
 const myListHubPluginId = 'my-list-hub';
