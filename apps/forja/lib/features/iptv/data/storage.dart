@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';

@@ -3,7 +3,7 @@ import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart
 import 'package:forja/shared/foundation/primitives/forja_shell_metrics.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_platform.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_profile.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 class ShellScope extends InheritedWidget {
   const ShellScope({

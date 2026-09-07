@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Centered play control for catalog / continue-watching cards.
 /// Fades in when [visible]; brand green + float + heartbeat only while the

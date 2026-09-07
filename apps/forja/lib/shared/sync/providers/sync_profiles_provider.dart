@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/sync/providers/sync_identity_provider.dart';
-import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
 
 @immutable
 class SyncProfilesSnapshot {

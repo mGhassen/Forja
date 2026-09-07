@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// D-pad / leanback remote key handling for [MobilePlayerScreen] TV mode.
 class PlayerTvRemoteKeyHandler {

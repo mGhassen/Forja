@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 VoidCallback? kitFocusEdge(
   String tabId,

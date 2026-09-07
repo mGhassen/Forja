@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {

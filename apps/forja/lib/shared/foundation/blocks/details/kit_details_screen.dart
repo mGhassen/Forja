@@ -24,7 +24,7 @@ import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/blocks/details/play_filters.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';

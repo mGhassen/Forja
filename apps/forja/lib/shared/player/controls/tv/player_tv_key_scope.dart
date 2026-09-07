@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_remote.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Captures leanback / D-pad keys inside a player route.
 ///

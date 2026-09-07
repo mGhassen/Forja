@@ -11,7 +11,7 @@ import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/tv/shell_tv_hold_accel.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_hold_accel.dart';
 
 void main() {
   tearDown(ShellTvHoldAccel.clearForTest);

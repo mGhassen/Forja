@@ -26,9 +26,9 @@ import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.da
 import 'package:forja/shared/foundation/components/chrome/letter_jump_scope.dart';
 import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_hold_accel.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_hold_accel.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/features/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';

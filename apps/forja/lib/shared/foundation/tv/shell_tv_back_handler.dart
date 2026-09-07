@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Android TV / leanback remote Back + Exit (Escape) keys.
 ///

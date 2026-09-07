@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 

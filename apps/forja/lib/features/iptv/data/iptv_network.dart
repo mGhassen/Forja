@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/sync/src/account_features.dart';
+import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:rust/rust.dart';
 import 'models.dart';
 

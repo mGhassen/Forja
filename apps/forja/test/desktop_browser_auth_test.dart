@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
 
 void main() {

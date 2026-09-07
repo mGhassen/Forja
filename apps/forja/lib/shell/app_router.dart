@@ -11,7 +11,7 @@ import 'package:forja/shared/foundation/components/playback/stream_provider_prob
 import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';

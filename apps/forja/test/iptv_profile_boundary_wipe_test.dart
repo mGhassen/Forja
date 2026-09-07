@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

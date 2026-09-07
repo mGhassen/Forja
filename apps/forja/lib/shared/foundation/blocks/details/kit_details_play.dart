@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/blocks/play/iptv_play.dart';
 import 'package:forja/shared/foundation/blocks/play/play_context.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/details/kit_sources.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {

@@ -10,8 +10,8 @@ import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart'
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';

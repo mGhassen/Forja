@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Pair / desktop-offline prompt. [OverlayEntry] so it stacks above player

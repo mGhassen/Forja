@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';

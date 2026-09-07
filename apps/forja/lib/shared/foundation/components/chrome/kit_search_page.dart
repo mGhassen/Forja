@@ -9,9 +9,9 @@ import 'package:forja/shared/foundation/components/chrome/kit_search_filters.dar
 import 'package:forja/shared/foundation/components/chrome/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/chrome/recent_search_helper_tile.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';

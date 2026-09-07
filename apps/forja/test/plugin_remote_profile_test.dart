@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

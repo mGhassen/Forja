@@ -6,7 +6,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 void main() {
   tearDown(() {

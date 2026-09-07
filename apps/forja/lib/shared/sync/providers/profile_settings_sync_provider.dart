@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/sync_identity_provider.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 
 /// Pull cloud profile settings into local cache, then ensure Riverpod watches
 /// refresh. [SettingsService] / [AccountFeatures] notifiers already bump;

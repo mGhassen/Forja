@@ -10,8 +10,8 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 

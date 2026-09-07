@@ -5,7 +5,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
-import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:rust/rust.dart';
 
 /// Starts profile-activated engines. Idempotent - safe from splash,

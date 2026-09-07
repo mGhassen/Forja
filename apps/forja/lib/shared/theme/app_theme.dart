@@ -6,8 +6,8 @@ import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart
 import 'package:forja/shared/foundation/primitives/forja_shell_layout.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Fixed Forja theme descriptor (single preset, not user-selectable).

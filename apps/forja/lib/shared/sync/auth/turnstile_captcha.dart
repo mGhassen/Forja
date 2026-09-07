@@ -4,8 +4,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
-import 'package:forja/shared/sync/src/forja_captcha.dart';
+import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
+import 'package:forja/shared/sync/auth/forja_captcha.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 

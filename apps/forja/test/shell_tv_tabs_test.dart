@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';

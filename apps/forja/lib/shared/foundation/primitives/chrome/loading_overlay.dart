@@ -6,7 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/foundation/components/playback/direct_stream_loading_panel.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Layout widget [`KitTypes.menu`] — underline kind/filter menu.
 class KitMenuWidget extends StatelessWidget {

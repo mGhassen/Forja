@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Isolated TV coordinator tab for media details overlays.
 abstract final class MediaDetailsTv {

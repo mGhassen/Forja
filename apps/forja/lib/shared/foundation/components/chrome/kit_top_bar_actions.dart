@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Enabled live catalog plugins for the Catalog filter sheet.
 final liveCatalogFilterOptionsProvider =

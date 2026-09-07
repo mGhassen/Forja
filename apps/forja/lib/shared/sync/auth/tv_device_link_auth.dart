@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
-import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Result of starting an Android TV device-link session.

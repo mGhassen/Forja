@@ -14,7 +14,7 @@ import 'package:forja/shared/foundation/services/watch_history.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **21 / 21** acceptance |
-| **Current slice** | Search helpers under kit chrome — no peer `shared/search/` or `components/search/` |
+| **Progress** | **4 / 4** components · **22 / 22** acceptance |
+| **Current slice** | Peer `shared/tv` → `foundation/tv` (D-pad coordinator / focus graph) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -58,14 +58,15 @@
 | 19 | R85-A19 | `components/lists/` deleted — `KitListStatusButton` / `KitListStatusControl` in `chrome/`, `KitListStatusHero` in `hero/`, letter jump in `chrome/letter_jump_scope.dart`; no product `lists/` folder under foundation components | ✅ |
 | 20 | R85-A20 | Peer `shared/lists/` deleted — follow + providers under `foundation/services/follow/` (`list_follow.dart` / `ListFollow` / `ListFollowTarget`); no `HubListFollow` alias | ✅ |
 | 21 | R85-A21 | Peer `shared/search/` + `components/search/` deleted — `SearchRecentQueries` + `RecentSearchHelperTile` live under `components/chrome/` with `kit_search_*` (not a service) | ✅ |
+| 22 | R85-A22 | Peer `shared/tv/` deleted — D-pad stack under `foundation/tv/` (`shell_tv_coordinator`, `shell_tv_focus`, `tv_focus_graph`, …); browse atoms stay in `primitives/tv/` | ✅ |
 
 ---
 
 ## Summary
 
-**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. Product names stay out of kit folders and kit UI types. No peer `shared/live/`, `shared/design/`, `shared/widgets/`, `shared/lists/`, or `shared/search/`. No product folders under `components/` (`lists/`, live-match cards, lone `search/`, …).
+**Rule:** `shared/foundation/` is the app-wide UI + hub protocol home. Primitives (tokens, buttons, chips, shell scope, brand, chrome, TV/desktop atoms) and composers (`components/`) live here. D-pad / leanback focus lives under `foundation/tv/`. Product names stay out of kit folders and kit UI types. No peer `shared/live/`, `shared/design/`, `shared/widgets/`, `shared/lists/`, `shared/search/`, or `shared/tv/`. No product folders under `components/` (`lists/`, live-match cards, lone `search/`, …).
 
-**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; `LiveMatchCard` or `MyListButton` under `foundation/components/`; peer `shared/lists/` or `shared/search/`; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details; `LiveMatchCard` or `MyListButton` under `foundation/components/`; peer `shared/lists/`, `shared/search/`, or `shared/tv/`; pack ids hardcoded in host Dart; design system or shared widgets as siblings of foundation.
 
 **Right:** import atoms from `foundation/primitives/primitives.dart`; packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts; live resolve/schedule orchestration lives under `foundation/services/live`.
 

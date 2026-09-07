@@ -58,6 +58,6 @@ Canonical widgets: `shared/foundation/primitives/tv/tv_browse_text_field.dart`, 
 
 ## Shell shared with all in-scope tabs
 
-`shell_scaffold.dart`, `shell_nav_rail.dart`, `shell_overlay_navigator.dart`, `home_top_bar.dart`, `shared/tv/tv_remote_debug.dart`.
+`shell_scaffold.dart`, `shell_nav_rail.dart`, `shell_overlay_navigator.dart`, `home_top_bar.dart`, `shared/foundation/tv/tv_remote_debug.dart`.
 
 When fixing TV navigation on one in-scope tab, grep the same pattern across the other seven before marking done.

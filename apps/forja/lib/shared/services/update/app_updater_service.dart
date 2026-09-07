@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/services/update/app_updater_manifest.dart';
 import 'package:forja/shared/services/update/app_updater_release_notes.dart';
 import 'package:forja/shared/services/update/release_storage_urls.dart';
-import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';

@@ -9,7 +9,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

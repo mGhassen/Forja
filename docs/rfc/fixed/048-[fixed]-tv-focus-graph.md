@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** RFC-028 (adaptive shell + `ShellTvFocusCoordinator`)  
-**Area:** `apps/forja/lib/shared/tv/`, Home / hub / Search / Live Matches / IPTV / player overlay recipes  
+**Area:** `apps/forja/lib/shared/foundation/tv/`, Home / hub / Search / Live Matches / IPTV / player overlay recipes  
 **Version:** v1.x TV host DX
 
 ## Status at a glance

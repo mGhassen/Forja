@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
-import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
 
 /// Local cache + cloud sync for packs onboarding completion.
 ///

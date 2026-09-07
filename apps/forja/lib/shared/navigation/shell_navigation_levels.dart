@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Shell depth - back always travels up one level at a time.
 ///

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja/shared/foundation/components/sections/continue_watching_card.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Generic Continue Watching row — layout widget type `continue`.
 class ContinueWatchingSection extends StatelessWidget {

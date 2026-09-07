@@ -16,7 +16,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';

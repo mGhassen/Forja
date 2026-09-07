@@ -64,4 +64,8 @@ export 'services/follow/list_follow.dart';
 export 'services/follow/list_follow_from_watched.dart';
 export 'services/follow/list_providers.dart';
 export 'services/follow/external_list_providers.dart';
+export 'tv/shell_tv_coordinator.dart';
+export 'tv/shell_tv_focus.dart';
+export 'tv/tv_focus_graph.dart';
+export 'tv/media_details_tv_scope.dart';
 export 'lib/match_event.dart';

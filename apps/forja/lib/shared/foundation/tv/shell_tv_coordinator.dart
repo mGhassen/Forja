@@ -6,9 +6,9 @@ import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/tv/shell_tv_app_exit.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_app_exit.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
 enum ShellTvZone { nav, hero, topBar, chipStrip, row, grid, settings }

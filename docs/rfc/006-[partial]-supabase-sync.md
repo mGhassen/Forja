@@ -2,7 +2,7 @@
 
 **Version:** v1.2  
 **Status:** partial  
-**Area:** `apps/forja/lib/shared/sync/src/sync_service.dart`
+**Area:** `apps/forja/lib/shared/sync/api/sync_service.dart`
 
 ## Status at a glance
 
@@ -132,7 +132,7 @@ Optional account to backup and restore settings across devices. Offline-first â€
 
 ## Stub
 
-`apps/forja/lib/shared/sync/src/sync_service.dart`
+`apps/forja/lib/shared/sync/api/sync_service.dart`
 
 ## Auth
 

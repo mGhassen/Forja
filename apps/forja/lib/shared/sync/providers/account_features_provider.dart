@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/sync/src/account_features.dart';
+import 'package:forja/shared/sync/models/account_features.dart';
 
 /// Bumps whenever [AccountFeatures.revision] changes (keepAlive session).
 final accountFeaturesRevisionProvider =

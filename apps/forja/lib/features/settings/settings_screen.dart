@@ -8,8 +8,8 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.
 ///

@@ -48,7 +48,7 @@ import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';

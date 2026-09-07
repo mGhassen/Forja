@@ -11,9 +11,9 @@ import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
 class SettingsHubScaffold extends ConsumerStatefulWidget {

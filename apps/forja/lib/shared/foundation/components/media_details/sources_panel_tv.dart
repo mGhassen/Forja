@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Isolated TV focus graph for details + in-player Sources (and torrent files).
 abstract final class SourcesPanelTv {

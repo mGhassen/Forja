@@ -6,9 +6,9 @@ import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/sync/src/account_features.dart';
-import 'package:forja/shared/sync/src/packs_onboarding_store.dart';
-import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shared/sync/models/account_features.dart';
+import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:rust/rust.dart';
 
 /// Export/import between local stores and lean `profile_settings.payload`.

@@ -13,8 +13,8 @@ import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.d
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
 

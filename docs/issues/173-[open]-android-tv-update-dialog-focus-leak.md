@@ -42,6 +42,6 @@ On some Android TVs the full-screen update gate painted over the shell, but D-pa
 ## Related
 
 - `apps/forja/lib/shared/foundation/components/update/update_dialog.dart`
-- `apps/forja/lib/shared/tv/tv_focus_graph.dart` — `TvOverlayScope`
+- `apps/forja/lib/shared/foundation/tv/tv_focus_graph.dart` — `TvOverlayScope`
 - [149](149-[open]-iptv-player-source-picker-dpad.md) — same class of modal focus leak
 - [app-updates](../features/settings/app-updates.md)

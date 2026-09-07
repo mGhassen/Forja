@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_hold_accel.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_hold_accel.dart';
 
-export 'package:forja/shared/tv/shell_tv_hold_accel.dart' show ShellTvHoldAccel;
+export 'package:forja/shared/foundation/tv/shell_tv_hold_accel.dart' show ShellTvHoldAccel;
 
 /// D-pad navigation key - first press and OS key-repeat.
 bool shellTvIsNavigationKey(KeyEvent event) =>
