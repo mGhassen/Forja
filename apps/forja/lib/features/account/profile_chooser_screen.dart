@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
@@ -907,6 +908,16 @@ class _ProfileEditorState extends State<_ProfileEditor> {
 
   void _onName() => setState(() {});
 
+  Widget _avatarPick(String key) {
+    final selected = key == widget.avatarKey;
+    return _ProfileAvatarPick(
+      avatarKey: key,
+      selected: selected,
+      enabled: !widget.saving,
+      onTap: () => widget.onAvatarChange(key),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = widget.nameController.text.trim();
@@ -943,15 +954,14 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextField(
+                        // TV: browse highlight until OK — raw TextField autofocus
+                        // opened IME and trapped ↓ away from avatars.
+                        SettingsTextField(
                           controller: widget.nameController,
-                          autofocus: true,
+                          label: 'Profile name',
                           maxLength: 40,
                           enabled: !widget.saving,
-                          decoration: const InputDecoration(
-                            labelText: 'Profile name',
-                            counterText: '',
-                          ),
+                          autofocus: true,
                         ),
                         const SizedBox(height: 20),
                         const Text(
@@ -978,18 +988,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                             spacing: 10,
                             runSpacing: 10,
                             children: [
-                              for (final key in category.keys)
-                                GestureDetector(
-                                  onTap: widget.saving
-                                      ? null
-                                      : () => widget.onAvatarChange(key),
-                                  child: ForjaProfileAvatar(
-                                    avatarKey: key,
-                                    name: key,
-                                    size: 56,
-                                    selected: key == widget.avatarKey,
-                                  ),
-                                ),
+                              for (final key in category.keys) _avatarPick(key),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -1011,28 +1010,72 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  FilledButton(
+                  ForjaButton.primary(
+                    label: widget.saving ? 'Saving…' : 'Save profile',
                     onPressed:
                         widget.saving || name.isEmpty ? null : widget.onSave,
-                    child: Text(widget.saving ? 'Saving…' : 'Save profile'),
+                    busy: widget.saving,
                   ),
                   if (widget.canCancel)
-                    OutlinedButton(
+                    ForjaButton(
+                      label: 'Cancel',
                       onPressed: widget.saving ? null : widget.onCancel,
-                      child: const Text('Cancel'),
                     ),
                   if (widget.canDelete)
-                    TextButton(
+                    ForjaButton.destructive(
+                      label: 'Delete profile',
                       onPressed: widget.saving ? null : widget.onDelete,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                      ),
-                      child: const Text('Delete profile'),
                     ),
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Leanback-focusable avatar tile for create/edit profile.
+class _ProfileAvatarPick extends StatefulWidget {
+  const _ProfileAvatarPick({
+    required this.avatarKey,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String avatarKey;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  State<_ProfileAvatarPick> createState() => _ProfileAvatarPickState();
+}
+
+class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlighted = _focused || _hovered || widget.selected;
+    return ExcludeFocus(
+      excluding: !widget.enabled,
+      child: FocusableControl(
+        onTap: widget.enabled ? widget.onTap : null,
+        borderRadius: 8,
+        scaleOnFocus: 1.06,
+        showFocusBorder: false,
+        showFocusFill: false,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
+        child: ForjaProfileAvatar(
+          avatarKey: widget.avatarKey,
+          name: widget.avatarKey,
+          size: 56,
+          selected: highlighted,
         ),
       ),
     );

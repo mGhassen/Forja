@@ -69,10 +69,10 @@ Widget settingsTitleText(
 
 /// Category row in the Settings hub list / sidebar.
 ///
-/// Selected chrome is the green left bar + ink. Keyboard / D-pad focus uses the
-/// same rail via [shellFocusableTap] — needed on desktop, which does not
-/// auto-select on focus (leanback does, so selection ≈ focus there).
-class SettingsCategoryTile extends StatefulWidget {
+/// Selected / hover / focus chrome is the green left bar + ink on
+/// [FocusableControl] (`forceRailActive` + `showFocusRail`) — one layer so
+/// the bars stay aligned. Desktop does not auto-select on focus (leanback does).
+class SettingsCategoryTile extends StatelessWidget {
   const SettingsCategoryTile({
     super.key,
     required this.icon,
@@ -112,67 +112,41 @@ class SettingsCategoryTile extends StatefulWidget {
   final VoidCallback? onRightEdge;
 
   @override
-  State<SettingsCategoryTile> createState() => _SettingsCategoryTileState();
-}
-
-class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
-  bool _focused = false;
-
-  @override
   Widget build(BuildContext context) {
-    final selected = widget.selected;
     final iconColor = selected
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.iconMuted;
     final titleColor = selected
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
-    final rail = widget.tvRowId != null;
-    final policy = ShellScope.inputPolicyOf(context);
-    // FocusableControl owns the green rail while keyboard/D-pad chrome is on.
-    // Keep selected paint when focus is hidden (mouse mode / programmatic land)
-    // so the open category stays marked.
-    final focusRailVisible =
-        policy.focusChromeVisible(context, focused: _focused);
-    final showSelectedChrome = selected && !focusRailVisible;
+    final rail = tvRowId != null;
 
-    final child = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+    // Rail chrome (selected + hover/focus) lives only on FocusableControl —
+    // a nested Border.left was inset by the outer transparent rail border.
+    final child = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color:
-            showSelectedChrome ? ForjaShellColors.inkHover : Colors.transparent,
-        border: Border(
-          left: BorderSide(
-            color: showSelectedChrome
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 2.5,
-          ),
-        ),
-      ),
       child: Row(
         children: [
-          Icon(widget.icon, size: 22, color: iconColor),
+          Icon(icon, size: 22, color: iconColor),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 settingsTitleText(
-                  widget.title,
+                  title,
                   TextStyle(
                     color: titleColor,
                     fontSize: SettingsTokens.categoryTitleSize,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
-                  adminOnly: widget.adminOnly,
+                  adminOnly: adminOnly,
                   sparkSize: 13,
                 ),
-                if (widget.subtitle != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    widget.subtitle!,
+                    subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -196,24 +170,24 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
 
     return shellFocusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: onTap,
       borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       // Green left bar + ink — never the gray menu ring.
       showFocusRail: true,
+      forceRailActive: selected,
       showFocusBorder: false,
       showFocusFill: false,
-      listIndex: widget.listIndex,
+      listIndex: listIndex,
       tvTabId: 'settings',
-      tvRowId: widget.tvRowId,
-      tvItemIndex: widget.tvItemIndex ?? widget.listIndex,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex ?? listIndex,
       tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
       // Item mode snaps the first tile to list top (header stays visible).
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onRightEdge: widget.onRightEdge,
-      focusNode: widget.focusNode,
+      onRightEdge: onRightEdge,
+      focusNode: focusNode,
       onFocusChange: (focused) {
-        if (_focused != focused) setState(() => _focused = focused);
         // Auto-select on focus is leanback-only. Desktop also has
         // useFocusableMoodChips (hybrid D-pad), but resume/rebuild can dump
         // focus onto the first category tile (Profile) and was calling
@@ -225,7 +199,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
           // that just received D-pad focus (↓ looked dead on Playback → Sources).
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
-            (widget.onFocusSelect ?? widget.onTap)();
+            (onFocusSelect ?? onTap)();
           });
         }
       },
@@ -1831,6 +1805,7 @@ class SettingsTextField extends StatefulWidget {
     this.hint,
     this.obscureText = false,
     this.enabled = true,
+    this.autofocus = false,
     this.onSubmitted,
     this.keyboardType,
     this.maxLength,
@@ -1842,6 +1817,10 @@ class SettingsTextField extends StatefulWidget {
   final String? hint;
   final bool obscureText;
   final bool enabled;
+
+  /// Desktop: focuses the editable field. TV: focuses browse highlight only
+  /// (OK still opens the keyboard — never autofocus-into-edit).
+  final bool autofocus;
   final ValueChanged<String>? onSubmitted;
   final TextInputType? keyboardType;
   final int? maxLength;
@@ -1857,6 +1836,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   );
   late final FocusNode _editFocus = FocusNode(debugLabel: 'settings-text-edit');
   bool _editing = false;
+  bool _didAutofocus = false;
 
   /// True while switching browse ↔ edit so a one-frame unfocused gap does not
   /// clear [_editing] before the target node receives focus.
@@ -1882,6 +1862,16 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncFocusModes();
+    if (!widget.autofocus || _didAutofocus || !widget.enabled) return;
+    _didAutofocus = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.enabled) return;
+      if (_tv) {
+        _browseFocus.requestFocus();
+      } else {
+        _editFocus.requestFocus();
+      }
+    });
   }
 
   @override
@@ -1999,9 +1989,6 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       return KeyEventResult.handled;
     }
 
-    final inContain = ShellTvContainDpad.activeOf(context);
-    final inLinear = ShellTvLinearFocusScope.activeOf(context);
-    if (!inContain && !inLinear) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     ShellTvHoldAccel.note(event);
 
@@ -2013,10 +2000,15 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       return KeyEventResult.ignored;
     }
 
-    if (inLinear && !ShellTvDisableLinearFocus.activeOf(context)) {
+    final inLinear = ShellTvLinearFocusScope.activeOf(context) &&
+        !ShellTvDisableLinearFocus.activeOf(context);
+    if (inLinear) {
       return shellTvLinearMenuArrows(context: context, event: event);
     }
 
+    // Spatial nearest-neighbor — same as FocusableControl. App-root
+    // DirectionalFocusAction no-ops ←/→; do not require ShellTvContainDpad
+    // (profile editor / overlays outside settings panes).
     TraversalDirection? direction;
     if (key == LogicalKeyboardKey.arrowUp) {
       direction = TraversalDirection.up;

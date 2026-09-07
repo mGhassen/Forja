@@ -4,7 +4,7 @@ import 'package:forja/shared/foundation/components/chrome/chrome_filters.dart';
 import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_search_page.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/runtime.dart';
+import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 

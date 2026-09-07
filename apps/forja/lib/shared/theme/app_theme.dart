@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_layout.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -170,6 +170,10 @@ class FocusableControl extends StatefulWidget {
   /// (same as category rail) — no gray/white focus ring box.
   final bool showFocusRail;
 
+  /// Keep the focus rail lit without hover/focus (e.g. selected settings
+  /// category). Paints on the same layer as hover so left bars stay aligned.
+  final bool forceRailActive;
+
   /// Layout width used for focus-scale bleed. Defaults to poster card width.
   final double? focusBleedWidth;
 
@@ -192,6 +196,7 @@ class FocusableControl extends StatefulWidget {
     this.showFocusBorder = false,
     this.showFocusFill = true,
     this.showFocusRail = false,
+    this.forceRailActive = false,
     this.focusBleedWidth,
     this.allowNestedFocus = false,
     this.onKeyEvent,
@@ -560,12 +565,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   Widget _buildFocusedChild(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final chromeActive = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _isHovered,
-      focused: _isFocused,
-      context: context,
-    );
+    final chromeActive = widget.forceRailActive ||
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _isHovered,
+          focused: _isFocused,
+          context: context,
+        );
 
     // Settings rail: green left bar + ink fill (no ring box).
     // Flat menus (scale 1.0): gray fill + thin border.

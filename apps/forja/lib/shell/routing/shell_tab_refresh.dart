@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 
 /// Tabs that support stale-while-revalidate when re-selected or on app resume.
 ///

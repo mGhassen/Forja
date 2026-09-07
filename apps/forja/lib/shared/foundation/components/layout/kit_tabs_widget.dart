@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
-import 'package:forja/shared/foundation/primitives/forja_status_tabs.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_status_tabs.dart';
 
 /// Layout widget [`KitTypes.tabs`] — equal-width status / segment strip.
 class KitTabsWidget extends StatelessWidget {

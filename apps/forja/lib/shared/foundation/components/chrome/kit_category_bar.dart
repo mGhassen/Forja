@@ -4,7 +4,7 @@ import 'package:forja/shared/foundation/components/chrome/kit_category_circle_me
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Layout widget [`kit.categoryBar`] — [ShellMoodCircle] kind pickers.

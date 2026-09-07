@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/foundation/primitives/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
 
 /// Plain text title for horizontal catalog rows (no icon, no underline).
 class ShellSectionTitle extends StatelessWidget {

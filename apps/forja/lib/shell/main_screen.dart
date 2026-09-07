@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';

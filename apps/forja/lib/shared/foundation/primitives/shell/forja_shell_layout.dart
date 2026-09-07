@@ -2,10 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/foundation/primitives/forja_shell_metrics.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_metrics.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 
 /// True when [ShellScope] resolved the TV profile (nav-rail TV chrome).
 bool isTvProfile(BuildContext context) =>

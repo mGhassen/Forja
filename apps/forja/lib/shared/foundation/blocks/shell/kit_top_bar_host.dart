@@ -6,7 +6,7 @@ import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/components/layout/kit_top_bar.dart';
 import 'package:forja/shared/foundation/components/layout/kit_top_menu_registry.dart';
-import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:rust/rust.dart';

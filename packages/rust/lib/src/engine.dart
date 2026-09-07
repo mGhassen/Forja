@@ -196,13 +196,24 @@ class RustLib {
   String iptvPortalShareEncode(
     String url,
     String username,
-    String password,
-  ) => using((arena) {
+    String password, {
+    String platform = 'xtream',
+    String userAgent = '',
+  }) => using((arena) {
     final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     final userPtr = username.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     final passPtr = password.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final platformPtr =
+        platform.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final uaPtr = userAgent.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(
-      _native.ffi_iptv_portal_share_encode(urlPtr, userPtr, passPtr),
+      _native.ffi_iptv_portal_share_encode(
+        urlPtr,
+        userPtr,
+        passPtr,
+        platformPtr,
+        uaPtr,
+      ),
     );
   });
 
@@ -687,7 +698,7 @@ final class _FfiNative {
           )
           .asFunction(),
       ffi_iptv_portal_share_encode = lib
-          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+          .lookup<ffi.NativeFunction<_FiveStringNative>>(
             'ffi_iptv_portal_share_encode',
           )
           .asFunction(),
@@ -1071,6 +1082,8 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
   )
   ffi_iptv_portal_share_encode;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1266,6 +1279,14 @@ typedef _TwoStringNative =
     );
 typedef _ThreeStringNative =
     ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _FiveStringNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
       ffi.Pointer<ffi.Char>,
       ffi.Pointer<ffi.Char>,
       ffi.Pointer<ffi.Char>,

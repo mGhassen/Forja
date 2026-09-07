@@ -6,11 +6,40 @@ const SHARE_CODE_LENGTH = 8
 const EMBEDDED_PREFIX = 'F1.'
 const KEY_MATERIAL = 'forja-iptv-share-embedded-v1'
 const CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+const M3U_USERNAME_SENTINEL = '__m3u__'
+
+type PortalPlatform = 'xtream' | 'm3u' | 'stalker'
 
 export type SharePortal = {
   url: string
   username: string
   password: string
+  platform?: PortalPlatform
+  userAgent?: string
+}
+
+function normalizePlatform(raw: string | undefined): PortalPlatform {
+  const p = (raw ?? '').trim().toLowerCase()
+  if (p === 'm3u') return 'm3u'
+  if (p === 'stalker') return 'stalker'
+  return 'xtream'
+}
+
+function assertCredentials(
+  platform: PortalPlatform,
+  url: string,
+  username: string,
+  password: string,
+): void {
+  if (!url) throw new Error('url is required')
+  if (platform === 'm3u') return
+  if (platform === 'stalker') {
+    if (!username) throw new Error('url and username (MAC) are required')
+    return
+  }
+  if (!username || !password) {
+    throw new Error('url, username, and password are required')
+  }
 }
 
 export function isEmbeddedShareToken(raw: string): boolean {
@@ -75,19 +104,21 @@ async function embeddedKey(): Promise<CryptoKey> {
 
 async function encodeEmbeddedShare(portal: SharePortal): Promise<string> {
   const url = portal.url.trim()
-  const username = portal.username.trim()
+  const platform = normalizePlatform(portal.platform)
+  let username = portal.username.trim()
   const password = portal.password.trim()
-  if (!url || !username || !password) {
-    throw new Error('url, username, and password are required')
+  const userAgent = (portal.userAgent ?? '').trim()
+  assertCredentials(platform, url, username, password)
+  if (platform === 'm3u' && !username) username = M3U_USERNAME_SENTINEL
+  const payload: Record<string, string | number> = {
+    v: 1,
+    url,
+    username,
+    password,
+    platform,
   }
-  const plain = new TextEncoder().encode(
-    JSON.stringify({
-      v: 1,
-      url,
-      username,
-      password,
-    }),
-  )
+  if (userAgent) payload.userAgent = userAgent
+  const plain = new TextEncoder().encode(JSON.stringify(payload))
   const iv = crypto.getRandomValues(new Uint8Array(16))
   const key = await embeddedKey()
   const cipher = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, plain)
@@ -117,12 +148,29 @@ async function decodeEmbeddedShare(
       url?: string
       username?: string
       password?: string
+      platform?: string
+      userAgent?: string
+      user_agent?: string
     }
     const url = decoded.url?.trim() ?? ''
-    const username = decoded.username?.trim() ?? ''
+    const platform = normalizePlatform(decoded.platform)
+    let username = decoded.username?.trim() ?? ''
     const password = decoded.password?.trim() ?? ''
-    if (!url || !username || !password) return null
-    return { url, username, password }
+    const userAgent =
+      decoded.userAgent?.trim() || decoded.user_agent?.trim() || ''
+    if (platform === 'm3u' && !username) username = M3U_USERNAME_SENTINEL
+    try {
+      assertCredentials(platform, url, username, password)
+    } catch {
+      return null
+    }
+    return {
+      url,
+      username,
+      password,
+      platform,
+      ...(userAgent ? { userAgent } : {}),
+    }
   } catch {
     return null
   }

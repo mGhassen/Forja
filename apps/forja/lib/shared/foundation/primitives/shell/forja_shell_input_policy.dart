@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/foundation/primitives/forja_shell_keyboard_focus_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_keyboard_focus_scope.dart';
 
 /// TV app-root traversal - never use geometry for LEFT/RIGHT (rows trap in widgets).
 class _ShellTvDirectionalFocusAction extends DirectionalFocusAction {

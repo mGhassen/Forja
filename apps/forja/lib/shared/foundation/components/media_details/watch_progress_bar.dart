@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart' show isInProgressResume, isWatchFinished;
 
 class WatchProgressBar extends StatelessWidget {

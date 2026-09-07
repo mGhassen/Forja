@@ -9,7 +9,7 @@ import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/frame/shell_scaffold.dart';
-import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';

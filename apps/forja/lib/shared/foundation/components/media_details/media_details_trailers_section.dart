@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/forja_details_tokens.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_section_title.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_details_tokens.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_section_title.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';

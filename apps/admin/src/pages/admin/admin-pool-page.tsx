@@ -750,6 +750,7 @@ export function AdminPoolPage() {
             url: c.url,
             username: c.username,
             password,
+            platform: c.platform,
           })
           const formatted = formatShareCode(code)
           codes.push(`${c.username}\t${formatted}`)
@@ -829,6 +830,7 @@ export function AdminPoolPage() {
         url: c.url,
         username: c.username,
         password,
+        platform: c.platform,
       })
       const formatted = formatShareCode(code)
       try {

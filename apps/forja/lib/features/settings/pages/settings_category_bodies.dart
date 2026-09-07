@@ -33,7 +33,7 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 
 /// Builds the body for a Settings category (lazy - only when selected / pushed).
 Widget buildSettingsCategoryBody(

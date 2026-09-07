@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/player/screens/utils.dart';

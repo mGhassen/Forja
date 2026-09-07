@@ -6,7 +6,7 @@ import 'package:forja/shared/foundation/services/follow/my_list_catalog_open.dar
 import 'package:forja/shared/foundation/services/follow/my_list_merge.dart';
 import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/services/runtime.dart';
+import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
 import 'package:forja/shared/foundation/services/follow/list_providers.dart';

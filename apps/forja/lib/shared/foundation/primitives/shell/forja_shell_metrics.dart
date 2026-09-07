@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 
 /// Profile-specific layout sizes. Shared colors/typography stay in [ForjaShellColors].
 class ShellMetrics {

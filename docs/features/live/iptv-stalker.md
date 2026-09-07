@@ -20,6 +20,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 - Play in the IPTV player — channel guide and search work for live. Stalker live opens the stream URL directly (no Xtream-style continuity proxy). Each open/reconnect mints a fresh `create_link`. If Buffering sticks with an empty cache, Stable recovery reconnects after a few seconds (new link) instead of holding on a stuttering picture; if the panel keeps returning a dead link, the player stops retrying, shows **Stream offline**, and marks the channel red in the catalog (Reload tries again)
 - Use the portal with **Live Matches → Forja Sports** (name/EPG match; stream link created when you pick a channel)
 - Sync Stalker portals to your signed-in profile (same as Xtream)
+- **Copy share code** on a portal row (app or web Account → IPTV) — works with or without a device serial; the importer opens as Stalker
 - See subscription end date on the portal card when known (scrape/manual or `get_profile` `exp_date` / date-like `phone`); if a status probe returns no date, a known date stays with a trailing `*` instead of flipping to **Ends: Unknown**
 
 ## Setup

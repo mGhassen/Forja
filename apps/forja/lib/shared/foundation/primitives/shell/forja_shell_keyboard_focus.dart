@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/foundation/primitives/forja_shell_keyboard_focus_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_keyboard_focus_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Tracks pointer vs keyboard on desktop — wraps the shell under [MaterialApp].

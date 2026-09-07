@@ -31,6 +31,7 @@ export type AssignmentRow = {
   max_connections: string | null
   catalog_pool: boolean
   region_primary: string
+  platform: 'xtream' | 'm3u' | 'stalker'
 }
 
 function errMessage(e: unknown, fallback: string): string {
@@ -89,7 +90,7 @@ export async function fetchAssignmentsForAccount(
       `
       id, portal_id, profile_id, portal_name,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
-      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary )
+      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary, platform )
     `,
     )
     .eq('account_id', accountId)
@@ -110,7 +111,7 @@ export async function fetchAssignmentsForPortal(
       id, portal_id, profile_id, portal_name, account_id,
       profiles!user_iptv_portals_profile_id_fkey ( name ),
       accounts!user_iptv_portals_account_id_fkey ( email ),
-      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary )
+      iptv_portals ( id, url, username, alive, expiry, max_connections, catalog_pool, region_primary, platform )
     `,
     )
     .eq('portal_id', portalId)
@@ -136,7 +137,11 @@ function mapAssignmentRow(
     max_connections?: string | null
     catalog_pool?: boolean
     region_primary?: string
+    platform?: string
   } | null
+  const platformRaw = (portal?.platform ?? 'xtream').trim().toLowerCase()
+  const platform =
+    platformRaw === 'm3u' || platformRaw === 'stalker' ? platformRaw : 'xtream'
   return {
     id: r.id as string,
     portal_id: (portal?.id ?? r.portal_id) as string,
@@ -151,6 +156,7 @@ function mapAssignmentRow(
     max_connections: portal?.max_connections ?? null,
     catalog_pool: portal?.catalog_pool === true,
     region_primary: portal?.region_primary ?? 'UNKNOWN',
+    platform,
   }
 }
 

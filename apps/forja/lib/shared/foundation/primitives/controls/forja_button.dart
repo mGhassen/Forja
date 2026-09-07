@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 

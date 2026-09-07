@@ -1,6 +1,6 @@
-import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_metrics.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_profile.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_metrics.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
 
 enum ShellChromeKind { bottomNav, navRail, navRailTv }
 

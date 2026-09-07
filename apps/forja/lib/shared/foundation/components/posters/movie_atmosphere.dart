@@ -1,9 +1,9 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/components/hero/settled_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';

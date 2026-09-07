@@ -1,6 +1,6 @@
 import 'package:forja/shared/foundation/blocks/play/play_session.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/watch_history.dart';
+import 'package:forja/shared/foundation/services/watch/watch_history.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow_from_watched.dart';

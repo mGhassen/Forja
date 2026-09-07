@@ -12,7 +12,7 @@ import 'package:forja/shared/foundation/components/layout/kit_top_menu_registry.
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
-import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';

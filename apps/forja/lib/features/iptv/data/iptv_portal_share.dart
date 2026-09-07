@@ -12,7 +12,8 @@ import 'models.dart';
 /// Creates and resolves 8-character IPTV portal share codes.
 ///
 /// Credentials are encrypted locally (Rust `F1.` token) and stored under the
-/// short code in Supabase — no pastebin.
+/// short code in Supabase — no pastebin. Tokens carry `platform` so Stalker /
+/// M3U share/import round-trips (Stalker serial / M3U password may be empty).
 class IptvPortalShare {
   IptvPortalShare._();
 
@@ -55,6 +56,8 @@ class IptvPortalShare {
       portal.url,
       portal.username,
       portal.password,
+      platform: portal.platform.wire,
+      userAgent: portal.userAgent,
     );
     if (token.isEmpty || !isEmbeddedToken(token)) {
       throw StateError('Could not create share code');
@@ -116,12 +119,29 @@ class IptvPortalShare {
       final url = (map['url'] as String?)?.trim() ?? '';
       final username = (map['username'] as String?)?.trim() ?? '';
       final password = (map['password'] as String?)?.trim() ?? '';
-      if (url.isEmpty || username.isEmpty || password.isEmpty) return null;
+      final platform = IptvPortalPlatform.fromString(map['platform'] as String?);
+      final userAgent =
+          (map['userAgent'] as String?)?.trim() ??
+          (map['user_agent'] as String?)?.trim() ??
+          '';
+      if (url.isEmpty) return null;
+      switch (platform) {
+        case IptvPortalPlatform.xtream:
+          if (username.isEmpty || password.isEmpty) return null;
+        case IptvPortalPlatform.stalker:
+          if (username.isEmpty) return null;
+        case IptvPortalPlatform.m3u:
+          break;
+      }
       return IptvPortal(
         url: url,
-        username: username,
+        username: platform == IptvPortalPlatform.m3u && username.isEmpty
+            ? IptvPortalPlatform.m3uUsernameSentinel
+            : username,
         password: password,
         source: 'Shared',
+        platform: platform,
+        userAgent: userAgent,
       );
     } catch (e, st) {
       debugPrint('[IptvPortalShare] decode failed: $e\n$st');

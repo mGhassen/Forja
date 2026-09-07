@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **1 / 8** acceptance |
+| **Progress** | **10 / 10** fix · **1 / 8** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I135-T07 | IPTV portal row: `allowNestedFocus` so **→** reaches favorite → copy → edit → delete | ✅ |
 | 8 | I135-T08 | Settings detail rows: spatial `focusInDirection` with zone-only `tvMeta` + `ensureVisibleMode.item` so long lists (Playback) scroll with ↓/↑ | ✅ |
 | 9 | I135-T09 | Settings detail opt-in `ShellTvLinearFocusScope` again — vertical reading-order ↑←/↓→ (no spatial sideways between rows); split + compact + category page | ✅ |
+| 10 | I135-T10 | Profile create/edit: TV browse name field (`SettingsTextField`) + `FocusableControl` avatars / `ForjaButton` actions so ↓ from name reaches avatars | ✅ |
 
 ---
 

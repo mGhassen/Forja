@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/services/details_fetch.dart';
+import 'package:forja/shared/foundation/services/meta/details_fetch.dart';
 import 'package:forja/shared/foundation/lib/cover_urls.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';

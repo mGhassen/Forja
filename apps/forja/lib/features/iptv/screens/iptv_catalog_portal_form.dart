@@ -445,11 +445,16 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         return;
       }
       _urlCtrl.text = portal.url;
-      _userCtrl.text = portal.username;
+      _userCtrl.text =
+          portal.username == IptvPortalPlatform.m3uUsernameSentinel
+              ? ''
+              : portal.username;
       _passCtrl.text = portal.password;
+      _uaCtrl.text = portal.userAgent;
       _labelCtrl.clear();
       _lastImportedCode = code;
       setState(() {
+        _platform = portal.platform;
         _importingShareCode = false;
         _importPhase = _PortalImportPhase.namePortal;
       });
@@ -473,10 +478,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     if (widget.ctrl.isAdding) return;
     setState(() {
       _importPhase = _PortalImportPhase.shareCode;
+      _platform = IptvPortalPlatform.xtream;
       _labelCtrl.clear();
       _urlCtrl.clear();
       _userCtrl.clear();
       _passCtrl.clear();
+      _uaCtrl.clear();
       _lastImportedCode = null;
       _shareCodeError = null;
     });

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'forja_theme.dart';
+import '../tokens/forja_theme.dart';
 
 typedef ProviderTap = void Function(String providerId);
 

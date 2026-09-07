@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
+import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Optional title row for body-only shell tabs.

@@ -6,7 +6,7 @@ import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_optio
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/services/kit_top_bar_host_hooks.dart';
+import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Dynamic catalog options from [KitTopBarHostHooks.loadCatalogOptions].

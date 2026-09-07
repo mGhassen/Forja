@@ -161,6 +161,7 @@ function AccountPortals({
         url: a.url,
         username: a.username,
         password,
+        platform: a.platform,
       })
       const formatted = formatShareCode(code)
       try {

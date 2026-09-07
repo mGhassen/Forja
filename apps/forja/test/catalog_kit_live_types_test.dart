@@ -3,7 +3,7 @@ import 'package:forja/shared/host/live_sports/live_prefs.dart';
 import 'package:forja/shared/host/live_sports/live_schedule_catalog_source.dart';
 import 'package:forja/shared/host/live_sports/live_sports_host.dart';
 import 'package:forja/shared/host/live_sports/schedule_list_source.dart';
-import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 

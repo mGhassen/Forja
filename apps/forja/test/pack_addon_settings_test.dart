@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/foundation/services/pack_addon_settings_spec.dart';
-import 'package:forja/shared/foundation/services/pack_settings_store.dart';
+import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
+import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

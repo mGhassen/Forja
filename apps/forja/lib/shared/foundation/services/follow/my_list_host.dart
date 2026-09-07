@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/foundation/services/follow/my_list_catalog_source.dart';
-import 'package:forja/shared/foundation/services/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 
 /// Opaque My List kit ids + foundation registration.
 ///

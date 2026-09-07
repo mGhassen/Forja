@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import 'forja_shell_colors.dart';
+import '../tokens/forja_shell_colors.dart';
 
 /// Frosted sliding side-panel shell (Sources, Episodes, Filters).
 ///

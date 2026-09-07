@@ -2,7 +2,7 @@
 
 **Status:** partial — player shipped; overlay stubs not wired  
 **Depends on:** RFC-011 (v1.0 player shell)  
-**Area:** `apps/forja/lib/shared/player/`, `shared/foundation/primitives/forja_player_overlay.dart`, `shared/foundation/primitives/forja_server_grid.dart`
+**Area:** `apps/forja/lib/shared/player/`, `shared/foundation/primitives/feedback/forja_player_overlay.dart`, `shared/foundation/primitives/chrome/forja_server_grid.dart`
 
 ## Status at a glance
 

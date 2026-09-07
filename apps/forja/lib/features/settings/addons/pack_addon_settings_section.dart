@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/services/pack_addon_settings_spec.dart';
-import 'package:forja/shared/foundation/services/pack_settings_store.dart';
+import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
+import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Renders pack-declared Addon settings fields for [addonId] (RFC-089).

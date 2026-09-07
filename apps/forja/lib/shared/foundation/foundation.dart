@@ -1,9 +1,9 @@
 /// Foundation — app-wide base: primitives, kit, protocol, services.
 ///
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
+/// Services domains: `meta/` · `registry/` · `nav/` · `pack/` · `follow/` · `watch/`.
 /// Product hub tabs are pack-owned. Live Sports host glue lives under
-/// `shared/host/live_sports/` (not here). My List follow stays in
-/// `services/follow/` (RFC-088).
+/// `shared/host/live_sports/` (not here).
 library;
 
 export 'primitives/primitives.dart';
@@ -13,12 +13,12 @@ export 'lib/cover_urls.dart';
 export 'protocol/deeplink.dart';
 export 'protocol/filter.dart';
 export 'protocol/protocol.dart';
-export 'services/cache.dart';
-export 'services/host_list_registry.dart';
-export 'services/kit_top_bar_host_hooks.dart';
-export 'services/meta_surface_open.dart';
-export 'services/plugin_nav.dart';
-export 'services/runtime.dart';
+export 'services/meta/cache.dart';
+export 'services/meta/runtime.dart';
+export 'services/registry/host_list_registry.dart';
+export 'services/registry/kit_top_bar_host_hooks.dart';
+export 'services/registry/meta_surface_open.dart';
+export 'services/nav/plugin_nav.dart';
 export 'blocks/shell/kit_open.dart';
 export 'blocks/shell/kit_search_screen.dart';
 export 'blocks/shell/kit_shell.dart';

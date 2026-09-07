@@ -182,8 +182,14 @@ fn decode_xtream_text(text: String) -> String {
     iptv::xtream::decode_xtream_text(&text)
 }
 
-fn iptv_portal_share_encode(url: String, username: String, password: String) -> String {
-    iptv::portal_share::encode_token(&url, &username, &password)
+fn iptv_portal_share_encode(
+    url: String,
+    username: String,
+    password: String,
+    platform: String,
+    user_agent: String,
+) -> String {
+    iptv::portal_share::encode_token(&url, &username, &password, &platform, &user_agent)
 }
 
 fn iptv_portal_share_decode(token: String) -> String {

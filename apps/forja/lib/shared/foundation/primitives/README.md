@@ -1,6 +1,15 @@
 # Foundation primitives
 
-App-wide atomic UI — `forja_*` tokens/shell atoms, plus brand/chrome/tv/desktop leafs.
+App-wide atomic UI. Domains:
+
+| Folder | Holds |
+|--------|--------|
+| `tokens/` | colors, theme, shell/details/settings tokens |
+| `shell/` | scope, metrics, layout, platform, section title |
+| `controls/` | buttons, switch, chips, tabs |
+| `feedback/` | toast, loading, frosted / player overlays |
+| `chrome/` | scroller, focus tap, posters, mood circle |
+| `brand/` · `desktop/` · `tv/` | platform / brand leafs |
 
 ```dart
 import 'package:forja/shared/foundation/primitives/primitives.dart';

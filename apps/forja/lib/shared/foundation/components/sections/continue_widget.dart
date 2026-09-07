@@ -7,7 +7,7 @@ import 'package:forja/shared/foundation/components/rows/kit_row_prefetch.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/sections/continue_watching_section.dart';
 import 'package:forja/shared/foundation/blocks/play/play_resolve.dart';
-import 'package:forja/shared/foundation/services/watch_history.dart';
+import 'package:forja/shared/foundation/services/watch/watch_history.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';

@@ -4,7 +4,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/services/plugin_nav.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
@@ -135,6 +135,7 @@ Widget shellFocusableTap({
   bool showFocusBorder = false,
   bool showFocusFill = true,
   bool showFocusRail = false,
+  bool forceRailActive = false,
   double? focusBleedWidth,
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
@@ -168,6 +169,7 @@ Widget shellFocusableTap({
       showFocusBorder: showFocusBorder,
       showFocusFill: showFocusFill,
       showFocusRail: showFocusRail,
+      forceRailActive: forceRailActive,
       focusBleedWidth: focusBleedWidth,
       autoFocus: autoFocus,
       onLeftEdge: resolvedLeftEdge,

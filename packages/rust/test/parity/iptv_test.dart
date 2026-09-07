@@ -77,6 +77,33 @@ void main() {
     expect(map['url'], 'http://portal.example.com:8080');
     expect(map['username'], 'user1');
     expect(map['password'], 'pass1');
+    expect(map['platform'], 'xtream');
+  });
+
+  test('iptvPortalShareEncodeDecode stalker empty serial', () {
+    final token = RustLib.instance.iptvPortalShareEncode(
+      'http://mag.example.com/c/',
+      '00:1A:79:AA:BB:CC',
+      '',
+      platform: 'stalker',
+    );
+    expect(token.startsWith('F1.'), isTrue);
+    final raw = RustLib.instance.iptvPortalShareDecode(token);
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    expect(map['url'], 'http://mag.example.com/c/');
+    expect(map['username'], '00:1A:79:AA:BB:CC');
+    expect(map['password'], '');
+    expect(map['platform'], 'stalker');
+  });
+
+  test('iptvPortalShareEncode rejects xtream empty password', () {
+    final token = RustLib.instance.iptvPortalShareEncode(
+      'http://x',
+      'u',
+      '',
+      platform: 'xtream',
+    );
+    expect(token, isEmpty);
   });
 
   test('iptvPortalShareDecode rejects legacy short code', () {

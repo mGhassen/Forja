@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/meta_surface_open.dart';
+import 'package:forja/shared/foundation/services/registry/meta_surface_open.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from
 /// double-tap / re-click while the first navigation is alive.
