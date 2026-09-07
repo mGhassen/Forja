@@ -164,7 +164,6 @@ class SyncDomainBridge {
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 2160,
       'addon_feature_iptv': false,
-      'addon_feature_live_sports': false,
     });
     await _settings.setNavbarConfig(
       List<String>.from(defaults.visibleNavIds),
@@ -1276,9 +1275,6 @@ class SyncDomainBridge {
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),
       'addon_feature_iptv': await _settings.isAddonFeatureEnabled('iptv'),
-      'addon_feature_live_sports': await _settings.isAddonFeatureEnabled(
-        SettingsService.liveSportsAddonFeatureId,
-      ),
     };
   }
 
@@ -1362,14 +1358,7 @@ class SyncDomainBridge {
         payload['addon_feature_iptv'] as bool,
       );
     }
-    final liveSports = payload['addon_feature_live_sports'] ??
-        payload['addon_feature_live_matches'];
-    if (liveSports is bool) {
-      await _settings.setAddonFeatureEnabled(
-        SettingsService.liveSportsAddonFeatureId,
-        liveSports,
-      );
-    }
+    // RFC-093: ignore retired Live Sports addon feature keys from cloud.
   }
 
   Future<Map<String, dynamic>> exportProviders() async {

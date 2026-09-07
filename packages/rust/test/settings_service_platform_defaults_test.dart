@@ -726,12 +726,12 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     await service.setNavbarConfig(const ['iptv', 'live_matches']);
     expect(await service.isAddonFeatureEnabled('iptv'), isTrue);
+    // Live Sports is pack-only (RFC-093) — retired capability always false.
     expect(
       await service.isAddonFeatureEnabled(SettingsService.liveSportsAddonFeatureId),
-      isTrue,
+      isFalse,
     );
-    // Legacy id still aliases to the Live Sports capability.
-    expect(await service.isAddonFeatureEnabled('live_matches'), isTrue);
+    expect(await service.isAddonFeatureEnabled('live_matches'), isFalse);
     expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
   });
 

@@ -8,11 +8,22 @@ import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.d
 import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
-/// Renders pack-declared Addon settings fields for [addonId] (RFC-089).
+/// Renders pack-declared settings fields (RFC-089 / RFC-093).
+///
+/// Pass [addonId] for host Addon detail pages, or [plugins] for Forja Packs
+/// expand rows. Prefer [plugins] when embedding under a pack.
 class PackAddonSettingsSection extends StatefulWidget {
-  const PackAddonSettingsSection({super.key, required this.addonId});
+  const PackAddonSettingsSection({
+    super.key,
+    this.addonId,
+    this.plugins,
+  }) : assert(addonId != null || plugins != null);
 
-  final String addonId;
+  /// Host Addon id — loads enabled plugins contributing `settings.addon`.
+  final String? addonId;
+
+  /// Pack plugins — shows any with `settings.fields` (addon id optional).
+  final List<EnginePlugin>? plugins;
 
   @override
   State<PackAddonSettingsSection> createState() =>
@@ -28,13 +39,26 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   @override
   void initState() {
     super.initState();
-    EngineService.changeNotifier.addListener(_onEngineChanged);
+    if (widget.plugins == null) {
+      EngineService.changeNotifier.addListener(_onEngineChanged);
+    }
     unawaited(_reload());
   }
 
   @override
+  void didUpdateWidget(covariant PackAddonSettingsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.plugins != oldWidget.plugins ||
+        widget.addonId != oldWidget.addonId) {
+      unawaited(_reload());
+    }
+  }
+
+  @override
   void dispose() {
-    EngineService.changeNotifier.removeListener(_onEngineChanged);
+    if (widget.plugins == null) {
+      EngineService.changeNotifier.removeListener(_onEngineChanged);
+    }
     for (final c in _textControllers.values) {
       c.dispose();
     }
@@ -47,16 +71,22 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   }
 
   Future<void> _reload() async {
-    final packs = await EngineService.instance.listPacks();
-    final plugins = <EnginePlugin>[
-      for (final pack in packs)
-        if (pack.enabled)
-          for (final p in pack.plugins) p,
-    ];
-    final specs = PackAddonSettingsSpec.listForAddon(
-      plugins,
-      addonId: widget.addonId,
-    );
+    final List<PackAddonSettingsSpec> specs;
+    final plugins = widget.plugins;
+    if (plugins != null) {
+      specs = PackAddonSettingsSpec.listForPlugins(plugins);
+    } else {
+      final packs = await EngineService.instance.listPacks();
+      final all = <EnginePlugin>[
+        for (final pack in packs)
+          if (pack.enabled)
+            for (final p in pack.plugins) p,
+      ];
+      specs = PackAddonSettingsSpec.listForAddon(
+        all,
+        addonId: widget.addonId!,
+      );
+    }
     final values = <String, dynamic>{};
     for (final spec in specs) {
       for (final field in spec.fields) {
@@ -160,28 +190,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox.shrink();
-    if (_specs.isEmpty) {
-      if (widget.addonId != 'live_sports') return const SizedBox.shrink();
-      return SettingsGroup(
-        label: 'Setup',
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
-            child: Text(
-              'Install and enable the ForjaHQ Live Sports hub pack under '
-              'Settings → Forja Packs to configure Forja Live / Sports, merge, '
-              'and leagues.',
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    if (_loading || _specs.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

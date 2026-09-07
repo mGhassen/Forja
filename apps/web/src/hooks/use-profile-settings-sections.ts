@@ -119,9 +119,6 @@ export function useForjaSetting() {
         prevPacks: current?.connectedServices?.forja?.packs ?? [],
         nextPacks: payload.packs ?? [],
         addonFeatureIptv: current?.playback?.addon_feature_iptv,
-        addonFeatureLiveSports:
-          current?.playback?.addon_feature_live_sports ??
-          current?.playback?.addon_feature_live_matches,
       })
       await settings.patch({
         connectedServices: {

@@ -5,13 +5,14 @@ import 'package:forja/shared/sync/sync.dart';
 ///
 /// These are **root product surfaces**, not plugin packs. The list is fixed:
 /// every addon always appears so it can be activated or not. Installed plugins
-/// (Forja Packs, Stremio addons, Nuvio scrapers, live catalogs) add extra
-/// settings **inside** an addon's detail page — they do not add or remove
+/// (Forja Packs, Stremio addons, Nuvio scrapers) add extra settings **inside**
+/// an addon's detail page or under Forja Packs — they do not add or remove
 /// rows from this list.
+///
+/// Live Sports is pack-only (RFC-093) — not listed here.
 abstract final class SettingsAddonId {
   static const playback = 'playback';
   static const iptv = 'iptv';
-  static const liveSports = 'live_sports';
   static const torrent = 'torrent';
   static const stremio = 'stremio';
   static const nuvio = 'nuvio';
@@ -23,7 +24,6 @@ abstract final class SettingsAddonId {
   static const categoryAliases = <String, String>{
     'playback': playback,
     'debrid': debrid,
-    'iptv_sports': liveSports,
     'accounts': connectedServices,
     'lan': lan,
   };
@@ -62,12 +62,6 @@ const List<SettingsAddonMeta> kSettingsAddons = [
     title: 'IPTV',
     subtitle: 'Portals, EPG, live quality',
     icon: Icons.live_tv_rounded,
-  ),
-  SettingsAddonMeta(
-    id: SettingsAddonId.liveSports,
-    title: 'Live Sports',
-    subtitle: 'Portal, leagues, Live Matches',
-    icon: Icons.sports_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.torrent,

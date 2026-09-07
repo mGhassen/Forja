@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/addons/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
@@ -166,6 +167,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
             ],
           ),
           children: [
+            PackAddonSettingsSection(plugins: plugins),
             SettingsEnginePluginGroupList(
               sourceUrl: pack.sourceUrl,
               byGroup: grouped.byGroup,
@@ -369,6 +371,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
         ],
       ),
       children: [
+        PackAddonSettingsSection(plugins: plugins),
         SettingsLiveSportCapabilityTabs(
           sourceUrl: pack.sourceUrl,
           plugins: plugins,

@@ -292,8 +292,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         final pos = _s._positionNotifier.value + const Duration(seconds: 10);
         unawaited(_s._seekTo(pos > dur ? dur : pos));
       },
-      onVolumeUp: () => _s._nudgeTvVolume(10),
-      onVolumeDown: () => _s._nudgeTvVolume(-10),
       onToggleControls: _s._toggleControls,
       onFocusBack: () {
         setState(() => _s._showControls = true);

@@ -184,9 +184,6 @@ export function AccountSettingsAddonsPage() {
 
   const availableIds = availableFeatureTabIds({
     addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-    addonFeatureLiveSports:
-      playDraft.draft.addon_feature_live_sports ??
-      playDraft.draft.addon_feature_live_matches,
     packs: packsDraft.draft.packs,
   })
   const availableIdsRef = useRef(availableIds)
@@ -215,28 +212,18 @@ export function AccountSettingsAddonsPage() {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** IPTV: unlock + default Features rail. Live Sports: capability only (RFC-087). */
-  const setHostAddon = (addonId: 'iptv' | 'live_sports', on: boolean) => {
+  /** IPTV: unlock + default Features rail. */
+  const setIptvAddon = (on: boolean) => {
     void (async () => {
       const prevPlay = playDraft.draft
       const prevNav = navDraft.draft
       const nextPlayback: PreferencesPayload = {
         ...prevPlay,
-        ...(addonId === 'iptv'
-          ? {
-              addon_feature_iptv: on,
-              ...(on ? {} : { iptv_epg_enabled: false }),
-            }
-          : {
-              addon_feature_live_sports: on,
-              addon_feature_live_matches: undefined,
-            }),
+        addon_feature_iptv: on,
+        ...(on ? {} : { iptv_epg_enabled: false }),
       }
       const nextAvailable = availableFeatureTabIds({
         addonFeatureIptv: nextPlayback.addon_feature_iptv,
-        addonFeatureLiveSports:
-          nextPlayback.addon_feature_live_sports ??
-          nextPlayback.addon_feature_live_matches,
         packs: packsDraft.draft.packs,
       })
 
@@ -248,24 +235,22 @@ export function AccountSettingsAddonsPage() {
         },
         nextAvailable,
       )
-      if (addonId === 'iptv') {
-        const visible = new Set(nextNav.visibleIds)
-        if (on) visible.add('iptv')
-        else visible.delete('iptv')
-        const order = nextNav.tabOrder.includes('iptv')
-          ? nextNav.tabOrder
-          : on
-            ? [...nextNav.tabOrder, 'iptv']
-            : nextNav.tabOrder
-        nextNav = pruneNavigationToAvailable(
-          {
-            visibleIds: order.filter((id) => visible.has(id)),
-            tabOrder: order,
-            defaultTab: nextNav.defaultTab,
-          },
-          nextAvailable,
-        )
-      }
+      const visible = new Set(nextNav.visibleIds)
+      if (on) visible.add('iptv')
+      else visible.delete('iptv')
+      const order = nextNav.tabOrder.includes('iptv')
+        ? nextNav.tabOrder
+        : on
+          ? [...nextNav.tabOrder, 'iptv']
+          : nextNav.tabOrder
+      nextNav = pruneNavigationToAvailable(
+        {
+          visibleIds: order.filter((id) => visible.has(id)),
+          tabOrder: order,
+          defaultTab: nextNav.defaultTab,
+        },
+        nextAvailable,
+      )
 
       playDraft.setDraft(nextPlayback)
       navDraft.setDraft({
@@ -294,14 +279,6 @@ export function AccountSettingsAddonsPage() {
     })()
   }
 
-  const hostAddonOn = (addonId: 'iptv' | 'live_sports'): boolean => {
-    if (addonId === 'iptv') return playDraft.draft.addon_feature_iptv === true
-    return (
-      playDraft.draft.addon_feature_live_sports === true ||
-      playDraft.draft.addon_feature_live_matches === true
-    )
-  }
-
   const footerSaving = hostBusy || playDraft.isSaving || navDraft.isSaving
   const footerFlash = hostFlash || playDraft.savedFlash || navDraft.savedFlash
   const footerError =
@@ -310,7 +287,7 @@ export function AccountSettingsAddonsPage() {
   return (
     <AccountSettingsShell
       title="Addons"
-      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Hub catalogs are added under Forja Packs (app downloads scripts), then show under Features."
+      description="Host product surfaces — same list as Settings → Addons in the app. Switches activate each addon; open a row to configure. Live Sports and other hubs are Forja Packs (app downloads scripts), then show under Features."
       footer={
         <SettingsAutosaveFooter
           isSaving={footerSaving}
@@ -321,7 +298,7 @@ export function AccountSettingsAddonsPage() {
     >
       <SettingsSection
         label="Built-in addons"
-        description="Always listed. Packs do not add rows here — they contribute settings inside an addon or hub tabs under Features."
+        description="Always listed. Packs do not add rows here — they contribute settings under Forja Packs or hub tabs under Features."
       >
         <AddonRow
           title="Playback"
@@ -333,19 +310,10 @@ export function AccountSettingsAddonsPage() {
         <AddonRow
           title="IPTV"
           description="Xtream portals, EPG, live quality"
-          checked={hostAddonOn('iptv')}
-          onCheckedChange={(v) => setHostAddon('iptv', v)}
+          checked={playDraft.draft.addon_feature_iptv === true}
+          onCheckedChange={(v) => setIptvAddon(v)}
           href="/account/settings/iptv"
           hrefLabel="Portals"
-          disabled={busy}
-        />
-        <AddonRow
-          title="Live Sports"
-          description="Schedule catalogs and live provider packs (hub tab comes from the Live Sports pack)"
-          checked={hostAddonOn('live_sports')}
-          onCheckedChange={(v) => setHostAddon('live_sports', v)}
-          href="/account/settings/live-sports"
-          hrefLabel="Plugins"
           disabled={busy}
         />
         <AddonRow
@@ -376,10 +344,9 @@ export function AccountSettingsAddonsPage() {
           disabled={busy}
         />
         <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
-          Debrid, Connected services, and LAN stay in the app. Hub packs are
-          added under Forja Packs on this profile; the app downloads and
-          installs them. Live Sports / Direct torrent Plugins manage those
-          Forja packs on this profile.
+          Debrid, Connected services, and LAN stay in the app. Live Sports and
+          other hub packs are added under Forja Packs on this profile; the app
+          downloads and installs them.
         </p>
       </SettingsSection>
     </AccountSettingsShell>

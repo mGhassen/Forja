@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
-import 'package:forja/features/settings/sections/settings_iptv_sports_section.dart';
 import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
@@ -15,7 +14,8 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///
-/// Pack-declared fields ([PackAddonSettingsSection]) first, then host section.
+/// Pack-declared fields targeting a host addon ([PackAddonSettingsSection])
+/// first, then host section. Live Sports Setup lives under Forja Packs (RFC-093).
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
   final host = _hostAddonDetailBody(addonId, visibility);
   return Column(
@@ -33,8 +33,6 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsAddonId.iptv:
       return const SettingsIptvAddonSection();
-    case SettingsAddonId.liveSports:
-      return const SettingsIptvSportsSection();
     case SettingsAddonId.torrent:
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

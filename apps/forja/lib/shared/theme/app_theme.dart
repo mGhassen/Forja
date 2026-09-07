@@ -550,7 +550,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         cursor: SystemMouseCursors.click,
         // Leanback: DPAD_CENTER synthesizes a click after Select. Key path
         // already ran onTap — a second pointer activate flips switches off
-        // (Addons IPTV / Live Sports looked dead on Android TV).
+        // (Addons IPTV looked dead on Android TV).
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap == null || policy.leanbackOnly

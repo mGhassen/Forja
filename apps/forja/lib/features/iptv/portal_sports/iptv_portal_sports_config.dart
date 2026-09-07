@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
 ///
-/// Product toggles / leagues for Addons → Live Sports come from the hub pack
+/// Product toggles / leagues for Live Sports come from the hub pack
 /// `settings` block via [PackSettingsStore] (RFC-089).
 class IptvPortalSportsConfig {
   static const prefsKey = 'live_sports_iptv_sports_v1';
@@ -403,7 +403,7 @@ class IptvPortalSportsConfig {
     return _overlayPackSettings(base);
   }
 
-  /// Enabled hub plugin that declares `settings.addon: live_sports`.
+  /// Enabled hub plugin that declares pack settings fields (Setup).
   static Future<String?> resolveSettingsPluginId() async {
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
@@ -411,7 +411,15 @@ class IptvPortalSportsConfig {
       for (final p in pack.plugins) {
         if (!p.enabled) continue;
         final spec = PackAddonSettingsSpec.fromPlugin(p);
-        if (spec != null && spec.addonId == 'live_sports') return p.id;
+        if (spec == null) continue;
+        final hasSetup = spec.fields.any(
+          (f) =>
+              f.id == fieldForjaLive ||
+              f.id == fieldForjaSports ||
+              f.id == fieldMergeMatching ||
+              f.id == fieldLeagues,
+        );
+        if (hasSetup) return p.id;
       }
     }
     return null;

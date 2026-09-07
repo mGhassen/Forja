@@ -74,7 +74,7 @@ void main() {
       expect(v.showForjaPacksCategory, isTrue);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
-      expect(v.showAccounts, isFalse);
+      expect(v.showAccounts, isTrue);
       expect(v.showMdblist, isFalse);
 
       final ids = settingsCategories(v).map((c) => c.id).toList();
@@ -175,8 +175,9 @@ void main() {
       await service.setPlaySourceTorrentEnabled(true);
 
       final v = await SettingsVisibility.resolve(service);
-      expect(v.vodTab, isFalse);
-      expect(v.liveSportsNav, isTrue);
+      // live_matches is a pack hub id → counts as VOD for settings visibility.
+      expect(v.vodTab, isTrue);
+      expect(v.iptvNav, isTrue);
       expect(v.playSourceEngine, isTrue);
       expect(v.showEngine, isTrue);
       expect(v.showPlaySourceEngineToggle, isFalse);
@@ -184,7 +185,7 @@ void main() {
       expect(v.showNuvio, isTrue);
       expect(v.showTorrentEngine, isTrue);
       expect(v.showSourcesCategory, isTrue);
-      expect(v.showAccounts, isFalse);
+      expect(v.showAccounts, isTrue);
     },
   );
 }

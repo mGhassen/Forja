@@ -9,8 +9,6 @@ class PlayerTvRemoteKeyHandler {
     required this.onShowControls,
     required this.onSeekBack,
     required this.onSeekForward,
-    required this.onVolumeUp,
-    required this.onVolumeDown,
     required this.onToggleControls,
     required this.onFocusBack,
     required this.onFocusPlay,
@@ -21,8 +19,6 @@ class PlayerTvRemoteKeyHandler {
   final VoidCallback onShowControls;
   final VoidCallback onSeekBack;
   final VoidCallback onSeekForward;
-  final VoidCallback onVolumeUp;
-  final VoidCallback onVolumeDown;
   final VoidCallback onToggleControls;
   /// Chrome hidden / video key scope: D-pad ↑ → Back button.
   final VoidCallback onFocusBack;
@@ -34,15 +30,8 @@ class PlayerTvRemoteKeyHandler {
 
     final key = event.logicalKey;
 
-    // Hardware remote volume - always, even when chrome is focused.
-    if (key == LogicalKeyboardKey.audioVolumeUp) {
-      onVolumeUp();
-      return true;
-    }
-    if (key == LogicalKeyboardKey.audioVolumeDown) {
-      onVolumeDown();
-      return true;
-    }
+    // Volume Up/Down: never consume — leanback chrome has no volume control;
+    // Android must own STREAM_MUSIC / HDMI-CEC so the OS OSD works.
 
     if (key == LogicalKeyboardKey.goBack) {
       onBack();

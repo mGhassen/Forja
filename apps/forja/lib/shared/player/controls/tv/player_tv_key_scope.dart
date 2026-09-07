@@ -24,8 +24,6 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onShowControls,
     required this.onSeekBack,
     required this.onSeekForward,
-    required this.onVolumeUp,
-    required this.onVolumeDown,
     required this.onToggleControls,
     required this.onFocusBack,
     required this.onFocusPlay,
@@ -42,8 +40,6 @@ class PlayerTvKeyScope extends StatefulWidget {
   final VoidCallback onShowControls;
   final VoidCallback onSeekBack;
   final VoidCallback onSeekForward;
-  final VoidCallback onVolumeUp;
-  final VoidCallback onVolumeDown;
   final VoidCallback onToggleControls;
   /// D-pad ↑ while chrome is not focused — show chrome and focus Back.
   final VoidCallback onFocusBack;
@@ -71,12 +67,14 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
         onShowControls: widget.onShowControls,
         onSeekBack: widget.onSeekBack,
         onSeekForward: widget.onSeekForward,
-        onVolumeUp: widget.onVolumeUp,
-        onVolumeDown: widget.onVolumeDown,
         onToggleControls: widget.onToggleControls,
         onFocusBack: widget.onFocusBack,
         onFocusPlay: widget.onFocusPlay,
       );
+
+  static bool _isVolumeKey(LogicalKeyboardKey key) =>
+      key == LogicalKeyboardKey.audioVolumeUp ||
+      key == LogicalKeyboardKey.audioVolumeDown;
 
   @override
   void initState() {
@@ -151,6 +149,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   bool _onHardwareKey(KeyEvent event) {
     if (!widget.enabled) return false;
     if (!shellTvIsNavigationKey(event)) return false;
+    // Never consume volume — let Android change system / CEC volume.
+    if (_isVolumeKey(event.logicalKey)) return false;
     if (widget.showControls) {
       if (event is KeyDownEvent || event is KeyRepeatEvent) {
         widget.onControlsActivity?.call();
@@ -163,22 +163,14 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!widget.enabled) return KeyEventResult.ignored;
+    // Volume Up/Down → system AudioManager (no in-app softvol; no chrome slider).
+    if (shellTvIsNavigationKey(event) && _isVolumeKey(event.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
     // Any remote key while chrome is up counts as activity (incl. D-pad
     // traversal over focused buttons, which otherwise never resets hide).
     if (widget.showControls && shellTvIsNavigationKey(event)) {
       widget.onControlsActivity?.call();
-    }
-    // Volume keys must win even while a chrome control holds focus.
-    if (shellTvIsNavigationKey(event)) {
-      final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.audioVolumeUp) {
-        widget.onVolumeUp();
-        return KeyEventResult.handled;
-      }
-      if (key == LogicalKeyboardKey.audioVolumeDown) {
-        widget.onVolumeDown();
-        return KeyEventResult.handled;
-      }
     }
     if (widget.showControls && playerTvChromeHasFocus(widget.focusNode)) {
       return KeyEventResult.ignored;

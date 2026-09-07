@@ -32,7 +32,6 @@ const ADDONS_NESTED_PREFIXES = [
   '/account/settings/iptv',
   '/account/settings/stremio',
   '/account/settings/nuvio',
-  '/account/settings/live-sports',
   '/account/settings/torrent',
 ] as const
 

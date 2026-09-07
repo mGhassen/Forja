@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "tags": [
     "sports",
     "live"
@@ -35,7 +35,6 @@
         "accent": "#FB923C"
       },
       "settings": {
-        "addon": "live_sports",
         "group": "Setup",
         "order": 10,
         "fields": [

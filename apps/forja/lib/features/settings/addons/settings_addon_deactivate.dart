@@ -1,5 +1,4 @@
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -18,8 +17,6 @@ Future<void> deactivateAddonChildren(String addonId) async {
     case SettingsAddonId.torrent:
       await _disablePacksOfKind(PluginRegistry.packKindTorrent);
       await TorrentStreamService().stop();
-    case SettingsAddonId.liveSports:
-      await _disableLiveSports();
     case SettingsAddonId.iptv:
       await _disableIptv();
     case SettingsAddonId.lan:
@@ -64,35 +61,6 @@ Future<void> _disablePacksOfKind(String kind) async {
       enabled: false,
     );
   }
-}
-
-Future<void> _disableLiveSports() async {
-  final config = await IptvPortalSportsConfig.load();
-  if (config.enabled || config.forjaLiveEnabled) {
-    await IptvPortalSportsConfig.save(
-      config.copyWith(enabled: false, forjaLiveEnabled: false),
-    );
-  }
-  final registry = PluginRegistry.instance;
-  final packs = await registry.listPacksRaw();
-  for (final pack in packs) {
-    for (final plugin in pack.plugins) {
-      if (!plugin.isLiveSportPlugin) continue;
-      for (final cap in [
-        LiveSportCapabilities.catalog,
-        LiveSportCapabilities.resolve,
-        LiveSportCapabilities.broadcast,
-      ]) {
-        await registry.setLiveCapabilityEnabled(
-          sourceUrl: pack.sourceUrl,
-          pluginId: plugin.id,
-          capability: cap,
-          enabled: false,
-        );
-      }
-    }
-  }
-  await _disablePacksOfKind(PluginRegistry.packKindLive);
 }
 
 Future<void> _disableIptv() async {

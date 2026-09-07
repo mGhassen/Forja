@@ -109,9 +109,9 @@ export type PreferencesPayload = {
   max_playback_height?: number
   /** Host Addons → IPTV unlocked (RFC-086). Rail default-on via navigation. */
   addon_feature_iptv?: boolean
-  /** Host Addons → Live Sports capability (RFC-087). Not a shell tab id. */
+  /** @deprecated RFC-093 — Live Sports is pack-only; stripped on write. */
   addon_feature_live_sports?: boolean
-  /** @deprecated Prefer [addon_feature_live_sports]. Accepted on read. */
+  /** @deprecated */
   addon_feature_live_matches?: boolean
 }
 
@@ -181,14 +181,11 @@ export const HOST_CORE_NAV_TABS = [
 
 export const HOST_CORE_NAV_IDS: string[] = HOST_CORE_NAV_TABS.map((t) => t.id)
 
-/** Effective Live Sports Addons unlock (new key or legacy cloud payloads). */
+/** @deprecated RFC-093 — always false; Live Sports is pack-only. */
 export function playbackLiveSportsUnlocked(
-  p: PreferencesPayload | undefined,
+  _p: PreferencesPayload | undefined,
 ): boolean {
-  return (
-    p?.addon_feature_live_sports === true ||
-    p?.addon_feature_live_matches === true
-  )
+  return false
 }
 
 /** Fresh profile: no feature tabs on (matches Flutter PlatformDefaults). */
@@ -447,12 +444,12 @@ export function hubTabIdsFromForjaPacks(packs: ForjaPackRow[]): string[] {
 }
 
 /** RFC-086 / RFC-087 derived Features inventory — not `tabOrder` alone.
- * Live Sports capability does **not** invent a host tab (pack `nav` only). */
+ * Live Sports is pack-only — hub tabs come from packs. */
 export function availableFeatureTabIds(opts: {
   addonFeatureIptv?: boolean
-  /** Ignored for inventory — kept so call sites stay stable. */
+  /** Ignored (RFC-093). */
   addonFeatureLiveSports?: boolean
-  /** @deprecated Use [addonFeatureLiveSports]. */
+  /** @deprecated */
   addonFeatureLiveMatches?: boolean
   packs: ForjaPackRow[]
 }): string[] {
@@ -513,14 +510,9 @@ export function navigationAfterForjaPacksChange(opts: {
   prevPacks: ForjaPackRow[]
   nextPacks: ForjaPackRow[]
   addonFeatureIptv?: boolean
-  addonFeatureLiveSports?: boolean
-  /** @deprecated */
-  addonFeatureLiveMatches?: boolean
 }): Required<NavigationPayload> {
   const flags = {
     addonFeatureIptv: opts.addonFeatureIptv,
-    addonFeatureLiveSports:
-      opts.addonFeatureLiveSports ?? opts.addonFeatureLiveMatches,
   }
   const prevAvailable = availableFeatureTabIds({
     ...flags,
@@ -578,14 +570,8 @@ function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload 
   } else {
     out.addon_feature_iptv = p.addon_feature_iptv
   }
-  const liveSports =
-    p.addon_feature_live_sports ?? p.addon_feature_live_matches
   delete out.addon_feature_live_matches
-  if (liveSports === undefined) {
-    delete out.addon_feature_live_sports
-  } else {
-    out.addon_feature_live_sports = liveSports
-  }
+  delete out.addon_feature_live_sports
   return out
 }
 

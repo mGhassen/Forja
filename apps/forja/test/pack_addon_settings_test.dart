@@ -12,7 +12,7 @@ void main() {
   });
 
   group('EnginePlugin.settings', () {
-    test('round-trips settings block', () {
+    test('round-trips settings block without host addon id', () {
       final plugin = EnginePlugin.fromJson({
         'id': 'test-hub-a',
         'name': 'Hub A',
@@ -20,7 +20,6 @@ void main() {
         'kind': 'catalog',
         'capabilities': ['nav', 'settings'],
         'settings': {
-          'addon': 'live_sports',
           'group': 'Hub A',
           'order': 5,
           'fields': [
@@ -36,7 +35,7 @@ void main() {
       expect(plugin.settings, isNotNull);
       expect(plugin.hasCapability('settings'), isTrue);
       final again = EnginePlugin.fromJson(plugin.toJson());
-      expect(again.settings?['addon'], 'live_sports');
+      expect(again.settings?['addon'], isNull);
       expect((again.settings?['fields'] as List).length, 1);
     });
   });
@@ -87,6 +86,25 @@ void main() {
       expect(spec.fields[2].type, PackAddonSettingsFieldType.text);
     });
 
+    test('parses fields when addon id omitted', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'hub-no-addon',
+        'name': 'Hub',
+        'entry': 'h.js',
+        'kind': 'catalog',
+        'settings': {
+          'group': 'Setup',
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.addonId, isEmpty);
+      expect(spec.fields.single.id, 'x');
+    });
+
     test('listForAddon filters enabled plugins by addon id', () {
       final a = EnginePlugin.fromJson({
         'id': 'hub-a',
@@ -95,7 +113,7 @@ void main() {
         'kind': 'catalog',
         'enabled': true,
         'settings': {
-          'addon': 'live_sports',
+          'addon': 'torrent',
           'order': 20,
           'fields': [
             {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
@@ -109,7 +127,7 @@ void main() {
         'kind': 'catalog',
         'enabled': false,
         'settings': {
-          'addon': 'live_sports',
+          'addon': 'torrent',
           'order': 10,
           'fields': [
             {'id': 'y', 'type': 'toggle', 'label': 'Y', 'default': true},
@@ -132,8 +150,26 @@ void main() {
       });
       final list = PackAddonSettingsSpec.listForAddon(
         [a, b, c],
-        addonId: 'live_sports',
+        addonId: 'torrent',
       );
+      expect(list.map((s) => s.pluginId), ['hub-a']);
+    });
+
+    test('listForPlugins returns specs without host addon filter', () {
+      final a = EnginePlugin.fromJson({
+        'id': 'hub-a',
+        'name': 'A',
+        'entry': 'a.js',
+        'kind': 'catalog',
+        'enabled': false,
+        'settings': {
+          'order': 20,
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final list = PackAddonSettingsSpec.listForPlugins([a]);
       expect(list.map((s) => s.pluginId), ['hub-a']);
     });
 
@@ -159,7 +195,6 @@ void main() {
         'entry': 'm.js',
         'kind': 'catalog',
         'settings': {
-          'addon': 'live_sports',
           'fields': [
             {
               'id': 'leagues',

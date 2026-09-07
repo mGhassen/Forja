@@ -11,14 +11,14 @@ Live Sports is a **hub pack** (ForjaHQ Live Sports / Live Sports Cards) — same
 - **List** — dense match rows (list pack) or landscape cards (Cards pack)
 - **Streams** — Providers / Live TV (right panel on list pack; hero details on Cards)
 
-Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV portal match under `features/iptv/portal_sports/` (RFC-092). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`). There is **no** root-app Live Sports product tree and **no** host Live Sports feature tab without a hub pack.
+Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV portal match under `features/iptv/portal_sports/` (RFC-092). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`). There is **no** root-app Live Sports product tree and **no** Settings → Addons → Live Sports row (RFC-093).
 
-Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). **Settings → Addons → Live Sports** turns catalog/settings capability on or off — it does not invent a navbar tab by itself.
+Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
 
 ## How to open it
 
-1. Install and enable a Live Sports hub pack (ForjaHQ Live Sports and/or Live Sports Cards).
-2. Turn on **Settings → Addons → Live Sports** so catalogs and Live Sports settings are available.
+1. Install and enable a Live Sports hub pack under **Settings → Forja Packs** (ForjaHQ Live Sports and/or Live Sports Cards).
+2. Expand the hub pack to configure **Setup** (Forja Live / Sports, merge, leagues) and live catalog/provider toggles.
 3. Show the tab under **Settings → Features** / the nav rail (pack first-seen defaults the tab on).
 
 ## What you can do
@@ -28,16 +28,17 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 - Filter by **sport circles** in the category bar when more than one sport is in the list. **24/7** covers always-on channels.
 - On the **Live Sports Cards** tab, browse a **landscape match card** grid and open **hero details** (Providers / Live TV in a two-column stream grid on desktop; shell navbar stays visible). Same streams as the side panel.
 - Tap a stream row to play in Forja’s **native** live player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream**.
-- Pull-to-refresh / shell refresh reloads the match list. With **Merge matching events** on (hub Setup under Settings → Addons → Live Sports), matching events across catalogs may collapse into one row.
+- Pull-to-refresh / shell refresh reloads the match list. With **Merge matching events** on (hub **Setup** under Forja Packs), matching events across catalogs may collapse into one row.
 
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region.
 - Escape / Back closes the streams panel (or details page), then leaves the player and stops audio.
 - **Merge matching events** is **off** by default — leave it off for large schedules.
-- Enable or disable individual schedule catalogs under **Settings → Addons → Live Sports**.
+- Enable or disable individual schedule catalogs under **Settings → Forja Packs** (expand a live pack).
 
 ## Related
 
 - [IPTV](../iptv/iptv.md) — portals used by Live TV matching
 - [Platforms](../getting-started/platforms.md)
+- [Forja Sports](../settings/forja-sports.md)

@@ -51,8 +51,6 @@ function availableFromServer(
     (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
   return availableFeatureTabIds({
     addonFeatureIptv: play?.addon_feature_iptv,
-    addonFeatureLiveSports:
-      play?.addon_feature_live_sports ?? play?.addon_feature_live_matches,
     packs,
   })
 }
@@ -215,7 +213,7 @@ export function AccountSettingsNavigationPage() {
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV / Live Sports under Addons; hub tabs appear when those packs are on this profile (the app downloads hub scripts)."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Unlock IPTV under Addons; Live Sports and other hub tabs appear when those packs are on this profile (the app downloads hub scripts)."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
