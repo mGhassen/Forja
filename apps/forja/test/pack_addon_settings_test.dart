@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
 import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
@@ -171,6 +172,75 @@ void main() {
       });
       final list = PackAddonSettingsSpec.listForPlugins([a]);
       expect(list.map((s) => s.pluginId), ['hub-a']);
+    });
+
+    test('listContributingEnabled requires settings.addon', () {
+      final withAddon = EnginePlugin.fromJson({
+        'id': 'hub-a',
+        'name': 'A',
+        'entry': 'a.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': 'live_sports',
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final noAddon = EnginePlugin.fromJson({
+        'id': 'hub-b',
+        'name': 'B',
+        'entry': 'b.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'fields': [
+            {'id': 'y', 'type': 'toggle', 'label': 'Y', 'default': false},
+          ],
+        },
+      });
+      final list = PackAddonSettingsSpec.listContributingEnabled([
+        withAddon,
+        noAddon,
+      ]);
+      expect(list.map((s) => s.pluginId), ['hub-a']);
+    });
+
+    test('packContributedAddonMetas invents non-host addon rows', () {
+      final hub = EnginePlugin.fromJson({
+        'id': 'hub-live',
+        'name': 'Live Sports Hub',
+        'entry': 'h.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'nav': {'tabId': 'live_sports', 'label': 'Live Sports'},
+        'settings': {
+          'addon': 'live_sports',
+          'fields': [
+            {'id': 'x', 'type': 'toggle', 'label': 'X', 'default': false},
+          ],
+        },
+      });
+      final intoHost = EnginePlugin.fromJson({
+        'id': 'hub-iptv',
+        'name': 'Iptv Extra',
+        'entry': 'i.js',
+        'kind': 'catalog',
+        'enabled': true,
+        'settings': {
+          'addon': 'iptv',
+          'fields': [
+            {'id': 'z', 'type': 'toggle', 'label': 'Z', 'default': false},
+          ],
+        },
+      });
+      final metas = packContributedAddonMetas([hub, intoHost]);
+      expect(metas.length, 1);
+      expect(metas.single.id, 'live_sports');
+      expect(metas.single.title, 'Live Sports');
+      expect(metas.single.packContributed, isTrue);
+      expect(metas.single.hasToggle, isFalse);
     });
 
     test('rejects select without options', () {

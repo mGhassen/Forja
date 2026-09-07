@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Built-in app addons (Settings → Addons).
 ///
-/// These are **root product surfaces**, not plugin packs. The list is fixed:
-/// every addon always appears so it can be activated or not. Installed plugins
-/// (Forja Packs, Stremio addons, Nuvio scrapers) add extra settings **inside**
-/// an addon's detail page or under Forja Packs — they do not add or remove
-/// rows from this list.
-///
-/// Live Sports is pack-only (RFC-093) — not listed here.
+/// Host rows in [kSettingsAddons] are fixed product surfaces. Packs may also
+/// contribute **extra** rows via `settings.addon` (RFC-089) — discovered from
+/// enabled plugins, never hardcoded pack ids in this catalog.
 abstract final class SettingsAddonId {
   static const playback = 'playback';
   static const iptv = 'iptv';
@@ -37,6 +35,7 @@ class SettingsAddonMeta {
     required this.icon,
     this.hasToggle = true,
     this.adminOnly = false,
+    this.packContributed = false,
   });
 
   final String id;
@@ -44,9 +43,13 @@ class SettingsAddonMeta {
   final String subtitle;
   final IconData icon;
 
-  /// False for addons without a master on/off (e.g. Connected services).
+  /// False for addons without a master on/off (e.g. Connected services,
+  /// pack-contributed settings buckets).
   final bool hasToggle;
   final bool adminOnly;
+
+  /// Invented from an enabled pack `settings.addon` (not in [kSettingsAddons]).
+  final bool packContributed;
 }
 
 const List<SettingsAddonMeta> kSettingsAddons = [
@@ -103,16 +106,75 @@ const List<SettingsAddonMeta> kSettingsAddons = [
   ),
 ];
 
-List<SettingsAddonMeta> settingsAddons() {
+final Set<String> _hostAddonIds = {for (final a in kSettingsAddons) a.id};
+
+/// Pack-only Addons rows from enabled plugins that declare `settings.addon`
+/// for an id that is **not** already a host built-in (those still get fields
+/// injected into the host detail via [PackAddonSettingsSection]).
+List<SettingsAddonMeta> packContributedAddonMetas(
+  Iterable<EnginePlugin> plugins,
+) {
+  final byAddon = <String, List<(EnginePlugin, PackAddonSettingsSpec)>>{};
+  for (final p in plugins) {
+    if (!p.enabled) continue;
+    final spec = PackAddonSettingsSpec.fromPlugin(p);
+    if (spec == null) continue;
+    final bucket =
+        spec.addonId.isNotEmpty ? spec.addonId : p.id;
+    if (_hostAddonIds.contains(bucket)) continue;
+    byAddon.putIfAbsent(bucket, () => []).add((p, spec));
+  }
+  final out = <SettingsAddonMeta>[];
+  final sortedIds = byAddon.keys.toList()..sort();
+  for (final id in sortedIds) {
+    final list = byAddon[id]!;
+    list.sort((a, b) {
+      final c = a.$2.order.compareTo(b.$2.order);
+      if (c != 0) return c;
+      return a.$2.pluginName.compareTo(b.$2.pluginName);
+    });
+    final first = list.first;
+    final navLabel = (first.$1.nav?['label'] ?? '').toString().trim();
+    final title = navLabel.isNotEmpty
+        ? navLabel
+        : (first.$2.pluginName.trim().isNotEmpty
+            ? first.$2.pluginName
+            : id);
+    out.add(
+      SettingsAddonMeta(
+        id: id,
+        title: title,
+        subtitle: list.length == 1
+            ? 'Pack settings'
+            : '${list.length} pack settings',
+        icon: Icons.tune_rounded,
+        hasToggle: false,
+        packContributed: true,
+      ),
+    );
+  }
+  return out;
+}
+
+List<SettingsAddonMeta> settingsAddons({
+  List<SettingsAddonMeta> packContributed = const [],
+}) {
   final admin = AccountFeatures.instance.isAdmin;
   return [
     for (final a in kSettingsAddons)
       if (!a.adminOnly || admin) a,
+    ...packContributed,
   ];
 }
 
-SettingsAddonMeta? settingsAddonById(String id) {
+SettingsAddonMeta? settingsAddonById(
+  String id, {
+  List<SettingsAddonMeta> packContributed = const [],
+}) {
   for (final a in kSettingsAddons) {
+    if (a.id == id) return a;
+  }
+  for (final a in packContributed) {
     if (a.id == id) return a;
   }
   return null;

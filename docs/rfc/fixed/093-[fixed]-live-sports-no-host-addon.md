@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **5 / 5** components · **10 / 10** acceptance |
-| **Current slice** | **Complete** — host Addons → Live Sports removed; pack enable is the gate |
+| **Progress** | **Complete** · **6 / 6** components · **10 / 10** acceptance · **3 / 3** discovery slice |
+| **Current slice** | **Complete** — pack `settings.addon` invents Addons rows (no host Live Sports product) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | R93-C03 | Live catalog/provider caps under Forja Packs only | ✅ |
 | 4 | R93-C04 | Retire `addon_feature_live_sports` product gate (app + sync + web) | ✅ |
 | 5 | R93-C05 | Feature docs + changelog | ✅ |
+| 6 | R93-C06 | Discover pack `settings.addon` → dynamic Addons rows (RFC-089 surface) | ✅ |
 
 ---
 
@@ -44,13 +45,25 @@
 
 ---
 
+## Acceptance (discovery slice)
+
+Restores RFC-089 Addons settings surface without a hardcoded host Live Sports product.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R93-A11 | Enabled pack with `settings.addon` invents an Addons row (not in `kSettingsAddons`) | ✅ |
+| 2 | R93-A12 | Opening that row shows [PackAddonSettingsSection] fields | ✅ |
+| 3 | R93-A13 | Hub restores `settings.addon: live_sports`; no `addon_feature_live_sports` gate | ✅ |
+
+---
+
 ## Summary
 
 RFC-087 made Live Sports pack-only for chrome, but left **Settings → Addons → Live Sports** as a host capability bucket (`addon_feature_live_sports` + RFC-089 `settings.addon: live_sports`). That is still a host product surface.
 
-**Rule:** Live Sports is not a host Addons row. Pack install/enable is on/off. Setup and live catalog toggles live under **Forja Packs**. IPTV remains a host Addons row.
+**Rule:** Live Sports is not a **built-in** host Addons row and has no feature-flag gate. Pack install/enable owns the tab. Pack `settings.addon` still feeds **Addons** via discovery (RFC-089) — when the hub is installed you get an Addons settings page; when it is not, the row is gone. Setup also remains on the Forja Packs expand. IPTV remains a host Addons row.
 
-Frozen history: RFC-087 A06 and RFC-089 A02 stay ✅; this RFC owns the cut.
+Frozen history: RFC-087 A06 and RFC-089 A02 stay ✅; this RFC owns the cut + discovery correction.
 
 ### Related
 

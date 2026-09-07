@@ -293,7 +293,11 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
                     spec.isValid &&
                     !SettingsService.addonGatedNavIds.contains(spec.tabId)) {
                   noteNavigationDirty();
-                  await SettingsService().setNavbarTabVisible(spec.tabId, true);
+                  await SettingsService().setNavbarTabVisible(
+                    spec.tabId,
+                    true,
+                    orderAtEnd: true,
+                  );
                   await scheduleNavigationSyncPush();
                 }
               }

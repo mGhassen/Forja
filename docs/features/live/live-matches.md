@@ -11,14 +11,14 @@ Live Sports is a **hub pack** (ForjaHQ Live Sports / Live Sports Cards) — same
 - **List** — dense match rows (list pack) or landscape cards (Cards pack)
 - **Streams** — Providers / Live TV (right panel on list pack; hero details on Cards)
 
-Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV portal match under `features/iptv/portal_sports/` (RFC-092). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`). There is **no** root-app Live Sports product tree and **no** Settings → Addons → Live Sports row (RFC-093).
+Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV portal match under `features/iptv/portal_sports/` (RFC-092). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`). There is **no** root-app Live Sports product tree and **no** built-in Addons → Live Sports host row (RFC-093). When the hub pack is installed, its `settings` show under **Settings → Addons** (pack-discovered) and on the Forja Packs expand.
 
 Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
 
 ## How to open it
 
 1. Install and enable a Live Sports hub pack under **Settings → Forja Packs** (ForjaHQ Live Sports and/or Live Sports Cards).
-2. Expand the hub pack to configure **Setup** (Forja Live / Sports, merge, leagues) and live catalog/provider toggles.
+2. Configure **Setup** (Forja Live / Sports, merge, leagues) under **Settings → Addons → Live Sports** (appears when the hub is installed) or by expanding the hub under Forja Packs.
 3. Show the tab under **Settings → Features** / the nav rail (pack first-seen defaults the tab on).
 
 ## What you can do

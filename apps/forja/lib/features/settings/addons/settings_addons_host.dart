@@ -12,7 +12,7 @@ import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
@@ -109,20 +109,27 @@ class SettingsAddonsHost extends StatefulWidget {
 }
 
 class SettingsAddonsHostState extends State<SettingsAddonsHost> {
+  List<SettingsAddonMeta> _packContributed = const [];
+
   @override
   void initState() {
     super.initState();
     SettingsAddonDrill.current.addListener(_onDrill);
+    EngineService.changeNotifier.addListener(_onEngineChanged);
+    unawaited(_reloadPackAddons());
     final initialId = widget.initialAddonId ?? ShellBus.pendingAddonDeepLink;
     ShellBus.pendingAddonDeepLink = null;
     if (initialId != null) {
-      SettingsAddonDrill.current.value = settingsAddonById(initialId);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_openWhenReady(initialId));
+      });
     }
   }
 
   @override
   void dispose() {
     SettingsAddonDrill.current.removeListener(_onDrill);
+    EngineService.changeNotifier.removeListener(_onEngineChanged);
     super.dispose();
   }
 
@@ -130,8 +137,38 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
     if (mounted) setState(() {});
   }
 
+  void _onEngineChanged() {
+    if (!mounted) return;
+    unawaited(_reloadPackAddons());
+  }
+
+  Future<void> _reloadPackAddons() async {
+    final packs = await EngineService.instance.listPacks();
+    final plugins = <EnginePlugin>[
+      for (final pack in packs)
+        if (pack.enabled)
+          for (final p in pack.plugins) p,
+    ];
+    final contributed = packContributedAddonMetas(plugins);
+    if (!mounted) return;
+    setState(() => _packContributed = contributed);
+  }
+
+  Future<void> _openWhenReady(String addonId) async {
+    await _reloadPackAddons();
+    if (!mounted) return;
+    final meta = settingsAddonById(
+      addonId,
+      packContributed: _packContributed,
+    );
+    if (meta != null) SettingsAddonDrill.current.value = meta;
+  }
+
   void _open(String addonId) {
-    SettingsAddonDrill.current.value = settingsAddonById(addonId);
+    SettingsAddonDrill.current.value = settingsAddonById(
+      addonId,
+      packContributed: _packContributed,
+    );
   }
 
   @override
@@ -150,6 +187,7 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
     }
     return _AddonListPane(
       visibility: widget.visibility,
+      packContributed: _packContributed,
       onOpen: _open,
     );
   }
@@ -158,10 +196,12 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
 class _AddonListPane extends ConsumerStatefulWidget {
   const _AddonListPane({
     required this.visibility,
+    required this.packContributed,
     required this.onOpen,
   });
 
   final SettingsVisibility visibility;
+  final List<SettingsAddonMeta> packContributed;
   final ValueChanged<String> onOpen;
 
   @override
@@ -174,7 +214,7 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
     super.initState();
     // Soft pull so web/cloud Features + play-source edits land while this
     // pane is open. Force: opening Addons is an intentional refresh (224) —
-    // 15s debounce otherwise leaves cloud-enabled IPTV / Live Sports off.
+    // 15s debounce otherwise leaves cloud-enabled IPTV off.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
     });
@@ -183,7 +223,7 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
   @override
   Widget build(BuildContext context) {
     ref.watch(accountFeaturesProvider);
-    final addons = settingsAddons();
+    final addons = settingsAddons(packContributed: widget.packContributed);
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     // Spatial rows: OK activates; → details. Linear scope would walk columns
     // as one reading-order line.

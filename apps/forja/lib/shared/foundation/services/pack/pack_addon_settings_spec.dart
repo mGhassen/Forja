@@ -147,6 +147,8 @@ class PackAddonSettingsSpec {
   }
 
   /// Specs for [addonId] from enabled plugins (sorted by [order] then name).
+  ///
+  /// Matches `settings.addon` or, when addon is omitted, [pluginId] == [addonId].
   static List<PackAddonSettingsSpec> listForAddon(
     Iterable<EnginePlugin> plugins, {
     required String addonId,
@@ -157,7 +159,10 @@ class PackAddonSettingsSpec {
     for (final p in plugins) {
       if (!p.enabled) continue;
       final spec = fromPlugin(p);
-      if (spec == null || spec.addonId != want) continue;
+      if (spec == null) continue;
+      final bucket =
+          spec.addonId.isNotEmpty ? spec.addonId : p.id;
+      if (bucket != want) continue;
       out.add(spec);
     }
     return _sorted(out);
@@ -171,6 +176,22 @@ class PackAddonSettingsSpec {
     for (final p in plugins) {
       final spec = fromPlugin(p);
       if (spec == null) continue;
+      out.add(spec);
+    }
+    return _sorted(out);
+  }
+
+  /// Distinct non-empty `settings.addon` ids from enabled plugins (RFC-089).
+  ///
+  /// Used to invent Addons rows for pack-only buckets (not in the host catalog).
+  static List<PackAddonSettingsSpec> listContributingEnabled(
+    Iterable<EnginePlugin> plugins,
+  ) {
+    final out = <PackAddonSettingsSpec>[];
+    for (final p in plugins) {
+      if (!p.enabled) continue;
+      final spec = fromPlugin(p);
+      if (spec == null || spec.addonId.isEmpty) continue;
       out.add(spec);
     }
     return _sorted(out);

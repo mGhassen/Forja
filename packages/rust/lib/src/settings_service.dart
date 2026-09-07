@@ -1519,6 +1519,7 @@ class SettingsService {
   static const String _navbarShell089Key = 'navbar_shell_089';
   static const String _navbarShell090Key = 'navbar_shell_090';
   static const String _navbarShell091Key = 'navbar_shell_091';
+  static const String _navbarShell092Key = 'navbar_shell_092';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Process-local rail mirror. KV readback was returning [] immediately after
@@ -1562,9 +1563,22 @@ class SettingsService {
     'asian_drama',
     'anime',
     'iptv',
-    'live_matches',
+    'live_sports',
     'mylist',
   ];
+
+  /// Rewrite retired hub tab id → current pack `nav.tabId`.
+  static List<String> _migrateLiveMatchesTabId(List<String> ids) {
+    if (!ids.contains('live_matches')) return ids;
+    final out = <String>[];
+    final seen = <String>{};
+    for (final id in ids) {
+      final next = id == 'live_matches' ? 'live_sports' : id;
+      if (!seen.add(next)) continue;
+      out.add(next);
+    }
+    return out;
+  }
 
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
@@ -1835,14 +1849,34 @@ class SettingsService {
   }
 
   /// RMW add/remove one tab under the navbar exclusive lock (issue 224).
-  Future<List<String>> setNavbarTabVisible(String navId, bool visible) {
+  ///
+  /// [orderAtEnd] — pack / hub activate: pin [navId] at the end of Features
+  /// `tabOrder` (packs do not pick navbar position). Features toggle leaves
+  /// order alone so a re-shown tab keeps its saved slot.
+  Future<List<String>> setNavbarTabVisible(
+    String navId,
+    bool visible, {
+    bool orderAtEnd = false,
+  }) {
     return _withNavbarExclusive(() async {
       final nav = await _readNavbarVisibleRaw();
       final updated = visible
           ? [...nav, if (!nav.contains(navId)) navId]
           : nav.where((id) => id != navId).toList();
-      await _setNavbarConfigUnlocked(updated);
-      return List<String>.from(updated);
+      List<String>? nextOrder;
+      if (visible && orderAtEnd) {
+        final stored = await kvHasKey(_navbarTabOrderKey)
+            ? await kvGetStringList(_navbarTabOrderKey, fallback: const [])
+            : const <String>[];
+        final base = stored.isNotEmpty ? stored : nav;
+        nextOrder = [
+          for (final id in base)
+            if (id != navId) id,
+          navId,
+        ];
+      }
+      await _setNavbarConfigUnlocked(updated, tabOrder: nextOrder);
+      return List<String>.from(_navbarVisibleMemory ?? updated);
     });
   }
 
@@ -1991,6 +2025,7 @@ class SettingsService {
       await kvSetString(_navbarShell089Key, '1');
       await kvSetString(_navbarShell090Key, '1');
       await kvSetString(_navbarShell091Key, '1');
+      await kvSetString(_navbarShell092Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -2162,6 +2197,27 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell091Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell092Key)) {
+      // Hub pack tabId rename: live_matches → live_sports.
+      if (await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        final migrated = _migrateLiveMatchesTabId(raw);
+        if (!listEquals(migrated, raw)) {
+          await kvSetStringList(_navbarConfigKey, migrated);
+        }
+      }
+      if (await kvHasKey(_navbarKnownIdsKey)) {
+        final known = await kvGetStringList(
+          _navbarKnownIdsKey,
+          fallback: const [],
+        );
+        final migratedKnown = _migrateLiveMatchesTabId(known);
+        if (!listEquals(migratedKnown, known)) {
+          await kvSetStringList(_navbarKnownIdsKey, migratedKnown);
+        }
+      }
+      await kvSetString(_navbarShell092Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

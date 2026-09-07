@@ -244,7 +244,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     if (tabs.isEmpty) return;
     noteNavigationDirty();
     for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, true);
+      await settings.setNavbarTabVisible(id, true, orderAtEnd: true);
     }
     await scheduleNavigationSyncPush();
   }

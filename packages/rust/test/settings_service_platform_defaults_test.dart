@@ -598,7 +598,7 @@ void main() {
       ],
     );
 
-    // Pack / Features enable used to append at end — rail ignored tabOrder.
+    // Features toggle ON — restore saved slot (not pack activate).
     await service.setNavbarTabVisible('anime', true);
 
     expect(await service.getNavbarConfig(), [
@@ -608,6 +608,63 @@ void main() {
       'iptv',
       'mylist',
     ]);
+  });
+
+  test('pack activate pins hub tab at end of Features order', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    SettingsService.registerExtraNavIds(const [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'mylist',
+      'kids',
+    ]);
+    await service.setNavbarConfig(
+      const ['home', 'asian_drama', 'iptv', 'mylist'],
+      tabOrder: const [
+        'home',
+        'kids',
+        'asian_drama',
+        'anime',
+        'iptv',
+        'mylist',
+      ],
+    );
+
+    // Pack ON — ignore stale mid-list slot; navbar last.
+    await service.setNavbarTabVisible('kids', true, orderAtEnd: true);
+
+    expect(await service.getNavbarConfig(), [
+      'home',
+      'asian_drama',
+      'iptv',
+      'mylist',
+      'kids',
+    ]);
+    const hubs = {
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'mylist',
+      'kids',
+    };
+    expect(
+      [
+        for (final id in await service.getNavbarTabOrder())
+          if (hubs.contains(id)) id,
+      ],
+      [
+        'home',
+        'asian_drama',
+        'anime',
+        'iptv',
+        'mylist',
+        'kids',
+      ],
+    );
   });
 
   test('setNavbarConfig heals visible order from tabOrder', () async {

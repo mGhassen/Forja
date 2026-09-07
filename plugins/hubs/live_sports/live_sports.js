@@ -33,7 +33,7 @@ function liveSportsCatalogActions() {
 function liveSportsLayout() {
   return {
     pages: {
-      live_matches: {
+      live_sports: {
         widgets: [
           kitStack('page', { expand: true }, [
             kitTopBar('chrome', {

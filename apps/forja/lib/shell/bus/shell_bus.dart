@@ -192,16 +192,14 @@ class ShellBus {
   static String? pendingAddonDeepLink;
 
   /// Aliases for categories that were merged into Addons.
-  /// Legacy `iptv_sports` opens Forja Packs (Live Sports is pack-only, RFC-093).
+  /// Legacy `iptv_sports` opens the pack-contributed Live Sports settings
+  /// bucket when that hub is installed (RFC-089 / RFC-093).
   static const _addonCategoryAliases = <String, String>{
     'playback': 'playback',
     'debrid': 'debrid',
+    'iptv_sports': 'live_sports',
     'accounts': 'connected_services',
     'lan': 'lan',
-  };
-
-  static const _categoryRemap = <String, String>{
-    'iptv_sports': 'forja_packs',
   };
 
   /// Switch to Settings, optionally landing on [categoryId] in the split hub.
@@ -210,7 +208,6 @@ class ShellBus {
   /// pane so leftover Select KeyUp cannot hit the nav rail.
   static void openSettings({String? categoryId, bool enterDetail = false}) {
     if (categoryId != null) {
-      categoryId = _categoryRemap[categoryId] ?? categoryId;
       final addonAlias = _addonCategoryAliases[categoryId];
       if (addonAlias != null) {
         pendingAddonDeepLink = addonAlias;

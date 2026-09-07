@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "tags": [
     "sports",
     "live"
@@ -28,13 +28,14 @@
         "settings"
       ],
       "nav": {
-        "tabId": "live_matches",
+        "tabId": "live_sports",
         "label": "Live Sports",
         "order": 20,
         "icon": "icons/nav.png",
         "accent": "#FB923C"
       },
       "settings": {
+        "addon": "live_sports",
         "group": "Setup",
         "order": 10,
         "fields": [
@@ -42,7 +43,7 @@
             "id": "forjaLiveEnabled",
             "type": "toggle",
             "label": "Enable Forja Live",
-            "subtitle": "Show the Forja Live server in Live Matches",
+            "subtitle": "Show the Forja Live server in Live Sports",
             "default": true
           },
           {

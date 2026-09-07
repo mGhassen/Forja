@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **4 / 4** components · **16 / 16** acceptance |
-| **Current slice** | Web pack install → Features rail default-on |
+| **Progress** | **Complete** · **4 / 4** components · **17 / 17** acceptance |
+| **Current slice** | Pack enable pins hub tab at end of Features order |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -69,6 +69,7 @@ Supersedes R86-A01 / R86-A04 for activate UX — frozen rows stay historical.
 | 14 | R86-A14 | Web Addons IPTV / Live: single `patch({ playback, navigation })` using nextAvailable — no parallel commit prune race | ✅ |
 | 15 | R86-A15 | Web Features inventory/hydrate uses cloud playback + packs (not empty playDraft); never-stored available ids default-on | ✅ |
 | 16 | R86-A16 | Web Forja pack add/remove updates navigation via `navigationAfterForjaPacksChange`; Features does not prune-on-hydrate | ✅ |
+| 17 | R86-A17 | Pack / hub plugin ON pins hub tab at **end** of Features `tabOrder` / rail (not mid-list from stale order or pack `nav.order`) | ✅ |
 
 ---
 

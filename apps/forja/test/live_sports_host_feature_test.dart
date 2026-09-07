@@ -14,18 +14,21 @@ void main() {
     KitLiveBoot.ensureRegistered();
   });
 
-  test('live_matches is pack-owned — not core shell without a hub', () {
+  test('live_sports is pack-owned — not core shell without a hub', () {
+    expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_sports')));
+    expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
+    expect(PluginNavRegistry.isKitTab('live_sports'), isFalse);
+    expect(coreNavDestinations.containsKey('live_sports'), isFalse);
+    expect(coreNavTabBuilders.containsKey('live_sports'), isFalse);
+    expect(SettingsService.addonGatedNavIds, isNot(contains('live_sports')));
+    // Retired tab id must not reappear as host core either.
     expect(PluginNavRegistry.coreShellNavIds, isNot(contains('live_matches')));
-    expect(PluginNavRegistry.isContributed('live_matches'), isFalse);
-    expect(PluginNavRegistry.isKitTab('live_matches'), isFalse);
-    expect(coreNavDestinations.containsKey('live_matches'), isFalse);
-    expect(coreNavTabBuilders.containsKey('live_matches'), isFalse);
-    expect(SettingsService.addonGatedNavIds, isNot(contains('live_matches')));
   });
 
   test('Features inventory omits iptv until Addons activates it', () {
     final off = PluginNavRegistry.featureTabIds();
     expect(off, isNot(contains('iptv')));
+    expect(off, isNot(contains('live_sports')));
     expect(off, isNot(contains('live_matches')));
     expect(off, isNot(contains('settings')));
     expect(off, isNot(contains('home')));
@@ -34,7 +37,7 @@ void main() {
       availableAddonFeatureIds: const ['iptv'],
     );
     expect(on, contains('iptv'));
-    expect(on, isNot(contains('live_matches')));
+    expect(on, isNot(contains('live_sports')));
     expect(on, isNot(contains('settings')));
   });
 
@@ -60,22 +63,22 @@ void main() {
     expect(panel!.listSourceId, KitLiveBoot.listSourceId);
   });
 
-  test('hub pack contributes live_matches kit tab', () {
+  test('hub pack contributes live_sports kit tab', () {
     PluginNavRegistry.seedTestHubNav(
       destinations: {
-        'live_matches': const NavDestination(
-          id: 'live_matches',
+        'live_sports': const NavDestination(
+          id: 'live_sports',
           icon: Icons.sports_soccer_outlined,
           activeIcon: Icons.sports_soccer,
           label: 'Live Sports',
         ),
       },
-      tabPluginIds: const {'live_matches': 'test-live-hub'},
+      tabPluginIds: const {'live_sports': 'test-live-hub'},
     );
-    expect(PluginNavRegistry.isKitTab('live_matches'), isTrue);
-    expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
-    expect(navTabBuilders.containsKey('live_matches'), isTrue);
-    expect(PluginNavRegistry.builders.containsKey('live_matches'), isTrue);
-    expect(navDestinations['live_matches']?.label, 'Live Sports');
+    expect(PluginNavRegistry.isKitTab('live_sports'), isTrue);
+    expect(PluginNavRegistry.isContributed('live_sports'), isTrue);
+    expect(navTabBuilders.containsKey('live_sports'), isTrue);
+    expect(PluginNavRegistry.builders.containsKey('live_sports'), isTrue);
+    expect(navDestinations['live_sports']?.label, 'Live Sports');
   });
 }

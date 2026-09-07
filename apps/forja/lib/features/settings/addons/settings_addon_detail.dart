@@ -14,8 +14,9 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///
-/// Pack-declared fields targeting a host addon ([PackAddonSettingsSection])
-/// first, then host section. Live Sports Setup lives under Forja Packs (RFC-093).
+/// Pack-declared fields ([PackAddonSettingsSection]) first, then host section
+/// when the id is a built-in. Pack-only buckets (RFC-089 discovery) are
+/// settings-only.
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
   final host = _hostAddonDetailBody(addonId, visibility);
   return Column(
@@ -76,6 +77,7 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
     case SettingsAddonId.lan:
       return const LanSettingsSection();
     default:
+      // Pack-contributed settings bucket — fields already above.
       return const SizedBox.shrink();
   }
 }

@@ -709,21 +709,21 @@ void main() {
       expect(byTab['arabic']!.pluginId, 'arabic-hub');
       expect(byTab['mylist']!.pluginId, 'my-list-hub');
       expect(byTab['mylist']!.icon, 'icons/nav.png');
-      expect(byTab['live_matches']!.pluginId, 'live-sports-hub');
-      expect(byTab['live_matches']!.icon, 'icons/nav.png');
+      expect(byTab['live_sports']!.pluginId, 'live-sports-hub');
+      expect(byTab['live_sports']!.icon, 'icons/nav.png');
       expect(byTab['cartoon']!.pluginId, 'dimatoon-hub');
       expect(byTab['cartoon']!.icon, 'icons/nav.png');
-      expect(byTab['live_matches']!.accent, '#FB923C');
+      expect(byTab['live_sports']!.accent, '#FB923C');
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
       // Host seed empty — Live Sports is pack-owned (RFC-087).
       PluginNavRegistry.seedBuiltIns();
-      expect(PluginNavRegistry.isKitTab('live_matches'), isFalse);
+      expect(PluginNavRegistry.isKitTab('live_sports'), isFalse);
       expect(PluginNavRegistry.isKitTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
-      expect(PluginNavRegistry.isContributed('live_matches'), isFalse);
+      expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
       expect(
         PluginNavRegistry.featureTabIds(),
         isNot(contains('iptv')),
@@ -738,7 +738,7 @@ void main() {
         PluginNavRegistry.featureTabIds(
           availableAddonFeatureIds: const ['iptv'],
         ),
-        isNot(contains('live_matches')),
+        isNot(contains('live_sports')),
       );
     });
 

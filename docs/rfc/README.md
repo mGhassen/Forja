@@ -107,14 +107,14 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [084-[canceled]-…](canceled/084-[canceled]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | canceled | **Canceled** · superseded by [087](fixed/087-[fixed]-live-sports-pack-only.md) | — |
 | [085-[partial]-…](085-[partial]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | partial | **4 / 4** · **23 / 23** | — |
-| [086-[fixed]-…](fixed/086-[fixed]-addons-packs-feature-vs-navbar.md) | Addons/Packs flag features; Features flags navbar | v1.4 | fixed | **Complete** · **4 / 4** · **16 / 16** | — |
+| [086-[fixed]-…](fixed/086-[fixed]-addons-packs-feature-vs-navbar.md) | Addons/Packs flag features; Features flags navbar | v1.4 | fixed | **Complete** · **4 / 4** · **17 / 17** | — |
 | [087-[fixed]-…](fixed/087-[fixed]-live-sports-pack-only.md) | Live Sports pack-only (no host feature root) | v1.4 | fixed | **Complete** · **4 / 4** · **8 / 8** | — |
 | [088-[fixed]-…](fixed/088-[fixed]-my-list-pack-only.md) | My List pack-only (no host feature root) | v1.4 | fixed | **Complete** · **3 / 3** · **5 / 5** | — |
 | [089-[fixed]-…](fixed/089-[fixed]-pack-addon-settings.md) | Pack-contributed Addon settings | v1.4 | fixed | **Complete** · **5 / 5** · **8 / 8** + **5 / 5** Setup | — |
 | [090-[fixed]-…](fixed/090-[fixed]-live-sports-host-outside-foundation.md) | Live Sports host outside foundation | v1.4 | fixed | **Complete** · **2 / 2** · **4 / 4** | — |
 | [091-[fixed]-…](fixed/091-[fixed]-live-sports-explode-host-to-packs.md) | Explode Live Sports host → packs MetaRuntime | v1.4 | fixed | **Complete** · **4 / 4** · **12 / 12** | — |
 | [092-[fixed]-…](fixed/092-[fixed]-delete-root-app-live-sports.md) | Delete root-app Live Sports — packs only | v1.4 | fixed | **Complete** · **3 / 3** · **8 / 8** | — |
-| [093-[fixed]-…](fixed/093-[fixed]-live-sports-no-host-addon.md) | Live Sports — no host Addons row | v1.4 | fixed | **Complete** · **5 / 5** · **10 / 10** | — |
+| [093-[fixed]-…](fixed/093-[fixed]-live-sports-no-host-addon.md) | Live Sports — no host Addons row | v1.4 | fixed | **Complete** · **6 / 6** · **10 / 10** · **3 / 3** discovery | — |
 
 ## Related
 
