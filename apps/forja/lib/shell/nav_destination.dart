@@ -38,24 +38,12 @@ class NavDestinationIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = destination.iconAsset?.trim();
-    if (asset != null && asset.isNotEmpty) {
-      final image = _imageFor(asset);
-      if (image != null) {
-        // Same mute/accent as Material glyphs — pack PNGs are treated as masks.
-        return ColorFiltered(
-          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-          child: image,
-        );
-      }
-    }
-    return Icon(
-      selected ? destination.activeIcon : destination.icon,
-      color: color,
-      size: size,
-    );
-  }
+    if (asset == null || asset.isEmpty) return _materialIcon();
 
-  Widget? _imageFor(String asset) {
+    // Tint via Image.color so errorBuilder Material glyphs are not wrapped in
+    // ColorFiltered (failed IPTV host asset used to leave an empty rail slot).
+    Widget fallback(BuildContext _, Object _, StackTrace? _) => _materialIcon();
+
     if (asset.startsWith('assets/')) {
       return Image.asset(
         asset,
@@ -63,7 +51,9 @@ class NavDestinationIcon extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        color: color,
+        colorBlendMode: BlendMode.srcIn,
+        errorBuilder: fallback,
       );
     }
     if (asset.startsWith('http://') || asset.startsWith('https://')) {
@@ -73,18 +63,30 @@ class NavDestinationIcon extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        color: color,
+        colorBlendMode: BlendMode.srcIn,
+        errorBuilder: fallback,
       );
     }
     final file = CatalogPackAssets.asLocalFile(asset) ?? File(asset);
-    if (!file.existsSync()) return null;
+    if (!file.existsSync()) return _materialIcon();
     return Image.file(
       file,
       width: size,
       height: size,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
-      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      color: color,
+      colorBlendMode: BlendMode.srcIn,
+      errorBuilder: fallback,
+    );
+  }
+
+  Widget _materialIcon() {
+    return Icon(
+      selected ? destination.activeIcon : destination.icon,
+      color: color,
+      size: size,
     );
   }
 }

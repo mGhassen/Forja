@@ -133,6 +133,9 @@ flutter:
     - assets/icon/
     - assets/sounds/
     - assets/images/
+    # Explicit — new `images/nav/` files are easy to miss in incremental macOS
+    # asset graphs (IPTV rail PNG was on disk but absent from AssetManifest).
+    - assets/images/nav/iptv.png
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
