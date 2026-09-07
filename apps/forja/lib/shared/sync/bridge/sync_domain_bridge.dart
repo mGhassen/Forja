@@ -49,6 +49,12 @@ class SyncDomainBridge {
   int _preferencesLocalGen = 0;
   int _preferencesSyncedGen = 0;
 
+  /// IPTV inventory dirty while a local add/edit/delete has not finished a
+  /// cloud replace. Portal-panel / soft pulls must flush or skip apply so
+  /// empty cloud cannot wipe the just-saved portal (issue 229).
+  int _iptvLocalGen = 0;
+  int _iptvSyncedGen = 0;
+
   /// After a successful Features/Addons nav upsert — skip soft-pull **nav apply**
   /// for a short window so a lagging read does not crush what we just pushed.
   DateTime? _lastNavigationPushAt;
@@ -108,6 +114,8 @@ class SyncDomainBridge {
     bool notify = true,
   }) async {
     _pushTimers.remove(_domainIptv)?.cancel();
+    _iptvLocalGen = 0;
+    _iptvSyncedGen = 0;
     await IptvStore.save(const [], scheduleSync: false);
     await IptvStore.saveFavorites({}, scheduleSync: false);
     await IptvStore.clearLastPortalKey();
@@ -133,6 +141,8 @@ class SyncDomainBridge {
     _navigationSyncedGen = 0;
     _preferencesLocalGen = 0;
     _preferencesSyncedGen = 0;
+    _iptvLocalGen = 0;
+    _iptvSyncedGen = 0;
     _lastNavigationPushAt = null;
     _cloudPayloadCache = null;
     final defaults = PlatformDefaults.forProfile(
