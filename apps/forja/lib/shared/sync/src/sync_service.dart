@@ -55,13 +55,17 @@ class SyncService {
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
   static const _refreshDebounce = Duration(seconds: 30);
   static const _featuresPullMinInterval = Duration(seconds: 2);
+
   /// Desktop window left "resumed" never gets lifecycle resume - keep RT warm.
   static const _desktopKeepAliveInterval = Duration(minutes: 12);
   static const _profileFetchTimeout = Duration(seconds: 15);
+
   /// Cap gotrue `/token` so DNS blips cannot hang Settings / boot forever.
   static const _refreshTimeout = Duration(seconds: 12);
+
   /// Refresh access JWT when less than this remains before expiry.
   static const _accessTokenRefreshSkew = Duration(minutes: 5);
+
   /// PostgREST rejects a just-minted JWT when Auth `iat` is ahead of API now.
   static const _jwtIatSkewRetryDelay = Duration(milliseconds: 1200);
   DateTime? _lastRefreshAttempt;
@@ -112,9 +116,9 @@ class SyncService {
     run = () async {
       _lastRefreshAttempt = DateTime.now();
       try {
-        final response = await client.auth
-            .refreshSession()
-            .timeout(_refreshTimeout);
+        final response = await client.auth.refreshSession().timeout(
+          _refreshTimeout,
+        );
         return await _ensureCurrentSessionApplied(client, response.session);
       } on TimeoutException catch (e) {
         debugPrint('[Sync] refreshSession timed out: $e');
@@ -623,12 +627,11 @@ class SyncService {
     } catch (e) {
       if (e is SyncProfileFetchException) rethrow;
       if (isJwtExpiredError(e)) {
-        debugPrint(
-          '[Sync] listProfiles JWT expired - force refresh and retry',
-        );
+        debugPrint('[Sync] listProfiles JWT expired - force refresh and retry');
         try {
-          return await fetchOnce(forceRefresh: true)
-              .timeout(_profileFetchTimeout);
+          return await fetchOnce(
+            forceRefresh: true,
+          ).timeout(_profileFetchTimeout);
         } on TimeoutException catch (e2) {
           debugPrint('[Sync] listProfiles timeout after JWT retry: $e2');
           throw SyncProfileFetchException(
@@ -698,10 +701,7 @@ class SyncService {
     required String? accountId,
     required String? profileId,
   }) async {
-    await LocalDataScope.configure(
-      accountId: accountId,
-      profileId: profileId,
-    );
+    await LocalDataScope.configure(accountId: accountId, profileId: profileId);
     await PluginScriptDiskStore.configureScope(
       accountId: accountId,
       profileId: profileId,
@@ -1092,10 +1092,7 @@ class SyncService {
     // Adapt to legacy domain wrapper shape for any leftover callers.
     final out = <String, dynamic>{};
     if (payload['playback'] is Map) {
-      out['preferences'] = {
-        'payload': payload['playback'],
-        'updated_at': null,
-      };
+      out['preferences'] = {'payload': payload['playback'], 'updated_at': null};
     }
     final connected = payload['connectedServices'];
     if (connected is Map) {
@@ -1106,22 +1103,13 @@ class SyncService {
         };
       }
       if (connected['stremio'] is Map) {
-        out['stremio'] = {
-          'payload': connected['stremio'],
-          'updated_at': null,
-        };
+        out['stremio'] = {'payload': connected['stremio'], 'updated_at': null};
       }
       if (connected['nuvio'] is Map) {
-        out['nuvio'] = {
-          'payload': connected['nuvio'],
-          'updated_at': null,
-        };
+        out['nuvio'] = {'payload': connected['nuvio'], 'updated_at': null};
       }
       if (connected['forja'] is Map) {
-        out['forja'] = {
-          'payload': connected['forja'],
-          'updated_at': null,
-        };
+        out['forja'] = {'payload': connected['forja'], 'updated_at': null};
       }
     }
     // Legacy payload.iptv is ignored (M3U device-local; portals in tables).
@@ -1140,11 +1128,7 @@ class SyncService {
     }
     final rows = await client.rpc(
       'deal_iptv_portals',
-      params: {
-        'p_profile_id': profileId,
-        'p_region': region,
-        'p_count': count,
-      },
+      params: {'p_profile_id': profileId, 'p_region': region, 'p_count': count},
     );
     if (rows is! List) return const [];
     return [
@@ -1187,14 +1171,9 @@ class SyncService {
   Future<List<Map<String, dynamic>>> getIptvPortals(List<String> ids) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null || ids.isEmpty) return const [];
-    final rows = await client.rpc(
-      'get_iptv_portals',
-      params: {'p_ids': ids},
-    );
+    final rows = await client.rpc('get_iptv_portals', params: {'p_ids': ids});
     if (rows is! List) return const [];
-    return [
-      for (final raw in rows) Map<String, dynamic>.from(raw as Map),
-    ];
+    return [for (final raw in rows) Map<String, dynamic>.from(raw as Map)];
   }
 
   /// Assignment row count for the active profile (no credential decrypt).
@@ -1256,18 +1235,13 @@ class SyncService {
         'Failed to load portal credentials for ${ids.length} assignment(s)',
       );
     }
-    final byId = {
-      for (final g in globals) (g['id'] as String? ?? ''): g,
-    };
+    final byId = {for (final g in globals) (g['id'] as String? ?? ''): g};
     final out = <Map<String, dynamic>>[];
     for (final a in assignments) {
       final id = a['portal_id'] as String? ?? '';
       final g = byId[id];
       if (g == null) continue;
-      out.add({
-        ...a,
-        'portal': g,
-      });
+      out.add({...a, 'portal': g});
     }
     if (out.isEmpty && ids.isNotEmpty) {
       throw StateError(
@@ -1288,14 +1262,7 @@ class SyncService {
   ///
   /// Uses `replace_user_iptv_portals` RPC (grandfather over-limit + atomic).
   Future<void> replaceUserIptvPortals(
-    List<
-      ({
-        String portalId,
-        String portalName,
-        bool favorite,
-      })
-    >
-    assignments, {
+    List<({String portalId, String portalName, bool favorite})> assignments, {
     bool allowShrink = false,
   }) async {
     final client = ForjaSupabase.clientOrNull;

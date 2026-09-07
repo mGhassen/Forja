@@ -255,8 +255,7 @@ class SyncDomainBridge {
         // Push grace may have started during flush — do not pull nav back yet.
         final afterFlush = DateTime.now();
         final pushAt = _lastNavigationPushAt;
-        if (pushAt != null &&
-            afterFlush.difference(pushAt) < _navPushGrace) {
+        if (pushAt != null && afterFlush.difference(pushAt) < _navPushGrace) {
           debugPrint(
             '[Sync] soft-pull aborted after flush — still in nav push grace',
           );
@@ -351,6 +350,7 @@ class SyncDomainBridge {
     bool allowEmptyNuvioWipe = false,
     bool allowEmptyForjaWipe = false,
     Set<String>? overlayDomains,
+
     /// When true (or full overlay), merge local `addon_feature_*` onto cloud.
     /// Ordinary prefs pushes omit those keys so a thin ATV cache cannot wipe
     /// web unlocks (RFC-086 / 224).
@@ -358,15 +358,14 @@ class SyncDomainBridge {
   }) async {
     if (!SyncService.instance.isSignedIn) return;
     final navGenAtStart = _navigationLocalGen;
-    final overlayNav = overlayDomains == null ||
-        overlayDomains.contains(_domainNavigation);
+    final overlayNav =
+        overlayDomains == null || overlayDomains.contains(_domainNavigation);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
       allowEmptyForjaWipe: allowEmptyForjaWipe,
       overlayDomains: overlayDomains,
-      overlayAddonFeatures:
-          overlayAddonFeatures || overlayDomains == null,
+      overlayAddonFeatures: overlayAddonFeatures || overlayDomains == null,
     );
     if (payload == null) {
       debugPrint('[Sync] pushAllLocal skipped (no cloud base)');
@@ -378,14 +377,16 @@ class SyncDomainBridge {
       _navigationSyncedGen = navGenAtStart;
       _lastNavigationPushAt = DateTime.now();
       final nav = payload['navigation'];
-      final ids = nav is Map ? _navVisibleIds(Map<String, dynamic>.from(nav)) : null;
+      final ids = nav is Map
+          ? _navVisibleIds(Map<String, dynamic>.from(nav))
+          : null;
       debugPrint(
         '[Sync] navigation upsert ok visibleIds=$ids '
         'tabOrder=${nav is Map ? nav['tabOrder'] : null}',
       );
     }
-    final pushIptv = overlayDomains == null ||
-        overlayDomains.contains(_domainIptv);
+    final pushIptv =
+        overlayDomains == null || overlayDomains.contains(_domainIptv);
     if (pushIptv) {
       await _pushUserIptvPortals(
         pushIfLocalEmpty: pushIptvIfLocalEmpty,
@@ -450,7 +451,7 @@ class SyncDomainBridge {
       // IPTV: never shrink cloud from a thin local cache (issue 118).
       // Navigation / playback: never rewrite the other from a stale cache
       // (issue 126). Prefs overlay omits addon_feature_* unless
-      // [scheduleAddonFeaturesSyncPush].
+      // [scheduleAddonFeatureAndNavSyncPush].
       unawaited(
         pushAllLocal(
           pushIptvIfLocalEmpty: false,
@@ -639,9 +640,7 @@ class SyncDomainBridge {
           );
         } else if (!intentionalNavEdit &&
             navigationWouldShrinkCloud(remoteNav, localNav)) {
-          debugPrint(
-            '[Sync] refuse navigation shrink from non-Features push',
-          );
+          debugPrint('[Sync] refuse navigation shrink from non-Features push');
         } else {
           next['navigation'] = localNav;
         }
@@ -674,16 +673,16 @@ class SyncDomainBridge {
 
     if (overlayForja) {
       if (localConnected.containsKey('forja')) {
-        final localForja =
-            Map<String, dynamic>.from(localConnected['forja'] as Map);
+        final localForja = Map<String, dynamic>.from(
+          localConnected['forja'] as Map,
+        );
         final remoteForja = remoteConnected['forja'] is Map
             ? Map<String, dynamic>.from(remoteConnected['forja'] as Map)
             : <String, dynamic>{};
         final localPacks = localForja['packs'];
         final remotePacks = remoteForja['packs'];
         final localPacksEmpty = localPacks is! List || localPacks.isEmpty;
-        final remoteHasPacks =
-            remotePacks is List && remotePacks.isNotEmpty;
+        final remoteHasPacks = remotePacks is List && remotePacks.isNotEmpty;
         if (localPacksEmpty && remoteHasPacks && !allowEmptyForjaWipe) {
           // Onboarding Skip / onboarded-only push — keep cloud pack membership.
           final merged = Map<String, dynamic>.from(remoteForja);
@@ -731,10 +730,7 @@ class SyncDomainBridge {
       _lastNavigationPushAt = null;
       // Keep [_cloudPayloadCache] — resetLocalFirst still applies [payload]
       // from the pull that seeded the cache.
-      await resetSyncedLocalToPlatformDefaults(
-        clearIptv: true,
-        notify: false,
-      );
+      await resetSyncedLocalToPlatformDefaults(clearIptv: true, notify: false);
       // resetSyncedLocal cleared cache; restore from this pull.
       _cloudPayloadCache = Map<String, dynamic>.from(payload);
     }
@@ -780,7 +776,8 @@ class SyncDomainBridge {
     }
 
     final navigation = payload['navigation'];
-    final editedDuringPull = !resetLocalFirst &&
+    final editedDuringPull =
+        !resetLocalFirst &&
         navGenAtFetch != null &&
         _navigationLocalGen != navGenAtFetch;
     final navPending =
@@ -797,9 +794,7 @@ class SyncDomainBridge {
       final lastPush = _lastNavigationPushAt;
       if (lastPush != null &&
           DateTime.now().difference(lastPush) < _navPushGrace) {
-        debugPrint(
-          '[Sync] skip navigation apply — within post-push grace',
-        );
+        debugPrint('[Sync] skip navigation apply — within post-push grace');
       } else {
         // Synced soft pull / profile reset: cloud is source of truth so web
         // Features / Addons changes land in the app (224).
@@ -904,8 +899,7 @@ class SyncDomainBridge {
       // Only block when a Features/Addons edit is still unsynced. Synced soft
       // pull must apply cloud as SoT (including empty / shrink) so web changes
       // reach the app (224).
-      if (!resetLocalFirst &&
-          _navigationLocalGen != _navigationSyncedGen) {
+      if (!resetLocalFirst && _navigationLocalGen != _navigationSyncedGen) {
         final local = await _settings.getNavbarConfig();
         if (local.isNotEmpty ||
             navigationWouldShrinkLocal(
@@ -923,10 +917,7 @@ class SyncDomainBridge {
       final tabOrder = payload['tabOrder'] is List
           ? (payload['tabOrder'] as List).cast<String>()
           : null;
-      await _settings.setNavbarConfig(
-        incoming,
-        tabOrder: tabOrder,
-      );
+      await _settings.setNavbarConfig(incoming, tabOrder: tabOrder);
     }
     if (payload['defaultTab'] is String) {
       await _settings.setDefaultNavTab(payload['defaultTab'] as String);
@@ -941,7 +932,9 @@ class SyncDomainBridge {
     final portals = await IptvStore.load();
     if (portals.isEmpty) {
       if (!pushIfLocalEmpty) {
-        debugPrint('[Sync] skip IPTV push - empty local cache (cloud is master)');
+        debugPrint(
+          '[Sync] skip IPTV push - empty local cache (cloud is master)',
+        );
         return;
       }
       if (!allowEmptyWipe) {
@@ -1008,9 +1001,7 @@ class SyncDomainBridge {
       );
       return;
     }
-    if (!allowEmptyWipe &&
-        !allowShrink &&
-        cloudCount > assignments.length) {
+    if (!allowEmptyWipe && !allowShrink && cloudCount > assignments.length) {
       debugPrint(
         '[Sync] refuse IPTV shrink after upsert - '
         'resolved ${assignments.length} < cloud $cloudCount',
@@ -1088,7 +1079,8 @@ class SyncDomainBridge {
     final nextKeys = portals.map((v) => v.key).toSet();
     final keysSame =
         localKeys.length == nextKeys.length && localKeys.containsAll(nextKeys);
-    final favSame = localFav.length == favoriteKeys.length &&
+    final favSame =
+        localFav.length == favoriteKeys.length &&
         localFav.containsAll(favoriteKeys);
     var labelChanged = false;
     if (keysSame) {
@@ -1112,8 +1104,10 @@ class SyncDomainBridge {
   Future<Map<String, dynamic>> exportPreferences() async {
     return {
       // Stored (not effective) so Android TV does not wipe desktop play sources.
-      'play_source_torrent_enabled': await _settings.isPlaySourceTorrentStored(),
-      'play_source_stremio_enabled': await _settings.isPlaySourceStremioStored(),
+      'play_source_torrent_enabled': await _settings
+          .isPlaySourceTorrentStored(),
+      'play_source_stremio_enabled': await _settings
+          .isPlaySourceStremioStored(),
       'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioStored(),
       'play_source_webstreaming_enabled': await _settings
           .isPlaySourceWebstreamingEnabled(),
@@ -1133,8 +1127,9 @@ class SyncDomainBridge {
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),
       'addon_feature_iptv': await _settings.isAddonFeatureEnabled('iptv'),
-      'addon_feature_live_matches':
-          await _settings.isAddonFeatureEnabled('live_matches'),
+      'addon_feature_live_matches': await _settings.isAddonFeatureEnabled(
+        'live_matches',
+      ),
     };
   }
 
@@ -1327,7 +1322,9 @@ class SyncDomainBridge {
 
       if (syncedFeatures != null) lean['features'] = syncedFeatures;
       if (lean.containsKey('enabled')) {
-        lean['enabled'] = StremioAddonFeatures.normalizeEnabled(lean['enabled']);
+        lean['enabled'] = StremioAddonFeatures.normalizeEnabled(
+          lean['enabled'],
+        );
       }
       // New lean row or unhydrated stub — skip notify churn if identical stub.
       final prior = localByBase[baseUrl];
@@ -1351,8 +1348,9 @@ class SyncDomainBridge {
     // Stable order — cloud vs local list order must not false-dirty.
     final feat = (List<String>.from(featList)..sort()).join(',');
     // Missing enabled == on (legacy). Cloud `enabled: true` must match.
-    final enabled =
-        StremioAddonFeatures.normalizeEnabled(addon['enabled']).toString();
+    final enabled = StremioAddonFeatures.normalizeEnabled(
+      addon['enabled'],
+    ).toString();
     final name = (addon['name'] ?? '').toString().trim();
     final description = (addon['description'] ?? '').toString().trim();
     final base = SettingsService.normalizeStremioAddonBaseUrl(
@@ -1390,9 +1388,7 @@ class SyncDomainBridge {
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network.**
   /// Mid-session: enqueue install/uninstall confirms. Boot: silent hydrate/purge.
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
-    await PacksOnboardingStore.applyFromCloud(
-      payload['onboarded'] == true,
-    );
+    await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
       for (final raw in packs)
@@ -1418,10 +1414,6 @@ Future<void> schedulePreferencesSyncPush() =>
 Future<void> scheduleAddonFeatureAndNavSyncPush() =>
     SyncDomainBridge.instance.scheduleAddonFeatureAndNavSyncPush();
 
-/// Immediate prefs push including `addon_feature_*` only.
-Future<void> scheduleAddonFeaturesSyncPush() =>
-    SyncDomainBridge.instance.scheduleAddonFeatureAndNavSyncPush();
-
 void scheduleProvidersSyncPush() {
   // Provider order is device-local - do not push to cloud.
 }
@@ -1443,5 +1435,4 @@ Future<void> scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);
 
 /// Call before writing navbar so soft pulls cannot wipe a mid-edit enable.
-void noteNavigationDirty() =>
-    SyncDomainBridge.instance.noteNavigationDirty();
+void noteNavigationDirty() => SyncDomainBridge.instance.noteNavigationDirty();

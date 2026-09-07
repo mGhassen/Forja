@@ -10,6 +10,7 @@
 | | |
 |--|--|
 | **Progress** | **42 / 42** fix · **0 / 4** acceptance |
+| **Current slice** | Fix code landed — device QA (A01–A04) + apply `profile_settings` Realtime migration still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -95,7 +96,20 @@
 12. Soft pull kept applying cloud `visibleIds=[]` while fighting mid-edit enables; later refuse-empty/shrink guards then blocked **cloud → app** so web Features/Addons never landed.
 13. **Android emulator / ATV root (224 logs):** `libffi.so` dlopen failed — `libc++_shared.so` not packaged in jniLibs → `Engine.isReady=false` → every KV write silently no-op’d (`navbar write []→[anime]` then readback `[]`; crash toggle stuck on fallback).
 
-**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeaturesSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands; soft pull **flushes dirty nav push first**, then applies **cloud as SoT when synced** (web enables land); skips nav apply only while a local edit is still unsynced; Android jniLibs ships **`libc++_shared.so`** with `libffi.so`; session navbar/crash memory covers transient KV miss; app + web subscribe to `profile_settings` Realtime for soft-pull (dirty/grace still win).
+**After:** Leanback switch is display-only; row OK calls `setAddonMasterEnabled`; soft pull applies cloud `addon_feature_*` as authority; ordinary prefs pushes merge playback but **omit** unlock flags unless `scheduleAddonFeatureAndNavSyncPush`; Features inventory is derived (flags ∪ pack hubs) on web and app; pack remove prunes nav; Addons force-pulls on open without demoting cloud unlocks via stale prefs flush; web Addons IPTV / Live writes flags + rail in **one** `patch`; web Features hydrates from cloud playback flags (not empty draft); hub refresh known-set is pack-installed only on the live path (orphans only on no-packs wipe); scripts-missing counts as hydration pending; Features re-enables if a strip race still lands; soft pull **flushes dirty nav push first**, then applies **cloud as SoT when synced** (web enables land); skips nav apply only while a local edit is still unsynced; Android jniLibs ships **`libc++_shared.so`** with `libffi.so`; session navbar/crash memory covers transient KV miss; app + web subscribe to `profile_settings` Realtime for soft-pull (dirty/grace still win).
+
+### Current contract (supersedes earlier soft-pull + T18 experiments)
+
+Earlier fix rows (T03/T12/T14/T32/T33 refuse-shrink / refuse-empty / Features hydrate skip) are **historical**. **T18** (“Addons flags only / Features sole `visibleIds` writer”) is also historical — live hierarchy is **RFC-086 A07**:
+
+| Layer | Writes |
+|-------|--------|
+| **Addons** IPTV / Live ON/OFF | `addon_feature_*` **and** `visibleIds` (default-on / drop) via `scheduleAddonFeatureAndNavSyncPush` |
+| **Packs** enable / disable / prompt | hub `visibleIds` |
+| **Features** | hide / reorder / star among available ids |
+| Soft-pull | Addons open, resume / focus, Realtime — **not** Features open; flush dirty first; 8s grace after nav upsert; skip `addon_feature_*` apply while nav dirty |
+
+Ops: migration `20260906231617_profile_settings_realtime.sql` must be applied on hosted Supabase or Realtime soft-pull is a no-op (focus/Addons soft-pull still works).
 
 **Related:** [221](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) · [126](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) · [222](222-[open]-android-tv-features-empty-after-pack-install.md)
 
@@ -107,3 +121,5 @@
 4. OK again turns off and stays off; Features drops the row (not merely toggle off).
 5. Web: Addons OFF + Packs empty → Features shows Settings only (no IPTV / Live / Asian Drama rows).
 6. Web IPTV ON → open Addons on ATV → switch on. Changing EPG / quality on ATV must not clear cloud IPTV unlock.
+7. With Realtime migration applied: change Features on web → app log `[Sync] profile_settings realtime → soft-pull` and rail matches without reopening Addons (or wait past nav-push grace if you just toggled locally).
+8. Mark A01–A04 ✅ only after the matching ATV/web steps above pass.

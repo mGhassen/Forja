@@ -86,6 +86,8 @@ Split **feature availability** from **navbar visibility**.
 
 Addon / pack **OFF** removes the feature from Features and the rail.
 
+**Writers (A07+):** Addons IPTV / Live and pack enable/disable write `visibleIds` for default-on / drop. Features is hide / reorder / star among **available** ids. R86-A06 (“navigation sync stays Features `visibleIds`”) remains true for **cloud domain ownership** (prefs vs navigation keys) — not “Features is the only Dart/TS writer.”
+
 ### Related
 
 - [Features settings](../../features/settings/navigation-bar.md)

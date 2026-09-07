@@ -238,10 +238,11 @@ abstract final class PluginNavRegistry {
     return _destinations.containsKey(tabId);
   }
 
-  /// Tab ids for Settings → Features (pack hubs + Addons-available host tabs).
+  /// Tab ids for Settings → Features (pack hubs + Addons-unlocked host tabs).
   ///
   /// Pass [availableAddonFeatureIds] from [SettingsService.listAvailableAddonFeatureNavIds].
-  /// Omits `settings`. Features alone writes navbar visibility.
+  /// Omits `settings`. Inventory only — visibility is Addons/packs default-on
+  /// plus Features hide/reorder (RFC-086 A07).
   static List<String> featureTabIds({
     Iterable<String>? availableAddonFeatureIds,
   }) {

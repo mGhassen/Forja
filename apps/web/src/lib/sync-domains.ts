@@ -180,9 +180,6 @@ export const HOST_CORE_NAV_TABS = [
 
 export const HOST_CORE_NAV_IDS: string[] = HOST_CORE_NAV_TABS.map((t) => t.id)
 
-/** @deprecated Use [HOST_CORE_NAV_TABS] — name kept for older imports. */
-export const SYNCABLE_NAV_TABS = HOST_CORE_NAV_TABS
-
 /** Fresh profile: no feature tabs on (matches Flutter PlatformDefaults). */
 export const DEFAULT_NAV_VISIBLE_IDS: string[] = []
 
@@ -491,36 +488,6 @@ export function pruneNavigationToAvailable(
     defaultTab = visibleIds.length > 0 ? visibleIds[0]! : DEFAULT_NAV_TAB
   }
   return { visibleIds, tabOrder, defaultTab }
-}
-
-/**
- * Prune to [availableIds], and default-on any available id that was never
- * stored in cloud nav (Addons unlock / first hub sight — R86-A07).
- * Ids already in tabOrder/visibleIds keep their Features on/off choice.
- */
-export function pruneNavigationDefaultOnNew(
-  n: NavigationPayload | undefined,
-  availableIds: Iterable<string>,
-): Required<NavigationPayload> {
-  const available = [...availableIds].filter((id) => isPersistedNavId(id))
-  const raw = normalizeNavigationPayload(n)
-  const everStored = new Set([...raw.tabOrder, ...raw.visibleIds])
-  const pruned = pruneNavigationToAvailable(n, available)
-  const visibleIds = [...pruned.visibleIds]
-  for (const id of available) {
-    if (!everStored.has(id) && !visibleIds.includes(id)) {
-      visibleIds.push(id)
-    }
-  }
-  let defaultTab = pruned.defaultTab
-  if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
-    defaultTab = visibleIds.length > 0 ? visibleIds[0]! : DEFAULT_NAV_TAB
-  }
-  return {
-    visibleIds,
-    tabOrder: pruned.tabOrder,
-    defaultTab,
-  }
 }
 
 /**

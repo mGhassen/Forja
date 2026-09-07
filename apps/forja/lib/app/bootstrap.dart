@@ -98,8 +98,9 @@ Future<void> _runDesktopQuit() async {
     await windowManager.hide();
   } catch (_) {}
 
-  final mediaTimeout =
-      Platform.isMacOS ? const Duration(seconds: 5) : const Duration(seconds: 3);
+  final mediaTimeout = Platform.isMacOS
+      ? const Duration(seconds: 5)
+      : const Duration(seconds: 3);
   try {
     await _shutdownMediaKitPlayers().timeout(mediaTimeout);
   } catch (_) {}
@@ -112,9 +113,7 @@ Future<void> _runDesktopQuit() async {
   } catch (_) {}
 
   // macOS needs longer settle - demux msg_wakeup UAF if we terminate mid-join.
-  await Future.delayed(
-    Duration(milliseconds: Platform.isMacOS ? 400 : 150),
-  );
+  await Future.delayed(Duration(milliseconds: Platform.isMacOS ? 400 : 150));
 
   if (Platform.isMacOS) {
     // Allow AppKit to close the window during terminate (preventClose blocks it).
@@ -275,11 +274,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   debugPrint('[Boot] Splash sound ready');
   debugPrint('[Boot] All init complete - launching app');
 
-  runApp(
-    ProviderScope(
-      child: App(title: title),
-    ),
-  );
+  runApp(ProviderScope(child: App(title: title)));
 }
 
 class App extends StatefulWidget {
@@ -464,7 +459,6 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-
 class _SplashScreenState extends State<SplashScreen> {
   /// Hold the splash at least this long so MainScreen / Home can warm up.
   /// Also the hard cap - if boot work is still running past this, dismiss
@@ -486,8 +480,9 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _showOverlay = true;
 
   /// Live boot step shown above the version on the splash.
-  final ValueNotifier<String> _bootStatus =
-      ValueNotifier<String>('Getting things ready…');
+  final ValueNotifier<String> _bootStatus = ValueNotifier<String>(
+    'Getting things ready…',
+  );
 
   final ValueNotifier<bool> _offerContinue = ValueNotifier<bool>(false);
 
@@ -646,21 +641,21 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   /// Rotate hold lines while waiting out the remaining min-splash time.
-  Future<void> _awaitMinSplashWithHoldStatus(Future<void> minSplashFuture) async {
+  Future<void> _awaitMinSplashWithHoldStatus(
+    Future<void> minSplashFuture,
+  ) async {
     final opening = _bootStatus.value.trim().isEmpty
         ? 'Just a moment…'
         : _bootStatus.value;
-    final steps = <String>[
-      opening,
-      'Warming up the shell…',
-      'Almost ready…',
-    ];
+    final steps = <String>[opening, 'Warming up the shell…', 'Almost ready…'];
     var index = 0;
 
     while (mounted && _showOverlay) {
       final finished = await Future.any<bool>([
         minSplashFuture.then((_) => true),
-        Future<void>.delayed(const Duration(milliseconds: 1800)).then((_) => false),
+        Future<void>.delayed(
+          const Duration(milliseconds: 1800),
+        ).then((_) => false),
       ]);
       if (finished) return;
       index = (index + 1) % steps.length;
@@ -681,10 +676,9 @@ class _SplashScreenState extends State<SplashScreen> {
     var continuedEarly = false;
     try {
       final outcome = await Future.any<String>([
-        bootFuture.then((_) => 'boot').timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => 'timeout',
-        ),
+        bootFuture
+            .then((_) => 'boot')
+            .timeout(const Duration(seconds: 30), onTimeout: () => 'timeout'),
         early.future.then((_) => 'early'),
       ]);
       continuedEarly = outcome == 'early';
@@ -834,32 +828,33 @@ class _SplashScreenState extends State<SplashScreen> {
 }
 
 void _wireLanPlaybackBridge() {
-  LanPlaybackBridge.openMagnetOnDesktop = ({
-    required String magnet,
-    int? season,
-    int? episode,
-    int? fileIdx,
-  }) async {
-    if (!await LanPlaybackRouter.shouldPreferDesktop(
-      PlatformPlayback.capabilities,
-    )) {
-      return null;
-    }
-    final url = await LanClientService.instance.openStream(
-      kind: 'torrent',
-      magnet: magnet,
-      season: season,
-      episode: episode,
-      fileIdx: fileIdx,
-    );
-    if (url == null || url.isEmpty) return null;
-    return TorrentPlaybackUrl(
-      url,
-      fileIndex: fileIdx,
-      source: TorrentPlaybackSource.localEngine,
-      sourceLabel: 'LAN Server',
-    );
-  };
+  LanPlaybackBridge.openMagnetOnDesktop =
+      ({
+        required String magnet,
+        int? season,
+        int? episode,
+        int? fileIdx,
+      }) async {
+        if (!await LanPlaybackRouter.shouldPreferDesktop(
+          PlatformPlayback.capabilities,
+        )) {
+          return null;
+        }
+        final url = await LanClientService.instance.openStream(
+          kind: 'torrent',
+          magnet: magnet,
+          season: season,
+          episode: episode,
+          fileIdx: fileIdx,
+        );
+        if (url == null || url.isEmpty) return null;
+        return TorrentPlaybackUrl(
+          url,
+          fileIndex: fileIdx,
+          source: TorrentPlaybackSource.localEngine,
+          sourceLabel: 'LAN Server',
+        );
+      };
 }
 
 void _warnIfRustMissing() {

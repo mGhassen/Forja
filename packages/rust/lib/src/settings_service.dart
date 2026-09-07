@@ -782,8 +782,9 @@ class SettingsService {
     playSourceChangeNotifier.value++;
   }
 
-  /// Settings → Addons feature availability for host tabs (RFC-086).
-  /// Not navbar visibility — Features alone writes `visibleIds`.
+  /// Settings → Addons unlock flags for host tabs (RFC-086).
+  /// Separate from navbar: Addons ON also calls [setNavbarTabVisible] (A07);
+  /// Features owns hide / reorder after that default-on.
   static final Map<String, bool> _addonFeatureMemory = {};
 
   Future<bool> isAddonFeatureEnabled(String navId) async {
@@ -1651,8 +1652,9 @@ class SettingsService {
     return false;
   }
 
-  /// Host tabs gated by Settings → Addons feature flags (RFC-086). Never
-  /// auto-insert into navbar — Features alone writes `visibleIds`.
+  /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
+  /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
+  /// hide write visibility explicitly.
   static const Set<String> addonGatedNavIds = {
     'iptv',
     'live_matches',
@@ -2152,8 +2154,8 @@ class SettingsService {
       _navbarKnownIdsKey,
       fallback: const [],
     )).toSet();
-    // RFC-086: never auto-insert unknown ids into visible — Features alone
-    // writes the rail. Only expand known so first-seen hubs appear in Features.
+    // RFC-086: never auto-insert unknown ids into visible here (Addons /
+    // packs / Features write the rail). Only expand known for Features inventory.
     final unknown = <String>[];
     for (final id in allNavIds) {
       if (filtered.contains(id)) continue;
