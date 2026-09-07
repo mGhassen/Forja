@@ -111,7 +111,7 @@ Unify all stream providers behind a canonical `PlayableSource` model. Device cap
 | `PlayableSource` schema | `crates/stream/src/playable.rs` |
 | Rank API | `playback_rank_sources_json` FFI |
 | Orchestrator | `packages/rust/lib/src/playback/playback_engine.dart` |
-| Recovery | `apps/forja/lib/shared/player/player/playback_recovery.dart` |
+| Recovery | `apps/forja/lib/shared/player/screens/playback_recovery.dart` |
 
 ## Related
 

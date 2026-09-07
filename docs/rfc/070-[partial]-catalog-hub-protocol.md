@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
-| **Current slice** | Pack-owned nav icons — host `assets/images/nav` removed; A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
+| **Current slice** | Pack-owned hub icons + host IPTV rail PNG; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -153,6 +153,17 @@ Supersedes the host-PNG reading of R70-A39 / R70-A40. Hub glyphs live in packs; 
 | 1 | R70-A60 | Host ships no `assets/images/nav` — `ForjaHostAssets` is Material default only | ✅ |
 | 2 | R70-A61 | Hub `nav.icon` is pack-relative or http(s) only — `forja://asset` rejected by contract | ✅ |
 | 3 | R70-A62 | Core IPTV / Live Sports destinations use Material icons; Live Sports pack bitmap overrides when installed | ✅ |
+
+---
+
+## Acceptance (host IPTV nav asset)
+
+Exception to R70-A60 / R70-A62: IPTV stays a host core tab with a bundled rail PNG. Hub packs still own their icons.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A75 | Host ships `assets/images/nav/iptv.png`; `NavDestinationIcon` loads Flutter `assets/` for core IPTV | ✅ |
+| 2 | R70-A76 | My List pack ships bookmark `icons/nav.png` (not a copy of Home); manifest `nav.icon` stays pack-relative | ✅ |
 
 ---
 

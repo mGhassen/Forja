@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/utils.dart`, `apps/forja/lib/features/anime/catalog/anime_service.dart`, `crates/anime/src/extractors/vidnest.rs`, `crates/anime/src/resolve/direct_embed.rs`
+**Area:** `apps/forja/lib/shared/player/screens/utils.dart`, `apps/forja/lib/features/anime/catalog/anime_service.dart`, `crates/anime/src/extractors/vidnest.rs`, `crates/anime/src/resolve/direct_embed.rs`
 
 ## Status at a glance
 

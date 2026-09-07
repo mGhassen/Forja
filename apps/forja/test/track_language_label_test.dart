@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 
 void main() {
   group('trackLanguageEndonym', () {

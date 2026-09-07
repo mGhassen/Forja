@@ -49,7 +49,7 @@ TMDB, Trakt, Jellyfin, and vertical APIs are **C1 engine** — same destination 
 | Move host services (`pip`, `external_player`, `player_pool`, `android_player_launcher`, `app_updater`) → `apps/forja/lib/shared/services/` | ✅ |
 | Move `episode_watched_service` → `packages/rust` (Trakt/Simkl sync via host callback) | ✅ |
 | Move `my_list_service` + `book_progress_service` → `packages/rust`; `BookResult` → `packages/rust/lib/src/models/` | ✅ |
-| Consolidate tracker sync in `apps/forja/lib/shared/services/tracker_sync.dart` | ✅ |
+| Consolidate tracker sync in `apps/forja/lib/shared/services/tracker/tracker_sync.dart` | ✅ |
 | Move playback glue (11 files) + `webstreamr_settings` → `packages/rust/lib/src/playback/` | ✅ |
 | Move catalog metadata services → `packages/rust/lib/src/catalog/` | ✅ |
 | Move host utils + music/audio cluster → `apps/forja` | ✅ |

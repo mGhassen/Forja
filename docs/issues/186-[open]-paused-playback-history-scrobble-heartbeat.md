@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P2  
 **Severity:** Medium  
-**Area:** `apps/forja/lib/shared/player/player/` (desktop, mobile, Exo)
+**Area:** `apps/forja/lib/shared/player/screens/` (desktop, mobile, Exo)
 
 ## Status at a glance
 

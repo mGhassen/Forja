@@ -102,7 +102,7 @@ flutter build macos --release
 | Linux | `Forja-{version}-linux-x86_64.AppImage` |
 | Android TV | `Forja-{version}-android-tv-arm64.apk` + `Forja-{version}-android-tv-armeabi-v7a.apk` |
 
-Attach selected assets to GitHub Release; [`AppUpdaterService`](../../apps/forja/lib/shared/services/app_updater_service.dart) matches asset filenames (Android TV by ABI).
+Attach selected assets to GitHub Release; [`AppUpdaterService`](../../apps/forja/lib/shared/services/update/app_updater_service.dart) matches asset filenames (Android TV by ABI).
 
 **Build speed (R21-A09):** shared [`.github/actions/setup-forja-build`](../../.github/actions/setup-forja-build/action.yml) enables `Swatinem/rust-cache` (`crates -> target`) and Flutter pub cache. Long Rust/Flutter steps wrap [`scripts/ci_with_heartbeat.sh`](../../scripts/ci_with_heartbeat.sh) so logs keep moving during silent MSVC/Xcode compiles. Existing-tag jobs sync those helpers from the workflow SHA via [`scripts/ci_sync_helpers_from_workflow.sh`](../../scripts/ci_sync_helpers_from_workflow.sh). Cold Flutter/Xcode/MSVC app compile remains the bulk of wall time — caches mainly cut Rust + pub download.
 
@@ -138,7 +138,7 @@ Bundle id: `com.forjahq.app` (consistent across platforms).
 
 ## 6. Desktop window chrome
 
-[`desktop_window_chrome.dart`](../../apps/forja/lib/shared/widgets/desktop_window_chrome.dart) wraps the shell on macOS/Windows/Linux:
+[`desktop_window_chrome.dart`](../../apps/forja/lib/shared/widgets/desktop/desktop_window_chrome.dart) wraps the shell on macOS/Windows/Linux:
 
 - macOS: hidden title bar + 34px drag strip (`kMacTitleBarHeight`) for traffic lights
 - Windows/Linux: custom caption via `window_manager`

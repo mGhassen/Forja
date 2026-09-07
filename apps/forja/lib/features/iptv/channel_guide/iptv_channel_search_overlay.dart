@@ -6,8 +6,8 @@ import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/tv_browse_text_field.dart';
-import 'package:forja/shared/widgets/forja_network_image.dart';
+import 'package:forja/shared/widgets/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/widgets/shell/forja_network_image.dart';
 import 'package:forja/shared/design/design.dart';
 
 class IptvChannelSearchOverlay extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/engine_auto_play.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
 
 void main() {
   group('enginePluginIdFromProgress', () {

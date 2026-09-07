@@ -20,7 +20,7 @@ BUMP="${1:-patch}"
 
 PUBSPEC="$ROOT/apps/forja/pubspec.yaml"
 SETUP_ISS="$ROOT/installer/windows/setup.iss"
-VERSION_DART="$ROOT/apps/forja/lib/shared/services/app_version.dart"
+VERSION_DART="$ROOT/apps/forja/lib/shared/services/update/app_version.dart"
 MACOS_APPINFO="$ROOT/apps/forja/macos/Runner/Configs/AppInfo.xcconfig"
 BACKLOG_README="$ROOT/docs/backlog/README.md"
 

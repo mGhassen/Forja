@@ -4,10 +4,10 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
-import 'package:forja/shared/widgets/hero_overview_text.dart';
+import 'package:forja/shared/widgets/hero/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_facts_panel.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
-import 'package:forja/shared/widgets/watch_progress_bar.dart';
+import 'package:forja/shared/widgets/media_details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
 /// Cinematic details hero for non-TMDB hubs - matches [MediaDetailsHero] layout.

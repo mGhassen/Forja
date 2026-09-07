@@ -45,5 +45,5 @@ ExoPlayer already passed `startMs` on setMedia — unchanged.
 
 ## Related
 
-- `apps/forja/lib/shared/player/player/utils.dart` — `openPlayerStream.startAt`, `ensureOpenedNearPosition`
+- `apps/forja/lib/shared/player/screens/utils.dart` — `openPlayerStream.startAt`, `ensureOpenedNearPosition`
 - [184](../184-[open]-post-seek-buffering-remount.md) — remount already used mpv `start`

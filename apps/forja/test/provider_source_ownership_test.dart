@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/playback_stream_guards.dart';
-import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
 import 'package:rust/rust.dart';
 
 void main() {

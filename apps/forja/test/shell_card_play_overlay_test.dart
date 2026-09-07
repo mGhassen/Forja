@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
+import 'package:forja/shared/widgets/shell/shell_card_play_overlay.dart';
 
 Widget _overlayHarness({
   required bool active,

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/player/episode_torrent_resolver.dart';
+import 'package:forja/shared/player/resolvers/episode_torrent_resolver.dart';
 
 void main() {
   group('catalogOpenTorrentEp', () {

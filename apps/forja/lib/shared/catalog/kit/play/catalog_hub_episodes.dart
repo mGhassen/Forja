@@ -1,7 +1,7 @@
 import 'package:forja/shared/catalog/services/catalog_details_fetch.dart';
 import 'package:forja/shared/catalog/utils/hub_cover_urls.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
 
 class HubCatalogEpisodeCache {
   HubCatalogEpisodeCache._();

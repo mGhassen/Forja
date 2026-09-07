@@ -11,7 +11,7 @@
 |--|--|
 | **Scope** | 92 Dart files · ~77.0k LOC under `features/` |
 | **God-file pressure** | 30 files &gt;800 lines (~72% of feature LOC) |
-| **Tier 1 (&gt;3k)** | 0 files in `features/` · 0 monoliths in `shared/player/player/` |
+| **Tier 1 (&gt;3k)** | 0 files in `features/` · 0 monoliths in `shared/player/screens/` |
 | **Next action** | RFC-019 v1.1 acceptance complete; next arc: RFC-026 media-details/player UX |
 
 **Legend:** Tier 1 = critical god file · Tier 2 = large splittable · Tier 3 = acceptable
@@ -58,7 +58,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
-| [`shared/live/panel/live_sports_streams_page.dart`](../../apps/forja/lib/shared/live/panel/live_sports_streams_page.dart) | — | Live Sports streams panel | In | Thin feature `features/live_sports/`; pack `plugins/hubs/live_sports/` |
+| [`features/live_sports/catalog/live_sports_streams_panel_host.dart`](../../apps/forja/lib/features/live_sports/catalog/live_sports_streams_panel_host.dart) | — | Live Sports streams panel host | In | Thin feature `features/live_sports/`; UI = `CatalogKitSourcesPanel`; service = `MatchStreams` |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
@@ -399,7 +399,7 @@ features/iptv/
 
 | File | Lines (current) | Target |
 |------|----------------:|--------|
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 387 | Orchestrator ✅ |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/screens/mobile_player_screen.dart) | 387 | Orchestrator ✅ |
 | `mobile_player_sources.dart` | 787 | Core stream menu/scoring mixin ✅ |
 | `mobile_player_sources_alt.dart` | 212 | Torrent/Stremio/player-menu mixin |
 | `mobile_player_sources_settings.dart` | 241 | Settings popup mixin |
@@ -412,7 +412,7 @@ features/iptv/
 | `mobile_player_ui.dart` | 205 | Gestures/aspect/timer |
 | `mobile_player_episodes.dart` | 515 | Skip/next-ep + episode switch |
 | `mobile_player_seekbar.dart` | 253 | Seekbar widgets |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 364 | Orchestrator ✅ |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/screens/desktop_player_screen.dart) | 364 | Orchestrator ✅ |
 | `desktop_player_episodes.dart` | 1,126 | Episodes + provider load/switch |
 | `desktop_player_playback.dart` | 922 | — |
 | `desktop_player_build.dart` | 629 | — |
@@ -423,17 +423,17 @@ features/iptv/
 | `desktop_player_ui.dart` | 161 | Auto-hide/fullscreen/keyboard |
 | `desktop_player_glass.dart` | ~50 | `_HwDecMode` only (glass primitives removed) |
 
-**Controls** (`shared/player/controls/`):
+**Controls** (`shared/player/controls/{chrome,menus,sources,seek,tv,episodes}/`):
 
 | File | Lines | Role |
 |------|------:|------|
-| [`player_subtitle_menu.dart`](../../apps/forja/lib/shared/player/controls/player_subtitle_menu.dart) | 270 | Subtitle track picker |
-| [`player_subtitle_settings_dialog.dart`](../../apps/forja/lib/shared/player/controls/player_subtitle_settings_dialog.dart) | 662 | Subtitle appearance (mobile + desktop) |
-| [`player_quality_menu.dart`](../../apps/forja/lib/shared/player/controls/player_quality_menu.dart) | 101 | HLS quality picker |
-| [`player_audio_menu.dart`](../../apps/forja/lib/shared/player/controls/player_audio_menu.dart) | 67 | Audio track picker |
-| [`player_menus.dart`](../../apps/forja/lib/shared/player/controls/player_menus.dart) | 167 | Speed + legacy track sheets |
-| [`player_stream_menu.dart`](../../apps/forja/lib/shared/player/controls/player_stream_menu.dart) | 803 | Source/server picker orchestrator |
-| [`player_chrome_overlay.dart`](../../apps/forja/lib/shared/player/controls/player_chrome_overlay.dart) | 819 | Top bar, buttons, cast helpers |
+| [`player_subtitle_menu.dart`](../../apps/forja/lib/shared/player/controls/menus/player_subtitle_menu.dart) | 270 | Subtitle track picker |
+| [`player_subtitle_settings_dialog.dart`](../../apps/forja/lib/shared/player/controls/menus/player_subtitle_settings_dialog.dart) | 662 | Subtitle appearance (mobile + desktop) |
+| [`player_quality_menu.dart`](../../apps/forja/lib/shared/player/controls/menus/player_quality_menu.dart) | 101 | HLS quality picker |
+| [`player_audio_menu.dart`](../../apps/forja/lib/shared/player/controls/menus/player_audio_menu.dart) | 67 | Audio track picker |
+| [`player_menus.dart`](../../apps/forja/lib/shared/player/controls/menus/player_menus.dart) | 167 | Speed + legacy track sheets |
+| [`player_stream_menu.dart`](../../apps/forja/lib/shared/player/controls/sources/player_stream_menu.dart) | 803 | Source/server picker orchestrator |
+| [`player_chrome_overlay.dart`](../../apps/forja/lib/shared/player/controls/chrome/player_chrome_overlay.dart) | 819 | Top bar, buttons, cast helpers |
 
 ---
 

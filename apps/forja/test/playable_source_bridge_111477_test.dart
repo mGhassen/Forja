@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/player/playable_source_bridge.dart';
+import 'package:forja/shared/player/screens/playable_source_bridge.dart';
 import 'package:rust/rust.dart';
 
 void main() {

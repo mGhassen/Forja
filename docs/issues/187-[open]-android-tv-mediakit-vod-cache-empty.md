@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/` (MediaKit VOD — Home / Search / Anime / Asian Drama)
+**Area:** `apps/forja/lib/shared/player/screens/` (MediaKit VOD — Home / Search / Anime / Asian Drama)
 
 ## Status at a glance
 

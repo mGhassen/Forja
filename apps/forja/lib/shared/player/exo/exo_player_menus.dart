@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/player/controls/player_menus.dart';
-import 'package:forja/shared/player/controls/player_popup_panel.dart';
-import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
+import 'package:forja/shared/player/controls/menus/player_menus.dart';
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
-import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/player/screens/utils.dart';
 
 /// Minimalist Exo track / settings menus - [PlayerPopupPanel] chips & list tiles.
 abstract final class ExoPlayerMenus {

@@ -2,7 +2,7 @@
 
 **Version:** v1.0 (partial) / v1.1 (complete)  
 **Status:** partial — GitHub check + dialog shipped; platform install paths uneven  
-**Area:** `apps/forja/lib/shared/services/app_updater_service.dart`, `apps/forja/lib/shared/widgets/update_dialog.dart`
+**Area:** `apps/forja/lib/shared/services/update/app_updater_service.dart`, `apps/forja/lib/shared/widgets/update/update_dialog.dart`
 
 ## Status at a glance
 
@@ -217,11 +217,11 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per
 │    app/desktop_startup_gate.dart → check on cold start   │
 │    shell/main_screen.dart     → (historical; R15-A07)    │
 │    features/settings/         → manual check             │
-│    shared/widgets/update_dialog.dart                     │
+│    shared/widgets/update/update_dialog.dart                     │
 └───────────────────────────┬─────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────┐
-│  apps/forja/lib/shared/services/app_updater_service.dart │
+│  apps/forja/lib/shared/services/update/app_updater_service.dart │
 │    R2 manifest → semver → notes from changelog/ → UpdateInfo │
 └───────────────┬─────────────────────────┬───────────────┘
                 │                         │
@@ -280,7 +280,7 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per
 
 **Endpoint:** `GET https://api.github.com/repos/{owner}/{repo}/releases?per_page=100`
 
-Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/app_updater_service.dart`.
+Config: `githubRepo = 'mGhassen/Forja'` in `apps/forja/lib/shared/services/update/app_updater_service.dart`.
 
 **Release tag:** `v1.2.3` (leading `v` stripped for compare).
 

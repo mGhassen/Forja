@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/widgets/movie_atmosphere.dart';
+import 'package:forja/shared/widgets/home/movie_atmosphere.dart';
 
 /// Ken Burns hero that crossfades through [imageUrls] on a random beat.
 class RotatingHeroBackdrop extends StatefulWidget {

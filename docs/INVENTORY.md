@@ -127,8 +127,11 @@ Apps import `package:rust/...` — there is no `packages/api`.
 |----------|----------------|
 | Hub `features/*/catalog/` | Orchestration + cache UX; HTTP/parse mostly Rust for in-scope hubs |
 | `shared/extractors/`, `shared/nuvio/` | Permanent C3–C5 |
-| `shared/playback/` | Provider-race UX, resume handoff |
-| `shared/player/` | Decode, controls, Exo ↔ MediaKit swap |
+| `shared/playback/` | Provider-race UX, resume handoff (`open/`, `probe/`, `cache/`, `sources/`) |
+| `shared/player/` | Decode, controls, Exo ↔ MediaKit (`screens/`, `controls/`, `entry/`, `resolvers/`, `trailer/`, `platform/`) |
+| `shared/lists/` | My List follow + providers |
+| `shared/live/` | Live Sports match/stream host libs |
+| `shared/services/` | Cross-cutting only (`app/`, `update/`, `tracker/`) |
 | IPTV feature UI | Portal forms / scrape UI; catalog scrape in `crates/iptv` |
 
 Detail: [services-map.md](architecture/services-map.md).

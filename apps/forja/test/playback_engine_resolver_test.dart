@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/playback/open/playback_engine.dart';
 import 'package:rust/rust.dart';
 
 void main() {

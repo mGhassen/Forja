@@ -17,7 +17,7 @@ class NavDestination {
   final IconData activeIcon;
   final String label;
 
-  /// Pack-resolved display source: absolute file path or http(s). Never host assets/.
+  /// Display source: Flutter `assets/…`, absolute pack file path, or http(s).
   final String? iconAsset;
 }
 
@@ -56,6 +56,16 @@ class NavDestinationIcon extends StatelessWidget {
   }
 
   Widget? _imageFor(String asset) {
+    if (asset.startsWith('assets/')) {
+      return Image.asset(
+        asset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    }
     if (asset.startsWith('http://') || asset.startsWith('https://')) {
       return Image.network(
         asset,

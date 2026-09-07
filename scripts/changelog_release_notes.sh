@@ -49,7 +49,7 @@ fi
 
 # Codename source of truth: kReleaseCodename in app_version.dart (admin updates
 # it when shipping a new minor). Not read from the changelog title.
-version_dart="$ROOT/apps/forja/lib/shared/services/app_version.dart"
+version_dart="$ROOT/apps/forja/lib/shared/services/update/app_version.dart"
 codename=""
 if [[ -f "$version_dart" ]]; then
   codename="$(sed -n "s/^const kReleaseCodename = '\(.*\)';/\1/p" "$version_dart" | head -1)"

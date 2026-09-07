@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/tv_browse_text_field.dart';
+import 'package:forja/shared/widgets/tv/tv_browse_text_field.dart';
 
 /// Shell-owned search field shown above tab body on the Search tab.
 class ShellSearchBar extends StatelessWidget {

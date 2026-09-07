@@ -9,8 +9,8 @@ import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/navigation/navigation_back_handler.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
-import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Mouse back, Escape, macOS trackpad swipe-back, and Android system / remote

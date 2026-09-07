@@ -10,10 +10,10 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hover_scale.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
+import 'package:forja/shared/widgets/shell/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/shell/hover_scale.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell/shell_card_play_overlay.dart';
 import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';

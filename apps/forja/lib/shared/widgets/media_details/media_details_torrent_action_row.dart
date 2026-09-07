@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/lists/external_lists_providers.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/services/youtube_stream_service.dart';
+import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/widgets/my_list_button.dart';
+import 'package:forja/shared/widgets/lists/my_list_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 

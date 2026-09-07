@@ -106,8 +106,8 @@ Playback is **stream-while-download** (not download-then-play): the player reads
 
 - `crates/torrent/src/lib.rs` — `download_dir()`, `stop()`, `prepare_magnet()`, `stop_engine()`
 - `packages/streaming/lib/src/torrent_stream_service.dart` — `removeTorrent()`, `cleanup()`
-- `apps/forja/lib/shared/player/player/desktop_player_screen.dart` — `dispose()` → `removeTorrent`
-- `apps/forja/lib/shared/player/player/mobile_player_screen.dart` — same
+- `apps/forja/lib/shared/player/screens/desktop_player_screen.dart` — `dispose()` → `removeTorrent`
+- `apps/forja/lib/shared/player/screens/mobile_player_screen.dart` — same
 - `apps/forja/lib/app/bootstrap.dart` — `cleanup()` on close (no torrent dir purge)
 - `apps/forja/lib/features/settings/settings_screen.dart` — unused RAM/Disk cache UI
 - `packages/forja_streaming/lib/src/site111477_proxy.dart` — reference implementation for cache purge

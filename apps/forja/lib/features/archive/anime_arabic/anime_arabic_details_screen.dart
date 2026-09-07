@@ -13,8 +13,8 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
-import 'package:forja/shared/widgets/media_details_body.dart';
-import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
+import 'package:forja/shared/widgets/media_details/media_details_body.dart';
+import 'package:forja/shared/widgets/media_details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';
 
 class AnimeArabicDetailsScreen extends StatefulWidget {

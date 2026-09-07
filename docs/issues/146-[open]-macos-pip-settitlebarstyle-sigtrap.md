@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `shared/services/pip_service.dart` · `window_manager` (macOS/Windows)
+**Area:** `shared/player/platform/pip_service.dart` · `window_manager` (macOS/Windows)
 
 ## Status at a glance
 

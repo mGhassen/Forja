@@ -13,7 +13,7 @@ import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Settings → LAN — one-time desktop↔TV trust (RFC-022).

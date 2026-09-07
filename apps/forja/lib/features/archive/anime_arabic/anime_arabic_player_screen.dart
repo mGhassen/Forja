@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_extractor.dart';
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/player/player_screen.dart';
+import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 

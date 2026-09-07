@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/player/screens/utils.dart';
 
 void main() {
   group('splitSourceButtonLines', () {

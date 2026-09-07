@@ -106,7 +106,7 @@ Full UX redesign of media details (torrent + streaming) and the unified player. 
 |------|-----------------|-------|
 | [`details_screen.dart`](../../apps/forja/lib/features/media/details/details_screen.dart) | orchestrator + mixins | UX shell shipped (`MediaDetailsScrollPage` + Sources panel) |
 | Streaming path | — | `openStreamingDetails` aliases `openDetails` (same screen) |
-| Player | `shared/player/player/*` parts | Flat chrome + shared `PlayerFloatingChip` controls |
+| Player | `shared/player/screens/*` parts | Flat chrome + shared `PlayerFloatingChip` controls |
 
 Details screens live under `features/home/` but are app-wide routes. Player still uses glass overlays removed elsewhere in 1.0.0.
 
@@ -188,7 +188,7 @@ flowchart LR
 | `AppRouter.openDetails` / `openStreamingDetails` / `openMovie` / `openPlayer` | `shell/app_router.dart` |
 | Torrent search gen-token discard | `details_screen.dart` |
 | WebStreamr source list → player | `streaming_details_screen.dart` |
-| `PlayerScreen` constructor args | `shared/player/player_screen.dart` |
+| `PlayerScreen` constructor args | `shared/player/entry/player_screen.dart` |
 | Platform playback profile gates | `PlatformPlayback.capabilities` |
 
 ## Related

@@ -12,8 +12,8 @@ import 'package:forja/shared/engine/packs/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/plugin_install_validator.dart';
 import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
-import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
-import 'package:forja/shared/playback/player_stream_extract_cache.dart';
+import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 

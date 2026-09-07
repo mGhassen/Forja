@@ -1,0 +1,375 @@
+import 'dart:convert';
+import 'dart:ffi';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:forja/shared/services/update/app_updater_manifest.dart';
+import 'package:forja/shared/services/update/app_updater_release_notes.dart';
+import 'package:forja/shared/services/update/release_storage_urls.dart';
+import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// In-app updates.
+///
+/// Discovery: Cloudflare R2 `latest/manifest.json` (per-platform + per-arch).
+/// Download: `latest/{file}` (same mirror as the website; versioned `v{ver}/`
+/// as fallback). Manifest merge keeps other platforms / sibling arches on
+/// partial releases. Compare against the host-arch entry only.
+/// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
+class AppUpdaterService {
+  static const String githubRepo = 'mGhassen/Forja';
+  static const String githubReleasesUrl =
+      'https://api.github.com/repos/$githubRepo/releases?per_page=100';
+
+  static const Map<String, String> _jsonHeaders = {
+    'Accept': 'application/json',
+    'User-Agent': 'Forja-AppUpdater',
+  };
+
+  static const Map<String, String> _githubHeaders = {
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': 'Forja-AppUpdater',
+  };
+
+  static const Map<String, String> _markdownHeaders = {
+    'Accept': 'text/markdown, text/plain, */*',
+    'User-Agent': 'Forja-AppUpdater',
+  };
+
+  /// Portal changelog page (FORJA_WEB_URL /changelog).
+  static String fullChangelogUrl() {
+    final base = DesktopBrowserAuth.webUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$base/changelog';
+  }
+
+  /// Discovery result - never treat a failed check as “up to date”.
+  Future<UpdateCheckResult> checkForUpdates() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+      return _checkR2(currentVersion);
+    } catch (e) {
+      debugPrint('Error checking for updates: $e');
+      return UpdateCheckResult.failed('Could not check for updates: $e');
+    }
+  }
+
+  Future<UpdateCheckResult> _checkR2(String currentVersion) async {
+    // iOS updates go through the App Store - no sideload installer.
+    if (Platform.isIOS) {
+      return UpdateCheckResult.upToDate();
+    }
+
+    final manifestUrl = ReleaseStorageUrls.manifestUrl();
+    if (manifestUrl == null) {
+      debugPrint('AppUpdater: RELEASE_CDN_URL is not set');
+      return UpdateCheckResult.failed(
+        'Update server is not configured in this build.',
+      );
+    }
+
+    final http.Response response;
+    try {
+      response = await http.get(
+        Uri.parse(manifestUrl),
+        headers: _jsonHeaders,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: manifest request failed: $e');
+      return UpdateCheckResult.failed(
+        'Could not reach the update server. Check your connection.',
+      );
+    }
+    if (response.statusCode != 200) {
+      debugPrint('AppUpdater: manifest HTTP ${response.statusCode}');
+      return UpdateCheckResult.failed(
+        'Update server returned HTTP ${response.statusCode}.',
+      );
+    }
+
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return UpdateCheckResult.failed('Update manifest was invalid.');
+    }
+
+    final key = AppUpdaterManifest.platformKey(
+      isWindows: Platform.isWindows,
+      isMacOS: Platform.isMacOS,
+      isLinux: Platform.isLinux,
+      isAndroid: Platform.isAndroid,
+    );
+    if (key == null) {
+      return UpdateCheckResult.upToDate();
+    }
+
+    final arch = _hostArchKey();
+    final target = AppUpdaterManifest.resolveForArch(
+      manifest: decoded,
+      platformKey: key,
+      arch: arch,
+    );
+    if (target == null) {
+      return UpdateCheckResult.failed(
+        'No installer is published for this device architecture yet.',
+      );
+    }
+
+    if (!AppUpdaterReleaseNotes.isNewerVersion(
+      currentVersion,
+      target.version,
+    )) {
+      return UpdateCheckResult.upToDate();
+    }
+
+    final downloadUrl = ReleaseStorageUrls.preferStorage(
+      version: target.version,
+      filename: target.filename,
+    );
+    if (downloadUrl.isEmpty) {
+      return UpdateCheckResult.failed(
+        'Found ${target.version} but no matching installer asset.',
+      );
+    }
+
+    final publishedAt = target.publishedAt ?? DateTime.now();
+
+    final changelogs = await _fetchChangelogs(
+      currentVersion: currentVersion,
+      latestVersion: target.version,
+    );
+
+    return UpdateCheckResult.available(
+      UpdateInfo(
+        currentVersion: currentVersion,
+        latestVersion: target.version,
+        downloadUrl: downloadUrl,
+        changelogs: changelogs,
+        fullChangelogUrl: fullChangelogUrl(),
+        publishedAt: publishedAt,
+        isMacOS: Platform.isMacOS,
+        isIOS: false,
+      ),
+    );
+  }
+
+  /// Release notes: R2 `changelog/` first, GitHub Releases if CDN empty.
+  Future<List<VersionChangelog>> _fetchChangelogs({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    final fromCdn = await _fetchChangelogsFromR2(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+    );
+    if (fromCdn.isNotEmpty) return fromCdn;
+
+    return _fetchChangelogsFromGitHub(
+      currentVersion: currentVersion,
+      latestVersion: latestVersion,
+    );
+  }
+
+  Future<List<VersionChangelog>> _fetchChangelogsFromR2({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    final indexUrl = ReleaseStorageUrls.changelogIndexUrl();
+    if (indexUrl == null) return const [];
+
+    try {
+      final indexResponse = await http.get(
+        Uri.parse(indexUrl),
+        headers: _jsonHeaders,
+      );
+      if (indexResponse.statusCode != 200) {
+        debugPrint(
+          'AppUpdater: changelog index HTTP ${indexResponse.statusCode}',
+        );
+        return const [];
+      }
+
+      final decoded = json.decode(indexResponse.body);
+      if (decoded is! Map<String, dynamic>) return const [];
+      final versionsRaw = decoded['versions'];
+      if (versionsRaw is! List) return const [];
+
+      final versions = <String>[
+        for (final v in versionsRaw)
+          if (v is String && v.trim().isNotEmpty) v.trim(),
+      ];
+      if (versions.isEmpty) return const [];
+
+      final selected = versions
+          .where((v) => AppUpdaterReleaseNotes.isNewerVersion(currentVersion, v))
+          .where(
+            (v) =>
+                AppUpdaterReleaseNotes.compareVersions(v, latestVersion) <= 0,
+          )
+          .toList()
+        ..sort(
+          (a, b) => AppUpdaterReleaseNotes.compareVersions(b, a),
+        );
+
+      if (selected.isEmpty) return const [];
+
+      final capped = selected
+          .take(AppUpdaterReleaseNotes.maxChangelogVersions)
+          .toList();
+
+      final bodies = await Future.wait(
+        capped.map((version) => _fetchChangelogMarkdown(version)),
+      );
+
+      final entries = <ReleaseNotesEntry>[];
+      for (var i = 0; i < capped.length; i++) {
+        final body = bodies[i];
+        if (body == null || body.isEmpty) continue;
+        entries.add(ReleaseNotesEntry(version: capped[i], body: body));
+      }
+
+      return AppUpdaterReleaseNotes.collect(
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releases: entries,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: R2 changelog fetch failed: $e');
+      return const [];
+    }
+  }
+
+  Future<String?> _fetchChangelogMarkdown(String version) async {
+    final url = ReleaseStorageUrls.changelogUrl(version: version);
+    if (url == null) return null;
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _markdownHeaders,
+      );
+      if (response.statusCode != 200) return null;
+      return response.body;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<VersionChangelog>> _fetchChangelogsFromGitHub({
+    required String currentVersion,
+    required String latestVersion,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(githubReleasesUrl),
+        headers: _githubHeaders,
+      );
+      if (response.statusCode != 200) {
+        debugPrint('AppUpdater: GitHub releases HTTP ${response.statusCode}');
+        return const [];
+      }
+
+      final decoded = json.decode(response.body);
+      if (decoded is! List) return const [];
+
+      final entries = <ReleaseNotesEntry>[];
+      for (final item in decoded) {
+        if (item is! Map<String, dynamic>) continue;
+        final tag = item['tag_name'] as String?;
+        if (tag == null || tag.isEmpty) continue;
+        entries.add(
+          ReleaseNotesEntry(
+            version: tag.replaceFirst(RegExp(r'^v'), ''),
+            body: item['body'] as String?,
+            prerelease: item['prerelease'] as bool? ?? false,
+            draft: item['draft'] as bool? ?? false,
+          ),
+        );
+      }
+
+      return AppUpdaterReleaseNotes.collect(
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releases: entries,
+      );
+    } catch (e) {
+      debugPrint('AppUpdater: GitHub changelog fetch failed: $e');
+      return const [];
+    }
+  }
+
+  /// R2 `arches` key for this process (never cross-arch fallback).
+  String _hostArchKey() {
+    if (Platform.isMacOS) {
+      try {
+        final result = Process.runSync('uname', ['-m']);
+        final machine = (result.stdout as String).trim().toLowerCase();
+        if (machine == 'x86_64' || machine == 'i386') return 'x86_64';
+        if (machine == 'arm64' || machine == 'aarch64') return 'arm64';
+      } catch (_) {}
+      return 'arm64';
+    }
+    if (Platform.isAndroid) {
+      return sizeOf<IntPtr>() == 8 ? 'arm64' : 'armeabi-v7a';
+    }
+    if (Platform.isLinux) {
+      try {
+        final result = Process.runSync('uname', ['-m']);
+        final machine = (result.stdout as String).trim().toLowerCase();
+        if (machine == 'x86_64' || machine == 'amd64') return 'x86_64';
+        if (machine == 'aarch64' || machine == 'arm64') return 'arm64';
+      } catch (_) {}
+      return 'default';
+    }
+    // Windows setup EXE (and any single-installer platform).
+    return 'default';
+  }
+
+  Future<void> openDownloadPage(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+class UpdateCheckResult {
+  const UpdateCheckResult._({this.info, this.failureMessage});
+
+  final UpdateInfo? info;
+  final String? failureMessage;
+
+  bool get isAvailable => info != null;
+  bool get isUpToDate => info == null && failureMessage == null;
+  bool get isFailed => failureMessage != null;
+
+  factory UpdateCheckResult.available(UpdateInfo info) =>
+      UpdateCheckResult._(info: info);
+
+  factory UpdateCheckResult.upToDate() => const UpdateCheckResult._();
+
+  factory UpdateCheckResult.failed(String message) =>
+      UpdateCheckResult._(failureMessage: message);
+}
+
+class UpdateInfo {
+  final String currentVersion;
+  final String latestVersion;
+  final String downloadUrl;
+  final List<VersionChangelog> changelogs;
+  final String fullChangelogUrl;
+  final DateTime publishedAt;
+  final bool isMacOS;
+  final bool isIOS;
+
+  UpdateInfo({
+    required this.currentVersion,
+    required this.latestVersion,
+    required this.downloadUrl,
+    required this.changelogs,
+    required this.fullChangelogUrl,
+    required this.publishedAt,
+    required this.isMacOS,
+    this.isIOS = false,
+  });
+}

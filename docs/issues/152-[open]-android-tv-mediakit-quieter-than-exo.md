@@ -60,7 +60,7 @@ to be bought back with gain.
 ## Fix (shipped) — TV-only softvol gain
 
 `kAtvMediaKitVolumeGain = 1.3` (≈ +2.3 dB) in
-[`utils.dart`](../../apps/forja/lib/shared/player/player/utils.dart); every
+[`utils.dart`](../../apps/forja/lib/shared/player/screens/utils.dart); every
 MediaKit `setVolume` on a TV goes through `mpvVolumeForUi`, so UI 100 asks mpv
 for 130. `volume-max` is raised to cover the boosted ceiling (IPTV 150, movie
 player 200 because its slider already reaches 150).

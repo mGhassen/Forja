@@ -1,0 +1,3449 @@
+import 'dart:async';
+import 'dart:io' show File;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
+import 'package:forja/shared/catalog/protocol/protocol.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
+    show
+        catalogAddonBaseForPlaying,
+        catalogStreamRowMatchesPlaying,
+        catalogStreamRowMatchesSavedProgress,
+        bindPendingCatalogStreamRowKey,
+        catalogStreamRowProgressKey,
+        takePendingCatalogStreamRowKey,
+        durableStreamCatalogUrl,
+        enginePluginIdFromCatalogBase,
+        hlsProxyTargetUrl,
+        isVideasyCdnStreamUrl,
+        peakstormFmp4HlsAvoidHardSeek,
+        peakstormHlsNeedsRemountSeek,
+        kPeakstormRemountSeekMinDelta,
+        playbackStreamIdentityUrl,
+        playbackUrlsEquivalent,
+        streamSourceMatchesPlaying,
+        streamSourceProgressKey;
+import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
+import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
+import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
+import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
+import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/utils/language_display.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:rust/rust.dart';
+
+/// Browser-like UA so CDNs that reject bare `libmpv` still serve the file.
+const kDefaultStreamUserAgent =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
+
+/// Soft Auto ceiling (~1080p mid-high) — faster first frame than `max`.
+const kHlsBitrateAutoSoftCeiling = '5000000';
+const kExoBitrateAutoSoftCeiling = 5_000_000;
+
+/// Prefer catalog/master URL for the quality menu when play opened a media playlist.
+String catalogUrlForHlsQualities({
+  String? catalogUrl,
+  required String sourceUrl,
+  required String playUrl,
+}) {
+  final catalog = (catalogUrl ?? '').trim();
+  if (catalog.toLowerCase().contains('.m3u8')) return catalog;
+  if (sourceUrl.toLowerCase().contains('.m3u8')) return sourceUrl;
+  return playUrl;
+}
+
+/// Softvol gain applied to Android TV MediaKit so it matches ExoPlayer loudness
+/// (issue 152).
+///
+/// mpv decodes to PCM and pushes it straight at `ao=audiotrack`, while Exo goes
+/// through MediaCodec and the TV's media DSP (dialog lift / stream DRC), and
+/// mpv's software 5.1→stereo downmix attenuates more than Exo's. At the same UI
+/// level MediaKit therefore lands audibly quieter on leanback. ~+2.3 dB is a
+/// deliberate compromise: enough to stop the engine swap feeling broken,
+/// small enough that boosted peaks rarely clip (softvol has no limiter).
+///
+/// Requires mpv `volume-max` ≥ gain × the surface's UI max.
+const double kAtvMediaKitVolumeGain = 1.3;
+
+/// mpv `volume` for a UI level. TV MediaKit gets [kAtvMediaKitVolumeGain].
+double mpvVolumeForUi(double uiVolume, {required bool atvMediaKit}) =>
+    atvMediaKit ? uiVolume * kAtvMediaKitVolumeGain : uiVolume;
+
+/// mpv `hls-bitrate` from Settings → Max stream quality (`0` = Auto).
+String hlsBitrateForMaxPlaybackHeight(int maxHeight) {
+  if (maxHeight <= 0) return kHlsBitrateAutoSoftCeiling;
+  if (maxHeight <= 480) return '1500000';
+  if (maxHeight <= 720) return '3500000';
+  if (maxHeight <= 1080) return '8000000';
+  if (maxHeight <= 1440) return '12000000';
+  return 'max';
+}
+
+/// Exo ABR caps from Settings → Max stream quality (`0` = Auto soft bitrate).
+({int maxVideoHeight, int maxVideoBitrate}) exoVodCapsForMaxPlaybackHeight(
+  int maxHeight,
+) {
+  if (maxHeight <= 0) {
+    return (maxVideoHeight: 0, maxVideoBitrate: kExoBitrateAutoSoftCeiling);
+  }
+  if (maxHeight <= 480) {
+    return (maxVideoHeight: 480, maxVideoBitrate: 1_500_000);
+  }
+  if (maxHeight <= 720) {
+    return (maxVideoHeight: 720, maxVideoBitrate: 3_500_000);
+  }
+  if (maxHeight <= 1080) {
+    return (maxVideoHeight: 1080, maxVideoBitrate: 8_000_000);
+  }
+  if (maxHeight <= 1440) {
+    return (maxVideoHeight: 1440, maxVideoBitrate: 12_000_000);
+  }
+  return (maxVideoHeight: 2160, maxVideoBitrate: 0);
+}
+
+final _trailingMediaSlash = RegExp(
+  r'\.(mp4|mkv|webm|avi|mov|m4v|ts|mpd|m3u8)/+$',
+  caseSensitive: false,
+);
+
+/// Strip CDN junk like `…/file.mp4/` that browsers forgive and demuxers reject.
+///
+/// Peakstorm / Videasy HLS often resolves to demuxed `index-s1080p-v1-a1.m3u8`
+/// child playlists — seek stalls on those; open sibling `master.m3u8` instead
+/// (extract-time rewrite can miss cached rows).
+String normalizePlaybackStreamUrl(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return trimmed;
+  var out = trimmed;
+  if (_trailingMediaSlash.hasMatch(out)) {
+    out = out.replaceFirst(RegExp(r'/+$'), '');
+  }
+  if (isVideasyCdnStreamUrl(out)) {
+    out = preferVideasyHlsMasterUrl(out);
+  }
+  return out;
+}
+
+/// Play URL for [source] — peakstorm child playlists → master.m3u8.
+StreamSource normalizeStreamSourcePlayUrl(StreamSource source) {
+  final raw = source.url.trim();
+  final play = normalizePlaybackStreamUrl(raw);
+  if (play == raw) return source;
+  final catalog = source.catalogUrl?.trim();
+  return source.copyWith(
+    url: play,
+    catalogUrl: (catalog != null && catalog.isNotEmpty) ? catalog : raw,
+  );
+}
+
+List<StreamSource> normalizeStreamSourcesPlayUrls(List<StreamSource> sources) =>
+    sources.map(normalizeStreamSourcePlayUrl).toList();
+
+/// Headers for every network open: extractor headers + guaranteed browser UA.
+///
+/// Prefer [providerId] (RFC-044) over CDN hostname matching. Do **not**
+/// comma-join into mpv `http-header-fields` - UA values contain commas
+/// (`KHTML, like Gecko`) and that corrupts the list. Pass the map to
+/// [Media.httpHeaders] so media_kit sets a proper NODE_ARRAY on load.
+Map<String, String> resolvePlaybackHttpHeaders(
+  Map<String, String>? headers, {
+  String? streamUrl,
+  String? providerId,
+}) {
+  final out = <String, String>{};
+  if (headers != null) {
+    for (final e in headers.entries) {
+      final k = e.key.trim();
+      final v = e.value.trim();
+      if (k.isEmpty || v.isEmpty) continue;
+      out[k] = v;
+    }
+  }
+
+  String? take(String a, String b) => out[a] ?? out[b];
+  void putCanonical(String canonical, String alt, String value) {
+    out.remove(alt);
+    out[canonical] = value;
+  }
+
+  final ua = take('User-Agent', 'user-agent');
+  putCanonical(
+    'User-Agent',
+    'user-agent',
+    (ua != null && ua.isNotEmpty) ? ua : kDefaultStreamUserAgent,
+  );
+
+  final cfg = ProviderRuntimeConfig.instance;
+  final pid = providerId?.trim();
+  final catalogForMatchEarly =
+      streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
+      ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
+      : streamUrl;
+  // VidSrc.sbs nested STREAMCRYPTO mirrors land on Videasy CDNs (peakstorm).
+  // Those rows keep vidsrcsbs / engine:vidsrcsbs identity but must open with
+  // player.videasy.to Referer — vidsrc.sbs gets 403 on the CDN.
+  var policy = cfg.playbackPolicyFor(pid);
+  if (catalogForMatchEarly != null &&
+      isVideasyCdnStreamUrl(catalogForMatchEarly)) {
+    policy = cfg.playbackPolicyFor('videasy') ?? policy;
+  }
+  final banSelf = cfg.bansCdnSelfReferer(pid);
+  // Movie/TV VidNest CDNs (lamda/delta/alfa/…) reject forced vidnest.fun
+  // Referer; web uses no-referrer. Keep extractor/API headers only — do not
+  // invent policy Referer. Anime `vidnest:*` still uses policy below.
+  final pidLower = pid?.toLowerCase() ?? '';
+  final vidnestMovieTv = pidLower == 'vidnest' || pidLower == 'engine:vidnest';
+  final catalogForMatch = catalogForMatchEarly;
+
+  final referer = take('Referer', 'referer');
+  if (referer != null && referer.isNotEmpty) {
+    putCanonical('Referer', 'referer', referer);
+  } else if (policy != null && !vidnestMovieTv) {
+    // RFC-044: recover from provider identity - never invent CDN self-Referer.
+    putCanonical('Referer', 'referer', policy.referer);
+    putCanonical('Origin', 'origin', policy.origin);
+  } else if (!banSelf &&
+      streamUrl != null &&
+      streamUrl.isNotEmpty &&
+      !isLocalTorrentStreamUrl(streamUrl) &&
+      !isLocalLoopbackPlayUrl(streamUrl)) {
+    final uri = Uri.tryParse(streamUrl);
+    if (uri != null &&
+        (uri.isScheme('http') || uri.isScheme('https')) &&
+        uri.host.isNotEmpty) {
+      putCanonical('Referer', 'referer', '${uri.origin}/');
+    }
+  }
+
+  // Provider policy: force when missing, self-CDN, or scrape (enma) Referer.
+  if (policy != null && !vidnestMovieTv) {
+    final ref = take('Referer', 'referer') ?? '';
+    final refHost = Uri.tryParse(ref)?.host.toLowerCase() ?? ref.toLowerCase();
+    final streamHost =
+        Uri.tryParse(catalogForMatch ?? '')?.host.toLowerCase() ?? '';
+    final selfCdn =
+        streamHost.isNotEmpty &&
+        refHost.isNotEmpty &&
+        (refHost == streamHost ||
+            refHost.contains(streamHost) ||
+            streamHost.contains(refHost));
+    final scrapeLeak = refHost.contains('enma');
+    final policyHost = Uri.tryParse(policy.referer)?.host.toLowerCase() ?? '';
+    final familyOk = _refererMatchesPolicyFamily(refHost, policyHost);
+    // Miruro pipes ship upstream embed Referers (kwik / animepahe / …).
+    // Forcing miruro.tv (v1.2.406 regression) 403s owocdn segments.
+    final miruroPipe = (pid ?? '').toLowerCase().startsWith('miruro:');
+    final accepted =
+        ref.isNotEmpty && !selfCdn && !scrapeLeak && (familyOk || miruroPipe);
+    if (!accepted) {
+      putCanonical('Referer', 'referer', policy.referer);
+      putCanonical('Origin', 'origin', policy.origin);
+    }
+  }
+
+  // Legacy KissKh CDN sniff - only when provider identity is unknown.
+  if (policy == null && streamUrl != null && _isKissKhCdnStream(streamUrl)) {
+    final ref = take('Referer', 'referer') ?? '';
+    if (ref.isEmpty || _isKissKhCdnStream(ref) || !ref.contains('kisskh')) {
+      putCanonical('Referer', 'referer', 'https://kisskh.co/');
+      putCanonical('Origin', 'origin', 'https://kisskh.co');
+    }
+  }
+
+  // Vidsrc CloudStream (`/pl/…/master.m3u8?token=`): master/variant 200 with
+  // any headers, but leaf `page-N.html` segments return CF 403 when Referer or
+  // Origin is set. Browser players use referrerpolicy=no-referrer - strip both
+  // and never derive them from the stream host.
+  if (streamUrl != null && _isVidsrcCloudStreamPl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
+  // VidNest MovieBox CDN (`*.hakunaymatata.com`): progressive MP4 returns HTTP
+  // 429 whenever Referer is set (including self-origin). Browser JWPlayer uses
+  // no-referrer - strip Referer/Origin and never derive them from the CDN host.
+  // NetMirror direct (D3adly net27 embed) requires videodownloader.site Referer.
+  if (streamUrl != null && _isVidnestMovieBoxCdn(streamUrl)) {
+    final pidLower = pid?.toLowerCase() ?? '';
+    final netmirror = pidLower == 'engine:netmirror' || pidLower == 'netmirror';
+    if (!netmirror) {
+      out.remove('Referer');
+      out.remove('referer');
+      out.remove('Origin');
+      out.remove('origin');
+    }
+  }
+
+  // Vidlink mwVault proxy URLs carry upstream headers in query — extra Referer
+  // (e.g. derived from noon.mooncase.online) breaks the proxy open in mpv.
+  if (streamUrl != null && isMwVaultProxyPlayUrl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
+  // Legacy CDN host rules - only when provider identity is unknown (RFC-044).
+  if (policy == null && catalogForMatch != null) {
+    for (final rule in cfg.cdnRefererRules) {
+      if (!rule.matchesStreamUrl(catalogForMatch)) continue;
+      final ref = take('Referer', 'referer') ?? '';
+      if (ref.isEmpty || !rule.refererAccepted(ref)) {
+        if (rule.referer.isNotEmpty) {
+          putCanonical('Referer', 'referer', rule.referer);
+        }
+        if (rule.origin.isNotEmpty) {
+          putCanonical('Origin', 'origin', rule.origin);
+        }
+      }
+      break;
+    }
+  }
+
+  final origin = take('Origin', 'origin');
+  if (origin != null && origin.isNotEmpty) {
+    putCanonical('Origin', 'origin', origin);
+  } else {
+    final ref = out['Referer'];
+    if (ref != null) {
+      final refUri = Uri.tryParse(ref);
+      if (refUri != null && refUri.hasScheme && refUri.host.isNotEmpty) {
+        putCanonical('Origin', 'origin', refUri.origin);
+      }
+    }
+  }
+
+  // YouTube googlevideo (ANDROID_VR direct URLs): CDN self-Referer / Origin → 403.
+  if (streamUrl != null && isGooglevideoPlaybackUrl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
+  return out;
+}
+
+bool _isKissKhCdnStream(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  // cdnvideo*.shop (legacy) · streamingcdn*.site (current HLS) · kisskh hosts
+  return host.contains('cdnvideo') ||
+      host.contains('streamingcdn') ||
+      host.contains('kisskh');
+}
+
+/// Accept any host in the same provider family as [policyHost].
+bool _refererMatchesPolicyFamily(String refHost, String policyHost) {
+  if (refHost.isEmpty || policyHost.isEmpty) return false;
+  if (refHost.contains(policyHost) || policyHost.contains(refHost)) {
+    return true;
+  }
+  if (policyHost.contains('megaplay') && refHost.contains('megaplay')) {
+    return true;
+  }
+  if (policyHost.contains('vidwish') && refHost.contains('vidwish')) {
+    return true;
+  }
+  if ((policyHost.contains('allmanga') || policyHost.contains('allanime')) &&
+      (refHost.contains('allmanga') || refHost.contains('allanime'))) {
+    return true;
+  }
+  if (policyHost.contains('kisskh') && refHost.contains('kisskh')) {
+    return true;
+  }
+  return false;
+}
+
+/// Tokenized Vidsrc CloudStream playlist - segments reject Referer/Origin.
+bool _isVidsrcCloudStreamPl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || uri.host.isEmpty) return false;
+  final path = uri.path.toLowerCase();
+  if (!path.contains('/pl/')) return false;
+  if (!path.contains('.m3u8')) return false;
+  return uri.queryParameters.containsKey('token');
+}
+
+/// VidNest Gama/MovieBox (and related) CDN - rejects any Referer with HTTP 429.
+bool isMovieBoxCdnStreamUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('hakunaymatata.com');
+}
+
+bool _isVidnestMovieBoxCdn(String url) => isMovieBoxCdnStreamUrl(url);
+
+/// YouTube videoplayback CDN — mpv must not send googlevideo self-Referer.
+bool isGooglevideoPlaybackUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  return host.contains('googlevideo.com');
+}
+
+/// Vidlink mwVault play URLs (mooncase mp / suubmon sacdn) embed upstream
+/// headers in query params — mpv must not add Referer/Origin on top.
+bool isMwVaultProxyPlayUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || uri.host.isEmpty) return false;
+  final host = uri.host.toLowerCase();
+  final path = uri.path.toLowerCase();
+  if (host.contains('mooncase.online') && path.startsWith('/mp/')) {
+    return uri.queryParameters.containsKey('headers') &&
+        uri.queryParameters.containsKey('host');
+  }
+  if (host.contains('suubmon.store') && path.startsWith('/sacdn/')) {
+    return uri.queryParameters.containsKey('host');
+  }
+  return false;
+}
+
+/// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
+/// [Media.httpHeaders] - never via comma-joined `http-header-fields`.
+///
+/// Pass [alreadyResolved]: true when [headers] came from
+/// [resolvePlaybackHttpHeaders] (avoids dropping URL-derived Referer).
+/// Clears stale `referrer` when the next source has none.
+Future<void> applyMediaHttpHeaders(
+  Player player,
+  Map<String, String>? headers, {
+  String? streamUrl,
+  String? providerId,
+  bool alreadyResolved = false,
+}) async {
+  final resolved = alreadyResolved
+      ? Map<String, String>.from(headers ?? const {})
+      : resolvePlaybackHttpHeaders(
+          headers,
+          streamUrl: streamUrl,
+          providerId: providerId,
+        );
+  if (player.platform is! NativePlayer) return;
+  final native = player.platform as NativePlayer;
+
+  final referer = resolved['Referer'] ?? resolved['referer'];
+  // Empty string clears a previous source's referrer - do not leave it sticky.
+  await native.setProperty('referrer', referer ?? '');
+
+  final ua = resolved['User-Agent'] ?? resolved['user-agent'];
+  await native.setProperty(
+    'user-agent',
+    (ua != null && ua.isNotEmpty) ? ua : kDefaultStreamUserAgent,
+  );
+}
+
+/// True when NativePlayer has finished libmpv create (`ctx` non-null).
+///
+/// [NativePlayer.setProperty] with `waitForInitialization: false` calls
+/// `mpv_set_property_string` even when `ctx` is still `nullptr` → SIGSEGV
+/// (issue 115 — IPTV Player menu Exo switch before create completes).
+Future<bool> mediaKitPlayerHandleReady(
+  NativePlayer mpv, {
+  Duration timeout = const Duration(milliseconds: 400),
+}) async {
+  if (mpv.disposed) return false;
+  if (mpv.completer.isCompleted) return true;
+  try {
+    await mpv.waitForPlayerInitialization.timeout(timeout);
+    return !mpv.disposed;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Restore mpv audio output after [silenceMediaKitPlayer] or a fresh boot.
+///
+/// Exit sets `mute=yes` and `ao=null` (non-Android). ATV already re-applies
+/// this after every open; desktop IPTV / live must too (issue 138 pattern).
+Future<void> restoreMediaKitAudioOutput(NativePlayer mpv) async {
+  if (mpv.disposed) return;
+  if (!await mediaKitPlayerHandleReady(mpv)) return;
+  Future<void> prop(String key, String value) => mpv
+      .setProperty(key, value, waitForInitialization: false)
+      .timeout(const Duration(milliseconds: 150));
+  try {
+    await prop('mute', 'no');
+  } catch (_) {}
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await prop('ao', 'audiotrack');
+    } catch (_) {}
+    return;
+  }
+  const aoByPlatform = {
+    TargetPlatform.windows: 'wasapi',
+    TargetPlatform.macOS: 'coreaudio',
+    TargetPlatform.linux: 'pulse',
+  };
+  final ao = aoByPlatform[defaultTargetPlatform];
+  if (ao == null) return;
+  try {
+    await prop('ao', ao);
+  } catch (_) {}
+}
+
+/// Switch audio and re-sync demux/output — raw [Player.setAudioTrack] can
+/// leave mpv silent until the next seek (HLS / multi-track MP4).
+Future<void> selectPlayerAudioTrack(Player player, AudioTrack track) async {
+  final active = player.state.track.audio;
+  if (active.id == track.id) return;
+
+  final pos = player.state.position;
+  final playing = player.state.playing;
+
+  await player.setAudioTrack(track);
+
+  final platform = player.platform;
+  if (platform is NativePlayer) {
+    await restoreMediaKitAudioOutput(platform);
+  }
+
+  if (pos > Duration.zero) {
+    await player.seek(pos);
+    if (playing && !player.state.playing) {
+      await player.play();
+    }
+  }
+}
+
+/// Kill audible output immediately via libmpv, without waiting on media_kit's
+/// video-controller init futures (those can hang and leave audio after exit).
+Future<void> silenceMediaKitPlayer(Player player) async {
+  try {
+    if (player.platform is NativePlayer) {
+      final mpv = player.platform as NativePlayer;
+      // Skip native props if create never finished — waitForInitialization:
+      // false would SIGSEGV on null ctx. Still try Dart pause/volume below.
+      if (!await mediaKitPlayerHandleReady(mpv)) return;
+      Future<void> prop(String key, String value) => mpv
+          .setProperty(key, value, waitForInitialization: false)
+          .timeout(const Duration(milliseconds: 150));
+      await prop('mute', 'yes');
+      await prop('pause', 'yes');
+      await prop('volume', '0');
+      // ao=null drains audiotrack/MediaCodec. On Android that FFI does not
+      // yield — Player-menu MediaKit→Exo ANRs (issue 128). mute+pause is enough;
+      // stop/dispose still run on the tracked teardown.
+      if (defaultTargetPlatform != TargetPlatform.android) {
+        await prop('ao', 'null');
+      }
+    }
+  } catch (_) {}
+  try {
+    await player.setVolume(0).timeout(const Duration(milliseconds: 250));
+  } catch (_) {}
+  try {
+    await player.pause().timeout(const Duration(milliseconds: 250));
+  } catch (_) {}
+}
+
+/// Stop then dispose with timeouts so a hung media_kit lock cannot leave
+/// audio forever. Always silences first.
+///
+/// On macOS quit, a short [Player.stop] timeout raced [Player.dispose]: Dart
+/// cleared mpv's `msg_wakeup` NativeCallable while `*/demux` was still in
+/// `demux_free` / `av_log` → SIGSEGV in `msg_wakeup` (issue 081). Quiet logs
+/// first, give stop longer to finish demux join, then dispose.
+///
+/// [fast]: Android / ATV **exit** path — MediaCodec + mpv stop/dispose on the UI
+/// isolate can exceed the 5s input ANR window (issue 128). Prefer silence +
+/// short timeouts after the Video surface is already unmounted. Do not use for
+/// hot-swap / recreate (zombie mpv breaks the next MediaKit open).
+Future<void> teardownMediaKitPlayer(Player player, {bool fast = false}) async {
+  await silenceMediaKitPlayer(player);
+  try {
+    if (player.platform is NativePlayer) {
+      final mpv = player.platform as NativePlayer;
+      if (await mediaKitPlayerHandleReady(mpv)) {
+        await mpv.setProperty(
+          'msg-level',
+          'all=no',
+          waitForInitialization: false,
+        );
+        await mpv.setProperty('quiet', 'yes', waitForInitialization: false);
+      }
+    }
+  } catch (_) {}
+  final stopTimeout = fast
+      ? const Duration(milliseconds: 400)
+      : const Duration(seconds: 2);
+  final disposeTimeout = fast
+      ? const Duration(milliseconds: 500)
+      : const Duration(seconds: 2);
+  try {
+    await player.stop().timeout(stopTimeout);
+  } catch (_) {}
+  // Let demux_thread finish demux_free before dispose clears wakeup.
+  await Future.delayed(Duration(milliseconds: fast ? 20 : 80));
+  try {
+    await player.dispose().timeout(disposeTimeout);
+  } catch (_) {}
+}
+
+/// Set when the last [openPlayerStream] used a trimmed peakstorm playlist.
+bool lastPeakstormOpenUsedTrim = false;
+
+/// mpv playhead is ~0 on a trimmed peakstorm playlist — add this for UI/history.
+Duration peakstormPlaybackTimeOffset = Duration.zero;
+
+Duration playerUiPosition(Duration raw) {
+  final offset = peakstormPlaybackTimeOffset;
+  if (offset <= Duration.zero) return raw;
+  return offset + raw;
+}
+
+/// Trimmed playlist duration is remaining length — restore full VOD duration.
+Duration playerUiDuration(Duration raw) {
+  final offset = peakstormPlaybackTimeOffset;
+  if (offset <= Duration.zero) return raw;
+  if (raw <= Duration.zero) return raw;
+  return offset + raw;
+}
+
+/// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
+Future<String> openPlayerStream(
+  Player player, {
+  required String url,
+  Map<String, String>? headers,
+  String? providerId,
+
+  /// MediaKit/mpv: open demuxer at this time (HLS resume / server switch).
+  /// Cleared after [player.open] so later seeks are not pinned to it.
+  Duration? startAt,
+}) async {
+  var openUrl = normalizePlaybackStreamUrl(url);
+  if (isTorrentStreamUrl(openUrl)) {
+    throw Exception(
+      'Cannot open magnet/torrent URL directly - resolve to a stream first',
+    );
+  }
+  final proxied1shows = await proxy1showsHlsIfNeeded(
+    streamUrl: openUrl,
+    headers: headers ?? const <String, String>{},
+    providerId: providerId,
+  );
+  openUrl = proxied1shows.url;
+  final proxiedExt = await proxyExtensionlessHlsIfNeeded(
+    streamUrl: openUrl,
+    headers: proxied1shows.headers.isEmpty
+        ? (headers ?? const <String, String>{})
+        : proxied1shows.headers,
+    providerId: providerId,
+  );
+  openUrl = proxiedExt.url;
+  final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
+  final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
+  final hdrs =
+      (isLocalLoopbackPlayUrl(openUrl) &&
+          (is1showsCdnStreamUrl(catalogForHeaders) ||
+              shouldProxyExtensionlessHls(catalogForHeaders)))
+      ? const <String, String>{}
+      : resolvePlaybackHttpHeaders(
+          headers,
+          streamUrl: catalogForHeaders,
+          providerId: providerId,
+        );
+  await applyMediaHttpHeaders(
+    player,
+    hdrs,
+    streamUrl: openUrl,
+    alreadyResolved: true,
+  );
+  final isRemoteHttp =
+      (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
+      !isLocalTorrentStreamUrl(openUrl) &&
+      !isLocalLoopbackPlayUrl(openUrl);
+  final resumeAt = startAt != null && startAt > Duration.zero ? startAt : null;
+  lastPeakstormOpenUsedTrim = false;
+  peakstormPlaybackTimeOffset = Duration.zero;
+  var playUrl = openUrl;
+  Duration? mpvStart = resumeAt;
+  if (resumeAt != null && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
+    final trimmed = await buildPeakstormTrimmedPlaylistFile(
+      catalogUrl: openUrl,
+      target: resumeAt,
+      headers: hdrs,
+    );
+    if (trimmed != null) {
+      playUrl = trimmed;
+      mpvStart = null;
+      lastPeakstormOpenUsedTrim = true;
+      peakstormPlaybackTimeOffset = resumeAt;
+      logPeakstormResume(
+        'open via trimmed playlist',
+        target: resumeAt,
+        detail: _shortPeakstormUrl(openUrl),
+      );
+    } else {
+      logPeakstormResume(
+        'trim failed — mpv start fallback',
+        target: resumeAt,
+      );
+    }
+  }
+  if (mpvStart != null) await _mpvStartAt(player, mpvStart);
+  // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+  // file:// trimmed HLS still fetches CDN segments — keep Referer/UA on Media.
+  final isFile = playUrl.startsWith('file://');
+  final attachHeaders =
+      !mwVaultProxy && hdrs.isNotEmpty && (isRemoteHttp || isFile);
+  await player.open(
+    Media(
+      playUrl,
+      httpHeaders: attachHeaders ? hdrs : null,
+    ),
+  );
+  if (mpvStart != null) {
+    logPeakstormResume(
+      'openPlayerStream startAt',
+      target: mpvStart,
+      detail: peakstormFmp4HlsAvoidHardSeek(openUrl)
+          ? 'peakstorm url=${_shortPeakstormUrl(openUrl)}'
+          : null,
+    );
+    if (!player.state.playing) {
+      await player.play();
+    }
+    await _waitForMpvStartApplied(player, mpvStart, streamUrl: openUrl);
+    await _mpvStartAt(player, null);
+    logPeakstormResume(
+      'openPlayerStream after mpv start cleared',
+      state: player.state,
+      target: mpvStart,
+    );
+  } else if (resumeAt != null && playUrl.startsWith('file://')) {
+    logPeakstormResume(
+      'openPlayerStream trimmed open',
+      state: player.state,
+      target: resumeAt,
+    );
+  }
+  return openUrl;
+}
+
+String _shortPeakstormUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return url;
+  final path = uri.path;
+  if (path.length <= 48) return '${uri.host}$path';
+  return '${uri.host}${path.substring(0, 24)}…${path.substring(path.length - 16)}';
+}
+
+/// Catalog row (Forja / Nuvio / Stremio HTTP) — 1shows proxy + RFC-045 pipeline.
+Future<String?> openCatalogHttpStreamWithPipeline(
+  Player player, {
+  required Map<String, dynamic> stream,
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+  Duration openTimeout = const Duration(seconds: 25),
+}) async {
+  final proxied = await proxyCatalogHttpStreamIfNeeded(
+    streamUrl: streamUrl,
+    headers: headers ?? const <String, String>{},
+    stream: stream,
+  );
+  final playUrl = proxied.url;
+  final playHeaders = proxied.headers;
+  final pid = providerId ?? catalogHttpPlayProviderId(stream);
+  final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
+  final isHls =
+      urlLooksLikeHls(playUrl) ||
+      urlLooksLikeHls(catalog) ||
+      isLocalLoopbackPlayUrl(playUrl);
+  if (!isHls) {
+    await resetPlayerForOpen(player);
+    return openPlayerStream(
+      player,
+      url: playUrl,
+      headers: playHeaders,
+      providerId: pid,
+    );
+  }
+
+  final pipeline = await StreamOpenPipeline.start(
+    catalogUrl: catalog,
+    headers: playHeaders.isNotEmpty ? playHeaders : headers,
+    providerId: pid,
+  );
+  while (true) {
+    final step = await pipeline.next();
+    if (step == null) return null;
+    await resetPlayerForOpen(player);
+    final openUrl = await openPlayerStream(
+      player,
+      url: step.playUrl,
+      headers: step.headers ?? playHeaders,
+      providerId: pid,
+    );
+    final opened = await waitForMediaOpen(
+      player,
+      streamUrl: openUrl,
+      timeout: openTimeout,
+    );
+    if (!opened) {
+      await player.stop();
+      pipeline.report(StreamOpenStepResult.openFailed);
+      continue;
+    }
+    final decoded = await confirmOpenedStreamVideoDecode(
+      player,
+      openUrl: openUrl,
+      headers: step.headers,
+      providerId: pid,
+    );
+    if (!decoded) {
+      await player.stop();
+      pipeline.report(StreamOpenStepResult.decodeFailed);
+      continue;
+    }
+    pipeline.report(StreamOpenStepResult.success);
+    return openUrl;
+  }
+}
+
+/// Hard-seek if open-at-[target] (mpv `start`) did not land near it.
+///
+/// [skipNearCredits] matches history resume: do not jump into the last 15s
+/// when duration is already known (finished / credits poison).
+Future<void> ensureOpenedNearPosition(
+  Player player,
+  Duration? target, {
+  bool skipNearCredits = true,
+  String? streamUrl,
+  bool openedWithMpvStart = false,
+}) async {
+  if (target == null || target.inSeconds <= 0) return;
+  final dur = player.state.duration;
+  if (skipNearCredits &&
+      dur.inSeconds >= 90 &&
+      target >= dur - const Duration(seconds: 15)) {
+    return;
+  }
+  final pos = player.state.position;
+  if ((pos - target).abs() <= const Duration(seconds: 5)) {
+    if (streamUrl != null && peakstormFmp4HlsAvoidHardSeek(streamUrl)) {
+      logPeakstormResume(
+        'ensureOpenedNearPosition near target',
+        state: player.state,
+        target: target,
+        detail: 'delta=${(pos - target).inMilliseconds}ms',
+      );
+    }
+    return;
+  }
+  if (openedWithMpvStart &&
+      streamUrl != null &&
+      peakstormFmp4HlsAvoidHardSeek(streamUrl)) {
+    logPeakstormResume(
+      'ensureOpenedNearPosition skip hard seek',
+      state: player.state,
+      target: target,
+      detail: 'mpv start only',
+    );
+    return;
+  }
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) {
+    await ensureLocalTorrentSeekable(player);
+  } else if (player.platform is NativePlayer) {
+    try {
+      await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
+    } catch (_) {}
+  }
+  await player.seek(target);
+}
+
+/// Avoid opening mpv while a route fade is still covering the player surface.
+Future<void> waitForRouteTransition(BuildContext context) async {
+  if (!context.mounted) return;
+  final animation = ModalRoute.of(context)?.animation;
+  if (animation == null || animation.status == AnimationStatus.completed) {
+    return;
+  }
+  final done = Completer<void>();
+  void onStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      animation.removeStatusListener(onStatus);
+      if (!done.isCompleted) done.complete();
+    }
+  }
+
+  animation.addStatusListener(onStatus);
+  await done.future;
+}
+
+bool isVideoDecoderError(String err) {
+  if (err.isEmpty) return false;
+  final lower = err.toLowerCase();
+  if (lower.contains('error decoding video')) return true;
+  if (lower.contains('video decoder') && lower.contains('fail')) return true;
+  if (lower.contains('hardware accelerator failed')) return true;
+  if (lower.contains('no suitable decoder') &&
+      !lower.contains('audio') &&
+      !lower.contains('subtitle')) {
+    return true;
+  }
+  if (lower.contains('failed to initialize a decoder') &&
+      !lower.contains('audio') &&
+      !lower.contains('subtitle')) {
+    return true;
+  }
+  return false;
+}
+
+bool isAudioDecoderError(String err) {
+  if (err.isEmpty) return false;
+  return isAudioDecoderLog(err);
+}
+
+/// mpv log / error text that indicates the active audio track failed to decode.
+bool isAudioDecoderLog(String text) {
+  if (text.isEmpty) return false;
+  final lower = text.toLowerCase();
+  if (lower.contains('error decoding audio')) return true;
+  if (lower.contains('failed to initialize a decoder') &&
+      lower.contains('audio')) {
+    return true;
+  }
+  if (lower.contains('could not open codec') && lower.contains('audio')) {
+    return true;
+  }
+  return false;
+}
+
+bool isIgnorablePlayerError(String err) {
+  if (err.isEmpty) return true;
+  if (isAudioDecoderError(err)) return true;
+  if (isVideoDecoderError(err)) return false;
+  final lower = err.toLowerCase();
+  return lower.contains('subtitle') ||
+      lower.contains('sub-add') ||
+      lower.contains('external file') ||
+      lower.contains("expected '='") ||
+      lower.contains('expected =') ||
+      lower.contains('.srt') ||
+      lower.contains('.vtt') ||
+      lower.contains('.ass') ||
+      lower.contains('.ssa') ||
+      lower.contains('502') ||
+      lower.contains('http error');
+}
+
+bool isFatalPlayerOpenError(String err) =>
+    !isIgnorablePlayerError(err) &&
+    (err.contains('Failed') || err.contains('No such file'));
+
+/// HTTP/CDN rejects during the open probe - fatal for fallback, ignore mid-play.
+bool isOpenHttpFailure(String err) {
+  if (err.isEmpty) return false;
+  final lower = err.toLowerCase();
+  return lower.contains('http error') ||
+      lower.contains('403') ||
+      lower.contains('404') ||
+      lower.contains('502') ||
+      lower.contains('failed to open');
+}
+
+/// Local librqbit HTTP URLs - mpv may emit "Failed to recognize file format"
+/// while the first pieces are still arriving; that is not a hard fail yet.
+bool isLocalTorrentStreamUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
+  return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
+}
+
+/// True when the active session is local-engine torrent HTTP (not debrid CDN).
+bool isTorrentSeekPlayback({
+  String? streamUrl,
+  String? mediaPath,
+  String? magnetLink,
+}) {
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) return true;
+  if (mediaPath != null && isLocalTorrentStreamUrl(mediaPath)) return true;
+  if (magnetLink != null &&
+      magnetLink.trim().isNotEmpty &&
+      mediaPath != null &&
+      isLocalTorrentStreamUrl(mediaPath)) {
+    return true;
+  }
+  return false;
+}
+
+/// Local torrent scrub — mpv `seek()` cannot jump off the sequential read
+/// cursor (forward or back); reopen at [target] with Range lavf (024 T11–T13).
+bool localTorrentSeekNeedsRemount({
+  required Duration previous,
+  required Duration target,
+}) {
+  return (target - previous).abs() > const Duration(seconds: 1);
+}
+
+/// Torrent scrub remount landed on [target] (not a false success at 0:00).
+bool torrentSeekRemountSettled(PlayerState state, Duration target) {
+  final pos = state.position;
+  const slop = Duration(seconds: 12);
+  if (target > const Duration(seconds: 5) &&
+      pos < const Duration(seconds: 2)) {
+    return false;
+  }
+  if ((pos - target).abs() > slop) return false;
+  return hasDecodedVideo(state) || state.buffering || state.playing;
+}
+
+String? localTorrentStreamUrlForSeek({
+  String? streamUrl,
+  String? mediaPath,
+}) {
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) return streamUrl;
+  if (mediaPath != null && isLocalTorrentStreamUrl(mediaPath)) return mediaPath;
+  return null;
+}
+
+/// Map a timeline position to a byte offset in the active torrent file.
+int torrentByteOffsetForDuration(
+  Duration position,
+  Duration duration,
+  int totalBytes,
+) {
+  if (totalBytes <= 0 || duration <= Duration.zero) return 0;
+  final frac = position.inMicroseconds / duration.inMicroseconds;
+  final offset = (frac * totalBytes).round();
+  return offset.clamp(0, totalBytes - 1);
+}
+
+/// Debounced scrub/hover prefetch into the Rust torrent engine.
+class TorrentSeekPrefetchScheduler {
+  TorrentSeekPrefetchScheduler({this.debounce = const Duration(milliseconds: 250)});
+
+  final Duration debounce;
+  Timer? _timer;
+  int _token = 0;
+
+  void schedule({
+    required Duration position,
+    required Duration duration,
+    required String? streamUrl,
+    int? totalBytes,
+  }) {
+    if (streamUrl == null || !isLocalTorrentStreamUrl(streamUrl)) return;
+    if (totalBytes == null || totalBytes <= 0 || duration <= Duration.zero) {
+      return;
+    }
+    _timer?.cancel();
+    final token = ++_token;
+    _timer = Timer(debounce, () {
+      if (token != _token) return;
+      final offset = torrentByteOffsetForDuration(
+        position,
+        duration,
+        totalBytes,
+      );
+      TorrentStreamService().prefetchByteOffset(offset);
+    });
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _token++;
+  }
+}
+
+/// Catalog stream kind for logs - Nuvio vs Stremio from stream metadata.
+String catalogStreamKindLabel(Map<String, dynamic> stream) {
+  if (stream['_enginePluginId'] != null) return 'Forja';
+  if (stream['_nuvioScraperId'] != null) return 'Nuvio';
+  final base = stream['_addonBaseUrl']?.toString();
+  if (base != null && base.startsWith('engine:')) return 'Forja';
+  if (base != null && base.startsWith('nuvio:')) return 'Nuvio';
+  return 'Stremio';
+}
+
+String? _torrentIndexerFromSessionCache(String cacheKey, String magnet) {
+  final torrents = CatalogSourcesSessionCache.readTorrents(cacheKey);
+  if (torrents == null) return null;
+  for (final t in torrents) {
+    if (t.magnet != magnet) continue;
+    final src = t.source.trim();
+    if (src.isNotEmpty && src != 'Unknown') return src;
+    return null;
+  }
+  return null;
+}
+
+String? _catalogAddonNameFromSessionCaches(
+  String cacheKey, {
+  required String playUrl,
+  String? catalogUrl,
+}) {
+  final stremio = CatalogSourcesSessionCache.readStremio(cacheKey);
+  final nuvio = CatalogSourcesSessionCache.readNuvio(cacheKey)?.streams;
+  final engine = CatalogSourcesSessionCache.readEngine(cacheKey)?.streams;
+  for (final streams in [stremio, nuvio, engine]) {
+    if (streams == null) continue;
+    for (final stream in streams) {
+      if (!catalogStreamRowMatchesPlaying(
+        stream,
+        playUrl: playUrl,
+        catalogUrl: catalogUrl,
+      )) {
+        continue;
+      }
+      final addonName = stream['_addonName']?.toString().trim();
+      if (addonName != null && addonName.isNotEmpty) return addonName;
+      final base = stream['_addonBaseUrl']?.toString().trim();
+      if (base != null && base.isNotEmpty) {
+        return StreamProviderDisplay.playerLabel(base);
+      }
+    }
+  }
+  return null;
+}
+
+/// True when [raw] looks like a mirror chip (Yoru, Astra) — not a media title.
+bool looksLikeMirrorServerLabel(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty || t.length > 28) return false;
+  // Media cards: "The Whisper Man - (2026)", "Sterling Point S1E1 - (2026)"
+  if (RegExp(r'\(\d{4}\)').hasMatch(t)) return false;
+  if (t.contains(' - ')) return false;
+  if (RegExp(r'\bS\d+E\d+\b', caseSensitive: false).hasMatch(t)) return false;
+  if (t.split(RegExp(r'\s+')).length > 2) return false;
+  return true;
+}
+
+/// Split `Provider · Server` / `Provider Server` / `Server · quality` into chrome lines.
+({String label, String? server}) splitSourceButtonLines(
+  String raw, {
+  String? providerHint,
+}) {
+  final t = raw.trim();
+  if (t.isEmpty) return (label: 'Sources', server: null);
+  final hint = providerHint?.trim();
+
+  ({String label, String? server}) finish(String label, String? server) {
+    final s = server?.trim();
+    if (s == null || s.isEmpty) return (label: label, server: null);
+    if (!looksLikeMirrorServerLabel(s)) return (label: label, server: null);
+    return (label: label, server: s);
+  }
+
+  // "VidRock Astra" / "VidRock [en]" under provider VidRock → VidRock / Astra
+  if (hint != null && hint.isNotEmpty) {
+    final prefix = RegExp(
+      '^${RegExp.escape(hint)}(?:\\s+[·•|]\\s*|\\s+)',
+      caseSensitive: false,
+    );
+    final m = prefix.firstMatch(t);
+    if (m != null) {
+      var rest = t.substring(m.end).trim();
+      rest = rest.replaceFirst(RegExp(r'\s*\[[^\]]*\]\s*$'), '').trim();
+      if (rest.isNotEmpty && rest.toLowerCase() != hint.toLowerCase()) {
+        return finish(hint, rest.split(RegExp(r'\s*[·•]\s*')).first);
+      }
+      return (label: hint, server: null);
+    }
+  }
+
+  final parts = t
+      .split(RegExp(r'\s*[·•]\s*'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.length >= 2) {
+    var label = parts.first;
+    var server = parts[1];
+    final serverPrefix = RegExp(
+      '^${RegExp.escape(label)}(?:\\s+[·•|]\\s*|\\s+)',
+      caseSensitive: false,
+    );
+    final sm = serverPrefix.firstMatch(server);
+    if (sm != null) {
+      final rest = server.substring(sm.end).trim();
+      if (rest.isNotEmpty) server = rest;
+    }
+    if (hint != null &&
+        hint.isNotEmpty &&
+        label.toLowerCase() != hint.toLowerCase()) {
+      return finish(hint, label);
+    }
+    if (server.toLowerCase() == label.toLowerCase()) {
+      return (label: label, server: null);
+    }
+    return finish(label, server);
+  }
+  if (hint != null &&
+      hint.isNotEmpty &&
+      t.toLowerCase() != hint.toLowerCase()) {
+    return finish(hint, t);
+  }
+  return (label: hint != null && hint.isNotEmpty ? hint : t, server: null);
+}
+
+/// Prefer `_addonName` (Videasy · Yoru). Never fall back to media `title`/`name`.
+String? catalogStreamAddonIdentity(Map<String, dynamic> stream) {
+  final addon = stream['_addonName']?.toString().trim();
+  if (addon == null || addon.isEmpty) return null;
+  final lines = splitSourceButtonLines(addon);
+  if (lines.server != null) return '${lines.label} · ${lines.server}';
+  // Provider-only addon name is fine (Megaplay with no mirror).
+  if (lines.label.isNotEmpty && lines.label != 'Sources') return lines.label;
+  return null;
+}
+
+/// Player Sources / Source button lines — provider on top, server below.
+({String label, String? server}) catalogSourcesButtonLabels({
+  required Movie? movie,
+  required int? season,
+  required int? episode,
+  String? catalogAddonBaseUrl,
+  String? widgetAddonBaseUrl,
+  String? currentProvider,
+  String? activeProvider,
+  String? activeMagnet,
+  String? widgetMagnetLink,
+  String? currentStreamUrl,
+  String? currentPlayingCatalogUrl,
+  String? catalogSourceKind,
+  String? currentSourceTitle,
+  String? catalogAddonName,
+  CatalogOpen? catalogOpen,
+  int? malId,
+  String? audioCategory,
+  String? episodeVideoId,
+}) {
+  final storedName = catalogAddonName?.trim();
+  if (storedName != null && storedName.isNotEmpty) {
+    final fromStored = splitSourceButtonLines(storedName);
+    // Only trust stored identity when the server half is a real mirror chip
+    // (Yoru / Astra) — never a media title that leaked into `_addonName`.
+    if (fromStored.server != null) return fromStored;
+  }
+
+  final cacheKey = movie == null
+      ? null
+      : CatalogSourcesSessionCache.cacheKey(
+          mediaId: movie.id,
+          mediaType: movie.mediaType,
+          season: season,
+          episode: episode,
+          catalogOpen: catalogOpen,
+          malId: malId,
+          audioCategory: audioCategory,
+          episodeVideoId: episodeVideoId,
+        );
+
+  if (cacheKey != null) {
+    final playUrl = currentStreamUrl?.trim();
+    if (playUrl != null && playUrl.isNotEmpty) {
+      final addonName = _catalogAddonNameFromSessionCaches(
+        cacheKey,
+        playUrl: playUrl,
+        catalogUrl: currentPlayingCatalogUrl,
+      );
+      if (addonName != null && addonName.isNotEmpty) {
+        final fromCache = splitSourceButtonLines(addonName);
+        if (fromCache.server != null) return fromCache;
+        // Provider-only addon (no mirror) is still useful.
+        if (fromCache.label.isNotEmpty && fromCache.label != 'Sources') {
+          return fromCache;
+        }
+      }
+    }
+
+    final magnet = (activeMagnet ?? widgetMagnetLink)?.trim();
+    if (magnet != null && magnet.isNotEmpty) {
+      final indexer = _torrentIndexerFromSessionCache(cacheKey, magnet);
+      if (indexer != null) return (label: indexer, server: null);
+    }
+  }
+
+  // Provider-only stored name (e.g. plain "Videasy") after cache miss.
+  if (storedName != null && storedName.isNotEmpty) {
+    final fromStored = splitSourceButtonLines(storedName);
+    if (!RegExp(r'\(\d{4}\)').hasMatch(fromStored.label)) {
+      return (label: fromStored.label, server: null);
+    }
+  }
+
+  String? providerLabel;
+  final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
+  if (addon != null && addon.isNotEmpty) {
+    providerLabel = StreamProviderDisplay.playerLabel(addon);
+  } else {
+    final pid = (currentProvider ?? activeProvider)?.trim();
+    if (pid != null && pid.isNotEmpty) {
+      providerLabel = StreamProviderDisplay.playerLabel(pid);
+    }
+  }
+
+  final sourceTitle = currentSourceTitle?.trim();
+  if (sourceTitle != null && sourceTitle.isNotEmpty) {
+    final fromTitle = splitSourceButtonLines(
+      sourceTitle,
+      providerHint: providerLabel,
+    );
+    if (fromTitle.server != null) return fromTitle;
+  }
+  if (providerLabel != null && providerLabel.isNotEmpty) {
+    return (label: providerLabel, server: null);
+  }
+
+  return (
+    label: switch (catalogSourceKind) {
+      'torrents' => 'Torrent',
+      'nuvio' => 'Nuvio',
+      'engine' => 'Forja',
+      'stremio' => 'Stremio',
+      _ => 'Sources',
+    },
+    server: null,
+  );
+}
+
+/// Player Sources button label — active scraper/addon or torrent indexer.
+String catalogSourcesButtonLabel({
+  required Movie? movie,
+  required int? season,
+  required int? episode,
+  String? catalogAddonBaseUrl,
+  String? widgetAddonBaseUrl,
+  String? currentProvider,
+  String? activeProvider,
+  String? activeMagnet,
+  String? widgetMagnetLink,
+  String? currentStreamUrl,
+  String? currentPlayingCatalogUrl,
+  String? catalogSourceKind,
+  String? currentSourceTitle,
+  String? catalogAddonName,
+  CatalogOpen? catalogOpen,
+  int? malId,
+  String? audioCategory,
+  String? episodeVideoId,
+}) {
+  final lines = catalogSourcesButtonLabels(
+    movie: movie,
+    season: season,
+    episode: episode,
+    catalogAddonBaseUrl: catalogAddonBaseUrl,
+    widgetAddonBaseUrl: widgetAddonBaseUrl,
+    currentProvider: currentProvider,
+    activeProvider: activeProvider,
+    activeMagnet: activeMagnet,
+    widgetMagnetLink: widgetMagnetLink,
+    currentStreamUrl: currentStreamUrl,
+    currentPlayingCatalogUrl: currentPlayingCatalogUrl,
+    catalogSourceKind: catalogSourceKind,
+    currentSourceTitle: currentSourceTitle,
+    catalogAddonName: catalogAddonName,
+    catalogOpen: catalogOpen,
+    malId: malId,
+    audioCategory: audioCategory,
+    episodeVideoId: episodeVideoId,
+  );
+  final server = lines.server?.trim();
+  if (server != null && server.isNotEmpty) {
+    return '${lines.label} · $server';
+  }
+  return lines.label;
+}
+
+/// `activeProvider` / RFC-044 identity for a Sources HTTP row.
+String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
+  final engineId = stream['_enginePluginId']?.toString();
+  if (engineId != null && engineId.isNotEmpty) return 'engine:$engineId';
+  return 'stremio_direct';
+}
+
+/// Chrome / Sources panel selection for a catalog row (kept even if open fails).
+({
+  String? catalogUrl,
+  String? addonBase,
+  String? addonName,
+  String kind,
+  String providerId,
+})
+catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
+  final base = stream['_addonBaseUrl']?.toString();
+  final rawUrl = stream['url']?.toString();
+  final catalogUrl =
+      durableStreamCatalogUrl(catalogUrl: rawUrl, playUrl: rawUrl) ?? rawUrl;
+  final kind = (base != null && base.startsWith('nuvio:'))
+      ? 'nuvio'
+      : (base != null && base.startsWith('engine:'))
+      ? 'engine'
+      : 'stremio';
+  return (
+    catalogUrl: catalogUrl,
+    addonBase: base,
+    addonName: catalogStreamAddonIdentity(stream),
+    kind: kind,
+    providerId: catalogHttpPlayProviderId(stream),
+  );
+}
+
+List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
+  Map<String, dynamic> stream,
+) {
+  final raw = stream['subtitles'];
+  if (raw is! List || raw.isEmpty) return null;
+  final out = <Map<String, dynamic>>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final url = item['url']?.toString().trim() ?? '';
+    final content = (item['content'] ?? item['text'])?.toString();
+    final hasContent = content != null && content.trim().isNotEmpty;
+    if (url.isEmpty && !hasContent) continue;
+    final name =
+        item['name']?.toString() ?? item['language']?.toString() ?? 'Subtitle';
+    final sourceName = item['sourceName']?.toString().trim();
+    out.add({
+      if (url.isNotEmpty) 'url': url,
+      if (hasContent) 'content': content,
+      'language':
+          item['language']?.toString() ?? item['lang']?.toString() ?? 'en',
+      'name': name,
+      'display': name,
+      if (sourceName != null && sourceName.isNotEmpty) 'sourceName': sourceName,
+    });
+  }
+  return out.isEmpty ? null : out;
+}
+
+/// Provider already decrypted / inlined subtitle text — write a temp file for mpv/Exo.
+bool hasInlineSubtitleContent(Map<String, dynamic> s) {
+  final content = (s['content'] ?? s['text'])?.toString();
+  return content != null && content.trim().isNotEmpty;
+}
+
+/// Write inline subtitle [content]/[text] → local `file://` URI (null on failure).
+Future<String?> materializeInlineSubtitleFile(Map<String, dynamic> s) async {
+  final text = (s['content'] ?? s['text'])?.toString();
+  if (text == null || text.trim().isEmpty) return null;
+  try {
+    final dir = await getTemporaryDirectory();
+    final safeLang = (s['language'] ?? s['lang'] ?? 'sub').toString().replaceAll(
+      RegExp(r'[^A-Za-z0-9_-]'),
+      '_',
+    );
+    final isVtt =
+        text.trimLeft().startsWith('WEBVTT') ||
+        (s['url']?.toString().toLowerCase().contains('.vtt') ?? false);
+    final file = File(
+      '${dir.path}/forja_sub_inline_${DateTime.now().millisecondsSinceEpoch}_$safeLang.${isVtt ? 'vtt' : 'srt'}',
+    );
+    await file.writeAsString(text);
+    return Uri.file(file.path).toString();
+  } catch (e, st) {
+    debugPrint('[Subtitle] inline materialize failed: $e\n$st');
+    return null;
+  }
+}
+
+/// 111477 catalog rows and explicit `requires_proxy` need the local seek proxy.
+bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
+  if (stream['requires_proxy'] == true) return true;
+  final url = stream['url']?.toString() ?? '';
+  // Raw a./p.111477 hosts only — st.111477 addon returns workers.dev (no proxy).
+  return is111477UpstreamUrl(url);
+}
+
+/// Rewrites catalog HTTP streams that cannot be opened directly (111477).
+Future<({String url, Map<String, String> headers})>
+proxyCatalogHttpStreamIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  required Map<String, dynamic> stream,
+}) async {
+  if (catalogStreamRequiresSeekProxy(stream)) {
+    final pid = catalogHttpPlayProviderId(stream);
+    final upstream = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: streamUrl,
+      providerId: pid,
+    );
+    final proxied = await start111477Proxy(streamUrl, headers: upstream);
+    return (url: proxied, headers: const <String, String>{});
+  }
+  final pid = catalogHttpPlayProviderId(stream);
+  return proxy1showsHlsIfNeeded(
+    streamUrl: streamUrl,
+    headers: headers,
+    providerId: pid,
+  );
+}
+
+bool isTransientTorrentProbeError(String err) {
+  final lower = err.toLowerCase();
+  return lower.contains('failed to recognize file format') ||
+      lower.contains('failed to open') ||
+      lower.contains('error opening') ||
+      lower.contains('no data');
+}
+
+/// mpv is ready to play - VOD duration, decoded video, or live/buffered data.
+bool hasDecodedVideo(PlayerState state) {
+  final w = state.videoParams.w ?? 0;
+  final h = state.videoParams.h ?? 0;
+  return w > 0 && h > 0;
+}
+
+bool isMediaOpenReady(PlayerState state) {
+  if (hasDecodedVideo(state)) return true;
+  if (state.duration.inMilliseconds > 0) return true;
+  if (state.buffer.inMilliseconds > 0) return true;
+  if (state.position.inMilliseconds > 0) return true;
+  if (state.playing && state.bufferingPercentage > 0) return true;
+  return false;
+}
+
+/// ffmpeg HLS `allowed_extensions` rejects `.key` and extensionless nested
+/// playlists (`/playlist/{id}?type=video`). VixSrc uses both.
+const kLavfHlsAllowedExtensionsAll = 'allowed_extensions=ALL';
+
+/// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
+///
+/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
+/// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
+bool urlLooksLikeHls(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return false;
+  final lower = trimmed.toLowerCase();
+  if (lower.contains('.m3u8') || lower.contains('m3u8=')) return true;
+  if (lower.contains('/hls-proxy')) return true;
+  final nested = Uri.tryParse(trimmed)?.queryParameters['url']?.toLowerCase();
+  if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
+    return true;
+  }
+  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+  // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
+  if (path.contains('/playlist/') || path.endsWith('/playlist')) {
+    return !lower.contains('webmanifest');
+  }
+  return false;
+}
+
+/// Extensionless catalog HLS (VixSrc `/playlist/{id}`) — lavf will not treat
+/// nested child URIs as playlists unless we rewrite via `/hls-proxy`.
+bool shouldProxyExtensionlessHls(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty || isLocalLoopbackPlayUrl(trimmed)) return false;
+  if (!urlLooksLikeHls(trimmed)) return false;
+  return !trimmed.toLowerCase().contains('.m3u8');
+}
+
+bool sourceExpectsDuration(String url, {String? type}) {
+  final normalizedType = type?.toLowerCase() ?? '';
+  if (normalizedType == 'hls' ||
+      normalizedType == 'video' ||
+      normalizedType == 'mp4' ||
+      normalizedType == 'dash') {
+    return true;
+  }
+  if (urlLooksLikeHls(url)) return true;
+  final lower = url.toLowerCase();
+  return lower.contains('.mp4') ||
+      lower.contains('.mkv') ||
+      lower.contains('.webm') ||
+      lower.contains('.mpd');
+}
+
+/// Progressive containers skip [confirmOpenedStreamVideoDecode] — require demuxer
+/// duration before confirm so empty/HTML probes do not look playable.
+///
+/// HLS/DASH already proved a decoded frame. Their playlist duration often
+/// arrives after confirm; the UI duration listener drops pre-confirm events, so
+/// a hard 5s gate falsely fails hosts like VixSrc while video is already up.
+bool sourceRequiresSeekableDurationBeforeConfirm(String url, {String? type}) {
+  if (!sourceExpectsDuration(url, type: type)) return false;
+  if (sourceRequiresVideoDecode(url, type: type)) return false;
+  return true;
+}
+
+/// Adaptive playlists can report buffer/duration while serving HTML/empty
+/// segments. Progressive containers (mkv/mp4) get real demuxer duration -
+/// do not require a decoded frame or large remote files fail the 8s probe.
+///
+/// Local torrent HTTP is the exception: moov duration arrives before any
+/// frame, then an early EOF looks like a finished episode and auto-next fires.
+bool sourceRequiresVideoDecode(String url, {String? type}) {
+  if (isLocalTorrentStreamUrl(url)) return true;
+  final normalizedType = type?.toLowerCase() ?? '';
+  if (normalizedType == 'hls' || normalizedType == 'dash') return true;
+  if (urlLooksLikeHls(url)) return true;
+  return url.toLowerCase().contains('.mpd');
+}
+
+Duration videoDecodeTimeoutForUrl(String url) {
+  return isLocalTorrentStreamUrl(url)
+      ? const Duration(seconds: 90)
+      : const Duration(seconds: 8);
+}
+
+/// Adaptive opens must decode at least one video frame before we treat them as
+/// playable - buffer/position alone false-positives on dead CDNs.
+Future<bool> waitForVideoDecode(
+  Player player, {
+  Duration timeout = const Duration(seconds: 8),
+}) async {
+  if (hasDecodedVideo(player.state)) return true;
+  try {
+    await player.stream.videoParams
+        .firstWhere((p) => (p.w ?? 0) > 0 && (p.h ?? 0) > 0)
+        .timeout(timeout);
+    return true;
+  } catch (_) {
+    return hasDecodedVideo(player.state);
+  }
+}
+
+/// After [waitForMediaOpen], require a decoded frame for adaptive streams.
+///
+/// Observe-only - no reopen, no `hwdec=no`. The open pipeline owns the next
+/// branch; [PlaybackRecovery] owns live decoder failures after confirm.
+///
+/// Set [force] for in-player Stremio/Nuvio switches: progressive HTTP can report
+/// duration/buffer while only audio demuxes - without a frame the UI stays black.
+Future<bool> confirmOpenedStreamVideoDecode(
+  Player player, {
+  required String openUrl,
+  Map<String, String>? headers,
+  String? type,
+  String? providerId,
+  bool force = false,
+}) async {
+  if (!force && !sourceRequiresVideoDecode(openUrl, type: type)) return true;
+  return waitForVideoDecode(player, timeout: videoDecodeTimeoutForUrl(openUrl));
+}
+
+Future<bool> waitForSeekableDuration(
+  Player player, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  if (player.state.duration.inMilliseconds > 0) return true;
+  try {
+    await player.stream.duration
+        .firstWhere((d) => d.inMilliseconds > 0)
+        .timeout(timeout);
+    return true;
+  } catch (_) {
+    return player.state.duration.inMilliseconds > 0;
+  }
+}
+
+void syncPlayerProgressNotifiers(
+  Player player, {
+  required ValueNotifier<Duration> duration,
+  required ValueNotifier<Duration> position,
+  required ValueNotifier<Duration> buffered,
+}) {
+  duration.value = player.state.duration;
+  position.value = playerUiPosition(player.state.position);
+  buffered.value = player.state.buffer;
+}
+
+/// Playhead to carry across provider/source switches (UI notifier or live mpv).
+Duration switchResumePosition({
+  required Duration uiPosition,
+  required Duration playerPosition,
+}) {
+  if (uiPosition.inSeconds > 0) return uiPosition;
+  if (playerPosition.inSeconds > 0) return playerPosition;
+  return Duration.zero;
+}
+
+/// Seekbar buffer-end from mpv `demuxer-cache-duration` (seconds ahead).
+///
+/// `stream.buffer` is `demuxer-cache-time` (absolute PTS) and often stays at
+/// 0 / playhead on HLS. Prefer whichever end is further ahead.
+Duration? bufferedEndFromCacheAhead({
+  required Duration position,
+  required Duration duration,
+  required double aheadSecs,
+  Duration cacheTime = Duration.zero,
+}) {
+  if (!aheadSecs.isFinite || aheadSecs < 0) return null;
+  var fromAhead = position + Duration(milliseconds: (aheadSecs * 1000).round());
+  if (duration > Duration.zero && fromAhead > duration) {
+    fromAhead = duration;
+  }
+  if (cacheTime > fromAhead) return cacheTime;
+  if (aheadSecs <= 0 && cacheTime <= Duration.zero) return null;
+  return fromAhead;
+}
+
+/// mpv `stream.buffer` is absolute PTS. Local torrent HTTP with the file on
+/// disk can report ~duration while the playhead is mid-movie — a false full-
+/// length gray bar that looks like a second "downloaded" seek track.
+Duration cacheTimeForSeekBarBuffer({
+  required Duration position,
+  required Duration cacheTime,
+  required bool localTorrent,
+  Duration maxAhead = const Duration(seconds: 45),
+}) {
+  if (!localTorrent || cacheTime <= Duration.zero) return cacheTime;
+  if (cacheTime <= position + maxAhead) return cacheTime;
+  return Duration.zero;
+}
+
+/// Drive seek-bar gray fill from playhead + demuxer readahead (not swarm %).
+void syncSeekBarBufferedEnd({
+  required ValueNotifier<Duration> buffered,
+  required Duration position,
+  required Duration duration,
+  Duration cacheTime = Duration.zero,
+  double aheadSecs = 0,
+  bool localTorrent = false,
+}) {
+  final filtered = cacheTimeForSeekBarBuffer(
+    position: position,
+    cacheTime: cacheTime,
+    localTorrent: localTorrent,
+  );
+  final end = bufferedEndFromCacheAhead(
+    position: position,
+    duration: duration,
+    aheadSecs: aheadSecs,
+    cacheTime: filtered,
+  );
+  if (end == null || end <= position) {
+    if (buffered.value < position) {
+      buffered.value = position;
+    }
+    return;
+  }
+  buffered.value = end;
+}
+
+/// Wall-clock time after [_playbackConfirmed] before EOF can count as natural.
+/// Local torrents demux a real duration then hit EOF within seconds.
+const kMinConfirmedPlaybackForNaturalEnd = Duration(seconds: 45);
+
+/// True when [positionMs] is clearly in the body of a long title (not open/EOF).
+bool isMidEpisodePlayback(int positionMs, int durationMs) {
+  if (durationMs < 90 * 1000) return false;
+  return positionMs >= 30 * 1000 && positionMs <= durationMs - 90 * 1000;
+}
+
+/// Age of the current source open only (ignores session mid / first confirm).
+Duration openPlaybackAge({required DateTime? openConfirmedAt, DateTime? now}) {
+  if (openConfirmedAt == null) return Duration.zero;
+  return (now ?? DateTime.now()).difference(openConfirmedAt);
+}
+
+/// Confirmed-playback age used for natural-end / persist guards.
+///
+/// When the user already watched the episode body this session, prefer the
+/// first confirm timestamp so a late source switch / re-open near credits does
+/// not reset the 45s grace and mis-label a real finish as abortive EOF.
+Duration confirmedPlaybackAge({
+  required DateTime? openConfirmedAt,
+  DateTime? sessionFirstConfirmedAt,
+  bool hadMidPlayback = false,
+  DateTime? now,
+}) {
+  final n = now ?? DateTime.now();
+  if (hadMidPlayback && sessionFirstConfirmedAt != null) {
+    return n.difference(sessionFirstConfirmedAt);
+  }
+  return openPlaybackAge(openConfirmedAt: openConfirmedAt, now: n);
+}
+
+/// Whether `completed` should count as a real finish (pin EOF / auto-next).
+///
+/// Session mid from a prior source must not make a dead CDN open look finished.
+/// Early-EOF grace always uses [openConfirmedFor]; credits source-switches still
+/// qualify once this open survives the grace and the UI is already at EOF.
+bool shouldAcceptNaturalPlaybackEnd({
+  required PlayerState state,
+  required Duration openConfirmedFor,
+  required bool openHadMidPlayback,
+  required bool sessionHadMidPlayback,
+  required Duration uiPosition,
+  required Duration uiDuration,
+}) {
+  if (isNaturalPlaybackEnd(
+    state,
+    confirmedFor: openConfirmedFor,
+    hadMidPlayback: openHadMidPlayback,
+  )) {
+    return true;
+  }
+  final pinDur = uiDuration > Duration.zero ? uiDuration : state.duration;
+  if (!shouldPinSeekBarAtEof(uiPosition: uiPosition, duration: pinDur)) {
+    return false;
+  }
+  if (!sessionHadMidPlayback) return false;
+  // Dead CDN after a mid session jumps to EOF in seconds - still abortive.
+  if (openConfirmedFor < kMinConfirmedPlaybackForNaturalEnd) return false;
+  return isNaturalPlaybackEnd(
+    state,
+    confirmedFor: openConfirmedFor,
+    hadMidPlayback: true,
+  );
+}
+
+bool isNaturalPlaybackEnd(
+  PlayerState state, {
+  Duration? confirmedFor,
+  Duration minConfirmed = kMinConfirmedPlaybackForNaturalEnd,
+  bool? hadMidPlayback,
+}) {
+  final dur = state.duration.inMilliseconds;
+  final pos = state.position.inMilliseconds;
+  // Torrent/HLS often report a tiny duration while probing. Then
+  // `pos >= dur - 1000` is true at position 0 (e.g. dur=500ms → -500) and
+  // auto-next fires - episode looks like it "started finished".
+  if (dur < 90 * 1000) return false;
+  // Early EOF with a real moov duration: position jumps to end immediately.
+  if (confirmedFor != null && confirmedFor < minConfirmed) return false;
+  // Sitting at EOF for minutes must not become "natural" after the grace
+  // window - require evidence the user actually watched the middle.
+  if (hadMidPlayback == false) return false;
+  // keep-open / HLS: `completed` often fires after position resets to 0 while
+  // duration remains. Mid-watch + grace already proved a real session.
+  if (pos <= 0) {
+    return hadMidPlayback == true &&
+        confirmedFor != null &&
+        confirmedFor >= minConfirmed;
+  }
+  return pos >= dur - 1000;
+}
+
+/// Skip saving near-end progress from an early-EOF session (poisons resume).
+bool shouldPersistWatchProgress({
+  required int positionMs,
+  required int durationMs,
+  DateTime? confirmedAt,
+  DateTime? sessionFirstConfirmedAt,
+  bool hadMidPlayback = false,
+  DateTime? now,
+}) {
+  if (positionMs <= 10000 || durationMs <= 0) return false;
+  if (confirmedAt == null && sessionFirstConfirmedAt == null) return true;
+  final alive = confirmedPlaybackAge(
+    openConfirmedAt: confirmedAt,
+    sessionFirstConfirmedAt: sessionFirstConfirmedAt,
+    hadMidPlayback: hadMidPlayback,
+    now: now,
+  );
+  if (alive < kMinConfirmedPlaybackForNaturalEnd &&
+      durationMs >= 90 * 1000 &&
+      positionMs >= durationMs - 5000) {
+    return false;
+  }
+  return true;
+}
+
+/// Dead HLS / torrent opens often jump `position` to `duration` within the
+/// early-EOF grace window. Painting that on the seek bar looks like a finished
+/// episode and makes scrub-back fight a fake end.
+bool shouldSuppressEarlyEofSeekBarPosition({
+  required int positionMs,
+  required int durationMs,
+  required Duration confirmedFor,
+  required bool hadMidPlayback,
+  Duration minConfirmed = kMinConfirmedPlaybackForNaturalEnd,
+}) {
+  if (hadMidPlayback) return false;
+  if (durationMs < 90 * 1000) return false;
+  if (confirmedFor >= minConfirmed) return false;
+  return positionMs >= durationMs - 5000;
+}
+
+/// keep-open EOF: `completed` can re-fire while mpv position is still 0/end.
+/// If the UI already scrubbed away, do not yank the bar back to duration.
+bool shouldPinSeekBarAtEof({
+  required Duration uiPosition,
+  required Duration duration,
+}) {
+  if (duration <= Duration.zero) return false;
+  return uiPosition >= duration - const Duration(seconds: 2);
+}
+
+/// Grace after scrubbing away from EOF - ignore stale near-end position reports.
+const kSeekAwayFromEofGrace = Duration(seconds: 2);
+
+bool shouldIgnoreStaleEofPosition({
+  required Duration reported,
+  required Duration duration,
+  required Duration uiPosition,
+  DateTime? seekAwayFromEofAt,
+  DateTime? now,
+  Duration grace = kSeekAwayFromEofGrace,
+}) {
+  if (seekAwayFromEofAt == null || duration <= Duration.zero) return false;
+  final n = now ?? DateTime.now();
+  if (n.difference(seekAwayFromEofAt) > grace) return false;
+  // UI already away from end; drop reports that are still sitting at EOF.
+  if (shouldPinSeekBarAtEof(uiPosition: uiPosition, duration: duration)) {
+    return false;
+  }
+  return shouldPinSeekBarAtEof(uiPosition: reported, duration: duration);
+}
+
+/// Seek that keeps the progress bar alive after EOF.
+///
+/// Without mpv `keep-open`, EOF leaves the player idle and seeks no-op. Even
+/// with keep-open, resume playback when scrubbing away from the end.
+///
+/// Calls [onSeekAwayFromEof] when the scrub leaves the last ~2s so callers can
+/// suppress completed re-pins and stale EOF position events.
+Future<void> seekPlayerPreservingProgress(
+  Player player, {
+  required Duration position,
+  required ValueNotifier<Duration> positionNotifier,
+  Duration? duration,
+  void Function()? onSeekAwayFromEof,
+  void Function(Duration target)? onSeekCommitted,
+  bool ensureTorrentSeekable = false,
+  String? streamUrl,
+  String? mediaPath,
+  String? magnetLink,
+  int? torrentTotalBytes,
+  ValueNotifier<Duration>? bufferedNotifier,
+  void Function(bool locked)? onSeekBarLock,
+}) async {
+  final dur = duration ?? player.state.duration;
+  final previous = positionNotifier.value;
+  var target = position;
+  if (target < Duration.zero) target = Duration.zero;
+  if (dur > Duration.zero && target > dur) target = dur;
+  final leavingEof =
+      dur > Duration.zero &&
+      shouldPinSeekBarAtEof(uiPosition: previous, duration: dur) &&
+      !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
+  positionNotifier.value = target;
+
+  final torrentUrl = localTorrentStreamUrlForSeek(
+    streamUrl: streamUrl,
+    mediaPath: mediaPath,
+  );
+  if (torrentUrl != null &&
+      localTorrentSeekNeedsRemount(previous: previous, target: target)) {
+    bufferedNotifier?.value = target;
+  }
+
+  if (torrentUrl != null &&
+      localTorrentSeekNeedsRemount(previous: previous, target: target)) {
+    if (torrentTotalBytes != null &&
+        torrentTotalBytes > 0 &&
+        dur > Duration.zero) {
+      TorrentStreamService().prefetchByteOffset(
+        torrentByteOffsetForDuration(target, dur, torrentTotalBytes),
+      );
+    }
+    onSeekBarLock?.call(true);
+    bool ok = false;
+    try {
+      ok = await promoteLocalTorrentToSeekablePlayback(
+        player,
+        streamUrl: torrentUrl,
+        seekTo: target,
+        resumePlaying: true,
+      );
+    } finally {
+      onSeekBarLock?.call(false);
+    }
+    if (ok) {
+      final nearEnd =
+          dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
+      if (!player.state.playing && !nearEnd) {
+        await player.play();
+      }
+      if (leavingEof) onSeekAwayFromEof?.call();
+      onSeekCommitted?.call(target);
+      return;
+    }
+    debugPrint(
+      '[Player] Torrent seek remount failed @${target.inSeconds}s — mpv seek fallback',
+    );
+  }
+
+  if (ensureTorrentSeekable ||
+      isTorrentSeekPlayback(
+        streamUrl: streamUrl,
+        mediaPath: mediaPath,
+        magnetLink: magnetLink,
+      )) {
+    await ensureLocalTorrentSeekable(player);
+  }
+  await player.seek(target);
+  final nearEnd =
+      dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
+  if (!player.state.playing && !nearEnd) {
+    await player.play();
+  }
+  if (leavingEof) onSeekAwayFromEof?.call();
+  onSeekCommitted?.call(target);
+}
+
+/// True when remount actually resumed — not just opened at 0:00.
+///
+/// [buffering] is ignored when [position] is already near [target] — deep HLS
+/// seeks often sit on the right PTS while segments refill.
+bool remountPlaybackLooksLive({
+  required bool playing,
+  required bool buffering,
+  required Duration position,
+  required Duration target,
+  Duration slop = const Duration(seconds: 12),
+}) {
+  if (!playing) return false;
+  if (target > const Duration(seconds: 5) &&
+      position < const Duration(seconds: 2)) {
+    return false;
+  }
+  return position + slop >= target;
+}
+
+/// Post-seek remount succeeded — position near target and a decoded frame.
+bool remountPlaybackResumed(
+  PlayerState state,
+  Duration target, {
+  String? streamUrl,
+  Duration? previousPosition,
+}) {
+  if (!remountPlaybackLooksLive(
+    playing: state.playing,
+    buffering: state.buffering,
+    position: state.position,
+    target: target,
+  )) {
+    return false;
+  }
+  if (!hasDecodedVideo(state)) return false;
+  final peakstorm =
+      streamUrl != null && peakstormFmp4HlsAvoidHardSeek(streamUrl);
+  if (peakstorm) {
+    if (state.buffering) return false;
+    if (previousPosition != null &&
+        state.position <= previousPosition + const Duration(milliseconds: 300)) {
+      return false;
+    }
+    return true;
+  }
+  if (state.buffering && state.bufferingPercentage <= 0) return false;
+  return true;
+}
+
+/// Peakstorm fMP4 HLS — mpv `start` can report target PTS without advancing.
+Future<bool> peakstormResumeVerified(
+  Player player,
+  Duration target, {
+  required String streamUrl,
+  Duration sampleGap = const Duration(milliseconds: 350),
+  int samples = 3,
+  bool quiet = false,
+}) async {
+  if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
+    return true;
+  }
+  Duration? previous;
+  var advances = 0;
+  for (var i = 0; i < samples; i++) {
+    if (i > 0) await Future<void>.delayed(sampleGap);
+    final state = player.state;
+    if (!remountPlaybackResumed(
+      state,
+      target,
+      streamUrl: streamUrl,
+      previousPosition: previous,
+    )) {
+      if (!quiet) {
+        logPeakstormResume(
+          'verify sample $i fail',
+          state: state,
+          target: target,
+          previous: previous,
+          detail: peakstormResumeRejectReason(
+            state,
+            target,
+            streamUrl: streamUrl,
+            previousPosition: previous,
+          ),
+        );
+      }
+      return false;
+    }
+    if (previous != null &&
+        state.position > previous + const Duration(milliseconds: 250)) {
+      advances++;
+    }
+    previous = state.position;
+  }
+  if (!quiet) {
+    logPeakstormResume(
+      'verify ok',
+      target: target,
+      previous: previous,
+      detail: 'advances=$advances samples=$samples',
+    );
+  }
+  return advances >= 1;
+}
+
+/// Trimmed playlist opens at media t≈0 — verify playhead advances.
+Future<bool> peakstormTrimPlaybackVerified(
+  Player player, {
+  Duration sampleGap = const Duration(milliseconds: 400),
+  int samples = 3,
+}) async {
+  Duration? previous;
+  for (var i = 0; i < samples; i++) {
+    if (i > 0) await Future<void>.delayed(sampleGap);
+    final state = player.state;
+    if (!state.playing || !hasDecodedVideo(state)) return false;
+    if (previous != null &&
+        state.position > previous + const Duration(milliseconds: 250)) {
+      return true;
+    }
+    previous = state.position;
+  }
+  return false;
+}
+
+/// After open with mpv `start`, remount once when peakstorm resume is fake PTS.
+Future<void> ensurePeakstormResumeAfterOpen(
+  Player player, {
+  required Duration target,
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+}) async {
+  if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
+    return;
+  }
+  if (lastPeakstormOpenUsedTrim) {
+    if (await peakstormTrimPlaybackVerified(player)) {
+      logPeakstormResume(
+        'open resume verified (trim)',
+        state: player.state,
+        target: target,
+      );
+      return;
+    }
+  } else if (await peakstormResumeVerified(
+    player,
+    target,
+    streamUrl: streamUrl,
+  )) {
+    logPeakstormResume(
+      'open resume verified',
+      state: player.state,
+      target: target,
+    );
+    return;
+  }
+  logPeakstormResume(
+    'open resume missed — remount',
+    state: player.state,
+    target: target,
+  );
+  await remountPlayerStreamAtPosition(
+    player,
+    url: streamUrl,
+    headers: headers,
+    providerId: providerId,
+    seekTarget: target,
+  );
+}
+
+/// Post-seek remount wait — deep VOD HLS needs longer than 15s to refill.
+Duration remountResumeTimeoutForSeek(Duration seekTarget) {
+  final extra = (seekTarget.inMinutes ~/ 10) * 10;
+  return Duration(seconds: (15 + extra).clamp(15, 60));
+}
+
+/// After app foreground, true when network VOD is still stuck near [pos].
+bool foregroundResumePlaybackStalled({
+  required PlayerState state,
+  required Duration pos,
+  required Duration dur,
+}) {
+  if (!isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
+    return false;
+  }
+  if (remountPlaybackResumed(state, pos)) return false;
+  if (!state.playing && !state.buffering) return false;
+  if (state.buffering) return true;
+  return !remountPlaybackLooksLive(
+    playing: state.playing,
+    buffering: state.buffering,
+    position: state.position,
+    target: pos,
+  );
+}
+
+/// Stall timer before post-seek remount — scales with seek depth (issue 184).
+Duration postSeekStallTimeoutForTarget(Duration seekTarget) {
+  final extra = (seekTarget.inMinutes ~/ 10) * 5;
+  return Duration(seconds: (15 + extra).clamp(15, 45));
+}
+
+/// Skip arming remount watchdog when a seek lands on the resume point right
+/// after open — HLS is still prefetching segments at the saved timestamp.
+bool shouldSkipPostSeekStallArm({
+  required Duration target,
+  Duration? resumeStartPosition,
+  DateTime? playbackConfirmedAt,
+  Duration graceAfterOpen = const Duration(seconds: 25),
+  Duration resumeSlop = const Duration(seconds: 20),
+}) {
+  if (resumeStartPosition == null || playbackConfirmedAt == null) return false;
+  if (resumeStartPosition.inSeconds <= 0) return false;
+  if (DateTime.now().difference(playbackConfirmedAt) > graceAfterOpen) {
+    return false;
+  }
+  return (target - resumeStartPosition).abs() <= resumeSlop;
+}
+
+Future<void> _mpvStartAt(Player player, Duration? start) async {
+  if (player.platform is! NativePlayer) return;
+  try {
+    final mpv = player.platform as NativePlayer;
+    if (start == null || start <= Duration.zero) {
+      await mpv.setProperty('start', 'none');
+    } else {
+      await mpv.setProperty(
+        'start',
+        (start.inMilliseconds / 1000.0).toStringAsFixed(3),
+      );
+    }
+  } catch (_) {}
+}
+
+/// HLS demuxer reads mpv `start` after [Player.open] returns — wait before
+/// clearing `start` so deep resume lands on the target (peakstorm fMP4).
+Future<void> _waitForMpvStartApplied(
+  Player player,
+  Duration startAt, {
+  required String streamUrl,
+}) async {
+  if (!urlLooksLikeHls(streamUrl)) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return;
+  }
+  final deadline = DateTime.now().add(remountResumeTimeoutForSeek(startAt));
+  final peakstorm = peakstormFmp4HlsAvoidHardSeek(streamUrl);
+  if (peakstorm) {
+    var lastReason = '';
+    while (DateTime.now().isBefore(deadline)) {
+      if (await peakstormResumeVerified(
+        player,
+        startAt,
+        streamUrl: streamUrl,
+        samples: 2,
+        quiet: true,
+      )) {
+        logPeakstormResume(
+          'mpv start applied',
+          state: player.state,
+          target: startAt,
+        );
+        return;
+      }
+      final reason = peakstormResumeRejectReason(
+        player.state,
+        startAt,
+        streamUrl: streamUrl,
+      );
+      if (reason != lastReason) {
+        lastReason = reason;
+        logPeakstormResume(
+          'mpv start waiting',
+          state: player.state,
+          target: startAt,
+          detail: reason,
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    logPeakstormResume(
+      'mpv start timeout',
+      state: player.state,
+      target: startAt,
+      detail: lastReason,
+    );
+    return;
+  }
+  while (DateTime.now().isBefore(deadline)) {
+    final pos = player.state.position;
+    if ((pos - startAt).abs() <= const Duration(seconds: 8)) {
+      if (remountPlaybackResumed(
+        player.state,
+        startAt,
+        streamUrl: streamUrl,
+      )) {
+        return;
+      }
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+  }
+}
+
+/// Re-open the same play URL at [seekTarget] (post-seek stall remount).
+///
+/// Stops the hung demuxer first, opens with mpv `start` so HLS does not
+/// play 0:00 then Range-seek 70 minutes (that re-stalls 4K). Returns true
+/// only after playback is live near the target — not after first frame at 0.
+Future<bool> remountPlayerStreamAtPosition(
+  Player player, {
+  required String url,
+  Map<String, String>? headers,
+  String? providerId,
+  required Duration seekTarget,
+  Duration? resumeTimeout,
+}) async {
+  final timeout = resumeTimeout ?? remountResumeTimeoutForSeek(seekTarget);
+  await resetPlayerForOpen(player);
+  final useStart = seekTarget > Duration.zero;
+  final openUrl = await openPlayerStream(
+    player,
+    url: url,
+    headers: headers,
+    providerId: providerId,
+    startAt: useStart ? seekTarget : null,
+  );
+  final opened = await waitForPlayerStreamOpen(
+    player,
+    streamUrl: openUrl,
+    headers: headers,
+    providerId: providerId,
+  );
+  if (!opened) return false;
+
+  final usedTrim = lastPeakstormOpenUsedTrim;
+  await ensureOpenedNearPosition(
+    player,
+    useStart && !usedTrim ? seekTarget : null,
+    skipNearCredits: false,
+    streamUrl: openUrl,
+    openedWithMpvStart: useStart && !usedTrim,
+  );
+  if (!player.state.playing) {
+    await player.play();
+  }
+
+  final deadline = DateTime.now().add(timeout);
+  final peakstorm = peakstormFmp4HlsAvoidHardSeek(openUrl);
+  var stableChecks = 0;
+  Duration? lastPos;
+  while (DateTime.now().isBefore(deadline)) {
+    final state = player.state;
+    final pos = state.position;
+    final previous = lastPos;
+    lastPos = pos;
+    final live = usedTrim
+        ? await peakstormTrimPlaybackVerified(player, samples: 2)
+        : remountPlaybackResumed(
+            state,
+            seekTarget,
+            streamUrl: openUrl,
+            previousPosition: peakstorm ? previous : null,
+          );
+    if (live) {
+      if (usedTrim) {
+        stableChecks++;
+      } else if (peakstorm) {
+        if (previous != null &&
+            pos > previous + const Duration(milliseconds: 300)) {
+          stableChecks++;
+        }
+      } else {
+        stableChecks++;
+      }
+      if (stableChecks >= 3) {
+        logPeakstormResume(
+          'remount ok',
+          state: state,
+          target: seekTarget,
+          detail: 'stable=$stableChecks · trim=$usedTrim · ui=${playerUiPosition(pos).inSeconds}s',
+        );
+        return true;
+      }
+    } else {
+      stableChecks = 0;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+  final ok = usedTrim
+      ? await peakstormTrimPlaybackVerified(player)
+      : remountPlaybackResumed(
+          player.state,
+          seekTarget,
+          streamUrl: openUrl,
+        );
+  if (!ok && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
+    logPeakstormResume(
+      'remount failed',
+      state: player.state,
+      target: seekTarget,
+      detail: peakstormResumeRejectReason(
+        player.state,
+        seekTarget,
+        streamUrl: openUrl,
+      ),
+    );
+  } else if (ok) {
+    logPeakstormResume(
+      'remount ok final',
+      state: player.state,
+      target: seekTarget,
+    );
+  }
+  return ok;
+}
+
+/// True when mpv/media_kit still reports an [aid] that is not in [tracks].
+bool isStalePlayerAudioSelection(
+  AudioTrack current,
+  Iterable<AudioTrack> tracks,
+) {
+  if (current.id == 'auto' || current.id == 'no') return false;
+  return !tracks.any((t) => t.id == current.id);
+}
+
+/// Drop stale mpv `aid` / `audio-file` before opening another stream on the
+/// same [Player]. Soft reopen otherwise keeps the prior file's track index.
+Future<void> resetPlayerAudioForNewOpen(
+  Player player, {
+  bool clearExternalAudio = true,
+}) async {
+  if (clearExternalAudio) {
+    final platform = player.platform;
+    if (platform is NativePlayer && !platform.disposed) {
+      if (await mediaKitPlayerHandleReady(platform)) {
+        try {
+          await platform.setProperty(
+            'audio-file',
+            '',
+            waitForInitialization: false,
+          );
+        } catch (_) {}
+        try {
+          await platform.setProperty(
+            'aid',
+            'auto',
+            waitForInitialization: false,
+          );
+        } catch (_) {}
+      }
+    }
+  }
+  try {
+    await player.setAudioTrack(AudioTrack.auto());
+  } catch (_) {}
+}
+
+/// First mux audio in demux order — not whatever [aid] carried from last open.
+Future<void> applyDefaultPlayerAudioTrack(Player player) async {
+  final tracks = concreteAudioTracks(player.state.tracks.audio);
+  if (tracks.isEmpty) return;
+  final target = tracks.first;
+  if (player.state.track.audio.id == target.id) return;
+  await selectPlayerAudioTrack(player, target);
+}
+
+/// Settings-backed auto pick — always applied on a fresh source unless the user
+/// chose a track for this open.
+Future<void> applyPreferredPlayerAudioTrack(
+  Player player, {
+  required bool audioPinned,
+}) async {
+  final tracks = concreteAudioTracks(player.state.tracks.audio);
+  if (tracks.isEmpty) return;
+
+  AudioTrack target;
+  if (audioPinned) {
+    target = tracks.first;
+  } else {
+    final settings = SettingsService();
+    final best = pickBestAudioTrack(
+      audioTracks: player.state.tracks.audio,
+      preferredAudioLang: await settings.getPreferredAudioLanguage(),
+      avoidUnsupportedAudio: await settings.getAvoidUnsupportedAudio(),
+    );
+    target = best ?? tracks.first;
+  }
+
+  if (player.state.track.audio.id == target.id) return;
+  await selectPlayerAudioTrack(player, target);
+}
+
+/// Clear mpv `sub-file` before attaching another external URI mid-playback.
+/// Does not stop the demuxer (unlike [resetPlayerForOpen]).
+Future<void> preparePlayerExternalSubtitleSwitch(Player player) async {
+  final platform = player.platform;
+  if (platform is NativePlayer && !platform.disposed) {
+    if (await mediaKitPlayerHandleReady(platform)) {
+      try {
+        await platform.setProperty(
+          'sub-file',
+          '',
+          waitForInitialization: false,
+        );
+      } catch (_) {}
+    }
+  }
+}
+
+/// Drop stale mpv external subtitle URI before opening another stream on the
+/// same [Player]. Soft reopen otherwise tries to reload the prior temp SRT.
+Future<void> resetPlayerSubtitleForNewOpen(Player player) async {
+  await preparePlayerExternalSubtitleSwitch(player);
+  final platform = player.platform;
+  if (platform is NativePlayer && !platform.disposed) {
+    if (await mediaKitPlayerHandleReady(platform)) {
+      try {
+        await platform.setProperty('sid', 'no', waitForInitialization: false);
+      } catch (_) {}
+    }
+  }
+  try {
+    await player.setSubtitleTrack(SubtitleTrack.no());
+  } catch (_) {}
+}
+
+/// Clears stale duration/buffer from a prior failed open before trying again.
+Future<void> resetPlayerForOpen(Player player) async {
+  await player.stop();
+  await resetPlayerAudioForNewOpen(player);
+  await resetPlayerSubtitleForNewOpen(player);
+  final deadline = DateTime.now().add(const Duration(milliseconds: 500));
+  while (DateTime.now().isBefore(deadline)) {
+    if (!isMediaOpenReady(player.state)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+  }
+}
+
+/// Ready check for [waitForMediaOpen].
+///
+/// Local torrent HTTP can report buffer / moov duration / playing while the
+/// first pieces are empty - that used to mark playback confirmed and leave a
+/// black stuck player. Require a decoded video frame for those URLs.
+bool isOpenReadyForStream(PlayerState state, {required bool localTorrent}) {
+  if (localTorrent) return hasDecodedVideo(state);
+  return isMediaOpenReady(state);
+}
+
+/// Default open wait for local torrent HTTP — peers may still be filling the
+/// head after the engine returned the URL; short timeouts abort while GBs land.
+const kLocalTorrentOpenTimeout = Duration(seconds: 180);
+
+/// Returns true once mpv reports playable media, false on fatal open error or
+/// [timeout].
+///
+/// Pass [streamUrl] for local torrent streams so early demux probe failures
+/// are ignored until the timeout - pieces may still be filling - and so
+/// readiness requires a decoded video frame (not buffer alone).
+///
+/// [onProbeRetry] (local torrent only): re-open the same URL when lavf dies on
+/// an incomplete head — waiting alone does nothing once demux has aborted.
+Future<bool> waitForMediaOpen(
+  Player player, {
+  Duration timeout = const Duration(seconds: 25),
+  String? streamUrl,
+  Future<void> Function()? onProbeRetry,
+  Duration probeRetryEvery = const Duration(seconds: 15),
+}) async {
+  final completer = Completer<bool>();
+  final subs = <StreamSubscription<dynamic>>[];
+  var settled = false;
+  final localTorrent = streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
+  var retryInFlight = false;
+  Timer? retryTimer;
+
+  void settle(bool ok) {
+    if (settled) return;
+    settled = true;
+    retryTimer?.cancel();
+    for (final sub in subs) {
+      sub.cancel();
+    }
+    if (!completer.isCompleted) completer.complete(ok);
+  }
+
+  void probe() {
+    if (isOpenReadyForStream(player.state, localTorrent: localTorrent)) {
+      settle(true);
+    }
+  }
+
+  Future<void> tryReopen(String reason) async {
+    final reopen = onProbeRetry;
+    if (!localTorrent || reopen == null || settled || retryInFlight) return;
+    retryInFlight = true;
+    debugPrint('[Player] Torrent probe retry ($reason)');
+    try {
+      await reopen();
+    } catch (e) {
+      debugPrint('[Player] Torrent probe retry failed: $e');
+    } finally {
+      retryInFlight = false;
+      probe();
+    }
+  }
+
+  if (localTorrent && onProbeRetry != null) {
+    retryTimer = Timer.periodic(probeRetryEvery, (_) {
+      if (settled) return;
+      if (isOpenReadyForStream(player.state, localTorrent: true)) {
+        settle(true);
+        return;
+      }
+      unawaited(tryReopen('periodic'));
+    });
+  }
+
+  subs.addAll([
+    player.stream.error.listen((err) {
+      final fatal = isFatalPlayerOpenError(err) || isOpenHttpFailure(err);
+      if (!fatal) return;
+      if (localTorrent && isTransientTorrentProbeError(err)) {
+        debugPrint('[Player] Transient torrent probe error (waiting): $err');
+        unawaited(tryReopen('format/open'));
+        return;
+      }
+      settle(false);
+    }),
+    player.stream.duration.listen((_) => probe()),
+    player.stream.videoParams.listen((_) => probe()),
+    player.stream.width.listen((_) => probe()),
+    player.stream.height.listen((_) => probe()),
+    player.stream.buffer.listen((_) => probe()),
+    player.stream.position.listen((_) => probe()),
+    player.stream.playing.listen((_) => probe()),
+    player.stream.bufferingPercentage.listen((_) => probe()),
+  ]);
+
+  probe();
+
+  try {
+    return await completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        final ok = isOpenReadyForStream(
+          player.state,
+          localTorrent: localTorrent,
+        );
+        settle(ok);
+        return ok;
+      },
+    );
+  } finally {
+    retryTimer?.cancel();
+    for (final sub in subs) {
+      await sub.cancel();
+    }
+  }
+}
+
+Future<void> _applyLocalTorrentSeekableMpv(NativePlayer mpv) async {
+  Future<void> safeSet(String key, String val) async {
+    try {
+      await mpv.setProperty(key, val);
+    } catch (e) {
+      debugPrint('[Player] Warning: failed to set mpv property $key=$val: $e');
+    }
+  }
+
+  // Open used seekable=0 on the lavf demuxer — runtime props alone do not flip
+  // that (issue 024 T09). Bound probe, no seekable=0, HTTP Range scrub.
+  await safeSet('demuxer-lavf-o', 'probesize=65536,analyzeduration=500000');
+  await safeSet('stream-lavf-o', 'probesize=65536');
+  await safeSet('force-seekable', 'yes');
+  await safeSet('hr-seek', 'yes');
+  await safeSet('hr-seek-framedrop', 'no');
+}
+
+/// Re-assert seekable mpv props (every scrub) — demuxer must already be Range-capable.
+Future<void> ensureLocalTorrentSeekable(Player player) async {
+  if (player.platform is! NativePlayer) return;
+  await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
+}
+
+/// After probe decode (or scrub): reopen with seekable lavf (not seekable=0).
+Future<bool> promoteLocalTorrentToSeekablePlayback(
+  Player player, {
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+  Duration? seekTo,
+  bool? resumePlaying,
+}) async {
+  if (!isLocalTorrentStreamUrl(streamUrl)) return true;
+  if (player.platform is! NativePlayer) return true;
+
+  final pos = seekTo ?? player.state.position;
+  final playing = resumePlaying ?? player.state.playing;
+  final scrubRemount = seekTo != null;
+  await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
+
+  await resetPlayerForOpen(player);
+  try {
+    await openPlayerStream(
+      player,
+      url: streamUrl,
+      headers: headers,
+      providerId: providerId,
+      // mpv `start` on localhost torrent HTTP often opens at 0:00 — scrub seeks
+      // after the Range-capable demuxer is up (024 T13).
+      startAt: scrubRemount
+          ? null
+          : (pos > const Duration(milliseconds: 500) ? pos : null),
+    );
+  } catch (e) {
+    debugPrint(
+      '[Player] Torrent ${scrubRemount ? 'seek' : 'seekable promote'} reopen failed: $e',
+    );
+    return false;
+  }
+
+  if (scrubRemount && pos > const Duration(milliseconds: 500)) {
+    final demuxReady = DateTime.now().add(const Duration(seconds: 30));
+    while (DateTime.now().isBefore(demuxReady)) {
+      final state = player.state;
+      if (state.duration > Duration.zero || hasDecodedVideo(state)) break;
+      await Future.delayed(const Duration(milliseconds: 80));
+    }
+    await ensureOpenedNearPosition(
+      player,
+      pos,
+      skipNearCredits: false,
+      streamUrl: streamUrl,
+      openedWithMpvStart: false,
+    );
+  }
+
+  final deadline = DateTime.now().add(
+    scrubRemount ? const Duration(seconds: 90) : const Duration(seconds: 45),
+  );
+  while (DateTime.now().isBefore(deadline)) {
+    final state = player.state;
+    final settled = scrubRemount
+        ? torrentSeekRemountSettled(state, pos)
+        : hasDecodedVideo(state);
+    if (settled) {
+      if (playing && !state.playing) {
+        await player.play();
+      }
+      debugPrint(
+        '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'} OK '
+        '(${state.position.inSeconds}s)',
+      );
+      return true;
+    }
+    await Future.delayed(const Duration(milliseconds: 80));
+  }
+  debugPrint(
+    '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'}: '
+    'no frame near ${pos.inSeconds}s (at ${player.state.position.inSeconds}s)',
+  );
+  return false;
+}
+
+/// [waitForMediaOpen] with local-torrent timeout + optional probe re-open.
+Future<bool> waitForPlayerStreamOpen(
+  Player player, {
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+  Future<String> Function()? reopen,
+}) async {
+  final localTorrent = isLocalTorrentStreamUrl(streamUrl);
+  final opened = await waitForMediaOpen(
+    player,
+    streamUrl: streamUrl,
+    timeout: localTorrent
+        ? kLocalTorrentOpenTimeout
+        : const Duration(seconds: 25),
+    onProbeRetry: localTorrent
+        ? () async {
+            await resetPlayerForOpen(player);
+            if (reopen != null) {
+              await reopen();
+              return;
+            }
+            await openPlayerStream(
+              player,
+              url: streamUrl,
+              headers: headers,
+              providerId: providerId,
+            );
+          }
+        : null,
+  );
+  if (opened && localTorrent) {
+    final promoted = await promoteLocalTorrentToSeekablePlayback(
+      player,
+      streamUrl: streamUrl,
+      headers: headers,
+      providerId: providerId,
+    );
+    if (!promoted) {
+      await ensureLocalTorrentSeekable(player);
+    }
+  }
+  return opened;
+}
+
+String? playbackQualityLabel(PlayerState state) {
+  final w = state.videoParams.w ?? 0;
+  final h = state.videoParams.h ?? 0;
+  if (w <= 0 && h <= 0) return null;
+  if (h > 0) return '${h}p';
+  return '${w}p';
+}
+
+String? playbackQualityDetail(PlayerState state) {
+  final w = state.videoParams.w ?? 0;
+  final h = state.videoParams.h ?? 0;
+  if (w <= 0 || h <= 0) return null;
+  return '$w × $h';
+}
+
+/// Label for audio/subtitle chips - language endonym when known
+/// (हिन्दी, தமிழ், English…), else raw title / Audio N.
+String formatPlayerTrackLabel({
+  required String id,
+  String? title,
+  String? language,
+  int? index,
+}) {
+  final endo = trackLanguageEndonym(language: language, title: title);
+  if (endo != null) return endo;
+
+  final trimmedTitle = title?.trim();
+  if (trimmedTitle != null && trimmedTitle.isNotEmpty) return trimmedTitle;
+
+  if (index != null && index > 0) return 'Audio $index';
+  return 'Audio $id';
+}
+
+bool _sameTrackText(String a, String? b) {
+  if (b == null) return false;
+  return a.trim().toLowerCase() == b.trim().toLowerCase();
+}
+
+bool _titleIsLanguageOnly(
+  String title,
+  String languageLabel,
+  String? language,
+) {
+  if (_sameTrackText(title, languageLabel) || _sameTrackText(title, language)) {
+    return true;
+  }
+  final asLang = languageEndonym(title);
+  if (asLang != null &&
+      asLang != 'Unknown' &&
+      _sameTrackText(asLang, languageLabel)) {
+    return true;
+  }
+  return false;
+}
+
+String? _composeAudioTechFormat({
+  String? codec,
+  String? channels,
+  int? channelscount,
+  int? samplerate,
+  int? bitrate,
+}) {
+  final parts = <String>[];
+  final c = codec?.trim();
+  if (c != null && c.isNotEmpty) parts.add(c);
+
+  final ch = channels?.trim();
+  if (ch != null && ch.isNotEmpty) {
+    parts.add(ch);
+  } else if (channelscount != null && channelscount > 0) {
+    parts.add('$channelscount ch');
+  }
+
+  if (samplerate != null && samplerate > 0) {
+    parts.add(
+      samplerate % 1000 == 0
+          ? '${samplerate ~/ 1000} kHz'
+          : '${(samplerate / 1000).toStringAsFixed(1)} kHz',
+    );
+  }
+
+  if (bitrate != null && bitrate > 0) {
+    parts.add(
+      bitrate >= 1000 ? '${(bitrate / 1000).round()} kbps' : '$bitrate bps',
+    );
+  }
+
+  if (parts.isEmpty) return null;
+  return parts.join(' · ');
+}
+
+/// Secondary line under the language in the audio menu — container title or
+/// demux codec / channels / rate / bitrate. Null when nothing useful beyond
+/// the language label.
+String? formatPlayerAudioFormatSubtitle({
+  required String languageLabel,
+  String? title,
+  String? language,
+  String? codec,
+  String? channels,
+  int? channelscount,
+  int? samplerate,
+  int? bitrate,
+}) {
+  final trimmedTitle = title?.trim();
+  if (trimmedTitle != null &&
+      trimmedTitle.isNotEmpty &&
+      !_titleIsLanguageOnly(trimmedTitle, languageLabel, language)) {
+    return trimmedTitle;
+  }
+
+  final composed = _composeAudioTechFormat(
+    codec: codec,
+    channels: channels,
+    channelscount: channelscount,
+    samplerate: samplerate,
+    bitrate: bitrate,
+  );
+  if (composed == null || _sameTrackText(composed, languageLabel)) return null;
+  return composed;
+}
+
+Future<String?> _mpvTrackProperty(Player player, String property) async {
+  if (player.platform is! NativePlayer) return null;
+  try {
+    final raw = await (player.platform as NativePlayer).getProperty(property);
+    if (raw.isEmpty || raw == 'no' || raw == 'auto') return null;
+    return raw;
+  } catch (_) {
+    return null;
+  }
+}
+
+AudioTrack? findAudioTrack(List<AudioTrack> tracks, String id) {
+  for (final track in tracks) {
+    if (track.id == id) return track;
+  }
+  return null;
+}
+
+SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
+  for (final track in tracks) {
+    if (track.id == id) return track;
+  }
+  return null;
+}
+
+/// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
+List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
+  return tracks
+      .where((t) => !isSideloadedExternalSubtitleTrack(t))
+      .toList();
+}
+
+/// In-stream tracks for the subtitle menu — hides mpv copies of active external subs.
+List<SubtitleTrack> menuEmbeddedSubtitleTracks(
+  Player player, {
+  String? selectedExternalSubUrl,
+  List<Map<String, dynamic>> externalSubtitles = const [],
+}) {
+  final embedded = embeddedSubtitleTracks(player.state.tracks.subtitle);
+  if (selectedExternalSubUrl == null) return embedded;
+
+  Map<String, dynamic>? selectedOnline;
+  for (final s in externalSubtitles) {
+    if (s['url']?.toString() == selectedExternalSubUrl) {
+      selectedOnline = s;
+      break;
+    }
+  }
+  final selectedDisplay = selectedOnline?['display']?.toString();
+  final active = player.state.track.subtitle;
+
+  return embedded.where((t) {
+    if (active.id != 'no' && active.id != 'auto' && t.id == active.id) {
+      return false;
+    }
+    if (selectedDisplay != null &&
+        t.title != null &&
+        t.title!.trim() == selectedDisplay.trim()) {
+      return false;
+    }
+    if ((active.uri || active.data) &&
+        t.title == active.title &&
+        t.language == active.language) {
+      return false;
+    }
+    return true;
+  }).toList();
+}
+
+Future<AudioTrack?> resolveActiveAudioTrack(Player player) async {
+  final selected = player.state.track.audio;
+  if (selected.id != 'auto' && selected.id != 'no') return selected;
+  final aid = await _mpvTrackProperty(player, 'aid');
+  if (aid != null) {
+    return findAudioTrack(player.state.tracks.audio, aid);
+  }
+  return null;
+}
+
+Future<SubtitleTrack?> resolveActiveSubtitleTrack(Player player) async {
+  final selected = player.state.track.subtitle;
+  if (selected.id != 'auto' && selected.id != 'no') return selected;
+  final sid = await _mpvTrackProperty(player, 'sid');
+  if (sid != null) {
+    return findSubtitleTrack(player.state.tracks.subtitle, sid);
+  }
+  return null;
+}
+
+bool isHlsQualityAuto(String? currentQualityUrl, String? masterUrl) {
+  if (masterUrl == null || currentQualityUrl == null) return false;
+  return currentQualityUrl == masterUrl;
+}
+
+HlsQuality? matchActiveHlsVariant(
+  List<HlsQuality> qualities,
+  PlayerState state,
+) {
+  final height = state.videoParams.h ?? 0;
+  if (height > 0) {
+    for (final quality in qualities) {
+      if (quality.isAuto) continue;
+      if (quality.height == height) return quality;
+      if (quality.label == '${height}p') return quality;
+    }
+  }
+  final width = state.videoParams.w ?? 0;
+  if (width > 0) {
+    for (final quality in qualities) {
+      if (quality.isAuto) continue;
+      if (quality.label == '${width}p') return quality;
+    }
+  }
+  return null;
+}
+
+String? activeHlsQualityLabel(PlayerState state, List<HlsQuality> qualities) {
+  final fromParams = playbackQualityLabel(state);
+  if (fromParams != null) return fromParams;
+  return matchActiveHlsVariant(qualities, state)?.label;
+}
+
+String formatDuration(Duration duration) {
+  String twoDigits(int n) => n.toString().padLeft(2, "0");
+  String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+  String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+  if (duration.inHours > 0) {
+    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+  } else {
+    return "$twoDigitMinutes:$twoDigitSeconds";
+  }
+}
+
+/// True when this play URL unwraps PNG-shelled MPEG-TS (`strip=png`).
+bool hlsProxyStripIsPng(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || !uri.path.contains('/hls-proxy')) return false;
+  return uri.queryParameters['strip'] == 'png';
+}
+
+/// Known hosts that serve Megaplay-style PNG-wrapped MPEG-TS (need hls-proxy strip).
+///
+/// Prefer [animeHlsNeedsPngStripFor] with a [sourceKey] - host lists live on
+/// each provider's [AnimePlaybackProfile] (RFC-039 / DB).
+bool animeHlsNeedsPngStrip(String url) {
+  return animeHlsNeedsPngStripFor(url, sourceKey: null);
+}
+
+/// Whether [applyAnimePngStripIfNeeded] should run for [url] / [sourceKey].
+bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
+  final u = url.trim();
+  if (u.isEmpty) return false;
+  if (u.toLowerCase().contains('/hls-proxy')) {
+    final target = hlsProxyTargetUrl(u);
+    return target != null &&
+        animeHlsNeedsPngStripFor(target, sourceKey: sourceKey);
+  }
+  final cfg = ProviderRuntimeConfig.instance;
+  if (sourceKey != null && sourceKey.trim().isNotEmpty) {
+    final p = cfg.animePlaybackProfile(sourceKey);
+    if (p.pngStrip != AnimePngStripMode.force) return false;
+    return u.contains('.m3u8');
+  }
+  for (final p in cfg.animePlaybackProfiles.values) {
+    if (p.pngStrip == AnimePngStripMode.force && p.urlNeedsPngStrip(u)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// True when [bytes] start with a PNG signature.
+bool looksLikePng(List<int> bytes) {
+  return bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47;
+}
+
+/// True when [bytes] are a PNG shell with MPEG-TS after IEND or offset 252.
+bool pngWrapsMpegTs(List<int> bytes) {
+  if (bytes.length < 16) return false;
+  if (!looksLikePng(bytes)) return false;
+  // IEND then TS sync
+  for (var i = 8; i < bytes.length - 4; i++) {
+    if (bytes[i] == 0x49 &&
+        bytes[i + 1] == 0x45 &&
+        bytes[i + 2] == 0x4E &&
+        bytes[i + 3] == 0x44) {
+      final start = i + 8;
+      for (var p = start; p < bytes.length - 188; p++) {
+        if (bytes[p] == 0x47 && bytes[p + 188] == 0x47) return true;
+      }
+      for (var p = start; p < bytes.length; p++) {
+        if (bytes[p] == 0x47) return true;
+      }
+      break;
+    }
+  }
+  return bytes.length > 252 + 188 &&
+      bytes[252] == 0x47 &&
+      bytes[252 + 188] == 0x47;
+}
+
+/// Whether a Range/prefix sample means PNG-strip should run.
+///
+/// kotocdn (Megaplay) answers `Range: bytes=0-N` with a tiny ad PNG on
+/// `ibyteimg` while a full GET returns PNG-wrapped MPEG-TS. Treat that decoy
+/// as wrapped so we still open via `/hls-proxy?strip=png`.
+@visibleForTesting
+bool animeSegmentSampleLooksPngWrapped(List<int> sample) {
+  if (pngWrapsMpegTs(sample)) return true;
+  // Tiny PNG, no TS - Range decoy (real body is PNG+TS).
+  return looksLikePng(sample) && sample.length < 512;
+}
+
+/// Whether catalog HLS should open via `/hls-proxy?strip=png`.
+///
+/// [AnimePngStripMode.auto] is content-only - host needles never force strip.
+@visibleForTesting
+bool animePngStripShouldProxy({
+  required AnimePngStripMode mode,
+  required bool contentLooksWrapped,
+}) {
+  return switch (mode) {
+    AnimePngStripMode.never => false,
+    AnimePngStripMode.force => true,
+    AnimePngStripMode.auto => contentLooksWrapped,
+  };
+}
+
+/// Route PNG-wrapped HLS through local `/hls-proxy?strip=png` when profile is force.
+Future<StreamSource> applyAnimePngStripIfNeeded(
+  StreamSource source, {
+  String? sourceKey,
+  @visibleForTesting
+  String Function(String url, Map<String, String> headers)? buildStripProxy,
+}) async {
+  final url = source.url.trim();
+  if (url.isEmpty || url.contains('/hls-proxy')) return source;
+  if (!url.contains('.m3u8')) return source;
+
+  final pid = source.providerId?.trim().isNotEmpty == true
+      ? source.providerId
+      : sourceKey;
+  final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(
+    pid ?? '',
+  );
+  if (profile.pngStrip != AnimePngStripMode.force) return source;
+
+  final hdrs = resolvePlaybackHttpHeaders(
+    source.headers,
+    streamUrl: url,
+    providerId: pid,
+  );
+
+  late final String proxied;
+  if (buildStripProxy != null) {
+    proxied = buildStripProxy(url, hdrs);
+  } else {
+    final ls = LocalServerService();
+    if (ls.port == 0) {
+      await ls.start();
+    }
+    if (ls.port == 0) return source;
+    proxied = ls.getHlsProxyUrl(url, hdrs, stripMode: 'png');
+  }
+  if (kDebugMode) {
+    debugPrint('[Player] PNG-strip via hls-proxy key=${pid ?? ''} $url');
+  }
+  return StreamSource(
+    url: proxied,
+    title: source.title,
+    type: source.type,
+    headers: null,
+    providerId: pid,
+    catalogUrl: source.catalogUrl ?? url,
+  );
+}
+
+/// VidRock / Vidzee / 1shows CDN — PNG-wrapped segments; proxy at play.
+bool is1showsCdnStreamUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  return host.contains('1shows.app');
+}
+
+/// Same HLS re-proxy as local stream proxy (local strip=png).
+Future<({String url, Map<String, String> headers})> proxy1showsHlsIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  String? providerId,
+}) async {
+  if (!is1showsCdnStreamUrl(streamUrl) || isLocalLoopbackPlayUrl(streamUrl)) {
+    return (url: streamUrl, headers: headers);
+  }
+  final upstream = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: streamUrl,
+    providerId: providerId,
+  );
+  final ls = LocalServerService();
+  if (ls.port == 0) await ls.start();
+  if (ls.port == 0) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await ls.start();
+  }
+  if (ls.port == 0) {
+    if (kDebugMode) {
+      debugPrint(
+        '[Player] 1shows HLS proxy unavailable — opening direct $streamUrl',
+      );
+    }
+    return (url: streamUrl, headers: upstream);
+  }
+  return (
+    url: ls.getHlsProxyUrl(streamUrl, upstream, stripMode: 'png'),
+    headers: const <String, String>{},
+  );
+}
+
+/// Rewrite extensionless HLS (AES key + nested `/playlist/` children) locally.
+Future<({String url, Map<String, String> headers})>
+proxyExtensionlessHlsIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  String? providerId,
+}) async {
+  if (!shouldProxyExtensionlessHls(streamUrl)) {
+    return (url: streamUrl, headers: headers);
+  }
+  final upstream = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: streamUrl,
+    providerId: providerId,
+  );
+  final ls = LocalServerService();
+  if (ls.port == 0) await ls.start();
+  if (ls.port == 0) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await ls.start();
+  }
+  if (ls.port == 0) {
+    if (kDebugMode) {
+      debugPrint(
+        '[Player] extensionless HLS proxy unavailable — opening direct $streamUrl',
+      );
+    }
+    return (url: streamUrl, headers: upstream);
+  }
+  return (
+    url: ls.getHlsProxyUrl(streamUrl, upstream),
+    headers: const <String, String>{},
+  );
+}
+
+Future<bool> _probeHlsMasterOnly(
+  String catalog,
+  Map<String, String> hdrs,
+) async {
+  try {
+    final master = await engineHttp(
+      'GET',
+      catalog,
+      headers: hdrs,
+      timeoutSecs: 8,
+    );
+    return master.status == 200 && master.body.contains('#EXTM3U');
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) async {
+  try {
+    var res = await engineHttp(
+      'HEAD',
+      catalog,
+      headers: hdrs,
+      timeoutSecs: 8,
+    );
+    if (res.status >= 200 && res.status < 400) return true;
+    res = await engineHttp(
+      'GET',
+      catalog,
+      headers: {...hdrs, 'Range': 'bytes=0-0'},
+      timeoutSecs: 8,
+    );
+    return res.status == 200 || res.status == 206;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Lightweight reachability check for stream menu reload.
+///
+/// Pass [sourceKey] for anime so probe mode comes from
+/// [ProviderRuntimeConfig.animePlaybackProfile] (DB / builtins) - not host
+/// heuristics.
+Future<bool> probeStreamSourceUrl(
+  String url,
+  Map<String, String>? headers, {
+  String? sourceKey,
+}) async {
+  final normalized = normalizePlaybackStreamUrl(url);
+  if (normalized.isEmpty) return false;
+  // Already on the PNG-strip play path - don't re-sample nested segments.
+  if (hlsProxyStripIsPng(normalized)) return true;
+  final catalog = hlsProxyTargetUrl(normalized) ?? normalized;
+  final key = sourceKey?.trim();
+  final hdrs = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: catalog,
+    providerId: key,
+  );
+
+  if (key != null && key.isNotEmpty) {
+    final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(key);
+    switch (profile.probe) {
+      case AnimeProbeMode.skip:
+        return true;
+      case AnimeProbeMode.masterOnly:
+        if (catalog.contains('.m3u8') ||
+            catalog.toLowerCase().contains('/api/proxy') ||
+            normalized.contains('/hls-proxy')) {
+          return _probeHlsMasterOnly(catalog, hdrs);
+        }
+        return _probeHeadOrRange(catalog, hdrs);
+      case AnimeProbeMode.headOrRange:
+        return _probeHeadOrRange(catalog, hdrs);
+      case AnimeProbeMode.segmentPoisonSample:
+        if (catalog.contains('.m3u8') ||
+            catalog.toLowerCase().contains('/api/proxy') ||
+            normalized.contains('/hls-proxy')) {
+          return _probeHlsMasterOnly(catalog, hdrs);
+        }
+        return _probeHeadOrRange(catalog, hdrs);
+    }
+  }
+
+  try {
+    if (catalog.contains('.m3u8') ||
+        catalog.toLowerCase().contains('/api/proxy') ||
+        normalized.contains('/hls-proxy')) {
+      return _probeHlsMasterOnly(catalog, hdrs);
+    }
+    return _probeHeadOrRange(catalog, hdrs);
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Menu / auto-probe pre-check.
+///
+/// **111477:** catalog URLs only get a shape check (CDN HEAD is slow/flaky);
+/// the local seek proxy is validated at play. Never treat a dead localhost
+/// proxy URL as the catalog stream - those are session-local play endpoints.
+Future<bool> validateStreamSourceForCheck({
+  required String? providerId,
+  required StreamSource source,
+  Map<String, String>? headers,
+}) async {
+  if (providerId == 'service111477' ||
+      providerId == 'engine:service111477' ||
+      providerId == 'dahmermovies' ||
+      providerId == 'engine:dahmermovies' ||
+      is111477UpstreamUrl(source.url)) {
+    final url = source.url.trim();
+    if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
+    // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].
+    return url.contains('://');
+  }
+  // MovieBlast / NetMirror / DimaToon: trust extract — CDN probes false-fail.
+  if (providerId == 'engine:movieblast' ||
+      providerId == 'movieblast' ||
+      providerId == 'engine:netmirror' ||
+      providerId == 'netmirror' ||
+      providerId == 'engine:dimatoon' ||
+      providerId == 'dimatoon' ||
+      providerId == 'engine:dimakids' ||
+      providerId == 'dimakids') {
+    final url = source.url.trim();
+    return url.contains('://') && !isUnplayableCachedStreamUrl(url);
+  }
+  return probeStreamSourceUrl(source.url, headers, sourceKey: providerId);
+}
+
+/// Index of [current] in a flat hub episode list, or null if not found.
+int? hubEpisodeIndex(List<PlayerHubEpisode> episodes, num current) {
+  for (var i = 0; i < episodes.length; i++) {
+    if (episodes[i].number == current) return i;
+  }
+  return null;
+}
+
+/// Whether hub playback has a previous / next list entry for [current].
+({bool hasPrev, bool hasNext}) adjacentHubEpisodeFlags(
+  List<PlayerHubEpisode>? episodes,
+  num? current,
+) {
+  if (episodes == null || episodes.isEmpty || current == null) {
+    return (hasPrev: false, hasNext: false);
+  }
+  final idx = hubEpisodeIndex(episodes, current);
+  if (idx == null) return (hasPrev: false, hasNext: false);
+  return (hasPrev: idx > 0, hasNext: idx < episodes.length - 1);
+}
+
+/// Whether the floating "Next Episode" chip should show.
+///
+/// Requires a trustworthy duration (avoids HLS briefly reporting a short
+/// length and latching the button for the whole episode). Last ~5% of short
+/// titles, or last 2 minutes of longer ones. Cleared when the user seeks back.
+/// Same window as the seek-bar next-episode zone and Next Episode chip.
+Duration nearEndOfEpisodeThreshold(Duration duration) {
+  if (duration.inSeconds < 90) return Duration.zero;
+  return duration.inMinutes < 10
+      ? Duration(seconds: (duration.inSeconds * 0.05).round().clamp(5, 30))
+      : const Duration(minutes: 2);
+}
+
+bool isNearEndOfEpisode(Duration position, Duration duration) {
+  // Ignore bogus early duration reports from adaptive streams.
+  final threshold = nearEndOfEpisodeThreshold(duration);
+  if (threshold <= Duration.zero) return false;
+  final remaining = duration - position;
+  if (remaining.isNegative) return true;
+  return remaining <= threshold;
+}

@@ -10,9 +10,9 @@
 |-------|------|------|
 | **Rust engine** | `crates/*` | Fetch, parse, crypto, torrent, proxy, resolver race, persistence |
 | **FFI bridge** | `packages/rust/lib/src/` | Thin Dart wrappers over engine — **not** new engine logic |
-| **Host platform** | `apps/forja/lib/shared/services/` | OS intents, PiP, external player, OAuth UX, app updates |
+| **Host platform** | `apps/forja/lib/shared/services/` (`app/`, `update/`, `tracker/`) | App updates, splash, Simkl/Trakt OAuth |
 | **Host adapters** | `apps/forja/lib/shared/extractors/`, `shared/nuvio/` | WebView (C3), `flutter_js` (C4), WASM host (C5) |
-| **Host orchestration** | `apps/forja/lib/shared/playback/` | Provider-race UX, cache, resume handoff — calls engine + adapters |
+| **Host orchestration** | `apps/forja/lib/shared/playback/` (`open/`, `probe/`, `cache/`, `sources/`) | Provider-race UX, cache, resume handoff — calls engine + adapters |
 | **Hub catalog** | `apps/forja/lib/features/<hub>/catalog/` | Vertical browse + stream orchestration for that tab only |
 | **Media routes** | `apps/forja/lib/features/media/` | TMDB-global details + Stremio catalog **screens** (not services) |
 | **Tab browse** | `apps/forja/lib/features/<tab>/` | Screen orchestrators + tab-private widgets |
@@ -98,7 +98,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | `PipService`, `ExternalPlayerService`, `PlayerPoolService`, `AppUpdaterService` | — | C6/C12 | Platform |
 | `MusicPlayerService`, `AudiobookPlayerService`, storage/download | — | C6/C9 | Host playback + files |
 | `CastingService`, `SyncService` | — | C12 | Platform / LAN |
-| `PlaybackEngine`, `DomainStreamProviderResolver`, resume/cache | `shared/playback/` | C11 | Orchestration UX |
+| `PlaybackEngine`, `DomainStreamProviderResolver`, resume/cache | `shared/playback/` (`open/`, `cache/`, `probe/`, `sources/`) | C11 | Orchestration UX |
 
 Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallback paths stay host.
 
@@ -208,14 +208,20 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 
 ## Host platform services (`shared/services/`)
 
+Cross-cutting only. Player / lists / live libs live under their domain folders.
+
 | Service | Path | Why host | Target |
 |---------|------|----------|--------|
-| `TraktService` | `tracker/trakt_service.dart` | C12 OAuth + token storage | ✅ Host |
 | `SimklService` | `tracker/simkl_service.dart` | C12 OAuth | ✅ Host |
-| `ExternalPlayerService` | `external_player_service.dart` | C6/C12 OS intents (VLC, etc.) | ✅ Host |
-| `PlayerPoolService` | `player_pool_service.dart` | C6 player instance lifecycle | ✅ Host |
-| `PipService` | `pip_service.dart` | C6 platform PiP | ✅ Host |
-| `AppUpdaterService` | `app_updater_service.dart` | C12 GitHub releases / install | ✅ Host |
+| `AppUpdaterService` | `update/app_updater_service.dart` | C12 GitHub releases / install | ✅ Host |
+
+### Domain homes (moved out of `services/`)
+
+| Service | Path |
+|---------|------|
+| `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
+| `HubListFollow`, `ListFollowFromWatched` | `shared/lists/` |
+| `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/live/` |
 
 ---
 
@@ -236,10 +242,10 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 
 | Component | Path | Role | Target |
 |-----------|------|------|--------|
-| `PlaybackService` / `PlaybackEngine` | `shared/playback/` | C11 resolve UX, guards, cache | ✅ Host orchestration |
+| `PlaybackService` / `PlaybackEngine` | `shared/playback/open/` | C11 resolve UX, guards, cache | ✅ Host orchestration |
 | `DomainStreamProviderResolver` | `domain_playback_resolve.dart` | C11 domain → engine jobs | ✅ Host |
-| `PlayerStreamExtractCache` | `player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
-| `HistoryPlaybackResume` | `history_playback_resume.dart` | C11 resume routing | ✅ Host |
+| `PlayerStreamExtractCache` | `shared/playback/cache/player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
+| `HistoryPlaybackResume` | `shared/playback/open/history_playback_resume.dart` | C11 resume routing | ✅ Host |
 | `BestSimilarScraper` | `shared/catalog/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
 | `MusicPlayerService` | `features/archive/audio/music_player_service.dart` | C6 audio playback UI glue (archived) | ✅ Host |
 | `MusicStorageService` / `MusicDownloaderService` | `features/archive/audio/` | C6/C9 local files (archived) | ✅ Host |

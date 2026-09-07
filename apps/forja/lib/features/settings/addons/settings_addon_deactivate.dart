@@ -1,5 +1,5 @@
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
-import 'package:forja/shared/live/data/live_iptv_sports_config.dart';
+import 'package:forja/shared/live/iptv_sports_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';

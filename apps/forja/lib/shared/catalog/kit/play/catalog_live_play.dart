@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';

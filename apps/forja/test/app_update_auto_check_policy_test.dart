@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/services/app_update_auto_check_policy.dart';
+import 'package:forja/shared/services/update/app_update_auto_check_policy.dart';
 
 void main() {
   group('AppUpdateAutoCheckPolicy.shouldNetworkCheck', () {

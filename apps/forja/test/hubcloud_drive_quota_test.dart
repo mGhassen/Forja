@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/hubcloud_drive_quota.dart';
+import 'package:forja/shared/playback/probe/hubcloud_drive_quota.dart';
 
 void main() {
   group('isHubCloudDriveProxyUrl', () {

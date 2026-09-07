@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
 import 'package:forja/features/live_sports/live_sports_host_layout.dart';
+import 'package:forja/shared/catalog/assets/forja_host_assets.dart';
 import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
 
@@ -27,13 +28,15 @@ const Set<String> archivedNavIds = {
 @Deprecated('Use archivedNavIds')
 const Set<String> temporarilyHiddenNavIds = archivedNavIds;
 
-/// In-scope app-owned shell destinations (Material icons — packs own bitmaps).
+/// In-scope app-owned shell destinations.
+/// IPTV keeps a host bitmap; other core tabs use Material. Hub packs ship PNGs.
 const Map<String, NavDestination> coreNavDestinations = {
   'iptv': NavDestination(
     id: 'iptv',
     icon: Icons.live_tv_outlined,
     activeIcon: Icons.live_tv,
     label: 'IPTV',
+    iconAsset: ForjaHostAssets.flutterNavIptv,
   ),
   'live_matches': NavDestination(
     id: 'live_matches',

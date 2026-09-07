@@ -14,6 +14,7 @@ Shell tabs and verticals **removed from navigation**. Code is kept for reference
 | `downloader/` | `media downloader` |
 | `magnet/` | `magnet` |
 | `audiobooks/` | `audiobooks` |
+| `utils/` | *(helpers)* EPUB cover / splitter — audiobook generate only |
 | `audio/` | *(services)* music / audiobook / lyrics players — not a tab |
 | `books/` | `books` |
 | `music/` | `music` |

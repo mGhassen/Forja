@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/episode_switch_resolver.dart';
+import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 
 void main() {
   group('episodeProviderChain', () {

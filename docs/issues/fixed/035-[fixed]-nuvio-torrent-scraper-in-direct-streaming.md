@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** fixed (2026-07-12)  
-**Area:** `apps/forja/lib/shared/playback/stream_provider_resolver.dart`, `apps/forja/lib/shared/playback/history_playback_resume.dart`, `apps/forja/lib/features/home/details_screen.dart`  
+**Area:** `apps/forja/lib/shared/playback/stream_provider_resolver.dart`, `apps/forja/lib/shared/playback/open/history_playback_resume.dart`, `apps/forja/lib/features/home/details_screen.dart`  
 **Reported:** 2026-07-12
 
 ## Status at a glance

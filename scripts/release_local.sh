@@ -1840,14 +1840,14 @@ cmd_bump() {
   info "Bumped pubspec → $ver (platforms: $(platforms))"
   confirm "Freeze changelog, commit, tag v${ver}, push, then build + publish?" || {
     git checkout -- apps/forja/pubspec.yaml \
-      apps/forja/lib/shared/services/app_version.dart \
+      apps/forja/lib/shared/services/update/app_version.dart \
       installer/windows/setup.iss \
       docs/backlog/README.md
     die "aborted (version files restored)"
   }
 
   ./scripts/changelog_freeze.sh "$ver"
-  git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/app_version.dart \
+  git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/update/app_version.dart \
     installer/windows/setup.iss docs/changelog docs/backlog/README.md
   git commit -m "chore: release v${ver}"
   if git rev-parse "v${ver}" >/dev/null 2>&1; then

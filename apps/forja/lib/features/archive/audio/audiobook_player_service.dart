@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/features/archive/audio/audio_handler.dart';
 import 'package:forja/features/archive/audio/music_player_service.dart';
-import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 
 class AudiobookPlayerService {
   static final AudiobookPlayerService _instance = AudiobookPlayerService._internal();

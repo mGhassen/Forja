@@ -10,7 +10,7 @@ import 'package:forja/features/settings/providers/settings_visibility_provider.d
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Playback sources and player prefs.

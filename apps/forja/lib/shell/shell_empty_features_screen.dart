@@ -5,8 +5,8 @@ import 'package:forja/features/settings/providers/settings_visibility_provider.d
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/animated_logo.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/brand/animated_logo.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Shown when every shell feature tab is hidden — guides users to Addons,

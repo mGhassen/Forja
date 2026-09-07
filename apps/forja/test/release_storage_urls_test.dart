@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/services/release_storage_urls.dart';
+import 'package:forja/shared/services/update/release_storage_urls.dart';
 
 void main() {
   group('ReleaseStorageUrls.isDirectInstallerUrl', () {

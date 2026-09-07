@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/` — desktop/mobile open pipeline, Source panel
+**Area:** `apps/forja/lib/shared/player/screens/` — desktop/mobile open pipeline, Source panel
 
 ## Status at a glance
 

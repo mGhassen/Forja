@@ -12,7 +12,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr (Sources → Forja addons).
 class SettingsForjaAddonsSection extends ConsumerStatefulWidget {

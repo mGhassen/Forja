@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
-import 'package:forja/shared/widgets/desktop_window_focus.dart';
+import 'package:forja/shared/widgets/desktop/desktop_window_focus.dart';
 
 void main() {
   setUp(() {

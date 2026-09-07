@@ -9,7 +9,7 @@ import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
-import 'package:forja/shared/playback/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:forja/shell/shell_bus.dart';

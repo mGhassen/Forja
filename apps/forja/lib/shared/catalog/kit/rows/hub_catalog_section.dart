@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/shell/horizontal_scroller.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 

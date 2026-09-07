@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** Asian Drama / KissKh playback (`shared/player/player/`, `kisskh`)
+**Area:** Asian Drama / KissKh playback (`shared/player/screens/`, `kisskh`)
 
 ## Status at a glance
 

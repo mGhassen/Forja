@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/services/app_updater_manifest.dart';
+import 'package:forja/shared/services/update/app_updater_manifest.dart';
 
 void main() {
   group('AppUpdaterManifest.resolve', () {

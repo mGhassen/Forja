@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/live/play/live_engine.dart';
+import 'package:forja/shared/live/live_stream_engine.dart';
 
 void main() {
   group('liveEnginePreferDirectPlayback', () {

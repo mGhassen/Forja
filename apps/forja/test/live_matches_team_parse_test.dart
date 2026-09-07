@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/live/data/live_team_parse.dart';
+import 'package:forja/shared/live/match_team_parse.dart';
 
 void main() {
   group('parseLiveMatchTeamsFromTitle', () {

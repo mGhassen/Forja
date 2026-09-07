@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/services/app_version.dart';
+import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 
 /// Green sparkles beside admin-only Settings titles (`accounts.is_admin`).
 class SettingsAdminTitle extends StatelessWidget {

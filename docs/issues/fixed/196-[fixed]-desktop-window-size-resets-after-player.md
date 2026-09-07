@@ -45,5 +45,5 @@ Closing any desktop player (VOD, IPTV, Live Matches, trailer) called `windowMana
 
 ## Related
 
-- `apps/forja/lib/shared/widgets/desktop_window_geometry.dart`
+- `apps/forja/lib/shared/widgets/desktop/desktop_window_geometry.dart`
 - `apps/forja/lib/app/bootstrap.dart`

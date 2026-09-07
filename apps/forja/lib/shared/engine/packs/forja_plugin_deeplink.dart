@@ -5,7 +5,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
-import 'package:forja/shared/widgets/desktop_window_focus.dart';
+import 'package:forja/shared/widgets/desktop/desktop_window_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Handles `forja://install?manifest=<url>` and batch

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/services/app_updater_release_notes.dart';
+import 'package:forja/shared/services/update/app_updater_release_notes.dart';
 
 void main() {
   group('AppUpdaterReleaseNotes.isNewerVersion', () {

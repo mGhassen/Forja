@@ -6,11 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/services/app_updater_service.dart';
+import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
-import 'package:forja/shared/widgets/macos_keychain_consent_screen.dart';
-import 'package:forja/shared/widgets/update_dialog.dart';
+import 'package:forja/shared/widgets/account/macos_keychain_consent_screen.dart';
+import 'package:forja/shared/widgets/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 
 class SettingsAboutPanel extends StatefulWidget {

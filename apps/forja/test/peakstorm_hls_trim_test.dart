@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/player/peakstorm_hls_trim.dart';
+import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 
 void main() {
   test('trimMediaPlaylistFromTarget keeps map and trims segments', () {

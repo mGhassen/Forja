@@ -1,5 +1,5 @@
 import 'package:forja/shared/catalog/kit/play/sources_request_context.dart';
-import 'package:forja/shared/playback/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 
 /// Known Stremio idPrefix → bag scheme name.
 const _prefixToScheme = <String, String>{

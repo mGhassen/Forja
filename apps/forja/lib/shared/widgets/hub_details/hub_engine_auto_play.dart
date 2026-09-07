@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 
 /// Hub alias — VOD green Play always uses provider JS via [runEngineAutoPlay].

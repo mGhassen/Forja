@@ -10,7 +10,7 @@ Index: [docs/changelog](../../docs/changelog/README.md)
 
 Changelogs are **user-facing release notes**, not a commit log. One **in-progress file per minor line** (`1.2.x`), frozen to the **exact patch** on ship (`1.2.165`), not per push.
 
-**The changelog does not decide the version or codename.** The release admin picks the exact version at release time (CI bump / chosen tag); the codename comes from `kReleaseCodename` in [`app_version.dart`](../../apps/forja/lib/shared/services/app_version.dart). The changelog only carries the **bullets** — its `# 1.2.x — …` title is a human placeholder that CI ignores for numbering and naming.
+**The changelog does not decide the version or codename.** The release admin picks the exact version at release time (CI bump / chosen tag); the codename comes from `kReleaseCodename` in [`app_version.dart`](../../apps/forja/lib/shared/services/update/app_version.dart). The changelog only carries the **bullets** — its `# 1.2.x — …` title is a human placeholder that CI ignores for numbering and naming.
 
 ## Golden rules
 

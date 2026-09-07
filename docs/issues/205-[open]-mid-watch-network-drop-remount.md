@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/` (MediaKit + Exo VOD; IPTV already has lavf reconnect)
+**Area:** `apps/forja/lib/shared/player/screens/` (MediaKit + Exo VOD; IPTV already has lavf reconnect)
 
 ## Status at a glance
 

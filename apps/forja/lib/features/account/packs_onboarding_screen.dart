@@ -8,7 +8,7 @@ import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/forja_pack_choice_cards.dart';
+import 'package:forja/shared/widgets/packs/forja_pack_choice_cards.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 

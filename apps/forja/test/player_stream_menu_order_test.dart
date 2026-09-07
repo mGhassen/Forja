@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/controls/player_stream_menu.dart';
-import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
+import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
 StreamSource _source(String title) =>

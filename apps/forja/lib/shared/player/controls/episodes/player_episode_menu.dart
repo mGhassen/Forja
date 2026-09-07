@@ -1,0 +1,24 @@
+import 'package:flutter/material.dart';
+import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:rust/rust.dart';
+
+class PlayerEpisodeMenu {
+  static Future<void> show(
+    BuildContext context, {
+    required Movie movie,
+    required int currentSeason,
+    required int currentEpisode,
+    required Future<void> Function(int season, int episode) onEpisodeSelected,
+    BuildContext? anchorContext,
+  }) async {
+    PlayerPopupPanel.dismiss();
+    await PlayerEpisodePanel.show(
+      context: context,
+      movie: movie,
+      currentSeason: currentSeason,
+      currentEpisode: currentEpisode,
+      onEpisodeSelected: onEpisodeSelected,
+    );
+  }
+}

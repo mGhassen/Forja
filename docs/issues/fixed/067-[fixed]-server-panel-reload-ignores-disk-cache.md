@@ -3,7 +3,7 @@
 **Status:** fixed  
 **Priority:** P1  
 **Severity:** Medium  
-**Area:** `shared/playback/player_source_resolve.dart`, player Source panel reload
+**Area:** `shared/playback/open/player_source_resolve.dart`, player Source panel reload
 
 ## Status at a glance
 

@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/*_player_playback.dart`
+**Area:** `apps/forja/lib/shared/player/screens/*_player_playback.dart`
 
 ## Status at a glance
 

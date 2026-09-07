@@ -11,7 +11,7 @@ import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/playback/history_playback_resume.dart';
+import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:rust/rust.dart' show WatchHistoryService, canResumeFromSavedProgress;
 
 /// Layout widget type `continue` — pack-scoped [CatalogWatchHistory]; optional

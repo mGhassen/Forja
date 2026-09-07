@@ -1,7 +1,7 @@
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
 /// Profile-scoped boot requirements from navbar + play-source prefs.

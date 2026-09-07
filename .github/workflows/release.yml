@@ -173,7 +173,7 @@ jobs:
           chmod +x scripts/changelog_freeze.sh
           ./scripts/changelog_freeze.sh "$NEW"
 
-          git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/app_version.dart \
+          git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/update/app_version.dart \
             installer/windows/setup.iss docs/changelog docs/backlog/README.md
           git commit -m "chore: release v${NEW}"
           git tag -a "v${NEW}" -m "Forja ${NEW}"

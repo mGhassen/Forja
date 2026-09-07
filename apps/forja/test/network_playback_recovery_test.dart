@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/player/network_playback_recovery.dart';
+import 'package:forja/shared/player/screens/network_playback_recovery.dart';
 
 void main() {
   group('isLikelyNetworkPlaybackError', () {

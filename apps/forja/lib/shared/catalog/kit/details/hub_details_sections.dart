@@ -9,8 +9,8 @@ import 'package:forja/shared/catalog/shell/catalog_legacy_movie_meta.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';
-import 'package:forja/shared/widgets/media_details_cast_section.dart';
-import 'package:forja/shared/widgets/media_details_trailers_section.dart';
+import 'package:forja/shared/widgets/media_details/media_details_cast_section.dart';
+import 'package:forja/shared/widgets/media_details/media_details_trailers_section.dart';
 import 'package:rust/rust.dart';
 
 class HubDetailRailSection {

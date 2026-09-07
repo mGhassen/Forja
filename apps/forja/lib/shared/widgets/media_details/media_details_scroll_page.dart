@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/widgets/media_details_body.dart';
+import 'package:forja/shared/widgets/media_details/media_details_body.dart';
 
 /// Unified scroll layout for torrent and streaming media details screens.
 class MediaDetailsScrollPage extends StatelessWidget {

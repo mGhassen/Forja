@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/provider_runtime_config.dart';
-import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
+import 'package:forja/shared/player/screens/utils.dart';
 
 void main() {
   setUp(() {

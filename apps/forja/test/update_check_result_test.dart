@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/services/app_updater_service.dart';
+import 'package:forja/shared/services/update/app_updater_service.dart';
 
 void main() {
   group('UpdateCheckResult', () {

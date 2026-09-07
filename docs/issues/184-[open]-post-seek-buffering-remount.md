@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/` (MediaKit + Exo VOD)
+**Area:** `apps/forja/lib/shared/player/screens/` (MediaKit + Exo VOD)
 
 ## Status at a glance
 

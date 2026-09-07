@@ -16,8 +16,8 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_panel_host.dart';
-import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Layout widget [`CatalogKitTypes.list`] — poster grid or dense list from a

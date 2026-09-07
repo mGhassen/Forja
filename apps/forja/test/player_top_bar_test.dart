@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 
 void main() {
   testWidgets('PlayerTopBar title stays centered with unequal side controls', (

@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `shared/services/app_updater_service.dart` · R2 release upload · update dialog  
+**Area:** `shared/services/update/app_updater_service.dart` · R2 release upload · update dialog  
 **Reported:** 2026-07-19
 
 ## Status at a glance

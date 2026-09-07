@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
-import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
 import 'helpers/rust_engine.dart';

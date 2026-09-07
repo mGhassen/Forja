@@ -10,8 +10,8 @@ import 'package:forja/features/archive/audio/music_storage_service.dart';
 import 'package:forja/features/archive/audio/audio_handler.dart';
 import 'package:forja/features/archive/audio/lyrics_service.dart';
 import 'package:forja/features/archive/audio/audiobook_player_service.dart';
-import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 
 class MusicPlayerService {
   static final MusicPlayerService _instance = MusicPlayerService._internal();

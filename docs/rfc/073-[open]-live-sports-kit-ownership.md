@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **3 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) · **2 / 2** acceptance (platform services) · **4 / 4** acceptance (god-folder teardown) |
-| **Current slice** | Thin feature + `shared/live/` panel; CatalogShell kit browse; R73-A17/A18 done — R73-A06/A09 still open |
+| **Progress** | **3 / 4** components · **4 / 4** acceptance (kill modes) · **3 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) · **2 / 2** acceptance (platform services) · **4 / 4** acceptance (god-folder teardown) · **3 / 3** acceptance (kill shared/live silo) · **1 / 1** acceptance (live libs domain home) |
+| **Current slice** | Live libs under `shared/live/` — R73-A06/A09 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,7 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | R73-C01 | Remove `LiveModeRegistry` / `_LiveMatchesServer` / mode prefs — capability flags only | ✅ |
 | 2 | R73-C02 | Browse chrome as generic kit composition (catalog/horizon sheets, sport chips, grid) — not a full-page host takeover | 🔄 |
-| 3 | R73-C03 | Match details as kit details — Providers (live JS + Stremio) / Live TV rails | 🔄 |
+| 3 | R73-C03 | Match details as kit details — Providers / Live TV via CatalogKitSourcesPanel + MatchStreams | ✅ |
 | 4 | R73-C04 | Host service `iptv_sports_match` (portal channel search) callable from hub/details flow | ✅ |
 
 ---
@@ -79,6 +79,26 @@
 
 ---
 
+## Acceptance (kill shared/live silo)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R73-A19 | `MatchStreams` service loads Providers / Live TV from kit `legacyRow`; play via `openForjaLiveNativePlayer` | ✅ |
+| 2 | R73-A20 | Thin `LiveSportsStreamsPanelHost` builds `CatalogKitSourcesPanel` only — no `LiveSportsStreamsPage` | ✅ |
+| 3 | R73-A21 | `shared/live/panel/` deleted; remaining live libs under `shared/services/sports/` (+ feature prefs/filters); no `shared/live/` tree | ✅ |
+
+---
+
+## Acceptance (live libs domain home)
+
+Supersedes the **parking path** in R73-A21 only. Panel silo (`shared/live/panel/`) stays gone. Host live/sports libs move out of the `services/` grab-bag.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R73-A22 | Host live/sports libs under `shared/live/`; `shared/services/` keeps `app/` · `update/` · `tracker` only | ✅ |
+
+---
+
 ## Summary
 
 RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_matches/`, but **browse/play stayed a host god-page** with a leftover **mode** model (Forja Live / Forja Sports / Stremio) that the product already abandoned.
@@ -99,28 +119,28 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 ### Shipped this slice
 
 - Tab mounts **`CatalogShell`** + host layout → **`CatalogKitListWidget`** (`style: list` → `HubLiveMatchDenseTile`) from `LiveScheduleCatalogSource` (`wantsHostBody: false`)
-- Sport chips via kit list; panel via `CatalogHostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → `LiveSportsStreamsPage` (`shared/live/panel/`)
-- Standalone libs under `shared/live/data` + `shared/live/play`; panel `part` library under `shared/live/panel` (left feature)
-- Feature folder renamed `live_matches` → `live_sports` (thin: host + layout + list source + panel host); opaque ids `live_matches` / `live_schedule` unchanged
-- Kit play service `openForjaLiveNativePlayer` — dispatch + streams panel use it (peer of portal `catalog_iptv_play`)
-- `IptvSportsMatchService` — Live TV / ESPN / broadcast match path
+- Sport chips via kit list; panel via `CatalogHostListRegistry.resolvePanel` → `LiveSportsStreamsPanelHost` → **`CatalogKitSourcesPanel`** + **`MatchStreams`**
+- Host sports libs under `shared/live/` (`live_stream_engine`, `match_streams`, `iptv_sports_match`, schedule/team/stremio helpers); feature prefs/filters under `features/live_sports/`
+- Feature folder stays thin (host + layout + list source + panel host); opaque ids `live_matches` / `live_schedule` unchanged
+- Kit play service `openForjaLiveNativePlayer` — MatchStreams uses it (peer of portal `catalog_iptv_play`)
+- `IptvSportsMatchService` — Live TV / ESPN / broadcast match path (standalone library)
 - `HubLiveScheduleSource` / `loadLiveScheduleRows` — engine catalog → `CatalogMetaItem`
-- `LiveSportsTvRows` in `shared/live/data/live_schedule_filters.dart`
-- Timeline view **deleted**; browse shell **deleted**
+- Timeline view **deleted**; browse shell **deleted**; **`shared/live/panel/` silo deleted** (R73-A21); libs restored under `shared/live/` (R73-A22)
 
 ### Still open
 
 - Catalog / horizon top-bar sheets not yet kit-composed (R73-A06 — sport chips on kit shell; hub copies of Catalog/Schedule chrome deleted)
-- Panel still a large `part` library under `shared/live/panel` (not a generic kit panel rewrite)
 - `open.surface: live` still tab-switch / panel, not a standalone kit details route (R73-A09)
 
 ### Slices
 
 1. **Kill modes** — ✅
 2. **Kit browse** — 🔄 (CatalogShell list is kit; catalog/horizon sheets still open)
-3. **Details + IPTV service** — 🔄 (panelOnly in shared; R73-A09 open)
+3. **Details + IPTV service** — 🔄 (CatalogKitSourcesPanel + MatchStreams; R73-A09 open)
 4. **Platform services** — ✅ (panel registry + shared live play)
-5. **God-folder teardown** — ✅ (thin feature + `shared/live/`; R73-A15–A18)
+5. **God-folder teardown** — ✅ (thin feature; historical R73-A15–A18)
+6. **Kill shared/live silo** — ✅ (R73-A19–A21)
+7. **Live libs domain home** — ✅ (R73-A22)
 
 ### Related
 

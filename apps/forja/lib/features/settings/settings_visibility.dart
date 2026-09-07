@@ -1,5 +1,5 @@
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';

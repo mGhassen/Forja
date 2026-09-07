@@ -10,12 +10,12 @@ import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/services/app_update_auto_check.dart';
-import 'package:forja/shared/services/app_updater_service.dart';
+import 'package:forja/shared/services/update/app_update_auto_check.dart';
+import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/widgets/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/update_dialog.dart';
+import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/update/update_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum DesktopStartupDestination { account, splash }

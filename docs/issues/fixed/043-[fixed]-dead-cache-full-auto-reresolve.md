@@ -3,7 +3,7 @@
 **Status:** fixed  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/forja/lib/shared/player/player/*_player_playback.dart`, webstreaming cache
+**Area:** `apps/forja/lib/shared/player/screens/*_player_playback.dart`, webstreaming cache
 
 ## Status at a glance
 

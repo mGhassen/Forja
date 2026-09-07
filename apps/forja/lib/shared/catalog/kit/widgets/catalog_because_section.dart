@@ -15,8 +15,8 @@ import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
 
 /// Layout widget type `because` — pack owns rail logic; host renders meta rows.
 class CatalogBecauseSection extends StatefulWidget {

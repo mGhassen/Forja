@@ -12,8 +12,8 @@ import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/runtime.dart';
-import 'package:forja/shared/playback/playback_stream_guards.dart';
-import 'package:forja/shared/playback/provider_runtime_config.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

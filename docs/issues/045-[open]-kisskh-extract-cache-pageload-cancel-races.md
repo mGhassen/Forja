@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `shared/extractors/providers/kisskh/kisskh_extractor.dart`, `shared/player/player/utils.dart`
+**Area:** `shared/extractors/providers/kisskh/kisskh_extractor.dart`, `shared/player/screens/utils.dart`
 
 ## Status at a glance
 

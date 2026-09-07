@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 
 String _jwtWithExp(int expUnix) {
   final header = base64Url

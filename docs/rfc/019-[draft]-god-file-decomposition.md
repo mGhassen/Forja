@@ -47,14 +47,14 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 | [`live_sports_streams_page.dart`](../../apps/forja/lib/shared/live/panel/live_sports_streams_page.dart) | — | Live Sports streams panel (RFC-073) |
 | [`search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator; `search_search.dart`, `search_tv.dart`, `search_build.dart`, `search_widgets.dart` |
 | [`anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator; `anime_screen_feed.dart`, `anime_screen_build.dart`, `anime_widgets.dart` |
-| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/player/mobile_player_screen.dart) | 387 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources×4/episodes/build mixins |
-| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/player/desktop_player_screen.dart) | 364 | Desktop orchestrator; lifecycle/playback/ui/tracks/sources/episodes/build mixins |
+| [`mobile_player_screen.dart`](../../apps/forja/lib/shared/player/screens/mobile_player_screen.dart) | 387 | Mobile orchestrator; lifecycle/playback/ui/tracks/sources×4/episodes/build mixins |
+| [`desktop_player_screen.dart`](../../apps/forja/lib/shared/player/screens/desktop_player_screen.dart) | 364 | Desktop orchestrator; lifecycle/playback/ui/tracks/sources/episodes/build mixins |
 
 ## Rules
 
 1. **One PR per split** — no mega-refactor
 2. **No behavior change** — pure move/extract; same UI output
-3. **Reuse shared widgets** — delete inline duplicates (`_HoverScale`, `_MovieSection`) in favor of [`hover_scale.dart`](../../apps/forja/lib/shared/widgets/hover_scale.dart), [`movie_section.dart`](../../apps/forja/lib/shared/widgets/movie_section.dart)
+3. **Reuse shared widgets** — delete inline duplicates (`_HoverScale`, `_MovieSection`) in favor of [`hover_scale.dart`](../../apps/forja/lib/shared/widgets/shell/hover_scale.dart), [`movie_section.dart`](../../apps/forja/lib/shared/widgets/home/movie_section.dart)
 4. **Delete duplicate player folder** — [`features/player/`](../../apps/forja/lib/features/player/) is stale; canonical path is [`shared/player/`](../../apps/forja/lib/shared/player/)
 
 ## Target layout

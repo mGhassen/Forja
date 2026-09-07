@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
-import 'package:forja/shared/widgets/tv_browse_text_field.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/widgets/tv/tv_browse_text_field.dart';
 
 void main() {
   test('tv metrics are denser than desktop for leanback', () {

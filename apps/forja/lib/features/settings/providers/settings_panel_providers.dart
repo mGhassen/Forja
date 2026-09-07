@@ -4,14 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/playback/play_source_effective.dart';
-import 'package:forja/shared/player/track_auto_select.dart';
+import 'package:forja/shared/playback/open/play_source_effective.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/catalog/services/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/playback/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:rust/rust.dart';
 
 // ── Playback ───────────────────────────────────────────────────────────────
