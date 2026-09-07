@@ -87,9 +87,7 @@ class BootNeeds {
 
   /// Splash hold line after boot work finishes early.
   String get openingStatusLabel {
-    final liveIptv = !vodTab &&
-        (visibleNavIds.contains('iptv') ||
-            visibleNavIds.contains('live_matches'));
+    final liveIptv = !vodTab && visibleNavIds.contains('iptv');
     if (liveIptv) return 'Opening Live & IPTV…';
 
     for (final id in visibleNavIds) {

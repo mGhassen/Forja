@@ -34,7 +34,7 @@ class _LiveCatalogSheet extends StatefulWidget {
 }
 
 class _LiveCatalogSheetState extends State<_LiveCatalogSheet> {
-  static const _tvTabId = 'live_matches_catalog_sheet';
+  static const _tvTabId = 'live_sports_catalog_sheet';
   static const _rowId = 'live-catalog-sheet';
   final _firstFocus = FocusNode(debugLabel: 'live-catalog-sheet-first');
 

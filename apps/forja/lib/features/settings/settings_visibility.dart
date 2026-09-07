@@ -22,7 +22,7 @@ class SettingsVisibility {
     required this.lanPlaySourcesEditable,
     required this.vodTab,
     required this.iptvNav,
-    required this.liveMatchesNav,
+    required this.liveSportsNav,
   });
 
   final bool playSourceTorrent;
@@ -42,7 +42,7 @@ class SettingsVisibility {
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
   final bool vodTab;
   final bool iptvNav;
-  final bool liveMatchesNav;
+  final bool liveSportsNav;
 
   static bool get _isAndroidTv =>
       SettingsService.platformProfile == PlatformProfile.androidTv;
@@ -97,7 +97,7 @@ class SettingsVisibility {
   bool get showIptvSettings => iptvNav;
 
   /// Settings → Forja Sports (Live Matches Xtream matcher + live plugins).
-  bool get showIptvSportsSettings => liveMatchesNav && iptvNav;
+  bool get showIptvSportsSettings => liveSportsNav && iptvNav;
 
   @override
   bool operator ==(Object other) {
@@ -114,7 +114,7 @@ class SettingsVisibility {
         other.lanPlaySourcesEditable == lanPlaySourcesEditable &&
         other.vodTab == vodTab &&
         other.iptvNav == iptvNav &&
-        other.liveMatchesNav == liveMatchesNav;
+        other.liveSportsNav == liveSportsNav;
   }
 
   @override
@@ -130,7 +130,7 @@ class SettingsVisibility {
     lanPlaySourcesEditable,
     vodTab,
     iptvNav,
-    liveMatchesNav,
+    liveSportsNav,
   );
 
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
@@ -154,7 +154,9 @@ class SettingsVisibility {
       lanPlaySourcesEditable: lanEditable,
       vodTab: nav.any(BootNeeds.isVodNavId),
       iptvNav: await s.isAddonFeatureEnabled('iptv'),
-      liveMatchesNav: await s.isAddonFeatureEnabled('live_matches'),
+      liveSportsNav: await s.isAddonFeatureEnabled(
+        SettingsService.liveSportsAddonFeatureId,
+      ),
     );
   }
 }

@@ -726,6 +726,11 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     await service.setNavbarConfig(const ['iptv', 'live_matches']);
     expect(await service.isAddonFeatureEnabled('iptv'), isTrue);
+    expect(
+      await service.isAddonFeatureEnabled(SettingsService.liveSportsAddonFeatureId),
+      isTrue,
+    );
+    // Legacy id still aliases to the Live Sports capability.
     expect(await service.isAddonFeatureEnabled('live_matches'), isTrue);
     expect(await service.getNavbarConfig(), ['iptv', 'live_matches']);
   });

@@ -63,6 +63,28 @@ abstract final class PluginNavRegistry {
 
   static bool isCoreShell(String id) => coreShellNavIds.contains(id);
 
+  /// Drop pack hub tab ids that are not in the installed pack index.
+  ///
+  /// Keeps [coreShellNavIds] + Addons-gated host tabs (`iptv`). When no hub
+  /// `nav` is scannable yet (lean / first boot), returns [ids] unchanged so
+  /// cloud Soft-pull cannot wipe Home before packs hydrate. Once at least one
+  /// hub is scannable, ghost ids (leftover pack tab without its hub)
+  /// pack are removed (issue 227 + sync re-import fight).
+  static Future<List<String>> filterOutUninstalledHubNavIds(
+    List<String> ids,
+  ) async {
+    final hubs = await listNavHubs(requireEnabled: false);
+    final installedHubIds = {for (final h in hubs) h.$3.tabId};
+    if (installedHubIds.isEmpty) return List<String>.from(ids);
+    return [
+      for (final id in ids)
+        if (coreShellNavIds.contains(id) ||
+            SettingsService.addonGatedNavIds.contains(id) ||
+            installedHubIds.contains(id))
+          id,
+    ];
+  }
+
   static void _ensureSeeded() {
     if (_seeded) return;
     seedBuiltIns();

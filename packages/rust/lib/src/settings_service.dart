@@ -135,10 +135,17 @@ class SettingsService {
   static const String _iptvLiveBufferSecsKey = 'iptv_live_buffer_secs';
   /// RFC-086: Addons feature availability (not navbar visibility).
   static const String _addonFeatureIptvKey = 'addon_feature_iptv';
-  static const String _addonFeatureLiveMatchesKey = 'addon_feature_live_matches';
+  /// Capability id [liveSportsAddonFeatureId] — not a pack nav tab id.
+  static const String _addonFeatureLiveSportsKey = 'addon_feature_live_sports';
+  /// Pre–RFC-087 / pre–capability rename storage key.
+  static const String _addonFeatureLiveMatchesLegacyKey =
+      'addon_feature_live_matches';
   /// One-shot: set addon feature flags from prior one-bit `navbar_config`.
   static const String _addonFeatureFromNavMigratedKey =
       'addon_feature_from_nav_v1';
+
+  /// Addons → Live Sports capability id (RFC-087). Not a shell tab id.
+  static const String liveSportsAddonFeatureId = 'live_sports';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
 
@@ -787,21 +794,27 @@ class SettingsService {
   /// Features owns hide / reorder after that default-on.
   static final Map<String, bool> _addonFeatureMemory = {};
 
-  Future<bool> isAddonFeatureEnabled(String navId) async {
+  Future<bool> isAddonFeatureEnabled(String featureId) async {
     await ensureAddonFeaturesMigratedFromNav();
-    final key = _addonFeatureKey(navId);
+    await _migrateLiveSportsAddonFeatureKey();
+    // Alias: old callers / sync payloads that still pass the legacy id.
+    final id =
+        featureId == 'live_matches' ? liveSportsAddonFeatureId : featureId;
+    final key = _addonFeatureKey(id);
     if (key == null) return false;
-    final mem = _addonFeatureMemory[navId];
+    final mem = _addonFeatureMemory[id];
     if (mem != null) return mem;
     return kvGetBool(key, fallback: false);
   }
 
-  Future<void> setAddonFeatureEnabled(String navId, bool enabled) async {
+  Future<void> setAddonFeatureEnabled(String featureId, bool enabled) async {
     await ensureAddonFeaturesMigratedFromNav();
-    final key = _addonFeatureKey(navId);
+    await _migrateLiveSportsAddonFeatureKey();
+    final id = featureId == 'live_matches' ? liveSportsAddonFeatureId : featureId;
+    final key = _addonFeatureKey(id);
     if (key == null) return;
-    if (await isAddonFeatureEnabled(navId) == enabled) return;
-    _addonFeatureMemory[navId] = enabled;
+    if (await isAddonFeatureEnabled(id) == enabled) return;
+    _addonFeatureMemory[id] = enabled;
     await kvSetBool(key, enabled);
     playSourceChangeNotifier.value++;
     navbarChangeNotifier.value++;
@@ -816,27 +829,44 @@ class SettingsService {
     ];
   }
 
-  static String? _addonFeatureKey(String navId) => switch (navId) {
-    'iptv' => _addonFeatureIptvKey,
-    'live_matches' => _addonFeatureLiveMatchesKey,
-    _ => null,
-  };
+  static String? _addonFeatureKey(String featureId) => switch (featureId) {
+        'iptv' => _addonFeatureIptvKey,
+        liveSportsAddonFeatureId => _addonFeatureLiveSportsKey,
+        _ => null,
+      };
+
+  /// Copy legacy `addon_feature_live_matches` → `addon_feature_live_sports`.
+  Future<void> _migrateLiveSportsAddonFeatureKey() async {
+    if (await kvHasKey(_addonFeatureLiveSportsKey)) return;
+    if (!await kvHasKey(_addonFeatureLiveMatchesLegacyKey)) return;
+    final v = await kvGetBool(
+      _addonFeatureLiveMatchesLegacyKey,
+      fallback: false,
+    );
+    await kvSetBool(_addonFeatureLiveSportsKey, v);
+  }
 
   /// Upgrade from one-bit nav: visible `iptv` ⇒ feature on.
-  /// Also migrates legacy `live_matches` capability when that id was still
-  /// Addons-gated (pre–RFC-087).
+  /// Also migrates legacy visible pack tab id for Live Sports capability.
   Future<void> ensureAddonFeaturesMigratedFromNav() async {
     if (await kvHasKey(_addonFeatureFromNavMigratedKey)) return;
     final raw = await kvHasKey(_navbarConfigKey)
         ? await kvGetStringList(_navbarConfigKey, fallback: const [])
         : const <String>[];
-    for (final id in {...addonGatedNavIds, 'live_matches'}) {
+    for (final id in addonGatedNavIds) {
       final key = _addonFeatureKey(id);
       if (key == null) continue;
       if (raw.contains(id) && !await kvHasKey(key)) {
         _addonFeatureMemory[id] = true;
         await kvSetBool(key, true);
       }
+    }
+    // Old installs had the Live Sports pack tab id on the rail as the unlock.
+    if (raw.contains('live_matches') &&
+        !await kvHasKey(_addonFeatureLiveSportsKey) &&
+        !await kvHasKey(_addonFeatureLiveMatchesLegacyKey)) {
+      _addonFeatureMemory[liveSportsAddonFeatureId] = true;
+      await kvSetBool(_addonFeatureLiveSportsKey, true);
     }
     await kvSetString(_addonFeatureFromNavMigratedKey, '1');
   }
@@ -1658,7 +1688,8 @@ class SettingsService {
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
-  /// Live Sports (`live_matches`) is pack-owned (RFC-087) — not listed here.
+  /// Live Sports is pack-owned (RFC-087) — capability
+  /// [liveSportsAddonFeatureId], not a core nav id.
   static const Set<String> addonGatedNavIds = {
     'iptv',
   };
@@ -1666,7 +1697,7 @@ class SettingsService {
   /// Host / archived shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// [live_matches] is a hub pack tab id (RFC-087), registered via pack `nav`.
+  /// Live Sports tab id comes from pack `nav` only (RFC-087).
   static const List<String> _baseAllNavIds = [
     'discover',
     'similar',
@@ -2372,8 +2403,8 @@ class SettingsService {
     prefsMap[_p2pStreamingAcknowledgedKey] =
         await isP2pStreamingAcknowledged();
     prefsMap[_addonFeatureIptvKey] = await isAddonFeatureEnabled('iptv');
-    prefsMap[_addonFeatureLiveMatchesKey] =
-        await isAddonFeatureEnabled('live_matches');
+    prefsMap[_addonFeatureLiveSportsKey] =
+        await isAddonFeatureEnabled(liveSportsAddonFeatureId);
     for (final key in [
       _sortPreferenceKey,
       _debridServiceKey,

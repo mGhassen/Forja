@@ -48,7 +48,7 @@ class _LiveScheduleSheet extends StatefulWidget {
 }
 
 class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
-  static const _tvTabId = 'live_matches_schedule_sheet';
+  static const _tvTabId = 'live_sports_schedule_sheet';
   static const _statusRowId = 'live-schedule-status';
   static const _horizonRowId = 'live-schedule-horizon';
   final _firstFocus = FocusNode(debugLabel: 'live-schedule-sheet-first');

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I227-T01 | `PluginNavRegistry.refresh` prunes hub tabs gone from the pack index (and orphan visible KV) when not hydrating | ✅ |
 | 2 | I227-T02 | Pack remove / purge deactivates hub Features then `refresh` (same as pack OFF) | ✅ |
 | 3 | I227-T03 | Pack prompt uninstall deactivates hub Features before `removePack` | ✅ |
+| 4 | I227-T04 | Sync import/export/merge drop uninstalled hub `visibleIds` (`filterOutUninstalledHubNavIds`) so cloud cannot re-inject ghost pack tabs after prune; Live Sports Addons capability is `live_sports` (not a pack tab id) | ✅ |
 
 ---
 
@@ -44,9 +45,9 @@
 2. The shell rail paints from Features `visibleIds` and intentionally does **not** filter with `isContributed` (224 ATV race).
 3. Pack **disable** called `_deactivatePackHubFeatures` (hide tab in KV). Pack **uninstall / purge** only called `removePack` — no deactivate, and refresh skipped `syncActiveHubNavIds` for non-empty remaining installs (comment assumed uninstall pruned explicitly).
 
-**After:** Refresh strips hub ids that are no longer in the pack index (and orphans still in visible KV) when packs are not hydrating. Uninstall / purge / prompt uninstall deactivate hub Features then refresh.
+**After:** Refresh strips hub ids that are no longer in the pack index (and orphans still in visible KV) when packs are not hydrating. Uninstall / purge / prompt uninstall deactivate hub Features then refresh. Sync import/export/merge also drop uninstalled hub `visibleIds` so a stale cloud profile cannot re-inject e.g. `live_matches` after local prune (soft-pull fight).
 
-**Related:** [222](222-[open]-android-tv-features-empty-after-pack-install.md) · [224](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) · [RFC-081](../rfc/fixed/081-[fixed]-host-only-platform-nav-defaults.md)
+**Related:** [222](222-[open]-android-tv-features-empty-after-pack-install.md) · [224](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) · [RFC-081](../rfc/fixed/081-[fixed]-host-only-platform-nav-defaults.md) · [RFC-087](../rfc/fixed/087-[fixed]-live-sports-pack-only.md)
 
 ## Verify
 

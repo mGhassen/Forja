@@ -176,7 +176,7 @@ void main() {
 
       final v = await SettingsVisibility.resolve(service);
       expect(v.vodTab, isFalse);
-      expect(v.liveMatchesNav, isTrue);
+      expect(v.liveSportsNav, isTrue);
       expect(v.playSourceEngine, isTrue);
       expect(v.showEngine, isTrue);
       expect(v.showPlaySourceEngineToggle, isFalse);

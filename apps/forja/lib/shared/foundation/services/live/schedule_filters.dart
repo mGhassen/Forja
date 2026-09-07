@@ -68,9 +68,19 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
 
   Future<void> _hydrate() async {
     final prefs = await SharedPreferences.getInstance();
-    final catalog =
-        prefs.getString(LivePrefs.catalogFilterKey)?.trim() ?? 'all';
-    final scheduleRaw = prefs.getString(LivePrefs.scheduleKey)?.trim();
+    final catalog = (await LivePrefs.getStringMigrated(
+          prefs,
+          LivePrefs.catalogFilterKey,
+          LivePrefs.legacyCatalogFilterKey,
+        ))
+            ?.trim() ??
+        'all';
+    final scheduleRaw = (await LivePrefs.getStringMigrated(
+      prefs,
+      LivePrefs.scheduleKey,
+      LivePrefs.legacyScheduleKey,
+    ))
+        ?.trim();
     final window = liveScheduleWindowFromPref(scheduleRaw) ??
         (
           status: LiveScheduleStatus.both,
@@ -122,10 +132,11 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
 }
 
 /// Shared TV focus row ids for Live Sports browse chrome (RFC-073 A07).
+/// Zone ids only — not pack nav tab ids.
 abstract final class LiveSportsTvRows {
   LiveSportsTvRows._();
 
-  static const tabId = 'live_matches';
+  static const focusZone = 'live_sports';
   static const topBar = 'live-top-bar';
   static const sportChips = 'sport-chips';
   static const grid = 'schedule';

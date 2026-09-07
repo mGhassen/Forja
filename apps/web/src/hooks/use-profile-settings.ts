@@ -35,10 +35,18 @@ function mergeProfilePatch(
             patch.playback.addon_feature_iptv !== undefined
               ? patch.playback.addon_feature_iptv
               : current.playback?.addon_feature_iptv,
-          addon_feature_live_matches:
-            patch.playback.addon_feature_live_matches !== undefined
-              ? patch.playback.addon_feature_live_matches
-              : current.playback?.addon_feature_live_matches,
+          addon_feature_live_sports: (() => {
+            if (patch.playback.addon_feature_live_sports !== undefined) {
+              return patch.playback.addon_feature_live_sports
+            }
+            if (patch.playback.addon_feature_live_matches !== undefined) {
+              return patch.playback.addon_feature_live_matches
+            }
+            return (
+              current.playback?.addon_feature_live_sports ??
+              current.playback?.addon_feature_live_matches
+            )
+          })(),
         }
       : current.playback,
     connectedServices: {

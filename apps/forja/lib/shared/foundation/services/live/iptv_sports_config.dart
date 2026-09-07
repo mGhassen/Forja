@@ -13,7 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Product toggles / leagues for Addons → Live Sports come from the hub pack
 /// `settings` block via [PackSettingsStore] (RFC-089).
 class LiveMatchesIptvSportsConfig {
-  static const prefsKey = 'live_matches_iptv_sports_v1';
+  static const prefsKey = 'live_sports_iptv_sports_v1';
+  static const _legacyPrefsKey = 'live_matches_iptv_sports_v1';
 
   static const fieldForjaLive = 'forjaLiveEnabled';
   static const fieldForjaSports = 'forjaSportsEnabled';
@@ -21,7 +22,8 @@ class LiveMatchesIptvSportsConfig {
   static const fieldLeagues = 'leagues';
 
   /// Legacy host merge key (pre–pack settings / host-owned migrate).
-  static const mergeMatchingPrefsKey = 'live_matches_merge_matching_v1';
+  static const mergeMatchingPrefsKey = 'live_sports_merge_matching_v1';
+  static const _legacyMergeMatchingPrefsKey = 'live_matches_merge_matching_v1';
   static const mergeMatchingFieldId = fieldMergeMatching;
 
   static const allLeagues = <String>[
@@ -367,7 +369,14 @@ class LiveMatchesIptvSportsConfig {
 
   static Future<LiveMatchesIptvSportsConfig> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(prefsKey);
+    var raw = prefs.getString(prefsKey);
+    if (raw == null || raw.isEmpty) {
+      raw = prefs.getString(_legacyPrefsKey);
+      if (raw != null && raw.isNotEmpty) {
+        await prefs.setString(prefsKey, raw);
+        await prefs.remove(_legacyPrefsKey);
+      }
+    }
     LiveMatchesIptvSportsConfig base;
     if (raw == null || raw.isEmpty) {
       base = const LiveMatchesIptvSportsConfig(
@@ -474,6 +483,12 @@ class LiveMatchesIptvSportsConfig {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey(mergeMatchingPrefsKey)) {
       return prefs.getBool(mergeMatchingPrefsKey) ?? fallback;
+    }
+    if (prefs.containsKey(_legacyMergeMatchingPrefsKey)) {
+      final v = prefs.getBool(_legacyMergeMatchingPrefsKey) ?? fallback;
+      await prefs.setBool(mergeMatchingPrefsKey, v);
+      await prefs.remove(_legacyMergeMatchingPrefsKey);
+      return v;
     }
     return fallback;
   }

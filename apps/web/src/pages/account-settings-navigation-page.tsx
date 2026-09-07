@@ -51,7 +51,8 @@ function availableFromServer(
     (forjaPayloadValue as ForjaPayload | undefined)?.packs ?? []
   return availableFeatureTabIds({
     addonFeatureIptv: play?.addon_feature_iptv,
-    addonFeatureLiveMatches: play?.addon_feature_live_matches,
+    addonFeatureLiveSports:
+      play?.addon_feature_live_sports ?? play?.addon_feature_live_matches,
     packs,
   })
 }

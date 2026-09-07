@@ -65,9 +65,9 @@ void main() {
 
   group('LivePrefs', () {
     test('keeps catalog / schedule / view keys; mode keys retired', () {
-      expect(LivePrefs.catalogFilterKey, 'live_matches_forja_catalog_filter_v1');
-      expect(LivePrefs.scheduleKey, 'live_matches_schedule_v2');
-      expect(LivePrefs.viewKey, 'live_matches_timeline_view');
+      expect(LivePrefs.catalogFilterKey, 'live_sports_forja_catalog_filter_v1');
+      expect(LivePrefs.scheduleKey, 'live_sports_schedule_v2');
+      expect(LivePrefs.viewKey, 'live_sports_timeline_view');
     });
   });
 

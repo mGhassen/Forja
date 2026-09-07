@@ -6,6 +6,7 @@ import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
@@ -163,7 +164,7 @@ class SyncDomainBridge {
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 2160,
       'addon_feature_iptv': false,
-      'addon_feature_live_matches': false,
+      'addon_feature_live_sports': false,
     });
     await _settings.setNavbarConfig(
       List<String>.from(defaults.visibleNavIds),
@@ -699,6 +700,7 @@ class SyncDomainBridge {
         final localPb = Map<String, dynamic>.from(playback);
         if (!overlayAddonFeatures) {
           localPb.remove('addon_feature_iptv');
+          localPb.remove('addon_feature_live_sports');
           localPb.remove('addon_feature_live_matches');
         }
         final remotePb = remote['playback'] is Map
@@ -722,7 +724,17 @@ class SyncDomainBridge {
             overlayDomains != null &&
             overlayDomains.contains(_domainNavigation);
         final localIds = _navVisibleIds(localNav);
-        final remoteIds = _navVisibleIds(remoteNav);
+        // Ghost pack tabs (uninstalled hub visibleIds) must not block
+        // shrink or get re-pushed forever (227 sync fight).
+        final remoteIds = await PluginNavRegistry.filterOutUninstalledHubNavIds(
+          _navVisibleIds(remoteNav),
+        );
+        final remoteNavForCompare = remoteNav == null
+            ? null
+            : <String, dynamic>{
+                ...remoteNav,
+                'visibleIds': remoteIds,
+              };
         // Hollow local (KV miss / never wrote this session) must not wipe cloud
         // Features — that was the 224 soft-pull loop: flush [] then import [].
         if (localIds.isEmpty &&
@@ -733,7 +745,7 @@ class SyncDomainBridge {
             '(local=[] remote=$remoteIds)',
           );
         } else if (!intentionalNavEdit &&
-            navigationWouldShrinkCloud(remoteNav, localNav)) {
+            navigationWouldShrinkCloud(remoteNavForCompare, localNav)) {
           debugPrint('[Sync] refuse navigation shrink from non-Features push');
         } else {
           next['navigation'] = localNav;
@@ -836,12 +848,13 @@ class SyncDomainBridge {
       final pb = Map<String, dynamic>.from(playback);
       // Addons unlock flags travel with Features rail edits. Soft pull must not
       // apply stale cloud `addon_feature_*=false` while nav is still dirty —
-      // that left live_matches in visibleIds but stripped it from the rail
+      // that left pack hub tabs in visibleIds but stripped them from the rail
       // (addons={iptv} only) and flipped the Addons switch off alone (224).
       final addonEditPending =
           !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
       if (addonEditPending) {
         if (pb.containsKey('addon_feature_iptv') ||
+            pb.containsKey('addon_feature_live_sports') ||
             pb.containsKey('addon_feature_live_matches')) {
           debugPrint(
             '[Sync] skip addon_feature_* apply — local Addons/Features '
@@ -849,6 +862,7 @@ class SyncDomainBridge {
           );
         }
         pb.remove('addon_feature_iptv');
+        pb.remove('addon_feature_live_sports');
         pb.remove('addon_feature_live_matches');
       }
       // Same for Stremio / Nuvio / Direct torrent master toggles.
@@ -992,7 +1006,14 @@ class SyncDomainBridge {
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
-    final ids = await _settings.getNavbarConfig();
+    final raw = await _settings.getNavbarConfig();
+    final ids =
+        await PluginNavRegistry.filterOutUninstalledHubNavIds(raw);
+    if (ids.length != raw.length) {
+      debugPrint(
+        '[Sync] export nav drop uninstalled hubs $raw → $ids',
+      );
+    }
     final tabOrder = await _settings.getNavbarTabOrder();
     final defaultTab = await _settings.getDefaultNavTab();
     final out = <String, dynamic>{
@@ -1011,7 +1032,15 @@ class SyncDomainBridge {
     bool resetLocalFirst = false,
   }) async {
     if (payload['visibleIds'] is List) {
-      final incoming = (payload['visibleIds'] as List).cast<String>();
+      final rawIncoming = (payload['visibleIds'] as List).cast<String>();
+      final incoming =
+          await PluginNavRegistry.filterOutUninstalledHubNavIds(rawIncoming);
+      if (incoming.length != rawIncoming.length) {
+        debugPrint(
+          '[Sync] import nav drop uninstalled hubs '
+          '$rawIncoming → $incoming',
+        );
+      }
       // Only block when a Features/Addons edit is still unsynced. Synced soft
       // pull must apply cloud as SoT (including empty / shrink) so web changes
       // reach the app (224).
@@ -1247,8 +1276,8 @@ class SyncDomainBridge {
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),
       'addon_feature_iptv': await _settings.isAddonFeatureEnabled('iptv'),
-      'addon_feature_live_matches': await _settings.isAddonFeatureEnabled(
-        'live_matches',
+      'addon_feature_live_sports': await _settings.isAddonFeatureEnabled(
+        SettingsService.liveSportsAddonFeatureId,
       ),
     };
   }
@@ -1333,10 +1362,12 @@ class SyncDomainBridge {
         payload['addon_feature_iptv'] as bool,
       );
     }
-    if (payload.containsKey('addon_feature_live_matches')) {
+    final liveSports = payload['addon_feature_live_sports'] ??
+        payload['addon_feature_live_matches'];
+    if (liveSports is bool) {
       await _settings.setAddonFeatureEnabled(
-        'live_matches',
-        payload['addon_feature_live_matches'] as bool,
+        SettingsService.liveSportsAddonFeatureId,
+        liveSports,
       );
     }
   }

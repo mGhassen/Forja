@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Shell depth - back always travels up one level at a time.
@@ -23,16 +24,13 @@ enum ShellNavLevel {
 /// TV in-scope shell tab IDs - level [ShellNavLevel.page].
 /// Full metadata: [navDestinations] in `shell/nav/nav_config.dart`.
 abstract final class ShellNavPages {
-  static const tvInScope = <String>[
-    'home',
-    'search',
-    'anime',
-    'asian_drama',
-    'iptv',
-    'live_matches',
-    'mylist',
-    'settings',
-  ];
+  /// TV in-scope shell tab IDs — host core + pack-contributed hubs that are
+  /// currently registered. Do not hardcode pack tab ids.
+  static List<String> get tvInScope => [
+        'iptv',
+        'settings',
+        ...PluginNavRegistry.destinations.keys,
+      ];
 }
 
 /// Resolves the active shell level and performs level-aware pops.

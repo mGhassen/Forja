@@ -184,7 +184,9 @@ export function AccountSettingsAddonsPage() {
 
   const availableIds = availableFeatureTabIds({
     addonFeatureIptv: playDraft.draft.addon_feature_iptv,
-    addonFeatureLiveMatches: playDraft.draft.addon_feature_live_matches,
+    addonFeatureLiveSports:
+      playDraft.draft.addon_feature_live_sports ??
+      playDraft.draft.addon_feature_live_matches,
     packs: packsDraft.draft.packs,
   })
   const availableIdsRef = useRef(availableIds)
@@ -213,39 +215,57 @@ export function AccountSettingsAddonsPage() {
     void playDraft.commit((prev) => ({ ...prev, [key]: value }))
   }
 
-  /** One cloud write: unlock flag + default Features rail (no stale prune race). */
-  const setHostAddon = (navId: 'iptv' | 'live_matches', on: boolean) => {
+  /** IPTV: unlock + default Features rail. Live Sports: capability only (RFC-087). */
+  const setHostAddon = (addonId: 'iptv' | 'live_sports', on: boolean) => {
     void (async () => {
-      const flagKey =
-        navId === 'iptv' ? 'addon_feature_iptv' : 'addon_feature_live_matches'
       const prevPlay = playDraft.draft
       const prevNav = navDraft.draft
       const nextPlayback: PreferencesPayload = {
         ...prevPlay,
-        [flagKey]: on,
-        ...(navId === 'iptv' && !on ? { iptv_epg_enabled: false } : {}),
+        ...(addonId === 'iptv'
+          ? {
+              addon_feature_iptv: on,
+              ...(on ? {} : { iptv_epg_enabled: false }),
+            }
+          : {
+              addon_feature_live_sports: on,
+              addon_feature_live_matches: undefined,
+            }),
       }
       const nextAvailable = availableFeatureTabIds({
         addonFeatureIptv: nextPlayback.addon_feature_iptv,
-        addonFeatureLiveMatches: nextPlayback.addon_feature_live_matches,
+        addonFeatureLiveSports:
+          nextPlayback.addon_feature_live_sports ??
+          nextPlayback.addon_feature_live_matches,
         packs: packsDraft.draft.packs,
       })
-      const visible = new Set(prevNav.visible)
-      if (on) visible.add(navId)
-      else visible.delete(navId)
-      const order = prevNav.order.includes(navId)
-        ? prevNav.order
-        : on
-          ? [...prevNav.order, navId]
-          : prevNav.order
-      const nextNav = pruneNavigationToAvailable(
+
+      let nextNav = pruneNavigationToAvailable(
         {
-          visibleIds: order.filter((id) => visible.has(id)),
-          tabOrder: order,
+          visibleIds: [...prevNav.visible],
+          tabOrder: prevNav.order,
           defaultTab: prevNav.defaultTab,
         },
         nextAvailable,
       )
+      if (addonId === 'iptv') {
+        const visible = new Set(nextNav.visibleIds)
+        if (on) visible.add('iptv')
+        else visible.delete('iptv')
+        const order = nextNav.tabOrder.includes('iptv')
+          ? nextNav.tabOrder
+          : on
+            ? [...nextNav.tabOrder, 'iptv']
+            : nextNav.tabOrder
+        nextNav = pruneNavigationToAvailable(
+          {
+            visibleIds: order.filter((id) => visible.has(id)),
+            tabOrder: order,
+            defaultTab: nextNav.defaultTab,
+          },
+          nextAvailable,
+        )
+      }
 
       playDraft.setDraft(nextPlayback)
       navDraft.setDraft({
@@ -274,12 +294,12 @@ export function AccountSettingsAddonsPage() {
     })()
   }
 
-  const hostAddonOn = (navId: 'iptv' | 'live_matches'): boolean => {
-    const flag =
-      navId === 'iptv'
-        ? playDraft.draft.addon_feature_iptv
-        : playDraft.draft.addon_feature_live_matches
-    return flag === true
+  const hostAddonOn = (addonId: 'iptv' | 'live_sports'): boolean => {
+    if (addonId === 'iptv') return playDraft.draft.addon_feature_iptv === true
+    return (
+      playDraft.draft.addon_feature_live_sports === true ||
+      playDraft.draft.addon_feature_live_matches === true
+    )
   }
 
   const footerSaving = hostBusy || playDraft.isSaving || navDraft.isSaving
@@ -321,9 +341,9 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Live Sports"
-          description="Live Matches tab, live provider packs, schedule catalogs"
-          checked={hostAddonOn('live_matches')}
-          onCheckedChange={(v) => setHostAddon('live_matches', v)}
+          description="Schedule catalogs and live provider packs (hub tab comes from the Live Sports pack)"
+          checked={hostAddonOn('live_sports')}
+          onCheckedChange={(v) => setHostAddon('live_sports', v)}
           href="/account/settings/live-sports"
           hrefLabel="Plugins"
           disabled={busy}

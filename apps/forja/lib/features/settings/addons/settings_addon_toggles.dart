@@ -9,6 +9,7 @@ import 'package:forja/features/settings/providers/settings_visibility_provider.d
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
@@ -28,18 +29,18 @@ bool addonMasterEnabled({
     SettingsAddonId.nuvio => snap?.playSourceNuvio ?? false,
     SettingsAddonId.debrid => debridEnabled,
     SettingsAddonId.iptv => visibility.iptvNav,
-    SettingsAddonId.liveSports => visibility.liveMatchesNav,
+    SettingsAddonId.liveSports => visibility.liveSportsNav,
     SettingsAddonId.lan => lanEnabled,
     _ => false,
   };
 }
 
-/// Nav id for Addons-gated host features (RFC-086).
-/// Live Sports keeps a capability flag id (`live_matches`) but is pack-owned
-/// for navbar (RFC-087) — not in [SettingsService.addonGatedNavIds].
+/// Nav / capability id for Addons-gated host features (RFC-086 / RFC-087).
+/// Live Sports uses [SettingsService.liveSportsAddonFeatureId] — never a pack
+/// nav tab id.
 String? addonFeatureNavId(String addonId) => switch (addonId) {
   SettingsAddonId.iptv => 'iptv',
-  SettingsAddonId.liveSports => 'live_matches',
+  SettingsAddonId.liveSports => SettingsService.liveSportsAddonFeatureId,
   _ => null,
 };
 
@@ -100,7 +101,7 @@ Future<bool> setAddonMasterEnabled(
       noteNavigationDirty();
       await settings.setAddonFeatureEnabled(featureNavId!, val);
       if (!val) {
-        await settings.setNavbarTabVisible(featureNavId, false);
+        await PluginNavRegistry.refresh(notify: true);
       }
     case SettingsAddonId.lan:
       await LanPrefs.instance.setLanServerEnabled(val);
