@@ -154,7 +154,10 @@ mixin _IptvControllerPortal on ChangeNotifier {
         }
       }
 
-      if (newAlive.isNotEmpty) await IptvStore.save(_c.verified);
+      if (newAlive.isNotEmpty) {
+        await IptvStore.save(_c.verified);
+        await SyncDomainBridge.instance.flushIptvPushIfDirty();
+      }
 
       // Get-More is meaningful if either (a) we still have queued portals
       // we haven't verified yet, or (b) the catalog has more pages.
@@ -348,6 +351,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       ..clear()
       ..addAll(_c.verified.map((x) => x.credKey));
     await IptvStore.save(_c.verified);
+    await SyncDomainBridge.instance.flushIptvPushIfDirty();
     if (wasActive) {
       await _c.selectPortal(v);
     } else {
@@ -470,6 +474,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     _c.isAdding = false;
     if (verified == null) {
       _c.addError = _verifyFailedError(platform);
+      debugPrint('[IPTV] addManual verify failed platform=${platform.wire}');
       notifyListeners();
       return;
     }
@@ -478,6 +483,11 @@ mixin _IptvControllerPortal on ChangeNotifier {
     _c.verified = _c._sortPortals([v, ..._c.verified]);
     _c._verifiedKeys.add(v.credKey);
     await IptvStore.save(_c.verified);
+    // Push before portal-panel cloud pull can wipe the new row (issue 229).
+    await SyncDomainBridge.instance.flushIptvPushIfDirty();
+    debugPrint(
+      '[IPTV] addManual ok key=${v.key} local=${_c.verified.length}',
+    );
     _c.showAddDialog = false;
     if (!closePanel) _c.openPortalPanel();
     await _c.selectPortal(v, closePanel: closePanel);
@@ -656,6 +666,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       }
       _c.verified = _c._sortPortals([...newAlive, ..._c.verified]);
       await IptvStore.save(_c.verified);
+      await SyncDomainBridge.instance.flushIptvPushIfDirty();
     }
 
     isImporting = false;

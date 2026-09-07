@@ -247,6 +247,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [226-[fixed]-…](fixed/226-[fixed]-live-sports-stuck-loading-after-pack-update.md) | Live Sports stuck Loading catalogs after pack update | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [227-[open]-…](227-[open]-uninstall-hub-pack-leaves-navbar-ghost.md) | Uninstall hub pack leaves navbar ghost tab | P1 | High | open | 3/3 · A 0/2 | — |
 | [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Cloud packs auto-install (no install confirm) | P0 | Critical | open | 4/4 · A 0/3 | — |
+| [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

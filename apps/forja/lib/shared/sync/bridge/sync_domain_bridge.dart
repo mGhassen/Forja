@@ -257,12 +257,16 @@ class SyncDomainBridge {
         final pending = Set<String>.from(_pushTimers.keys);
         final navDirty = _navigationLocalGen != _navigationSyncedGen;
         final prefsDirty = _preferencesLocalGen != _preferencesSyncedGen;
+        final iptvDirty = _iptvLocalGen != _iptvSyncedGen;
         cancelPendingPushes();
         // Flush local edits before pull so cloud SoT soft-pull can apply web
         // changes without racing an unsynced Features/Addons enable (224).
+        // IPTV dirty must flush too — empty cloud pull after add wiped portals
+        // before the debounced push (229).
         final flush = <String>{...pending};
         if (navDirty) flush.add(_domainNavigation);
         if (prefsDirty) flush.add(_domainPreferences);
+        if (iptvDirty) flush.add(_domainIptv);
         if (flush.isNotEmpty) {
           await pushAllLocal(
             pushIptvIfLocalEmpty: false,
@@ -336,7 +340,13 @@ class SyncDomainBridge {
     // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
     final nav = await _settings.getNavbarConfig();
     if (nav.contains('iptv')) {
-      await _pullAndApplyUserIptvPortals();
+      if (_iptvLocalGen != _iptvSyncedGen) {
+        debugPrint(
+          '[Sync] skip IPTV soft-pull apply — local inventory still dirty',
+        );
+      } else {
+        await _pullAndApplyUserIptvPortals();
+      }
     } else {
       // No IPTV tab — skip portal pull; clear stale portals for this profile.
       // (Not a Features/Home failure — Home lives in navigation.visibleIds.)
@@ -355,7 +365,42 @@ class SyncDomainBridge {
   /// actually changed. Returns `false` when the pull failed and local was kept.
   Future<bool> pullIptvPortalsFromCloud() async {
     if (!SyncService.instance.isSignedIn) return false;
+    // Panel open after add used to pull empty cloud over the just-saved row
+    // before the 3s debounce push (229). Flush first; skip apply if still dirty.
+    await flushIptvPushIfDirty();
+    if (_iptvLocalGen != _iptvSyncedGen) {
+      debugPrint('[Sync] skip IPTV pull — local inventory still dirty');
+      return false;
+    }
     return _pullAndApplyUserIptvPortals();
+  }
+
+  /// Mark IPTV cache dirty before / with a scheduled push so pulls cannot apply
+  /// empty cloud over an unsynced add/edit.
+  void noteIptvDirty() {
+    if (_iptvLocalGen == _iptvSyncedGen) {
+      _iptvLocalGen++;
+    }
+  }
+
+  /// Cancel debounced IPTV timer and push now. Used after add/edit and before
+  /// portal-panel cloud pulls.
+  Future<bool> flushIptvPushIfDirty() async {
+    if (!SyncService.instance.isSignedIn) return true;
+    final pendingTimer = _pushTimers.containsKey(_domainIptv);
+    if (_iptvLocalGen == _iptvSyncedGen && !pendingTimer) return true;
+    noteIptvDirty();
+    _pushTimers.remove(_domainIptv)?.cancel();
+    final gen = _iptvLocalGen;
+    final ok = await _pushUserIptvPortals(
+      pushIfLocalEmpty: false,
+      allowEmptyWipe: false,
+      allowShrink: false,
+    );
+    if (ok && gen == _iptvLocalGen) {
+      _iptvSyncedGen = gen;
+    }
+    return ok;
   }
 
   /// Push lean settings + IPTV.
@@ -415,32 +460,42 @@ class SyncDomainBridge {
     final pushIptv =
         overlayDomains == null || overlayDomains.contains(_domainIptv);
     if (pushIptv) {
-      await _pushUserIptvPortals(
+      final iptvGenAtStart = _iptvLocalGen;
+      final ok = await _pushUserIptvPortals(
         pushIfLocalEmpty: pushIptvIfLocalEmpty,
         allowEmptyWipe: allowEmptyIptvWipe,
         allowShrink: allowIptvShrink,
       );
+      if (ok && iptvGenAtStart == _iptvLocalGen) {
+        _iptvSyncedGen = iptvGenAtStart;
+      }
     }
   }
 
   /// User intentionally cleared every portal - sync empty assignments to cloud.
   Future<void> pushEmptyIptvInventory() async {
     if (!SyncService.instance.isSignedIn) return;
-    await _pushUserIptvPortals(
+    noteIptvDirty();
+    final gen = _iptvLocalGen;
+    final ok = await _pushUserIptvPortals(
       pushIfLocalEmpty: true,
       allowEmptyWipe: true,
       allowShrink: true,
     );
+    if (ok && gen == _iptvLocalGen) _iptvSyncedGen = gen;
   }
 
   /// User deleted one or more portals - allow cloud assignment count to drop.
   Future<void> pushIptvInventoryAfterDelete() async {
     if (!SyncService.instance.isSignedIn) return;
-    await _pushUserIptvPortals(
+    noteIptvDirty();
+    final gen = _iptvLocalGen;
+    final ok = await _pushUserIptvPortals(
       pushIfLocalEmpty: true,
       allowEmptyWipe: false,
       allowShrink: true,
     );
+    if (ok && gen == _iptvLocalGen) _iptvSyncedGen = gen;
   }
 
   /// Mark Features/Addons nav dirty before KV write finishes so a concurrent
@@ -479,6 +534,9 @@ class SyncDomainBridge {
         overlayDomains: {domain},
       );
       return;
+    }
+    if (domain == _domainIptv) {
+      noteIptvDirty();
     }
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
@@ -982,7 +1040,7 @@ class SyncDomainBridge {
     }
   }
 
-  Future<void> _pushUserIptvPortals({
+  Future<bool> _pushUserIptvPortals({
     required bool pushIfLocalEmpty,
     required bool allowEmptyWipe,
     required bool allowShrink,
@@ -993,32 +1051,32 @@ class SyncDomainBridge {
         debugPrint(
           '[Sync] skip IPTV push - empty local cache (cloud is master)',
         );
-        return;
+        return false;
       }
       if (!allowEmptyWipe) {
         debugPrint(
           '[Sync] refuse empty IPTV replace - empty cache must not wipe cloud',
         );
-        return;
+        return false;
       }
       await SyncService.instance.replaceUserIptvPortals(
         const [],
         allowShrink: true,
       );
-      return;
+      return true;
     }
 
     final cloudCount = await SyncService.instance.countUserIptvPortals();
     if (cloudCount < 0) {
       debugPrint('[Sync] refuse IPTV replace - cloud count unavailable');
-      return;
+      return false;
     }
     // Thin local cache must never replace a larger cloud inventory (096 / 118).
     if (!allowEmptyWipe && !allowShrink && cloudCount > portals.length) {
       debugPrint(
         '[Sync] refuse IPTV shrink - local ${portals.length} < cloud $cloudCount',
       );
-      return;
+      return false;
     }
 
     final favorites = await IptvStore.loadFavorites();
@@ -1049,7 +1107,7 @@ class SyncDomainBridge {
     // Upserts failed entirely - do not delete cloud assignments.
     if (assignments.isEmpty) {
       debugPrint('[Sync] refuse IPTV replace - no portal ids resolved');
-      return;
+      return false;
     }
     // Partial upsert must never over-shrink (even intentional delete).
     if (assignments.length < portals.length) {
@@ -1057,20 +1115,24 @@ class SyncDomainBridge {
         '[Sync] refuse IPTV replace - resolved ${assignments.length} of '
         '${portals.length} local portals',
       );
-      return;
+      return false;
     }
     if (!allowEmptyWipe && !allowShrink && cloudCount > assignments.length) {
       debugPrint(
         '[Sync] refuse IPTV shrink after upsert - '
         'resolved ${assignments.length} < cloud $cloudCount',
       );
-      return;
+      return false;
     }
 
     await SyncService.instance.replaceUserIptvPortals(
       assignments,
       allowShrink: allowEmptyWipe || allowShrink,
     );
+    debugPrint(
+      '[Sync] IPTV replace ok assignments=${assignments.length}',
+    );
+    return true;
   }
 
   Future<bool> _pullAndApplyUserIptvPortals() async {
@@ -1462,8 +1524,10 @@ class SyncDomainBridge {
   }
 }
 
-void scheduleIptvSyncPush() =>
-    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainIptv);
+void scheduleIptvSyncPush() {
+  SyncDomainBridge.instance.noteIptvDirty();
+  SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainIptv);
+}
 
 Future<void> schedulePreferencesSyncPush() {
   SyncDomainBridge.instance.notePreferencesDirty();
