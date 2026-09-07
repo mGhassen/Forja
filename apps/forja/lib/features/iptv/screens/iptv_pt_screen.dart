@@ -23,7 +23,7 @@ import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
 import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
-import 'package:forja/shared/foundation/components/lists/list_letter_jump_scope.dart';
+import 'package:forja/shared/foundation/components/chrome/letter_jump_scope.dart';
 import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';

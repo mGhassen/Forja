@@ -5,7 +5,7 @@ import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Poster frame for hub catalog rows.
@@ -178,8 +178,8 @@ class KitPosterCard extends StatelessWidget {
                       if (!compact && listPin != null)
                         listPin!
                       else if (!compact && listTarget != null)
-                        MyListButton.hub(
-                          hubTarget: listTarget!,
+                        KitListStatusButton.follow(
+                          followTarget: listTarget!,
                           excludeFromTvTraversal: true,
                           iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
                         ),

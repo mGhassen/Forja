@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/components/lists/list_letter_jump_scope.dart';
+import 'package:forja/shared/foundation/components/chrome/letter_jump_scope.dart';
 
 void main() {
   group('ListLetterJumpMatcher', () {

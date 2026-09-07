@@ -325,7 +325,7 @@ class _SearchCard extends StatelessWidget {
             Positioned(
               top: 6,
               left: 6,
-              child: _AddToMyListButton(movie: movie),
+              child: _AddToKitListStatusButton(movie: movie),
             ),
           ],
         ),
@@ -507,9 +507,9 @@ class _StremioSearchCard extends StatelessWidget {
 // My List button helpers for search cards
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AddToMyListButton extends StatelessWidget {
+class _AddToKitListStatusButton extends StatelessWidget {
   final Movie movie;
-  const _AddToMyListButton({required this.movie});
+  const _AddToKitListStatusButton({required this.movie});
 
   @override
   Widget build(BuildContext context) {

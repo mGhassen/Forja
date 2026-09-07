@@ -23,7 +23,7 @@ shared/foundation/components/update/          # update dialog + progress banner
 shared/foundation/components/packs/           # pack choice cards, install progress
 shared/foundation/primitives/brand/           # logo, splash logo, profile avatar
 shared/foundation/components/playback/        # stream/torrent loading, resolve failure
-shared/foundation/components/lists/           # my-list button, letter jump, list status
+shared/foundation/components/chrome/          # kit list status pin, letter jump, filters
 shared/foundation/components/search/          # recent search helper tile
 shared/foundation/components/account/         # keychain consent
 ```

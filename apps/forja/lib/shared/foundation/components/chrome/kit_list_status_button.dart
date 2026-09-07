@@ -89,8 +89,8 @@ void _toastStatusWrite(bool ok, String to) {
   }
 }
 
-class MyListButton extends StatelessWidget {
-  const MyListButton.movie({
+class KitListStatusButton extends StatelessWidget {
+  const KitListStatusButton.movie({
     super.key,
     required Movie this.movie,
     this.useHeartIcon = false,
@@ -100,11 +100,11 @@ class MyListButton extends StatelessWidget {
     this.excludeFromTvTraversal = false,
     this.knownStatus,
   }) : stremioItem = null,
-       hubTarget = null;
+       followTarget = null;
 
-  const MyListButton.hub({
+  const KitListStatusButton.follow({
     super.key,
-    required HubListFollowTarget this.hubTarget,
+    required HubListFollowTarget this.followTarget,
     this.iconSize,
     this.iconColor,
     this.iconColorActive,
@@ -114,7 +114,7 @@ class MyListButton extends StatelessWidget {
        stremioItem = null,
        useHeartIcon = false;
 
-  const MyListButton.stremio({
+  const KitListStatusButton.stremio({
     super.key,
     required Map<String, dynamic> this.stremioItem,
     this.useHeartIcon = false,
@@ -123,12 +123,12 @@ class MyListButton extends StatelessWidget {
     this.iconSize,
     this.excludeFromTvTraversal = false,
   }) : movie = null,
-       hubTarget = null,
+       followTarget = null,
        knownStatus = null;
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
-  final HubListFollowTarget? hubTarget;
+  final HubListFollowTarget? followTarget;
   final bool useHeartIcon;
   final Color? iconColor;
   final Color? iconColorActive;
@@ -143,9 +143,9 @@ class MyListButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (hubTarget != null) {
+    if (followTarget != null) {
       return _StatusPin(
-        uniqueId: hubTarget!.uniqueId,
+        uniqueId: followTarget!.uniqueId,
         iconSize: iconSize,
         iconColor: iconColor,
         iconColorActive: iconColorActive,
@@ -156,7 +156,7 @@ class MyListButton extends StatelessWidget {
           try {
             container = ProviderScope.containerOf(context, listen: false);
           } catch (_) {}
-          return HubListFollow.setStatus(hubTarget!, to, container: container);
+          return HubListFollow.setStatus(followTarget!, to, container: container);
         },
       );
     }
@@ -687,8 +687,8 @@ class MyListHeroIcon extends StatelessWidget {
 }
 
 /// Glass hero **+** pill; status menu floats in an [Overlay] (no row reflow).
-class ListStatusHeroControl extends StatefulWidget {
-  const ListStatusHeroControl({
+class KitListStatusControl extends StatefulWidget {
+  const KitListStatusControl({
     super.key,
     required this.uniqueId,
     required this.onSetStatus,
@@ -714,10 +714,10 @@ class ListStatusHeroControl extends StatefulWidget {
   static int extraFocusSlots(bool menuOpen) => 0;
 
   @override
-  State<ListStatusHeroControl> createState() => _ListStatusHeroControlState();
+  State<KitListStatusControl> createState() => _KitListStatusControlState();
 }
 
-class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
+class _KitListStatusControlState extends State<KitListStatusControl> {
   final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
   FocusNode? _returnFocus;
@@ -1001,7 +1001,7 @@ class MyListHeroStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListStatusHeroControl(
+    return KitListStatusControl(
       uniqueId: MyListService.movieId(movie.id, movie.mediaType),
       onSetStatus: (to) => _setStatus(context, to),
       tvTabId: tvTabId,

@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -138,7 +138,7 @@ class MoviePosterCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (!compact)
-                        MyListButton.movie(
+                        KitListStatusButton.movie(
                           movie: movie,
                           excludeFromTvTraversal: true,
                           iconSize:

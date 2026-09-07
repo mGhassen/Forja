@@ -31,7 +31,7 @@ import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/details/kit_sources.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_hero.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
-import 'package:forja/shared/foundation/components/lists/hub_list_status_hero.dart';
+import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details_body.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';
@@ -891,7 +891,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
               ],
               if (listTarget != null) ...[
                 const SizedBox(width: 10),
-                HubListStatusHero(
+                KitListStatusHero(
                   target: listTarget,
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                   tvItemIndexStart: listIndex!,

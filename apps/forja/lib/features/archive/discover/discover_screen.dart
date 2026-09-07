@@ -731,7 +731,7 @@ class _DiscoverCard extends StatelessWidget {
             // My List add/remove button
             Positioned(
               top: 8, left: 8,
-              child: _AddToMyListButton(movie: movie),
+              child: _AddToKitListStatusButton(movie: movie),
             ),
           ],
         ),
@@ -740,9 +740,9 @@ class _DiscoverCard extends StatelessWidget {
   }
 }
 
-class _AddToMyListButton extends StatelessWidget {
+class _AddToKitListStatusButton extends StatelessWidget {
   final Movie movie;
-  const _AddToMyListButton({required this.movie});
+  const _AddToKitListStatusButton({required this.movie});
 
   @override
   Widget build(BuildContext context) {

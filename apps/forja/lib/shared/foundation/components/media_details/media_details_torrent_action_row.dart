@@ -6,7 +6,7 @@ import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 

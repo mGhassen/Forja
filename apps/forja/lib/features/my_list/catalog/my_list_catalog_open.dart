@@ -4,7 +4,7 @@ import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:rust/rust.dart';
 
 Future<void> openMyListCatalogEntry(
@@ -53,10 +53,10 @@ Widget? myListEntryPin(
 ) {
   final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
   final knownStatus = entry.listStatus ?? tabStatus;
-  final hubTarget = listFollowTargetFromLegacyItemSync(entry.legacyRow);
-  if (hubTarget != null) {
-    return MyListButton.hub(
-      hubTarget: hubTarget,
+  final followTarget = listFollowTargetFromLegacyItemSync(entry.legacyRow);
+  if (followTarget != null) {
+    return KitListStatusButton.follow(
+      followTarget: followTarget,
       excludeFromTvTraversal: true,
       iconSize: iconSize,
       knownStatus: knownStatus,
@@ -69,7 +69,7 @@ Widget? myListEntryPin(
   final row = entry.legacyRow;
   final mt = row['mediaType']?.toString() ?? 'movie';
   final mediaType = (mt == 'tv' || mt == 'series') ? 'tv' : 'movie';
-  return MyListButton.movie(
+  return KitListStatusButton.movie(
     movie: Movie(
       id: tmdbId,
       imdbId: row['imdbId']?.toString(),

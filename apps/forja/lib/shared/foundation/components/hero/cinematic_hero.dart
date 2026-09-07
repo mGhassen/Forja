@@ -18,8 +18,8 @@ import 'package:forja/shared/foundation/components/posters/home_loading_skeleton
 import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
-import 'package:forja/shared/foundation/components/lists/hub_list_status_hero.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -1909,7 +1909,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             enabled: focusable,
           )
         : heroItem.listTarget != null
-            ? HubListStatusHero(
+            ? KitListStatusHero(
                 target: heroItem.listTarget!,
                 tvTabId: focusable && tvNav ? tabId : null,
                 tvItemIndexStart: focusable && tvNav ? 1 : 0,

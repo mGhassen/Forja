@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/foundation/components/lists/my_list_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 
 class MoviePoster extends StatefulWidget {
   final Movie movie;
@@ -131,7 +131,7 @@ class _MoviePosterState extends State<MoviePoster> {
                 Positioned(
                   top: 6,
                   left: 6,
-                  child: MyListButton.movie(
+                  child: KitListStatusButton.movie(
                     movie: widget.movie,
                     excludeFromTvTraversal: true,
                     iconSize: 16,
