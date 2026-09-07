@@ -396,9 +396,7 @@ class EnginePack {
         : plugins.first.name;
     return EnginePack(
       sourceUrl: sourceUrl,
-      packId: packIdRaw.isNotEmpty
-          ? packIdRaw
-          : EnginePack.packIdFromSourceUrl(sourceUrl),
+      packId: resolvePackId(sourceUrl: sourceUrl, manifestId: packIdRaw),
       name: name,
       version: (j['version'] as String?)?.trim() ?? '0.0.0',
       plugins: plugins,
@@ -431,7 +429,66 @@ class EnginePack {
     return plugin.copyWith(prelude: packPrelude);
   }
 
-  /// Derive a stable packId when the manifest omits `id`.
+  /// Pack identity (RFC-094): prefer legacy manifest `id`, else official-tree
+  /// slot, else `pack-<urlHash>`. Community packs omit `id`.
+  static String resolvePackId({
+    required String sourceUrl,
+    String? manifestId,
+  }) {
+    final raw = manifestId?.trim() ?? '';
+    if (raw.isNotEmpty) return raw;
+    final slot = forjaHqSlot(sourceUrl);
+    if (slot != null) {
+      return officialPackIdForSlot(slot) ?? packIdFromSourceUrl(sourceUrl);
+    }
+    return packIdFromSourceUrl(sourceUrl);
+  }
+
+  /// Path-pattern slot under `plugins/` (null for arbitrary community URLs).
+  static String? forjaHqSlot(String url) {
+    final path = url.trim().replaceAll('\\', '/').toLowerCase();
+    const core = {
+      'plugins/providers/manifest.json': 'providers',
+      'plugins/catalog/manifest.json': 'catalog',
+      'plugins/live/manifest.json': 'live',
+      'plugins/torrent/manifest.json': 'torrent',
+      'plugins/hubs/home/manifest.json': 'home',
+      'plugins/hubs/manifest.json': 'home',
+      'plugins/iptv/vod/manifest.json': 'iptv-vod',
+      'plugins/hubs/iptv/manifest.json': 'iptv-vod',
+    };
+    for (final e in core.entries) {
+      if (path.endsWith(e.key)) return e.value;
+    }
+    final hub =
+        RegExp(r'plugins/hubs/([^/]+)/manifest\.json$').firstMatch(path);
+    if (hub != null) return hub.group(1);
+    return null;
+  }
+
+  /// Stable packId for official tree slots when manifest omits `id`.
+  static String? officialPackIdForSlot(String slot) {
+    const map = {
+      'home': 'forjahq-home',
+      'anime': 'forjahq-anime',
+      'asian_drama': 'forjahq-asian-drama',
+      'arabic': 'forjahq-arabic',
+      'kids': 'forjahq-kids',
+      'cartoon': 'forjahq-cartoon',
+      'aflem': 'forjahq-aflem',
+      'live_sports': 'forjahq-live-sports',
+      'live_sports_cards': 'forjahq-live-sports-cards',
+      'my_list': 'forjahq-my-list',
+      'providers': 'forjahq-providers',
+      'catalog': 'forjahq-catalog',
+      'live': 'forjahq-live',
+      'torrent': 'forjahq-torrent',
+      'iptv-vod': 'forjahq-iptv-vod',
+    };
+    return map[slot];
+  }
+
+  /// Derive a stable packId when the manifest omits `id` (community URLs).
   static String packIdFromSourceUrl(String sourceUrl) =>
       'pack-${urlHash(sourceUrl)}';
 
@@ -461,9 +518,7 @@ class EnginePack {
     final packIdRaw = (j['packId'] as String?)?.trim() ?? '';
     return EnginePack(
       sourceUrl: sourceUrl,
-      packId: packIdRaw.isNotEmpty
-          ? packIdRaw
-          : packIdFromSourceUrl(sourceUrl),
+      packId: resolvePackId(sourceUrl: sourceUrl, manifestId: packIdRaw),
       name: (j['name'] as String?) ?? 'Engine',
       version: (j['version'] as String?) ?? '0.0.0',
       enabled: (j['enabled'] as bool?) ?? true,

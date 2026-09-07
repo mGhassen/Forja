@@ -1,10 +1,9 @@
 {
   "schema": 1,
-  "id": "forjahq-live-sports-cards",
   "name": "ForjaHQ Live Sports Cards",
   "description": "Live sports schedule as cards with a details page.",
   "author": "ForjaHQ",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "tags": [
     "sports",
     "live"

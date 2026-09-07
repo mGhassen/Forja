@@ -1,10 +1,9 @@
 {
   "schema": 1,
-  "id": "forjahq-providers",
   "name": "ForjaHQ Providers",
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
-  "version": "1.5.32",
+  "version": "1.5.33",
   "tags": [
     "providers",
     "anime",

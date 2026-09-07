@@ -1,10 +1,9 @@
 {
   "schema": 1,
-  "id": "forjahq-kids",
   "name": "ForjaHQ Kids",
   "description": "Dimakids Arabic kids cartoons and movies hub.",
   "author": "ForjaHQ",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "tags": [
     "kids",
     "arabic"

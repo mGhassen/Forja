@@ -34,9 +34,9 @@ abstract final class PluginContract {
     if (schema != null && schema != manifestSchemaVersion) {
       throw FormatException('unsupported manifest schema: $schema');
     }
-    _requireString(map, 'id');
     _requireString(map, 'name');
     _requireString(map, 'version');
+    // Pack `id` optional (RFC-094) — host derives from install URL.
     // Pack never owns on/off — host Settings (Forja Packs / Features) only.
     if (map.containsKey('enabled')) {
       throw const FormatException(

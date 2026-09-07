@@ -1,10 +1,9 @@
 {
   "schema": 1,
-  "id": "forjahq-cartoon",
   "name": "ForjaHQ Cartoon",
   "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
   "author": "ForjaHQ",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "tags": [
     "cartoon",
     "arabic"

@@ -117,26 +117,7 @@ class PluginRegistry {
 
   /// Path-pattern helper for Settings grouping — not pack inventory.
   @visibleForTesting
-  static String? forjaHqSlot(String url) {
-    final path = url.trim().replaceAll('\\', '/').toLowerCase();
-    const core = {
-      'plugins/providers/manifest.json': 'providers',
-      'plugins/catalog/manifest.json': 'catalog',
-      'plugins/live/manifest.json': 'live',
-      'plugins/torrent/manifest.json': 'torrent',
-      'plugins/hubs/home/manifest.json': 'home',
-      'plugins/hubs/manifest.json': 'home',
-      'plugins/iptv/vod/manifest.json': 'iptv-vod',
-      // Legacy path before IPTV VOD left `plugins/hubs/`.
-      'plugins/hubs/iptv/manifest.json': 'iptv-vod',
-    };
-    for (final e in core.entries) {
-      if (path.endsWith(e.key)) return e.value;
-    }
-    final hub = RegExp(r'plugins/hubs/([^/]+)/manifest\.json$').firstMatch(path);
-    if (hub != null) return hub.group(1);
-    return null;
-  }
+  static String? forjaHqSlot(String url) => EnginePack.forjaHqSlot(url);
 
   /// Hub manifest slot (any path under `plugins/hubs/` except monolith home alias).
   static bool isHubManifestSlot(String? slot) {

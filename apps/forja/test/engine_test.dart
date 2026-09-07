@@ -389,6 +389,28 @@ void main() {
       );
     });
 
+    test('resolvePackId derives from URL when manifest omits id', () {
+      expect(
+        EnginePack.resolvePackId(
+          sourceUrl:
+              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/anime/manifest.json',
+        ),
+        'forjahq-anime',
+      );
+      const community = 'https://cdn.example.com/packs/x/manifest.json';
+      expect(
+        EnginePack.resolvePackId(sourceUrl: community),
+        'pack-${EnginePack.urlHash(community)}',
+      );
+      expect(
+        EnginePack.resolvePackId(
+          sourceUrl: community,
+          manifestId: 'legacy-explicit',
+        ),
+        'legacy-explicit',
+      );
+    });
+
     test('compareEngineSemver orders major.minor.patch', () {
       expect(compareEngineSemver('1.5.11', '1.5.12'), lessThan(0));
       expect(compareEngineSemver('1.5.12', '1.5.11'), greaterThan(0));
