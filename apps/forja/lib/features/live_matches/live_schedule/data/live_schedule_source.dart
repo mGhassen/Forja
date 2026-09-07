@@ -41,51 +41,60 @@ class HubLiveScheduleSource implements LiveScheduleSource {
 
   @override
   Future<List<CatalogMetaItem>> load(LiveScheduleQuery query) async {
-    await LiveMatchesEngine.warmPluginMeta();
-    final plugins =
-        await EngineService.instance.listEnabledLiveCatalogPlugins();
-    if (plugins.isEmpty) return const [];
-
-    final filter = query.catalogFilter.trim();
-    final wanted = filter.isEmpty || filter == 'all'
-        ? plugins
-        : [
-            for (final p in plugins)
-              if (EngineService.normalizeLiveSportPluginId(p.id) ==
-                      EngineService.normalizeLiveSportPluginId(filter) ||
-                  p.id == filter)
-                p,
-          ];
-    if (wanted.isEmpty) return const [];
-
-    final out = <CatalogMetaItem>[];
-    final seen = <String>{};
-    for (final plugin in wanted) {
-      try {
-        final batch = await EngineService.instance.runLiveCatalog(
-          catalogPlugin: plugin,
-        );
-        for (final row in batch) {
-          final map = Map<String, dynamic>.from(row);
-          final item = liveMetaFromScheduleRow(map);
-          if (item.id.isEmpty || !seen.add(item.id)) continue;
-          if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
-            final cat = (map['category'] ?? map['category_name'] ?? '')
-                .toString()
-                .toLowerCase();
-            if (!cat.contains(query.sportFilter.toLowerCase()) &&
-                item.type != query.sportFilter) {
-              continue;
-            }
-          }
-          out.add(item);
-        }
-      } catch (_) {
-        // Skip failed catalogs — hub UI shows per-plugin errors separately.
-      }
-    }
-    return out;
+    final rows = await loadLiveScheduleRows(query);
+    return [for (final row in rows) liveMetaFromScheduleRow(row)];
   }
+}
+
+/// Engine catalog rows (opaque maps) for kit list + play bridge.
+Future<List<Map<String, dynamic>>> loadLiveScheduleRows(
+  LiveScheduleQuery query,
+) async {
+  await LiveMatchesEngine.warmPluginMeta();
+  final plugins = await EngineService.instance.listEnabledLiveCatalogPlugins();
+  if (plugins.isEmpty) return const [];
+
+  final filter = query.catalogFilter.trim();
+  final wanted = filter.isEmpty || filter == 'all'
+      ? plugins
+      : [
+          for (final p in plugins)
+            if (EngineService.normalizeLiveSportPluginId(p.id) ==
+                    EngineService.normalizeLiveSportPluginId(filter) ||
+                p.id == filter)
+              p,
+        ];
+  if (wanted.isEmpty) return const [];
+
+  final out = <Map<String, dynamic>>[];
+  final seen = <String>{};
+  for (final plugin in wanted) {
+    try {
+      final batch = await EngineService.instance.runLiveCatalog(
+        catalogPlugin: plugin,
+      );
+      for (final row in batch) {
+        final map = Map<String, dynamic>.from(row);
+        map.putIfAbsent('pluginId', () => plugin.id);
+        map.putIfAbsent('livePluginId', () => plugin.id);
+        final item = liveMetaFromScheduleRow(map);
+        if (item.id.isEmpty || !seen.add(item.id)) continue;
+        if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
+          final cat = (map['category'] ?? map['category_name'] ?? '')
+              .toString()
+              .toLowerCase();
+          if (!cat.contains(query.sportFilter.toLowerCase()) &&
+              item.type != query.sportFilter) {
+            continue;
+          }
+        }
+        out.add(map);
+      }
+    } catch (_) {
+      // Skip failed catalogs — hub UI shows per-plugin errors separately.
+    }
+  }
+  return out;
 }
 
 /// Map a host schedule row (plugin catalog JSON) to catalog meta.
@@ -107,11 +116,16 @@ CatalogMetaItem liveMetaFromScheduleRow(Map<String, dynamic> row) {
       if (s is Map) sources.add(Map<String, dynamic>.from(s));
     }
   }
+  final category = (row['category'] ?? row['category_name'] ?? row['sport'] ?? '')
+      .toString()
+      .trim();
   return CatalogMetaItem(
     id: id,
     type: 'live_match',
     name: name,
     poster: (row['poster'] ?? row['thumbnail'] ?? '').toString(),
+    genres: category.isEmpty ? const [] : [category],
+    badge: category.isEmpty ? null : category,
     airing: airing,
     startsAt: starts.isEmpty ? null : starts,
     viewers: viewers,

@@ -50,8 +50,11 @@ abstract class _LiveSportsPlayHost {
 }
 
 /// Match streams chrome — side panel (RFC-084) or legacy full-page hero.
-class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
-  const _LiveMatchDetailsScreen({
+///
+/// Lives in `live_streams_panel.dart` (hub library part). Kit composition
+/// mounts it through the host play path (RFC-073).
+class _LiveMatchStreamsPanel extends ConsumerStatefulWidget {
+  const _LiveMatchStreamsPanel({
     required this.host,
     required this.match,
     this.iframeCatalogAnchor,
@@ -64,15 +67,15 @@ class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
   final bool asSidePanel;
 
   @override
-  ConsumerState<_LiveMatchDetailsScreen> createState() =>
-      _LiveMatchDetailsScreenState();
+  ConsumerState<_LiveMatchStreamsPanel> createState() =>
+       _LiveMatchStreamsPanelState();
 }
 
 const _kLiveTvSearchCollapsed = 40.0;
 const _kLiveTvSearchExpanded = 260.0;
 
-class _LiveMatchDetailsScreenState
-    extends ConsumerState<_LiveMatchDetailsScreen>
+class _LiveMatchStreamsPanelState
+    extends ConsumerState<_LiveMatchStreamsPanel>
     with SingleTickerProviderStateMixin {
   late final _IptvSportsChannelsPanelController _providersCtrl;
   late final _IptvSportsChannelsPanelController _liveTvCtrl;

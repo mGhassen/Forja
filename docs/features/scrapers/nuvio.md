@@ -6,31 +6,29 @@
 
 Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [TMDB details](../movies-tv/tmdb-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. **All** loads every enabled scraper but only highlights the All chip — tap one scraper to filter to it; without All, multi-select toggles as before. Opening Nuvio with **All** (or several chips) selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried. Tap a scraper chip to add it to the in-flight search (does not stop the others). First open (no saved chips yet) starts with every enabled scraper selected.
 
-Forja ships a **built-in** All-in-One Nuvio catalog. It appears in **Settings → Nuvio addons** (same scrapers as **Sources → Nuvio**). Each addon row has a switch to enable or disable every scraper in that pack (built-in included); expand the row to toggle scrapers one by one. The built-in addon cannot be removed.
+Turn on **Nuvio** under **Settings → Addons**, then install at least one Nuvio manifest (for example the community All-in-One catalog). Each addon row has a switch to enable or disable every scraper in that pack; expand the row to toggle scrapers one by one.
 
 Nuvio is **not** part of green **Play** webstreaming. Direct links only there; torrent/magnet scrapers (e.g. Torrentio) stay in **Sources** and play through the torrent engine.
 
 ## How to open it
 
-1. Enable **Nuvio** under **Play sources** in **Settings → Playback**
-2. Open a title → white **Play** / **Sources** → **Nuvio** tab
-3. Or manage addons under **Settings → Addons → Nuvio**, or on the web portal under **Profile → Addons → Nuvio** (hidden when Nuvio play source is off)
+1. Enable **Nuvio** in **Settings → Addons**
+2. Open a title → white **Play** / **Sources** → **Nuvio** tab (tab stays visible while Nuvio is on; install scrapers if the list is empty)
+3. Or manage manifests under **Settings → Addons → Nuvio**, or on the web portal under **Profile → Addons → Nuvio** (hidden when Nuvio is off)
 
 ## What you can do
 
-- See the built-in catalog and any manifests you install
-- Paste a Nuvio `manifest.json` URL and install more
-- Toggle an addon’s switch to enable or disable all of its scrapers at once (works for the built-in catalog too)
+- Paste a Nuvio `manifest.json` URL and install
+- Toggle an addon’s switch to enable or disable all of its scrapers at once
 - Expand an addon and toggle each scraper on/off without removing the addon
-- Remove a user-installed addon (trash → Yes / No confirm; not the built-in one)
+- Remove a user-installed addon (trash → Yes / No confirm)
 - In **Sources → Nuvio**, tap **All** to load every scraper (only All stays highlighted; tap **All** again to clear), or from All tap one scraper to filter to it; without All, tap scraper chips to multi-select (tap a fetched scraper again to remove their sources); the selection is remembered on this device across titles. Opening Nuvio with **All** selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried; a scraper chip shows the same animated **…** as the Nuvio tab while it is still checking; tap a chip to add it to the search (does **not** stop scrapers still running). Play a result (HTTP links play directly; magnets use the local torrent engine, or a paired desktop on Android TV)
 
 ## Setup
 
-1. Enable **Nuvio** in **Settings → Playback**
-2. Open **Settings → Sources → Nuvio addons** — the built-in catalog is already listed
-3. Optionally paste another Nuvio manifest URL and tap Install
-4. Use the addon switch to enable/disable all scrapers, or expand and toggle individually — disable noisy or slow ones
+1. Enable **Nuvio** in **Settings → Addons**
+2. Open **Settings → Addons → Nuvio** and paste a Nuvio manifest URL, then Install
+3. Use the addon switch to enable/disable all scrapers, or expand and toggle individually — disable noisy or slow ones
 
 ## Tips
 

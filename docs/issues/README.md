@@ -242,9 +242,10 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [220-[open]-…](220-[open]-live-sports-addon-nav-without-hub-pack.md) | Live Sports Addons ON but no navbar tab | P1 | High | open | 4/4 · A 3/3 | — |
 | [221-[open]-…](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) | Features Home toggle reverts after cloud sync | P0 | Critical | open | 8/8 · A 0/2 | — |
 | [222-[open]-…](222-[open]-android-tv-features-empty-after-pack-install.md) | ATV Features empty after hub pack install | P0 | Critical | open | 7/7 · A 0/2 | — |
-| [224-[open]-…](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) | ATV Addons IPTV / Live Sports toggle does not stick | P0 | Critical | open | 42/42 · A 0/4 | — |
+| [224-[open]-…](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) | ATV Addons IPTV / Live Sports toggle does not stick | P0 | Critical | open | 43/43 · A 0/4 | — |
 | [225-[open]-…](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) | Official pack install aborts batch / skips hub nav refresh | P0 | Critical | open | 4/4 · A 0/2 | — |
 | [226-[fixed]-…](fixed/226-[fixed]-live-sports-stuck-loading-after-pack-update.md) | Live Sports stuck Loading catalogs after pack update | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [227-[open]-…](227-[open]-uninstall-hub-pack-leaves-navbar-ghost.md) | Uninstall hub pack leaves navbar ghost tab | P1 | High | open | 3/3 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

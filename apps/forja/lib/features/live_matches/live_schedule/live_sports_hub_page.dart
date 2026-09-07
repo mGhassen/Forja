@@ -24,6 +24,8 @@ import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/player/player/utils.dart' show probeStreamSourceUrl;
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_live_match_dense_tile.dart';
+import 'package:forja/features/live_matches/catalog/live_schedule_filters.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
 import 'package:forja/features/live_matches/live_schedule/data/live_sport_filter.dart';
@@ -61,22 +63,27 @@ part 'chrome/live_chrome_widgets.dart';
 part 'chrome/live_top_bar_controller.dart';
 part 'body/live_match_grid.dart';
 part 'play/live_play_dispatch.dart';
-part 'play/live_details_screen.dart';
+part 'play/live_streams_panel.dart';
 part 'providers/live_schedule_provider.dart';
 
 /// Catalog hub page for Live Sports (`nav.tabId: live_matches`).
+///
+/// Full browse UI is legacy — kit browse uses [panelOnly] + [kitPanelRow] as
+/// the streams panel host beside [CatalogKitListWidget].
 class LiveSportsHubPage extends ConsumerStatefulWidget {
   const LiveSportsHubPage({
     super.key,
     this.layoutWidgets = const [],
     this.parentShellVisible = true,
     this.refreshEpoch = 0,
+    this.panelOnly = false,
+    this.kitPanelRow,
+    this.onPanelClosed,
   });
 
   static const tabId = 'live_matches';
 
-  /// Pack `layout` tree (`kit.list` + `source: live_schedule`). Unused for
-  /// chrome — host owns browse UI; kept for shell/mount identity.
+  /// Pack `layout` tree (`kit.list` + `source: live_schedule`).
   final List<Map<String, dynamic>> layoutWidgets;
 
   /// CatalogShell tab visibility — hub [ShellTabRefresh] is nested, not keyed.
@@ -84,6 +91,15 @@ class LiveSportsHubPage extends ConsumerStatefulWidget {
 
   /// Bumped by CatalogShell [onShellTabRefresh].
   final int refreshEpoch;
+
+  /// When true, only the streams panel is built (kit list owns browse).
+  final bool panelOnly;
+
+  /// Opaque schedule row from [CatalogKitListEntry.legacyRow] for [panelOnly].
+  final Map<String, dynamic>? kitPanelRow;
+
+  /// Kit browse clears selection when the panel Close is pressed.
+  final VoidCallback? onPanelClosed;
 
   @override
   ConsumerState<LiveSportsHubPage> createState() => _LiveSportsHubPageState();
@@ -98,15 +114,15 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         _LiveMatchesBuild,
         _LiveMatchesPlayback
     implements _LiveSportsPlayHost {
-  static const _tabId = LiveSportsHubPage.tabId;
-  static const _topBarRowId = 'live-top-bar';
-  static const _chipRowId = 'sport-chips';
-  static const _gridRowId = 'grid';
+  static const _tabId = LiveSportsTvRows.tabId;
+  static const _topBarRowId = LiveSportsTvRows.topBar;
+  static const _chipRowId = LiveSportsTvRows.sportChips;
+  static const _gridRowId = LiveSportsTvRows.grid;
   /// Side streams panel (Providers / Live TV) — same TvFocusGraph as browse.
-  static const _streamsTabsRowId = 'live-streams-tabs';
-  static const _streamsChromeRowId = 'live-streams-chrome';
-  static const _streamsListRowId = 'live-streams-list';
-  static const _streamsCatsRowId = 'live-streams-cats';
+  static const _streamsTabsRowId = LiveSportsTvRows.streamsTabs;
+  static const _streamsChromeRowId = LiveSportsTvRows.streamsChrome;
+  static const _streamsListRowId = LiveSportsTvRows.streamsList;
+  static const _streamsCatsRowId = LiveSportsTvRows.streamsCats;
   static const _streamsTabsSort = 10;
   static const _streamsChromeSort = 11;
   static const _streamsCatsSort = 12;
@@ -213,6 +229,8 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       _streamsPanelMatch = null;
       _streamsPanelIframeAnchor = null;
     });
+    widget.onPanelClosed?.call();
+    if (widget.panelOnly) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       (this as _LiveMatchesData)._restoreLiveMatchesTvFocus();
@@ -377,6 +395,11 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (widget.panelOnly) {
+      _openKitPanelFromRow();
+      unawaited(_refreshCapabilityFlags(reload: false));
+      return;
+    }
     // ref.invalidate needs ProviderScope — never call from initState.
     if (!_didInitialLoad) {
       _didInitialLoad = true;
@@ -397,6 +420,12 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   @override
   void didUpdateWidget(LiveSportsHubPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.panelOnly) {
+      if (oldWidget.kitPanelRow != widget.kitPanelRow) {
+        _openKitPanelFromRow();
+      }
+      return;
+    }
     if (oldWidget.parentShellVisible && !widget.parentShellVisible) {
       onShellTabHidden();
     } else if (!oldWidget.parentShellVisible && widget.parentShellVisible) {
@@ -406,6 +435,53 @@ class _LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         widget.parentShellVisible) {
       unawaited(onShellTabRefresh(force: true));
     }
+  }
+
+  void _openKitPanelFromRow() {
+    final row = widget.kitPanelRow;
+    if (row == null || row.isEmpty) return;
+    final normalized = _normalizeKitPanelRow(row);
+    final id = (normalized['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    if (_streamsPanelMatch?.id == id) return;
+    final match = _forjaLiveRowToMatch(normalized);
+    openMatchStreamsPanel(match: match);
+  }
+
+  /// Map kit/meta-shaped rows onto fields [_forjaLiveRowToMatch] expects.
+  Map<String, dynamic> _normalizeKitPanelRow(Map<String, dynamic> row) {
+    final out = Map<String, dynamic>.from(row);
+    final title = (out['title'] ?? out['name'] ?? out['event'] ?? '')
+        .toString()
+        .trim();
+    if (title.isNotEmpty) out['title'] = title;
+    if ((out['category'] ?? '').toString().trim().isEmpty) {
+      final genres = out['genres'];
+      if (genres is List && genres.isNotEmpty) {
+        out['category'] = genres.first.toString();
+      } else if ((out['badge'] ?? '').toString().trim().isNotEmpty) {
+        out['category'] = out['badge'].toString();
+      }
+    }
+    out['airing'] = out['airing'] == true ||
+        out['live'] == true ||
+        (out['status'] ?? '').toString().toLowerCase() == 'live';
+    if ((out['catalog'] ?? '').toString().isEmpty) {
+      out['catalog'] = 'forja_live';
+    }
+    final plugin = (out['livePluginId'] ?? out['pluginId'] ?? '').toString();
+    if (plugin.isNotEmpty) out['livePluginId'] = plugin;
+    if (out['date'] == null) {
+      final starts = (out['starts_at'] ?? out['startsAt'] ?? '').toString();
+      final asInt = int.tryParse(starts);
+      if (asInt != null) {
+        out['date'] = asInt > 20000000000 ? asInt : asInt * 1000;
+      } else {
+        final dt = DateTime.tryParse(starts);
+        if (dt != null) out['date'] = dt.millisecondsSinceEpoch;
+      }
+    }
+    return out;
   }
 
   void _onEnginePackChanged() {

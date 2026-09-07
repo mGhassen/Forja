@@ -4,7 +4,7 @@
 
 ## What it is
 
-Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts the catalog **kit** with a host-default layout: a dense **match list** and a **right streams panel** (Providers / Live TV). An optional ForjaHQ Live Sports hub pack can replace that layout via kit `layout`; browse and play stay host-owned.
+Live Sports is a **host feature** (Settings → Addons → Live Sports) — same class as IPTV. The tab mounts catalog kit for browse: `kit.list` + `source: live_schedule` → dense match rows (`CatalogKitListWidget`). Selecting a match opens the host **Providers** / **Live TV** streams panel beside the list. An optional ForjaHQ Live Sports hub pack can replace the layout tree; resolve and play stay host-owned.
 
 Schedules and streams come from **Forja Live** engine catalogs (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional), installed **Stremio** sport addons, and **Forja Sports** (catalog schedule matched to your Xtream portal).
 

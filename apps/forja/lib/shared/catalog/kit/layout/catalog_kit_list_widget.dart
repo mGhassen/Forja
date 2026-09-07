@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_live_match_dense_tile.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
@@ -17,8 +18,8 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:rust/rust.dart';
 
-/// Layout widget [`CatalogKitTypes.list`] — poster grid from a registered
-/// host list source (opaque `source` id and/or hub [pluginId]).
+/// Layout widget [`CatalogKitTypes.list`] — poster grid or dense list from a
+/// registered host list source (opaque `source` id and/or hub [pluginId]).
 class CatalogKitListWidget extends ConsumerStatefulWidget {
   const CatalogKitListWidget({
     super.key,
@@ -27,6 +28,11 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
     required this.refreshEpoch,
     this.pluginId = '',
     this.tvRowOrder = 0,
+    this.selectedEntryId,
+    this.onEntrySelected,
+    this.sidePanel,
+    this.dynamicKindChips = false,
+    this.onDynamicKinds,
   });
 
   final String tabId;
@@ -35,6 +41,20 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
   final String pluginId;
   final int tvRowOrder;
 
+  /// When set, dense rows highlight this entry id (list+panel).
+  final String? selectedEntryId;
+
+  /// Called when a row is activated (before [CatalogKitListSource.openEntry]).
+  final ValueChanged<CatalogKitListEntry>? onEntrySelected;
+
+  /// Optional side panel beside a dense list (Live Sports streams panel).
+  final Widget? sidePanel;
+
+  /// When true and no layout kind menu, expose unique entry kinds to parent.
+  final bool dynamicKindChips;
+
+  final ValueChanged<List<String>>? onDynamicKinds;
+
   /// Opaque pack/feature source id — empty means resolve by [pluginId] only.
   String get listSource => (layoutSpec['source'] ?? '').toString().trim();
   String get kindMenuId =>
@@ -42,6 +62,12 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
   String get statusTabId =>
       (layoutSpec['statusTab'] ?? 'status').toString();
   String get gridRowId => (layoutSpec['id'] ?? 'grid').toString();
+
+  /// `list` → dense rows; anything else → poster grid.
+  String get listStyle =>
+      (layoutSpec['style'] ?? 'grid').toString().trim().toLowerCase();
+
+  bool get isDenseList => listStyle == 'list';
 
   @override
   ConsumerState<CatalogKitListWidget> createState() =>
@@ -155,10 +181,125 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         if (page.loadingRemote && page.totalCount == 0) {
           return _loadingGrid(context);
         }
+        if (widget.dynamicKindChips || widget.onDynamicKinds != null) {
+          final kinds = <String>{};
+          for (final e in page.entriesForKind(null)) {
+            if (e.kind.isNotEmpty && e.kind != 'live_match') kinds.add(e.kind);
+          }
+          final sorted = kinds.toList()..sort();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            widget.onDynamicKinds?.call(sorted);
+          });
+        }
         final entries = page.entriesForKind(kind);
         if (entries.isEmpty) return _emptyState(context, kind: kind);
-        return _grid(context, source, entries);
+        final body = widget.isDenseList
+            ? _denseList(context, source, entries)
+            : _grid(context, source, entries);
+        final panel = widget.sidePanel;
+        if (panel == null || !widget.isDenseList) return body;
+        final wide = MediaQuery.sizeOf(context).width >= 900;
+        final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
+        if (useSideSplit) {
+          final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
+          final listFlex = 100 - panelFlex;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: listFlex, child: body),
+              Expanded(flex: panelFlex, child: panel),
+            ],
+          );
+        }
+        return Stack(
+          children: [
+            body,
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.45),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: MediaQuery.sizeOf(context).width * 0.92,
+                    child: panel,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
       },
+    );
+  }
+
+  Widget _denseList(
+    BuildContext context,
+    CatalogKitListSource source,
+    List<CatalogKitListEntry> entries,
+  ) {
+    final leading = ShellTokens.compactChromeLeadingInset(context);
+    final list = ListView.separated(
+      controller: _scroll,
+      padding: EdgeInsets.fromLTRB(
+        leading,
+        4 + _hoistedTopBarInset(context),
+        ShellTokens.bodyHorizontalPadding,
+        shellTvCatalogScrollBottomGap(context),
+      ),
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => Divider(
+        height: 1,
+        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+      ),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        final meta = entry.meta;
+        final airing = meta.airing == true;
+        final selected = widget.selectedEntryId != null &&
+            widget.selectedEntryId == meta.id;
+        return HubLiveMatchDenseTile(
+          title: meta.name,
+          meta: hubLiveMatchDenseMetaLine(
+            airing: airing,
+            startsAt: meta.startsAt,
+            badge: meta.badge,
+            genres: meta.genres,
+          ),
+          airing: airing,
+          viewers: meta.viewers ?? 0,
+          selected: selected,
+          index: index,
+          playable: true,
+          tvTabId: widget.tabId,
+          tvRowId: widget.gridRowId,
+          onUpEdge: index == 0
+              ? () =>
+                  _focusRowLast(widget.statusTabId) ||
+                  _focusRow(widget.statusTabId, 0) ||
+                  _focusRow(widget.kindMenuId, 0)
+              : null,
+          onRightEdge: selected && widget.sidePanel != null
+              ? () {}
+              : null,
+          onTap: () {
+            widget.onEntrySelected?.call(entry);
+            source.openEntry(context, entry);
+          },
+        );
+      },
+    );
+    return TvGrid(
+      tabId: widget.tabId,
+      rowId: widget.gridRowId,
+      sortOrder: widget.tvRowOrder + 2,
+      columns: 1,
+      itemCount: entries.length,
+      onFocusUp: () =>
+          _focusRowLast(widget.statusTabId) ||
+          _focusRow(widget.statusTabId, 0) ||
+          _focusRow(widget.kindMenuId, 0),
+      child: list,
     );
   }
 
@@ -246,7 +387,10 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
               _focusRowLast(widget.statusTabId) ||
               _focusRow(widget.statusTabId, 0)
           : null,
-      onTap: () => source.openEntry(context, entry),
+      onTap: () {
+        widget.onEntrySelected?.call(entry);
+        source.openEntry(context, entry);
+      },
     );
   }
 

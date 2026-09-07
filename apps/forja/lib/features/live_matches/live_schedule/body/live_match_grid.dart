@@ -360,6 +360,23 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_s.widget.panelOnly) {
+      final match = _s._streamsPanelMatch;
+      if (match == null) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: ForjaShellColors.sectionAccent,
+          ),
+        );
+      }
+      return _LiveMatchStreamsPanel(
+        host: _s,
+        match: match,
+        iframeCatalogAnchor: _s._streamsPanelIframeAnchor,
+        asSidePanel: true,
+      );
+    }
+
     final tabVisible =
         (this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible;
     final fetchActive = tabVisible && _s._browseHydrated;
@@ -490,7 +507,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
     final panel = KeyedSubtree(
       key: ValueKey('live-streams-${match.id}'),
-      child: _LiveMatchDetailsScreen(
+      child: _LiveMatchStreamsPanel(
         host: _s,
         match: match,
         iframeCatalogAnchor: _s._streamsPanelIframeAnchor,
@@ -985,15 +1002,16 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
             (entry is _LiveMatchGridEntryMerged &&
                 entry.streamed.id == selectedId));
 
-    return _DenseLiveMatchListTile(
+    return HubLiveMatchDenseTile(
       title: title,
       meta: meta,
-      live: live,
-      playable: playable,
+      airing: live,
       viewers: viewers,
       selected: selected,
       index: index,
-      tvFocus: tvFocus,
+      playable: playable,
+      tvTabId: tvFocus ? _LiveSportsHubPageState._tabId : null,
+      tvRowId: tvFocus ? _LiveSportsHubPageState._gridRowId : null,
       onTap: onTap,
       onUpEdge: tvFocus ? _s._gridUpEdge(context, index, 1) : null,
       onRightEdge: tvFocus && _s._streamsPanelMatch != null
@@ -1132,174 +1150,4 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
 }
 
-/// Dense match row — gray hover/focus fill; green selected chrome (fill + rail
-/// + title/chevron) while the streams panel is open for that match.
-class _DenseLiveMatchListTile extends StatefulWidget {
-  const _DenseLiveMatchListTile({
-    required this.title,
-    required this.meta,
-    required this.live,
-    required this.playable,
-    required this.viewers,
-    required this.selected,
-    required this.index,
-    required this.tvFocus,
-    required this.onTap,
-    this.onUpEdge,
-    this.onRightEdge,
-  });
 
-  final String title;
-  final String meta;
-  final bool live;
-  final bool playable;
-  final int viewers;
-  final bool selected;
-  final int index;
-  final bool tvFocus;
-  final VoidCallback? onTap;
-  final VoidCallback? onUpEdge;
-  final VoidCallback? onRightEdge;
-
-  @override
-  State<_DenseLiveMatchListTile> createState() =>
-      _DenseLiveMatchListTileState();
-}
-
-class _DenseLiveMatchListTileState extends State<_DenseLiveMatchListTile> {
-  bool _focused = false;
-  bool _hovered = false;
-
-  bool get _chrome => _focused || _hovered;
-
-  Color get _fill {
-    if (widget.selected) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.18);
-    }
-    if (_chrome) return ForjaShellColors.inkHover;
-    return Colors.transparent;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final titleColor = !widget.playable
-        ? Colors.white54
-        : widget.selected
-            ? ForjaShellColors.brandGreen
-            : ForjaShellColors.textPrimary;
-    final titleWeight =
-        widget.selected || _chrome ? FontWeight.w700 : FontWeight.w600;
-    final accent = widget.selected
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.iconMuted;
-    final row = DecoratedBox(
-      decoration: BoxDecoration(
-        color: _fill,
-        border: Border(
-          left: BorderSide(
-            color: widget.selected
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 3,
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            if (widget.live)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF22C55E),
-                  shape: BoxShape.circle,
-                ),
-              )
-            else
-              const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: 14,
-                      fontWeight: titleWeight,
-                    ),
-                  ),
-                  if (widget.meta.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        widget.meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (widget.viewers > 0)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  '${widget.viewers}',
-                  style: TextStyle(
-                    color: widget.selected
-                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-                        : ForjaShellColors.textSecondary
-                            .withValues(alpha: 0.85),
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            if (widget.playable)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: accent,
-                  size: 20,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: 0,
-      scaleOnFocus: 1.0,
-      showFocusFill: false,
-      showFocusBorder: false,
-      showFocusRail: false,
-      suppressInkHover: true,
-      listIndex: widget.index,
-      gridIndex: widget.tvFocus ? widget.index : null,
-      gridColumns: widget.tvFocus ? 1 : null,
-      tvTabId: widget.tvFocus ? _LiveSportsHubPageState._tabId : null,
-      tvRowId: widget.tvFocus ? _LiveSportsHubPageState._gridRowId : null,
-      tvZone: widget.tvFocus ? ShellTvZone.grid : null,
-      tvItemIndex: widget.tvFocus ? widget.index : null,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onUpEdge: widget.onUpEdge,
-      onRightEdge: widget.onRightEdge,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: row,
-    );
-  }
-}

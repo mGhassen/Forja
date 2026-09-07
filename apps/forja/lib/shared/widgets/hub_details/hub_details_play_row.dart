@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -53,12 +54,16 @@ class DetailsHeroTvActionScope extends StatelessWidget {
   }
 }
 
-/// Soft “not playable yet” notice for hub details heroes (upcoming titles).
+/// Soft “not playable yet” chip for hub details heroes (upcoming titles).
+///
+/// Height matches [ShellTokens.shellButtonHeight] so hero footer budget fits.
 class HubDetailsUpcomingNotice extends StatelessWidget {
   const HubDetailsUpcomingNotice({
     super.key,
     this.releaseDateLabel,
   });
+
+  static const double height = ShellTokens.shellButtonHeight;
 
   /// Human premiere label (e.g. `Jun 14, 2026`), or null/empty if unknown.
   final String? releaseDateLabel;
@@ -67,58 +72,44 @@ class HubDetailsUpcomingNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = releaseDateLabel?.trim() ?? '';
     final hasDate = date.isNotEmpty;
+    final label = hasDate ? 'Coming soon · $date' : 'Coming soon';
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 380),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: Colors.white.withValues(alpha: 0.08),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.schedule_rounded,
-                color: Colors.amber.shade200,
-                size: 22,
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Coming soon',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.96),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasDate
-                          ? 'Streams unlock around $date'
-                          : 'Not published yet. Check back when it premieres.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.62),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        fontFamily: 'Poppins',
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+      child: SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(height / 2),
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.schedule_rounded,
+                  color: Colors.amber.shade200,
+                  size: 18,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.96),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

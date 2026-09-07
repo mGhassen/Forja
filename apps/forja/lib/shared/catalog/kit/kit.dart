@@ -5,6 +5,7 @@
 library;
 
 export 'cards/hub_poster_card.dart';
+export 'cards/hub_live_match_dense_tile.dart';
 export 'chrome/catalog_chrome_filters.dart';
 export 'chrome/catalog_vertical_filters.dart';
 export 'chrome/catalog_vertical_filters_rail.dart';

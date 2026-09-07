@@ -1,13 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_browse_shell.dart';
 import 'package:forja/features/live_matches/live_schedule/live_sports_host_layout.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
+import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
 
 void main() {
   setUp(() {
+    CatalogHostListRegistry.debugReset();
+    LiveSportsHost.debugReset();
     PluginNavRegistry.seedBuiltIns();
     LiveSportsHost.ensureRegistered();
   });
@@ -47,13 +50,20 @@ void main() {
 
   test('host-default layout is live_schedule list (RFC-084)', () {
     expect(
-      LiveSportsKitPage.matchesLayout(kLiveSportsHostDefaultLayout),
+      LiveSportsBrowseShell.matchesLayout(kLiveSportsHostDefaultLayout),
       isTrue,
     );
     final root = kLiveSportsHostDefaultLayout.first;
     expect(root['type'], CatalogKitTypes.list);
     expect(root['source'], LiveSportsHost.listSourceId);
     expect(root['style'], 'list');
+  });
+
+  test('live_schedule registers CatalogKitListSource with host body', () {
+    final source = CatalogHostListRegistry.resolve(sourceId: 'live_schedule');
+    expect(source, isNotNull);
+    expect(source!.wantsHostBody, isTrue);
+    expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
   });
 
   test('pack builder overwrites core live_matches when registry has hub', () {
@@ -65,7 +75,6 @@ void main() {
     );
     expect(PluginNavRegistry.isHubTab('live_matches'), isTrue);
     expect(navTabBuilders.containsKey('live_matches'), isTrue);
-    // Pack map is merged after core — same key means pack path is present.
     expect(PluginNavRegistry.builders.containsKey('live_matches'), isTrue);
   });
 }

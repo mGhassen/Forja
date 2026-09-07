@@ -35,6 +35,20 @@ abstract class CatalogKitListSource {
   /// Catalog hub plugin id used to pipe enrich companions (may be null).
   String? get hubPluginId;
 
+  /// When true, [CatalogShell] mounts [buildHostBody] instead of the plain
+  /// [CatalogKitListWidget] (list+panel hosts such as Live Sports).
+  bool get wantsHostBody => false;
+
+  /// Full-page host composition for [wantsHostBody] sources. Default unused.
+  Widget? buildHostBody({
+    required String tabId,
+    required String pluginId,
+    required List<Map<String, dynamic>> layoutWidgets,
+    required int refreshEpoch,
+    required bool shellTabVisible,
+  }) =>
+      null;
+
   AsyncValue<CatalogKitListPage> watchPage(WidgetRef ref, String status);
 
   void setupSideEffects(WidgetRef ref, String status);

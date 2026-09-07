@@ -356,8 +356,9 @@ class _SettingsForjaAddonsSectionState
                 children: [
                   Builder(
                     builder: (context) {
-                      final leanback =
-                          ShellScope.inputPolicyOf(context).leanbackOnly;
+                      final leanback = ShellScope.inputPolicyOf(
+                        context,
+                      ).leanbackOnly;
                       void toggle(bool val) {
                         if (addon.scrapers.isEmpty) return;
                         unawaited(

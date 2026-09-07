@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_hub_page.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_browse_shell.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 
@@ -19,8 +18,8 @@ const List<Map<String, dynamic>> kLiveSportsHostDefaultLayout = [
 ];
 
 /// Core shell builder for [live_matches] — kit mount without a pack plugin id.
-Widget liveSportsCoreTabBuilder() => const LiveSportsKitPage(
+Widget liveSportsCoreTabBuilder() => const LiveSportsBrowseShell(
       pluginId: '',
-      tabId: LiveSportsHubPage.tabId,
+      tabId: LiveSportsHost.tabId,
       layoutWidgets: kLiveSportsHostDefaultLayout,
     );

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **1 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) |
-| **Current slice** | IPTV match service + play host + schedule source load + timeline deleted — full kit composition / part-library teardown still open |
+| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **3 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) |
+| **Current slice** | Browse = real `CatalogKitListWidget` + dense kit tiles; panel = hub `panelOnly`; catalog/horizon top-bar sheets still legacy |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,10 +41,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R73-A05 | Pack layout composes schedule from generic kit widgets + thin `live_schedule` data source | 🔄 |
-| 2 | R73-A06 | Catalog / horizon / sport-chip chrome is kit or shared shell — not god-state mixins | ⬜ |
-| 3 | R73-A07 | TV D-pad graph uses shared recipes — not Live-only focus IDs baked into domain | ⬜ |
-| 4 | R73-A08 | `LiveSportsHubPage` no longer owns browse+details+play as one state object | 🔄 |
+| 1 | R73-A05 | Pack layout composes schedule from generic kit widgets + thin `live_schedule` data source | ✅ |
+| 2 | R73-A06 | Catalog / horizon / sport-chip chrome is kit or shared shell — not god-state mixins | 🔄 |
+| 3 | R73-A07 | TV D-pad graph uses shared recipes — not Live-only focus IDs baked into domain | ✅ |
+| 4 | R73-A08 | `LiveSportsHubPage` no longer owns browse+details+play as one state object | ✅ |
 
 ---
 
@@ -77,23 +77,27 @@ RFC-071 relocated Live Matches under kit then RFC-085 moved it to `features/live
 
 ### Shipped this slice
 
-- `IptvSportsMatchService` in `services/iptv_sports_match.dart` — Live TV / ESPN / broadcast match path
-- `HubLiveScheduleSource.load` — engine catalog → `CatalogMetaItem`
-- Timeline view **deleted** (cards only)
-- `_LiveMatchesScreenState` → `LiveSportsHubPageState`; `LiveMatchesScreen` typedef removed
-- `LiveSportsPlayHost` for details; `LivePlayKit` pending cross-hub open
+- `LiveSportsBrowseShell` mounts **`CatalogKitListWidget`** (`style: list` → `HubLiveMatchDenseTile`) from `LiveScheduleCatalogSource` — not a wrap of the god browse UI
+- Sport chips on the browse shell (filters + dynamic kinds); streams panel is `LiveSportsHubPage(panelOnly: true)`
+- `IptvSportsMatchService` — Live TV / ESPN / broadcast match path
+- `HubLiveScheduleSource` / `loadLiveScheduleRows` — engine catalog → `CatalogMetaItem`
+- CatalogShell mounts via `wantsHostBody` — no Live-named early return
+- `LiveSportsTvRows` shared focus ids
+- Timeline view **deleted**
+- Streams panel file `live_streams_panel.dart` (still hub `part`)
+- `LivePlayKit` pending cross-hub open
 
 ### Still open
 
-- Full `part of` god-library teardown (chrome/grid still mixins on hub state)
-- Generic kit composition for catalog/horizon/sport chips (R73-A06–A07)
-- Details as a true standalone kit route (not hub `part`)
+- Catalog / horizon top-bar sheets not yet kit-composed (R73-A06 partial — sport chips done)
+- Full detach of streams panel from hub `part` library
+- `open.surface: live` still tab-switch / panel, not a standalone kit details route (R73-A09)
 
 ### Slices
 
 1. **Kill modes** — ✅
-2. **Kit browse** — 🔄 (source + timeline delete; composition remains)
-3. **Details + IPTV service** — 🔄 (service + play host; details still hub part)
+2. **Kit browse** — 🔄 (list is kit; catalog/horizon sheets still open)
+3. **Details + IPTV service** — 🔄 (panelOnly host; still hub part)
 
 ### Related
 

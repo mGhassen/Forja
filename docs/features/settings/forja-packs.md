@@ -20,7 +20,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 - **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack with **OK / click on the row** (switch chrome on the row); the **chevron** expands for per-plugin toggles (Providers, Live, Hubs, Torrent, …). Desktop ExpansionTile still expands on header tap with the switch in the trailing actions.
-- **Refresh** or **Remove** from the same right-side actions (Remove also drops it from your cloud profile on the next sync)
+- **Refresh** or **Remove** from the same right-side actions (Remove also drops hub tabs from **Features** / the navbar, and drops the pack from your cloud profile on the next sync)
 - See badges for **Pending download** / **Install later** / **Removed from profile** when cloud membership and this device disagree — **Download** or **Uninstall now** from the row’s right-side action
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.

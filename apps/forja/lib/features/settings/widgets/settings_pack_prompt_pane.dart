@@ -175,6 +175,17 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         try {
           if (c.kind == PluginPackPromptKind.uninstall) {
             debugPrint('[PackPrompt] uninstall $label');
+            final packs = await registry.listPacksRaw();
+            EnginePack? victim;
+            for (final p in packs) {
+              if (p.sourceUrl == url) {
+                victim = p;
+                break;
+              }
+            }
+            if (victim != null) {
+              await _deactivatePackHubFeatures(victim);
+            }
             await registry.removePack(url);
             await PendingRemotePurgeStore.clear(url);
             removed++;
@@ -236,6 +247,28 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     noteNavigationDirty();
     for (final id in tabs) {
       await settings.setNavbarTabVisible(id, true);
+    }
+    await scheduleNavigationSyncPush();
+  }
+
+  Future<void> _deactivatePackHubFeatures(EnginePack pack) async {
+    final settings = SettingsService();
+    final tabs = <String>[];
+    for (final pl in pack.plugins) {
+      if (!pl.isHubCatalog) continue;
+      final spec = CatalogNavSpec.fromPluginNav(
+        pl.nav,
+        pluginId: pl.id,
+        fallbackLabel: pl.name,
+      );
+      if (spec == null || !spec.isValid) continue;
+      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
+      tabs.add(spec.tabId);
+    }
+    if (tabs.isEmpty) return;
+    noteNavigationDirty();
+    for (final id in tabs) {
+      await settings.setNavbarTabVisible(id, false);
     }
     await scheduleNavigationSyncPush();
   }

@@ -285,7 +285,7 @@ class _SettingsForjaPacksSectionState
                   badge: 'Removed from profile',
                   actionTooltip: 'Uninstall now',
                   actionIcon: Icons.delete_outline,
-                  onAction: () => unawaited(_purgePackNow(pack.sourceUrl)),
+                  onAction: () => unawaited(_purgePackNow(pack)),
                 );
               }
               if (state == PackDeviceState.deferred ||
@@ -338,7 +338,7 @@ class _SettingsForjaPacksSectionState
                         ),
                         onRefresh: () =>
                             _refreshEnginePack(pack.sourceUrl, update: update),
-                        onRemove: () => _removeEnginePack(pack.sourceUrl),
+                        onRemove: () => _removeEnginePack(pack),
                         showOfficialBadge: false,
                       ),
                     )
@@ -361,7 +361,7 @@ class _SettingsForjaPacksSectionState
                         ),
                         onRefresh: () =>
                             _refreshEnginePack(pack.sourceUrl, update: update),
-                        onRemove: () => _removeEnginePack(pack.sourceUrl),
+                        onRemove: () => _removeEnginePack(pack),
                         showOfficialBadge: false,
                       ),
                     );
@@ -656,10 +656,12 @@ class _SettingsForjaPacksSectionState
     }
   }
 
-  Future<void> _purgePackNow(String sourceUrl) async {
+  Future<void> _purgePackNow(EnginePack pack) async {
     try {
-      await EngineService.instance.removePack(sourceUrl);
-      await PendingRemotePurgeStore.clear(sourceUrl);
+      await _deactivatePackHubFeatures(pack);
+      await EngineService.instance.removePack(pack.sourceUrl);
+      await PendingRemotePurgeStore.clear(pack.sourceUrl);
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);
@@ -692,11 +694,13 @@ class _SettingsForjaPacksSectionState
     }
   }
 
-  Future<void> _removeEnginePack(String sourceUrl) async {
+  Future<void> _removeEnginePack(EnginePack pack) async {
     try {
-      await EngineService.instance.removePack(sourceUrl);
-      await PendingRemotePurgeStore.clear(sourceUrl);
-      await DeferredRemoteInstallStore.clear(sourceUrl);
+      await _deactivatePackHubFeatures(pack);
+      await EngineService.instance.removePack(pack.sourceUrl);
+      await PendingRemotePurgeStore.clear(pack.sourceUrl);
+      await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+      await PluginNavRegistry.refresh();
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);

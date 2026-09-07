@@ -20,69 +20,6 @@ function profileSettingsKey(userId: string | undefined, profileId: string | unde
   return ['profile_settings', userId, profileId] as const
 }
 
-/**
- * One Realtime channel per profile. Multiple `useProfileSettings` mounts
- * (section hooks + Addons page) must not call `.on()` on an already-subscribed
- * topic — supabase-js throws:
- * "cannot add postgres_changes callbacks … after subscribe()".
- */
-const profileSettingsListeners = new Map<string, Set<() => void>>()
-const profileSettingsChannels = new Map<
-  string,
-  ReturnType<typeof supabase.channel>
->()
-
-function subscribeProfileSettingsRealtime(
-  profileId: string,
-  onChange: () => void,
-): () => void {
-  let listeners = profileSettingsListeners.get(profileId)
-  if (!listeners) {
-    listeners = new Set()
-    profileSettingsListeners.set(profileId, listeners)
-  }
-  listeners.add(onChange)
-
-  if (!profileSettingsChannels.has(profileId)) {
-    // Drop leftovers (HMR / Strict Mode) before opening a fresh topic.
-    for (const ch of supabase.getChannels()) {
-      if (ch.topic.includes(`profile_settings:${profileId}`)) {
-        void supabase.removeChannel(ch)
-      }
-    }
-    const channel = supabase
-      .channel(`profile_settings:${profileId}:${crypto.randomUUID()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profile_settings',
-          filter: `profile_id=eq.${profileId}`,
-        },
-        () => {
-          const set = profileSettingsListeners.get(profileId)
-          if (!set) return
-          for (const fn of set) fn()
-        },
-      )
-      .subscribe()
-    profileSettingsChannels.set(profileId, channel)
-  }
-
-  return () => {
-    listeners!.delete(onChange)
-    if (listeners!.size === 0) {
-      profileSettingsListeners.delete(profileId)
-      const channel = profileSettingsChannels.get(profileId)
-      if (channel) {
-        void supabase.removeChannel(channel)
-        profileSettingsChannels.delete(profileId)
-      }
-    }
-  }
-}
-
 function mergeProfilePatch(
   current: ProfileSettingsPayload,
   patch: Partial<ProfileSettingsPayload>,
@@ -151,7 +88,7 @@ export function useProfileSettings() {
     },
   })
 
-  // Visibility soft-pull + Realtime (async cloud → web).
+  // Soft-pull when the tab becomes visible again (app → web Features / Addons).
   useEffect(() => {
     const userId = user?.id
     const profileId = activeProfile?.id
@@ -166,11 +103,9 @@ export function useProfileSettings() {
       if (document.visibilityState === 'visible') softPull()
     }
     document.addEventListener('visibilitychange', onVisibility)
-    const unsubscribe = subscribeProfileSettingsRealtime(profileId, softPull)
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
-      unsubscribe()
     }
   }, [user?.id, activeProfile?.id, queryClient])
 

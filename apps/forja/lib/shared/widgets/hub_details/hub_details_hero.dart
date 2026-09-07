@@ -848,18 +848,27 @@ class _HubHeroMainColumn extends StatelessWidget {
     return SizedBox(
       width: maxContentWidth,
       height: maxHeight,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topLeft,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [...metaColumn, ...footer],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(
+            fit: FlexFit.loose,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: metaColumn,
+                ),
+              ),
+            ),
           ),
-        ),
+          ...footer,
+        ],
       ),
     );
   }

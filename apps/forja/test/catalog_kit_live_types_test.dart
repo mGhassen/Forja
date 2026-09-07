@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/live_matches/catalog/live_schedule_catalog_source.dart';
 import 'package:forja/features/live_matches/live_schedule/data/live_prefs.dart';
 import 'package:forja/features/live_matches/live_schedule/data/live_schedule_source.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
+import 'package:forja/features/live_matches/live_schedule/live_sports_browse_shell.dart';
 import 'package:forja/features/live_matches/live_sports_host.dart';
 import 'package:forja/shared/catalog/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
@@ -31,7 +32,7 @@ void main() {
           ],
         },
       ];
-      expect(LiveSportsKitPage.matchesLayout(layout), isTrue);
+      expect(LiveSportsBrowseShell.matchesLayout(layout), isTrue);
       expect(
         CatalogKitTypes.treeContains(
           layout,
@@ -40,11 +41,12 @@ void main() {
         ),
         isTrue,
       );
-      expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isTrue);
-      expect(
-        CatalogHostListRegistry.resolve(sourceId: 'live_schedule'),
-        isNull,
-      );
+      expect(CatalogHostListRegistry.isFullPageHost('live_schedule'), isFalse);
+      final source = CatalogHostListRegistry.resolve(sourceId: 'live_schedule');
+      expect(source, isNotNull);
+      expect(source, same(LiveScheduleCatalogSource.instance));
+      expect(source!.wantsHostBody, isTrue);
+      expect(source.id, LiveSportsHost.listSourceId);
       expect(
         LiveSportsListSources.resolve(LiveSportsListSources.liveSchedule),
         isNotNull,
@@ -95,11 +97,13 @@ void main() {
         'live': true,
         'starts_at': '2026-09-01T18:00:00Z',
         'viewers': 9,
+        'category': 'Football',
       });
       expect(item.id, 'evt-1');
       expect(item.type, 'live_match');
       expect(item.airing, isTrue);
       expect(item.open?.surface, 'live');
+      expect(item.genres, ['Football']);
     });
 
     test('HubLiveScheduleSource resolves live_schedule id', () {

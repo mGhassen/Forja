@@ -19,7 +19,7 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 
 ## How to open it
 
-**Settings → Sources → Stremio addons** (also on the web account Stremio page)
+**Settings → Addons → Stremio** (also on the web account Stremio page). Turn the Stremio addon on first so the **Sources** panel shows a **Stremio** tab.
 
 ## What you can do
 
@@ -29,17 +29,18 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 - View installed addons and remove them (trash → Yes / No confirm, same as IPTV portal delete)
 - Browse catalogs ([Stremio catalog](../movies-tv/stremio-catalog.md)) when targeting Sources
 - Search addon content ([Search](../movies-tv/search.md))
-- Play addon streams from [Media details](../../movies-tv/tmdb-details.md) — Sources → **Stremio** shows one chip per Sources-targeted addon that declares a `stream` resource
+- Play addon streams from [Media details](../../movies-tv/tmdb-details.md) — Sources → **Stremio** stays visible while the addon is on; stream chips appear for Sources-targeted addons that declare a `stream` resource
 - Play sport HLS from [Live Matches](../../live/live-matches.md) when targeting Live Matches
 - Use subtitle-capable addons in the [player](../../playback/subtitles.md)
 
 ## Setup
 
-1. Find a Stremio addon manifest URL (ends with `/manifest.json`, or copy the install URL from a configure page)
-2. Paste in **Install Stremio Addon** and tap Install
-3. Confirm the **Sources** / **Live Matches** chips — sport addons should have **Live Matches** on
-4. Use the switch next to trash to turn an addon off without uninstalling
-5. For Live Matches: open **Live Matches → Servers → Stremio**
+1. Enable **Stremio** in **Settings → Addons**
+2. Find a Stremio addon manifest URL (ends with `/manifest.json`, or copy the install URL from a configure page)
+3. Open **Settings → Addons → Stremio**, paste, and tap Install
+4. Confirm the **Sources** / **Live Matches** chips — sport addons should have **Live Matches** on
+5. Use the switch next to trash to turn an addon off without uninstalling
+6. For Live Matches: open **Live Matches → Servers → Stremio**
 
 ## Tips
 

@@ -41,7 +41,8 @@ import '../plugin_nav.dart';
 import '../protocol.dart';
 import '../runtime.dart';
 import '../kit/chrome/catalog_chrome_filters.dart';
-import 'package:forja/features/live_matches/live_schedule/live_sports_kit_page.dart';
+import '../host_list_registry.dart';
+import '../kit/layout/catalog_kit_list_source.dart';
 import 'catalog_open.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.
@@ -77,6 +78,9 @@ class _CatalogShellState extends State<CatalogShell>
   /// Stable rail futures — rebuild must not create a new Future (shimmer flash).
   final Map<String, Future<CatalogRailPage<CatalogMetaItem>>> _metaRailFutures =
       {};
+
+  /// Stable list futures for hero / callers that compare [Future] identity.
+  final Map<String, Future<List<CatalogMetaItem>>> _metaListFutures = {};
 
   /// Pack `layout` page default and manifest `config` rail page sizes.
   int? _layoutPageSize;
@@ -194,6 +198,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   void _invalidateRailFutures() {
     _metaRailFutures.clear();
+    _metaListFutures.clear();
     _feedRails = {};
     _feedCacheKey = '';
     _feedLoadFuture = null;
@@ -354,7 +359,6 @@ class _CatalogShellState extends State<CatalogShell>
     int stackIndex = 0,
   }) {
     final type = _layoutWidgetType(spec);
-    final id = (spec['id'] ?? '').toString();
     switch (type) {
       case CatalogKitTypes.stack:
         return CatalogKitStackWidget(
@@ -380,28 +384,81 @@ class _CatalogShellState extends State<CatalogShell>
           sortOrder: stackIndex,
         );
       case CatalogKitTypes.list:
-        return CatalogKitListWidget(
-          tabId: widget.tabId ?? '',
-          pluginId: widget.pluginId,
-          layoutSpec: spec,
-          refreshEpoch: _hostRefreshEpoch,
-          tvRowOrder: _tvOrder(tvOrders, id),
-        );
+        return _hostOrKitListWidget(spec, tvOrders: tvOrders);
       default:
         return _widgetFor(spec, tvOrders: tvOrders, prefetch: null);
     }
   }
 
-  Widget? _fullPageLayoutBody({required Map<String, int> tvOrders}) {
-    if (LiveSportsKitPage.matchesLayout(_widgets)) {
-      return LiveSportsKitPage(
-        pluginId: widget.pluginId,
-        tabId: widget.tabId,
-        layoutWidgets: _widgets,
-        shellTabVisible: shellTabVisible,
-        refreshEpoch: _hostRefreshEpoch,
+  /// Prefer feature [CatalogKitListSource.buildHostBody] when registered.
+  Widget? _hostOrKitListWidget(
+    Map<String, dynamic> spec, {
+    required Map<String, int> tvOrders,
+  }) {
+    final host = _hostBodyForListSpec(spec);
+    if (host != null) return host;
+    final id = (spec['id'] ?? '').toString();
+    return CatalogKitListWidget(
+      tabId: widget.tabId ?? '',
+      pluginId: widget.pluginId,
+      layoutSpec: spec,
+      refreshEpoch: _hostRefreshEpoch,
+      tvRowOrder: _tvOrder(tvOrders, id),
+    );
+  }
+
+  Widget? _hostBodyForListSpec(Map<String, dynamic> spec) {
+    final sourceId = (spec['source'] ?? '').toString().trim();
+    final source = CatalogHostListRegistry.resolve(
+      sourceId: sourceId.isEmpty ? null : sourceId,
+      pluginId: widget.pluginId,
+    );
+    if (source == null || !source.wantsHostBody) return null;
+    return source.buildHostBody(
+      tabId: widget.tabId ?? '',
+      pluginId: widget.pluginId,
+      layoutWidgets: _widgets.isEmpty ? [spec] : _widgets,
+      refreshEpoch: _hostRefreshEpoch,
+      shellTabVisible: shellTabVisible,
+    );
+  }
+
+  Widget? _resolveHostListBody() {
+    Widget? host;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (host != null) return;
+      final type = CatalogKitTypes.normalize(
+        (spec['type'] ?? '').toString(),
+        spec,
       );
-    }
+      if (type != CatalogKitTypes.list) return;
+      host = _hostBodyForListSpec(spec);
+    });
+    return host;
+  }
+
+  bool get _hasHostBodySource {
+    var found = false;
+    walkLayoutWidgets(_widgets, (spec) {
+      if (found) return;
+      final type = CatalogKitTypes.normalize(
+        (spec['type'] ?? '').toString(),
+        spec,
+      );
+      if (type != CatalogKitTypes.list) return;
+      final sourceId = (spec['source'] ?? '').toString().trim();
+      final source = CatalogHostListRegistry.resolve(
+        sourceId: sourceId.isEmpty ? null : sourceId,
+        pluginId: widget.pluginId,
+      );
+      if (source != null && source.wantsHostBody) found = true;
+    });
+    return found || widget.tabId == 'live_matches';
+  }
+
+  Widget? _fullPageLayoutBody({required Map<String, int> tvOrders}) {
+    final host = _resolveHostListBody();
+    if (host != null) return host;
     if (_widgets.length != 1) return null;
     final root = _widgets.first;
     if (!CatalogKitTypes.isCompositionRoot(root)) return null;
@@ -417,7 +474,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    if ((_hasHostListWidget || _isLiveHub) && mounted) {
+    if ((_hasHostListWidget || _hasHostBodySource) && mounted) {
       setState(() => _hostRefreshEpoch++);
     }
     _forceNextRails = force;
@@ -430,14 +487,10 @@ class _CatalogShellState extends State<CatalogShell>
     });
   }
 
-  bool get _isLiveHub =>
-      widget.tabId == 'live_matches' ||
-      LiveSportsKitPage.matchesLayout(_widgets);
-
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
-    if (_isLiveHub) {
+    if (_hasHostBodySource) {
       EngineService.instance.cancelLiveCatalog();
     }
   }
@@ -445,7 +498,7 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
-    if (_isLiveHub && mounted) {
+    if (_hasHostBodySource && mounted) {
       setState(() {});
     }
   }
@@ -641,7 +694,7 @@ class _CatalogShellState extends State<CatalogShell>
     if (page > 1) {
       return _fetchRail(spec, page: page);
     }
-    final key = _railMemoKey(spec);
+    final key = '${_railMemoKey(spec)}|feed:$useFeedBatch';
     final force = _forceNextRails;
     return _metaRailFutures.putIfAbsent(
       key,
@@ -654,16 +707,21 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   /// Same Future across rebuilds until chrome / mood / tab refresh invalidates.
+  /// Must return a stable instance — [_CatalogHeroSection] reloads when
+  /// [Future] identity changes (async wrappers abort in-flight hero loads).
   Future<List<CatalogMetaItem>> _railFuture(
     Map<String, dynamic> spec, {
     bool useFeedBatch = false,
-  }) async {
-    final page = await _fetchRailPage(
-      spec,
-      page: 1,
-      useFeedBatch: useFeedBatch,
+  }) {
+    final key = '${_railMemoKey(spec)}|feed:$useFeedBatch';
+    return _metaListFutures.putIfAbsent(
+      key,
+      () => _fetchRailPage(
+        spec,
+        page: 1,
+        useFeedBatch: useFeedBatch,
+      ).then((page) => page.items),
     );
-    return page.items;
   }
 
   Future<void> _openMeta(CatalogMetaItem item) =>
@@ -1286,13 +1344,7 @@ class _CatalogShellState extends State<CatalogShell>
           prefetchSlot: prefetch,
         );
       case CatalogKitTypes.list:
-        return CatalogKitListWidget(
-          tabId: widget.tabId ?? '',
-          pluginId: widget.pluginId,
-          layoutSpec: spec,
-          refreshEpoch: _hostRefreshEpoch,
-          tvRowOrder: _tvOrder(tvOrders, id),
-        );
+        return _hostOrKitListWidget(spec, tvOrders: tvOrders);
       case CatalogKitTypes.stack:
         return CatalogKitStackWidget(
           spec: spec,
@@ -1339,17 +1391,8 @@ class _CatalogShellState extends State<CatalogShell>
 
   Widget _buildCatalogBody(BuildContext context) {
     final body = () {
-      final liveHub = widget.tabId == 'live_matches' ||
-          LiveSportsKitPage.matchesLayout(_widgets);
-      if (liveHub) {
-        return LiveSportsKitPage(
-          pluginId: widget.pluginId,
-          tabId: widget.tabId,
-          layoutWidgets: _widgets,
-          shellTabVisible: shellTabVisible,
-          refreshEpoch: _hostRefreshEpoch,
-        );
-      }
+      final host = _resolveHostListBody();
+      if (host != null) return host;
       if (_loading && _widgets.isEmpty) {
         return CustomScrollView(
           controller: _scroll,
@@ -1564,12 +1607,8 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       );
     }
     if (items.isEmpty) {
-      // Keep cinematic chrome (shimmer + bleed row) — bleed-only looked like a
-      // missing hero when spotlight was empty in a partial feed batch.
-      return homeCinematicHeroShimmer(
-        context,
-        pageBottomBleed: widget.pageBottomChild != null,
-      );
+      // Loaded empty — show bleed if any. Shimmer here looks like a hung hub.
+      return widget.pageBottomChild ?? const SizedBox.shrink();
     }
     final bottom = widget.pageBottomChild;
     return HomeCinematicHero.hub(

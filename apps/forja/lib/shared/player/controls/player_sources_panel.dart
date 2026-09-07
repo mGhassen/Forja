@@ -957,7 +957,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (!mounted) return;
 
-    final hasNuvio = nuvioOn && nuvioAddons.isNotEmpty;
+    // Kind tabs follow play-source toggles (same as Forja), not whether
+    // addons/scrapers are installed yet — empty kinds show an install hint.
+    final hasNuvio = nuvioOn;
+    final hasStremio = stremioOn;
     final hasEngine = engineOn;
 
     List<EnginePack> enginePacks = const [];
@@ -969,7 +972,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
     bool kindAllowed(String k) => switch (k) {
       'torrents' => torrentOn,
-      'stremio' => stremioOn,
+      'stremio' => hasStremio,
       'nuvio' => hasNuvio,
       'engine' => hasEngine,
       _ => false,
@@ -981,7 +984,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ? cachedUi.kindFilter
             : _resolveInitialKind(
                 hasTorrent: torrentOn,
-                hasStremio: stremioOn,
+                hasStremio: hasStremio,
                 hasNuvio: hasNuvio,
                 hasEngine: hasEngine,
               ));
@@ -993,8 +996,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       } catch (_) {}
     }
     if (!mounted) return;
-
-    final hasStremio = stremioOn && (kind != 'stremio' || addons.isNotEmpty);
 
     Set<String> nuvioSelected;
     Set<String> engineSelected;
@@ -1288,12 +1289,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Future<void> _refreshStreamAddons() async {
     try {
       final stremioOn = await _settings.isPlaySourceStremioEnabled();
-      if (!stremioOn) return;
+      if (!mounted) return;
+      if (!stremioOn) {
+        setState(() {
+          _showStremio = false;
+          _streamAddons = const [];
+        });
+        return;
+      }
       final addons = await _stremio.getAddonsForResource('stream');
       if (!mounted) return;
       setState(() {
         _streamAddons = addons;
-        _showStremio = addons.isNotEmpty;
+        _showStremio = true;
         if (_kindFilter == 'stremio' &&
             !_streamAddons.any(
               (a) => a['baseUrl']?.toString() == _selectedSourceId,
@@ -3785,16 +3793,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               !_enginePacksLoading &&
               enabledEnginePluginIds(_enginePacks).isEmpty
           ? 'No Forja plugins installed'
-          : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
-                  (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
-                  (_showsStremio && _selectedSourceId.isEmpty) ||
-                  (_showsTorrents &&
-                      TorrentSearchProviders.isNoneChip(_selectedSourceId))
-              ? 'Select at least one provider'
-              : 'No matching sources';
+          : _showsStremio && _streamAddons.isEmpty
+              ? 'No Stremio stream addons. Add them in Settings → Addons → Stremio'
+              : _showsNuvio && enabledNuvioScraperIds(_nuvioAddons).isEmpty
+                  ? 'No Nuvio scrapers. Add them in Settings → Addons → Nuvio'
+                  : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
+                          (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
+                          (_showsStremio && _selectedSourceId.isEmpty) ||
+                          (_showsTorrents &&
+                              TorrentSearchProviders.isNoneChip(
+                                _selectedSourceId,
+                              ))
+                      ? 'Select at least one provider'
+                      : 'No matching sources';
       return Center(
         child: Text(
           emptyMsg,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: ForjaShellColors.cinematic.textSecondary,
             fontSize: 13,

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/live_matches/catalog/live_schedule_catalog_source.dart';
 import 'package:forja/shared/catalog/host_list_registry.dart';
 
 /// Product constants for Live Sports — feature-owned, not kit.
@@ -14,7 +15,10 @@ abstract final class LiveSportsHost {
   static void ensureRegistered() {
     if (_registered) return;
     _registered = true;
-    CatalogHostListRegistry.registerFullPage(listSourceId);
+    CatalogHostListRegistry.register(
+      LiveScheduleCatalogSource.instance,
+      pluginId: hubPluginId,
+    );
   }
 
   /// Test helper — allows [ensureRegistered] after [CatalogHostListRegistry.debugReset].

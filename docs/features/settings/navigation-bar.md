@@ -22,7 +22,7 @@ On a fresh install, only **Settings** is on the rail. Enable IPTV / Live Sports 
 ## What you can do
 
 - Show, hide, and reorder tabs that Addons / packs have made available. On **TV**: **OK** on the tab row toggles rail visibility; star sets default; ↑/↓ on the reorder arrows move the tab. **↓** from a tab goes to the next tab; **↓** from star / reorder stays on that action for the next row. On desktop/phone: drag to reorder. Settings stays visible.
-- **Plugin on/off** (Settings → Forja Packs) controls whether a hub feature exists. Turn a pack or hub plugin **on** and its tab defaults **on** in Features / the rail. Turn it off and it disappears from Features and the nav rail.
+- **Plugin on/off** (Settings → Forja Packs) controls whether a hub feature exists. Turn a pack or hub plugin **on** and its tab defaults **on** in Features / the rail. Turn it off or **uninstall** the pack and it disappears from Features and the nav rail.
 - Select the **star** beside a visible tab (or Settings) to choose the menu that opens at launch (and after you switch to this profile). Works with mouse and with **OK** on TV.
 - Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab + Addons feature flags). Features inventory is unlocked Addons and hub packs **on the profile** only — leftover tab ids are pruned. Web **Profile → Forja Packs** adds membership; the app downloads scripts. Web **Profile → Addons** writes the same IPTV / Live Sports unlock flags as the app. Edits wait until they are saved locally before syncing, so a toggle does not snap back off when the window refocuses.
 

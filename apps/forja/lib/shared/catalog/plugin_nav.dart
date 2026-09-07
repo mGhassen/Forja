@@ -468,9 +468,24 @@ abstract final class PluginNavRegistry {
         notify: _refreshNotifyPending,
       );
     }
-    // Do NOT syncActiveHubNavIds on every refresh — that stripped Features
-    // enables whenever the enabled-hub scan lagged (224). Pack disable /
-    // uninstall prunes tabs explicitly in Settings → Forja Packs.
+    // Do NOT syncActiveHubNavIds against enabled-only dests — that stripped
+    // Features enables whenever the enabled-hub scan lagged (224). Pack
+    // disable still hides tabs explicitly in Forja Packs. Uninstall / purge
+    // must drop tabs whose pack is gone from the index (issue 227).
+    if (!await _hubNavHydrationPending()) {
+      final goneHubIds = await _uninstalledHubTabIds(
+        installedHubTabIds: installedHubTabIds,
+        previousDestKeys: previousDestKeys,
+      );
+      if (goneHubIds.isNotEmpty) {
+        debugPrint('[PluginNav] refresh prune uninstalled=$goneHubIds');
+        await _syncHubNavVisibility(
+          activeHubIds: const {},
+          packKnownHubTabIds: goneHubIds,
+          allowEmptyActiveStrip: true,
+        );
+      }
+    }
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
     } else {
@@ -480,6 +495,26 @@ abstract final class PluginNavRegistry {
       SettingsService.navbarChangeNotifier.value++;
     }
     return changed;
+  }
+
+  /// Hub tab ids that left the pack index (or linger in Features visible KV).
+  ///
+  /// Uses [listNavHubs] `requireEnabled: false` so a disabled-but-installed
+  /// pack is not treated as uninstalled (disable path owns rail hide).
+  static Future<Set<String>> _uninstalledHubTabIds({
+    required Set<String> installedHubTabIds,
+    required Set<String> previousDestKeys,
+  }) async {
+    final gone = previousDestKeys
+        .difference(installedHubTabIds)
+        .difference(coreShellNavIds);
+    final visible = await SettingsService().getNavbarConfig();
+    for (final id in visible) {
+      if (coreShellNavIds.contains(id)) continue;
+      if (SettingsService.addonGatedNavIds.contains(id)) continue;
+      if (!installedHubTabIds.contains(id)) gone.add(id);
+    }
+    return gone;
   }
 
   /// Drop rail tabs whose pack/plugin is off.
