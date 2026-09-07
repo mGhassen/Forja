@@ -5,7 +5,7 @@ import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 
 /// Pack-owned logo on a contrasting tile.
 class CatalogVerticalFilterLogoMark extends StatelessWidget {

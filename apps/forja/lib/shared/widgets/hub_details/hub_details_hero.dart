@@ -845,30 +845,24 @@ class _HubHeroMainColumn extends StatelessWidget {
       );
     }
 
+    // Pack meta + CTAs together at the top (same as MediaDetailsHero).
+    // Do not put meta in a Flexible above the footer — that expands into the
+    // tall hero band and leaves a dead gap under Read More.
     return SizedBox(
       width: maxContentWidth,
       height: maxHeight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-            fit: FlexFit.loose,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 450),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: metaColumn,
-                ),
-              ),
-            ),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [...metaColumn, ...footer],
           ),
-          ...footer,
-        ],
+        ),
       ),
     );
   }

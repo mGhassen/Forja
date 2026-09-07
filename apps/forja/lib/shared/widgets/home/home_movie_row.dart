@@ -3,7 +3,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home/movie_poster_card.dart';
-import 'package:forja/shared/widgets/shell/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/chrome/horizontal_scroller.dart';
 import 'package:rust/rust.dart';
 
 class HomeMovieRow extends StatelessWidget {

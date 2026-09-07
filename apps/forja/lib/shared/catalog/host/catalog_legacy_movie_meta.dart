@@ -1,5 +1,5 @@
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/catalog/host/catalog_open.dart';
 import 'package:rust/rust.dart';
 
 /// Legacy [Movie] → hub meta (host route/id scheme only — no plugin id).

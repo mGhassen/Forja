@@ -9,7 +9,7 @@ import 'package:forja/features/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/shell/forja_network_image.dart';
+import 'package:forja/shared/widgets/chrome/forja_network_image.dart';
 
 /// Pure layout maths for the Live catalog EPG timeline.
 class IptvEpgTimeline {

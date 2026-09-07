@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 
 /// Centered error copy + retry CTA. On TV the retry button autofocuses on show.
 class ShellErrorRetryPanel extends StatefulWidget {

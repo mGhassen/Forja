@@ -6,7 +6,7 @@ import 'package:forja/shared/design/src/forja_toast.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_iptv_open.dart';
+import 'package:forja/shared/catalog/host/catalog_iptv_open.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Portal play from hub details when `resolveType == iptv`.

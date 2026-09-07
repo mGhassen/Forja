@@ -4,7 +4,7 @@ import 'package:flutter/rendering.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
 /// Arrows appear on desktop/wide screens and on hover; they paginate the

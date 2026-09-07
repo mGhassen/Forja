@@ -54,7 +54,7 @@ Line counts from `wc -l` on repo HEAD — see [feature file map](../architecture
 
 1. **One PR per split** — no mega-refactor
 2. **No behavior change** — pure move/extract; same UI output
-3. **Reuse shared widgets** — delete inline duplicates (`_HoverScale`, `_MovieSection`) in favor of [`hover_scale.dart`](../../apps/forja/lib/shared/widgets/shell/hover_scale.dart), [`movie_section.dart`](../../apps/forja/lib/shared/widgets/home/movie_section.dart)
+3. **Reuse shared widgets** — delete inline duplicates (`_HoverScale`, `_MovieSection`) in favor of [`hover_scale.dart`](../../apps/forja/lib/shared/widgets/chrome/hover_scale.dart), [`movie_section.dart`](../../apps/forja/lib/shared/widgets/home/movie_section.dart)
 4. **Delete duplicate player folder** — [`features/player/`](../../apps/forja/lib/features/player/) is stale; canonical path is [`shared/player/`](../../apps/forja/lib/shared/player/)
 
 ## Target layout

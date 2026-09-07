@@ -12,7 +12,7 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/tv/tv_browse_text_field.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';

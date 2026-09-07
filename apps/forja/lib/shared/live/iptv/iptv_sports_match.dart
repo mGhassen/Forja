@@ -7,9 +7,9 @@ import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/live/iptv_sports_config.dart';
-import 'package:forja/shared/live/match_event.dart';
-import 'package:forja/shared/live/match_team_parse.dart';
+import 'package:forja/shared/live/iptv/iptv_sports_config.dart';
+import 'package:forja/shared/live/match/match_event.dart';
+import 'package:forja/shared/live/match/match_team_parse.dart';
 import 'package:rust/rust.dart';
 
 

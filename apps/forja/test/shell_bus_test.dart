@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/host/catalog_vertical_filters.dart';
 import 'package:forja/shell/player_surface_chrome_stub.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_body.dart';

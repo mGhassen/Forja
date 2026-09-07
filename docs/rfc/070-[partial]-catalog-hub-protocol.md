@@ -28,7 +28,7 @@
 | 7 | R70-C07 | `PluginRegistry` `hubs` slot — `FORJA_HQ_HUBS_MANIFEST_URL`, `forjahq-hubs` pack id | ✅ |
 | 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
 | 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
-| 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](shell/catalog_shell.dart) composes layout only | ✅ |
+| 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](host/catalog_shell.dart) composes layout only | ✅ |
 | 11 | R70-C11 | `host.my_list` kit widget + `forjahq-my-list` hub pack | ✅ |
 
 ---
@@ -405,7 +405,10 @@ Core modules from R70-C01–C04 live under subfolders; historical component path
 | `shared/catalog/services/` | `cache.dart`, `runtime.dart`, `plugin_nav.dart`, `host_list_registry.dart`, `catalog_details_fetch.dart`, `catalog_watch_history.dart` |
 | `shared/catalog/assets/` | `forja_host_assets.dart`, `catalog_pack_assets.dart` |
 | `shared/catalog/utils/` | `hub_cover_urls.dart` |
-| `shared/catalog/kit/` · `shell/` | unchanged |
+| `shared/catalog/host/` | `CatalogShell`, open/search — hub tab host (not `lib/shell/`) |
+| `shared/catalog/kit/` | layout, chrome, details, play, `sections/` (continue/because) |
+
+Layer names: `lib/shell/` = app frame · `catalog/host/` = hub tab · `widgets/chrome/` = shared chrome atoms.
 
 Barrel: [`catalog.dart`](../../apps/forja/lib/shared/catalog/catalog.dart).
 

@@ -9,7 +9,7 @@ import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dar
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 

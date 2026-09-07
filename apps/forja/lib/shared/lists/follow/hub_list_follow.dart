@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/lists/external_lists_providers.dart';
-import 'package:forja/shared/lists/my_list_providers.dart';
+import 'package:forja/shared/lists/providers/external_lists_providers.dart';
+import 'package:forja/shared/lists/providers/my_list_providers.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';

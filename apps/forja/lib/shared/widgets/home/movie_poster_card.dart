@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/lists/my_list_button.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// TMDB [Movie] poster tile — media details, my list, hero bleed (not catalog kit).

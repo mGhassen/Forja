@@ -6,8 +6,8 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/shell/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 

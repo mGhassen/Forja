@@ -16,7 +16,7 @@ shared/widgets/media_details/   # details page, cast/trailers, torrent sources, 
 shared/widgets/home/            # home rows, posters, atmosphere, loading skeleton
 shared/widgets/hub/             # hub catalog section / poster / search (legacy)
 shared/widgets/hub_details/     # hub details chrome / play / sources
-shared/widgets/shell/           # focusable tap, scroller, overlays, mood chip
+shared/widgets/chrome/           # focusable tap, scroller, overlays, mood chip
 shared/widgets/desktop/         # window chrome / focus / geometry
 shared/widgets/tv/              # browse text field, search overlay
 shared/widgets/update/          # update dialog + progress banner
@@ -63,10 +63,12 @@ MediaDetailsScrollPage(
 
 ## Adding a new shared widget
 
-1. Pick `hero/` or `media_details/` (or top-level `shared/widgets/` if used outside those flows).
+1. Pick a folder from the map above (`hero/`, `media_details/`, `chrome/`, …) — not a flat root file.
 2. Export from barrel if in `media_details/`.
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
+
+Do **not** put app-shell or catalog-host code under `shared/widgets/`. App frame → `lib/shell/`. Hub tab host → `shared/catalog/host/`.
 
 ## Do not
 

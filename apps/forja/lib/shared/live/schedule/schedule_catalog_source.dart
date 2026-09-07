@@ -1,4 +1,4 @@
-import 'package:forja/shared/live/live_stream_engine.dart';
+import 'package:forja/shared/live/play/live_stream_engine.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/engine/engine.dart';
 

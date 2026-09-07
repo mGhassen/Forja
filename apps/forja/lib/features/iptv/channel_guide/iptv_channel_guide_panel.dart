@@ -14,7 +14,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/lists/list_letter_jump_scope.dart';
-import 'package:forja/shared/widgets/shell/forja_network_image.dart';
+import 'package:forja/shared/widgets/chrome/forja_network_image.dart';
 
 enum _GuideStep { groups, channels }
 enum _FocusColumn { groups, channels, epg }

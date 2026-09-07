@@ -11,7 +11,7 @@ import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/widgets/playback/direct_stream_loading_panel.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/playback/resolve_failure_view.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
 import 'package:forja/shared/widgets/playback/torrent_loading_status_panel.dart';

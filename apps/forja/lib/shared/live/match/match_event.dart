@@ -1,6 +1,6 @@
-import 'package:forja/shared/live/live_stream_engine.dart';
-import 'package:forja/shared/live/match_team_parse.dart';
-import 'package:forja/shared/live/schedule_sport_filter.dart';
+import 'package:forja/shared/live/play/live_stream_engine.dart';
+import 'package:forja/shared/live/match/match_team_parse.dart';
+import 'package:forja/shared/live/schedule/schedule_sport_filter.dart';
 
 /// Opaque source ref on a schedule / match row (plugin resolve input).
 class MatchSourceRef {

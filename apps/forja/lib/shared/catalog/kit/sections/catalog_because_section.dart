@@ -11,12 +11,12 @@ import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/catalog/services/runtime.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
-import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/catalog/host/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 
 /// Layout widget type `because` — pack owns rail logic; host renders meta rows.
 class CatalogBecauseSection extends StatefulWidget {

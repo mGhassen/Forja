@@ -20,7 +20,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/desktop/desktop_window_geometry.dart';
-import 'package:forja/shared/widgets/shell/shell_card_play_overlay.dart';
+import 'package:forja/shared/widgets/chrome/shell_card_play_overlay.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:media_kit/media_kit.dart';

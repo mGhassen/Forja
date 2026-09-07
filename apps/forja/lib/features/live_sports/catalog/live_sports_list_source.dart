@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/live_sports/schedule_filters.dart';
-import 'package:forja/shared/live/schedule_catalog_source.dart';
-import 'package:forja/shared/live/live_stream_engine.dart';
-import 'package:forja/shared/live/live_play_kit.dart';
+import 'package:forja/shared/live/schedule/schedule_catalog_source.dart';
+import 'package:forja/shared/live/play/live_stream_engine.dart';
+import 'package:forja/shared/live/play/live_play_kit.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/engine/engine.dart';

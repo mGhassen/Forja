@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/shell/shell_card_play_overlay.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 
 /// Generic Continue Watching card — reads opaque [entry] maps only.
 class CatalogContinueWatchingCard extends StatefulWidget {

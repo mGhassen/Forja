@@ -5,7 +5,7 @@ import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 import 'package:forja/shared/catalog/protocol/protocol.dart';
 import 'package:forja/shared/catalog/services/runtime.dart';
-import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/catalog/host/catalog_open.dart';
 import 'package:forja/shell/player_surface_chrome_stub.dart';
 
 /// Hub search backed by a catalog plugin `search` action.

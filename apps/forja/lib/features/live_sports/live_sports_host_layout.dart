@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
-import 'package:forja/shared/catalog/shell/catalog_shell.dart';
+import 'package:forja/shared/catalog/host/catalog_shell.dart';
 
 /// Host-default kit layout when no Live Sports hub pack contributes `layout`.
 ///

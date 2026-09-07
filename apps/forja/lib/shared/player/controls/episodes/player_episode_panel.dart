@@ -8,7 +8,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart'
 import 'package:forja/shared/player/controls/episodes/player_hub_episode.dart';
 import 'package:forja/shared/widgets/media_details/episode_air_date.dart';
 import 'package:forja/shared/widgets/media_details/episode_range_bar.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';

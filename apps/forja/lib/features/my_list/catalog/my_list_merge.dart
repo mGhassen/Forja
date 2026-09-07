@@ -1,4 +1,4 @@
-import 'package:forja/shared/lists/my_list_providers.dart';
+import 'package:forja/shared/lists/providers/my_list_providers.dart';
 
 int? myListAsInt(dynamic v) {
   if (v == null) return null;

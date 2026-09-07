@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/lists/external_lists_providers.dart';
+import 'package:forja/shared/lists/providers/external_lists_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';

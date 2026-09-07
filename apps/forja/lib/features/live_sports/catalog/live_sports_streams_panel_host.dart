@@ -5,7 +5,7 @@ import 'package:forja/shared/catalog/kit/layout/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_panel_host.dart';
 import 'package:forja/shared/catalog/kit/panel/catalog_kit_sources_panel.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/live/match_streams.dart';
+import 'package:forja/shared/live/match/match_streams.dart';
 
 /// Live Sports streams panel — thin kit host over [CatalogKitSourcesPanel].
 final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {

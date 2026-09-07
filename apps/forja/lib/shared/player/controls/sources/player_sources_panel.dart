@@ -28,7 +28,7 @@ import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Right-side Sources panel in the player - same shell/chrome/tiles as

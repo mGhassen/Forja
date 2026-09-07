@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/lists/hub_list_follow.dart';
+import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 import 'package:forja/shared/widgets/lists/my_list_button.dart';
 
 /// Anime / Asian Drama details — same glass **+** + floating status menu as movies.

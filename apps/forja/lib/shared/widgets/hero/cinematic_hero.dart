@@ -15,12 +15,12 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home/home_loading_skeleton.dart';
-import 'package:forja/shared/lists/hub_list_follow.dart';
+import 'package:forja/shared/lists/follow/hub_list_follow.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/lists/hub_list_status_hero.dart';
 import 'package:forja/shared/widgets/lists/my_list_button.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 bool hubIsFullCinematicHero(BuildContext context) =>

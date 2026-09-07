@@ -17,7 +17,7 @@ import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/sync/sync.dart';
 

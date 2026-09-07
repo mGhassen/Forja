@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/live_sports/catalog/live_sports_list_source.dart';
 import 'package:forja/features/live_sports/live_prefs.dart';
-import 'package:forja/shared/live/schedule_catalog_source.dart';
+import 'package:forja/shared/live/schedule/schedule_catalog_source.dart';
 import 'package:forja/features/live_sports/live_sports_host.dart';
 import 'package:forja/shared/catalog/services/host_list_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';

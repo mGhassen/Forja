@@ -4,7 +4,7 @@ import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/chrome/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Layout widget [`CatalogKitTypes.menu`] — underline kind/filter menu.

@@ -9,12 +9,12 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_live_play.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/live/iptv_sports_config.dart';
-import 'package:forja/shared/live/iptv_sports_match.dart';
-import 'package:forja/shared/live/live_stream_engine.dart';
-import 'package:forja/shared/live/match_event.dart';
-import 'package:forja/shared/live/schedule_sport_filter.dart';
-import 'package:forja/shared/live/stremio_live_meta.dart';
+import 'package:forja/shared/live/iptv/iptv_sports_config.dart';
+import 'package:forja/shared/live/iptv/iptv_sports_match.dart';
+import 'package:forja/shared/live/play/live_stream_engine.dart';
+import 'package:forja/shared/live/match/match_event.dart';
+import 'package:forja/shared/live/schedule/schedule_sport_filter.dart';
+import 'package:forja/shared/live/schedule/stremio_live_meta.dart';
 import 'package:rust/rust.dart'
     show
         BuiltInPlayerContext,

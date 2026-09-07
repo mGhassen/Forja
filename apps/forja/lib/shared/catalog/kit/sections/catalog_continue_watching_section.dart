@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_card.dart';
+import 'package:forja/shared/catalog/kit/sections/catalog_continue_watching_card.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
