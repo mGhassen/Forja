@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_live_match_dense_tile.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
+import 'package:forja/shared/catalog/kit/details/catalog_kit_entry_details.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/services/host_list_registry.dart';
@@ -25,6 +28,8 @@ import 'package:rust/rust.dart';
 ///
 /// When a [CatalogKitPanelHost] is registered for [listSource], selection and
 /// side panel are owned here (no feature browse shell).
+///
+/// Pack `open`: `panel` (list + side panel) · `details` (full-page panel host).
 class CatalogKitListWidget extends ConsumerStatefulWidget {
   const CatalogKitListWidget({
     super.key,
@@ -83,6 +88,15 @@ class CatalogKitListWidget extends ConsumerStatefulWidget {
 
   bool get isDenseList => listStyle == 'list';
 
+  /// Pack `open`: `panel` | `details` | empty (panel for dense list, source open for grid).
+  String get entryOpen =>
+      (layoutSpec['open'] ?? '').toString().trim().toLowerCase();
+
+  bool get opensDetails => entryOpen == 'details';
+
+  bool get opensPanel =>
+      entryOpen == 'panel' || (entryOpen.isEmpty && isDenseList);
+
   @override
   ConsumerState<CatalogKitListWidget> createState() =>
       _CatalogKitListWidgetState();
@@ -108,7 +122,48 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   }
 
   bool get _autoPanel =>
-      widget.sidePanel == null && _panelHost != null && widget.isDenseList;
+      widget.sidePanel == null &&
+      _panelHost != null &&
+      widget.opensPanel &&
+      widget.isDenseList;
+
+  bool get _layoutHasCategoryBar {
+    var found = false;
+    walkLayoutWidgets(widget.layoutWidgets, (spec) {
+      if (found) return;
+      final type = CatalogKitTypes.normalize(
+        (spec['type'] ?? '').toString(),
+        spec,
+      );
+      if (type == CatalogKitTypes.categoryBar) found = true;
+    });
+    return found;
+  }
+
+  void _openEntry(BuildContext context, CatalogKitListSource source,
+      CatalogKitListEntry entry) {
+    widget.onEntrySelected?.call(entry);
+    if (widget.opensDetails && _panelHost != null) {
+      final layouts = widget.layoutWidgets.isNotEmpty
+          ? widget.layoutWidgets
+          : [widget.layoutSpec];
+      unawaited(
+        CatalogKitEntryDetailsPage.open(
+          context,
+          entry: entry,
+          listSourceId: widget.listSource,
+          layoutWidgets: layouts,
+          refreshEpoch: widget.refreshEpoch,
+        ),
+      );
+      return;
+    }
+    if (_autoPanel) {
+      setState(() => _selected = entry);
+      return;
+    }
+    source.openEntry(context, entry);
+  }
 
   @override
   void initState() {
@@ -290,7 +345,9 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
           }
         }
         final chips = _dynamicKinds;
-        if (!_autoPanel || chips.length <= 1) return listBody;
+        if (_layoutHasCategoryBar || !_autoPanel || chips.length <= 1) {
+          return listBody;
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -328,11 +385,15 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
       }
     }
     _pendingOpenConsumed = true;
-    if (hit == null || !_autoPanel) return;
+    if (hit == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() => _selected = hit);
-      widget.onEntrySelected?.call(hit!);
+      if (_autoPanel) {
+        setState(() => _selected = hit);
+        widget.onEntrySelected?.call(hit!);
+        return;
+      }
+      _openEntry(context, _source!, hit!);
     });
   }
 
@@ -411,11 +472,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
                   _focusRow(widget.kindMenuId, 0)
               : null,
           onRightEdge: selected && panelActive ? () {} : null,
-          onTap: () {
-            if (_autoPanel) setState(() => _selected = entry);
-            widget.onEntrySelected?.call(entry);
-            source.openEntry(context, entry);
-          },
+          onTap: () => _openEntry(context, source, entry),
         );
       },
     );
@@ -517,10 +574,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
               _focusRowLast(widget.statusTabId) ||
               _focusRow(widget.statusTabId, 0)
           : null,
-      onTap: () {
-        widget.onEntrySelected?.call(entry);
-        source.openEntry(context, entry);
-      },
+      onTap: () => _openEntry(context, source, entry),
     );
   }
 

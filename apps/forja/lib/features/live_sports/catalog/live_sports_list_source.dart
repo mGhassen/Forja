@@ -149,8 +149,7 @@ final class LiveScheduleCatalogSource extends CatalogKitListSource {
     BuildContext context,
     CatalogKitListEntry entry,
   ) async {
-    // Panel selection is owned by [CatalogKitListWidget] when a panel host
-    // is registered. Cross-route opens still use [LivePlayKit].
+    // Browse open is kit-owned (panel vs details from pack layout).
   }
 
   @override

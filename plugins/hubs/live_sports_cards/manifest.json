@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "forjahq-live-sports-cards",
+  "name": "ForjaHQ Live Sports Cards",
+  "description": "Live sports schedule as cards with a details page.",
+  "author": "ForjaHQ",
+  "version": "1.0.1",
+  "tags": [
+    "sports",
+    "live"
+  ],
+  "plugins": [
+    {
+      "id": "live-sports-cards-hub",
+      "name": "Live Sports Cards",
+      "description": "Live sports schedule as cards with a details page.",
+      "entry": "live_sports_cards.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "live_match"
+      ],
+      "capabilities": [
+        "nav",
+        "layout"
+      ],
+      "nav": {
+        "tabId": "live_sports_cards",
+        "label": "Live Sports Cards",
+        "order": 21,
+        "icon": "icons/nav.png",
+        "accent": "#FB923C"
+      },
+      "prelude": "_kit.js"
+    }
+  ],
+  "bundle": [
+    "live_sports_cards.js",
+    "_kit.js"
+  ]
+}

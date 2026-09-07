@@ -54,6 +54,11 @@ void main() {
     test('generic kit types only — no product-named live slots', () {
       expect(CatalogKitTypes.normalize('kit.stack'), CatalogKitTypes.stack);
       expect(CatalogKitTypes.normalize('kit.list'), CatalogKitTypes.list);
+      expect(CatalogKitTypes.normalize('kit.topBar'), CatalogKitTypes.topBar);
+      expect(
+        CatalogKitTypes.normalize('kit.categoryBar'),
+        CatalogKitTypes.categoryBar,
+      );
       expect(CatalogKitTypes.normalize('kit.live.mode'), 'kit.live.mode');
     });
   });

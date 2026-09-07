@@ -7,7 +7,8 @@ import 'package:forja/shared/catalog/kit/panel/catalog_kit_sources_panel.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/live/match/match_streams.dart';
 
-/// Live Sports streams panel — thin kit host over [CatalogKitSourcesPanel].
+/// Thin registry host — wires [CatalogKitSourcesPanel] to [MatchStreams] only.
+/// Layout composition (list+panel vs cards+details) belongs in pack JS + kit.
 final class LiveSportsStreamsPanelHost implements CatalogKitPanelHost {
   const LiveSportsStreamsPanelHost();
 

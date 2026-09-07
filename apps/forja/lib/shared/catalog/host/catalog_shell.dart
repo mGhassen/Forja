@@ -21,6 +21,8 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shell/player_surface_chrome_stub.dart';
 
 import '../kit/cards/hub_poster_card.dart';
+import '../kit/chrome/catalog_kit_category_bar.dart';
+import '../kit/chrome/catalog_kit_top_bar_actions.dart';
 import '../kit/chrome/catalog_pack_filters.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
 import '../kit/layout/catalog_kit_list_widget.dart';
@@ -412,17 +414,31 @@ class _CatalogShellState extends State<CatalogShell>
           ),
         );
       case CatalogKitTypes.menu:
-        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
+        if (_menuIsHoisted(spec)) return null;
         return CatalogKitMenuWidget(
           tabId: _pageKey,
           spec: spec,
           sortOrder: stackIndex,
         );
       case CatalogKitTypes.tabs:
-        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
+        if (_tabsIsHoisted(spec)) return null;
         return CatalogKitTabsWidget(
           tabId: _pageKey,
           spec: spec,
+          sortOrder: stackIndex,
+        );
+      case CatalogKitTypes.topBar:
+        return CatalogKitTopBarActions(
+          tabId: _pageKey,
+          spec: spec,
+          sortOrder: stackIndex,
+          onRefresh: () => unawaited(onShellTabRefresh(force: true)),
+        );
+      case CatalogKitTypes.categoryBar:
+        return CatalogKitCategoryBar(
+          tabId: _pageKey,
+          spec: spec,
+          pluginId: widget.pluginId,
           sortOrder: stackIndex,
         );
       case CatalogKitTypes.list:
@@ -430,6 +446,22 @@ class _CatalogShellState extends State<CatalogShell>
       default:
         return _widgetFor(spec, tvOrders: tvOrders, prefetch: null);
     }
+  }
+
+  bool _menuIsHoisted(Map<String, dynamic> spec) {
+    if (spec['hoist'] == false) return false;
+    final handle = CatalogKitTopMenuRegistry.handleFor(_pageKey);
+    final hoisted = handle?.menuSpec;
+    if (hoisted == null) return false;
+    return (hoisted['id'] ?? '').toString() == (spec['id'] ?? '').toString();
+  }
+
+  bool _tabsIsHoisted(Map<String, dynamic> spec) {
+    if (spec['hoist'] == false) return false;
+    final handle = CatalogKitTopMenuRegistry.handleFor(_pageKey);
+    final hoisted = handle?.tabsSpec;
+    if (hoisted == null) return false;
+    return (hoisted['id'] ?? '').toString() == (spec['id'] ?? '').toString();
   }
 
   /// Prefer feature [CatalogKitListSource.buildHostBody] when registered.
@@ -973,6 +1005,8 @@ class _CatalogShellState extends State<CatalogShell>
       case CatalogKitTypes.stack:
       case CatalogKitTypes.menu:
       case CatalogKitTypes.tabs:
+      case CatalogKitTypes.topBar:
+      case CatalogKitTypes.categoryBar:
         return true;
       default:
         return true;
@@ -1417,9 +1451,27 @@ class _CatalogShellState extends State<CatalogShell>
             stackIndex: index,
           ),
         );
+      case CatalogKitTypes.topBar:
+        return CatalogKitTopBarActions(
+          tabId: _pageKey,
+          spec: spec,
+          sortOrder: _tvOrder(tvOrders, id),
+          onRefresh: () => unawaited(onShellTabRefresh(force: true)),
+        );
+      case CatalogKitTypes.categoryBar:
+        return CatalogKitCategoryBar(
+          tabId: _pageKey,
+          spec: spec,
+          pluginId: widget.pluginId,
+          sortOrder: _tvOrder(tvOrders, id),
+        );
       case CatalogKitTypes.menu:
       case CatalogKitTypes.tabs:
-        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
+        if (slot == CatalogKitTypes.menu
+            ? _menuIsHoisted(spec)
+            : _tabsIsHoisted(spec)) {
+          return null;
+        }
         return CatalogLayoutScope(
           selections: Map.unmodifiable(_layoutSelections),
           widgetSpecs: _layoutWidgetSpecs,

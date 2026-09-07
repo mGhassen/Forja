@@ -47,25 +47,37 @@ void main() {
     expect(ids, isNot(contains('settings')));
   });
 
-  test('host-default layout is live_schedule list (RFC-084)', () {
-    final layout = liveSportsHostDefaultLayout();
+  test('host-default layout is topBar + categoryBar + list+panel', () {
     expect(
       CatalogKitTypes.treeContains(
-        layout,
+        kLiveSportsHostDefaultLayout,
         slot: CatalogKitTypes.list,
         listSource: LiveSportsHost.listSourceId,
       ),
       isTrue,
     );
-    final stack = layout.first;
+    expect(
+      CatalogKitTypes.treeContains(
+        kLiveSportsHostDefaultLayout,
+        slot: CatalogKitTypes.topBar,
+      ),
+      isTrue,
+    );
+    expect(
+      CatalogKitTypes.treeContains(
+        kLiveSportsHostDefaultLayout,
+        slot: CatalogKitTypes.categoryBar,
+      ),
+      isTrue,
+    );
+    final stack = kLiveSportsHostDefaultLayout.first;
     expect(stack['type'], CatalogKitTypes.stack);
     final children = stack['children'] as List;
     final list = children.last as Map;
     expect(list['type'], CatalogKitTypes.list);
     expect(list['source'], LiveSportsHost.listSourceId);
     expect(list['style'], 'list');
-    expect(list['catalogMenu'], 'catalog');
-    expect(list['horizonMenu'], 'horizon');
+    expect(list['open'], 'panel');
   });
 
   test('live_schedule registers list source without host body', () {

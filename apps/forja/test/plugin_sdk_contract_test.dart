@@ -50,6 +50,7 @@ void main() {
       'plugins/hubs/asian_drama/manifest.json',
       'plugins/hubs/my_list/manifest.json',
       'plugins/hubs/live_sports/manifest.json',
+      'plugins/hubs/live_sports_cards/manifest.json',
       'plugins/hubs/arabic/manifest.json',
       'plugins/hubs/aflem/manifest.json',
       'plugins/hubs/cartoon/manifest.json',

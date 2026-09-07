@@ -1,8 +1,8 @@
 /// Catalog layout kit — normalized widget types declared by hub packs.
 ///
-/// Packs use `kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`, `kit.row` in
-/// `layout` widgets. Legacy aliases (`stack`, `tabs`, `rail`, `host.my_list`)
-/// normalize to the same slots for one release.
+/// Packs use `kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`, `kit.row`,
+/// `kit.topBar`, `kit.categoryBar` in `layout` widgets. Legacy aliases
+/// (`stack`, `tabs`, `rail`, `host.my_list`) normalize to the same slots.
 ///
 /// Domain data is feature-owned: packs may pass an opaque [kit.list] `source`
 /// id registered via [CatalogHostListRegistry] — kit never names products.
@@ -14,6 +14,8 @@ abstract final class CatalogKitTypes {
   static const tabs = 'kit.tabs';
   static const list = 'kit.list';
   static const row = 'kit.row';
+  static const topBar = 'kit.topBar';
+  static const categoryBar = 'kit.categoryBar';
 
   /// Normalize pack [rawType] (+ optional [spec] for legacy `tabs` style).
   static String normalize(String rawType, [Map<String, dynamic>? spec]) {
@@ -31,6 +33,9 @@ abstract final class CatalogKitTypes {
       'kit.tabs' || tabs => tabs,
       'host.my_list' || 'my_list' || list => list,
       'rail' || 'ranked' || row => row,
+      'topBar' || 'kit.top_bar' || topBar => topBar,
+      'categoryBar' || 'kit.category_bar' || 'kinds' || categoryBar =>
+        categoryBar,
       _ => t,
     };
   }
@@ -119,12 +124,31 @@ void initLayoutTabSelections(
       (spec['type'] ?? '').toString(),
       spec,
     );
-    if (type != CatalogKitTypes.menu && type != CatalogKitTypes.tabs) return;
-    final id = (spec['id'] ?? '').toString().trim();
-    if (id.isEmpty || selections.containsKey(id)) return;
-    final def = spec['default']?.toString();
-    if (def != null && def.isNotEmpty) {
-      selections[id] = def;
+    if (type == CatalogKitTypes.menu ||
+        type == CatalogKitTypes.tabs ||
+        type == CatalogKitTypes.categoryBar) {
+      final id = (spec['id'] ?? '').toString().trim();
+      if (id.isEmpty || selections.containsKey(id)) return;
+      final def = spec['default']?.toString();
+      if (def != null && def.isNotEmpty) {
+        selections[id] = def;
+      }
+      return;
+    }
+    if (type != CatalogKitTypes.topBar) return;
+    final actions = spec['actions'];
+    if (actions is! List) return;
+    for (final raw in actions) {
+      if (raw is! Map) continue;
+      final action = Map<String, dynamic>.from(raw);
+      final id = (action['id'] ?? '').toString().trim();
+      if (id.isEmpty || selections.containsKey(id)) continue;
+      final items = catalogKitItemsFromSpec(action);
+      if (items.isEmpty) continue;
+      final def = action['default']?.toString();
+      if (def != null && def.isNotEmpty) {
+        selections[id] = def;
+      }
     }
   });
 }

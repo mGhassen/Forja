@@ -1,5 +1,5 @@
-// Live Sports hub — list + right panel skin.
-// Composes kit primitives only; schedule data is opaque `live_schedule`.
+// Live Sports hub — cards + details page skin.
+// Same opaque `live_schedule` source; different kit composition.
 
 function liveSportsCatalogActions() {
   return [
@@ -37,10 +37,10 @@ function liveSportsCatalogActions() {
   ];
 }
 
-function liveSportsLayout() {
+function liveSportsCardsLayout() {
   return {
     pages: {
-      live_matches: {
+      live_sports_cards: {
         widgets: [
           kitStack('page', { expand: true }, [
             kitTopBar('chrome', {
@@ -56,8 +56,8 @@ function liveSportsLayout() {
             }),
             kitList('schedule', {
               source: 'live_schedule',
-              style: 'list',
-              open: 'panel',
+              style: 'grid',
+              open: 'details',
               expand: true,
               kindMenu: 'kind',
               catalogMenu: 'catalog',
@@ -73,11 +73,14 @@ function liveSportsLayout() {
 function extract(ctx) {
   var action = hubAction(ctx);
   if (action === 'layout') {
-    return hubOk('layout', liveSportsLayout(), { maxAge: 3600, swr: 86400 });
+    return hubOk('layout', liveSportsCardsLayout(), {
+      maxAge: 3600,
+      swr: 86400,
+    });
   }
   return hubFail(
     action,
     'INVALID_ACTION',
-    'live-sports hub exposes layout; schedule browse is the live_matches feature',
+    'live-sports-cards hub exposes layout for the Live Sports Cards tab',
   );
 }

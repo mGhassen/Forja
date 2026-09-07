@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **6 / 6** acceptance (this slice) |
-| **Current slice** | Evacuated product trees from kit; host list registry + feature folders |
+| **Progress** | **4 / 4** components · **8 / 8** acceptance |
+| **Current slice** | Kit primitives for pack-composed skins (`kit.topBar`, `kit.categoryBar`, list `open`) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,26 +36,18 @@
 | 4 | R85-A04 | Sources-panel middleware not under a product `kit/sources/` dump folder | ✅ |
 | 5 | R85-A05 | Pack layouts compose generic kit widgets; product source ids live in packs/features only | ✅ |
 | 6 | R85-A06 | Host tests / imports retargeted to feature paths | ✅ |
+| 7 | R85-A07 | `kit.topBar` + action chips and `kit.categoryBar` are generic kit widgets — packs compose them | ✅ |
+| 8 | R85-A08 | `kit.list` `open: panel\|details` drives side panel vs generic entry details page — no product-named chrome under features | ✅ |
 
 ---
 
 ## Summary
 
-**Rule:** `shared/catalog/kit/` is reusable UI atoms only (stack, menu, tabs, list grid, rows, cards, chrome, details/play helpers). Opening kit must never reveal product names (`my_list`, `live_schedule`).
+**Rule:** `shared/catalog/kit/` is reusable UI atoms only (stack, menu, tabs, list grid, rows, cards, chrome, topBar, categoryBar, details/play helpers). Opening kit must never reveal product names (`my_list`, `live_schedule`).
 
-**Wrong (RFC-071 halfway):** pack layout stubs with `source: my_list|live_schedule` and Dart backends parked under `kit/sources/`.
+**Wrong:** product chrome under `features/live_sports/` named LiveSports*TopBar / LiveSports*Details.
 
-**Right:**
-
-| Layer | Owns |
-|-------|------|
-| Kit | Generic widgets + nameless list contract |
-| `CatalogHostListRegistry` (`shared/catalog/services/`) | Opaque source-id → feature-owned `CatalogKitListSource` |
-| `features/my_list/` | Local + Simkl merge, open, pin |
-| `features/live_matches/` | Schedule browse / play god-page (until RFC-073 thins it) |
-| Hub packs | Layout composition; opaque `source` ids they own |
-
-Pack-driven JS catalog rows for My List / Live schedule remain later work (RFC-073 browse). This slice is **folder honesty + registry** so kit stays generic.
+**Right:** packs assemble `kit.topBar` + `kit.categoryBar` + `kit.list { open: panel|details }`; features only register opaque list sources + panel data hosts.
 
 ### Related
 

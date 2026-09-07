@@ -12,6 +12,7 @@ export const PLUGIN_PACK_SOURCES: Readonly<Record<string, string>> = {
   "kids": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/kids/manifest.json",
   "live": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/live/manifest.json",
   "live-sports": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/live_sports/manifest.json",
+  "live-sports-cards": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/live_sports_cards/manifest.json",
   "my-list": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/my_list/manifest.json",
   "providers": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json",
   "torrent": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/torrent/manifest.json",

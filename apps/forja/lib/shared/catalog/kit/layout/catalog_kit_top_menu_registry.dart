@@ -73,6 +73,8 @@ abstract final class CatalogKitTopMenuRegistry {
         (spec['type'] ?? '').toString(),
         spec,
       );
+      // `hoist: false` keeps menu/tabs in the page body (under kit.topBar).
+      if (spec['hoist'] == false) return;
       if (type == CatalogKitTypes.menu && menuSpec == null) {
         menuSpec = Map<String, dynamic>.from(spec);
       } else if (type == CatalogKitTypes.tabs && tabsSpec == null) {

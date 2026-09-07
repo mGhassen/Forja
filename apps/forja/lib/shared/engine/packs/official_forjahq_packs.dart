@@ -124,9 +124,16 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     name: 'ForjaHQ Live Sports',
     kind: 'hubs',
     tags: ['live', 'sports'],
-    description:
-        'Live sports schedule and streams.',
+    description: 'Live sports list with a streams panel.',
     manifestUrl: '$_kPacksBase/hubs/live_sports/manifest.json',
+  ),
+  OfficialForjaHqPack(
+    id: 'live-sports-cards',
+    name: 'ForjaHQ Live Sports Cards',
+    kind: 'hubs',
+    tags: ['live', 'sports'],
+    description: 'Live sports schedule as cards with a details page.',
+    manifestUrl: '$_kPacksBase/hubs/live_sports_cards/manifest.json',
   ),
   OfficialForjaHqPack(
     id: 'iptv-vod',

@@ -2,9 +2,9 @@
   "schema": 1,
   "id": "forjahq-live-sports",
   "name": "ForjaHQ Live Sports",
-  "description": "Live sports schedule and streams.",
+  "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "tags": [
     "sports",
     "live"
@@ -13,7 +13,7 @@
     {
       "id": "live-sports-hub",
       "name": "Live Sports",
-      "description": "Live sports schedule and streams.",
+      "description": "Live sports list with a streams panel.",
       "entry": "live_sports.js",
       "kind": "catalog",
       "protocol": 1,
