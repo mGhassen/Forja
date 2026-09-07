@@ -513,8 +513,26 @@ export function AccountSettingsIptvPage() {
     clearSelection()
   }
 
+  const hideShare = (key: string) => {
+    setShareFlash((prev) => {
+      if (!(key in prev)) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
   const copyShare = async (portal: IptvPortalRow) => {
     const key = rowIdentity(portal)
+    const existing = shareFlash[key]
+    if (existing) {
+      try {
+        await navigator.clipboard.writeText(existing)
+      } catch {
+        // still keep code visible if clipboard permission is denied
+      }
+      return
+    }
     setSharingKey(key)
     setShareError(null)
     try {
@@ -526,13 +544,6 @@ export function AccountSettingsIptvPage() {
         // Still show the code if clipboard permission is denied.
       }
       setShareFlash((prev) => ({ ...prev, [key]: formatted }))
-      window.setTimeout(() => {
-        setShareFlash((prev) => {
-          const next = { ...prev }
-          delete next[key]
-          return next
-        })
-      }, 8000)
     } catch (error) {
       setShareError(
         error instanceof Error ? error.message : 'Could not create share code',
@@ -893,7 +904,12 @@ export function AccountSettingsIptvPage() {
                       />
 
                       {shownCode || sharingKey === key ? (
-                        <div className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 rounded-md text-left hover:bg-white/4"
+                          onClick={() => hideShare(key)}
+                          title="Click to hide share code"
+                        >
                           {sharingKey === key && !shownCode ? (
                             <p className="text-sm text-forja-muted">
                               Creating share code…
@@ -901,14 +917,14 @@ export function AccountSettingsIptvPage() {
                           ) : (
                             <>
                               <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
-                                SHARE CODE
+                                SHARE CODE · CLICK TO HIDE
                               </p>
                               <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
                                 {shownCode}
                               </p>
                             </>
                           )}
-                        </div>
+                        </button>
                       ) : (
                         <div className="min-w-0 flex-1 space-y-1">
                           <p
