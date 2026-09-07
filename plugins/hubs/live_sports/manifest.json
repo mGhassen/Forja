@@ -23,7 +23,8 @@
       ],
       "capabilities": [
         "nav",
-        "layout"
+        "layout",
+        "settings"
       ],
       "nav": {
         "tabId": "live_matches",
@@ -31,6 +32,20 @@
         "order": 20,
         "icon": "icons/nav.png",
         "accent": "#FB923C"
+      },
+      "settings": {
+        "addon": "live_sports",
+        "group": "Live Sports",
+        "order": 20,
+        "fields": [
+          {
+            "id": "mergeMatchingEvents",
+            "type": "toggle",
+            "label": "Merge matching events",
+            "subtitle": "Combine the same game across catalogs and run ESPN enrich. Off is faster with large schedules (default).",
+            "default": false
+          }
+        ]
       },
       "prelude": "_kit.js"
     }

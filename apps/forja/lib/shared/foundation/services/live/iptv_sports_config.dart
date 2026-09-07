@@ -3,11 +3,16 @@ import 'dart:convert';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
+import 'package:forja/shared/foundation/services/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
 class LiveMatchesIptvSportsConfig {
   static const prefsKey = 'live_matches_iptv_sports_v1';
+
+  /// Pack field for schedule merge (RFC-089) — [PackSettingsStore].
+  static const mergeMatchingPluginId = 'live-sports-hub';
+  static const mergeMatchingFieldId = 'mergeMatchingEvents';
 
   static const allLeagues = <String>[
     'NBA',
@@ -353,29 +358,54 @@ class LiveMatchesIptvSportsConfig {
   static Future<LiveMatchesIptvSportsConfig> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(prefsKey);
+    LiveMatchesIptvSportsConfig base;
     if (raw == null || raw.isEmpty) {
-      return const LiveMatchesIptvSportsConfig(
+      base = const LiveMatchesIptvSportsConfig(
         enabled: true,
         forjaLiveEnabled: true,
         leagues: allLeagues,
       );
+    } else {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) {
+          base = LiveMatchesIptvSportsConfig.fromJson(decoded);
+        } else if (decoded is Map) {
+          base = LiveMatchesIptvSportsConfig.fromJson(
+            Map<String, dynamic>.from(decoded),
+          );
+        } else {
+          base = const LiveMatchesIptvSportsConfig();
+        }
+      } catch (_) {
+        base = const LiveMatchesIptvSportsConfig();
+      }
     }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic>) {
-        return LiveMatchesIptvSportsConfig.fromJson(decoded);
-      }
-      if (decoded is Map) {
-        return LiveMatchesIptvSportsConfig.fromJson(
-          Map<String, dynamic>.from(decoded),
-        );
-      }
-    } catch (_) {}
-    return const LiveMatchesIptvSportsConfig();
+    await PackSettingsStore.migrateBoolIfAbsent(
+      mergeMatchingPluginId,
+      mergeMatchingFieldId,
+      base.mergeMatchingEvents,
+    );
+    final merge = await PackSettingsStore.getBool(
+      mergeMatchingPluginId,
+      mergeMatchingFieldId,
+      defaultValue: false,
+    );
+    return base.copyWith(mergeMatchingEvents: merge);
   }
 
   static Future<void> save(LiveMatchesIptvSportsConfig config) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(prefsKey, jsonEncode(config.toJson()));
+    // Merge toggle lives in PackSettingsStore (hub pack settings); keep JSON
+    // key for older builds but always sync from the pack store when present.
+    final merge = await PackSettingsStore.getBool(
+      mergeMatchingPluginId,
+      mergeMatchingFieldId,
+      defaultValue: config.mergeMatchingEvents,
+    );
+    await prefs.setString(
+      prefsKey,
+      jsonEncode(config.copyWith(mergeMatchingEvents: merge).toJson()),
+    );
   }
 }

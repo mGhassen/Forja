@@ -21,6 +21,7 @@ class EnginePlugin {
     this.kit,
     this.capabilities = const [],
     this.nav,
+    this.settings,
     this.enrich,
     this.ctxConfigMap = const {},
     this.defaultCapabilities = const {},
@@ -56,11 +57,14 @@ class EnginePlugin {
   /// Catalog hub `ctx` kit version the plugin needs ([hostKitVersion]).
   final int? kit;
 
-  /// Declared hub features (`nav`, `search`, `host_search`, `structured_search`, `details`, `filters`, `auth`, …).
+  /// Declared hub features (`nav`, `search`, `host_search`, `structured_search`, `details`, `filters`, `auth`, `settings`, …).
   final List<String> capabilities;
 
   /// Nav contribution — parsed by `MetaNavSpec.fromPluginNav`.
   final Map<String, dynamic>? nav;
+
+  /// Addon settings contribution (RFC-089) — parsed by `PackAddonSettingsSpec`.
+  final Map<String, dynamic>? settings;
 
   /// Optional companion catalog plugin id for post-rail / post-details enrich.
   /// Source plugins stay data-only; host pipes `items` / `meta` through this.
@@ -185,6 +189,9 @@ class EnginePlugin {
       kit: _asPluginInt(j['kit']),
       capabilities: _stringList(j['capabilities']),
       nav: j['nav'] is Map ? Map<String, dynamic>.from(j['nav'] as Map) : null,
+      settings: j['settings'] is Map
+          ? Map<String, dynamic>.from(j['settings'] as Map)
+          : null,
       enrich: (j['enrich'] as String?)?.trim().isNotEmpty == true
           ? (j['enrich'] as String).trim()
           : null,
@@ -211,6 +218,7 @@ class EnginePlugin {
     if (kit != null) 'kit': kit,
     if (capabilities.isNotEmpty) 'capabilities': capabilities,
     if (nav != null) 'nav': nav,
+    if (settings != null) 'settings': settings,
     if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
     if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
     if (defaultCapabilities.isNotEmpty) 'defaultCapabilities': defaultCapabilities,
@@ -235,6 +243,7 @@ class EnginePlugin {
     kit: kit,
     capabilities: capabilities,
     nav: nav,
+    settings: settings,
     enrich: enrich,
     ctxConfigMap: ctxConfigMap,
     defaultCapabilities: defaultCapabilities,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/addons/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/settings_iptv_sports_section.dart';
@@ -14,8 +15,19 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///
-/// Reuses existing section widgets — no logic duplication.
+/// Host section first, then pack-declared fields ([PackAddonSettingsSection]).
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
+  final host = _hostAddonDetailBody(addonId, visibility);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      host,
+      PackAddonSettingsSection(addonId: addonId),
+    ],
+  );
+}
+
+Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
   switch (addonId) {
     case SettingsAddonId.playback:
       return SettingsPlaybackSection(visibility: visibility);
