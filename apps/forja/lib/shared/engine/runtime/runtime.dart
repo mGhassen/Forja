@@ -834,7 +834,7 @@ class EngineRuntime {
       if (_activeExtract <= 0) {
         _acceptingFetches = false;
         if (_deferredDrop) {
-          _dropRuntime();
+          unawaited(_settleThenDrop());
         }
       }
     }
@@ -1168,8 +1168,7 @@ class EngineRuntime {
       if (_activeExtract <= 0) {
         _acceptingFetches = false;
         if (_deferredDrop) {
-          _dropRuntime();
-          _forjaRuntimeLog('deferred VM drop complete');
+          unawaited(_settleThenDrop());
         }
       }
     }
@@ -1203,8 +1202,11 @@ class EngineRuntime {
         _deferredDrop = true;
         _forjaRuntimeLog('abortPendingWork (deferred VM drop)');
       } else {
-        _dropRuntime();
-        _forjaRuntimeLog('abortPendingWork');
+        // Immediate drop races JSC drainMicrotasks after the last evaluate —
+        // settle first (same class as post-extract dispose).
+        _deferredDrop = true;
+        unawaited(_settleThenDrop());
+        _forjaRuntimeLog('abortPendingWork (settle then drop)');
       }
     }
   }
@@ -1216,9 +1218,30 @@ class EngineRuntime {
     } catch (_) {}
     if (_activeExtract > 0) {
       _deferredDrop = true;
-    } else {
-      _dropRuntime();
+      return;
     }
+    if (_runtime == null) return;
+    // extractLive can return while JSC still drains microtasks / fires
+    // bridge callbacks on the next run-loop turn — never free synchronously.
+    _deferredDrop = true;
+    unawaited(_settleThenDrop());
+  }
+
+  Future<void> _settleThenDrop() async {
+    final rt = _runtime;
+    if (rt != null) {
+      try {
+        for (var i = 0; i < 64; i++) {
+          if (!identical(_runtime, rt) || !_deferredDrop) return;
+          rt.executePendingJob();
+        }
+      } catch (_) {}
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 48));
+    if (_activeExtract > 0) return;
+    if (!_deferredDrop) return;
+    _dropRuntime();
+    _forjaRuntimeLog('deferred VM drop after settle');
   }
 
   void _dropRuntime() {

@@ -252,6 +252,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
 | [233-[fixed]-…](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md) | ATV Exo IPTV periodic buffering (Xiaomi / no continuity proxy) | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [234-[fixed]-…](fixed/234-[fixed]-macos-boot-catalog-feed-jsc-crash.md) | macOS boot catalog feed JSC SIGSEGV | P0 | Critical | fixed | Complete · 3/3 · A 0/1 | [190](190-[open]-forja-engine-parallel-jsc-crash.md) |
+| [235-[fixed]-…](fixed/235-[fixed]-web-empty-packs-omit-forja-no-device-purge.md) | Web empty packs omit forja → device never purges | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

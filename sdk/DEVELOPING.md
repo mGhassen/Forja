@@ -66,6 +66,7 @@ my-pack/
 ```json
 {
   "schema": 1,
+  "id": "my-community-pack",
   "name": "My Community Pack",
   "version": "1.0.0",
   "plugins": [
@@ -80,7 +81,6 @@ my-pack/
 }
 ```
 
-Omit top-level pack `id` — the host derives identity from the **manifest URL**.
 **hello.js**
 
 ```javascript
@@ -125,7 +125,7 @@ Each **plugin** object:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | yes | Unique **across all installed packs** — install refuses duplicates |
+| `id` | yes | Module id unique **inside this pack** (enrich / multi-plugin) |
 | `name` | yes | Display name |
 | `entry` | yes | JS filename relative to manifest directory |
 | `kind` | no | `http` (default), `hop`, `catalog`, `host` |
@@ -491,10 +491,9 @@ Reference hubs: [`hubs/home/tmdb.js`](hubs/home/tmdb.js), [`hubs/anime/anilist.j
 
 1. Host `manifest.json` + every `entry` / `prelude` file on HTTPS (same directory tree). GitHub raw works for public packs.
 2. List those paths in manifest **`bundle`** (array of relative paths) so install knows what to download.
-3. Give users the **manifest URL** — that is the pack’s identity.
-4. Pack top-level `id` is **optional** — omit it; the host derives `forjahq-…` for official tree URLs or `pack-<hash>` for community URLs.
-5. Plugin `id` must be unique **inside your pack** only (local module name for enrich / multi-plugin). Semver `version` per release.
-5. `nav.tabId` is a **local label** for multi-tab packs. Features / rail ids for community packs are **host-owned** (`p_<urlHash>_…`). Official ForjaHQ `plugins/hubs/…` URLs keep the author tabId for prefs stability.
+3. Give users the **manifest URL** to install.
+4. Pack top-level `id` is **required** and stable across rehosts (e.g. `my-community-pack`). Host prefs key off it.
+5. Plugin `id` must be unique **inside your pack** only. Semver `version` per release.
 
 Signed manifests / sha256 verification are **not** implemented yet — distribute from sources you trust.
 
@@ -527,7 +526,7 @@ Run desktop with `--dart-define-from-file=../../.env` so hub TMDB match works.
 
 ## Checklist before sharing a pack
 
-- [ ] Pack top-level `id` omitted (host owns identity from install URL); plugin `id`s unique **inside** this pack only
+- [ ] Pack top-level `id` set and stable; plugin `id`s unique **inside** this pack only
 - [ ] Every `entry` / `prelude` path resolves from the manifest URL
 - [ ] `version` bumped
 - [ ] VOD plugins return `[]` on miss, not throw (throws become `[]` after log)

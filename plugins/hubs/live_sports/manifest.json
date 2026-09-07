@@ -1,9 +1,10 @@
 {
   "schema": 1,
+  "id": "forjahq-live-sports",
   "name": "ForjaHQ Live Sports",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "tags": [
     "sports",
     "live"

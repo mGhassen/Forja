@@ -114,16 +114,23 @@ export function useForjaSetting() {
     data,
     save: async (payload: ForjaPayload) => {
       const current = settings.data?.payload
+      const prevForja = current?.connectedServices?.forja
+      const nextForja: ForjaPayload = {
+        packs: payload.packs ?? [],
+        ...(payload.onboarded === true || prevForja?.onboarded === true
+          ? { onboarded: true as const }
+          : {}),
+      }
       const navigation = navigationAfterForjaPacksChange({
         navigation: current?.navigation,
-        prevPacks: current?.connectedServices?.forja?.packs ?? [],
-        nextPacks: payload.packs ?? [],
+        prevPacks: prevForja?.packs ?? [],
+        nextPacks: nextForja.packs ?? [],
         addonFeatureIptv: current?.playback?.addon_feature_iptv,
       })
       await settings.patch({
         connectedServices: {
           ...current?.connectedServices,
-          forja: payload,
+          forja: nextForja,
         },
         navigation,
       })

@@ -607,7 +607,10 @@ function compactNuvio(s: NuvioPayload | undefined): NuvioPayload | undefined {
 }
 
 function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
-  const packs = (s?.packs ?? [])
+  // Absent key → omit (domain unchanged on merge). Present with packs:[] must
+  // stay in the DB so devices can purge local membership (issue 235).
+  if (s === undefined) return undefined
+  const packs = (s.packs ?? [])
     .map((a) => {
       const manifestUrl = a.manifestUrl?.trim()
       if (!manifestUrl) return null
@@ -621,10 +624,8 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)
-  const onboarded = s?.onboarded === true
-  if (!packs.length && !onboarded) return undefined
   const out: ForjaPayload = { packs }
-  if (onboarded) out.onboarded = true
+  if (s.onboarded === true) out.onboarded = true
   return out
 }
 

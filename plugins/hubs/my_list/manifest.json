@@ -1,9 +1,10 @@
 {
   "schema": 1,
+  "id": "forjahq-my-list",
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "tags": [
     "lists"
   ],

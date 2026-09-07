@@ -408,6 +408,21 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     final leading =
         Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
 
+    // Same trailing slot for every row so chevrons share one right edge —
+    // toggle rows used to pin the arrow in a 40 + 4 slot while plain rows
+    // put a bare Icon inside content padding.
+    const chevron = SizedBox(
+      width: 40,
+      height: 40,
+      child: Center(
+        child: Icon(
+          Icons.chevron_right_rounded,
+          color: ForjaShellColors.iconMuted,
+          size: 22,
+        ),
+      ),
+    );
+
     final detailsBtn = shellFocusableTap(
       context: context,
       focusNode: _detailsFocus,
@@ -427,17 +442,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
               _rowFocus.requestFocus();
             }
           : null,
-      child: const SizedBox(
-        width: 40,
-        height: 40,
-        child: Center(
-          child: Icon(
-            Icons.chevron_right_rounded,
-            color: ForjaShellColors.iconMuted,
-            size: 22,
-          ),
-        ),
-      ),
+      child: chevron,
     );
 
     Widget body;
@@ -498,20 +503,24 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         tvRowId: rowId,
         tvItemIndex: 0,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
-          child: Row(
-            children: [
-              leading,
-              const SizedBox(width: 12),
-              Expanded(child: titles),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: ForjaShellColors.iconMuted,
-                size: 20,
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+                child: Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(child: titles),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+            chevron,
+            const SizedBox(width: 4),
+          ],
         ),
       );
     }

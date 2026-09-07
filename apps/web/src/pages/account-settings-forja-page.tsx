@@ -52,7 +52,10 @@ const PACK_KIND_ORDER = [
 
 function forjaFromServer(value: unknown): ForjaPayload {
   const payload = value as ForjaPayload | undefined
-  return { packs: payload?.packs ?? [] }
+  return {
+    packs: payload?.packs ?? [],
+    ...(payload?.onboarded === true ? { onboarded: true as const } : {}),
+  }
 }
 
 function packTitle(pack: ForjaPackRow, catalog?: ForjaPluginPackLive): string {
@@ -212,6 +215,7 @@ export function AccountSettingsForjaPage() {
     if (dialogMode === 'remove') {
       try {
         await commit((prev) => ({
+          ...prev,
           packs: prev.packs.filter(
             (p) => p.manifestUrl !== installPrompt.manifestUrl,
           ),
@@ -228,7 +232,7 @@ export function AccountSettingsForjaPage() {
       return
     }
     try {
-      await commit((prev) => ({ packs: [...prev.packs, row] }))
+      await commit((prev) => ({ ...prev, packs: [...prev.packs, row] }))
       closeInstallDialog()
     } catch {
       // saveError surfaced in footer
@@ -245,7 +249,7 @@ export function AccountSettingsForjaPage() {
       name: catalogHit?.name ?? manifestUrl,
       version: catalogHit?.version,
     }
-    void commit((prev) => ({ packs: [...prev.packs, row] }))
+    void commit((prev) => ({ ...prev, packs: [...prev.packs, row] }))
     setUrl('')
   }
 
@@ -275,7 +279,7 @@ export function AccountSettingsForjaPage() {
             version: item.version,
           })
         }
-        return { packs: next }
+        return { ...prev, packs: next }
       })
       setOfficialOpen(false)
     } catch {

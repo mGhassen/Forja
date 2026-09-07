@@ -1,9 +1,10 @@
 {
   "schema": 1,
+  "id": "forjahq-aflem",
   "name": "ForjaHQ Aflem",
   "description": "Aflem Arabic series hub (Brstej upstream).",
   "author": "ForjaHQ",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "tags": [
     "aflem",
     "arabic"

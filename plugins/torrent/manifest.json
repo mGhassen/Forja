@@ -1,9 +1,10 @@
 {
   "schema": 1,
+  "id": "forjahq-torrent",
   "name": "ForjaHQ Torrent",
   "description": "Built-in torrent indexer search for movies and series.",
   "author": "ForjaHQ",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "prelude": "_torrent_common.js",
   "tags": [
     "torrent"

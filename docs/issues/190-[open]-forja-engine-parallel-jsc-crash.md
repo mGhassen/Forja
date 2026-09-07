@@ -62,3 +62,5 @@
 **Shipped for I190-T05 / T06 / T07:** `runPluginIsolated` gen gate; Play always `cancelPending` (scrapes stop); `cancel_kind(EngineJsExtract)` + `Engine.cancelEngineJsExtracts` so magnet resolve survives.
 
 **Shipped for I190-T10:** `abortInFlightExtracts` from host cancel; HTTP EngineJS `"cancelled"` → empty result (not null); live cancelled bumps gen before null.
+
+**Related (boot catalog feed, 2026-09-08):** [234](fixed/234-[fixed]-macos-boot-catalog-feed-jsc-crash.md) — Home `feed` no longer skips EngineJS; settle-then-drop for flutter_js forks. Broader parallel JSC / RFC-064 cutover still here.

@@ -898,7 +898,20 @@ class SyncDomainBridge {
       final forja = connected['forja'];
       if (forja is Map) {
         await importForja(Map<String, dynamic>.from(forja));
+      } else {
+        // Cloud omitted forja (legacy compact dropped packs:[]) — empty
+        // membership; purge local packs (issue 235).
+        debugPrint(
+          '[Sync] importForja empty — cloud omitted connectedServices.forja',
+        );
+        await importForja(const <String, dynamic>{});
       }
+    } else {
+      // Full profile row with no connectedServices → no forja membership.
+      debugPrint(
+        '[Sync] importForja empty — cloud omitted connectedServices',
+      );
+      await importForja(const <String, dynamic>{});
     }
 
     final navigation = payload['navigation'];
@@ -1532,10 +1545,16 @@ class SyncDomainBridge {
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
+    debugPrint('[Sync] importForja packs=${rows.length}');
     final result = await EngineService.instance.applyLeanManifestUrls(
       rows,
       purgeRemovedImmediately: true,
     );
+    if (result.removed.isNotEmpty) {
+      debugPrint(
+        '[Sync] importForja purged ${result.removed.length} pack(s)',
+      );
+    }
     await PluginInstallPromptService.applyCloudLeanDiff(result);
     return result;
   }

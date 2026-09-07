@@ -4,14 +4,14 @@
   "title": "Forja EngineJS pack manifest",
   "description": "Top-level manifest.json for a Forja plugin pack. Host parser: EnginePack.fromJson.",
   "type": "object",
-  "required": ["schema", "name", "version", "plugins"],
+  "required": ["schema", "id", "name", "version", "plugins"],
   "additionalProperties": true,
   "properties": {
     "schema": { "const": 1 },
     "id": {
       "type": "string",
       "minLength": 1,
-      "description": "Optional legacy pack id. Host derives identity from the install URL when omitted (RFC-094)."
+      "description": "Stable pack id (e.g. forjahq-anime). Host prefs and pack identity; required."
     },
     "name": { "type": "string", "minLength": 1 },
     "version": { "type": "string", "minLength": 1 },

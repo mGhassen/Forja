@@ -56,6 +56,10 @@ class EngineService {
   int _liveResolveInFlight = 0;
   final List<Completer<void>> _liveResolveWaiters = [];
 
+  /// Serialize catalog flutter_js forks — macOS JSC SIGSEGVs on parallel VMs
+  /// (same class as torrent search / live resolve).
+  Future<void> _catalogFlutterJsTail = Future<void>.value();
+
   Future<void> _acquireLiveResolveSlot() async {
     if (_liveResolveInFlight < _liveResolveMaxParallel) {
       _liveResolveInFlight++;
@@ -411,47 +415,57 @@ class EngineService {
       }
     }
 
-    // Hub feed/rail may call ctx.host.liveFeed.load (flutter_js async bridge).
-    // Skip EngineJS for those actions so aggregation can fork catalog plugins.
-    final preferFlutterJs = action == 'feed' || action == 'rail';
-    if (!preferFlutterJs) {
-      final viaRust = await _runLiveEngineRustJs(
-        plugin: plugin,
-        config: config,
-        action: action,
-        params: catalogCtx,
-        timeout: timeout,
-        gen: gen,
-        generation: () => _catalogGeneration,
+    // Always try EngineJS first (Home/TMDB feed/rail — no liveFeed bridge).
+    // Live Sports feed needs ctx.host.liveFeed.load → EngineJS unsupported →
+    // flutter_js fallback below.
+    final viaRust = await _runLiveEngineRustJs(
+      plugin: plugin,
+      config: config,
+      action: action,
+      params: catalogCtx,
+      timeout: timeout,
+      gen: gen,
+      generation: () => _catalogGeneration,
+    );
+    if (viaRust != null) {
+      final envelope = _firstEnvelopeMap(viaRust);
+      if (envelope != null) return envelope;
+      if (gen != _catalogGeneration) return null;
+      debugPrint(
+        '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
       );
-      if (viaRust != null) {
-        final envelope = _firstEnvelopeMap(viaRust);
-        if (envelope != null) return envelope;
-        if (gen != _catalogGeneration) return null;
-        debugPrint(
-          '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
-        );
-      }
     }
     if (gen != _catalogGeneration) return null;
 
-    final runtime = EngineRuntime.fork();
+    final previous = _catalogFlutterJsTail;
+    final gate = Completer<void>();
+    _catalogFlutterJsTail = gate.future;
     try {
-      await runtime.loadPlugin(pluginId: plugin.id, code: code);
+      await previous;
       if (gen != _catalogGeneration) return null;
-      final raw = await runtime.extractLive(
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-        action: action,
-        params: catalogCtx,
-        config: config,
-        timeout: timeout,
-        isCancelled: () => gen != _catalogGeneration,
-      );
-      if (gen != _catalogGeneration) return null;
-      return _firstEnvelopeMap(raw);
+      final runtime = EngineRuntime.fork();
+      try {
+        await runtime.loadPlugin(pluginId: plugin.id, code: code);
+        if (gen != _catalogGeneration) return null;
+        final raw = await runtime.extractLive(
+          pluginId: plugin.id,
+          pluginName: plugin.name,
+          action: action,
+          params: catalogCtx,
+          config: config,
+          timeout: timeout,
+          isCancelled: () => gen != _catalogGeneration,
+        );
+        if (gen != _catalogGeneration) return null;
+        return _firstEnvelopeMap(raw);
+      } finally {
+        runtime.dispose();
+        // dispose settles async (~48ms); keep the mutex until then so the
+        // next catalog flutter_js fork does not overlap a dying JSC heap.
+        await Future<void>.delayed(const Duration(milliseconds: 64));
+      }
     } finally {
-      runtime.dispose();
+      if (!gate.isCompleted) gate.complete();
     }
   }
 

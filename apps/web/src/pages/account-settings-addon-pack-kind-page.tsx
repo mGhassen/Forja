@@ -27,7 +27,10 @@ import {
 
 function forjaFromServer(value: unknown): ForjaPayload {
   const payload = value as ForjaPayload | undefined
-  return { packs: payload?.packs ?? [] }
+  return {
+    packs: payload?.packs ?? [],
+    ...(payload?.onboarded === true ? { onboarded: true as const } : {}),
+  }
 }
 
 function packTitle(pack: ForjaPackRow, catalog?: ForjaPluginPackLive): string {
@@ -136,6 +139,7 @@ export function AccountSettingsAddonPackKindPage({
 
   const removePack = (manifestUrl: string) => {
     void commit((prev) => ({
+      ...prev,
       packs: prev.packs.filter((p) => p.manifestUrl !== manifestUrl),
     }))
   }
@@ -156,7 +160,7 @@ export function AccountSettingsAddonPackKindPage({
             version: item.version,
           })
         }
-        return { packs: next }
+        return { ...prev, packs: next }
       })
       setOfficialOpen(false)
     } catch {
