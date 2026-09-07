@@ -6,7 +6,6 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_logo.dart';
 
 const splashSlogan = 'Relax, look at the sun';
 

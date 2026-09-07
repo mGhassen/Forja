@@ -10,7 +10,6 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Sentinel for the "All" entry in the categories popup menu.

@@ -13,7 +13,6 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 

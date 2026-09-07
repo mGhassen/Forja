@@ -9,7 +9,6 @@ import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Settings → Data & backup - export / import Xtream portals as CSV.
 class SettingsIptvPortalsSection extends StatefulWidget {

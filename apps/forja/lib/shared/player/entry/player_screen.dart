@@ -14,7 +14,6 @@ import 'package:forja/shared/player/screens/desktop_player_screen.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/bus/shell_bus.dart';

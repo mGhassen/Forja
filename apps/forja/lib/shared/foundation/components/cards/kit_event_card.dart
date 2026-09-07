@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Landscape schedule/event card (Continue-Watching proportions) — cards pack grid.
 class KitEventCard extends StatefulWidget {

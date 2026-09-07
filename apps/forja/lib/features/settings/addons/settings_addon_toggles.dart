@@ -12,7 +12,6 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).

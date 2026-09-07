@@ -25,7 +25,6 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
-import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
 import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
 import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
 import 'package:forja/shared/services/update/app_version.dart';
@@ -38,7 +37,6 @@ import 'package:forja/shared/foundation/components/update/app_update_progress_ba
 import 'package:forja/shared/engine/packs/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/plugin_pack_update_prompt_host.dart';
 import 'package:forja/shared/foundation/components/packs/plugin_install_progress_banner.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';

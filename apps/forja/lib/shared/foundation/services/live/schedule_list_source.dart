@@ -2,7 +2,6 @@ import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
 import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
 import 'package:forja/shared/foundation/services/live/live_schedule_window.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 /// Feature schedule source ids (opaque to kit).
 abstract final class LiveSportsListSources {

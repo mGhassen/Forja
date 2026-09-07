@@ -5,7 +5,6 @@ import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';

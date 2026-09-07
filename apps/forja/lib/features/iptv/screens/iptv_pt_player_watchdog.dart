@@ -321,7 +321,6 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     // resets and cache sits at 0 — web keeps refetching; we must reopen).
     final openedAt = _s._openedAt;
     final pastColdOpen =
-        openedAt != null &&
         DateTime.now().difference(openedAt) >= const Duration(seconds: 8);
     if (pastColdOpen &&
         _s._cacheAheadSecs <

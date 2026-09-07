@@ -5,7 +5,6 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Compact top chrome for the Sources panel:
 /// kind tabs · provider chips · search/filters.

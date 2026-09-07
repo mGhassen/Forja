@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 import 'package:forja/shared/foundation/lib/forja_host_assets.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav/nav_destination.dart';

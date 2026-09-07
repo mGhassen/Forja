@@ -45,7 +45,6 @@ import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow_from_watched.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';

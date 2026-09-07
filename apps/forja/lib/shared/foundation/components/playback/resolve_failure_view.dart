@@ -4,8 +4,6 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Tone for resolve / loading-page failures.
 enum ResolveFailureTone {

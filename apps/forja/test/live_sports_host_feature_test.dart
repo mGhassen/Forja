@@ -4,7 +4,6 @@ import 'package:forja/shared/foundation/services/host_list_registry.dart';
 import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
 import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shell/nav/nav_destination.dart';
 import 'package:rust/rust.dart';
 
 void main() {

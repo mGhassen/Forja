@@ -12,8 +12,6 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
 
 import 'utils.dart';
 import 'player_peakstorm_resume_diag.dart';
@@ -71,7 +69,6 @@ import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

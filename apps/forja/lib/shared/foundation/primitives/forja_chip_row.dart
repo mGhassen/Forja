@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Kit primitive — horizontal chip strip (kind / filter rows).
 class ForjaChipRow extends StatelessWidget {

@@ -6,7 +6,6 @@ import 'package:forja/shared/foundation/services/live/live_stream_engine.dart';
 import 'package:forja/shared/foundation/services/live/schedule_filters.dart';
 import 'package:forja/shared/foundation/services/live/schedule_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Selected kit list entry for list+panel chrome.

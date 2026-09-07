@@ -12,7 +12,6 @@ import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';

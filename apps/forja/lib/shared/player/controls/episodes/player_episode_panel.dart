@@ -8,11 +8,9 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart'
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/foundation/components/media_details/episode_air_date.dart';
 import 'package:forja/shared/foundation/components/media_details/episode_range_bar.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';

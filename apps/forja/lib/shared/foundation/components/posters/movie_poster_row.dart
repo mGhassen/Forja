@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
-import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
 import 'package:rust/rust.dart';
 

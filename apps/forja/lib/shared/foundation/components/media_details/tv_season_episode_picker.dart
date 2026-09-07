@@ -9,9 +9,6 @@ import 'package:forja/shared/foundation/components/media_details/episode_air_dat
 import 'package:forja/shared/foundation/components/media_details/episode_range_bar.dart';
 import 'package:forja/shared/foundation/components/hero/settled_network_image.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
-import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 

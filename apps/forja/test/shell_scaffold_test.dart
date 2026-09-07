@@ -16,7 +16,6 @@ import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
 import 'package:rust/src/settings_service.dart';
 
 Widget _wrapShellScope(

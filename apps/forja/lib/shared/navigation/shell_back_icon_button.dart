@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 
 /// Muted back icon that turns white on hover or D-pad focus (cinematic overlays).
 class ShellBackIconButton extends StatefulWidget {
