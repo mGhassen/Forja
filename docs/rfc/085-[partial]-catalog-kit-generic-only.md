@@ -2,7 +2,7 @@
 
 **Status:** partial  
 **Depends on:** [RFC-070](070-[partial]-catalog-hub-protocol.md) · [RFC-071](fixed/071-[fixed]-live-sports-hub-kit.md) · [RFC-073](fixed/073-[fixed]-live-sports-kit-ownership.md)  
-**Area:** `shared/foundation/`, `features/my_list/`, hub packs
+**Area:** `shared/foundation/`, hub packs
 
 ## Status at a glance
 

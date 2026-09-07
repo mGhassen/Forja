@@ -7,7 +7,7 @@ import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 /// Navigator layered over [ShellBody] - media details and other in-shell routes.

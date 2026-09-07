@@ -95,7 +95,7 @@ apps/forja → packages/rust only (engine)
 packages/rust → never import apps/forja
 ```
 
-Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart` — features must not import other features' screens directly. See [architecture/README.md](architecture/README.md).
+Cross-feature navigation uses `shell/routing/app_router.dart` and `shell/bus/shell_bus.dart` — features must not import other features' screens directly. See [architecture/README.md](architecture/README.md).
 
 ---
 
@@ -293,7 +293,7 @@ flowchart BT
 | Layer | Path | Role |
 |-------|------|------|
 | Bootstrap | `apps/forja/lib/app/bootstrap.dart` | Platform init, `Engine.init()`, `ProviderScope`, splash |
-| Shell | `apps/forja/lib/shell/` | `MainScreen`, `AppRouter`, `ShellBus`, `nav_config`, adaptive profiles |
+| Shell | `apps/forja/lib/shell/` | `MainScreen` + `frame/` · `nav/` · `routing/` · `bus/` · `chrome/` · `adapters/` |
 | Features | `apps/forja/lib/features/` | One folder per vertical (+ `media/` routes) |
 | Shared | `apps/forja/lib/shared/` | Player, design tokens, extractors, Nuvio, telemetry |
 

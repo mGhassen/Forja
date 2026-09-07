@@ -24,6 +24,6 @@ Shell tabs and verticals **removed from navigation**. Code is kept for reference
 | `anime_arabic/` | `anime_arabic` |
 | *(plugin hub)* | `arabic` — catalog via `arabic-hub` pack; no app feature folder |
 
-Restore: re-register in [`nav_config.dart`](../../shell/nav_config.dart) and move the folder back under `features/`.
+Restore: re-register in [`nav_config.dart`](../../shell/nav/nav_config.dart) and move the folder back under `features/`.
 
 User guide: [`docs/features/archive/README.md`](../../../../docs/features/archive/README.md) · Rust: [`crates/archive/`](../../archive/README.md)

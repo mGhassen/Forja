@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';

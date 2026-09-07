@@ -8,8 +8,8 @@ import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shell/nav_destination.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/nav/nav_destination.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

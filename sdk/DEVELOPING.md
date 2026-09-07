@@ -470,7 +470,7 @@ kitStack('page', { expand: true }, [
 
 Browse hubs keep `hero`, `mood`, `rail`, `host.continue`, etc. Use `kit.*` when you need composable chrome (menus, tabs, host lists) in one page tree.
 
-`kit.list` binds to a **host source backend** registered outside kit (RFC-085): the pack declares layout + an opaque `source` id; the feature registers that id at boot (e.g. My List → `features/my_list`). Kit never hardcodes product names. Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
+`kit.list` binds to a **host source backend** registered outside kit (RFC-085 · RFC-088): the pack declares layout + an opaque `source` id; foundation registers that id at boot (e.g. My List → `shared/foundation/services/follow/`). Kit never hardcodes product names. Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
 
 Pack `kit.menu` / `kit.tabs` render in the **shell top bar** (same slot as Home Search / Films / Series) — not inside the page body.
 

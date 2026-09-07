@@ -20,7 +20,7 @@ import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
-import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// VOD green Play always races Forja engine providers (provider JS).

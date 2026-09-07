@@ -17,7 +17,7 @@ import 'package:forja/shared/foundation/components/playback/stream_provider_prob
 import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
 class PlayerScreen extends StatefulWidget {

@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/my_list/catalog/my_list_catalog_source.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_catalog_source.dart';
 import 'package:forja/shared/foundation/services/host_list_registry.dart';
 
-/// Product constants for the My List hub — feature-owned, not kit.
+/// Opaque My List kit ids + foundation registration.
+///
+/// Registers `source: my_list` so pack layouts resolve without importing
+/// list internals. Tab chrome lives only in the hub pack.
 abstract final class MyListHost {
   MyListHost._();
 

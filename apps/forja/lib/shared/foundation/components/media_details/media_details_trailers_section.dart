@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
 const _kTrailerCardWidth = 200.0;

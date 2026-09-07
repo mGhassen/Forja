@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_search_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';

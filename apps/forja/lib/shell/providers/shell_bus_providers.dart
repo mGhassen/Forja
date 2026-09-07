@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Thin Riverpod adapters over [ShellBus] ValueNotifiers (Phase 1 coexistence).
 /// Screens may keep listening to ShellBus directly until fully migrated.

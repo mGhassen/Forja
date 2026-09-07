@@ -10,10 +10,10 @@ import 'package:forja/shared/foundation/services/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/kit_chrome_top_bar.dart';
-import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/chrome/kit_chrome_top_bar.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
 ///

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_body.dart';
-import 'package:forja/shell/shell_bottom_nav.dart';
-import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_nav_rail.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/frame/shell_body.dart';
+import 'package:forja/shell/nav/shell_bottom_nav.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/nav/shell_nav_rail.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';

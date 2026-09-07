@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Sticky progress card for background desktop update downloads.
 /// Place in [ForjaToastHost.stackAbove] — not a separate overlay.

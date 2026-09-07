@@ -157,6 +157,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           listSourceId: widget.listSource,
           layoutWidgets: layouts,
           refreshEpoch: widget.refreshEpoch,
+          shellTabId: widget.tabId,
         ),
       );
       return;

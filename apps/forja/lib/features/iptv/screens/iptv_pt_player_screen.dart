@@ -67,7 +67,7 @@ import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:window_manager/window_manager.dart';
 
 part 'iptv_pt_player_engine_core.dart';

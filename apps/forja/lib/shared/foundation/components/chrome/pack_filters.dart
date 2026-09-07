@@ -5,7 +5,7 @@ import 'package:forja/shared/foundation/protocol/filter.dart';
 import 'package:forja/shared/foundation/blocks/details/play_filters.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/runtime.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// One pack-declared top-bar menu tab (`filters.menus[]`).
 class ChromeMenuItem {

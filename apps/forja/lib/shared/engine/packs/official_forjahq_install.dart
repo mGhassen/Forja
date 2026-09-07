@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:http/http.dart' as http;
 
 /// Resolve official ForjaHQ packs (catalog filter + baked URL fallback).

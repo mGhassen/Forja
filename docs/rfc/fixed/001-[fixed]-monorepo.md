@@ -52,8 +52,8 @@ No circular deps: `storage` must not depend on `api`.
 
 ## Navigation rules
 
-- Cross-feature routes use `shell/app_router.dart` (`openMovie`, `openPlayer`, etc.)
-- Tab switching uses `shell/shell_bus.dart` (`requestTab`, `stremioSearchNotifier`)
+- Cross-feature routes use `shell/routing/app_router.dart` (`openMovie`, `openPlayer`, etc.)
+- Tab switching uses `shell/bus/shell_bus.dart` (`requestTab`, `stremioSearchNotifier`)
 - Features must not import other features' screens directly
 
 ## Repository pattern

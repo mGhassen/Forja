@@ -6,7 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'package:forja/features/archive/audio/music_storage_service.dart';
 import 'package:forja/features/archive/audio/music_downloader_service.dart';

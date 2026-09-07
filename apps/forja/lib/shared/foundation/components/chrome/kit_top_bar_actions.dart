@@ -6,6 +6,10 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/live/live_catalog_sheet.dart';
+import 'package:forja/shared/foundation/services/live/live_schedule_sheet.dart';
+import 'package:forja/shared/foundation/services/live/live_schedule_window.dart';
+import 'package:forja/shared/foundation/services/live/schedule_filters.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Enabled live catalog plugins for the Catalog filter sheet.
@@ -54,6 +58,7 @@ class KitTopBarActions extends ConsumerWidget {
     final scope = KitLayoutScope.of(context);
     final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
     final catalogsAsync = ref.watch(liveCatalogFilterOptionsProvider);
+    final scheduleFilters = ref.watch(liveScheduleFiltersProvider);
 
     return TvKitRow(
       tabId: tabId,
@@ -74,11 +79,13 @@ class KitTopBarActions extends ConsumerWidget {
               if (i > 0) const SizedBox(width: 8),
               _buildAction(
                 context,
+                ref,
                 scope,
                 actions[i],
                 index: i,
                 focusDown: focusDown,
                 catalogOptions: catalogsAsync.asData?.value ?? const [],
+                scheduleFilters: scheduleFilters,
               ),
             ],
             const Spacer(),
@@ -90,15 +97,18 @@ class KitTopBarActions extends ConsumerWidget {
 
   Widget _buildAction(
     BuildContext context,
+    WidgetRef ref,
     KitLayoutScope scope,
     Map<String, dynamic> action, {
     required int index,
     required VoidCallback? focusDown,
     required List<({String id, String label})> catalogOptions,
+    required LiveScheduleFilters scheduleFilters,
   }) {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString();
     final isRefresh = verb == 'refresh' || id == 'refresh';
+    final isSchedule = id == 'horizon' || id == 'schedule' || id == 'time';
     final icon = _iconFor(action);
 
     if (isRefresh) {
@@ -116,9 +126,17 @@ class KitTopBarActions extends ConsumerWidget {
     }
 
     return ForjaActionChip(
-      label: _chipLabel(scope, action, catalogOptions: catalogOptions),
+      label: isSchedule
+          ? liveScheduleChipLabel(
+              status: scheduleFilters.scheduleStatus,
+              horizon: scheduleFilters.scheduleHorizon,
+            )
+          : _chipLabel(scope, action, catalogOptions: catalogOptions),
       icon: icon,
-      selected: _isSelected(scope, action),
+      selected: isSchedule
+          ? scheduleFilters.scheduleStatus != LiveScheduleStatus.both ||
+              scheduleFilters.scheduleHorizon != LiveScheduleHorizon.h24
+          : _isSelected(scope, action),
       tvTabId: tabId,
       tvRowId: _widgetId,
       tvItemIndex: index,
@@ -126,7 +144,16 @@ class KitTopBarActions extends ConsumerWidget {
       onRightEdge: index == _actions.length - 1 ? null : () {},
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
-        _onAction(context, scope, action, catalogOptions: catalogOptions),
+        isSchedule
+            ? _onSchedule(context, ref, scope)
+            : id == 'catalog'
+                ? _onCatalog(context, scope, catalogOptions: catalogOptions)
+                : _onAction(
+                    context,
+                    scope,
+                    action,
+                    catalogOptions: catalogOptions,
+                  ),
       ),
     );
   }
@@ -177,7 +204,6 @@ class KitTopBarActions extends ConsumerWidget {
         (id: 'all', label: 'All', subtitle: 'Every enabled catalog'),
         for (final c in catalogOptions)
           (id: c.id, label: c.label, subtitle: null),
-        // Keep pack-declared extras that are not already in enabled list.
         for (final s in staticItems)
           if (s.id != 'all' && !catalogOptions.any((c) => c.id == s.id))
             (id: s.id, label: s.label, subtitle: null),
@@ -186,6 +212,48 @@ class KitTopBarActions extends ConsumerWidget {
     return [
       for (final s in staticItems) (id: s.id, label: s.label, subtitle: null),
     ];
+  }
+
+  Future<void> _onCatalog(
+    BuildContext context,
+    KitLayoutScope scope, {
+    required List<({String id, String label})> catalogOptions,
+  }) async {
+    final items = _itemsFor(
+      const {'id': 'catalog', 'dynamicCatalogs': true},
+      catalogOptions: catalogOptions,
+    );
+    if (items.isEmpty) return;
+    final picked = await showLiveCatalogSheet(
+      context,
+      current: scope.selectedId('catalog') ?? 'all',
+      options: items,
+    );
+    if (picked == null || !context.mounted) return;
+    scope.onSelect('catalog', picked, toggle: false);
+  }
+
+  Future<void> _onSchedule(
+    BuildContext context,
+    WidgetRef ref,
+    KitLayoutScope scope,
+  ) async {
+    final filters = ref.read(liveScheduleFiltersProvider);
+    final notifier = ref.read(liveScheduleFiltersProvider.notifier);
+    await showLiveScheduleSheet(
+      context,
+      status: filters.scheduleStatus,
+      horizon: filters.scheduleHorizon,
+      onChanged: ({status, horizon}) {
+        unawaited(
+          notifier.setScheduleWindow(status: status, horizon: horizon).then((_) {
+            if (!context.mounted) return;
+            final next = ref.read(liveScheduleFiltersProvider);
+            scope.onSelect('horizon', next.schedulePref, toggle: false);
+          }),
+        );
+      },
+    );
   }
 
   Future<void> _onAction(
@@ -206,12 +274,6 @@ class KitTopBarActions extends ConsumerWidget {
     if (items.isEmpty) return;
 
     final title = (action['label'] ?? id).toString();
-    final hint = id == 'catalog'
-        ? 'Filter the schedule by catalog:'
-        : id == 'horizon'
-            ? 'Show matches in this time window:'
-            : null;
-
     final picked = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: ForjaShellColors.surfaceElevated,
@@ -248,24 +310,20 @@ class KitTopBarActions extends ConsumerWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (hint != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        hint,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 16),
-                    for (final item in items)
-                      _SheetOption(
-                        label: item.label,
-                        subtitle: item.subtitle,
-                        selected: item.id == selected ||
-                            (selected.isEmpty && item.id == 'all'),
-                        onTap: () => Navigator.pop(ctx, item.id),
+                    for (var i = 0; i < items.length; i++)
+                      LiveFilterSheetOption(
+                        label: items[i].label,
+                        subtitle: items[i].subtitle,
+                        selected: items[i].id == selected ||
+                            (selected.isEmpty && items[i].id == 'all'),
+                        icon: items[i].id == 'all'
+                            ? Icons.grid_view_rounded
+                            : Icons.tune_rounded,
+                        onSelected: () => Navigator.pop(ctx, items[i].id),
+                        tvTabId: 'kit_top_bar_sheet_$id',
+                        tvRowId: 'kit-sheet-$id',
+                        tvItemIndex: i,
                       ),
                   ],
                 ),
@@ -277,94 +335,5 @@ class KitTopBarActions extends ConsumerWidget {
     );
     if (picked == null || !context.mounted) return;
     scope.onSelect(id, picked, toggle: false);
-  }
-}
-
-class _SheetOption extends StatefulWidget {
-  const _SheetOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final String label;
-  final String? subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  State<_SheetOption> createState() => _SheetOptionState();
-}
-
-class _SheetOptionState extends State<_SheetOption> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = widget.selected || _hovered;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          onHover: (h) => setState(() => _hovered = h),
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: active
-                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: widget.selected
-                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-                    : ForjaShellColors.borderSubtle.withValues(alpha: 0.45),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: widget.selected
-                              ? ForjaShellColors.brandGreen
-                              : Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if ((widget.subtitle ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.subtitle!.trim(),
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (widget.selected)
-                  const Icon(
-                    Icons.check_rounded,
-                    color: ForjaShellColors.brandGreen,
-                    size: 18,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

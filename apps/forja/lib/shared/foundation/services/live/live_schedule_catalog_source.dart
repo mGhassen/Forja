@@ -48,6 +48,7 @@ final liveScheduleCatalogProvider =
     LiveScheduleQuery(
       catalogFilter: filters.catalogFilter,
       sportFilter: 'all',
+      scheduleStatus: filters.scheduleStatus,
       scheduleHorizon: filters.scheduleHorizon,
     ),
   );
@@ -125,8 +126,8 @@ final class LiveScheduleCatalogSource extends KitListSource {
     }
     if (horizon != null &&
         horizon.isNotEmpty &&
-        horizon != current.scheduleHorizon) {
-      notifier.setScheduleHorizon(horizon);
+        horizon != current.schedulePref) {
+      notifier.setScheduleFromPrefToken(horizon);
     }
   }
 

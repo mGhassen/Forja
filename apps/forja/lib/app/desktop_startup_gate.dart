@@ -8,7 +8,7 @@ import 'package:forja/features/account/packs_onboarding_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// TV remote Back while a player surface is active:
 /// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).

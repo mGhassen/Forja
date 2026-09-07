@@ -16,9 +16,9 @@ import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_mood_circle.dart';
-import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shell/player_surface_chrome_stub.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/routing/shell_tab_refresh.dart';
+import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 
 import '../../components/cards/kit_poster_card.dart';
 import '../../components/chrome/kit_category_bar.dart';

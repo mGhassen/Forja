@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Handles `forja://install?manifest=<url>` and batch
 /// `forja://install?batch=1&packs=[…]` — brings app forward and asks before install.

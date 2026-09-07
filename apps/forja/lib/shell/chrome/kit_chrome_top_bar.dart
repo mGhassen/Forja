@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
-import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';

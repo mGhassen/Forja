@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Listens for plugin install prompts (single deep link + batch profile sync).
 ///

@@ -1,29 +1,39 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/services/live/live_prefs.dart';
+import 'package:forja/shared/foundation/services/live/live_schedule_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Catalog / sport / schedule-horizon filters for Live Sports kit browse.
+/// Catalog / sport / schedule-window filters for Live Sports kit browse.
 @immutable
 class LiveScheduleFilters {
   const LiveScheduleFilters({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleHorizon = '24h',
+    this.scheduleStatus = LiveScheduleStatus.both,
+    this.scheduleHorizon = LiveScheduleHorizon.h24,
   });
 
   final String catalogFilter;
   final String sportFilter;
-  final String scheduleHorizon;
+  final LiveScheduleStatus scheduleStatus;
+  final LiveScheduleHorizon scheduleHorizon;
+
+  String get schedulePref => liveScheduleWindowPref(
+        status: scheduleStatus,
+        horizon: scheduleHorizon,
+      );
 
   LiveScheduleFilters copyWith({
     String? catalogFilter,
     String? sportFilter,
-    String? scheduleHorizon,
+    LiveScheduleStatus? scheduleStatus,
+    LiveScheduleHorizon? scheduleHorizon,
   }) =>
       LiveScheduleFilters(
         catalogFilter: catalogFilter ?? this.catalogFilter,
         sportFilter: sportFilter ?? this.sportFilter,
+        scheduleStatus: scheduleStatus ?? this.scheduleStatus,
         scheduleHorizon: scheduleHorizon ?? this.scheduleHorizon,
       );
 
@@ -32,11 +42,16 @@ class LiveScheduleFilters {
       other is LiveScheduleFilters &&
       other.catalogFilter == catalogFilter &&
       other.sportFilter == sportFilter &&
+      other.scheduleStatus == scheduleStatus &&
       other.scheduleHorizon == scheduleHorizon;
 
   @override
-  int get hashCode =>
-      Object.hash(catalogFilter, sportFilter, scheduleHorizon);
+  int get hashCode => Object.hash(
+        catalogFilter,
+        sportFilter,
+        scheduleStatus,
+        scheduleHorizon,
+      );
 }
 
 final liveScheduleFiltersProvider =
@@ -55,10 +70,16 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
     final prefs = await SharedPreferences.getInstance();
     final catalog =
         prefs.getString(LivePrefs.catalogFilterKey)?.trim() ?? 'all';
-    final schedule = prefs.getString(LivePrefs.scheduleKey)?.trim() ?? '24h';
+    final scheduleRaw = prefs.getString(LivePrefs.scheduleKey)?.trim();
+    final window = liveScheduleWindowFromPref(scheduleRaw) ??
+        (
+          status: LiveScheduleStatus.both,
+          horizon: LiveScheduleHorizon.h24,
+        );
     final next = LiveScheduleFilters(
       catalogFilter: catalog.isEmpty ? 'all' : catalog,
-      scheduleHorizon: schedule.isEmpty ? '24h' : schedule,
+      scheduleStatus: window.status,
+      scheduleHorizon: window.horizon,
     );
     if (next != state) state = next;
   }
@@ -75,11 +96,28 @@ class LiveScheduleFiltersNotifier extends Notifier<LiveScheduleFilters> {
     state = state.copyWith(sportFilter: v);
   }
 
-  Future<void> setScheduleHorizon(String value) async {
-    final v = value.trim().isEmpty ? '24h' : value.trim();
-    state = state.copyWith(scheduleHorizon: v);
+  Future<void> setScheduleWindow({
+    LiveScheduleStatus? status,
+    LiveScheduleHorizon? horizon,
+  }) async {
+    final next = state.copyWith(
+      scheduleStatus: status,
+      scheduleHorizon: horizon,
+    );
+    if (next == state) return;
+    state = next;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(LivePrefs.scheduleKey, v);
+    await prefs.setString(LivePrefs.scheduleKey, next.schedulePref);
+  }
+
+  /// Kit layout / legacy single-token write (`both|24h`, `live`, `3h`, …).
+  Future<void> setScheduleFromPrefToken(String value) async {
+    final window = liveScheduleWindowFromPref(value);
+    if (window == null) return;
+    await setScheduleWindow(
+      status: window.status,
+      horizon: window.horizon,
+    );
   }
 }
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 void main() {
   testWidgets('resolveBackTarget prefers player over detail overlay', (tester) async {

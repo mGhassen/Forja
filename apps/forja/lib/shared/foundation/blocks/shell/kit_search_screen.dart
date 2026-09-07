@@ -6,7 +6,7 @@ import 'package:forja/shared/foundation/components/chrome/kit_search_page.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/runtime.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
-import 'package:forja/shell/player_surface_chrome_stub.dart';
+import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 
 /// Hub search backed by a catalog plugin `search` action.
 ///

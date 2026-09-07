@@ -2,7 +2,7 @@
 
 **Status:** partial  
 **Depends on:** [RFC-068](fixed/068-[fixed]-engine-plugin-registry.md) · [RFC-069](fixed/069-[fixed]-official-plugins-split.md)  
-**Area:** `shared/foundation/`, `EngineService`, `PluginRegistry`, `shell/nav_config.dart`, `plugins/hubs/`
+**Area:** `shared/foundation/`, `EngineService`, `PluginRegistry`, `shell/nav/nav_config.dart`, `plugins/hubs/`
 
 ## Status at a glance
 

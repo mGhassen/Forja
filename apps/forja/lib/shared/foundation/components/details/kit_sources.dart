@@ -14,7 +14,7 @@ import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
-import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Whether hub details should show the white link Play (catalog Sources).

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// While a fullscreen player owns the SoC, skip building [builder] so poster /
 /// backdrop [Image] widgets unmount. Ancestor [State] stays alive for Back /

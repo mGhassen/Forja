@@ -35,7 +35,7 @@ End-state: Flutter + Rust engine. See [migration/README.md](migration/README.md)
 Forja/
 ├── apps/forja/              Flutter product
 │   ├── lib/app/             Bootstrap, Engine init
-│   ├── lib/shell/           MainScreen, AppRouter, nav (19 tabs)
+│   ├── lib/shell/           MainScreen + frame/nav/routing/bus/chrome/adapters
 │   ├── lib/features/        One folder per nav tab
 │   └── lib/shared/          Player, widgets, casting/sync stubs
 ├── packages/

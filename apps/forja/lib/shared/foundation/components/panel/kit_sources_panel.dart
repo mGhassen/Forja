@@ -279,37 +279,91 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         ),
       );
     }
+    // Hero details (embedded): 2-col stream grid on wide — matches old live
+    // match details. Side panel stays single-column ListView.
+    if (widget.embedded) {
+      return _embeddedSourcesGrid(context, rows);
+    }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       itemCount: rows.length,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (context, i) {
-        final row = rows[i];
-        final footer = (row.footer ?? '').trim();
-        return SourcesPanelChannelTile(
-          title: row.title,
-          provider: row.subtitle,
-          badges: row.badges,
-          viewerCount: row.viewerCount,
-          footer: footer.isEmpty
-              ? null
-              : Text(
-                  footer,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: 11,
-                  ),
+      itemBuilder: (context, i) => _tile(context, rows[i], i),
+    );
+  }
+
+  /// Pre-kit live details: 2 columns when wide, 1 when narrow / TV compact.
+  Widget _embeddedSourcesGrid(BuildContext context, List<KitSourcesRow> rows) {
+    const gap = 10.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final metrics = ShellScope.metricsOf(context);
+        final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
+        final crossCount = wide ? 2 : 1;
+
+        if (crossCount == 1) {
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+            itemCount: rows.length,
+            separatorBuilder: (_, _) => const SizedBox(height: gap),
+            itemBuilder: (context, i) => _tile(context, rows[i], i),
+          );
+        }
+
+        final rowCount = (rows.length + 1) ~/ 2;
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+          itemCount: rowCount,
+          itemBuilder: (context, row) {
+            final left = row * 2;
+            final right = left + 1;
+            return Padding(
+              padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _tile(context, rows[left], left)),
+                    const SizedBox(width: gap),
+                    Expanded(
+                      child: right < rows.length
+                          ? _tile(context, rows[right], right)
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
                 ),
-          tvTabId: widget.tvTabId,
-          tvRowId: widget.listRowId,
-          tvItemIndex: i,
-          onHoverProbe: row.onHoverProbe,
-          probeHealthCache: row.probeHealthCache,
-          onPlay: () => unawaited(widget.onPlayRow(row)),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _tile(BuildContext context, KitSourcesRow row, int index) {
+    final footer = (row.footer ?? '').trim();
+    return SourcesPanelChannelTile(
+      title: row.title,
+      provider: row.subtitle,
+      badges: row.badges,
+      viewerCount: row.viewerCount,
+      footer: footer.isEmpty
+          ? null
+          : Text(
+              footer,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.listRowId,
+      tvItemIndex: index,
+      onHoverProbe: row.onHoverProbe,
+      probeHealthCache: row.probeHealthCache,
+      onPlay: () => unawaited(widget.onPlayRow(row)),
     );
   }
 }

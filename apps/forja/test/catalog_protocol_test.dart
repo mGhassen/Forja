@@ -7,8 +7,8 @@ import 'package:forja/shared/foundation/foundation.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shell/nav_destination.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/nav/nav_destination.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 /// `sdk/fixtures/<name>.json` — test cwd is `apps/forja`.
 dynamic loadHubFixture(String name) {

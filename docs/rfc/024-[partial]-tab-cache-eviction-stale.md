@@ -97,7 +97,7 @@ After RFC-016 mount shipped, `_mountedTabIds` only grew and `_tabCache` never cl
 
 ### Stale refresh
 
-- [`shell_tab_refresh.dart`](../../apps/forja/lib/shell/shell_tab_refresh.dart) mixin
+- [`shell_tab_refresh.dart`](../../apps/forja/lib/shell/routing/shell_tab_refresh.dart) mixin
 - `MainScreen._refreshTabIfStale` on tab select + app resume
 - Per-tab TTL via `shellStaleAfter` override
 - Home `RefreshIndicator` for force refresh

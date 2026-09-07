@@ -577,6 +577,61 @@ void main() {
     expect(await service.getNavbarConfig(), ['iptv']);
   });
 
+  test('navbar rail follows Features tabOrder after append enable', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    SettingsService.registerExtraNavIds(const [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'mylist',
+    ]);
+    await service.setNavbarConfig(
+      const ['home', 'asian_drama', 'iptv', 'mylist'],
+      tabOrder: const [
+        'home',
+        'asian_drama',
+        'anime',
+        'iptv',
+        'mylist',
+      ],
+    );
+
+    // Pack / Features enable used to append at end — rail ignored tabOrder.
+    await service.setNavbarTabVisible('anime', true);
+
+    expect(await service.getNavbarConfig(), [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'mylist',
+    ]);
+  });
+
+  test('setNavbarConfig heals visible order from tabOrder', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    SettingsService.registerExtraNavIds(const [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+    ]);
+    await service.setNavbarConfig(
+      const ['home', 'asian_drama', 'iptv', 'anime'],
+      tabOrder: const ['home', 'asian_drama', 'anime', 'iptv'],
+    );
+
+    expect(await service.getNavbarConfig(), [
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+    ]);
+  });
+
   test('ensureActiveDefaultHubsVisible restores stripped hubs', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);

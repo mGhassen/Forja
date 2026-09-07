@@ -21,7 +21,7 @@ import 'package:forja/shared/foundation/components/details/kit_details_play_row.
 import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 bool hubIsFullCinematicHero(BuildContext context) =>
     homeIsFullCinematicHero(context);

@@ -185,7 +185,7 @@ flowchart LR
 
 | Contract | Location |
 |----------|----------|
-| `AppRouter.openDetails` / `openStreamingDetails` / `openMovie` / `openPlayer` | `shell/app_router.dart` |
+| `AppRouter.openDetails` / `openStreamingDetails` / `openMovie` / `openPlayer` | `shell/routing/app_router.dart` |
 | Torrent search gen-token discard | `details_screen.dart` |
 | WebStreamr source list → player | `streaming_details_screen.dart` |
 | `PlayerScreen` constructor args | `shared/player/entry/player_screen.dart` |

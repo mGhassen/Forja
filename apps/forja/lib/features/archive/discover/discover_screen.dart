@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 

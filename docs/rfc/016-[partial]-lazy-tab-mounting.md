@@ -3,7 +3,7 @@
 **Version:** v0.8.x  
 **Status:** partial  
 **Target version:** [0.5.1](../backlog/done/0.5.1-[done].md) slice (origin) · mount shipped in code  
-**Area:** `apps/forja/lib/shell/nav_config.dart`, `apps/forja/lib/shell/main_screen.dart`
+**Area:** `apps/forja/lib/shell/nav/nav_config.dart`, `apps/forja/lib/shell/main_screen.dart`
 
 ## Status at a glance
 
@@ -37,7 +37,7 @@ Tab cache **eviction** and **stale refresh** are specified in [RFC-024](024-[par
 
 ## Problem
 
-Today [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) previously used eager `buildAllScreens()` returning a `Map<String, Widget>` with every tab instantiated:
+Today [`nav_config.dart`](../../apps/forja/lib/shell/nav/nav_config.dart) previously used eager `buildAllScreens()` returning a `Map<String, Widget>` with every tab instantiated:
 
 ```dart
 Map<String, Widget> buildAllScreens() => {
@@ -83,7 +83,7 @@ final Map<String, TabBuilder> navTabBuilders = {
 };
 ```
 
-`navDestinations` (icons, labels) stays in [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart).
+`navDestinations` (icons, labels) stays in [`nav_config.dart`](../../apps/forja/lib/shell/nav/nav_config.dart).
 
 ### Lazy cache in MainScreen
 
@@ -121,7 +121,7 @@ Always build Settings on first open like other tabs — do not eager-load even t
 
 | File | Change |
 |------|--------|
-| [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) | `buildAllScreens()` → `navTabBuilders` map |
+| [`nav_config.dart`](../../apps/forja/lib/shell/nav/nav_config.dart) | `buildAllScreens()` → `navTabBuilders` map |
 | [`main_screen.dart`](../../apps/forja/lib/shell/main_screen.dart) | Lazy cache + `IndexedStack` builder |
 | New: `shell/keep_alive_tab.dart` | Optional wrapper widget |
 

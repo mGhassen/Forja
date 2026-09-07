@@ -21,7 +21,7 @@ import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';

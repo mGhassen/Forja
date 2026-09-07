@@ -10,7 +10,7 @@ import 'package:forja/features/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';

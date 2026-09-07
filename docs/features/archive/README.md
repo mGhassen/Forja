@@ -11,7 +11,7 @@ Guides for tabs and verticals that are **not** in the default Forja product surf
 
 ## Hidden tabs
 
-Withheld from the shell and **Settings → Features** via `archivedNavIds` in [`nav_config.dart`](../../../apps/forja/lib/shell/nav_config.dart) — code lives under `features/archive/`, tabs are not offered in the navbar list.
+Withheld from the shell and **Settings → Features** via `archivedNavIds` in [`nav_config.dart`](../../../apps/forja/lib/shell/nav/nav_config.dart) — code lives under `features/archive/`, tabs are not offered in the navbar list.
 
 | Guide | Tab |
 |-------|-----|

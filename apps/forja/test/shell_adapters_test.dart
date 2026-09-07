@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
-import 'package:forja/shell/shell_bottom_nav.dart';
-import 'package:forja/shell/shell_nav_rail.dart';
+import 'package:forja/shell/nav/shell_bottom_nav.dart';
+import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 
 Widget _wrapShellHost({

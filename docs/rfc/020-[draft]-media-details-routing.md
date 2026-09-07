@@ -28,7 +28,7 @@
 
 ## Summary
 
-Move app-wide media detail routes out of `features/home/` into a dedicated `features/media/` module. Navigation stays centralized in [`AppRouter`](../../apps/forja/lib/shell/app_router.dart).
+Move app-wide media detail routes out of `features/home/` into a dedicated `features/media/` module. Navigation stays centralized in [`AppRouter`](../../apps/forja/lib/shell/routing/app_router.dart).
 
 ## Problem
 
@@ -96,7 +96,7 @@ Implementation imports move from `features/home/` to `features/media/` — call 
 
 | Layer | May import media screens? |
 |-------|---------------------------|
-| `shell/app_router.dart` | yes |
+| `shell/routing/app_router.dart` | yes |
 | `features/home/` | yes (same-app routes via router preferred) |
 | Other features | **no** — use AppRouter only |
 | `shared/foundation/components/` | **no** — use AppRouter only |

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 
 class ShellBody extends StatelessWidget {
   const ShellBody({

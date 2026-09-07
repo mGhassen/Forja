@@ -70,7 +70,7 @@ Rework the primary app shell so menu, background, and body are owned once — no
 
 1. **Monolithic `MainScreen`** — [`main_screen.dart`](../../apps/forja/lib/shell/main_screen.dart) owns background glows, `NavigationRail`, custom bottom nav, lazy `IndexedStack`, lifecycle hooks, and update checks in one ~420-line widget.
 
-2. **Duplicated nav metadata** — [`nav_config.dart`](../../apps/forja/lib/shell/nav_config.dart) vs settings duplicate (fixed).
+2. **Duplicated nav metadata** — [`nav_config.dart`](../../apps/forja/lib/shell/nav/nav_config.dart) vs settings duplicate (fixed).
 
 3. **Nested scaffolds** — Shell `Scaffold` wrapped tab widgets that each returned their own `Scaffold` (fixed for all nav tab roots in 0.8.0).
 

@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/my_list/catalog/my_list_catalog_open.dart';
-import 'package:forja/features/my_list/catalog/my_list_merge.dart';
-import 'package:forja/features/my_list/my_list_host.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_catalog_open.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_merge.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/services/runtime.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';

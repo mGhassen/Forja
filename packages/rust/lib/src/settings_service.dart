@@ -1844,10 +1844,11 @@ class SettingsService {
         .toList();
   }
 
-  /// Test-only: reset exclusive lock between stores.
+  /// Test-only: reset exclusive lock and session rail mirror between stores.
   @visibleForTesting
   static void resetNavbarLockForTest() {
     _navbarExclusiveTail = Future<void>.value();
+    _navbarVisibleMemory = null;
   }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.
@@ -1993,7 +1994,13 @@ class SettingsService {
           ...allNavIds,
         }.toList());
       }
-      return List<String>.from(mem);
+      // Features list uses tabOrder; rail must follow the same order even when
+      // a prior enable appended the id at the end of visible memory.
+      final ordered = await _applyStoredTabOrder(List<String>.from(mem));
+      if (!listEquals(mem, ordered)) {
+        _navbarVisibleMemory = List<String>.from(ordered);
+      }
+      return ordered;
     }
 
     final skipLegacyMigrations = await kvHasKey(_platformDefaultsSeededKey);
@@ -2028,7 +2035,7 @@ class SettingsService {
           ...allNavIds,
         }.toList());
       }
-      return filtered;
+      return _applyStoredTabOrder(filtered);
     }
 
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell080Key)) {
@@ -2171,11 +2178,11 @@ class SettingsService {
         ...allNavIds,
       }.toList());
     }
-    return filtered;
+    return _applyStoredTabOrder(filtered);
   }
 
-  /// Full tab order for Settings → Features (visible + hidden). Shell nav still
-  /// uses [getNavbarConfig] for visible-only order.
+  /// Full tab order for Settings → Features (visible + hidden). Shell nav uses
+  /// [getNavbarConfig], which returns the visible subset in this order.
   Future<List<String>> getNavbarTabOrder() async {
     final visible = await getNavbarConfig();
     final known = (await kvGetStringList(
@@ -2198,6 +2205,38 @@ class SettingsService {
       fallback: const [],
     );
     return _mergeNavbarTabOrder(stored, catalog);
+  }
+
+  /// Visible ids in Features [tabOrder] sequence (unknown ids keep relative order at end).
+  static List<String> _visibleInTabOrder(
+    List<String> visible,
+    List<String> tabOrder,
+  ) {
+    if (tabOrder.isEmpty || visible.isEmpty) {
+      return List<String>.from(visible);
+    }
+    final visibleSet = visible.toSet();
+    final seen = <String>{};
+    final out = <String>[];
+    for (final id in tabOrder) {
+      if (visibleSet.contains(id) && seen.add(id)) out.add(id);
+    }
+    for (final id in visible) {
+      if (seen.add(id)) out.add(id);
+    }
+    return out;
+  }
+
+  Future<List<String>> _applyStoredTabOrder(List<String> visible) async {
+    if (!await kvHasKey(_navbarTabOrderKey)) {
+      return visible;
+    }
+    final order = await kvGetStringList(
+      _navbarTabOrderKey,
+      fallback: const [],
+    );
+    if (order.isEmpty) return visible;
+    return _visibleInTabOrder(visible, order);
   }
 
   static List<String> _mergeNavbarTabOrder(
@@ -2240,23 +2279,32 @@ class SettingsService {
         (await kvHasKey(_navbarConfigKey)
             ? await kvGetStringList(_navbarConfigKey, fallback: const [])
             : null);
-    final unchanged = raw != null && listEquals(raw, visibleIds);
+    // Keep rail order aligned with Features even when callers append
+    // (setNavbarTabVisible / pack activate) without passing tabOrder.
+    final orderForVisible = tabOrder ??
+        (await kvHasKey(_navbarTabOrderKey)
+            ? await kvGetStringList(_navbarTabOrderKey, fallback: const [])
+            : null);
+    final ids = (orderForVisible != null && orderForVisible.isNotEmpty)
+        ? _visibleInTabOrder(visibleIds, orderForVisible)
+        : List<String>.from(visibleIds);
+    final unchanged = raw != null && listEquals(raw, ids);
     if (kDebugMode && !unchanged) {
       debugPrint(
-        '[Settings] navbar write ${raw ?? const <String>[]} → $visibleIds\n'
+        '[Settings] navbar write ${raw ?? const <String>[]} → $ids\n'
         '${StackTrace.current}',
       );
     }
-    _navbarVisibleMemory = List<String>.from(visibleIds);
-    await kvSetStringList(_navbarConfigKey, visibleIds);
+    _navbarVisibleMemory = List<String>.from(ids);
+    await kvSetStringList(_navbarConfigKey, ids);
     if (kDebugMode && Engine.isReady) {
       final kvNow = await kvGetStringList(
         _navbarConfigKey,
         fallback: const [],
       );
-      if (!listEquals(kvNow, visibleIds)) {
+      if (!listEquals(kvNow, ids)) {
         debugPrint(
-          '[Settings] navbar KV mismatch after write want=$visibleIds '
+          '[Settings] navbar KV mismatch after write want=$ids '
           'got=$kvNow (using memory)',
         );
       }
@@ -2268,7 +2316,7 @@ class SettingsService {
     await kvSetStringList(_navbarKnownIdsKey, {
       ...known,
       ...allNavIds,
-      ...visibleIds,
+      ...ids,
     }.toList());
     if (tabOrder != null) {
       await kvSetStringList(
@@ -2276,7 +2324,7 @@ class SettingsService {
         _mergeNavbarTabOrder(tabOrder, {
           ...allNavIds,
           ...tabOrder,
-          ...visibleIds,
+          ...ids,
         }.toList()),
       );
     }

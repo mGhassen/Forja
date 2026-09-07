@@ -42,6 +42,8 @@ class _LiveMatchDetailsPageState extends State<LiveMatchDetailsPage> {
   void initState() {
     super.initState();
     _tabId = _providers;
+    // Old live details auto-opened Providers on land.
+    _streamsVisible = true;
     _healthProbe = IptvLazyUrlHealthProbe(
       onResult: (_, _) {
         if (mounted) setState(() {});

@@ -3,7 +3,8 @@ import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/services/host_list_registry.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Generic kit entry details — full-page host for a [KitPanelHost] body.
 ///
@@ -29,6 +30,7 @@ class KitEntryDetailsPage extends StatelessWidget {
     required String listSourceId,
     required List<Map<String, dynamic>> layoutWidgets,
     int refreshEpoch = 0,
+    String? shellTabId,
   }) {
     final host = HostListRegistry.resolvePanel(listSourceId);
     final custom = host?.buildDetailsPage(
@@ -37,7 +39,9 @@ class KitEntryDetailsPage extends StatelessWidget {
       layoutWidgets: layoutWidgets,
       refreshEpoch: refreshEpoch,
     );
-    return Navigator.of(context).push<void>(
+    // Shell overlay keeps the nav rail — never push on a root/tab navigator.
+    return pushShellRoute<void>(
+      context,
       AppRouter.slideShellRoute<void>(
         (_) => custom ??
             KitEntryDetailsPage(
@@ -46,7 +50,11 @@ class KitEntryDetailsPage extends StatelessWidget {
               layoutWidgets: layoutWidgets,
               refreshEpoch: refreshEpoch,
             ),
+        settings: RouteSettings(
+          name: '${shellTabId ?? listSourceId}_kit_entry_details',
+        ),
       ),
+      shellTabId: shellTabId,
     );
   }
 
@@ -72,7 +80,7 @@ class KitEntryDetailsPage extends StatelessWidget {
                 children: [
                   IconButton(
                     tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed: () => maybePopShellOverlay(),
                     icon: const Icon(Icons.arrow_back),
                     color: ForjaShellColors.textPrimary,
                   ),
@@ -107,7 +115,7 @@ class KitEntryDetailsPage extends StatelessWidget {
                       layoutWidgets: layoutWidgets,
                       shellTabVisible: true,
                       refreshEpoch: refreshEpoch,
-                      onClosed: () => Navigator.of(context).maybePop(),
+                      onClosed: () => maybePopShellOverlay(),
                     ),
             ),
           ],

@@ -121,7 +121,7 @@ Visual language is separate from [RFC-023](fixed/023-[fixed]-app-shell-redesign.
 
 ## Problem
 
-1. **Split visual language** — [`shell_scaffold.dart`](../../apps/forja/lib/shell/shell_scaffold.dart) paints radial ambient glows on top of `bgDark`; [`shell_nav_rail.dart`](../../apps/forja/lib/shell/shell_nav_rail.dart) uses `NavigationRail` with labels always visible beside a fixed-width column.
+1. **Split visual language** — [`shell_scaffold.dart`](../../apps/forja/lib/shell/frame/shell_scaffold.dart) paints radial ambient glows on top of `bgDark`; [`shell_nav_rail.dart`](../../apps/forja/lib/shell/nav/shell_nav_rail.dart) uses `NavigationRail` with labels always visible beside a fixed-width column.
 
 2. **Glass-heavy Home hero** — [`home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) `_buildHeroCarousel` (~L1140) is full-bleed with multi-layer gradients, primary radial tint, bottom text overlay, and `BackdropFilter` frosted controls (`_buildFrostedPill`, `_buildFrostedCircle`, `_buildFrostedArrow`).
 
@@ -146,7 +146,7 @@ Visual language is separate from [RFC-023](fixed/023-[fixed]-app-shell-redesign.
 
 ### Shell layout
 
-Replace `Row(rail, Expanded(body))` in [`shell_scaffold.dart`](../../apps/forja/lib/shell/shell_scaffold.dart) with a `Stack`:
+Replace `Row(rail, Expanded(body))` in [`shell_scaffold.dart`](../../apps/forja/lib/shell/frame/shell_scaffold.dart) with a `Stack`:
 
 ```
 Stack

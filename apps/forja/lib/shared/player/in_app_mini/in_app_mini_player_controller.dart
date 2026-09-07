@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shared/utils/extensions.dart';
 
 class HeroBanner extends StatefulWidget {

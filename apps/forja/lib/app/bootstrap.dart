@@ -22,12 +22,12 @@ import 'package:forja/shared/utils/webview_cleanup.dart';
 
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shell/main_screen.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
 import 'package:forja/shared/foundation/services/live/live_sports_host.dart';
-import 'package:forja/features/my_list/my_list_host.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -56,7 +56,7 @@ import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
-import 'package:forja/shell/macos_shell_channel.dart';
+import 'package:forja/shell/platform/macos_shell_channel.dart';
 
 bool _appShutdownStarted = false;
 

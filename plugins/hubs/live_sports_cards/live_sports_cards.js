@@ -16,14 +16,10 @@ function liveSportsCatalogActions() {
       id: 'horizon',
       label: 'Schedule',
       icon: 'schedule',
+      // Host owns Status × Horizon sheet; token is `status|horizon`.
+      default: 'both|24h',
       items: [
-        { id: 'live', label: 'Live now' },
-        { id: '1h', label: '1 hour' },
-        { id: '3h', label: '3 hours' },
-        { id: '6h', label: '6 hours' },
-        { id: '12h', label: '12 hours' },
-        { id: '24h', label: '24 hours' },
-        { id: 'all', label: 'All' },
+        { id: 'both|24h', label: '24h' },
       ],
     },
     {

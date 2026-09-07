@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/frame/shell_scaffold.dart';
 
 class TvShell extends StatelessWidget {
   const TvShell({

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';

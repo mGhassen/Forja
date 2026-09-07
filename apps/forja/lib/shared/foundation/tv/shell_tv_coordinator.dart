@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/foundation/primitives/forja_shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';

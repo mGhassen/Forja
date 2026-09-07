@@ -36,9 +36,9 @@ import 'package:forja/shared/foundation/components/media_details/media_details.d
 import 'package:forja/shared/foundation/components/media_details/media_details_body.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';
 import 'package:forja/shared/foundation/components/media_details/tv_season_episode_picker.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/player_surface_chrome_stub.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
     show
         MediaTrailer,

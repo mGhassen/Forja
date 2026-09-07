@@ -3,9 +3,9 @@ import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
 import 'package:forja/shared/foundation/lib/forja_host_assets.dart';
 import 'package:forja/shared/foundation/services/plugin_nav.dart';
-import 'package:forja/shell/nav_destination.dart';
+import 'package:forja/shell/nav/nav_destination.dart';
 
-export 'package:forja/shell/nav_destination.dart';
+export 'package:forja/shell/nav/nav_destination.dart';
 
 /// Tab ids under [features/archive/] — stripped from shell, Features settings,
 /// and saved nav configs. Re-register in [coreNavDestinations] to restore.

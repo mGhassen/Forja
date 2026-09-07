@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 

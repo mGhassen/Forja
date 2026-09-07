@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 

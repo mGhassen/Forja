@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shell/frame/shell_scaffold.dart';
 
 /// Passthrough to bottom-nav shell; landscape uses nav rail (existing behavior).
 class MobileShell extends StatelessWidget {
