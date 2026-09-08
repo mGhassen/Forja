@@ -107,6 +107,16 @@ abstract final class KitLiveBoot {
       return window.status != KitScheduleStatus.both ||
           window.horizon != KitScheduleHorizon.h24;
     };
+    KitTopBarHostHooks.readFeedBusy = (ref) {
+      final async = ref.watch(metaFeedCatalogProvider);
+      final page = async.asData?.value;
+      final busy =
+          async.isLoading || (page?.loadingRemote ?? false);
+      return (
+        busy: busy,
+        label: page?.loadingProgressLabel,
+      );
+    };
   }
 
   /// Pack-contributed shell tab for a live hub. Null when none installed.

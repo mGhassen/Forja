@@ -47,6 +47,11 @@ typedef KitListBodyWrapper = Widget Function(
   required bool shellTabVisible,
 });
 
+/// Live schedule scrape progress for the Refresh slot (label + busy).
+typedef KitTopBarFeedBusyReader = ({bool busy, String? label}) Function(
+  WidgetRef ref,
+);
+
 abstract final class KitTopBarHostHooks {
   KitTopBarHostHooks._();
 
@@ -58,6 +63,7 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarSchedulePrefReader? readSchedulePref;
   static KitTopBarTrailingBuilder? buildTrailing;
   static KitListBodyWrapper? wrapListBody;
+  static KitTopBarFeedBusyReader? readFeedBusy;
 
   static void clear() {
     loadCatalogOptions = null;
@@ -68,5 +74,6 @@ abstract final class KitTopBarHostHooks {
     readSchedulePref = null;
     buildTrailing = null;
     wrapListBody = null;
+    readFeedBusy = null;
   }
 }

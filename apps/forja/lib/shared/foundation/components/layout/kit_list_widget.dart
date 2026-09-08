@@ -316,7 +316,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       ),
       data: (page) {
         if (page.loadingRemote && page.totalCount == 0) {
-          return _loadingGrid(context);
+          return _catalogLoadingBody(
+            context,
+            label: page is MetaFeedCatalogPage
+                ? page.loadingProgressLabel
+                : null,
+          );
         }
         final wantKinds =
             widget.dynamicKindChips ||
@@ -340,7 +345,16 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         final kind = scopeKind ?? _kindFilter;
         final entries = page.entriesForKind(kind);
         _consumePendingOpen(entries);
-        if (entries.isEmpty) return _emptyState(context, kind: kind);
+        if (entries.isEmpty) {
+          return _emptyState(
+            context,
+            kind: kind,
+            loadingRemote: page.loadingRemote,
+            progressLabel: page is MetaFeedCatalogPage
+                ? page.loadingProgressLabel
+                : null,
+          );
+        }
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
         final body = widget.isDenseList
             ? _denseList(context, source, entries, selectedId: selectedId)

@@ -92,6 +92,7 @@ class KitTopBarActions extends ConsumerWidget {
               if (i > 0) const SizedBox(width: 8),
               _buildAction(
                 context,
+                ref,
                 scope,
                 actions[i],
                 index: i,
@@ -113,6 +114,7 @@ class KitTopBarActions extends ConsumerWidget {
 
   Widget _buildAction(
     BuildContext context,
+    WidgetRef ref,
     KitLayoutScope scope,
     Map<String, dynamic> action, {
     required int index,
@@ -129,6 +131,14 @@ class KitTopBarActions extends ConsumerWidget {
     final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
 
     if (isRefresh) {
+      final feedBusy = KitTopBarHostHooks.readFeedBusy?.call(ref);
+      if (feedBusy != null && feedBusy.busy) {
+        return _KitTopBarCatalogProgressChip(
+          label: (feedBusy.label ?? '').trim().isEmpty
+              ? 'Loading live catalogs…'
+              : feedBusy.label!.trim(),
+        );
+      }
       return ForjaActionChip(
         label: '',
         icon: icon ?? Icons.refresh_rounded,
@@ -365,6 +375,52 @@ class KitTopBarActions extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Replaces top-bar Refresh while live catalogs scrape / merge.
+class _KitTopBarCatalogProgressChip extends StatelessWidget {
+  const _KitTopBarCatalogProgressChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: Tooltip(
+        message: label,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 220),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

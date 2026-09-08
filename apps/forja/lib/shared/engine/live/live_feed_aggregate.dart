@@ -56,26 +56,96 @@ void rememberLiveFeedAllCatalogPool(List<Map<String, dynamic>> rows) {
   _rememberedAllCatalogPoolAt = DateTime.now();
 }
 
+/// Partial schedule paint while [aggregateLiveFeed] scrapes catalogs.
+class LiveFeedPartial {
+  const LiveFeedPartial({
+    required this.rows,
+    required this.done,
+    required this.completed,
+    required this.total,
+    this.currentLabel,
+  });
+
+  final List<Map<String, dynamic>> rows;
+  final bool done;
+  final int completed;
+  final int total;
+  final String? currentLabel;
+
+  /// Top-bar / empty-state copy — e.g. `Loading ESPN… 2/10`.
+  String get progressLabel {
+    final progress = '$completed/$total';
+    final name = (currentLabel ?? '').trim();
+    if (name.isEmpty) return 'Loading catalogs… $progress';
+    return 'Loading $name… $progress';
+  }
+}
+
+typedef LiveFeedPartialCallback = void Function(LiveFeedPartial partial);
+
 /// Aggregate enabled live catalog plugins into opaque schedule row maps.
 ///
 /// Called from `ctx.host.liveFeed.load` (hub feed owns composition) — not from
 /// a Dart schedule list god path.
+///
+/// [onPartial] fires after each catalog (and once at the end) so the list can
+/// paint before slower sites finish — same progressive UX as pre-kit Live Sports.
 Future<List<Map<String, dynamic>>> aggregateLiveFeed(
-  LiveFeedQuery query,
-) async {
+  LiveFeedQuery query, {
+  LiveFeedPartialCallback? onPartial,
+}) async {
   final filter = query.catalogFilter.trim();
 
   // Stremio live addon chip — one addon schedule (RFC-050), not merged into All.
   if (isLiveStremioCatalogFilter(filter)) {
     final base = liveStremioBaseUrlFromCatalogFilter(filter);
-    if (base == null) return const [];
+    if (base == null) {
+      onPartial?.call(
+        const LiveFeedPartial(
+          rows: [],
+          done: true,
+          completed: 0,
+          total: 0,
+        ),
+      );
+      return const [];
+    }
+    onPartial?.call(
+      const LiveFeedPartial(
+        rows: [],
+        done: false,
+        completed: 0,
+        total: 1,
+        currentLabel: 'Stremio',
+      ),
+    );
     final raw = await loadLiveStremioCatalogFeed(baseUrl: base);
-    return _filterLiveFeedRows(raw, query);
+    final filtered = _filterLiveFeedRows(raw, query);
+    onPartial?.call(
+      LiveFeedPartial(
+        rows: filtered,
+        done: true,
+        completed: 1,
+        total: 1,
+        currentLabel: 'Stremio',
+      ),
+    );
+    return filtered;
   }
 
   await LivePluginEngine.warmPluginMeta();
   final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
-  if (plugins.isEmpty) return const [];
+  if (plugins.isEmpty) {
+    onPartial?.call(
+      const LiveFeedPartial(
+        rows: [],
+        done: true,
+        completed: 0,
+        total: 0,
+      ),
+    );
+    return const [];
+  }
 
   final wanted = filter.isEmpty || filter == 'all'
       ? plugins
@@ -86,11 +156,34 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
                 p.id == filter)
               p,
         ];
-  if (wanted.isEmpty) return const [];
+  if (wanted.isEmpty) {
+    onPartial?.call(
+      const LiveFeedPartial(
+        rows: [],
+        done: true,
+        completed: 0,
+        total: 0,
+      ),
+    );
+    return const [];
+  }
 
   final out = <Map<String, dynamic>>[];
   final seen = <String>{};
-  for (final plugin in wanted) {
+  final total = wanted.length;
+  for (var i = 0; i < wanted.length; i++) {
+    final plugin = wanted[i];
+    final label =
+        plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
+    onPartial?.call(
+      LiveFeedPartial(
+        rows: List<Map<String, dynamic>>.from(out),
+        done: false,
+        completed: i,
+        total: total,
+        currentLabel: label,
+      ),
+    );
     try {
       final batch = await EngineService.instance.runLiveFeed(
         catalogPlugin: plugin,
@@ -107,10 +200,27 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     } catch (_) {
       // Skip failed catalogs — hub UI shows per-plugin errors separately.
     }
+    onPartial?.call(
+      LiveFeedPartial(
+        rows: List<Map<String, dynamic>>.from(out),
+        done: false,
+        completed: i + 1,
+        total: total,
+        currentLabel: label,
+      ),
+    );
   }
   if (filter.isEmpty || filter == 'all') {
     rememberLiveFeedAllCatalogPool(out);
   }
+  onPartial?.call(
+    LiveFeedPartial(
+      rows: List<Map<String, dynamic>>.from(out),
+      done: true,
+      completed: total,
+      total: total,
+    ),
+  );
   return out;
 }
 

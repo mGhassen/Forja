@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/services/meta/runtime.dart';
+import 'package:forja/shared/foundation/services/meta/cache.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/services/play/live_surface_open.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
@@ -18,10 +19,14 @@ class MetaFeedCatalogPage implements KitListPage {
     required this.entries,
     required this.loadingRemote,
     this.kindIds = const [],
+    this.loadingProgressLabel,
   });
 
   final List<KitListEntry> entries;
   final List<String> kindIds;
+
+  /// Top-bar chip while catalogs scrape — e.g. `Loading ESPN… 2/10`.
+  final String? loadingProgressLabel;
 
   @override
   final bool loadingRemote;
@@ -40,65 +45,158 @@ class MetaFeedCatalogPage implements KitListPage {
   }
 }
 
-/// One-shot: next [metaFeedCatalogProvider] run bypasses [MetaCache].
+/// One-shot: next [metaFeedCatalogProvider] run bypasses soft MetaCache.
 /// Set by Refresh / pull-to-refresh before [ref.invalidate].
 final metaFeedForceRefreshProvider = StateProvider<bool>((ref) => false);
 
-/// MetaRuntime `feed` for the live hub plugin — pack owns composition via
-/// `ctx.host.liveFeed.load`.
-///
-/// Soft opens reuse pack cache hints (`maxAge` / `swr` on hub `feed`). Refresh
-/// sets [metaFeedForceRefreshProvider] so the next run force-refetches.
-final metaFeedCatalogProvider =
-    FutureProvider.autoDispose<MetaFeedCatalogPage>((ref) async {
-  final filters = ref.watch(kitScheduleFiltersProvider);
-  final forceRefresh = ref.read(metaFeedForceRefreshProvider);
-  // Yield before clearing — mutating StateProvider during FutureProvider
-  // create throws and aborts the feed (skeleton stutter).
-  final hubId =
-      await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
-  if (forceRefresh) {
-    ref.read(metaFeedForceRefreshProvider.notifier).state = false;
-  }
-  if (hubId == null || hubId.isEmpty) {
-    return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
-  }
+/// Progressive live hub schedule — paints as each catalog finishes.
+final metaFeedCatalogProvider = AsyncNotifierProvider.autoDispose<
+    MetaFeedCatalogNotifier, MetaFeedCatalogPage>(MetaFeedCatalogNotifier.new);
 
-  var rawItems = <Map<String, dynamic>>[];
-  try {
-    final env = await MetaRuntime.instance.run(
+class MetaFeedCatalogNotifier
+    extends AutoDisposeAsyncNotifier<MetaFeedCatalogPage> {
+  int _gen = 0;
+
+  @override
+  Future<MetaFeedCatalogPage> build() async {
+    final filters = ref.watch(kitScheduleFiltersProvider);
+    final forceRefresh = ref.read(metaFeedForceRefreshProvider);
+    final gen = ++_gen;
+
+    // Yield before clearing — mutating StateProvider during create throws.
+    final hubId =
+        await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
+    if (forceRefresh) {
+      ref.read(metaFeedForceRefreshProvider.notifier).state = false;
+    }
+    if (hubId == null || hubId.isEmpty) {
+      return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
+    }
+
+    final feedParams = <String, dynamic>{
+      'catalogFilter': filters.catalogFilter,
+      'scheduleStatus': filters.scheduleStatus.name,
+      'scheduleHorizon': filters.scheduleHorizon.name,
+      'sportFilter': filters.sportFilter,
+    };
+    final cacheKey = MetaCache.keyFor(
       pluginId: hubId,
       action: 'feed',
-      params: {
-        'catalogFilter': filters.catalogFilter,
-        'scheduleStatus': filters.scheduleStatus.name,
-        'scheduleHorizon': filters.scheduleHorizon.name,
-        'sportFilter': filters.sportFilter,
-      },
-      forceRefresh: forceRefresh,
+      params: feedParams,
     );
-    if (env.ok) {
-      final items = env.data?['items'];
-      if (items is List) {
-        for (final e in items) {
-          if (e is Map) rawItems.add(Map<String, dynamic>.from(e));
-        }
+
+    if (!forceRefresh) {
+      final cached = MetaCache.instance.get(cacheKey);
+      if (cached != null && cached.isFresh) {
+        final page = _pageFromCacheData(cached.data, loadingRemote: false);
+        // Soft reopen — still revalidate in background when past maxAge window
+        // is not needed while fresh.
+        return page;
+      }
+      if (cached != null && cached.isRevalidatable) {
+        // Show stale rows immediately, scrape in background.
+        final stale = _pageFromCacheData(cached.data, loadingRemote: true);
+        state = AsyncData(stale);
+        // Fall through to progressive scrape below.
+      } else {
+        state = const AsyncData(
+          MetaFeedCatalogPage(
+            entries: [],
+            loadingRemote: true,
+            loadingProgressLabel: 'Loading live catalogs…',
+          ),
+        );
+      }
+    } else {
+      state = const AsyncData(
+        MetaFeedCatalogPage(
+          entries: [],
+          loadingRemote: true,
+          loadingProgressLabel: 'Loading live catalogs…',
+        ),
+      );
+    }
+
+    final query = LiveFeedQuery(
+      catalogFilter: filters.catalogFilter,
+      sportFilter: filters.sportFilter,
+      scheduleStatus: filters.scheduleStatus,
+      scheduleHorizon: filters.scheduleHorizon,
+    );
+
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await aggregateLiveFeed(
+        query,
+        onPartial: (partial) {
+          if (gen != _gen) return;
+          final page = _pageFromRows(
+            partial.rows,
+            loadingRemote: !partial.done,
+            loadingProgressLabel:
+                partial.done ? null : partial.progressLabel,
+          );
+          state = AsyncData(page);
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[meta_feed] hub feed: $e\n$st');
+      if (gen != _gen) {
+        return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
       }
     }
-  } catch (e, st) {
-    debugPrint('[meta_feed] hub feed: $e\n$st');
-  }
 
+    if (gen != _gen) {
+      return state.value ??
+          const MetaFeedCatalogPage(entries: [], loadingRemote: false);
+    }
+
+    final page = _pageFromRows(rows, loadingRemote: false);
+    MetaCache.instance.put(
+      key: cacheKey,
+      pluginId: hubId,
+      data: {
+        'items': [
+          for (final e in page.entries) e.legacyRow,
+        ],
+      },
+      hints: const MetaCacheHints(
+        maxAge: Duration(seconds: 60),
+        swr: Duration(seconds: 300),
+      ),
+    );
+    return page;
+  }
+}
+
+MetaFeedCatalogPage _pageFromCacheData(
+  Map<String, dynamic> data, {
+  required bool loadingRemote,
+  String? loadingProgressLabel,
+}) {
+  final items = data['items'];
+  final rawItems = <Map<String, dynamic>>[];
+  if (items is List) {
+    for (final e in items) {
+      if (e is Map) rawItems.add(Map<String, dynamic>.from(e));
+    }
+  }
+  return _pageFromRows(
+    rawItems,
+    loadingRemote: loadingRemote,
+    loadingProgressLabel: loadingProgressLabel,
+  );
+}
+
+MetaFeedCatalogPage _pageFromRows(
+  List<Map<String, dynamic>> rawItems, {
+  required bool loadingRemote,
+  String? loadingProgressLabel,
+}) {
   final entries = <KitListEntry>[];
   final kinds = <String>{};
   for (final raw in rawItems) {
-    final shaped = Map<String, dynamic>.from(raw);
-    if ((shaped['name'] ?? '').toString().trim().isEmpty) {
-      shaped['name'] = (shaped['title'] ?? '').toString();
-    }
-    if ((shaped['type'] ?? '').toString().trim().isEmpty) {
-      shaped['type'] = 'live_match';
-    }
+    final shaped = _shapeLiveFeedRow(raw);
     final meta = MetaItem.fromJson(shaped);
     if (meta.id.isEmpty) continue;
     final kind = _kindForMeta(meta);
@@ -119,9 +217,42 @@ final metaFeedCatalogProvider =
   return MetaFeedCatalogPage(
     entries: entries,
     kindIds: kindIds,
-    loadingRemote: false,
+    loadingRemote: loadingRemote,
+    loadingProgressLabel: loadingProgressLabel,
   );
-});
+}
+
+/// Pack-equivalent row shape (`liveSportsShapeRow`) for host progressive path.
+Map<String, dynamic> _shapeLiveFeedRow(Map<String, dynamic> row) {
+  final out = Map<String, dynamic>.from(row);
+  if ((out['name'] ?? '').toString().trim().isEmpty) {
+    out['name'] = (out['title'] ?? '').toString();
+  }
+  if ((out['type'] ?? '').toString().trim().isEmpty) {
+    out['type'] = 'live_match';
+  }
+  final id = (out['id'] ?? '').toString();
+  if (out['open'] == null && id.isNotEmpty) {
+    out['open'] = {'surface': 'live', 'id': id};
+  }
+  if (out['sportMatchGame'] is! Map) {
+    final title = (out['title'] ?? out['name'] ?? '').toString();
+    final home = (out['homeTeam'] ?? '').toString();
+    final away = (out['awayTeam'] ?? '').toString();
+    final category = (out['category'] ?? out['sport'] ?? '').toString();
+    final dateMs = num.tryParse('${out['dateMs'] ?? 0}')?.toInt() ?? 0;
+    out['sportMatchGame'] = {
+      'id': id,
+      'title': title,
+      'homeTeam': home,
+      'awayTeam': away,
+      'sport': category,
+      'category': category,
+      'dateMs': dateMs,
+    };
+  }
+  return out;
+}
 
 String _kindForMeta(MetaItem meta) {
   for (final g in meta.genres) {
@@ -133,7 +264,7 @@ String _kindForMeta(MetaItem meta) {
   return 'live_match';
 }
 
-/// Generic kit list backend: MetaRuntime feed for a hub plugin.
+/// Generic kit list backend: progressive live schedule for hub packs.
 ///
 /// Opaque [id] (e.g. `live_schedule`) is pack-declared; host never special-
 /// cases Live Sports beyond resolving the live hub via [engineType].
