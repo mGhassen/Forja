@@ -9,6 +9,7 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
@@ -272,6 +273,39 @@ class EngineRuntime {
             : <String, dynamic>{};
         final gen = _fetchGeneration;
         unawaited(_dispatchLiveFeed(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('IptvSearchChannelsStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final gameRaw = m['game'];
+        final game = gameRaw is Map
+            ? Map<String, dynamic>.from(gameRaw)
+            : <String, dynamic>{};
+        final catsRaw = m['categoryIds'] ?? m['category_ids'];
+        final categoryIds = catsRaw is List
+            ? [
+                for (final c in catsRaw)
+                  if (c.toString().trim().isNotEmpty) c.toString().trim(),
+              ]
+            : <String>[];
+        final portalKey = (m['portalKey'] ?? m['portal_key'] ?? '')
+            .toString()
+            .trim();
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchIptvSearchChannels(
+            id: id,
+            game: game,
+            categoryIds: categoryIds,
+            portalKey: portalKey.isEmpty ? null : portalKey,
+            gen: gen,
+          ),
+        );
       } catch (_) {}
       return null;
     });
@@ -1056,6 +1090,23 @@ class EngineRuntime {
           });
         }
       };
+      h.iptv = {
+        searchChannels: function(opts) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineIptvSearchSeq;
+            globalThis.__engineIptvSearchPending[id] = function(env) {
+              resolve(env && Array.isArray(env.sources) ? env.sources : []);
+            };
+            var o = opts == null ? {} : opts;
+            sendMessage('IptvSearchChannelsStart', JSON.stringify({
+              id: id,
+              game: o.game == null ? {} : o.game,
+              categoryIds: Array.isArray(o.categoryIds) ? o.categoryIds : [],
+              portalKey: o.portalKey == null ? '' : String(o.portalKey)
+            }));
+          });
+        }
+      };
       return h;
     })(),
     hop: globalThis.__engineHop,
@@ -1385,6 +1436,28 @@ class EngineRuntime {
     _resolveLiveFeed(id: id, gen: gen, rows: rows);
   }
 
+  Future<void> _dispatchIptvSearchChannels({
+    required int id,
+    required Map<String, dynamic> game,
+    required List<String> categoryIds,
+    required String? portalKey,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    List<Map<String, dynamic>> sources = const [];
+    try {
+      sources = await IptvChannelSearch.searchAsMaps(
+        game: game,
+        categoryIds: categoryIds,
+        portalKey: portalKey,
+      );
+    } catch (e, st) {
+      _forjaRuntimeLog('iptv.searchChannels failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveIptvSearchChannels(id: id, gen: gen, sources: sources);
+  }
+
   void _resolveLiveFeed({
     required int id,
     required int gen,
@@ -1397,6 +1470,21 @@ class EngineRuntime {
       rt,
       'try { globalThis.__engineLiveFeedResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
       sourceUrl: 'engine://liveFeed/$id',
+    );
+  }
+
+  void _resolveIptvSearchChannels({
+    required int id,
+    required int gen,
+    required List<Map<String, dynamic>> sources,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineIptvSearchResolve($id, ${jsonEncode({'sources': sources})}); } catch (e) {}',
+      sourceUrl: 'engine://iptvSearch/$id',
     );
   }
 
@@ -1842,6 +1930,12 @@ class EngineRuntime {
   globalThis.__engineLiveFeedResolve = function(id, envelope){
     var p = globalThis.__engineLiveFeedPending[id];
     if (p) { delete globalThis.__engineLiveFeedPending[id]; p(envelope); }
+  };
+  globalThis.__engineIptvSearchPending = globalThis.__engineIptvSearchPending || {};
+  globalThis.__engineIptvSearchSeq = globalThis.__engineIptvSearchSeq || 0;
+  globalThis.__engineIptvSearchResolve = function(id, envelope){
+    var p = globalThis.__engineIptvSearchPending[id];
+    if (p) { delete globalThis.__engineIptvSearchPending[id]; p(envelope); }
   };
   globalThis.__engineHost = function(hostId){
     return new Promise(function(resolve){

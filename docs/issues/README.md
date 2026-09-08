@@ -261,6 +261,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [240-[fixed]-…](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) | Live Sports Providers missing sibling resolvers | P0 | High | fixed | Complete · 4/4 · A 0/2 | [223](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) |
 | [241-[fixed]-…](fixed/241-[fixed]-live-sports-stremio-catalog-missing-after-kit.md) | Live Sports Stremio Catalog + Providers missing after kit | P0 | High | fixed | Complete · 3/3 · A 0/2 | [050](../rfc/050-[open]-stremio-addon-feature-targets.md) |
 | [242-[fixed]-…](fixed/242-[fixed]-live-sports-cards-category-bar-flash.md) | Live Sports Cards category bar / grid flash on feed reload | P0 | High | fixed | Complete · 3/3 · A 0/1 | [238](fixed/238-[fixed]-live-sports-riverpod-build-stutter.md) |
+| [243-[fixed]-…](fixed/243-[fixed]-android-tv-live-sports-first-focus-catalog.md) | Android TV Live Sports first focus on Catalog | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | — |
+| [244-[fixed]-…](fixed/244-[fixed]-pending-pack-local-path-no-trash.md) | Pending pack Mac path fails on TV; no trash | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

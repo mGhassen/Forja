@@ -16,12 +16,12 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 - Paste a pack **manifest.json** URL and **Install** (downloads the files listed in the pack’s `bundle`, or each plugin entry if `bundle` is omitted)
 - **Official packs** — opens a checkable list of missing ForjaHQ packs in the Settings detail pane (right side on desktop/TV). Core packs (Home, Anime, Asian Drama, Arabic, Providers, Live, Catalog, Torrent) show a flame **Recommended** badge next to Official; those rows sort first. Rows start unchecked — pick packs or use **Select all**. Each row also shows tags and a short description (not the manifest URL). Download only after you confirm (same picker as batch profile / Community Packs). Onboarding’s **Install official** still installs the full bundle in one go.
-- **Download** (icon on the right) on pending pack rows — or **Download all** when several packs still need scripts
+- **Download** (icon on the right) on pending pack rows — or **Download all** when several packs still need scripts. Pending rows also have **Remove** (trash → Yes / No) so a bad or unreachable stub can be deleted without installing
 - **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack with **OK / click on the row** (switch chrome on the row); the **chevron** expands for per-plugin toggles (Providers, Live, Hubs, Torrent, …). Desktop ExpansionTile still expands on header tap with the switch in the trailing actions.
 - **Refresh** or **Remove** from the same right-side actions (Remove also drops hub tabs from **Features** / the navbar, and drops the pack from your cloud profile on the next sync)
-- See badges for **Pending download** when a pack is still hydrating, or **Removed from profile** when cloud dropped it — **Download** / **Uninstall now** from the row when needed
+- See badges for **Pending download** when a pack is still hydrating, or **Removed from profile** when cloud dropped it — **Download** / **Uninstall now** from the row when needed. If a pending row still shows a local file path from another device, **Download** fetches the official pack instead; use trash to drop it
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
@@ -31,7 +31,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 **Onboarding (desktop / Android TV):** after sign-in and profile select (or on upgrade when the profile is not yet onboarded), Forja offers **Install official ForjaHQ packs**, a Community Packs link, or **Skip for now**. Completing or skipping sets `onboarded` on the profile so the step does not repeat. **Continue as guest** gets the same step once per device (local flag only). The same Official / Community quick-action cards also appear (smaller) under **Settings → Forja Packs** — Official there uses the checkbox list in the detail pane, not a silent full-bundle install.
 
-**Android TV:** **OK** on a pack row toggles enable; the chevron expands plugins. Refresh / remove stay on the right. D-pad walks Official/Community cards, the URL field (OK to type), Install / Download all / Reload, pack rows (↓) and those actions (→), expanded category chips and per-plugin toggles, and the official install checklist (Select all / Clear / rows / Install / Not now).
+**Android TV:** **OK** on a pack row toggles enable; the chevron expands plugins. Refresh / remove stay on the right (pending download rows: Download + trash). D-pad walks Official/Community cards, the URL field (OK to type), Install / Download all / Reload, pack rows (↓) and those actions (→), expanded category chips and per-plugin toggles, and the official install checklist (Select all / Clear / rows / Install / Not now).
 
 ## Related
 

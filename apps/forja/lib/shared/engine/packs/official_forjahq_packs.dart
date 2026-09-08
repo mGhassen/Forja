@@ -182,3 +182,41 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
 
 const kCommunityPacksUrl = 'https://www.forjahq.xyz/plugins';
 const kPluginCatalogUrl = 'https://www.forjahq.xyz/plugins/catalog.json';
+
+/// Official GitHub raw manifest for a [EnginePack.forjaHqSlot], or null.
+///
+/// Used when a local checkout path is unreachable on this device (e.g. a Mac
+/// absolute path synced onto Android TV) so install can still fetch the pack.
+String? officialManifestUrlForSlot(String? slot) {
+  final want = slot?.trim();
+  if (want == null || want.isEmpty) return null;
+  for (final pack in kOfficialForjaHqPacks) {
+    final path = pack.manifestUrl.trim().replaceAll('\\', '/').toLowerCase();
+    if (want == 'providers' && path.endsWith('plugins/providers/manifest.json')) {
+      return pack.manifestUrl;
+    }
+    if (want == 'catalog' && path.endsWith('plugins/catalog/manifest.json')) {
+      return pack.manifestUrl;
+    }
+    if (want == 'live' && path.endsWith('plugins/live/manifest.json')) {
+      return pack.manifestUrl;
+    }
+    if (want == 'torrent' && path.endsWith('plugins/torrent/manifest.json')) {
+      return pack.manifestUrl;
+    }
+    if (want == 'iptv-vod' &&
+        (path.endsWith('plugins/iptv/vod/manifest.json') ||
+            path.endsWith('plugins/hubs/iptv/manifest.json'))) {
+      return pack.manifestUrl;
+    }
+    if (want == 'home' &&
+        (path.endsWith('plugins/hubs/home/manifest.json') ||
+            path.endsWith('plugins/hubs/manifest.json'))) {
+      return pack.manifestUrl;
+    }
+    if (path.endsWith('plugins/hubs/$want/manifest.json')) {
+      return pack.manifestUrl;
+    }
+  }
+  return null;
+}

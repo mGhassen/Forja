@@ -147,11 +147,23 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
+  ///
+  /// Returns true only when page focus landed **off** top-bar chrome. Flutter
+  /// autofocuses the first focusable (often Catalog) when the tab becomes
+  /// hittable; treating that as success left Live Sports stuck on Catalog.
   static bool focusTabEnterFromNav(String tabId) {
     final enter = _tabEnterFocus[tabId];
     if (enter == null) return false;
     enter();
-    return _pageHasFocus();
+    return _pageHasContentFocus(tabId);
+  }
+
+  /// Page has D-pad focus that is not shell top-bar chrome (Catalog / Schedule).
+  static bool _pageHasContentFocus(String tabId) {
+    if (!_pageHasFocus()) return false;
+    final mem = _tabMemory[tabId];
+    if (mem != null && mem.zone == ShellTvZone.topBar) return false;
+    return true;
   }
 
   /// OK / click on a nav item: select tab, then land page focus (hero Play, etc.).
@@ -161,10 +173,18 @@ abstract final class ShellTvFocusCoordinator {
   static void enterTabFromNav(String tabId) {
     void attempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (focusTabEnterFromNav(tabId) && _pageHasFocus()) return;
+        if (focusTabEnterFromNav(tabId) && _pageHasContentFocus(tabId)) {
+          return;
+        }
         if (remaining > 0) {
           attempt(remaining: remaining - 1);
           return;
+        }
+        // Catalog/Schedule autofocus often wrote topBar memory during retries —
+        // drop it so restore lands on category / list, not chrome.
+        final mem = _tabMemory[tabId];
+        if (mem?.zone == ShellTvZone.topBar) {
+          _tabMemory.remove(tabId);
         }
         restoreTabFocusAfterNav(tabId);
       });

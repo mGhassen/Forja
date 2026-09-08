@@ -993,11 +993,18 @@ class SyncDomainBridge {
     final packs = await PluginRegistry.instance.listPacksRaw();
     final pendingPurge = await PendingRemotePurgeStore.read();
     final lean = <Map<String, dynamic>>[];
+    final seen = <String>{};
     for (final pack in packs) {
-      final manifestUrl = pack.sourceUrl.trim();
-      if (manifestUrl.isEmpty) continue;
-      if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
-      if (pendingPurge.contains(manifestUrl)) continue;
+      final rawUrl = pack.sourceUrl.trim();
+      if (rawUrl.isEmpty) continue;
+      if (PluginRegistry.isLegacyAssetPack(rawUrl)) continue;
+      // Never push Mac/Windows checkout paths to other devices.
+      final manifestUrl = PluginRegistry.cloudSafeManifestUrl(rawUrl);
+      if (PluginRegistry.isLocalManifestUrl(manifestUrl)) continue;
+      if (pendingPurge.contains(rawUrl) || pendingPurge.contains(manifestUrl)) {
+        continue;
+      }
+      if (!seen.add(manifestUrl)) continue;
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
       if (name.isNotEmpty) row['name'] = name;

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 
 void main() {
   group('officialPackCandidatesMissing', () {
@@ -91,6 +92,41 @@ void main() {
         fullyInstalledUrls: {'https://example.test/a/manifest.json'},
       );
       expect(candidates, isEmpty);
+    });
+  });
+
+  group('officialManifestUrlForSlot', () {
+    test('maps live_sports_cards and providers', () {
+      expect(
+        officialManifestUrlForSlot('live_sports_cards'),
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/live_sports_cards/manifest.json',
+      );
+      expect(
+        officialManifestUrlForSlot('providers'),
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
+      );
+      expect(officialManifestUrlForSlot('nope'), isNull);
+    });
+  });
+
+  group('cloudSafeManifestUrl', () {
+    test('rewrites ForjaHQ checkout paths to official remotes', () {
+      expect(
+        PluginRegistry.cloudSafeManifestUrl(
+          '/Users/x/Forja/plugins/hubs/live_sports_cards/manifest.json',
+        ),
+        officialManifestUrlForSlot('live_sports_cards'),
+      );
+      expect(
+        PluginRegistry.cloudSafeManifestUrl(
+          'https://cdn.example/pack/manifest.json',
+        ),
+        'https://cdn.example/pack/manifest.json',
+      );
+      expect(
+        PluginRegistry.cloudSafeManifestUrl('/tmp/custom/manifest.json'),
+        '/tmp/custom/manifest.json',
+      );
     });
   });
 }

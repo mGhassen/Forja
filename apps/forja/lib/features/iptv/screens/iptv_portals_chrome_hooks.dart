@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
@@ -15,7 +15,7 @@ import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 /// Registers Portals chip + panel on kit tabs that use [KitLiveBoot.listSourceId].
 ///
 /// Design: [KitPortalsChip] / [KitSidePanelOverlay] via adapters. Data: IPTV
-/// controller + [IptvPortalSportsConfig] (RFC-095).
+/// controller + pack `forjaSportsEnabled` gate (RFC-096).
 abstract final class IptvPortalsChromeHooks {
   IptvPortalsChromeHooks._();
 
@@ -65,8 +65,7 @@ abstract final class IptvPortalsChromeHooks {
 
 final _forjaSportsEnabledProvider =
     FutureProvider.autoDispose<bool>((ref) async {
-  final config = await IptvPortalSportsConfig.load();
-  return config.enabled;
+  return IptvForjaSportsGate.isForjaSportsEnabled();
 });
 
 class _IptvPortalsPanelHost extends ConsumerStatefulWidget {
@@ -98,7 +97,7 @@ class _IptvPortalsPanelHostState
     }
   }
 
-  Future<void> _syncPortal(IptvController ctrl, {required bool reload}) async {
+  Future<void> _warnIfUnsupported(IptvController ctrl) async {
     final p = ctrl.activePortal;
     if (p == null) return;
     if (!p.portal.platform.supportsForjaSports) {
@@ -109,15 +108,7 @@ class _IptvPortalsPanelHostState
       }
       return;
     }
-    final before = await IptvPortalSportsConfig.load();
-    final next = await IptvPortalSportsConfig.ensureArmed(portalKey: p.key);
     _lastSyncedPortalKey = p.key;
-    final changed = before.portalKey != next.portalKey ||
-        (before.leagues.isEmpty && next.leagues.isNotEmpty);
-    if (!mounted) return;
-    if (reload || changed) {
-      ref.invalidate(_forjaSportsEnabledProvider);
-    }
   }
 
   @override
@@ -134,7 +125,7 @@ class _IptvPortalsPanelHostState
         unawaited(() async {
           await ctrl.preparePortalPanel();
           if (!mounted) return;
-          await _syncPortal(ctrl, reload: false);
+          await _warnIfUnsupported(ctrl);
         }());
       });
     }
@@ -150,7 +141,7 @@ class _IptvPortalsPanelHostState
           (prev == null || prev.portalPanelOpen == next.portalPanelOpen)) {
         return;
       }
-      unawaited(_syncPortal(next, reload: true));
+      unawaited(_warnIfUnsupported(next));
     });
 
     return KitSidePanelOverlay(

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_match.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
+import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
-/// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095 D).
+/// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095).
 abstract final class IptvResolveStreamsAdapter {
   IptvResolveStreamsAdapter._();
 
@@ -17,9 +17,7 @@ abstract final class IptvResolveStreamsAdapter {
     KitUrlHealthProbe? healthProbe,
   }) async {
     final sources = tabId == KitResolvePanelHost.liveTvTab
-        ? await IptvPortalSportsMatchService.resolveStreams(
-            MatchEvent.fromLegacyRow(legacyRow),
-          )
+        ? await _loadLiveTv(legacyRow)
         : await LiveResolveStreams.loadProviders(legacyRow);
     return [
       for (var i = 0; i < sources.length; i++)
@@ -31,6 +29,14 @@ abstract final class IptvResolveStreamsAdapter {
           healthProbe: healthProbe,
         ),
     ];
+  }
+
+  static Future<List<IptvPlaySource>> _loadLiveTv(
+    Map<String, dynamic> legacyRow,
+  ) async {
+    if (!await IptvForjaSportsGate.isForjaSportsEnabled()) return [];
+    final game = IptvChannelSearch.gameFromLegacyRow(legacyRow);
+    return IptvChannelSearch.search(game: game);
   }
 
   static KitSourcesRow _rowForSource({

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **0 / 8** acceptance |
-| **Current slice** | Host cut — thin `IptvChannelSearch`; delete portal sports config/match product |
+| **Progress** | **3 / 3** components · **8 / 8** acceptance · **0 / 1** deferred |
+| **Current slice** | Host cut shipped — thin `IptvChannelSearch`; portal sports config/match deleted |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -19,9 +19,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R96-C01 | `IptvChannelSearch` — portal resolve + `sport_match_streams` + URL/logo enrich + cache | 🔄 |
-| 2 | R96-C02 | `IptvForjaSportsGate` — pack `forjaSportsEnabled` only (no leagues/maps) | 🔄 |
-| 3 | R96-C03 | JS bridge `ctx.host.iptv.searchChannels` | 🔄 |
+| 1 | R96-C01 | `IptvChannelSearch` — portal resolve + `sport_match_streams` + URL/logo enrich + cache | ✅ |
+| 2 | R96-C02 | `IptvForjaSportsGate` — pack `forjaSportsEnabled` only (no leagues/maps) | ✅ |
+| 3 | R96-C03 | JS bridge `ctx.host.iptv.searchChannels` | ✅ |
 
 ---
 
@@ -29,14 +29,14 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R96-A01 | No `IptvPortalSportsConfig` / `IptvPortalSportsMatchService` / `portal_sports/` | ⬜ |
-| 2 | R96-A02 | Live TV resolve builds `game` from pack `sportMatchGame` or row title/teams passthrough | ⬜ |
-| 3 | R96-A03 | Host has no NBA/league/sportFamily maps and no broadcast soft-match index | ⬜ |
-| 4 | R96-A04 | Portals chip gates on pack `forjaSportsEnabled`; no `ensureArmed` | ⬜ |
-| 5 | R96-A05 | Hub feed rows expose `sportMatchGame` when missing (pack-owned) | ⬜ |
-| 6 | R96-A06 | `ctx.host.iptv.searchChannels` available next to `liveFeed` | ⬜ |
-| 7 | R96-A07 | Feature + services-map + RFC-062 note updated | ⬜ |
-| 8 | R96-A08 | `dart analyze` clean on touched IPTV / engine paths | ⬜ |
+| 1 | R96-A01 | No `IptvPortalSportsConfig` / `IptvPortalSportsMatchService` / `portal_sports/` | ✅ |
+| 2 | R96-A02 | Live TV resolve builds `game` from pack `sportMatchGame` or row title/teams passthrough | ✅ |
+| 3 | R96-A03 | Host has no NBA/league/sportFamily maps and no broadcast soft-match index | ✅ |
+| 4 | R96-A04 | Portals chip gates on pack `forjaSportsEnabled`; no `ensureArmed` | ✅ |
+| 5 | R96-A05 | Hub feed rows expose `sportMatchGame` when missing (pack-owned) | ✅ |
+| 6 | R96-A06 | `ctx.host.iptv.searchChannels` available next to `liveFeed` | ✅ |
+| 7 | R96-A07 | Feature + services-map + RFC-062 note updated | ✅ |
+| 8 | R96-A08 | `dart analyze` clean on touched IPTV / engine paths | ✅ |
 
 ---
 

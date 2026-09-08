@@ -40,7 +40,7 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
@@ -1497,23 +1497,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
   }
 
-  /// Forja Sports: resolve the armed Xtream/Stalker portal for in-player short EPG.
+  /// Forja Sports: last Xtream/Stalker portal for in-player short EPG.
   Future<void> _initSportsEpgCache() async {
-    final config = await IptvPortalSportsConfig.load();
-    final armed = await config.resolveForFetch();
-    if (armed == null || _disposed || !mounted) return;
-    final portals = await IptvStore.load();
-    VerifiedPortal? portal;
-    for (final p in portals) {
-      if (p.key == armed.portalKey) {
-        portal = p;
-        break;
-      }
-    }
+    final portal = await IptvChannelSearch.resolvePortal();
     if (portal == null || _disposed || !mounted) return;
     _sportsPortal = portal;
     if (!portal.portal.platform.supportsEpg) return;
-    setState(() => _epgCache = IptvGuideEpgCache(portal!));
+    setState(() => _epgCache = IptvGuideEpgCache(portal));
   }
 
   /// Channel guide id or active sports source stream id — keys floating EPG.

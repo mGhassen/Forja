@@ -307,6 +307,7 @@ class _SettingsForjaPacksSectionState
                       : 'Download',
                   actionIcon: Icons.download_rounded,
                   onAction: () => unawaited(_installNamedPack(pack.sourceUrl)),
+                  onRemove: () => _removeEnginePack(pack),
                 );
               }
               final panelPlugins = [

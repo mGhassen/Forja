@@ -8,6 +8,7 @@ import 'package:forja/shared/foundation/services/meta/cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/plugin_install_validator.dart';
 import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
@@ -80,7 +81,8 @@ class PluginRegistry {
   }
 
   /// When a stored manifest is a local path this device cannot read, try another
-  /// installed pack at the same conventional slot (remote URL).
+  /// installed pack at the same conventional slot (remote URL), then the
+  /// official ForjaHQ GitHub raw URL for that slot.
   Future<String> _substituteUnreachableLocalManifest(String url) async {
     if (await _localManifestExists(url)) return url;
     final slot = forjaHqSlot(url);
@@ -94,7 +96,24 @@ class PluginRegistry {
       );
       return pack.sourceUrl;
     }
+    final official = officialManifestUrlForSlot(slot);
+    if (official != null && official != url) {
+      debugPrint(
+        '[engine] local manifest missing ($slot) — official $official',
+      );
+      return official;
+    }
     return url;
+  }
+
+  /// Cloud lean / Settings: rewrite unreachable local ForjaHQ paths to the
+  /// official remote URL. Arbitrary local paths that are not ForjaHQ stay as-is
+  /// (caller may skip them).
+  static String cloudSafeManifestUrl(String url) {
+    final t = url.trim();
+    if (t.isEmpty || !isLocalManifestUrl(t)) return t;
+    final official = officialManifestUrlForSlot(forjaHqSlot(t));
+    return official ?? t;
   }
 
   Future<String> _fetchText(String url) async {
@@ -282,9 +301,13 @@ class PluginRegistry {
   static bool isLocalManifestUrl(String url) => _asLocalFile(url) != null;
 
   /// True when a remote pack needs install/repair (lean stub or missing disk JS).
+  /// Unreachable local checkout paths (synced Mac paths on TV) also need install
+  /// so [_substituteUnreachableLocalManifest] can fetch the official remote.
   Future<bool> packNeedsDiskInstall(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return false;
-    if (isLocalManifestUrl(pack.sourceUrl)) return false;
+    if (isLocalManifestUrl(pack.sourceUrl)) {
+      return !(await _localManifestExists(pack.sourceUrl));
+    }
     if (pack.plugins.isEmpty) return true;
     for (final p in pack.plugins) {
       if (p.entry.isEmpty || !p.needsScript) continue;
@@ -841,7 +864,10 @@ class PluginRegistry {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
   }) async {
-    manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
+    final requestedUrl = manifestUrl.trim();
+    manifestUrl = await _substituteUnreachableLocalManifest(requestedUrl);
+    final remappedFromLocal =
+        requestedUrl != manifestUrl && isLocalManifestUrl(requestedUrl);
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     try {
@@ -852,7 +878,8 @@ class PluginRegistry {
     final all = await listPacksRaw();
     EnginePack? previous;
     for (final p in all) {
-      if (p.sourceUrl == manifestUrl) {
+      if (p.sourceUrl == manifestUrl ||
+          (remappedFromLocal && p.sourceUrl == requestedUrl)) {
         previous = p;
         break;
       }
@@ -1050,6 +1077,11 @@ class PluginRegistry {
       all[packIdx] = pack;
     } else {
       all.add(pack);
+    }
+    if (remappedFromLocal) {
+      all.removeWhere((a) => a.sourceUrl == requestedUrl);
+      await DeferredRemoteInstallStore.clear(requestedUrl);
+      await PendingRemotePurgeStore.clear(requestedUrl);
     }
     await _savePacks(all);
     final hubSlot = forjaHqSlot(manifestUrl);
@@ -1524,10 +1556,14 @@ class PluginRegistry {
   }) async {
     final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
-      final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty || isLegacyAssetPack(url)) {
+      final rawUrl = (raw['manifestUrl'] as String?)?.trim() ?? '';
+      if (rawUrl.isEmpty || isLegacyAssetPack(rawUrl)) {
         continue;
       }
+      final url = cloudSafeManifestUrl(rawUrl);
+      // Dev-only absolute paths that are not ForjaHQ must not become lean stubs
+      // on other devices (Android TV cannot read a Mac checkout path).
+      if (isLocalManifestUrl(url)) continue;
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();

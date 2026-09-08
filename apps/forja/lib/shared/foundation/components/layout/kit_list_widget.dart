@@ -176,12 +176,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     _source = _resolveSource();
     TvHeroActions.bind(
       widget.tabId,
+      defaultFocus: _defaultFocusNode,
       enterFromNavFocus: _focusEntry,
-      restoreFocus: () {
-        if (_focusRow(widget.kindMenuId, 0)) return true;
-        if (_focusRow(widget.statusTabId, 0)) return true;
-        return _focusRow(widget.gridRowId, 0);
-      },
+      restoreFocus: _landContentFocus,
     );
   }
 
@@ -219,17 +216,47 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     return _focusRow(rowId, idx);
   }
 
+  /// Category bar → status tabs → first list/grid item (never top-bar Catalog).
+  bool _landContentFocus() {
+    if (_focusRow(widget.kindMenuId, 0)) return true;
+    if (_focusRow(widget.statusTabId, 0)) return true;
+    return _focusRow(widget.gridRowId, 0);
+  }
+
+  FocusNode? _defaultFocusNode() {
+    return ShellTvFocusCoordinator.itemNode(
+          widget.tabId,
+          widget.kindMenuId,
+          0,
+        ) ??
+        ShellTvFocusCoordinator.itemNode(
+          widget.tabId,
+          widget.statusTabId,
+          0,
+        ) ??
+        ShellTvFocusCoordinator.itemNode(
+          widget.tabId,
+          widget.gridRowId,
+          0,
+        );
+  }
+
   double _hoistedTopBarInset(BuildContext context) {
     if (!KitTopMenuRegistry.hasTopMenu(widget.tabId)) return 0;
     return KitTopMenuRegistry.bodyTopInset(context, widget.tabId);
   }
 
   void _focusEntry() {
-    if (_focusRow(widget.kindMenuId, 0)) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || ShellTvFocus.currentNavTabId != widget.tabId) return;
-      _focusRow(widget.kindMenuId, 0);
-    });
+    if (_landContentFocus()) return;
+    void retry({required int left}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || ShellTvFocus.currentNavTabId != widget.tabId) return;
+        if (_landContentFocus() || left <= 0) return;
+        retry(left: left - 1);
+      });
+    }
+
+    retry(left: 5);
   }
 
   @override

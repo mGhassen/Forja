@@ -7,7 +7,7 @@ import 'package:forja/features/iptv/open/iptv_open.dart';
 import 'package:forja/features/iptv/open/iptv_play.dart';
 import 'package:forja/features/iptv/open/iptv_resolve_streams_adapter.dart';
 import 'package:forja/features/iptv/open/live_play.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.dart';
@@ -113,9 +113,8 @@ abstract final class IptvKitHooksRegister {
   }
 
   static Future<Object?> _loadActiveLiveShelf() async {
-    final config = await IptvPortalSportsConfig.load();
-    final armed = await config.resolveForFetch();
-    if (armed == null) return null;
-    return IptvCatalogDiskStore.load(armed.portalKey, IptvSection.live);
+    final portal = await IptvChannelSearch.resolvePortal();
+    if (portal == null) return null;
+    return IptvCatalogDiskStore.load(portal.key, IptvSection.live);
   }
 }

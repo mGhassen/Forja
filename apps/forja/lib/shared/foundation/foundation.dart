@@ -5,8 +5,8 @@
 /// Product hub tabs are pack-owned. Live schedule browse uses generic kit
 /// services + MetaRuntime feed. Portals chrome is foundation design
 /// (`KitPortalsChip` / `KitSidePanelOverlay` / `KitPortalListPanel`); IPTV
-/// wires data via `IptvPortalsChromeHooks` (RFC-095). Fixture→channel match
-/// stays under `features/iptv/portal_sports/` (RFC-092).
+/// wires data via `IptvPortalsChromeHooks` (RFC-095). IPTV channel search
+/// for Live TV is `features/iptv/channel_search/` (RFC-096).
 library;
 
 export 'primitives/primitives.dart';

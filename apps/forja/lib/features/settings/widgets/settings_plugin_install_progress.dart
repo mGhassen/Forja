@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -22,8 +24,9 @@ class _PhaseIcon extends StatelessWidget {
 /// Pending pack row — lean stub, deferred install, or pending purge.
 ///
 /// Compact like installed pack rows: status + download/uninstall icon on the
-/// right — no full-width CTA row.
-class SettingsEnginePackPendingTile extends StatelessWidget {
+/// right — no full-width CTA row. Pending downloads also get a trash control
+/// (Yes/No confirm) so unreachable / stale stubs can be removed on TV.
+class SettingsEnginePackPendingTile extends StatefulWidget {
   const SettingsEnginePackPendingTile({
     super.key,
     required this.packName,
@@ -33,6 +36,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
     this.actionTooltip,
     this.actionIcon = Icons.download_rounded,
     this.onAction,
+    this.onRemove,
   });
 
   final String packName;
@@ -42,17 +46,30 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
   final String? actionTooltip;
   final IconData actionIcon;
   final VoidCallback? onAction;
+  final Future<void> Function()? onRemove;
+
+  @override
+  State<SettingsEnginePackPendingTile> createState() =>
+      _SettingsEnginePackPendingTileState();
+}
+
+class _SettingsEnginePackPendingTileState
+    extends State<SettingsEnginePackPendingTile> {
+  bool _confirmingRemove = false;
 
   @override
   Widget build(BuildContext context) {
-    final active = progress?.matchesUrl(sourceUrl) == true;
-    final phase = active ? progress!.phase : PluginInstallPhase.loading;
-    final status = active
-        ? (progress!.phase == PluginInstallPhase.ready
+    final progress = widget.progress;
+    final sourceUrl = widget.sourceUrl;
+    final activeProgress =
+        progress != null && progress.matchesUrl(sourceUrl) ? progress : null;
+    final phase = activeProgress?.phase ?? PluginInstallPhase.loading;
+    final status = activeProgress != null
+        ? (activeProgress.phase == PluginInstallPhase.ready
               ? 'Ready'
-              : progress!.phaseTitle)
-        : (badge ?? 'Waiting');
-    final detail = active ? progress!.label : null;
+              : activeProgress.phaseTitle)
+        : (widget.badge ?? 'Waiting');
+    final detail = activeProgress?.label;
     // Flat row — same chrome as installed ExpansionTile headers (no card).
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
@@ -68,7 +85,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      packName,
+                      widget.packName,
                       style: const TextStyle(
                         color: ForjaShellColors.textPrimary,
                         fontSize: 14,
@@ -110,32 +127,63 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: active
+                  color: activeProgress != null
                       ? ForjaShellColors.brandGreen
                       : ForjaShellColors.textSecondary,
                 ),
               ),
-              if (onAction != null && !active) ...[
-                const SizedBox(width: 8),
-                _PendingActionIcon(
-                  tooltip: actionTooltip ?? 'Download',
-                  icon: actionIcon,
-                  onPressed: onAction!,
-                  color: actionIcon == Icons.delete_outline
-                      ? const Color(0xFFF87171)
-                      : ForjaShellColors.brandGreen,
-                ),
+              if (activeProgress == null) ...[
+                if (widget.onAction != null && !_confirmingRemove) ...[
+                  const SizedBox(width: 8),
+                  _PendingActionIcon(
+                    tooltip: widget.actionTooltip ?? 'Download',
+                    icon: widget.actionIcon,
+                    onPressed: widget.onAction!,
+                    color: widget.actionIcon == Icons.delete_outline
+                        ? const Color(0xFFF87171)
+                        : ForjaShellColors.brandGreen,
+                  ),
+                ],
+                if (widget.onRemove != null) ...[
+                  const SizedBox(width: 4),
+                  if (_confirmingRemove) ...[
+                    _PendingActionIcon(
+                      tooltip: 'Yes',
+                      icon: Icons.check_rounded,
+                      color: const Color(0xFFEF4444),
+                      onPressed: () {
+                        setState(() => _confirmingRemove = false);
+                        unawaited(widget.onRemove!());
+                      },
+                    ),
+                    _PendingActionIcon(
+                      tooltip: 'No',
+                      icon: Icons.close_rounded,
+                      color: ForjaShellColors.iconMuted,
+                      onPressed: () =>
+                          setState(() => _confirmingRemove = false),
+                    ),
+                  ] else
+                    _PendingActionIcon(
+                      tooltip: 'Remove pack',
+                      icon: Icons.delete_outline,
+                      color: const Color(0xFFF87171),
+                      onPressed: () =>
+                          setState(() => _confirmingRemove = true),
+                    ),
+                ],
               ],
             ],
           ),
-          if (active &&
-              progress != null &&
-              progress!.phase != PluginInstallPhase.ready) ...[
+          if (activeProgress != null &&
+              activeProgress.phase != PluginInstallPhase.ready) ...[
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                value: progress!.totalSteps > 0 ? progress!.fraction : null,
+                value: activeProgress.totalSteps > 0
+                    ? activeProgress.fraction
+                    : null,
                 minHeight: 3,
                 backgroundColor: ForjaShellColors.borderSubtle,
                 valueColor: const AlwaysStoppedAnimation<Color>(

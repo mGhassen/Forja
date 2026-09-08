@@ -181,19 +181,17 @@ class PluginInstallCoordinator {
     if (hit == null) return false;
 
     final url = hit.pack.sourceUrl;
-    final local = PluginRegistry.isLocalManifestUrl(url);
-    final needsDisk = await PluginRegistry.instance.packNeedsDiskInstall(hit.pack);
+    final needsDisk =
+        await PluginRegistry.instance.packNeedsDiskInstall(hit.pack);
 
-    // Bundled checkout (plugins/iptv/vod, plugins/hubs/*, …): JS is read from
-    // disk on each run — do not re-fetch manifest + show "Updating…" per tap.
-    if (local) {
-      return PluginRegistry.instance.ensurePackScriptsReady(hit.pack);
-    }
+    // Readable local checkout: JS is read from disk on each run.
+    // Remote lean / unreachable local path: boot hydrate or Settings owns download.
     if (!needsDisk) return true;
 
     debugPrint(
       '[PluginInstall] ensurePluginReady($want) needs download — '
-      'wait for cloud sync hydrate or Settings → Forja Packs',
+      'wait for cloud sync hydrate or Settings → Forja Packs '
+      '($url)',
     );
     return false;
   }

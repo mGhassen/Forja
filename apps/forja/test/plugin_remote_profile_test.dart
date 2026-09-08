@@ -65,6 +65,36 @@ void main() {
       expect(packs.single.plugins, isEmpty);
     });
 
+    test('rewrites ForjaHQ Mac checkout path to official remote', () async {
+      await _seedPacks(const []);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls([
+        {
+          'manifestUrl':
+              '/Users/dev/Workspace/Forja/plugins/hubs/live_sports_cards/manifest.json',
+          'name': 'Live Sports Cards',
+        },
+      ]);
+      expect(result.added, hasLength(1));
+      expect(
+        result.added.first.manifestUrl,
+        officialManifestUrlForSlot('live_sports_cards'),
+      );
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      expect(packs.single.sourceUrl, officialManifestUrlForSlot('live_sports_cards'));
+    });
+
+    test('skips non-ForjaHQ local paths from cloud lean', () async {
+      await _seedPacks(const []);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls([
+        {
+          'manifestUrl': '/tmp/my-custom-pack/manifest.json',
+          'name': 'Custom',
+        },
+      ]);
+      expect(result.added, isEmpty);
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
+    });
+
     test('mid-session keeps installed pack and reports removed', () async {
       await _seedPacks([
         {
@@ -137,7 +167,7 @@ void main() {
     });
 
     test('re-adding a cloud row clears pending purge', () async {
-      const url = '/tmp/forja-purge/manifest.json';
+      const url = 'https://cdn.example/purge/manifest.json';
       await _seedPacks([
         {
           'sourceUrl': url,
@@ -283,7 +313,27 @@ void main() {
     });
 
     test('skips install when pack already on disk', () async {
-      const url = '/tmp/forja-ready/manifest.json';
+      final dir = Directory.systemTemp.createTempSync('forja-ready-');
+      addTearDown(() {
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      });
+      final file = File('${dir.path}/manifest.json');
+      await file.writeAsString(
+        jsonEncode({
+          'id': 'ready',
+          'name': 'Ready',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+            },
+          ],
+        }),
+      );
+      final url = file.path;
       await _seedPacks([
         {
           'sourceUrl': url,
@@ -306,7 +356,7 @@ void main() {
         return http.Response('nf', 404);
       });
       await PluginInstallPromptService.applyCloudLeanDiff(
-        const LeanApplyResult(
+        LeanApplyResult(
           added: [LeanPackDelta(manifestUrl: url, name: 'Ready')],
         ),
       );

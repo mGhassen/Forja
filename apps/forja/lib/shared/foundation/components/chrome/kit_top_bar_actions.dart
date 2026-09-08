@@ -65,15 +65,18 @@ class KitTopBarActions extends ConsumerWidget {
       tabId: tabId,
       rowId: _widgetId,
       itemIndex: trailingIndex,
-      onLeftEdge: () {},
+      onLeftEdge: null,
       onDownEdge: focusDown,
     );
     final itemCount = actions.length + (trailing != null ? 1 : 0);
 
+    // Negative sortOrder = chrome (Catalog / Schedule). Content rows
+    // (category bar, list) stay ≥ 0 so enter / focusFirstContentRow skip here.
+    final chromeOrder = sortOrder < 0 ? sortOrder : -100 - sortOrder;
     return TvKitRow(
       tabId: tabId,
       rowId: _widgetId,
-      sortOrder: sortOrder,
+      sortOrder: chromeOrder,
       itemCount: itemCount,
       onFocusUp: () {},
       child: Padding(
@@ -95,7 +98,6 @@ class KitTopBarActions extends ConsumerWidget {
                 focusDown: focusDown,
                 catalogOptions: catalogsAsync.asData?.value ?? const [],
                 horizonPref: horizonPref,
-                hasTrailing: trailing != null,
               ),
             ],
             const Spacer(),
@@ -117,7 +119,6 @@ class KitTopBarActions extends ConsumerWidget {
     required VoidCallback? focusDown,
     required List<({String id, String label})> catalogOptions,
     required String? horizonPref,
-    required bool hasTrailing,
   }) {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString();
@@ -126,7 +127,6 @@ class KitTopBarActions extends ConsumerWidget {
     final icon = _iconFor(action);
     final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
     final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
-    final lastPackAction = index == _actions.length - 1;
 
     if (isRefresh) {
       return ForjaActionChip(
@@ -137,7 +137,6 @@ class KitTopBarActions extends ConsumerWidget {
         tvTabId: tabId,
         tvRowId: _widgetId,
         tvItemIndex: index,
-        onRightEdge: lastPackAction && hasTrailing ? () {} : null,
         onDownEdge: focusDown ?? () {},
         onTap: () => onRefresh?.call(),
       );
@@ -154,8 +153,8 @@ class KitTopBarActions extends ConsumerWidget {
       tvTabId: tabId,
       tvRowId: _widgetId,
       tvItemIndex: index,
-      onLeftEdge: index == 0 ? null : () {},
-      onRightEdge: lastPackAction && !hasTrailing ? null : () {},
+      // Left/right stay null — ShellTvFocusMeta walks the chrome row
+      // (Catalog → Schedule → Refresh → Portals). Empty () {} swallowed D-pad.
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
         isSchedule

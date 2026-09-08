@@ -4,12 +4,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
-import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
@@ -19,7 +18,7 @@ import 'package:rust/rust.dart'
     show BuiltInPlayerContext, SettingsService, StremioService, runLiveSportsFetchJson;
 
 /// Live resolve + Stremio providers + native play (RFC-091).
-/// Live TV portal matching is [IptvPortalSportsMatchService] — not this class.
+/// Live TV portal channels: [IptvChannelSearch] (RFC-096).
 abstract final class LiveResolveStreams {
   LiveResolveStreams._();
 
@@ -716,17 +715,7 @@ abstract final class LiveResolveStreams {
     );
     if (!needsLink) return sources;
 
-    final config = await IptvPortalSportsConfig.load();
-    final armed = await config.resolveForFetch();
-    if (armed == null) return [];
-    final portals = await IptvStore.load();
-    VerifiedPortal? portal;
-    for (final p in portals) {
-      if (p.key == armed.portalKey) {
-        portal = p;
-        break;
-      }
-    }
+    final portal = await IptvChannelSearch.resolvePortal();
     if (portal == null ||
         portal.portal.platform != IptvPortalPlatform.stalker) {
       return sources.where((s) => s.url.trim().isNotEmpty).toList();

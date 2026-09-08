@@ -72,6 +72,22 @@ function liveSportsShapeRow(row) {
   if (!out.open && out.id) {
     out.open = { surface: 'live', id: String(out.id) };
   }
+  if (!out.sportMatchGame || typeof out.sportMatchGame !== 'object') {
+    var title = String(out.title || out.name || '');
+    var home = String(out.homeTeam || '');
+    var away = String(out.awayTeam || '');
+    var category = String(out.category || out.sport || '');
+    var dateMs = Number(out.dateMs) || 0;
+    out.sportMatchGame = {
+      id: String(out.id || ''),
+      title: title,
+      homeTeam: home,
+      awayTeam: away,
+      sport: category,
+      category: category,
+      dateMs: dateMs,
+    };
+  }
   return out;
 }
 
