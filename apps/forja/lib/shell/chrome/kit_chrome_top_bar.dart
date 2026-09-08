@@ -70,13 +70,18 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
   @override
   void initState() {
     super.initState();
-    // First menu tab is Search — UP from hero gallery lands here.
+    _syncSharedSearchFocus();
+  }
+
+  /// KeepAlive hubs all mount — only the active tab owns [hubHeroSearch].
+  void _syncSharedSearchFocus() {
     if (widget.tabId == 'home') {
       ShellTvFocus.homeMenu = _searchFocus;
       ShellTvFocus.homeSearch = _searchFocus;
-    } else {
-      ShellTvFocus.hubHeroSearch = _searchFocus;
+      return;
     }
+    if (ShellTvFocus.currentNavTabId != widget.tabId) return;
+    ShellTvFocus.hubHeroSearch = _searchFocus;
   }
 
   @override
@@ -296,6 +301,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
 
   @override
   Widget build(BuildContext context) {
+    // KeepAlive hubs all mount — only the active tab owns shared search.
+    _syncSharedSearchFocus();
+
     final compactNav =
         MediaQuery.sizeOf(context).width < ShellTokens.shellNavCompactMaxWidth;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;

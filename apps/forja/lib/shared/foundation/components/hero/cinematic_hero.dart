@@ -481,9 +481,15 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     ShellTvFocus.focusHomeHeroGallery();
   }
 
+  /// ↑ from hero gallery → top-bar Search (Home + every hub with search).
   void _focusHomeHeroMenu() {
     ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId);
-    ShellTvFocus.focusHomeMenu();
+    if (widget.tvTabId == 'home') {
+      if (ShellTvFocus.focusHomeMenu()) return;
+      ShellTvFocus.focusHomeSearch();
+      return;
+    }
+    ShellTvFocus.focusHubHeroSearch();
   }
 
   void _focusBleedCatalogRow() {
