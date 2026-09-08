@@ -7,8 +7,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Shown when every shell feature tab is hidden — guides users to Addons,
-/// Features, and plugin install instead of landing on an empty Settings body.
+/// Shown when every shell feature tab is hidden — guides users to Plugins,
+/// Addons, and Features instead of landing on an empty Settings body.
 class ShellEmptyFeaturesScreen extends ConsumerStatefulWidget {
   const ShellEmptyFeaturesScreen({
     super.key,
@@ -83,6 +83,16 @@ class _ShellEmptyFeaturesScreenState
     final profile = ShellScope.profileOf(context);
 
     final specs = <_CardSpec>[
+      if (showPlugins && widget.onInstallPlugins != null)
+        _CardSpec(
+          icon: Icons.inventory_2_outlined,
+          title: 'Plugins',
+          body: tv
+              ? 'Install hub and stream packs from a URL or profile.'
+              : 'Install hub and stream packs from a manifest URL, or sync packs from your profile.',
+          accent: const Color(0xFFFBBF24),
+          onAction: widget.onInstallPlugins!,
+        ),
       if (showAddons)
         _CardSpec(
           icon: Icons.extension_rounded,
@@ -102,16 +112,6 @@ class _ShellEmptyFeaturesScreenState
         accent: const Color(0xFF34D399),
         onAction: widget.onOpenFeatures,
       ),
-      if (showPlugins && widget.onInstallPlugins != null)
-        _CardSpec(
-          icon: Icons.inventory_2_outlined,
-          title: 'Plugins',
-          body: tv
-              ? 'Install hub and stream packs from a URL or profile.'
-              : 'Install hub and stream packs from a manifest URL, or sync packs from your profile.',
-          accent: const Color(0xFFFBBF24),
-          onAction: widget.onInstallPlugins!,
-        ),
     ];
 
     _ensureFocusNodes(specs.length);
@@ -196,7 +196,7 @@ class _ShellEmptyFeaturesScreenState
                       ),
                       SizedBox(height: tv ? 10 : 14),
                       Text(
-                        'Pick Addons, Features, or install packs.',
+                        'Pick Plugins, Addons, or Features.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
                           color: ForjaShellColors.textPrimary.withValues(
