@@ -84,7 +84,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -119,7 +120,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -153,7 +155,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -194,7 +197,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -238,7 +242,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

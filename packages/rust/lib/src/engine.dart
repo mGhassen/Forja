@@ -69,6 +69,9 @@ class RustLib {
 
   String get version => _readString(_native.ffi_version());
 
+  /// Compile-time TMDB v3 key baked into the Rust engine (may be empty).
+  String tmdbApiKey() => _readString(_native.ffi_tmdb_api_key());
+
   void engineCancelPending() => _native.ffi_engine_cancel_pending();
 
   /// Abort in-flight TMDB catalog HTTP (Home category/genre/provider flips).
@@ -587,6 +590,9 @@ final class _FfiNative {
       ffi_version = lib
           .lookup<ffi.NativeFunction<_VersionNative>>('ffi_version')
           .asFunction(),
+      ffi_tmdb_api_key = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_tmdb_api_key')
+          .asFunction(),
       ffi_engine_cancel_pending = lib
           .lookup<ffi.NativeFunction<_TorrentStopNative>>(
             'ffi_engine_cancel_pending',
@@ -1036,6 +1042,7 @@ final class _FfiNative {
 
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
+  final ffi.Pointer<ffi.Char> Function() ffi_tmdb_api_key;
   final void Function() ffi_engine_cancel_pending;
   final void Function() ffi_engine_cancel_catalog;
   final void Function(int) ffi_engine_cancel_jobs_of_kind;

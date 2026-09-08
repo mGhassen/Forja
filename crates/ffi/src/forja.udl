@@ -1,5 +1,6 @@
 namespace forja {
     string version();
+    string tmdb_api_key();
     void engine_cancel_pending();
     void engine_cancel_catalog();
     void engine_cancel_jobs_of_kind(u32 kind);

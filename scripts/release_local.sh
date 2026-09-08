@@ -1169,7 +1169,8 @@ build_macos() {
       --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
-      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}"
+      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
+      --dart-define=TMDB_API_KEY="${TMDB_API_KEY:-}"
   )
   echo "==> Ad-hoc codesign"
   ./scripts/codesign_macos_adhoc.sh
@@ -1286,6 +1287,7 @@ build_android_tv() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
+      --dart-define=TMDB_API_KEY="${TMDB_API_KEY:-}"
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \

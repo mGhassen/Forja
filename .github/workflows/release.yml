@@ -337,6 +337,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -407,6 +408,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -476,6 +478,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Embed Rust in release output
         shell: bash
@@ -569,6 +572,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -703,6 +707,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=TMDB_API_KEY="$TMDB_API_KEY" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

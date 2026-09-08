@@ -1,7 +1,7 @@
 // TMDB movie / TV hub — layout / rail / search / details (protocol 1).
 //
-// Needs a v3 key. The host injects `TMDB_API_KEY` from dart-define at
-// runCatalog time (R70-A14). Pack config stays empty.
+// Needs a v3 key. Host injects `TMDB_API_KEY` (Flutter dart-define and/or
+// Rust-baked key in EngineJS extract). Pack config stays empty.
 
 var TMDB_DEFAULTS = {
   base: 'https://api.themoviedb.org/3',

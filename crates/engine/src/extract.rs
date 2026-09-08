@@ -613,6 +613,36 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
     }
 }
 
+/// Home / enrich hubs expect `config.apiKey`. Host should inject via dart-define;
+/// if that is missing, fill from the Rust-baked `TMDB_API_KEY` (same as `tmdb_get_json`).
+fn with_tmdb_api_key(mut meta: Value) -> Value {
+    if tmdb::API_KEY.is_empty() {
+        return meta;
+    }
+    let Some(root) = meta.as_object_mut() else {
+        return meta;
+    };
+    let config = root
+        .entry("config")
+        .or_insert_with(|| Value::Object(Default::default()));
+    let Some(cfg) = config.as_object_mut() else {
+        return meta;
+    };
+    let missing = match cfg.get("apiKey") {
+        None => true,
+        Some(Value::Null) => true,
+        Some(Value::String(s)) => s.trim().is_empty(),
+        Some(_) => false,
+    };
+    if missing {
+        cfg.insert(
+            "apiKey".into(),
+            Value::String(tmdb::API_KEY.to_string()),
+        );
+    }
+    meta
+}
+
 async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     if cancelled() {
         return ExtractResult {
@@ -648,7 +678,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
 
     let plugin_id = req.plugin_id.clone();
     let code = req.code.clone();
-    let meta = req.ctx.clone();
+    let meta = with_tmdb_api_key(req.ctx.clone());
     let plugin_label = plugin_id.clone();
     let hops = std::sync::Arc::new(req.hops.clone());
     let hop_depth = req.hop_depth;
@@ -1250,6 +1280,28 @@ function extract(ctx) {
         assert_eq!(
             row.get("hasTmdbMatch").and_then(|v| v.as_bool()),
             Some(true)
+        );
+    }
+
+    #[test]
+    fn with_tmdb_api_key_fills_empty_config() {
+        if tmdb::API_KEY.is_empty() {
+            return;
+        }
+        let filled = with_tmdb_api_key(serde_json::json!({ "config": { "apiKey": "" } }));
+        assert_eq!(
+            filled
+                .get("config")
+                .and_then(|c| c.get("apiKey"))
+                .and_then(|v| v.as_str()),
+            Some(tmdb::API_KEY),
+        );
+        let kept = with_tmdb_api_key(serde_json::json!({ "config": { "apiKey": "user-key" } }));
+        assert_eq!(
+            kept.get("config")
+                .and_then(|c| c.get("apiKey"))
+                .and_then(|v| v.as_str()),
+            Some("user-key"),
         );
     }
 }

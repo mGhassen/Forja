@@ -27,6 +27,11 @@ pub extern "C" fn ffi_version() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_tmdb_api_key() -> *mut c_char {
+    to_c_string(crate::tmdb_api_key())
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_engine_cancel_pending() {
     crate::engine_cancel_pending();
 }

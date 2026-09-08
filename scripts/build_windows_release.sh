@@ -73,7 +73,8 @@ echo "==> Flutter Windows ($VERSION)"
     --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
     --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
     --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
-    --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}"
+    --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
+    --dart-define=TMDB_API_KEY="${TMDB_API_KEY:-}"
 )
 
 echo "==> Embed Rust + MSVC CRT + verify"

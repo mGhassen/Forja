@@ -33,6 +33,11 @@ fn version() -> String {
     VERSION.to_string()
 }
 
+/// Compile-time TMDB v3 key (`TMDB_API_KEY`). Empty when unset at Rust build.
+fn tmdb_api_key() -> String {
+    tmdb::API_KEY.to_string()
+}
+
 fn engine_cancel_pending() {
     engine_jobs::cancel_all();
 }

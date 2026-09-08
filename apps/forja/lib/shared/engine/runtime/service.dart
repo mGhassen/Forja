@@ -38,6 +38,26 @@ class EngineService {
     return fallback;
   }
 
+  /// TMDB v3 key for catalog hubs (`config.apiKey`). Dart-define first, then Rust.
+  static String catalogTmdbApiKey() {
+    const fromDefine = String.fromEnvironment('TMDB_API_KEY');
+    final trimmed = fromDefine.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+    if (!Engine.isReady) return '';
+    try {
+      return RustLib.instance.tmdbApiKey().trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static void _injectCatalogTmdbApiKey(Map<String, dynamic> config) {
+    final existing = config['apiKey']?.toString().trim() ?? '';
+    if (existing.isNotEmpty) return;
+    final key = catalogTmdbApiKey();
+    if (key.isNotEmpty) config['apiKey'] = key;
+  }
+
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
@@ -420,12 +440,10 @@ class EngineService {
       ...mergeEngineConfig(plugin.config, overlay),
     };
     // Catalog hubs may call ctx.host.tmdb.match / hubTmdbMatch — inject the
-    // same compile-time key Home uses (R70-A14 / R70-A28).
-    const tmdbKey = String.fromEnvironment('TMDB_API_KEY');
-    if (tmdbKey.isNotEmpty &&
-        (config['apiKey'] == null || config['apiKey'].toString().isEmpty)) {
-      config['apiKey'] = tmdbKey;
-    }
+    // same compile-time key Home uses (R70-A14 / R70-A28). Prefer Flutter
+    // `--dart-define=TMDB_API_KEY`; fall back to the Rust-baked key so release
+    // builds still work if CI forgot the dart-define.
+    _injectCatalogTmdbApiKey(config);
 
     // First-class catalog request (both EngineJS + flutter_js invokers).
     final catalogCtx = <String, dynamic>{
