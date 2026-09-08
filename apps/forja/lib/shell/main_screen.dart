@@ -744,7 +744,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             tabFor: _shellTabFor,
             shellHeader: _shellHeader(),
             shellTopBar: shellTopBar,
-            // Root fullscreen players (movies, trailers, Live Matches) leave
+            // Root fullscreen players (movies, trailers, Live Sports) leave
             // the rail mounted/painted under the opaque route. IPTV sets
             // [ShellBus.maskShellUnderPlayer] so the catalog is not visible
             // under the slide. Overlay Music still uses [hideGlobalNav].

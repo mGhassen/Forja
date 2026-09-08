@@ -2,20 +2,20 @@
 
 > **Archived:** Out of scope or not in the default navigation surface. See [Archive](../README.md).
 
-> Install Stremio-compatible addons for catalogs, streams, search, subtitles, and Live Matches sports.
+> Install Stremio-compatible addons for catalogs, streams, search, subtitles, and Live Sports sports.
 
 ## What it is
 
-Stremio addons are manifest-based extensions. Forja supports installing the same manifest URLs as Stremio — for searching in the Search tab, streaming on details screens, fetching subtitles in the player, and (for sport addons) feeding the Live Matches **Stremio** server.
+Stremio addons are manifest-based extensions. Forja supports installing the same manifest URLs as Stremio — for searching in the Search tab, streaming on details screens, fetching subtitles in the player, and (for sport addons) feeding the Live Sports **Stremio** server.
 
 Each installed addon is assigned to one or both features:
 
 | Chip | Where it runs |
 |------|----------------|
 | **Sources** | Search · TMDB details Sources · VOD stream chips |
-| **Live Matches** | Live Matches → Servers → **Stremio** (sport catalogs + HLS) |
+| **Live Sports** | Live Sports → Servers → **Stremio** (sport catalogs + HLS) |
 
-Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highfly.dev/configure)) default to **Live Matches**. Movie/series addons default to **Sources**. You can change the chips anytime.
+Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highfly.dev/configure)) default to **Live Sports**. Movie/series addons default to **Sources**. You can change the chips anytime.
 
 ## How to open it
 
@@ -24,13 +24,13 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 ## What you can do
 
 - Paste a manifest URL and install
-- Enable or disable an installed addon with the switch next to trash (keeps the install; skips resolve / catalogs / Live Matches when off)
-- Toggle **Sources** / **Live Matches** per addon (at least one stays on)
+- Enable or disable an installed addon with the switch next to trash (keeps the install; skips resolve / catalogs / Live Sports when off)
+- Toggle **Sources** / **Live Sports** per addon (at least one stays on)
 - View installed addons and remove them (trash → Yes / No confirm, same as IPTV portal delete)
 - Browse catalogs ([Stremio catalog](../movies-tv/stremio-catalog.md)) when targeting Sources
 - Search addon content ([Search](../movies-tv/search.md))
 - Play addon streams from [Media details](../../movies-tv/tmdb-details.md) — Sources → **Stremio** stays visible while the addon is on; stream chips appear for Sources-targeted addons that declare a `stream` resource
-- Play sport HLS from [Live Matches](../../live/live-matches.md) when targeting Live Matches
+- Play sport HLS from [Live Sports](../../live/live-sports.md) when targeting Live Sports
 - Use subtitle-capable addons in the [player](../../playback/subtitles.md)
 
 ## Setup
@@ -38,17 +38,17 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 1. Enable **Stremio** in **Settings → Addons**
 2. Find a Stremio addon manifest URL (ends with `/manifest.json`, or copy the install URL from a configure page)
 3. Open **Settings → Addons → Stremio**, paste, and tap Install
-4. Confirm the **Sources** / **Live Matches** chips — sport addons should have **Live Matches** on
+4. Confirm the **Sources** / **Live Sports** chips — sport addons should have **Live Sports** on
 5. Use the switch next to trash to turn an addon off without uninstalling
-6. For Live Matches: open **Live Matches → Servers → Stremio**
+6. For Live Sports: open **Live Sports → Servers → Stremio**
 
 ## Tips
 
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
-- Sport-only / live-named catalogs (e.g. flixnest `*-live*`) default to **Live Matches** and are skipped by global Search
+- Sport-only / live-named catalogs (e.g. flixnest `*-live*`) default to **Live Sports** and are skipped by global Search
 - Cloud sync stores addon URLs + feature targets + disabled state; the app re-fetches missing manifests in parallel (a few at a time) on sync / Sources so stream chips stay correct. Addons that time out or return 403 are skipped for a short cooldown instead of stalling the whole list
 - Community addon lists change frequently — verify manifests are trustworthy
-- **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android phone, Forja plays these via the local torrent engine or debrid. On **web**, only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden. **Android TV** plays direct `url` streams on the TV; hash / magnet rows need a paired desktop (LAN) — a dialog prompts to pair if you pick one while unpaired. Sport addons for Live Matches still work when that tab is enabled
+- **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android phone, Forja plays these via the local torrent engine or debrid. On **web**, only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden. **Android TV** plays direct `url` streams on the TV; hash / magnet rows need a paired desktop (LAN) — a dialog prompts to pair if you pick one while unpaired. Sport addons for Live Sports still work when that tab is enabled
 - If **Torrentio** fails (Cloudflare / HTTP 403) while another stream addon works, Sources switches the provider chip to the addon that returned streams — pick Torrentio again only if you want to retry that addon alone
 - Premium / “upgrade” bait URLs from sport addons are skipped; only direct HTTP(S) stream URLs play
 
@@ -58,13 +58,13 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 |----------|---------------------|------------------------|---------------------|----------------|
 | Desktop, Android, iOS | Play direct | Local torrent engine | Debrid URL | Native IPTV player |
 | Web | Play direct | Requires debrid | Debrid URL | — |
-| Android TV | Play direct | Pair desktop (dialog if unpaired) | Debrid URL | Native IPTV player via Live Matches |
+| Android TV | Play direct | Pair desktop (dialog if unpaired) | Debrid URL | Native IPTV player via Live Sports |
 
 Capability profile: `PlatformPlayback.capabilities` in `packages/rust/lib/src/playback/platform/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
 
 ## Related
 
-- [Live Matches](../../live/live-matches.md)
+- [Live Sports](../../live/live-sports.md)
 - [Stremio catalog](../movies-tv/stremio-catalog.md)
 - [Search](../movies-tv/search.md)
 - [Media details](../../movies-tv/tmdb-details.md)

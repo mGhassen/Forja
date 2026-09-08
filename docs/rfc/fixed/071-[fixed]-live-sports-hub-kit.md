@@ -82,4 +82,4 @@ RFC-071 shipped host-owned browse modes. Product moved resolve choice to match *
 
 - [RFC-065](../065-[open]-live-forja-scrapers.md) — live_sport plugins
 - [RFC-070](../070-[partial]-catalog-hub-protocol.md) — catalog hub protocol
-- [live-matches feature doc](../../features/live/live-matches.md)
+- [live-matches feature doc](../../features/live/live-sports.md)

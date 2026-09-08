@@ -16,7 +16,7 @@ Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for b
 | [Aflem](../hubs/aflem.md) | Brstej series (playback: Brstej provider) |
 | [كرتون](../hubs/cartoon.md) | DimaToon Arabic cartoons |
 | [Kids](../hubs/kids.md) | Dimakids Arabic kids cartoons / movies |
-| [Live Matches](../live/live-matches.md) | Forja Live catalogs + Forja Sports (Xtream) |
+| [Live Sports](../live/live-sports.md) | Forja Live catalogs + Forja Sports (Xtream) |
 
 More hub scrapers (Manga, Similar, …) are documented in [archive](../archive/README.md).
 

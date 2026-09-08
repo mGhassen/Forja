@@ -67,5 +67,5 @@ Frozen history: RFC-087 A06 and RFC-089 A02 stay ✅; this RFC owns the cut + di
 
 ### Related
 
-- [live-matches](../../features/live/live-matches.md)
+- [live-matches](../../features/live/live-sports.md)
 - [forja-sports](../../features/settings/forja-sports.md)

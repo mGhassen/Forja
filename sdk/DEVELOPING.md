@@ -43,7 +43,7 @@ Forja host     →  loads script, calls extract, maps result to UI / player
 |-----------|---------------|------|
 | `providers/` | `http` (default) | VOD stream extract — movie / tv / anime / drama |
 | `providers/hops/` | `hop` | Follow file-host redirects to a playable URL |
-| `live/` | `http` + `live_sport` type | Live Matches schedule + stream resolve |
+| `live/` | `http` + `live_sport` type | Live Sports schedule + stream resolve |
 | `hubs/` | `catalog` | Shell catalog tabs (Home, Anime, …) |
 | `iptv/` | `catalog` | Feature packs without shell tabs (IPTV VOD details) |
 
@@ -152,7 +152,7 @@ Script paths resolve relative to the manifest URL. Install is **transactional**:
 | `movie`, `tv` | Movie & TV stream providers |
 | `anime` | Anime providers |
 | `drama` | Asian drama providers |
-| `live_sport` | Live Matches schedule + resolve |
+| `live_sport` | Live Sports schedule + resolve |
 | `catalog` | Legacy live schedule (prefer `live_sport` + capabilities) |
 | `iptv` | IPTV feature plugins (no shell tab) |
 
@@ -278,11 +278,11 @@ Reference: [`torrent/manifest.json`](torrent/manifest.json), [`torrent/knaben.js
 
 ## Live sport plugins
 
-Live Matches plugins use **`types: ["live_sport"]`** and declare capabilities:
+Live Sports plugins use **`types: ["live_sport"]`** and declare capabilities:
 
 | Capability | Role |
 |------------|------|
-| `catalog` | Schedule feed for Live Matches grids |
+| `catalog` | Schedule feed for Live Sports grids |
 | `resolve` | Turn a match source ref into playable streams |
 
 The host calls the same **`extract(ctx)`** entry with **`ctx.action`**:

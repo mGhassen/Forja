@@ -164,5 +164,5 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 ### Related
 
 - [RFC-071](071-[fixed]-live-sports-hub-kit.md) — frozen relocate (modes were host-owned there)
-- [live-matches feature doc](../../features/live/live-matches.md)
+- [live-matches feature doc](../../features/live/live-sports.md)
 - [RFC-062](../062-[open]-native-iptv-sports-matching.md) — matcher engine

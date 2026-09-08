@@ -7,7 +7,7 @@ abstract final class EngineCategories {
   static const movie = 'movie';
   static const tv = 'tv';
 
-  /// Live Matches plugin types (`engine.json`).
+  /// Live Sports plugin types (`engine.json`).
   static const liveCatalog = 'catalog';
   static const livePlugin = 'plugins';
   static const liveSport = 'live_sport';

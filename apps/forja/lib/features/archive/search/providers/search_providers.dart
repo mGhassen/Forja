@@ -63,7 +63,7 @@ final searchAddonProvidersProvider =
   final Map<String, Map<String, dynamic>> providers = {};
   for (final c in catalogs) {
     if (c['supportsSearch'] != true) continue;
-    // Live Matches catalogs (flixnest `*-live*`, sport, …) stay out of Search.
+    // Live Sports catalogs (flixnest `*-live*`, sport, …) stay out of Search.
     if (StremioAddonFeatures.catalogLooksLive({
       'type': c['catalogType'],
       'id': c['catalogId'],

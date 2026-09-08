@@ -10,13 +10,13 @@ On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope fo
 
 | Tab (user) | Nav ID | Primary screen |
 |------------|--------|----------------|
-| Home | `home` | `features/home/home_screen.dart` |
-| Search | `search` | `features/search/search_screen.dart` |
-| Anime | `anime` | `features/anime/anime_screen.dart` |
-| Asian Drama | `asian_drama` | `features/asian_drama/asian_drama_screen.dart` |
+| Home | `home` | KitShell via hub pack `nav` (`plugins/hubs/home`) |
+| Search | `search` | archived / out of TV polish unless restored |
+| Anime | `anime` | KitShell via hub pack (`plugins/hubs/anime`) |
+| Asian Drama | `asian_drama` | KitShell via hub pack (`plugins/hubs/asian_drama`) |
 | IPTV | `iptv` | `features/iptv/screens/iptv_pt_screen.dart` |
-| Live Matches | `live_matches` | `features/live_matches/live_matches_screen.dart` |
-| Lists | `mylist` | `features/my_list/my_list_screen.dart`, `lists_screen.dart` |
+| Live Sports | `live_sports` / `live_sports_cards` | KitShell via hub pack (`plugins/hubs/live_sports`, `live_sports_cards`) |
+| Lists | `mylist` | KitShell via hub pack (`plugins/hubs/my_list`) |
 | Settings | `settings` | `features/settings/settings_screen.dart` |
 
 Nav registry: `apps/forja/lib/shell/nav/nav_config.dart` (`navDestinations`, `navTabBuilders`).

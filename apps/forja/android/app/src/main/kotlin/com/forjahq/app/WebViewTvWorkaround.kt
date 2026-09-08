@@ -35,7 +35,7 @@ object WebViewTvWorkaround {
     }
 
     /**
-     * Live Matches Streamed keeps the embed [WebView] under [IptvPtPlayerScreen]
+     * Live Sports Streamed keeps the embed [WebView] under [IptvPtPlayerScreen]
      * (CDN fetches). That platform view steals leanback focus so Flutter Exo
      * chrome never sees D-pad. Mark underlay WebViews / PlayerViews non-focusable
      * and give [FlutterView] focus again.

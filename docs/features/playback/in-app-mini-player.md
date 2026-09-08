@@ -9,7 +9,7 @@ When enabled, **Escape** (after the usual hide-chrome / leave-fullscreen steps) 
 ## How to open it
 
 1. **Settings → Addons → Playback → In-app mini player** (desktop macOS / Windows only — not Android TV or phone) — **off by default**
-2. Play a movie, series, IPTV channel, or Live Matches stream
+2. Play a movie, series, IPTV channel, or Live Sports stream
 3. Either:
    - Click the **In-app mini player** button (top-right chrome, next to Cast / PiP), or
    - Press **Escape** once to hide chrome (or leave fullscreen), then **Escape** again while chrome is hidden — demotes without pausing

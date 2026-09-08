@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.d
 import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Persisted config for Live Matches → Forja Sports (RFC-062).
+/// Persisted config for Live Sports → Forja Sports (RFC-062).
 ///
 /// Product toggles / leagues for Live Sports come from the hub pack
 /// `settings` block via [PackSettingsStore] (RFC-089).
@@ -59,7 +59,7 @@ class IptvPortalSportsConfig {
   });
 
   final bool enabled;
-  /// Live Matches → **Forja Live** server (engine catalogs + resolve).
+  /// Live Sports → **Forja Live** server (engine catalogs + resolve).
   final bool forjaLiveEnabled;
   /// Collapse the same game across catalogs + ESPN enrich merge.
   /// Default off — soft matching is expensive on large schedules.
@@ -115,7 +115,7 @@ class IptvPortalSportsConfig {
     'LACROSSE',
   ];
 
-  /// Live Matches catalog sport chip → IPTV portal folder bucket.
+  /// Live Sports catalog sport chip → IPTV portal folder bucket.
   static const catalogSportToFamily = <String, String>{
     'motor-sports': 'MOTORSPORTS',
     'motorsports': 'MOTORSPORTS',
@@ -260,7 +260,7 @@ class IptvPortalSportsConfig {
     return '';
   }
 
-  /// Category ids to search for an ESPN league code or Live Matches sport chip.
+  /// Category ids to search for an ESPN league code or Live Sports sport chip.
   List<String> categoryIdsForGame(String leagueOrSport) {
     final key = leagueOrSport.trim().toUpperCase();
     final slug = normalizeLiveSportId(leagueOrSport);

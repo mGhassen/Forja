@@ -56,12 +56,23 @@ class KitTopBarActions extends ConsumerWidget {
     final horizonPref = scope.selectedId('horizon') ??
         scope.selectedId('schedule') ??
         scope.selectedId('time');
+    final trailingIndex = actions.length;
+    final trailing = KitTopBarHostHooks.buildTrailing?.call(
+      context,
+      ref,
+      tabId: tabId,
+      rowId: _widgetId,
+      itemIndex: trailingIndex,
+      onLeftEdge: () {},
+      onDownEdge: focusDown,
+    );
+    final itemCount = actions.length + (trailing != null ? 1 : 0);
 
     return TvKitRow(
       tabId: tabId,
       rowId: _widgetId,
       sortOrder: sortOrder,
-      itemCount: actions.length,
+      itemCount: itemCount,
       onFocusUp: () {},
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -82,9 +93,14 @@ class KitTopBarActions extends ConsumerWidget {
                 focusDown: focusDown,
                 catalogOptions: catalogsAsync.asData?.value ?? const [],
                 horizonPref: horizonPref,
+                hasTrailing: trailing != null,
               ),
             ],
             const Spacer(),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing,
+            ],
           ],
         ),
       ),
@@ -99,6 +115,7 @@ class KitTopBarActions extends ConsumerWidget {
     required VoidCallback? focusDown,
     required List<({String id, String label})> catalogOptions,
     required String? horizonPref,
+    required bool hasTrailing,
   }) {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString();
@@ -107,6 +124,7 @@ class KitTopBarActions extends ConsumerWidget {
     final icon = _iconFor(action);
     final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
     final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
+    final lastPackAction = index == _actions.length - 1;
 
     if (isRefresh) {
       return ForjaActionChip(
@@ -117,6 +135,7 @@ class KitTopBarActions extends ConsumerWidget {
         tvTabId: tabId,
         tvRowId: _widgetId,
         tvItemIndex: index,
+        onRightEdge: lastPackAction && hasTrailing ? () {} : null,
         onDownEdge: focusDown ?? () {},
         onTap: () => onRefresh?.call(),
       );
@@ -134,7 +153,7 @@ class KitTopBarActions extends ConsumerWidget {
       tvRowId: _widgetId,
       tvItemIndex: index,
       onLeftEdge: index == 0 ? null : () {},
-      onRightEdge: index == _actions.length - 1 ? null : () {},
+      onRightEdge: lastPackAction && !hasTrailing ? null : () {},
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
         isSchedule

@@ -34,7 +34,7 @@
 | Search | `search` | `TmdbApi` |
 | Anime | `anime` | `AnimeService` → `anime` ✅ |
 | Asian Drama | `asian_drama` | `KissKhService` → `kisskh` ✅ |
-| Live Matches | `live_sports` | `live-matches` ✅ |
+| Live Sports | `live_sports` | `live-sports` ✅ |
 | IPTV | `iptv` | `iptv` Reddit + probe ✅ |
 | Lists | `mylist` | `MyListService`, watch history (host + engine) |
 | Settings | `settings` | Host prefs / platform |
@@ -45,7 +45,7 @@
 
 P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferred** under this scope. Manga / Books / BestSimilar were ported earlier but are not active-tab priorities.
 
-**Migration status for in-scope hubs:** P0 (anime + kisskh) ✅ · P2 (live matches + IPTV) ✅ · P3 thin orchestration ✅.
+**Migration status for in-scope hubs:** P0 (anime + kisskh) ✅ · P2 (live sports + IPTV) ✅ · P3 thin orchestration ✅.
 
 ---
 
@@ -80,7 +80,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | IPTV Reddit catalog | `runIptvRedditCatalogJson` → `iptv` | Engine |
 | KissKh catalog | `runKisskhCatalogJson` → `kisskh` | Engine |
 | Anime extractors + resolve | `runAnimeExtractorJson` → `anime` | Engine |
-| Live matches APIs | `runLiveMatchesFetchJson` → `live-matches` | Engine |
+| Live Sports APIs | `runLiveSportsFetchJson` → `live-sports` | Engine |
 | Manga catalog | `runMangaCatalogJson` → `manga` | Engine |
 | LibGen books | `runBooksCatalogJson` → `books` | Engine |
 | BestSimilar catalog | `runCatalogCoreJson` → `catalog` | Engine |

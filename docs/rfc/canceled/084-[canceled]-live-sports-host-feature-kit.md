@@ -68,5 +68,5 @@ RFC-081 still forbids baking Anime / Asian Drama / etc. into `PlatformDefaults`.
 ### Related
 
 - [Issue 220](../issues/canceled/220-[canceled]-live-sports-addon-nav-without-hub-pack.md)
-- [Live Matches feature](../features/live/live-matches.md)
+- [Live Matches feature](../features/live/live-sports.md)
 - [RFC-081](fixed/081-[fixed]-host-only-platform-nav-defaults.md)

@@ -58,4 +58,4 @@ Supersedes [RFC-084](../canceled/084-[canceled]-live-sports-host-feature-kit.md)
 
 - [RFC-073](073-[fixed]-live-sports-kit-ownership.md) — kit + host services (frozen); product ownership corrected here
 - [Issue 220](../../issues/canceled/220-[canceled]-live-sports-addon-nav-without-hub-pack.md) — canceled (wrong fix: host core tab)
-- [live-matches feature](../../features/live/live-matches.md)
+- [live-matches feature](../../features/live/live-sports.md)

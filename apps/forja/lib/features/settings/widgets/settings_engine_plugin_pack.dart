@@ -534,7 +534,7 @@ class _SettingsLiveSportCapabilityTabsState
           ..._capabilityRows(
             catalogPlugins,
             capability: LiveSportCapabilities.catalog,
-            subtitle: 'Schedule feed for Live Matches',
+            subtitle: 'Schedule feed for Live Sports',
             valueFor: (id) => _caps[id]?.catalog ?? false,
           )
         else

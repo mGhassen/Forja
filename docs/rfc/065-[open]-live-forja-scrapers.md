@@ -74,4 +74,4 @@ Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `sour
 - [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)
 - [RFC-062](062-[open]-native-iptv-sports-matching.md)
 - [Issue 203](../issues/203-[open]-android-tv-goat-webview-unlock.md) — ATV WebView GOAT
-- [live-matches feature doc](../features/live/live-matches.md)
+- [live-matches feature doc](../features/live/live-sports.md)

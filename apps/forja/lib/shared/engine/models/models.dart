@@ -90,7 +90,7 @@ class EnginePlugin {
 
   /// Hub feed that calls `ctx.host.liveFeed.load` (Live Sports packs).
   /// EngineJS has no liveFeed bridge yet — [EngineService.runCatalog] must use
-  /// flutter_js for these plugins.
+  /// flutter_js for `feed`/`rail` on these plugins (not layout/filters).
   bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
 
   /// Pack install must cache JS for this plugin.
@@ -124,7 +124,7 @@ class EnginePlugin {
       ? hasCapability('resolve')
       : isLiveResolve || isLivePlugin || isLiveSport;
 
-  /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
+  /// Any Forja Sports / Live Sports plugin (catalog orchestrator, resolve, sport feeds).
   bool get isLive =>
       isLiveSportPlugin ||
       isLiveFeedPlugin ||
@@ -135,7 +135,7 @@ class EnginePlugin {
   /// Sources chips: HTTP VOD only — hops and hub catalogs are never chips.
   bool get isExtractable => isHttp && !isKitPlugin;
 
-  /// Movie/TV Sources → Forja — not Live Matches plugins.
+  /// Movie/TV Sources → Forja — not Live Sports plugins.
   bool get isVodCatalog => isExtractable && !isLive;
 
   List<String> get hopHosts {

@@ -298,7 +298,7 @@ class _SettingsForjaAddonsSectionState
                             ),
                           ),
                           _AddonFeatureChip(
-                            label: 'Live Matches',
+                            label: 'Live Sports',
                             selected: features.contains(
                               StremioAddonFeatures.live,
                             ),

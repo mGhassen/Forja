@@ -6,7 +6,7 @@
 
 ## What it is
 
-Search combines TMDB results with installed Stremio addons that support search and target **Sources** (VOD). Live Matches catalogs (sport / `*live*` feeds) are not searched here — they stay on Live Matches. TMDB cards appear as soon as TMDB responds; addon sections fill in afterward. Cards show **FILM** or **TV** next to the year (same labels as Home).
+Search combines TMDB results with installed Stremio addons that support search and target **Sources** (VOD). Live Sports catalogs (sport / `*live*` feeds) are not searched here — they stay on Live Sports. TMDB cards appear as soon as TMDB responds; addon sections fill in afterward. Cards show **FILM** or **TV** next to the year (same labels as Home).
 
 On TMDB, Search also understands **structured queries**: a person name (`nolan`, `christopher nolan`), a genre (`horror`, `sci-fi`), a year (`2025`), a year range (`2020-2025`), a score (`>=8`, `>8 <9`, `8-9`), and type (`films` / `series`) — alone or combined (`>8 <9 2020-2025 films`). Those use TMDB discover under the hood and still show only movie/TV cards (not people).
 
@@ -29,7 +29,7 @@ From **Home**, tap top-bar **Search** or use **Cmd/Ctrl+F** — both open this o
 
 ## Setup (if needed)
 
-Install Stremio addons in **Settings → Providers & Addons** to unlock addon search sections. Addons marked **Live Matches** only (or live/sport catalogs) do not appear in Search.
+Install Stremio addons in **Settings → Providers & Addons** to unlock addon search sections. Addons marked **Live Sports** only (or live/sport catalogs) do not appear in Search.
 
 ## Tips
 

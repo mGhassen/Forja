@@ -75,7 +75,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 ## Live TV
 
-- [Live Matches](live/live-matches.md)
+- [Live Sports](live/live-sports.md)
 - [IPTV — Xtream](live/iptv-xtream.md)
 - [IPTV — M3U](live/iptv-m3u.md)
 - [IPTV — Stalker](live/iptv-stalker.md)
@@ -100,7 +100,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Playback settings](settings/playback-settings.md)
 - [LAN](settings/lan.md) — desktop server, pairing, torrent relay to phone/TV
 - [Cache & data](settings/cache-data.md)
-- [Forja Sports](settings/forja-sports.md) — Catalog ↔ Xtream/Stalker for Live Matches
+- [Forja Sports](settings/forja-sports.md) — Catalog ↔ Xtream/Stalker for Live Sports
 - [Torrent settings](settings/torrent-settings.md)
 - [Forja Packs](settings/forja-packs.md)
 - [Backup & restore](settings/backup-restore.md)
@@ -137,7 +137,7 @@ Tabs and verticals not in the default product surface — guides kept for refere
 | Watch Aflem / Brstej series | [Aflem](hubs/aflem.md) → [Hub details](hubs/hub-details.md) |
 | Watch Arabic cartoons | [كرتون](hubs/cartoon.md) → [Hub details](hubs/hub-details.md) |
 | Watch kids cartoons | [Kids](hubs/kids.md) → [Hub details](hubs/hub-details.md) |
-| Watch live sports | [Live Matches](live/live-matches.md) |
+| Watch live sports | [Live Sports](live/live-sports.md) |
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |
 | Clear cache or watch history | [Cache & data](settings/cache-data.md) |
 | Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |

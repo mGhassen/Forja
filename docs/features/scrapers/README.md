@@ -23,7 +23,7 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 - **[TMDB details](../movies-tv/tmdb-details.md)** — torrent scrapers (Forja), Jackett, Prowlarr, **Nuvio** (Sources panel)
 - **Webstreaming** (green **Play**) — VidLink, Videasy, engine providers, etc. — **not** Nuvio
 - **Player** — subtitle scrapers
-- **Hub tabs** — Anime, Asian Drama, Live Matches ([Hub details](../hubs/hub-details.md))
+- **Hub tabs** — Anime, Asian Drama, Live Sports ([Hub details](../hubs/hub-details.md))
 
 ## Related
 

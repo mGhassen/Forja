@@ -526,7 +526,7 @@ class ExoPlayerHost(
         // Force HLS/DASH when the URI path has no .m3u8/.mpd (e.g. local
         // `/hls-proxy?url=…`). Without this, DefaultMediaSourceFactory picks
         // ProgressiveMediaSource and fails with UnrecognizedInputFormatException
-        // on the playlist body — Live Matches Streamed handoff black screen.
+        // on the playlist body — Live Sports Streamed handoff black screen.
         mimeForAdaptiveUrl(url)?.let { builder.setMimeType(it) }
         if (subtitles.isNotEmpty()) {
             val configs = subtitles.mapNotNull { sub ->
@@ -615,7 +615,7 @@ class ExoPlayerHost(
                 haystack.contains("/hls-proxy") ||
                 haystack.contains("strmd.st") ||
                 haystack.contains("indianservers.st") ||
-                // Highfly / Streamed leaf CDN (Live Matches Stremio): signed
+                // Highfly / Streamed leaf CDN (Live Sports Stremio): signed
                 // `/leaf/{id}/{token}/…` HLS without a `.m3u8` suffix — Exo
                 // otherwise picks Progressive → UnrecognizedInputFormat →
                 // IPTV watchdog "Reconnecting…" forever.

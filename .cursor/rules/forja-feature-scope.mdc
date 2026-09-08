@@ -14,7 +14,7 @@ Unless the user **explicitly** expands scope, only work on these features:
 | Anime | `anime` |
 | Asian Drama | `asian_drama` (KissKh) |
 | IPTV | `iptv` |
-| Live Matches | `live_matches` |
+| Live Sports | `live_sports` / `live_sports_cards` (hub packs) |
 | Lists | `mylist` / lists |
 | Settings | `settings` |
 

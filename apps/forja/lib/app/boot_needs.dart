@@ -10,7 +10,7 @@ import 'package:rust/rust.dart';
 /// or guest local settings).
 ///
 /// Play-source engines (torrent / stremio / nuvio / engine) also require a VOD
-/// tab that can open media details. IPTV + Live Matches alone never warm them.
+/// tab that can open media details. IPTV + Live Sports alone never warm them.
 class BootNeeds {
   const BootNeeds({
     required this.visibleNavIds,
@@ -62,7 +62,7 @@ class BootNeeds {
 
   /// Install/warm Forja engine plugin packs at boot (hub, providers, torrent, nuvio).
   ///
-  /// IPTV + Live Matches alone defer pack install to first use **unless** the
+  /// IPTV + Live Sports alone defer pack install to first use **unless** the
   /// profile already has lean stubs awaiting download (cloud membership).
   bool get needsForjaPluginWarm =>
       catalogTab || engine || torrent || nuvio || pendingPackDisk;

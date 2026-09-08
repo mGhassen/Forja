@@ -17,7 +17,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 /// use [InAppWebViewSettings.copy] - it round-trips via `fromMap(toMap())`,
 /// and on Android `ContentBlockerAction.fromMap` bangs when any
 /// `contentBlockers` are set (plugin initializes `BLOCK_COOKIES` with a null
-/// native value). That crashed Live Matches embeds on ATV with a red screen.
+/// native value). That crashed Live Sports embeds on ATV with a red screen.
 InAppWebViewSettings patchTvWebViewSettings(
   InAppWebViewSettings settings, {
   required bool isAndroidTv,

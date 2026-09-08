@@ -255,6 +255,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [234-[fixed]-…](fixed/234-[fixed]-macos-boot-catalog-feed-jsc-crash.md) | macOS boot catalog feed JSC SIGSEGV | P0 | Critical | fixed | Complete · 3/3 · A 0/1 | [190](190-[open]-forja-engine-parallel-jsc-crash.md) |
 | [235-[fixed]-…](fixed/235-[fixed]-web-empty-packs-omit-forja-no-device-purge.md) | Web empty packs omit forja → device never purges | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [236-[fixed]-…](fixed/236-[fixed]-live-sports-feed-empty-enginejs.md) | Live Sports feed empty after EngineJS-first catalog | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | [234](fixed/234-[fixed]-macos-boot-catalog-feed-jsc-crash.md) |
+| [237-[fixed]-…](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) | Live Sports catalog + resolve parallel flutter_js JSC SIGSEGV | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | [190](190-[open]-forja-engine-parallel-jsc-crash.md) |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

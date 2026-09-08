@@ -1,6 +1,6 @@
 # Forja Sports
 
-> Play Live Matches cards using channels on your Xtream or Stalker portal.
+> Play Live Sports cards using channels on your Xtream or Stalker portal.
 
 ## What it is
 
@@ -10,14 +10,14 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 ## How to open it
 
-- **Live Matches → Servers → Forja Sports** (portal via top-right **Portals**)
+- **Live Sports** tab → top-right **Portals** (same IPTV panel)
 - **Settings → Addons → Live Sports** — hub **Setup** when the Live Sports hub pack is installed and enabled
 - **Settings → Forja Packs** — expand the Live Sports hub for **Setup**; expand live packs for catalog/provider tabs
 
 ## What you can do
 
 - **Setup** (hub pack settings) — enable **Forja Live** and/or **Forja Sports**, turn on **Merge matching events** (off by default; same-game collapse + ESPN enrich), and pick leagues for Forja Sports portal matching
-- **Catalogs & providers** — **Catalog** / **Provider** tabs; one toggle per site (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN, MobiKora). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
+- **Catalogs & providers** — **Catalog** / **Provider** tabs; one toggle per site (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN, MobiKora). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Sports **All**, **Forja Live**, and **Forja Sports**.
 - Browse the same catalog schedule as Forja Live. With **Merge matching events** on (and **Catalog → ESPN**), rows enrich from ESPN (clean home/away; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
@@ -27,21 +27,21 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 ## Setup
 
 1. Add an Xtream or Stalker portal under IPTV (if you don’t have one)
-2. Live Matches → Servers → **Forja Sports** → top-right **Portals** if needed
+2. Live Sports → top-right **Portals** if needed (Forja Sports must be enabled under hub Setup)
 3. Optional: Settings → Addons → Live Sports (or Forja Packs → hub expand) to narrow leagues, turn on **Merge matching events**, or tune live plugins
 
 ## Tips
 
 - Catalog = same enabled schedule feeds as Forja Live / All. With **Merge matching events** on (and ESPN catalog enabled), ESPN can enrich team names for portal match; the catalog grid drives the cards
-- Portal is only in Live Matches / IPTV Portals (not Settings)
+- Portal is only in Live Sports / IPTV Portals (not Settings)
 - Matching tokenizes the event title, teams, and sport chip, then scores **channel name**, **folder/genre name**, and **short EPG** (no hardcoded venue/sport alias lists). For team sports, name hits are preferred for EPG lookups; if few/none mention the teams, Forja still short-EPGs up to **120** channels in your mapped folders so programme titles on ESPN / beIN / etc. can match
 - Channel match results are remembered for **30 minutes** per match and portal when channels were found (app restart clears them); **no channels** is retried on the next open
 - **Stalker:** matched rows keep the channel cmd (not a play URL). Forja calls `create_link` only for the channel you pick (failover channels mint on switch) — links expire, so they are not cached as durable URLs. Short EPG matching uses the Mag channel id (`epg_channel_id`, or digits from the cmd) — same as IPTV Live
 - No channels on deck after retry means the portal had no channel name/EPG hit for that game
-- Live Matches stream resolve uses **Engine** (native player) by default on **Forja Live**; the mode pill next to **Servers** shows **Sniff** or **Engine** there (switch in Settings → Forja Sports). **Forja Sports** shows **IPTV**; **Stremio** shows **Stremio**.
+- Live Sports stream resolve uses **Engine** (native player) by default on **Forja Live**; the mode pill next to **Servers** shows **Sniff** or **Engine** there (switch in Settings → Forja Sports). **Forja Sports** shows **IPTV**; **Stremio** shows **Stremio**.
 
 ## Related
 
-- [Live Matches](../live/live-matches.md)
+- [Live Sports](../live/live-sports.md)
 - [IPTV — Xtream](../live/iptv-xtream.md)
 - [IPTV — Stalker](../live/iptv-stalker.md)

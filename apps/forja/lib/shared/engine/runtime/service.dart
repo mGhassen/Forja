@@ -56,9 +56,33 @@ class EngineService {
   int _liveResolveInFlight = 0;
   final List<Completer<void>> _liveResolveWaiters = [];
 
-  /// Serialize catalog flutter_js forks — macOS JSC SIGSEGVs on parallel VMs
-  /// (same class as torrent search / live resolve).
-  Future<void> _catalogFlutterJsTail = Future<void>.value();
+  /// Serialize all Engine flutter_js forks (catalog + live resolve + live feed
+  /// fallback). Parallel JSC heaps on the UI isolate → macOS SIGSEGV in
+  /// JSValueToStringCopy (189 / 234 / Live Sports load + resolve).
+  Future<void> _flutterJsTail = Future<void>.value();
+
+  /// Depth of [_withFlutterJsFork]. Nested liveFeed → runLiveFeed must not
+  /// wait on the same mutex (deadlock) or fork a second JSC heap.
+  int _flutterJsDepth = 0;
+
+  static const _flutterJsSettle = Duration(milliseconds: 64);
+
+  Future<T> _withFlutterJsFork<T>(Future<T> Function() body) async {
+    final previous = _flutterJsTail;
+    final gate = Completer<void>();
+    _flutterJsTail = gate.future;
+    try {
+      await previous;
+      _flutterJsDepth++;
+      try {
+        return await body();
+      } finally {
+        _flutterJsDepth--;
+      }
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+    }
+  }
 
   Future<void> _acquireLiveResolveSlot() async {
     if (_liveResolveInFlight < _liveResolveMaxParallel) {
@@ -415,11 +439,12 @@ class EngineService {
       }
     }
 
-    // Home/TMDB: EngineJS-first (no liveFeed). Live Sports hubs call
-    // ctx.host.liveFeed.load — EngineJS has no bridge, but still returns an
-    // ok envelope with items:[] (plugin short-circuits), so "unsupported"
-    // never fires. Skip EngineJS for those packs and use flutter_js only.
-    if (!plugin.needsLiveFeedHost) {
+    // Home/TMDB: EngineJS-first. Live Sports feed/rail call ctx.host.liveFeed
+    // — EngineJS has no bridge (ok items:[] would skip flutter_js). layout /
+    // filters do not need the bridge — keep EngineJS-first for those.
+    final needsLiveFeed =
+        plugin.needsLiveFeedHost && (action == 'feed' || action == 'rail');
+    if (!needsLiveFeed) {
       final viaRust = await _runLiveEngineRustJs(
         plugin: plugin,
         config: config,
@@ -444,15 +469,13 @@ class EngineService {
       );
     }
 
-    final previous = _catalogFlutterJsTail;
-    final gate = Completer<void>();
-    _catalogFlutterJsTail = gate.future;
-    try {
-      await previous;
+    return _withFlutterJsFork(() async {
       if (gen != _catalogGeneration) return null;
+      final script = code;
+      if (script == null || script.isEmpty) return null;
       final runtime = EngineRuntime.fork();
       try {
-        await runtime.loadPlugin(pluginId: plugin.id, code: code);
+        await runtime.loadPlugin(pluginId: plugin.id, code: script);
         if (gen != _catalogGeneration) return null;
         final raw = await runtime.extractLive(
           pluginId: plugin.id,
@@ -467,13 +490,11 @@ class EngineService {
         return _firstEnvelopeMap(raw);
       } finally {
         runtime.dispose();
-        // dispose settles async (~48ms); keep the mutex until then so the
-        // next catalog flutter_js fork does not overlap a dying JSC heap.
-        await Future<void>.delayed(const Duration(milliseconds: 64));
+        // dispose settles async (~48ms); hold the queue until then so the
+        // next flutter_js fork does not overlap a dying JSC heap.
+        await Future<void>.delayed(_flutterJsSettle);
       }
-    } finally {
-      if (!gate.isCompleted) gate.complete();
-    }
+    });
   }
 
   static Map<String, dynamic>? _firstEnvelopeMap(
@@ -902,7 +923,7 @@ class EngineService {
     );
   }
 
-  /// Live Matches Forja plugins (unified `live_sport` resolve capability).
+  /// Live Sports Forja plugins (unified `live_sport` resolve capability).
   /// Resolve pack plugin for live resolve — accepts `live-streamed`, `streamed`, etc.
   ({EnginePack pack, EnginePlugin plugin})? _packLiveResolvePlugin(
     List<EnginePack> packs,
@@ -1004,26 +1025,32 @@ class EngineService {
     }
     if (gen != _extractGeneration) return [];
 
-    final runtime = EngineRuntime.fork();
-    try {
-      await _syncHopsForRuntime(runtime, packs);
-      if (gen != _extractGeneration) return [];
-      await runtime.loadPlugin(pluginId: plugin.id, code: code);
-      if (gen != _extractGeneration) return [];
-      final raw = await runtime.extractLive(
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-        action: 'resolve',
-        params: params,
-        config: config,
-        timeout: timeout,
-        isCancelled: () => gen != _extractGeneration,
-      );
-      if (gen != _extractGeneration) return [];
-      return _liveResolvePlayableRows(await _postProcessLivePluginRows(raw));
-    } finally {
-      runtime.dispose();
-    }
+    // Must share the flutter_js queue with Live Sports hub feed — parallel
+    // JSC while catalog is mid-liveFeed → SIGSEGV (issue 237).
+    return _withFlutterJsFork(() async {
+      if (gen != _extractGeneration) return <Map<String, dynamic>>[];
+      final runtime = EngineRuntime.fork();
+      try {
+        await _syncHopsForRuntime(runtime, packs);
+        if (gen != _extractGeneration) return <Map<String, dynamic>>[];
+        await runtime.loadPlugin(pluginId: plugin.id, code: code);
+        if (gen != _extractGeneration) return <Map<String, dynamic>>[];
+        final raw = await runtime.extractLive(
+          pluginId: plugin.id,
+          pluginName: plugin.name,
+          action: 'resolve',
+          params: params,
+          config: config,
+          timeout: timeout,
+          isCancelled: () => gen != _extractGeneration,
+        );
+        if (gen != _extractGeneration) return <Map<String, dynamic>>[];
+        return _liveResolvePlayableRows(await _postProcessLivePluginRows(raw));
+      } finally {
+        runtime.dispose();
+        await Future<void>.delayed(_flutterJsSettle);
+      }
+    });
   }
 
   /// Native-playable live resolve handoff (HLS / mp4 / local proxy) — not
@@ -1110,31 +1137,44 @@ class EngineService {
     if (viaRust != null) return _postProcessLivePluginRows(viaRust);
     if (gen != _liveCatalogGeneration) return [];
 
-    final runtime = EngineRuntime.fork();
-    _liveMetaRuntime = runtime;
-    try {
-      await _syncHopsForRuntime(runtime, packs);
-      if (gen != _liveCatalogGeneration) return [];
-      if (!runtime.isLoaded(catalogPlugin.id)) {
-        await runtime.loadPlugin(pluginId: catalogPlugin.id, code: code);
-      }
-      if (gen != _liveCatalogGeneration) return [];
-      final raw = await runtime.extractLive(
-        pluginId: catalogPlugin.id,
-        pluginName: catalogPlugin.name,
-        action: 'catalog',
-        config: config,
-        timeout: catalogTimeout,
-        isCancelled: () => gen != _liveCatalogGeneration,
+    // Nested under hub feed's flutter_js (liveFeed.load → aggregate): waiting
+    // on [_withFlutterJsFork] deadlocks; forking a second JSC crashes macOS.
+    if (_flutterJsDepth > 0) {
+      debugPrint(
+        '[engine] ${catalogPlugin.id} skip flutter_js nested under liveFeed',
       );
-      if (gen != _liveCatalogGeneration) return [];
-      return _postProcessLivePluginRows(raw);
-    } finally {
-      if (identical(_liveMetaRuntime, runtime)) {
-        _liveMetaRuntime = null;
-      }
-      runtime.dispose();
+      return [];
     }
+
+    return _withFlutterJsFork(() async {
+      if (gen != _liveCatalogGeneration) return <Map<String, dynamic>>[];
+      final runtime = EngineRuntime.fork();
+      _liveMetaRuntime = runtime;
+      try {
+        await _syncHopsForRuntime(runtime, packs);
+        if (gen != _liveCatalogGeneration) return <Map<String, dynamic>>[];
+        if (!runtime.isLoaded(catalogPlugin.id)) {
+          await runtime.loadPlugin(pluginId: catalogPlugin.id, code: code);
+        }
+        if (gen != _liveCatalogGeneration) return <Map<String, dynamic>>[];
+        final raw = await runtime.extractLive(
+          pluginId: catalogPlugin.id,
+          pluginName: catalogPlugin.name,
+          action: 'catalog',
+          config: config,
+          timeout: catalogTimeout,
+          isCancelled: () => gen != _liveCatalogGeneration,
+        );
+        if (gen != _liveCatalogGeneration) return <Map<String, dynamic>>[];
+        return _postProcessLivePluginRows(raw);
+      } finally {
+        if (identical(_liveMetaRuntime, runtime)) {
+          _liveMetaRuntime = null;
+        }
+        runtime.dispose();
+        await Future<void>.delayed(_flutterJsSettle);
+      }
+    });
   }
 
   /// Forja EngineJS live plugin path — null → flutter_js fork fallback.
@@ -1336,26 +1376,36 @@ class EngineService {
       );
     }
 
-    final runtime = EngineRuntime.fork();
-    try {
-      return await runPlugin(
-        pluginId: pluginId,
-        tmdbId: tmdbId,
-        type: extractType,
-        season: season,
-        episode: episode,
-        title: title,
-        year: year,
-        movie: movie,
-        open: open,
-        episodeVideoId: episodeVideoId,
-        audioCategory: audioCategory,
-        allowHostFallback: allowHostFallback,
-        runtime: runtime,
-      );
-    } finally {
-      runtime.dispose();
-    }
+    return _withFlutterJsFork(() async {
+      if (genAtStart != _extractGeneration) {
+        return EngineExtractResult(
+          pluginId: pluginId,
+          pluginName: pluginId,
+          streams: const [],
+        );
+      }
+      final runtime = EngineRuntime.fork();
+      try {
+        return await runPlugin(
+          pluginId: pluginId,
+          tmdbId: tmdbId,
+          type: extractType,
+          season: season,
+          episode: episode,
+          title: title,
+          year: year,
+          movie: movie,
+          open: open,
+          episodeVideoId: episodeVideoId,
+          audioCategory: audioCategory,
+          allowHostFallback: allowHostFallback,
+          runtime: runtime,
+        );
+      } finally {
+        runtime.dispose();
+        await Future<void>.delayed(_flutterJsSettle);
+      }
+    });
   }
 
   /// Off-UI extract. Returns `null` when Rust JS is unsupported / failed setup

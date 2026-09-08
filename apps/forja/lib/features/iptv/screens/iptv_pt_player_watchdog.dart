@@ -212,7 +212,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
   bool get _stallReopenRecovery =>
       _s._liveRecoveryMode == SettingsService.iptvLiveRecoveryStall;
 
-  /// Live Matches / Forja Live on MediaKit — playhead often stuck at 0 while
+  /// Live Sports / Forja Live on MediaKit — playhead often stuck at 0 while
   /// HLS paints; do not treat idle position as a frozen feed.
   bool get _mediaKitLiveProfile => _livePlaybackProfile && !_s._exoBackend;
 

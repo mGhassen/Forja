@@ -1,4 +1,4 @@
-// Sport-chip id normalization and 24/7 / always-on filtering for Live Matches.
+// Sport-chip id normalization and 24/7 / always-on filtering for Live Sports.
 //
 // Kind aliases live in catalog packs (`plugins/catalog/_wire.js`). Host only
 // slugifies and treats 24/7 / always-on for chip filtering + playability.

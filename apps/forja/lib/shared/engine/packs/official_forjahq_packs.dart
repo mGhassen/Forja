@@ -63,7 +63,7 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     kind: 'catalog',
     tags: ['live', 'sports'],
     recommended: true,
-    description: 'Live Matches schedule catalogs (Streamed, PPV, ESPN, …).',
+    description: 'Live Sports schedule catalogs (Streamed, PPV, ESPN, …).',
     manifestUrl: '$_kPacksBase/catalog/manifest.json',
   ),
   OfficialForjaHqPack(
@@ -72,7 +72,7 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     kind: 'live',
     tags: ['live', 'sports'],
     recommended: true,
-    description: 'Live Matches per-site stream resolve (Forja Live).',
+    description: 'Live Sports per-site stream resolve (Forja Live).',
     manifestUrl: '$_kPacksBase/live/manifest.json',
   ),
   OfficialForjaHqPack(

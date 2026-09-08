@@ -244,7 +244,7 @@ class ShellBus {
 
   /// Opaque black cover over the shell while a root IPTV player is up.
   /// Hides the catalog/rail underlay during slide enter/exit (no layout reflow).
-  /// Movies/Live Matches leave this false — underlay stays under their opaque route.
+  /// Movies/Live Sports leave this false — underlay stays under their opaque route.
   static final ValueNotifier<bool> maskShellUnderPlayer = ValueNotifier<bool>(
     false,
   );

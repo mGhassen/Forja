@@ -92,7 +92,7 @@ abstract final class PlatformChannel {
   }
 
   /// Android TV: stop underlay WebView / Exo PlayerView from eating leanback
-  /// keys (Live Matches Streamed keeps the embed WebView under the native
+  /// keys (Live Sports Streamed keeps the embed WebView under the native
   /// player for CDN fetches). Safe no-op on phone / when no underlay exists.
   static Future<void> releaseUnderlayPlatformViewFocus() async {
     if (!Platform.isAndroid) return;

@@ -64,3 +64,5 @@
 **Shipped for I190-T10:** `abortInFlightExtracts` from host cancel; HTTP EngineJS `"cancelled"` → empty result (not null); live cancelled bumps gen before null.
 
 **Related (boot catalog feed, 2026-09-08):** [234](fixed/234-[fixed]-macos-boot-catalog-feed-jsc-crash.md) — Home `feed` no longer skips EngineJS; settle-then-drop for flutter_js forks. Broader parallel JSC / RFC-064 cutover still here.
+
+**Related (Live Sports catalog + resolve, 2026-09-08):** [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) — catalog-only flutter_js queue was not enough; live resolve + nested liveFeed catalog fallback now share one queue / skip nested forks.

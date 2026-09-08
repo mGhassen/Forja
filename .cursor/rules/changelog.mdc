@@ -109,7 +109,7 @@ Six groups — pick **one** per bullet. Do not add sub-groups or extra headings.
 | **Player** | Playback, controls, subtitles, PiP, speed, skip intro, next episode, external player | Flat player menus, seek preview, auto next episode |
 | **UI** | Shell, home, details layout, navigation, cards, hero, design polish, About/labels | Home hero layout, details metadata, settings layout (not provider logic) |
 | **Sources** | Stream providers, torrent resolve, embeds, scrapers, debrid, auto-resolve, cache | New VidSrc provider, dead-cache re-resolve, KissKh extract reliability |
-| **Live & IPTV** | Live Matches, Xtream, M3U, embed player for sports/IPTV | Stream picker, iframe embed fix, IPTV channel grid |
+| **Live & IPTV** | Live Sports, Xtream, M3U, sports/IPTV playback | Stream picker, IPTV channel grid |
 | **TV** | Android TV, leanback launcher, D-pad focus, TV-only shell | ATV tab focus, WebView GLES workaround on TV |
 
 **Engine / Rust:** no separate group. If users would notice, phrase as an outcome under **Sources** (faster or more reliable resolve), **Player** (smoother open), or **Features** (new capability). Never “refactored crate X”.

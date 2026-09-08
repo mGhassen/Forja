@@ -25,7 +25,7 @@ Withheld from the shell and **Settings → Features** via `archivedNavIds` in [`
 
 ## Out-of-scope verticals
 
-Not part of the in-scope tab set (Home, Anime, Asian Drama, IPTV, Live Matches, Lists, Settings). Same archival treatment — not “legacy deleted”; docs and code moved here intentionally.
+Not part of the in-scope tab set (Home, Anime, Asian Drama, IPTV, Live Sports, Lists, Settings). Same archival treatment — not “legacy deleted”; docs and code moved here intentionally.
 
 ### Hubs
 
@@ -55,7 +55,7 @@ Arabic cinema is active again when the ForjaHQ Arabic pack is installed — see 
 
 ### Stremio
 
-Out of scope for active product docs. Stremio may still appear in app UI (e.g. TMDB Sources tab, Live Matches server chip) — setup and catalog browsing guides live here only.
+Out of scope for active product docs. Stremio may still appear in app UI (e.g. TMDB Sources tab, Live Sports server chip) — setup and catalog browsing guides live here only.
 
 | Guide | |
 |-------|---|

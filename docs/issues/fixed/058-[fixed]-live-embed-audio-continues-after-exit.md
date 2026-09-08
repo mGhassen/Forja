@@ -66,4 +66,4 @@ Exiting a Live Matches WebView embed (Streamed / CDN / PPV fallback) left HTML5 
 - [049](../049-[open]-live-embed-ad-hijack-crash.md) — ad window host
 - [053](../053-[workaround]-windows-live-embed-webview2-transparent.md) — Windows WebView2 opacity + iframe path
 - [059](059-[fixed]-vod-player-audio-continues-after-exit.md) — movie/TV player (same symptom)
-- [Live Matches](../../features/live/live-matches.md)
+- [Live Matches](../../features/live/live-sports.md)

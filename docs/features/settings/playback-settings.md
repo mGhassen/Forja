@@ -14,7 +14,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 
 - Player engine, audio, subtitles, auto next/skip, content warnings, background play — see rows under **Settings → Addons → Playback**
 - **Play sources** moved: **Direct torrent**, **Stremio**, and **Nuvio** toggles + P2P disclaimer → **Settings → Addons**; pack install → **Settings → Forja Packs** (Forja providers always on)
-- On **Android**, choose **Movies & series engine** — **MediaKit (libmpv)** (default) or **ExoPlayer (Media3)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Matches** defaults to **MediaKit** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps)
+- On **Android**, choose **Movies & series engine** — **MediaKit (libmpv)** (default) or **ExoPlayer (Media3)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Sports** defaults to **MediaKit** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps)
 - Set **Preferred audio language**
 - Set **Preferred subtitle language** (default **English**). In-stream mux subs are tried first, then online tracks. Pick **None** to start with subs off
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -40,7 +40,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - Play source toggles: white link **Play** / **Sources** use **Direct torrent**, **Stremio**, and **Nuvio** when each is enabled; **Forja** is always on when your platform supports it. The **Sources** panel uses **Forja / Torrents / Stremio / Nuvio** (left to right) for the play sources that apply.
 - **Max stream quality** caps which sources the engine prefers when ranking (device probe still applies under Auto). Defaults to **4K** (top ladder rung). HLS Auto also uses that cap for start bitrate — Auto is a mid-high soft ceiling for a faster first frame. Lock a Quality chip in the player to force a specific variant.
 - External player is chosen per stream from the in-player **Player** menu on phone and desktop — playback always starts in the built-in player. **Android TV** has no external-app handoff from that menu
-- **Movies & series engine** / **IPTV engine** (Android only) are independent — desktop/iOS always use MediaKit; **MediaKit** is the Android default (ExoPlayer is optional); **Live Matches** defaults to **MediaKit** until you pick Exo from the in-player **Player** menu
+- **Movies & series engine** / **IPTV engine** (Android only) are independent — desktop/iOS always use MediaKit; **MediaKit** is the Android default (ExoPlayer is optional); **Live Sports** defaults to **MediaKit** until you pick Exo from the in-player **Player** menu
 
 ## Related
 

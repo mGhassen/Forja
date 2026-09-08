@@ -51,4 +51,4 @@ On **Android TV**, after Live Matches hands a Streamed/PPV stream to the native 
 - [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md) — top-bar explicit edges
 - [122](122-[open]-android-tv-iptv-player-lost-dpad.md) — IPTV player D-pad parity
 - [130](130-[open]-android-tv-player-dpad-stuck-on-play.md) — focused-node `focusInDirection`
-- [Live Matches](../features/live/live-matches.md) · [Player](../features/playback/player.md)
+- [Live Matches](../features/live/live-sports.md) · [Player](../features/playback/player.md)

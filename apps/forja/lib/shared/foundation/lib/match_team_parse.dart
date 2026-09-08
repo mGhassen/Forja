@@ -48,7 +48,7 @@ String _peelEventPrefixFromSide(String side) {
   return trimmed;
 }
 
-/// Split a Live Matches catalog title into `(home, away)`.
+/// Split a Live Sports catalog title into `(home, away)`.
 ///
 /// - `A vs B` / `A v B` / `A versus B` → home=A, away=B
 /// - `A at B` / `A @ B` → away=A, home=B (US sports: visitor at home)

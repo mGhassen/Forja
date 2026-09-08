@@ -9,8 +9,8 @@ Every `manifest.json` under this tree is an installable pack (except `archived/`
 | Pack | Path | Role |
 |------|------|------|
 | **ForjaHQ Providers** | [`providers/manifest.json`](providers/manifest.json) | VOD / anime / drama scrapers + file-host hops |
-| **ForjaHQ Catalog** | [`catalog/manifest.json`](catalog/manifest.json) | Live Matches schedule catalogs |
-| **ForjaHQ Live** | [`live/manifest.json`](live/manifest.json) | Live Matches stream resolve (Forja Live) |
+| **ForjaHQ Catalog** | [`catalog/manifest.json`](catalog/manifest.json) | Live Sports schedule catalogs |
+| **ForjaHQ Live** | [`live/manifest.json`](live/manifest.json) | Live Sports stream resolve (Forja Live) |
 | **ForjaHQ Torrent** | [`torrent/manifest.json`](torrent/manifest.json) | Builtin torrent indexer search (`kind: torrent`) |
 | **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
 | **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |

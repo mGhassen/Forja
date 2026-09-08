@@ -1280,7 +1280,7 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
   return out;
 }
 
-/// Build matcher payload from a Live Matches card (PPV / Streamed / CDN).
+/// Build matcher payload from a Live Sports card (PPV / Streamed / CDN).
 Map<String, dynamic> _sportMatchGamePayloadFromMatch(MatchEvent match) {
   final (home, away) = resolveLiveMatchTeams(
     homeTeam: match.homeTeam,

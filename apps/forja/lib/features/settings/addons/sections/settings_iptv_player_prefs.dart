@@ -28,7 +28,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableDropdown(
             context,
             'IPTV engine',
-            'Live channels only. Does not change Movies & series or Live Matches.',
+            'Live channels only. Does not change Movies & series or Live Sports.',
             snap.builtInEngineIptv.displayName,
             builtInPlayerEngineOptionsForUi.map((e) => e.displayName).toList(),
             (val) async {

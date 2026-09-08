@@ -163,7 +163,7 @@ void main() {
   });
 
   test(
-    'IPTV + Live Matches only: Sources plugins follow play sources, not nav',
+    'IPTV + Live Sports only: Sources plugins follow play sources, not nav',
     () async {
       SettingsService.configurePlatformProfile(PlatformProfile.phone);
       final service = SettingsService();

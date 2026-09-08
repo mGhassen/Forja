@@ -18,13 +18,13 @@ Index: [forja-feature-scope](./forja-feature-scope.mdc) · [no-hide-as-fix](./no
 |-------|--------|
 | **Live plugins** (`plugins/live/**`) | Return `webviewOnly: true`, `embedUrl`-only rows, or iframe/catalog pages as “streams” |
 | **Live plugins** | Fall back to “open in web player” when GOAT/GASM/sports-embed unlock fails |
-| **Host** (`live_matches/**`, `live_matches_engine.dart`) | Open `_LiveMatchesEmbedPlayerScreen` for **Forja Live** (`match.isForjaLive`) |
+| **Host** (`shared/foundation/**`, live resolve / play kit) | Open embed WebView players for **Forja Live** / Live Sports |
 | **Host** | Show embed/catalog URLs in the Sources panel when there is no resolved `url` (m3u8/mp4) |
 | **Host** | Add new `webviewOnly` handling or extend embed fallback for Forja Live plugins |
 | **Changelog / docs** | Describe embed/WebView fallback as a fix or feature for Forja Live |
 
 **Wrong:** `return { webviewOnly: true, embedUrl: raw }` when unlock fails.  
-**Wrong:** Engine resolve miss → `_LiveMatchesEmbedPlayerScreen` for Streamic / TimStreams / WatchFooty.  
+**Wrong:** Engine resolve miss → `embed WebView player` for Streamic / TimStreams / WatchFooty.  
 **Right:** Unlock to `{ url, headers?, directPlayback? }` via `embed-st.js` helpers, or **skip** the row (`return null` / omit from list).
 
 ---

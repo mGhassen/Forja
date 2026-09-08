@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Optional host hooks for [`kit.topBar`] catalog / schedule actions.
 ///
@@ -23,6 +24,26 @@ typedef KitTopBarScheduleChipLabel = String Function(String? selectedPref);
 
 typedef KitTopBarScheduleChipSelected = bool Function(String? selectedPref);
 
+/// Optional trailing chrome after the top-bar [Spacer] (e.g. IPTV Portals).
+typedef KitTopBarTrailingBuilder = Widget? Function(
+  BuildContext context,
+  WidgetRef ref, {
+  required String tabId,
+  required String rowId,
+  required int itemIndex,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onDownEdge,
+});
+
+/// Wrap a kit list body so host chrome (e.g. Portals panel) stacks above it.
+typedef KitListBodyWrapper = Widget Function(
+  BuildContext context, {
+  required Widget child,
+  required String tabId,
+  required String sourceId,
+  required bool shellTabVisible,
+});
+
 abstract final class KitTopBarHostHooks {
   KitTopBarHostHooks._();
 
@@ -31,6 +52,8 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarScheduleSheetOpener? openScheduleSheet;
   static KitTopBarScheduleChipLabel? scheduleChipLabel;
   static KitTopBarScheduleChipSelected? scheduleChipSelected;
+  static KitTopBarTrailingBuilder? buildTrailing;
+  static KitListBodyWrapper? wrapListBody;
 
   static void clear() {
     loadCatalogOptions = null;
@@ -38,5 +61,7 @@ abstract final class KitTopBarHostHooks {
     openScheduleSheet = null;
     scheduleChipLabel = null;
     scheduleChipSelected = null;
+    buildTrailing = null;
+    wrapListBody = null;
   }
 }

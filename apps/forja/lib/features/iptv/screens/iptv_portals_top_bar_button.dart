@@ -7,7 +7,7 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 
-/// IPTV-style Portals chip (top-right). Shared by IPTV catalog + Live Matches.
+/// IPTV-style Portals chip (top-right). Shared by IPTV catalog + Live Sports.
 class IptvPortalsTopBarButton extends StatefulWidget {
   const IptvPortalsTopBarButton({
     super.key,

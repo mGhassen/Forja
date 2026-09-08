@@ -92,7 +92,7 @@ enum IptvLiveSourceKind {
   /// IPTV Live / Forja Sports Stalker (create_link; no continuity proxy).
   iptvStalker,
 
-  /// Live Matches Stremio addon streams (direct HLS / lavf reconnect).
+  /// Live Sports Stremio addon streams (direct HLS / lavf reconnect).
   stremio,
 
   /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
@@ -164,19 +164,19 @@ class IptvPlaySource {
   final String? epgChannelId;
 
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
-  /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
+  /// Live Sports Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
 
-  /// Live Matches: which playback profile applies when this row is active.
+  /// Live Sports: which playback profile applies when this row is active.
   final IptvLiveSourceKind? liveSourceKind;
 
-  /// Live Matches stream sheet: provider chip (PPV / Streamed / …).
+  /// Live Sports stream sheet: provider chip (PPV / Streamed / …).
   final String? liveProviderBadge;
 
-  /// Live Matches stream sheet: concurrent viewers when known.
+  /// Live Sports stream sheet: concurrent viewers when known.
   final int liveViewerCount;
 
-  /// Live Matches stream sheet: HD quality row.
+  /// Live Sports stream sheet: HD quality row.
   final bool liveStreamHd;
 
   /// Catalog embed URL before engine unlock (lazy resolve on source switch).
@@ -429,7 +429,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   /// Default live profile when sources omit [IptvPlaySource.liveSourceKind].
   final IptvLiveSourceKind? liveSourceKind;
 
-  /// Live Matches: unlock catalog embed rows on source switch.
+  /// Live Sports: unlock catalog embed rows on source switch.
   final IptvLiveEngineResolveSource? liveEngineResolveSource;
 
   const IptvPtPlayerScreen({
@@ -1198,7 +1198,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     // On ATV slides are Duration.zero — this returns immediately.
     await waitForRouteTransition(context);
     if (_disposed || !mounted) return;
-    // Live Matches Streamed keeps an embed WebView under this route for CDN
+    // Live Sports Streamed keeps an embed WebView under this route for CDN
     // proxy fetches — that platform view steals leanback keys unless blocked.
     if (PlatformInfo.isAndroidTv) {
       await PlatformChannel.releaseUnderlayPlatformViewFocus();

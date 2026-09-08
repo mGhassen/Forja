@@ -48,4 +48,4 @@ On **Android TV**, Live Matches **Stremio** (Highfly) opens sport HLS in `IptvPt
 - [RFC-050](../rfc/050-[open]-stremio-addon-feature-targets.md)
 - [117](117-[open]-android-live-embedindia-handoff-stuck.md) — Exo HLS mime + Streamed CDN
 - [124](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) — reconnect banner after recover
-- [Live Matches](../features/live/live-matches.md)
+- [Live Matches](../features/live/live-sports.md)

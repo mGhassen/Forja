@@ -44,7 +44,7 @@ class ShellBody extends StatelessWidget {
                       // Hidden tabs must not hit-test. With maintainInteractivity,
                       // later mounted tabs sit above the selected one in this Stack
                       // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
-                      // Settings / Live Matches).
+                      // Settings / Live Sports).
                       maintainInteractivity: false,
                       child: TickerMode(
                         // Hidden tabs, and the selected tab under a fullscreen

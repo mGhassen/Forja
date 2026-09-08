@@ -750,7 +750,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     setState(() => _s._controlsVisible = false);
   }
 
-  /// Desktop Escape ladder — IPTV + Live Matches (same player).
+  /// Desktop Escape ladder — IPTV + Live Sports (same player).
   /// Overlay/guide/search → hide chrome → leave fullscreen → arm → leave / mini.
   void _handleEscapeKey() {
     debugPrint(

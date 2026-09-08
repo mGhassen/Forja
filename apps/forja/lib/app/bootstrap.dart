@@ -12,6 +12,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:forja/features/archive/audio/audiobook_player_service.dart';
 import 'package:forja/features/archive/audio/music_player_service.dart';
+import 'package:forja/features/iptv/portal_sports/live_sports_portal_chrome.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -141,6 +142,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   MyListHost.ensureRegistered();
   KitLiveBoot.ensureRegistered();
+  LiveSportsPortalChrome.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();
