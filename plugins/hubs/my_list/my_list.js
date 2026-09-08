@@ -54,7 +54,7 @@ function myListKindFromRow(row) {
   if (mt === 'anime') return 'anime';
   if (mt === 'asian_drama' || mt === 'drama') return 'asian_drama';
   if (row.kisskhId != null) return 'asian_drama';
-  var open = row.metaOpen || row.open;
+  var open = row.metaOpen || row.open || row.catalogOpen;
   if (open && typeof open === 'object') {
     if (String(open.surface || '') === 'drama') return 'asian_drama';
     var extract = open.extract;
@@ -83,9 +83,11 @@ function myListShapeRow(row) {
   out.kind = kind;
   if (!out.type) out.type = kind;
   if (!out.listStatus && out.status) out.listStatus = String(out.status);
-  // Prefer pack-emitted open; keep legacy metaOpen for host pin/open adapters.
-  if (!out.open && out.metaOpen && typeof out.metaOpen === 'object') {
-    out.open = out.metaOpen;
+  // Prefer pack-emitted open; accept catalogOpen from host upsertCatalog.
+  var storedOpen = out.open || out.metaOpen || out.catalogOpen;
+  if (storedOpen && typeof storedOpen === 'object') {
+    out.open = storedOpen;
+    out.metaOpen = storedOpen;
   }
   return out;
 }

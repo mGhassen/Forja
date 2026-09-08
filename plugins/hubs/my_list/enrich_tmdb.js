@@ -51,8 +51,19 @@ function myListApplyTmdbDetails(row, data, mediaType) {
   if (backdrop) next.backdropPath = backdrop;
   if (vote > 0) next.voteAverage = vote;
   if (date) next.releaseDate = date;
-  if (!next.catalogOpen) {
-    next.catalogOpen = {
+  // Never invent a tmdb open for hub bookmarks (anime/drama) — that would
+  // reopen them on Home providers.
+  var hubMt = String(next.mediaType || '');
+  var isHub =
+    hubMt === 'anime' ||
+    hubMt === 'drama' ||
+    hubMt === 'asian_drama' ||
+    next.anilistId != null ||
+    next.kisskhId != null ||
+    (next.pluginId && String(next.pluginId) !== 'tmdb');
+  var hasOpen = !!(next.metaOpen || next.open || next.catalogOpen);
+  if (!hasOpen && !isHub) {
+    var tmdbOpen = {
       surface: 'tmdb',
       id: String(data.id),
       extract: {
@@ -61,6 +72,9 @@ function myListApplyTmdbDetails(row, data, mediaType) {
         ctx: { tmdbId: Number(data.id) },
       },
     };
+    next.catalogOpen = tmdbOpen;
+    next.metaOpen = tmdbOpen;
+    next.open = tmdbOpen;
   }
   return next;
 }

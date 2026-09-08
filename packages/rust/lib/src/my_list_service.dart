@@ -138,11 +138,16 @@ class MyListService {
   }) async {
     await _ensureLoaded();
     final idx = _items.indexWhere((e) => e['uniqueId'] == uniqueId);
+    // Host open adapters read metaOpen; keep catalogOpen for older rows/packs.
+    final anilistId = _openCtxInt(open, 'anilistId');
+    final kisskhId = _openCtxInt(open, 'kisskhId');
     final row = <String, dynamic>{
       if (idx >= 0) ..._items[idx],
       'uniqueId': uniqueId,
       'pluginId': pluginId,
+      'metaOpen': open,
       'catalogOpen': open,
+      'open': open,
       'title': title,
       'posterPath': posterPath,
       'mediaType': mediaType,
@@ -152,6 +157,8 @@ class MyListService {
       'listStatus': listStatus,
       'tmdbId': ?tmdbId,
       'tmdbMediaType': ?tmdbMediaType,
+      'anilistId': ?anilistId,
+      'kisskhId': ?kisskhId,
       'addedAt': idx >= 0
           ? _items[idx]['addedAt']
           : DateTime.now().millisecondsSinceEpoch,
@@ -337,6 +344,17 @@ class MyListService {
     }
     await addStremioItem(item);
     return true;
+  }
+
+  static int? _openCtxInt(Map<String, dynamic> open, String key) {
+    final extract = open['extract'];
+    if (extract is! Map) return null;
+    final ctx = extract['ctx'];
+    if (ctx is! Map) return null;
+    final v = ctx[key];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '');
   }
 
   Future<void> _ensureLoaded() async {

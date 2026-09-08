@@ -198,6 +198,7 @@ class AppRouter {
     int? initialEpisode,
     Duration? startPosition,
     bool autoPlay = false,
+    String? shellTabId,
   }) {
     return openDetails<T>(
       context,
@@ -207,6 +208,7 @@ class AppRouter {
       initialEpisode: initialEpisode,
       startPosition: startPosition,
       autoPlay: autoPlay,
+      shellTabId: shellTabId,
     );
   }
 

@@ -345,6 +345,40 @@ void main() {
       expect(meta.open?.id, '99');
       expect(meta.name, 'Hub Title');
     });
+
+    test('reads catalogOpen when metaOpen missing (upsertCatalog rows)', () {
+      final meta = metaItemFromLegacyListItem({
+        'uniqueId': 'catalog_drama-hub_42',
+        'pluginId': 'drama-hub',
+        'mediaType': 'drama',
+        'title': 'Drama Title',
+        'tmdbId': 999,
+        'catalogOpen': {
+          'surface': 'drama',
+          'id': '42',
+          'extract': {
+            'resolveType': 'drama',
+            'panelCategory': 'drama',
+            'ctx': {'kisskhId': 42},
+          },
+        },
+      });
+      expect(meta.open?.surface, 'drama');
+      expect(meta.open?.id, '42');
+      expect(meta.open?.extract?.ctx['kisskhId'], 42);
+    });
+
+    test('mediaType drama falls back to drama surface without open', () {
+      final meta = metaItemFromLegacyListItem({
+        'uniqueId': 'catalog_drama-hub_7',
+        'pluginId': 'drama-hub',
+        'mediaType': 'drama',
+        'kisskhId': 7,
+        'title': 'No Open',
+      });
+      expect(meta.open?.surface, 'drama');
+      expect(meta.open?.id, '7');
+    });
   });
 
   group('myListItemKind', () {

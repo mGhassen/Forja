@@ -7,6 +7,9 @@ int? myListAsInt(dynamic v) {
   return int.tryParse(v.toString());
 }
 
+Object? legacyListOpenRaw(Map<String, dynamic> item) =>
+    item['metaOpen'] ?? item['open'] ?? item['catalogOpen'];
+
 String myListItemKind(Map<String, dynamic> item) {
   final simkl = item['_simklType']?.toString();
   if (simkl == 'anime') return 'anime';
@@ -14,7 +17,7 @@ String myListItemKind(Map<String, dynamic> item) {
   if (mt == 'anime') return 'anime';
   if (mt == 'asian_drama' || mt == 'drama') return 'asian_drama';
   if (item['kisskhId'] != null) return 'asian_drama';
-  if (_myListMetaOpenIsDrama(item['metaOpen'])) return 'asian_drama';
+  if (_myListMetaOpenIsDrama(legacyListOpenRaw(item))) return 'asian_drama';
   if (simkl == 'movies') return 'movie';
   if (simkl == 'shows') return 'tv';
   if (mt == 'tv' || mt == 'series') return 'tv';
@@ -114,7 +117,7 @@ Map<String, dynamic>? _localMatch(
         myListItemHideKeys(local).intersection(remoteKeys).isNotEmpty) {
       return local;
     }
-    final openId = _metaOpenIdInt(local['metaOpen']);
+    final openId = _metaOpenIdInt(legacyListOpenRaw(local));
     if (openId != null && remoteOpenIds.contains(openId)) {
       return local;
     }

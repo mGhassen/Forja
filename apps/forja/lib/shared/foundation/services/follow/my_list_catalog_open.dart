@@ -5,6 +5,8 @@ import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
+import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 Future<void> openMyListCatalogEntry(
@@ -12,6 +14,8 @@ Future<void> openMyListCatalogEntry(
   KitListEntry entry,
 ) async {
   if (!context.mounted) return;
+  final shellTabId =
+      ShellBus.activeShellTabId ?? MyListHost.tabId;
   final pluginId =
       entry.pluginId ?? await pluginIdForLegacyListRow(entry.legacyRow);
   final open = entry.meta.open;
@@ -23,11 +27,16 @@ Future<void> openMyListCatalogEntry(
       context,
       pluginId: pluginId,
       item: entry.meta,
+      shellTabId: shellTabId,
     );
     return;
   }
   if (context.mounted) {
-    await openLegacyListItem(context, item: entry.legacyRow);
+    await openLegacyListItem(
+      context,
+      item: entry.legacyRow,
+      shellTabId: shellTabId,
+    );
   }
 }
 

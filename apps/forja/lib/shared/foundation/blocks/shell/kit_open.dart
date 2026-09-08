@@ -30,6 +30,7 @@ Future<void> openMetaItem(
   BuildContext context, {
   required String pluginId,
   required MetaItem item,
+  String? shellTabId,
   int? initialSeason,
   int? initialEpisode,
   Duration? startPosition,
@@ -58,6 +59,7 @@ Future<void> openMetaItem(
       context,
       pluginId: pluginId,
       item: item,
+      shellTabId: shellTabId,
       initialSeason: initialSeason,
       initialEpisode: initialEpisode,
       startPosition: startPosition,

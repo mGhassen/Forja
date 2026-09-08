@@ -32,6 +32,7 @@ import 'package:forja/shared/foundation/components/details/kit_details_play_row.
 import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details.dart';
 import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
@@ -53,7 +54,11 @@ Future<T?> openKitDetails<T>(
   Duration? startPosition,
   bool autoPlay = false,
 }) {
-  final tab = shellTabId ?? hubShellTabIdForPlugin(pluginId);
+  // Prefer the shell tab the user is on (e.g. My List), not the content hub
+  // that owns extract (Home/Anime). Otherwise overlay origin steals nav.
+  final tab = shellTabId ??
+      ShellBus.activeShellTabId ??
+      hubShellTabIdForPlugin(pluginId);
   return pushShellRoute<T>(
     context,
     AppRouter.slideShellRoute(

@@ -75,6 +75,7 @@ Map<String, dynamic> overlayMyListEnrichFields(
     'tmdbId',
     'pluginId',
     'metaOpen',
+    'catalogOpen',
     'open',
     'kind',
     'type',
@@ -331,8 +332,11 @@ final myListHubFeedProvider =
           if (e is Map) {
             final row = Map<String, dynamic>.from(e);
             // Host open adapters still read metaOpen.
-            if (row['metaOpen'] == null && row['open'] is Map) {
-              row['metaOpen'] = Map<String, dynamic>.from(row['open'] as Map);
+            if (row['metaOpen'] == null) {
+              final stored = row['open'] ?? row['catalogOpen'];
+              if (stored is Map) {
+                row['metaOpen'] = Map<String, dynamic>.from(stored);
+              }
             }
             rawItems.add(row);
           }
