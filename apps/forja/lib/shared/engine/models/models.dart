@@ -103,13 +103,13 @@ class EnginePlugin {
   }
 
   /// Unified live sport plugins (`types: live_sport`, not hub `kind: catalog`).
-  bool get isLiveSportPlugin =>
-      types.contains('live_sport') && !isKitPlugin;
+  bool get isLiveSportPlugin => types.contains('live_sport') && !isKitPlugin;
 
   /// Legacy schedule plugins (`types: catalog`, not hub `kind: catalog`).
   bool get isLiveFeedPlugin => types.contains('catalog') && !isKitPlugin;
   bool get isLivePlugin => types.contains('plugins');
   bool get isLiveSport => types.contains('live_sport');
+
   /// Resolve-only entries in `plugins/live/manifest.json` (`types: live`).
   bool get isLiveResolve => types.contains('live');
 
@@ -120,10 +120,9 @@ class EnginePlugin {
   bool get supportsLiveBroadcast =>
       (isLiveSportPlugin || isLiveFeedPlugin) && hasCapability('broadcast');
 
-  bool get supportsLiveResolve =>
-      isLiveSportPlugin
-          ? hasCapability('resolve')
-          : isLiveResolve || isLivePlugin || isLiveSport;
+  bool get supportsLiveResolve => isLiveSportPlugin
+      ? hasCapability('resolve')
+      : isLiveResolve || isLivePlugin || isLiveSport;
 
   /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
   bool get isLive =>
@@ -226,7 +225,8 @@ class EnginePlugin {
     if (settings != null) 'settings': settings,
     if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
     if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
-    if (defaultCapabilities.isNotEmpty) 'defaultCapabilities': defaultCapabilities,
+    if (defaultCapabilities.isNotEmpty)
+      'defaultCapabilities': defaultCapabilities,
     if (liveLegacyIds != null && !liveLegacyIds!.isEmpty)
       'legacyIds': liveLegacyIds!.toJson(),
   };
@@ -278,10 +278,7 @@ class LiveSportLegacyIds {
     return out.isEmpty ? null : out;
   }
 
-  Map<String, String> toJson() => {
-    'catalog': ?catalog,
-    'resolve': ?resolve,
-  };
+  Map<String, String> toJson() => {'catalog': ?catalog, 'resolve': ?resolve};
 }
 
 Map<String, bool> _defaultCapabilitiesMap(dynamic raw) {
@@ -386,9 +383,7 @@ class EnginePack {
     } else if ((j['id'] ?? '').toString().trim().isNotEmpty &&
         j['plugins'] == null) {
       // Single-plugin root manifest (legacy shape).
-      plugins = [
-        _pluginFromManifestEntry(j, packPrelude: packPrelude),
-      ];
+      plugins = [_pluginFromManifestEntry(j, packPrelude: packPrelude)];
     } else {
       plugins = const [];
     }
@@ -436,10 +431,7 @@ class EnginePack {
 
   /// Pack identity (RFC-094): prefer legacy manifest `id`, else official-tree
   /// slot, else `pack-<urlHash>`. Community packs omit `id`.
-  static String resolvePackId({
-    required String sourceUrl,
-    String? manifestId,
-  }) {
+  static String resolvePackId({required String sourceUrl, String? manifestId}) {
     final raw = manifestId?.trim() ?? '';
     if (raw.isNotEmpty) return raw;
     final slot = forjaHqSlot(sourceUrl);
@@ -465,8 +457,9 @@ class EnginePack {
     for (final e in core.entries) {
       if (path.endsWith(e.key)) return e.value;
     }
-    final hub =
-        RegExp(r'plugins/hubs/([^/]+)/manifest\.json$').firstMatch(path);
+    final hub = RegExp(
+      r'plugins/hubs/([^/]+)/manifest\.json$',
+    ).firstMatch(path);
     if (hub != null) return hub.group(1);
     return null;
   }
@@ -544,17 +537,16 @@ class EnginePack {
     bool? enabled,
     List<EnginePlugin>? plugins,
     List<String>? bundle,
-  }) =>
-      EnginePack(
-        sourceUrl: sourceUrl,
-        packId: packId,
-        name: name,
-        version: version,
-        plugins: plugins ?? this.plugins,
-        prelude: prelude,
-        bundle: bundle ?? this.bundle,
-        enabled: enabled ?? this.enabled,
-      );
+  }) => EnginePack(
+    sourceUrl: sourceUrl,
+    packId: packId,
+    name: name,
+    version: version,
+    plugins: plugins ?? this.plugins,
+    prelude: prelude,
+    bundle: bundle ?? this.bundle,
+    enabled: enabled ?? this.enabled,
+  );
 
   EnginePack copyWithPlugins(List<EnginePlugin> next) =>
       copyWith(plugins: next);
@@ -665,10 +657,7 @@ bool engineProviderChipSelected({
   return selectedPluginIds.contains(pluginId);
 }
 
-Set<String> toggleSourcesPanelViewFilter(
-  Set<String> current,
-  String id,
-) {
+Set<String> toggleSourcesPanelViewFilter(Set<String> current, String id) {
   if (current.contains(id)) {
     return Set<String>.from(current)..remove(id);
   }
@@ -1041,11 +1030,7 @@ Map<String, String> engineHeadersFrom(dynamic raw) {
   return headers;
 }
 
-String? engineContainerLabel({
-  String? url,
-  String? title,
-  String? name,
-}) {
+String? engineContainerLabel({String? url, String? title, String? name}) {
   final blob = '${title ?? ''} ${name ?? ''} ${url ?? ''}'.toUpperCase();
   if (RegExp(r'(\.MKV\b|\bMKV\b)').hasMatch(blob)) return 'MKV';
   if (RegExp(r'(\.MP4\b|\bMP4\b)').hasMatch(blob)) return 'MP4';
@@ -1166,6 +1151,5 @@ class PluginScriptFetchProgress {
   final String label;
   final String sourceUrl;
 
-  double get fraction =>
-      total <= 0 ? 0 : (completed / total).clamp(0.0, 1.0);
+  double get fraction => total <= 0 ? 0 : (completed / total).clamp(0.0, 1.0);
 }

@@ -555,7 +555,9 @@ class PluginRegistry {
     await prefs.setBool(_migratedKey, true);
   }
 
-  Future<List<EnginePack>> _purgeLegacyAssetPacks(List<EnginePack> packs) async {
+  Future<List<EnginePack>> _purgeLegacyAssetPacks(
+    List<EnginePack> packs,
+  ) async {
     final keep = <EnginePack>[];
     final victims = <EnginePack>[];
     for (final p in packs) {
@@ -647,8 +649,9 @@ class PluginRegistry {
   @visibleForTesting
   static String? devCatalogManifestUrl() {
     if (!kDebugMode) return null;
-    var explicit =
-        const String.fromEnvironment('FORJA_HQ_CATALOG_MANIFEST_URL').trim();
+    var explicit = const String.fromEnvironment(
+      'FORJA_HQ_CATALOG_MANIFEST_URL',
+    ).trim();
     if (explicit.isEmpty) {
       explicit =
           Platform.environment['FORJA_HQ_CATALOG_MANIFEST_URL']?.trim() ?? '';
@@ -660,8 +663,9 @@ class PluginRegistry {
       root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
     }
     if (root.isNotEmpty) {
-      final normalized =
-          root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+      final normalized = root
+          .replaceAll('\\', '/')
+          .replaceAll(RegExp(r'/+$'), '');
       return '$normalized/plugins/catalog/manifest.json';
     }
 
@@ -680,8 +684,9 @@ class PluginRegistry {
   @visibleForTesting
   static String? devTorrentManifestUrl() {
     if (!kDebugMode) return null;
-    var explicit =
-        const String.fromEnvironment('FORJA_HQ_TORRENT_MANIFEST_URL').trim();
+    var explicit = const String.fromEnvironment(
+      'FORJA_HQ_TORRENT_MANIFEST_URL',
+    ).trim();
     if (explicit.isEmpty) {
       explicit =
           Platform.environment['FORJA_HQ_TORRENT_MANIFEST_URL']?.trim() ?? '';
@@ -693,7 +698,9 @@ class PluginRegistry {
       root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
     }
     if (root.isEmpty) return null;
-    final normalized = root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+    final normalized = root
+        .replaceAll('\\', '/')
+        .replaceAll(RegExp(r'/+$'), '');
     return '$normalized/plugins/torrent/manifest.json';
   }
 
@@ -701,8 +708,9 @@ class PluginRegistry {
   @visibleForTesting
   static String? devLiveManifestUrl() {
     if (!kDebugMode) return null;
-    var explicit =
-        const String.fromEnvironment('FORJA_HQ_LIVE_MANIFEST_URL').trim();
+    var explicit = const String.fromEnvironment(
+      'FORJA_HQ_LIVE_MANIFEST_URL',
+    ).trim();
     if (explicit.isEmpty) {
       explicit =
           Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
@@ -714,8 +722,9 @@ class PluginRegistry {
       root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
     }
     if (root.isNotEmpty) {
-      final normalized =
-          root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+      final normalized = root
+          .replaceAll('\\', '/')
+          .replaceAll(RegExp(r'/+$'), '');
       return '$normalized/plugins/live/manifest.json';
     }
 
@@ -819,14 +828,13 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
-  }) =>
-      _withInstallLock(
-        () => _installUnlocked(
-          manifestUrl,
-          onScriptFetched: onScriptFetched,
-          onFetchProgress: onFetchProgress,
-        ),
-      );
+  }) => _withInstallLock(
+    () => _installUnlocked(
+      manifestUrl,
+      onScriptFetched: onScriptFetched,
+      onFetchProgress: onFetchProgress,
+    ),
+  );
 
   Future<EnginePack> _installUnlocked(
     String manifestUrl, {
@@ -933,7 +941,8 @@ class PluginRegistry {
     for (final prelude in preludesNeeded) {
       final text = byPath[prelude];
       if (text == null || text.isEmpty) {
-        if (!missing.contains(prelude) && !missing.contains('prelude:$prelude')) {
+        if (!missing.contains(prelude) &&
+            !missing.contains('prelude:$prelude')) {
           missing.add('prelude:$prelude');
         }
         continue;
@@ -1227,22 +1236,20 @@ class PluginRegistry {
             ? null
             : _legacyPluginEnabled(packs, liveOld);
         if (catalogOn != null) {
-          capabilityWrites[
-            LiveSportCapabilities.capabilityPrefsKey(
-              pack.sourceUrl,
-              p.id,
-              LiveSportCapabilities.catalog,
-            )
-          ] = catalogOn;
+          capabilityWrites[LiveSportCapabilities.capabilityPrefsKey(
+                pack.sourceUrl,
+                p.id,
+                LiveSportCapabilities.catalog,
+              )] =
+              catalogOn;
         }
         if (resolveOn != null) {
-          capabilityWrites[
-            LiveSportCapabilities.capabilityPrefsKey(
-              pack.sourceUrl,
-              p.id,
-              LiveSportCapabilities.resolve,
-            )
-          ] = resolveOn;
+          capabilityWrites[LiveSportCapabilities.capabilityPrefsKey(
+                pack.sourceUrl,
+                p.id,
+                LiveSportCapabilities.resolve,
+              )] =
+              resolveOn;
         }
       }
     }
@@ -1472,8 +1479,7 @@ class PluginRegistry {
   static EnginePlugin? pluginFromPacks(
     List<EnginePack> packs,
     String pluginId,
-  ) =>
-      packPluginFromPacks(packs, pluginId)?.plugin;
+  ) => packPluginFromPacks(packs, pluginId)?.plugin;
 
   /// Resolve [pluginId] to owning pack + plugin (prefer active).
   static ({EnginePack pack, EnginePlugin plugin})? packPluginFromPacks(
@@ -1503,11 +1509,7 @@ class PluginRegistry {
     String pluginId, {
     String? sourceUrl,
   }) async =>
-      packPluginFromPacks(
-        await listPacksRaw(),
-        pluginId,
-        sourceUrl: sourceUrl,
-      );
+      packPluginFromPacks(await listPacksRaw(), pluginId, sourceUrl: sourceUrl);
 
   Future<void>? _hydrateLeanInFlight;
 
@@ -1568,9 +1570,7 @@ class PluginRegistry {
       }
       final lean = remote[pack.sourceUrl];
       final leanName = lean?.name;
-      if (leanName != null &&
-          pack.plugins.isEmpty &&
-          pack.name != leanName) {
+      if (leanName != null && pack.plugins.isEmpty && pack.name != leanName) {
         next.add(
           EnginePack(
             sourceUrl: pack.sourceUrl,
@@ -1602,12 +1602,7 @@ class PluginRegistry {
           plugins: const [],
         ),
       );
-      added.add(
-        LeanPackDelta(
-          manifestUrl: entry.key,
-          name: entry.value.name,
-        ),
-      );
+      added.add(LeanPackDelta(manifestUrl: entry.key, name: entry.value.name));
       changed = true;
       await PendingRemotePurgeStore.clear(entry.key);
     }
