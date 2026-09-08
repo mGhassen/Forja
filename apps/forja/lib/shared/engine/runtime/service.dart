@@ -118,6 +118,14 @@ class EngineService {
     Engine.cancelEngineJsExtracts();
   }
 
+  /// Like [cancelPending] but keeps Live Sports schedule scrapes alive — the
+  /// hub is only stubbed under the player and must not lose its feed cache.
+  void cancelPendingForPlayback() {
+    abortInFlightExtracts();
+    cancelTorrentSearch();
+    Engine.cancelEngineJsExtracts();
+  }
+
   /// Stop Sources-panel scrapes only — magnet / torrent resolve stay alive.
   ///
   /// Used when the user picks a row (`cancelEngine: false`): full

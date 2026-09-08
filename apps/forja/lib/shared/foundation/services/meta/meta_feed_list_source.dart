@@ -60,6 +60,10 @@ class MetaFeedCatalogNotifier
 
   @override
   Future<MetaFeedCatalogPage> build() async {
+    // Survive PlayerSurfaceChromeStub unmount while a live match plays — otherwise
+    // autoDispose drops the feed and Back from the player re-scrapes every catalog.
+    ref.keepAlive();
+
     final filters = ref.watch(kitScheduleFiltersProvider);
     final forceRefresh = ref.read(metaFeedForceRefreshProvider);
     final gen = ++_gen;

@@ -562,7 +562,7 @@ class HeroPillSegment<T> {
 }
 
 /// Segmented hero pill (e.g. SUB | DUB / Providers | Live TV) — glass shell,
-/// brand-green fill on hover / D-pad focus.
+/// green label when selected; translucent green fill on hover / D-pad focus.
 class HeroPillSegmentedChoice<T> extends StatelessWidget {
   const HeroPillSegmentedChoice({
     super.key,
@@ -704,11 +704,9 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
       builder: (hover, pressed) {
         // hover already includes D-pad focus via ForjaInteractive._activeFor.
         final lit = hover || pressed;
-        final foreground = lit
-            ? _kHeroPillForegroundDark
-            : selected
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.55);
+        final foreground = lit || selected
+            ? ForjaShellColors.brandGreen
+            : Colors.white.withValues(alpha: 0.55);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
@@ -718,10 +716,8 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           decoration: BoxDecoration(
             color: lit
                 ? ForjaShellColors.brandGreen
-                    .withValues(alpha: pressed ? 1.0 : 0.92)
-                : selected
-                    ? Colors.white.withValues(alpha: 0.14)
-                    : Colors.transparent,
+                    .withValues(alpha: pressed ? 0.28 : 0.18)
+                : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
               isLast: isLast,

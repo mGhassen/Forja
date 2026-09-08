@@ -401,8 +401,12 @@ class ShellBus {
   /// Abort leftover extracts / scrapers / hub catalog / sync pushes so decode
   /// is not fighting JS/HTTP on weak SoCs. Safe after the play URL is already
   /// resolved — does not cancel the open MediaKit/Exo session.
+  ///
+  /// Skips [EngineService.cancelLiveCatalog]: Live Sports is stubbed under the
+  /// player and must keep its in-memory / MetaCache schedule so Back does not
+  /// re-scrape every catalog.
   static void cancelBackgroundWorkForPlayback() {
-    EngineService.instance.cancelPending();
+    EngineService.instance.cancelPendingForPlayback();
     EngineService.instance.cancelCatalog();
     NuvioService.instance.cancelPending();
     SyncDomainBridge.instance.cancelPendingPushes();
