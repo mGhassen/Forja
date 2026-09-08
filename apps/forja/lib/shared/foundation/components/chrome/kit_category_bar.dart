@@ -75,12 +75,16 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
         // Do not [watchPage] here — KitListWidget watches the same provider.
         // Dual watch flushes listeners mid-list-build → markNeedsBuild during build.
         source.listenPage(ref, status, (async) {
-          final page = async.asData?.value;
+          // Keep last kinds during reload — null page collapses the bar and
+          // the Expanded list jumps into that gap (cards flash over chrome).
+          final page = async.asData?.value ?? async.valueOrNull;
+          if (page == null) return;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _applyPage(page);
           });
         });
-        final seed = source.readPage(ref, status).asData?.value;
+        final seedPage = source.readPage(ref, status);
+        final seed = seedPage.asData?.value ?? seedPage.valueOrNull;
         if (_dynamicPage == null && seed != null) {
           _dynamicPage = seed;
         }

@@ -129,3 +129,9 @@ Sportio does not provide streams — it bridges ESPN's public scoreboard with th
 **Settings key:** `live_matches_iptv_sports_v1` — `{ enabled, portalKey, timezone, leagues, sportCategories }`.
 
 **Settings hub:** own category **Forja Sports** (not under Data & backup).
+
+---
+
+## Note (RFC-096 — host policy)
+
+Host Flutter matching policy (leagues maps, broadcast soft-match, `IptvPortalSportsConfig` / `ensureArmed`, host `sportMatchGame` builder) is **superseded by [RFC-096](096-[open]-iptv-channel-search-only.md)**. Engine `sport_match_streams` ranking and EPG acceptance rows above stay as shipped. Do not rewrite frozen ✅ rows here.

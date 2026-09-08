@@ -44,6 +44,7 @@ function liveSportsLayout() {
               source: 'live_schedule',
               dynamic: true,
               default: 'all',
+              items: [{ id: 'all', label: 'All' }],
               focusUp: 'chrome',
               focusDown: 'schedule',
             }),

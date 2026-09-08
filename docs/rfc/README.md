@@ -117,6 +117,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [093-[fixed]-…](fixed/093-[fixed]-live-sports-no-host-addon.md) | Live Sports — no host Addons row | v1.4 | fixed | **Complete** · **6 / 6** · **10 / 10** · **3 / 3** discovery | — |
 | [094-[partial]-…](094-[partial]-community-pack-url-scoped-ids.md) | Community packs — URL-scoped identity | v1.4 | partial | **3 / 4** · **8 / 8** hub · **0 / 4** ⏭️ providers | — |
 | [095-[fixed]-…](fixed/095-[fixed]-foundation-design-data-split.md) | Foundation like shadcn — design alone / data alone | v1.4 | fixed | **Complete · 10/10** | — |
+| [096-[open]-…](096-[open]-iptv-channel-search-only.md) | IPTV channel search only — pack owns sports policy | v1.4 | open | **3 / 3** · **0 / 8** · **0 / 1** ⏭️ | — |
 
 ## Related
 

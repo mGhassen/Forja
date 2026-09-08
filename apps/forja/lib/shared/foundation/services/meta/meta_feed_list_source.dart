@@ -157,22 +157,29 @@ final class MetaFeedListSource extends KitListSource {
   @override
   String? get hubPluginId => null;
 
+  /// Remap without stripping previous data on reload — bare
+  /// `AsyncLoading.new` made KitListWidget / KitCategoryBar think the
+  /// feed was empty (skeleton flash + category bar collapse).
+  static AsyncValue<KitListPage> _asListPage(
+    AsyncValue<MetaFeedCatalogPage> next,
+  ) {
+    return next.when(
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
+      data: (page) => AsyncData<KitListPage>(page),
+      error: (e, st) => AsyncError<KitListPage>(e, st),
+      loading: () => const AsyncLoading<KitListPage>(),
+    );
+  }
+
   @override
   AsyncValue<KitListPage> watchPage(WidgetRef ref, String status) {
-    return ref.watch(metaFeedCatalogProvider).when(
-          data: AsyncData.new,
-          error: AsyncError.new,
-          loading: AsyncLoading.new,
-        );
+    return _asListPage(ref.watch(metaFeedCatalogProvider));
   }
 
   @override
   AsyncValue<KitListPage> readPage(WidgetRef ref, String status) {
-    return ref.read(metaFeedCatalogProvider).when(
-          data: AsyncData.new,
-          error: AsyncError.new,
-          loading: AsyncLoading.new,
-        );
+    return _asListPage(ref.read(metaFeedCatalogProvider));
   }
 
   @override
@@ -183,13 +190,7 @@ final class MetaFeedListSource extends KitListSource {
   ) {
     ref.listen<AsyncValue<MetaFeedCatalogPage>>(metaFeedCatalogProvider,
         (prev, next) {
-      onChange(
-        next.when(
-          data: AsyncData.new,
-          error: AsyncError.new,
-          loading: AsyncLoading.new,
-        ),
-      );
+      onChange(_asListPage(next));
     });
   }
 
