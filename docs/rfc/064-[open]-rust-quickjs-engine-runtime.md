@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **11 / 14** acceptance |
-| **Current slice** | Manual cancel QA still open; host sniff stays on Dart (ENGINE_BOUNDARY) |
+| **Progress** | **8 / 8** components · **12 / 16** acceptance |
+| **Current slice** | Manifest-declared hops; manual cancel QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 5 | R64-C05 | `ctx.host` → `needs_host` + Dart `EngineHostResolver` (WebView stays host) | ✅ |
 | 6 | R64-C06 | CryptoJS façade (AES/digest/hmac) + `ctx.hop` nested extract | ✅ |
 | 7 | R64-C07 | cheerio bundle → `ctx.html` in EngineJS (lazy on first use) | ✅ |
+| 8 | R64-C08 | Manifest `hops` on HTTP plugins — EngineJS / flutter_js attach only declared hop scripts (`*` = all) | ✅ |
 
 ---
 
@@ -47,6 +48,8 @@
 | 12 | R64-A12 | Unit: scrypt PoW finds nonce for small params (CineJoy parity) | ✅ |
 | 13 | R64-A13 | Unit: `ctx.html` cheerio select/attr/text | ✅ |
 | 14 | R64-A14 | Unit: `ctx.host` sets `needs_host` when streams empty | ✅ |
+| 15 | R64-A15 | Unit: empty/`*`/listed `hops` select hop scripts for extract | ✅ |
+| 16 | R64-A16 | Manual ATV: Forja All under player — videasy-class plugins log `hops=0`; no SIGQUIT mid-walk | ⬜ |
 
 ---
 
@@ -71,7 +74,8 @@ Sources → Forja runs up to 10 `EngineRuntime.fork()` heaps on the **Flutter UI
 
 ### Contracts
 
-- Job payload: `{ plugin_id, code, ctx, timeout_ms, allow_host_fallback, hop_scripts? }`
+- Job payload: `{ plugin_id, code, ctx, timeout_ms, allow_host_fallback, hops?, hop_depth }`
+- HTTP plugin manifest may declare `hops: ["hop-filemoon", …]` or `hops: ["*"]`. **Omit / `[]` = no hop scripts in the job** (videasy, etc.). Host must not attach every hop plugin to every extract.
 - Result: `{ streams: [...] }` or `{ error, unsupported?: true }` for fallback
 - Cancel: per-job `CancellationToken` via `engine_cancel::scope_job_token` (task-local). Host cancel drains `EngineJobs` tokens + `request()` on ROOT — peers must not share one global attach slot.
 

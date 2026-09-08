@@ -229,7 +229,10 @@
       "types": [
         "anime"
       ],
-      "kind": "http"
+      "kind": "http",
+      "hops": [
+        "hop-megaup"
+      ]
     },
     {
       "id": "cinejoy",
@@ -632,7 +635,10 @@
       "types": [
         "anime"
       ],
-      "kind": "http"
+      "kind": "http",
+      "hops": [
+        "hop-flixcloud"
+      ]
     },
     {
       "id": "multiembed",
@@ -773,7 +779,13 @@
       "types": [
         "anime"
       ],
-      "kind": "http"
+      "kind": "http",
+      "hops": [
+        "hop-vidmoly",
+        "hop-streamtape",
+        "hop-doodstream",
+        "hop-filemoon"
+      ]
     },
     {
       "id": "anineko",
@@ -814,7 +826,11 @@
       "types": [
         "anime"
       ],
-      "kind": "http"
+      "kind": "http",
+      "hops": [
+        "hop-mp4upload",
+        "hop-streamsb"
+      ]
     },
     {
       "id": "senshi",
@@ -898,7 +914,10 @@
         "origin": "https://www.dailymotion.com",
         "searchLimit": 12,
         "maxResolve": 6
-      }
+      },
+      "hops": [
+        "hop-dailymotion"
+      ]
     },
     {
       "id": "hop-flixcloud",
@@ -1076,7 +1095,8 @@
       "hosts": [
         "vidmoly.to",
         "vidmoly.me",
-        "vidmoly.net"
+        "vidmoly.net",
+        "vidmoly.biz"
       ]
     },
     {

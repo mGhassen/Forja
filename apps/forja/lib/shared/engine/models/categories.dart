@@ -218,13 +218,13 @@ abstract final class EngineCategories {
     return false;
   }
 
+  /// Visibility is type-token match only. Selection must not resurrect
+  /// off-category chips (e.g. drama-only Dailymotion on Home movie panel).
   static bool pluginChipVisible({
     required EnginePlugin plugin,
     required Set<String> visibleCategories,
-    required Set<String> selectedPluginIds,
   }) {
     if (!plugin.enabled || !plugin.isExtractable) return false;
-    if (selectedPluginIds.contains(plugin.id)) return true;
     return pluginMatchesCategories(plugin, visibleCategories);
   }
 
@@ -252,16 +252,25 @@ abstract final class EngineCategories {
             p.id,
   };
 
+  /// Drop enabled plugins outside [scope]. Full-all → select the whole scope.
   static Set<String> scopeSelectionIfFullAll({
     required Set<String> selected,
     required Set<String> enabledIds,
     required Set<String> scope,
   }) {
     if (enabledIds.isEmpty) return {};
+    if (scope.isEmpty) {
+      return {for (final id in selected) if (enabledIds.contains(id)) id};
+    }
     final fullAll =
         selected.length == enabledIds.length &&
         enabledIds.every(selected.contains);
-    if (!fullAll) return selected;
-    return {for (final id in scope) if (enabledIds.contains(id)) id};
+    if (fullAll) {
+      return {for (final id in scope) if (enabledIds.contains(id)) id};
+    }
+    return {
+      for (final id in selected)
+        if (enabledIds.contains(id) && scope.contains(id)) id,
+    };
   }
 }

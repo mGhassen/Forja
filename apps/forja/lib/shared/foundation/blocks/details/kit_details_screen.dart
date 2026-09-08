@@ -534,7 +534,29 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     );
   }
 
-  void _revealedDetailsHeroPlayFocus() => _scrollDetailsHeroIntoView();
+  /// ↑ from the first meta rail (Characters / Cast) — scroll hero into view
+  /// and land D-pad on Play. Scroll-only left focus on a disposing card and
+  /// Flutter dumped it onto the bottom recommendations row.
+  void _revealedDetailsHeroPlayFocus() {
+    void focusPlay() {
+      if (!mounted) return;
+      if (_heroPlayFocus.canRequestFocus) {
+        _heroPlayFocus.requestFocus();
+      }
+    }
+
+    if (!_scrollController.hasClients) {
+      focusPlay();
+      return;
+    }
+    _scrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusPlay);
+  }
 
   void _focusDetailsBack() {
     if (_backFocus.canRequestFocus) {
@@ -765,19 +787,31 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
 
     final firstMetaFocusUp = tvFocus ? _revealedDetailsHeroPlayFocus : null;
 
+    // Episodes own 0..(multi-season ? 1 : 0). Pack + TMDB rails continue after
+    // so ↑ from Characters walks to episodes (or Play when there are none).
+    final metaRowBase = !hasEpisodes
+        ? 0
+        : (seasons.length > 1 ? 2 : 1);
+    final packRailCount =
+        _packRails.where((r) => r.items.isNotEmpty).length;
+    // Skip-to-Play only when no episode rail sits above the first meta row.
+    final metaUpToPlay = hasEpisodes ? null : firstMetaFocusUp;
+
     final packSections = buildKitDetailRailSections(
       context: context,
       pluginId: widget.pluginId,
       rails: _packRails,
       tvFocus: tvFocus,
-      firstMetaFocusUp: firstMetaFocusUp,
+      tvRowOrderBase: metaRowBase,
+      firstMetaFocusUp: metaUpToPlay,
     );
     final tmdbSections = buildKitTmdbDetailSections(
       context: context,
       pluginId: widget.pluginId,
       rich: _rich,
       tvFocus: tvFocus,
-      firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,
+      tvRowOrderBase: metaRowBase + packRailCount,
+      firstMetaFocusUp: packSections.isEmpty ? metaUpToPlay : null,
       recommendations: isIptv && _iptvRecHits.isNotEmpty
           ? _iptvRecHits.map((h) => h.movie).toList()
           : null,

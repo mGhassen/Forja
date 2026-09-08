@@ -1281,6 +1281,63 @@ void main() {
         hasLength(5),
       );
     });
+
+    test('manifest hops declare which hop scripts attach', () {
+      final hopA = EnginePlugin.fromJson({
+        'id': 'hop-a',
+        'name': 'A',
+        'entry': 'a.js',
+        'kind': 'hop',
+        'hosts': ['a.test'],
+      });
+      final hopB = EnginePlugin.fromJson({
+        'id': 'hop-b',
+        'name': 'B',
+        'entry': 'b.js',
+        'kind': 'hop',
+        'hosts': ['b.test'],
+      });
+      final packs = [
+        EnginePack(
+          sourceUrl: 'file:///test/manifest.json',
+          packId: 'test',
+          name: 'test',
+          version: '1',
+          plugins: [hopA, hopB],
+        ),
+      ];
+      final bare = EnginePlugin.fromJson({
+        'id': 'videasy-like',
+        'name': 'Bare',
+        'entry': 'bare.js',
+        'kind': 'http',
+      });
+      expect(hopPluginsDeclaredFor(bare, packs: packs), isEmpty);
+
+      final starred = EnginePlugin.fromJson({
+        'id': 'scraper',
+        'name': 'Scraper',
+        'entry': 's.js',
+        'kind': 'http',
+        'hops': ['*'],
+      });
+      expect(
+        hopPluginsDeclaredFor(starred, packs: packs).map((p) => p.id),
+        ['hop-a', 'hop-b'],
+      );
+
+      final listed = EnginePlugin.fromJson({
+        'id': 'narrow',
+        'name': 'Narrow',
+        'entry': 'n.js',
+        'kind': 'http',
+        'hops': ['hop-b', 'missing'],
+      });
+      expect(
+        hopPluginsDeclaredFor(listed, packs: packs).map((p) => p.id),
+        ['hop-b'],
+      );
+    });
   });
 
   group('engine chip selection', () {
@@ -1551,17 +1608,34 @@ void main() {
         EngineCategories.pluginChipVisible(
           plugin: plugin,
           visibleCategories: {EngineCategories.movie},
-          selectedPluginIds: const {},
         ),
         isFalse,
       );
       expect(
         EngineCategories.pluginChipVisible(
           plugin: plugin,
-          visibleCategories: {EngineCategories.movie},
-          selectedPluginIds: {'test-provider-foo'},
+          visibleCategories: {'foo'},
         ),
         isTrue,
+      );
+    });
+
+    test('scopeSelectionIfFullAll drops off-category selected ids', () {
+      expect(
+        EngineCategories.scopeSelectionIfFullAll(
+          selected: const {'videasy', 'dailymotion'},
+          enabledIds: const {'videasy', 'dailymotion', 'kisskh'},
+          scope: const {'videasy'},
+        ),
+        {'videasy'},
+      );
+      expect(
+        EngineCategories.scopeSelectionIfFullAll(
+          selected: const {'videasy', 'dailymotion', 'kisskh'},
+          enabledIds: const {'videasy', 'dailymotion', 'kisskh'},
+          scope: const {'videasy'},
+        ),
+        {'videasy'},
       );
     });
 
@@ -1649,6 +1723,29 @@ void main() {
         ]),
       );
       expect(parsed.firstWhere((p) => p.id == 'videasy').isHttp, isTrue);
+      expect(parsed.firstWhere((p) => p.id == 'videasy').hops, isEmpty);
+      expect(parsed.firstWhere((p) => p.id == 'kisskh').hops, isEmpty);
+      expect(parsed.firstWhere((p) => p.id == 'vidsrcsbs').hops, isEmpty);
+      expect(parsed.firstWhere((p) => p.id == 'animekai').hops, ['hop-megaup']);
+      expect(parsed.firstWhere((p) => p.id == 'reanime').hops, ['hop-flixcloud']);
+      expect(
+        parsed.firstWhere((p) => p.id == 'mkissa').hops,
+        ['hop-mp4upload', 'hop-streamsb'],
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'dailymotion').hops,
+        ['hop-dailymotion'],
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'animenosub').hops,
+        [
+          'hop-vidmoly',
+          'hop-streamtape',
+          'hop-doodstream',
+          'hop-filemoon',
+        ],
+      );
+      expect(parsed.firstWhere((p) => p.id == '2dhive').hops, isEmpty);
       expect(parsed.firstWhere((p) => p.id == 'hop-doodstream').isHop, isTrue);
       expect(
         parsed.firstWhere((p) => p.id == 'hop-doodstream').isExtractable,

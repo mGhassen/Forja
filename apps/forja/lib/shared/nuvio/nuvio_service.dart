@@ -123,10 +123,16 @@ String? nextNuvioScraperId({
 
 const kNuvioScraperBatchDesktop = 10;
 const kNuvioScraperBatchTv = 5;
+const kNuvioScraperBatchTvPlayback = 2;
 const kNuvioScraperBatchSize = kNuvioScraperBatchDesktop;
 
-int nuvioSourcesBatchLimit({required bool tv}) =>
-    tv ? kNuvioScraperBatchTv : kNuvioScraperBatchDesktop;
+int nuvioSourcesBatchLimit({
+  required bool tv,
+  bool underPlayback = false,
+}) {
+  if (!tv) return kNuvioScraperBatchDesktop;
+  return underPlayback ? kNuvioScraperBatchTvPlayback : kNuvioScraperBatchTv;
+}
 
 List<String> nextNuvioScraperBatch({
   required Iterable<String> orderedIds,

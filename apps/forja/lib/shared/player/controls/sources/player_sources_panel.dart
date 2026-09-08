@@ -406,7 +406,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return EngineCategories.pluginChipVisible(
       plugin: plugin,
       visibleCategories: _effectiveEngineCategories,
-      selectedPluginIds: _engineSelectedPluginIds,
     );
   }
 
@@ -1008,6 +1007,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         savedIds: cachedUi.engineSelectedPluginIds,
         enabledIds: enabledEnginePluginIds(enginePacks),
       );
+      final cacheScope = EngineCategories.matchingPluginIds(
+        packs: enginePacks,
+        categories: EngineCategories.defaultsForPanelCategory(
+          _enginePanelCategory,
+        ),
+      );
+      engineSelected = EngineCategories.scopeSelectionIfFullAll(
+        selected: engineSelected,
+        enabledIds: enabledEnginePluginIds(enginePacks),
+        scope: cacheScope,
+      );
       sourceIdByKind = Map<String, String>.from(cachedUi.panelSourceIdByKind);
     } else {
       nuvioSelected = hasNuvio
@@ -1241,19 +1251,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _enginePanelCategory,
         ),
       );
+      final scoped = EngineCategories.scopeSelectionIfFullAll(
+        selected: selected,
+        enabledIds: enabledIds,
+        scope: engineScope,
+      );
       setState(() {
         _enginePacks = packs;
         _enginePacksLoading = false;
-        _engineSelectedPluginIds = selected;
+        _engineSelectedPluginIds = scoped;
         _engineSelectionHydrated = true;
         if (_engineAllMode ||
             engineFullAllSelected(
               enabledIds: engineScope.isNotEmpty ? engineScope : enabledIds,
-              selectedIds: selected,
+              selectedIds: scoped,
             )) {
           _engineAllMode = engineFullAllSelected(
             enabledIds: engineScope.isNotEmpty ? engineScope : enabledIds,
-            selectedIds: selected,
+            selectedIds: scoped,
           );
         }
       });
@@ -3632,8 +3647,28 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           engineVisibleCategories: _effectiveEngineCategories,
           engineCategoryOptions: _engineCategoryFilterOptions,
           engineCategoryMediaType: _enginePanelCategory,
-          onEngineCategoriesChanged: (v) =>
-              setState(() => _engineVisibleCategories = v),
+          onEngineCategoriesChanged: (v) {
+            final scope = EngineCategories.matchingPluginIds(
+              packs: _enginePacks,
+              categories: v,
+            );
+            final next = EngineCategories.scopeSelectionIfFullAll(
+              selected: _engineSelectedPluginIds,
+              enabledIds: enabledEnginePluginIds(_enginePacks),
+              scope: scope,
+            );
+            setState(() {
+              _engineVisibleCategories = v;
+              _engineSelectedPluginIds = next;
+            });
+            unawaited(
+              EngineService.instance.saveSourcesSelectedPluginIds(
+                next,
+                panelCategory: _enginePanelCategory,
+              ),
+            );
+            _savePanelUiCache();
+          },
           showAudioFilters: _showsTorrents,
           activeAudioFilters: _audioFilters,
           onAudioFiltersChanged: (v) => setState(() => _audioFilters = v),

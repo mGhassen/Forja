@@ -52,6 +52,12 @@ class EngineService {
   int _catalogGeneration = 0;
   EngineRuntime? _liveMetaRuntime;
 
+  /// Shared hop scripts for EngineJS extracts — rebuilt once per extract gen.
+  /// Parallel All-walk used to reload all hops per plugin (21×N disk + encode).
+  List<Map<String, Object?>>? _cachedHopPayload;
+  int _cachedHopPayloadGen = -1;
+  Future<List<Map<String, Object?>>>? _hopPayloadInFlight;
+
   static const _liveResolveMaxParallel = 1;
   int _liveResolveInFlight = 0;
   final List<Completer<void>> _liveResolveWaiters = [];
@@ -144,21 +150,22 @@ class EngineService {
 
   Future<void> _syncHopsForRuntime(
     EngineRuntime runtime,
-    List<EnginePack> packs,
-  ) async {
-    final hops = <EnginePlugin>[
-      for (final pack in packs)
-        for (final p in pack.plugins)
-          if (p.isHop && pack.isPluginActive(p)) p,
-    ];
+    List<EnginePack> packs, {
+    EnginePlugin? forPlugin,
+  }) async {
+    final hops = forPlugin == null
+        ? <EnginePlugin>[
+            for (final pack in packs)
+              for (final p in pack.plugins)
+                if (p.isHop && pack.isPluginActive(p)) p,
+          ]
+        : hopPluginsDeclaredFor(forPlugin, packs: packs);
     runtime.registerHops(hops);
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (!p.isHop || !pack.isPluginActive(p)) continue;
-        final code = await _loadScript(p, sourceUrl: pack.sourceUrl);
-        if (code != null && code.isNotEmpty) {
-          runtime.stashPluginCode(p.id, code);
-        }
+    for (final p in hops) {
+      final hit = PluginRegistry.packPluginFromPacks(packs, p.id);
+      final code = await _loadScript(p, sourceUrl: hit?.pack.sourceUrl);
+      if (code != null && code.isNotEmpty) {
+        runtime.stashPluginCode(p.id, code);
       }
     }
   }
@@ -816,18 +823,14 @@ class EngineService {
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
     final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
-    final rt = runtime ?? EngineRuntime.instance;
-    if (runtime == null) {
-      await _syncHops(packs);
-    } else {
-      await _syncHopsForRuntime(rt, packs);
-    }
     if (hit == null ||
         !hit.pack.isPluginActive(hit.plugin) ||
         !hit.plugin.isExtractable) {
       return null;
     }
     final active = hit.plugin;
+    final rt = runtime ?? EngineRuntime.instance;
+    await _syncHopsForRuntime(rt, packs, forPlugin: active);
     // Soft categories only — Sources filter hides chips; selected plugins always run.
     final mediaType = _normalizeEngineMediaType(extractType);
 
@@ -1479,18 +1482,20 @@ class EngineService {
       'config': config,
     };
 
+    final hopPlugins = hopPluginsDeclaredFor(plugin, packs: packs);
     final hopPayload = <Map<String, Object?>>[];
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (!p.isHop || !pack.isPluginActive(p)) continue;
-        final hopCode = await _loadScript(p, sourceUrl: pack.sourceUrl);
-        if (hopCode == null || hopCode.isEmpty) continue;
-        hopPayload.add({
-          'id': p.id,
-          'hosts': p.hopHosts,
-          'code': hopCode,
-        });
-      }
+    for (final p in hopPlugins) {
+      final hit = PluginRegistry.packPluginFromPacks(packs, p.id);
+      final hopCode = await _loadScript(
+        p,
+        sourceUrl: hit?.pack.sourceUrl,
+      );
+      if (hopCode == null || hopCode.isEmpty) continue;
+      hopPayload.add({
+        'id': p.id,
+        'hosts': p.hopHosts,
+        'code': hopCode,
+      });
     }
     if (gen != _extractGeneration) return null;
 

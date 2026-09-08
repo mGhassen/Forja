@@ -323,7 +323,7 @@ Future<void> runEngineAutoPlay({
     var pluginIds = [
       for (final id in orderedIds)
         if (selected.contains(id) &&
-            _pluginVisible(loadedPacks, id, category, selected))
+            _pluginVisible(loadedPacks, id, category))
           id,
     ];
 
@@ -812,7 +812,6 @@ bool _pluginVisible(
   List<EnginePack> packs,
   String pluginId,
   String panelCategory,
-  Set<String> selected,
 ) {
   final cats = EngineCategories.defaultsForPanelCategory(panelCategory);
   for (final pack in packs) {
@@ -821,7 +820,6 @@ bool _pluginVisible(
       return EngineCategories.pluginChipVisible(
         plugin: p,
         visibleCategories: cats,
-        selectedPluginIds: selected,
       );
     }
   }

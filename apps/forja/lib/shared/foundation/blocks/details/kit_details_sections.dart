@@ -82,11 +82,12 @@ List<Widget> buildKitDetailRailSections({
   required String pluginId,
   required List<KitDetailRailSection> rails,
   required bool tvFocus,
+  int tvRowOrderBase = 0,
   VoidCallback? firstMetaFocusUp,
 }) {
   if (rails.isEmpty) return const [];
 
-  var order = 0;
+  var order = tvRowOrderBase;
   final sections = <Widget>[];
   for (final rail in rails) {
     final rowOrder = order++;
@@ -126,6 +127,7 @@ List<Widget> buildKitTmdbDetailSections({
   required String pluginId,
   required RichMediaDetails? rich,
   required bool tvFocus,
+  int tvRowOrderBase = 0,
   VoidCallback? firstMetaFocusUp,
   List<Movie>? recommendations,
   void Function(Movie movie)? onRecommendationTap,
@@ -145,7 +147,7 @@ List<Widget> buildKitTmdbDetailSections({
     return const [];
   }
 
-  var order = 0;
+  var order = tvRowOrderBase;
   final sections = <Widget>[];
   int? castOrder;
   int? crewOrder;

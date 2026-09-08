@@ -14,6 +14,7 @@ class EnginePlugin {
     this.kind = 'http',
     this.hostId,
     this.hosts = const [],
+    this.hops = const [],
     this.enabled = true,
     this.config = const {},
     this.prelude = '',
@@ -44,6 +45,10 @@ class EnginePlugin {
 
   /// Hostnames this plugin handles. Used by `kind: hop` (`ctx.hop(url)`).
   final List<String> hosts;
+
+  /// Hop plugin ids this HTTP extractor may call via `ctx.hop(url)`.
+  /// Empty = attach no hop scripts. `["*"]` = all active hops (dynamic embeds).
+  final List<String> hops;
   final bool enabled;
   final Map<String, dynamic> config;
 
@@ -191,6 +196,7 @@ class EnginePlugin {
           : 'http',
       hostId: (j['hostId'] as String?)?.trim(),
       hosts: _stringList(j['hosts']),
+      hops: _stringList(j['hops']),
       enabled: (j['enabled'] as bool?) ?? true,
       config: config,
       prelude: preludeRaw.isNotEmpty ? preludeRaw : preludeFromConfig,
@@ -220,6 +226,7 @@ class EnginePlugin {
     'kind': kind,
     if (hostId != null) 'hostId': hostId,
     if (hosts.isNotEmpty) 'hosts': hosts,
+    if (hops.isNotEmpty) 'hops': hops,
     'enabled': enabled,
     if (config.isNotEmpty) 'config': config,
     if (prelude.isNotEmpty) 'prelude': prelude,
@@ -246,6 +253,7 @@ class EnginePlugin {
     kind: kind,
     hostId: hostId,
     hosts: hosts,
+    hops: hops,
     enabled: enabled ?? this.enabled,
     config: config,
     prelude: prelude ?? this.prelude,
@@ -259,6 +267,36 @@ class EnginePlugin {
     defaultCapabilities: defaultCapabilities,
     liveLegacyIds: liveLegacyIds,
   );
+}
+
+/// Hop scripts to attach to one EngineJS extract for [plugin].
+///
+/// Empty [EnginePlugin.hops] → none. `*` → every active hop. Otherwise only
+/// listed hop ids (unknown ids ignored).
+List<EnginePlugin> hopPluginsDeclaredFor(
+  EnginePlugin plugin, {
+  required Iterable<EnginePack> packs,
+}) {
+  if (plugin.hops.isEmpty) return const [];
+  final wantAll = plugin.hops.any((h) => h.trim() == '*');
+  final want = wantAll
+      ? null
+      : {
+          for (final h in plugin.hops)
+            if (h.trim().isNotEmpty && h.trim() != '*') h.trim(),
+        };
+  if (!wantAll && (want == null || want.isEmpty)) return const [];
+  final out = <EnginePlugin>[];
+  final seen = <String>{};
+  for (final pack in packs) {
+    for (final p in pack.plugins) {
+      if (!p.isHop || !pack.isPluginActive(p)) continue;
+      if (want != null && !want.contains(p.id)) continue;
+      if (!seen.add(p.id)) continue;
+      out.add(p);
+    }
+  }
+  return out;
 }
 
 /// Retired `catalog-*` / `live-*` plugin ids for unified `live_sport` migration.

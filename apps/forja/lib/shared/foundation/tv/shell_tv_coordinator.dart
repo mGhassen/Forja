@@ -171,6 +171,7 @@ abstract final class ShellTvFocusCoordinator {
   /// Retries across frames when hub heroes are still on shimmer; falls back to
   /// [restoreTabFocusAfterNav] so focus does not stay on the rail silently.
   static void enterTabFromNav(String tabId) {
+    _clearFocusBeforeNav();
     void attempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (focusTabEnterFromNav(tabId) && _pageHasContentFocus(tabId)) {
@@ -227,7 +228,54 @@ abstract final class ShellTvFocusCoordinator {
     return null;
   }
 
-  static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
+  static bool focusActiveNavTab() {
+    _captureFocusBeforeNav();
+    return ShellTvFocus.focusCurrentNavTab();
+  }
+
+  /// Remember the page control under focus before the rail takes D-pad.
+  ///
+  /// Details Play / hub hero often steal focus for a frame while leaving the
+  /// overlay or catalog; that overwrites [_tabMemory] so RIGHT would land on
+  /// Play instead of the episode / card the user left.
+  static void _captureFocusBeforeNav() {
+    // Prefer the tab whose remembered node still has focus (episode / card).
+    String? focusedTab;
+    ShellTvFocusMemory? focusedMem;
+    for (final e in _tabMemory.entries) {
+      final mem = e.value;
+      if (mem.zone == ShellTvZone.nav) continue;
+      final node = mem.node;
+      if (node == null) continue;
+      try {
+        if (node.hasFocus) {
+          focusedTab = e.key;
+          focusedMem = mem;
+          break;
+        }
+      } catch (_) {}
+    }
+    final tabId =
+        focusedTab ?? _navRestoreTabId(ShellTvFocus.currentNavTabId ?? '');
+    final mem = focusedMem ?? memoryFor(tabId);
+    if (mem == null || mem.zone == ShellTvZone.nav) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+      return;
+    }
+    _navLeaveTabId = tabId;
+    _navLeaveSnapshot = ShellTvFocusMemory(
+      zone: mem.zone,
+      rowId: mem.rowId,
+      itemIndex: mem.itemIndex,
+      node: mem.node,
+    );
+  }
+
+  static void _clearFocusBeforeNav() {
+    _navLeaveTabId = '';
+    _navLeaveSnapshot = null;
+  }
 
   /// Drop rail focus so desktop nav chrome (scale + label) does not stick.
   static void unfocusShellNav() {
@@ -249,6 +297,12 @@ abstract final class ShellTvFocusCoordinator {
   static DateTime? _lastBackHandledAt;
   static String _overlayReturnTabId = '';
   static ShellTvFocusMemory? _overlayReturnSnapshot;
+
+  /// Frozen page focus when D-pad left the page for the nav rail.
+  /// Survives Play/autofocus overwriting [_tabMemory] before RIGHT restores.
+  static String _navLeaveTabId = '';
+  static ShellTvFocusMemory? _navLeaveSnapshot;
+
   static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
   /// HW + didPopRoute land a few ms apart. Shorter than [_backDebounceWindow]
@@ -265,6 +319,8 @@ abstract final class ShellTvFocusCoordinator {
     _backStepPending = false;
     _overlayReturnTabId = '';
     _overlayReturnSnapshot = null;
+    _navLeaveTabId = '';
+    _navLeaveSnapshot = null;
     _dismissTransientOverlay = null;
     _dismissSourcesPanel = null;
     PlayerBackExitGate.resetForTest();
@@ -492,10 +548,13 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static void _focusActiveNavFromPage() {
+    _captureFocusBeforeNav();
     FocusManager.instance.primaryFocus?.unfocus();
-    if (focusActiveNavTab()) return;
+    // Do not call [focusActiveNavTab] — that would re-capture after unfocus
+    // (empty / Play pollution) and wipe the leave snapshot.
+    if (ShellTvFocus.focusCurrentNavTab()) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      focusActiveNavTab();
+      ShellTvFocus.focusCurrentNavTab();
     });
   }
 
@@ -569,11 +628,14 @@ abstract final class ShellTvFocusCoordinator {
   /// Overlay routes (details, search) own their own TV tab memory.
   static String _navRestoreTabId(String shellTabId) {
     if (!shellOverlayCanPop()) return shellTabId;
-    final detailsRows = _rowsByTab[MediaDetailsTv.tabId];
-    if (detailsRows != null && detailsRows.isNotEmpty) {
+    // Prefer frozen leave target (episode before Play pollution on the way out).
+    if (_navLeaveTabId == MediaDetailsTv.tabId ||
+        _tabMemory.containsKey(MediaDetailsTv.tabId) ||
+        (_rowsByTab[MediaDetailsTv.tabId]?.isNotEmpty ?? false)) {
       return MediaDetailsTv.tabId;
     }
-    if (_tabMemory.containsKey('search') ||
+    if (_navLeaveTabId == 'search' ||
+        _tabMemory.containsKey('search') ||
         (_rowsByTab['search']?.isNotEmpty ?? false)) {
       return 'search';
     }
@@ -689,39 +751,83 @@ abstract final class ShellTvFocusCoordinator {
   /// Snapshots tab memory **before** moving focus — an empty
   /// [FocusManager.primaryFocus.unfocus] gap lets Flutter autofocus hero
   /// Play, which overwrites memory via [ShellTvFocusMeta.notifyFocused].
+  ///
+  /// [FocusNode.requestFocus] only *marks* the next focus; the manager
+  /// applies it in a microtask. Falling through to [_restoreDefault] in the
+  /// same turn used to mark hero Play instead, start scroll-to-top, then a
+  /// post-frame reclaim fought the viewport (ATV home rails ← nav →).
+  ///
+  /// Details: [_captureFocusBeforeNav] freezes episode/row memory when leaving
+  /// for the rail so a mid-transfer Play focus cannot win on RIGHT.
   static void restoreTabFocusAfterNav(String tabId) {
     if (tabId.isEmpty) return;
-    final snapshot = _tabMemory[tabId];
+    final leaveSnap =
+        (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
+    final snapshot = leaveSnap ?? _tabMemory[tabId];
+    final hasMemory = snapshot != null && snapshot.zone != ShellTvZone.nav;
 
-    void attempt() {
-      if (snapshot != null && snapshot.zone != ShellTvZone.nav) {
+    bool landed() {
+      if (!hasMemory) return _pageHasFocus();
+      if (_memoryHasFocus(tabId, snapshot!)) return true;
+      // Lazy ListView may have focused a mounted neighbor in the same row.
+      if (snapshot.zone == ShellTvZone.row && snapshot.rowId != null) {
+        final live = _tabMemory[tabId];
+        if (live != null &&
+            live.zone == ShellTvZone.row &&
+            live.rowId == snapshot.rowId &&
+            _pageHasFocus()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    void attempt({required bool allowDefault}) {
+      if (hasMemory) {
         // Re-apply in case a mid-frame autofocus polluted live memory.
-        saveFocus(tabId, snapshot);
-        if (_restoreFromMemory(tabId, snapshot) && _pageHasFocus()) return;
-        if (_tryRestoreLiveNode(snapshot) && _pageHasFocus()) return;
+        saveFocus(tabId, snapshot!);
+        if (_restoreOverlayMemory(tabId, snapshot) && landed()) return;
+        if (_tryRestoreLiveNode(snapshot) && landed()) return;
+        if (!allowDefault) return;
+        // Last resort for catalog / details row memory: never [_restoreDefault]
+        // (hero Play + scroll-to-top). Keep retrying the remembered control.
+        if (snapshot.zone == ShellTvZone.row ||
+            snapshot.zone == ShellTvZone.grid ||
+            snapshot.zone == ShellTvZone.chipStrip) {
+          return;
+        }
       }
       if (!restoreTabFocus(tabId)) {
         _restoreDefault(tabId);
       }
     }
 
-    // Prefer a synchronous requestFocus so nav loses focus by transfer —
-    // no empty unfocus gap for Play autofocus to steal.
-    attempt();
-    if (_pageHasFocus()) return;
+    // Prefer a synchronous mark so nav loses focus by transfer once the
+    // manager applies — do not chain [_restoreDefault] in the same turn.
+    attempt(allowDefault: false);
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    if (landed()) {
+      _clearFocusBeforeNav();
+      return;
+    }
 
-    // Two post-frame passes - ExcludeFocus on the tab stack lifts in the same
-    // frame as overlay pop / rail RIGHT; hero Play may not be focusable yet.
+    // Post-frame passes — ExcludeFocus / overlay stack may lift next frame;
+    // catalog nodes may not be focusable until then.
     void scheduleAttempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        attempt();
-        if (!_pageHasFocus() && remaining > 0) {
+        attempt(allowDefault: remaining <= 1);
+        FocusManager.instance.applyFocusChangesIfNeeded();
+        if (landed()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        if (remaining > 0) {
           scheduleAttempt(remaining: remaining - 1);
         }
       });
     }
 
-    scheduleAttempt(remaining: 2);
+    scheduleAttempt(remaining: 4);
   }
 
   static bool _pageHasFocus() {

@@ -178,7 +178,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [155-[open]-…](155-[open]-android-tv-iptv-4k-mediakit-crash.md) | ATV IPTV MediaKit: 4K live crashes app | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [156-[open]-…](156-[open]-android-tv-hold-scroll-accel.md) | ATV hold ↑/↓ scroll acceleration | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [157-[open]-…](157-[open]-android-tv-ken-burns-hero-stutter.md) | ATV Ken Burns hero backdrop stutter | P2 | Medium | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [158-[open]-…](158-[open]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [158-[fixed]-…](fixed/158-[fixed]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 8/8 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 11/11 · A 0/8 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -249,6 +249,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Cloud packs auto-install (no install confirm) | P0 | Critical | open | 4/4 · A 0/3 | — |
 | [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 3/3 · A 0/1 | — |
+| [245-[open]-…](245-[open]-forja-extract-ships-all-hops.md) | Forja extract ships every hop into every plugin job | P1 | High | open | 3/4 · A 1/3 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
 | [233-[fixed]-…](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md) | ATV Exo IPTV periodic buffering (Xiaomi / no continuity proxy) | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
