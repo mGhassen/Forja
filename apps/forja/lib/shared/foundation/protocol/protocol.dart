@@ -280,9 +280,10 @@ class MetaOpenExtract {
     final idN = int.tryParse(id);
     if (surface == 'tmdb') {
       final mt = extras['mediaType']?.toString() ?? 'movie';
+      final kind = mt == 'tv' || mt == 'series' ? 'tv' : 'movie';
       return MetaOpenExtract(
-        resolveType: mt == 'tv' || mt == 'series' ? 'tv' : 'movie',
-        panelCategory: 'movie',
+        resolveType: kind,
+        panelCategory: kind,
         ctx: {'tmdbId': ?idN},
       );
     }

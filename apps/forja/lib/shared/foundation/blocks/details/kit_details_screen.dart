@@ -22,6 +22,7 @@ import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/blocks/details/play_filters.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
@@ -525,7 +526,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     );
   }
 
-  void _scrollDetailsHeroIntoView() {
+  void _scrollDetailsToTop() {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
       0,
@@ -534,28 +535,36 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     );
   }
 
-  /// ↑ from the first meta rail (Characters / Cast) — scroll hero into view
-  /// and land D-pad on Play. Scroll-only left focus on a disposing card and
-  /// Flutter dumped it onto the bottom recommendations row.
+  /// Episodes / seasons ↑ → Play (claim focus first so scroll cannot dump onto
+  /// More Like This).
   void _revealedDetailsHeroPlayFocus() {
-    void focusPlay() {
-      if (!mounted) return;
-      if (_heroPlayFocus.canRequestFocus) {
-        _heroPlayFocus.requestFocus();
-      }
+    if (_heroPlayFocus.canRequestFocus) {
+      _heroPlayFocus.requestFocus();
     }
+    _scrollDetailsToTop();
+  }
 
-    if (!_scrollController.hasClients) {
-      focusPlay();
-      return;
-    }
-    _scrollController
-        .animateTo(
+  /// Characters / Cast ↑ on series → episodes (then seasons → Play → back).
+  void _focusDetailsEpisodesFromMeta() {
+    final handle = ShellTvFocusCoordinator.rowHandle(
+      MediaDetailsTv.tabId,
+      'episodes',
+    );
+    final idx = handle?.lastFocusedIndex ?? 0;
+    final landed = ShellTvFocusCoordinator.focusRowItem(
+          MediaDetailsTv.tabId,
+          'episodes',
+          idx,
+        ) ||
+        ShellTvFocusCoordinator.focusRowItem(
+          MediaDetailsTv.tabId,
+          'seasons',
           0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-        )
-        .whenComplete(focusPlay);
+        );
+    if (!landed && _heroPlayFocus.canRequestFocus) {
+      _heroPlayFocus.requestFocus();
+    }
+    _scrollDetailsToTop();
   }
 
   void _focusDetailsBack() {
@@ -564,6 +573,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     } else {
       maybePopShellOverlay();
     }
+    _scrollDetailsToTop();
   }
 
   MetaVideo? _selectedVideo() {
@@ -701,6 +711,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       });
     }
 
+    // Series episode/season ↑ → Play. Films have no episode rail.
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
     final listTarget = ListFollowTarget.fromMeta(
@@ -785,55 +796,105 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         ? (progress?['durationMs'] as num?)?.toInt()
         : null;
 
-    final firstMetaFocusUp = tvFocus ? _revealedDetailsHeroPlayFocus : null;
+    // Series: Characters ↑ → episodes (scroll top). Film: Characters ↑ → Play.
+    final firstMetaFocusUp = !tvFocus
+        ? null
+        : (hasEpisodes
+            ? _focusDetailsEpisodesFromMeta
+            : _revealedDetailsHeroPlayFocus);
 
-    // Episodes own 0..(multi-season ? 1 : 0). Pack + TMDB rails continue after
-    // so ↑ from Characters walks to episodes (or Play when there are none).
+    // Episodes own 0..(multi-season ? 1 : 0). Body rails continue after.
+    // Order: Characters/Crew/Trailers → other pack rails → More Like This last.
+    // Home used to put pack recommendations above Cast, so ↑ from Characters
+    // landed on More Like This.
     final metaRowBase = !hasEpisodes
         ? 0
         : (seasons.length > 1 ? 2 : 1);
-    final packRailCount =
-        _packRails.where((r) => r.items.isNotEmpty).length;
-    // Skip-to-Play only when no episode rail sits above the first meta row.
-    final metaUpToPlay = hasEpisodes ? null : firstMetaFocusUp;
+    final packRecs = _packRails
+        .where((r) => r.id == 'recommendations' && r.items.isNotEmpty)
+        .toList();
+    final packOther = _packRails
+        .where((r) => r.id != 'recommendations' && r.items.isNotEmpty)
+        .toList();
+    final hasPackRecs = packRecs.isNotEmpty;
+    final iptvRecs = isIptv && _iptvRecHits.isNotEmpty
+        ? _iptvRecHits.map((h) => h.movie).toList()
+        : null;
 
-    final packSections = buildKitDetailRailSections(
-      context: context,
-      pluginId: widget.pluginId,
-      rails: _packRails,
-      tvFocus: tvFocus,
-      tvRowOrderBase: metaRowBase,
-      firstMetaFocusUp: metaUpToPlay,
-    );
-    final tmdbSections = buildKitTmdbDetailSections(
+    final identitySections = buildKitTmdbDetailSections(
       context: context,
       pluginId: widget.pluginId,
       rich: _rich,
       tvFocus: tvFocus,
-      tvRowOrderBase: metaRowBase + packRailCount,
-      firstMetaFocusUp: packSections.isEmpty ? metaUpToPlay : null,
-      recommendations: isIptv && _iptvRecHits.isNotEmpty
-          ? _iptvRecHits.map((h) => h.movie).toList()
-          : null,
-      onRecommendationTap: isIptv && _iptvPortal != null
-          ? (movie) {
-              final open = KitIptvPlayHooks.openVodStream;
-              if (open == null) return;
-              for (final hit in _iptvRecHits) {
-                if (hit.movie.id != movie.id) continue;
-                unawaited(
-                  open(
-                    context,
-                    stream: hit.stream,
-                    portal: _iptvPortal!,
-                  ),
-                );
-                break;
-              }
-            }
-          : null,
+      tvRowOrderBase: metaRowBase,
+      firstMetaFocusUp: firstMetaFocusUp,
+      includeRecommendations: false,
     );
-    final sections = [...packSections, ...tmdbSections];
+    final packMidSections = buildKitDetailRailSections(
+      context: context,
+      pluginId: widget.pluginId,
+      rails: packOther,
+      tvFocus: tvFocus,
+      tvRowOrderBase: metaRowBase + identitySections.length,
+      firstMetaFocusUp:
+          identitySections.isEmpty ? firstMetaFocusUp : null,
+    );
+    final recOrderBase =
+        metaRowBase + identitySections.length + packMidSections.length;
+    final packRecSections = hasPackRecs
+        ? buildKitDetailRailSections(
+            context: context,
+            pluginId: widget.pluginId,
+            rails: packRecs,
+            tvFocus: tvFocus,
+            tvRowOrderBase: recOrderBase,
+            firstMetaFocusUp: identitySections.isEmpty &&
+                    packMidSections.isEmpty
+                ? firstMetaFocusUp
+                : null,
+          )
+        : const <Widget>[];
+    final tmdbRecSections = hasPackRecs
+        ? const <Widget>[]
+        : buildKitTmdbDetailSections(
+            context: context,
+            pluginId: widget.pluginId,
+            rich: _rich,
+            tvFocus: tvFocus,
+            tvRowOrderBase: recOrderBase,
+            firstMetaFocusUp: identitySections.isEmpty &&
+                    packMidSections.isEmpty
+                ? firstMetaFocusUp
+                : null,
+            includeCast: false,
+            includeCrew: false,
+            includeTrailers: false,
+            includeRecommendations: true,
+            recommendations: iptvRecs,
+            onRecommendationTap: isIptv && _iptvPortal != null
+                ? (movie) {
+                    final open = KitIptvPlayHooks.openVodStream;
+                    if (open == null) return;
+                    for (final hit in _iptvRecHits) {
+                      if (hit.movie.id != movie.id) continue;
+                      unawaited(
+                        open(
+                          context,
+                          stream: hit.stream,
+                          portal: _iptvPortal!,
+                        ),
+                      );
+                      break;
+                    }
+                  }
+                : null,
+          );
+    final sections = [
+      ...identitySections,
+      ...packMidSections,
+      ...packRecSections,
+      ...tmdbRecSections,
+    ];
 
     return MediaDetailsScrollPage(
       scrollController: _scrollController,

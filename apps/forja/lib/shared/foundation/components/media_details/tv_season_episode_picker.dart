@@ -448,7 +448,19 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                     }
                   }
                   if (key == LogicalKeyboardKey.arrowUp) {
-                    widget.tvFocusUp?.call();
+                    // Multi-season: walk to seasons row. Do not jump to Play.
+                    if (widget.seasonCount > 1 &&
+                        tabId != null &&
+                        widget.tvEpisodeRowId != null) {
+                      ShellTvFocusCoordinator.moveVerticalInTab(
+                        tabId: tabId,
+                        rowId: _episodeRowId,
+                        currentIndex: i,
+                        down: false,
+                      );
+                    } else {
+                      widget.tvFocusUp?.call();
+                    }
                     return KeyEventResult.handled;
                   }
                   return KeyEventResult.ignored;

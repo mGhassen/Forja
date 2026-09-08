@@ -91,6 +91,8 @@ List<Widget> buildKitDetailRailSections({
   final sections = <Widget>[];
   for (final rail in rails) {
     final rowOrder = order++;
+    // Prefix so pack `recommendations` cannot collide with TMDB row ids.
+    final rowId = 'pack:${rail.id}';
     sections.add(
       KitSection<MetaItem>(
         title: rail.title,
@@ -98,7 +100,7 @@ List<Widget> buildKitDetailRailSections({
         embedded: true,
         compactTop: true,
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-        tvRowId: rail.id,
+        tvRowId: rowId,
         tvRowOrder: rowOrder,
         tvFocusUp: sections.isEmpty ? firstMetaFocusUp : null,
         cardBuilder: (ctx, item, index) => KitPosterCard(
@@ -114,7 +116,7 @@ List<Widget> buildKitDetailRailSections({
             item: item,
           ),
           tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-          tvRowId: rail.id,
+          tvRowId: rowId,
         ),
       ),
     );
@@ -131,13 +133,28 @@ List<Widget> buildKitTmdbDetailSections({
   VoidCallback? firstMetaFocusUp,
   List<Movie>? recommendations,
   void Function(Movie movie)? onRecommendationTap,
+  bool includeCast = true,
+  bool includeCrew = true,
+  bool includeTrailers = true,
+  bool includeRecommendations = true,
 }) {
-  if (rich == null) return const [];
+  if (rich == null &&
+      (recommendations == null || recommendations.isEmpty)) {
+    return const [];
+  }
 
-  final cast = rich.extras.cast;
-  final crew = _crewAsCast(rich.extras.crew);
-  final trailers = rich.extras.trailers;
-  final recs = recommendations ?? rich.extras.recommendations;
+  final cast = includeCast
+      ? (rich?.extras.cast ?? const <Map<String, String>>[])
+      : const <Map<String, String>>[];
+  final crew = includeCrew
+      ? _crewAsCast(rich?.extras.crew ?? const <Map<String, String>>[])
+      : const <Map<String, String>>[];
+  final trailers = includeTrailers
+      ? (rich?.extras.trailers ?? const <MediaTrailer>[])
+      : const <MediaTrailer>[];
+  final recs = !includeRecommendations
+      ? const <Movie>[]
+      : (recommendations ?? rich?.extras.recommendations ?? const <Movie>[]);
 
   final showCast = cast.isNotEmpty;
   final showCrew = crew.isNotEmpty;
