@@ -1,5 +1,6 @@
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 
 /// Query for [aggregateLiveFeed] — catalog filter + schedule window.
@@ -62,11 +63,20 @@ void rememberLiveFeedAllCatalogPool(List<Map<String, dynamic>> rows) {
 Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   LiveFeedQuery query,
 ) async {
+  final filter = query.catalogFilter.trim();
+
+  // Stremio live addon chip — one addon schedule (RFC-050), not merged into All.
+  if (isLiveStremioCatalogFilter(filter)) {
+    final base = liveStremioBaseUrlFromCatalogFilter(filter);
+    if (base == null) return const [];
+    final raw = await loadLiveStremioCatalogFeed(baseUrl: base);
+    return _filterLiveFeedRows(raw, query);
+  }
+
   await LivePluginEngine.warmPluginMeta();
   final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
   if (plugins.isEmpty) return const [];
 
-  final filter = query.catalogFilter.trim();
   final wanted = filter.isEmpty || filter == 'all'
       ? plugins
       : [
@@ -91,16 +101,7 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
         map.putIfAbsent('livePluginId', () => plugin.id);
         final item = liveMetaFromFeedRow(map);
         if (item.id.isEmpty || !seen.add(item.id)) continue;
-        if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
-          final kind = item.genres.isNotEmpty
-              ? item.genres.first
-              : (item.badge ?? '');
-          if (!kind.toLowerCase().contains(query.sportFilter.toLowerCase()) &&
-              item.type != query.sportFilter) {
-            continue;
-          }
-        }
-        if (!liveFeedRowMatches(map, item, query)) continue;
+        if (!_rowPassesSportAndWindow(map, item, query)) continue;
         out.add(map);
       }
     } catch (_) {
@@ -111,6 +112,38 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     rememberLiveFeedAllCatalogPool(out);
   }
   return out;
+}
+
+List<Map<String, dynamic>> _filterLiveFeedRows(
+  List<Map<String, dynamic>> rows,
+  LiveFeedQuery query,
+) {
+  final out = <Map<String, dynamic>>[];
+  final seen = <String>{};
+  for (final row in rows) {
+    final map = Map<String, dynamic>.from(row);
+    final item = liveMetaFromFeedRow(map);
+    if (item.id.isEmpty || !seen.add(item.id)) continue;
+    if (!_rowPassesSportAndWindow(map, item, query)) continue;
+    out.add(map);
+  }
+  return out;
+}
+
+bool _rowPassesSportAndWindow(
+  Map<String, dynamic> map,
+  MetaItem item,
+  LiveFeedQuery query,
+) {
+  if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
+    final kind =
+        item.genres.isNotEmpty ? item.genres.first : (item.badge ?? '');
+    if (!kind.toLowerCase().contains(query.sportFilter.toLowerCase()) &&
+        item.type != query.sportFilter) {
+      return false;
+    }
+  }
+  return liveFeedRowMatches(map, item, query);
 }
 
 /// Whether a schedule row matches the Status × Horizon window.

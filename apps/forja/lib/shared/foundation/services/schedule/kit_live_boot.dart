@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_catalog_filter_sheet.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_schedule_window_sheet.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
@@ -45,13 +46,15 @@ abstract final class KitLiveBoot {
   static void _registerTopBarHooks() {
     KitTopBarHostHooks.loadCatalogOptions = () async {
       final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
-      return [
+      final out = <({String id, String label})>[
         for (final p in plugins)
           (
             id: EngineService.normalizeLiveSportPluginId(p.id),
             label: p.name.trim().isEmpty ? p.id : p.name.trim(),
           ),
       ];
+      out.addAll(await liveStremioCatalogOptions());
+      return out;
     };
     KitTopBarHostHooks.openCatalogSheet = showKitCatalogFilterSheet;
     KitTopBarHostHooks.readSchedulePref = (ref) {

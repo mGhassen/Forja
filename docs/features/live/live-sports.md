@@ -24,7 +24,7 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 ## What you can do
 
 - Browse a **list of matches** (time, teams, status) on the list pack — loading uses the same dense-row layout (not cards). Tap a match to open the **right panel** (~40% width on desktop/TV) with **Providers** and **Live TV**. On phone the panel is a near-full-width sheet.
-- Use **Catalog** / **Schedule** in the top bar. **Schedule** opens Status (Airing / Upcoming / Airing + upcoming) and Horizon (1h–24h) — same sheet as before. Returning to the tab or a filter you already loaded reuses the recent schedule cache; **Refresh** (and pull-to-refresh) forces a full reload.
+- Use **Catalog** / **Schedule** in the top bar. **Catalog** lists Forja Live packs plus each Stremio addon enabled for **Live** (Settings → Sources). Pick an addon name to browse that sport schedule. **Schedule** opens Status (Airing / Upcoming / Airing + upcoming) and Horizon (1h–24h) — same sheet as before. Returning to the tab or a filter you already loaded reuses the recent schedule cache; **Refresh** (and pull-to-refresh) forces a full reload.
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same panel as IPTV; needed for **Live TV** matching when Forja Sports is on).
 - Filter by **sport circles** in the category bar when more than one sport is in the list. **24/7** covers always-on channels.
 - On the **Live Sports Cards** tab, browse a **landscape match card** grid and open **hero details** (Providers / Live TV in a two-column stream grid on desktop; shell navbar stays visible). Same streams as the side panel.

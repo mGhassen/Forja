@@ -258,7 +258,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [237-[fixed]-…](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) | Live Sports catalog + resolve parallel flutter_js JSC SIGSEGV | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | [190](190-[open]-forja-engine-parallel-jsc-crash.md) |
 | [238-[fixed]-…](fixed/238-[fixed]-live-sports-riverpod-build-stutter.md) | Live Sports schedule stutter (Riverpod mutate during build) | P0 | High | fixed | Complete · 2/2 · A 0/1 | [236](fixed/236-[fixed]-live-sports-feed-empty-enginejs.md) |
 | [239-[fixed]-…](fixed/239-[fixed]-arabic-hub-laroza-incomplete-catalog.md) | Arabic hub Larozaa catalog incomplete (page 1 / stale mirrors) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
-| [240-[fixed]-…](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) | Live Sports Providers missing sibling resolvers | P0 | High | fixed | Complete · 3/3 · A 0/2 | [223](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) |
+| [240-[fixed]-…](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) | Live Sports Providers missing sibling resolvers | P0 | High | fixed | Complete · 4/4 · A 0/2 | [223](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) |
+| [241-[fixed]-…](fixed/241-[fixed]-live-sports-stremio-catalog-missing-after-kit.md) | Live Sports Stremio Catalog + Providers missing after kit | P0 | High | fixed | Complete · 3/3 · A 0/2 | [050](../rfc/050-[open]-stremio-addon-feature-targets.md) |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

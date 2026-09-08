@@ -11,7 +11,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **Complete · 4 / 4** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 1 | I240-T01 | Soft-match same fixture across Forja Live catalogs and resolve every sibling plugin | ✅ |
 | 2 | I240-T02 | Warm/reuse all-catalog schedule pool for sibling lookup (no empty single-row resolve) | ✅ |
 | 3 | I240-T03 | Run Stremio soft-match in parallel with a short grace so hung `getStreams` cannot strand the panel | ✅ |
+| 4 | I240-T04 | Providers list uses streamed_streams / embeds only — no Goat unlock until play | ✅ |
 
 ---
 

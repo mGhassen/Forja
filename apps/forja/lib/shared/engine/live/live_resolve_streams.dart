@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
@@ -11,11 +12,11 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
-import 'package:forja/shared/foundation/lib/stremio_live_meta.dart';
 import 'package:rust/rust.dart'
-    show BuiltInPlayerContext, SettingsService, StremioAddonFeatures, StremioService;
+    show BuiltInPlayerContext, SettingsService, StremioService, runLiveSportsFetchJson;
 
 /// Live resolve + Stremio providers + native play (RFC-091).
 /// Live TV portal matching is [IptvPortalSportsMatchService] — not this class.
@@ -60,6 +61,22 @@ abstract final class LiveResolveStreams {
       }
     }
 
+    // Stremio Catalog chip row — direct /stream only (no Forja sibling fan-out).
+    if (match.isStremio) {
+      try {
+        await addBatch(await _loadStremioProviders(match));
+      } catch (e, st) {
+        debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
+      }
+      if (out.isNotEmpty) {
+        _providersCache[cacheKey] = _ProvidersCacheEntry(
+          expiresAt: DateTime.now().add(_providersCacheTtl),
+          sources: List<IptvPlaySource>.from(out),
+        );
+      }
+      return out;
+    }
+
     // Start Stremio soft-match in parallel, but never let it strand the panel
     // after Forja rows are ready (getStreams can hang past catalog soft-match).
     final stremioFuture = _loadStremioProviders(match);
@@ -71,17 +88,17 @@ abstract final class LiveResolveStreams {
       debugPrint('[LiveResolveStreams] Forja Live providers error: $e\n$st');
     }
 
-    final stremioGrace = forja.isEmpty
-        ? _stremioProvidersTimeout
-        : const Duration(seconds: 4);
     try {
-      final stremio = await stremioFuture.timeout(stremioGrace, onTimeout: () {
-        debugPrint(
-          '[LiveResolveStreams] Stremio providers timed out after '
-          '${stremioGrace.inSeconds}s',
-        );
-        return const <IptvPlaySource>[];
-      });
+      final stremio = await stremioFuture.timeout(
+        _stremioProvidersTimeout,
+        onTimeout: () {
+          debugPrint(
+            '[LiveResolveStreams] Stremio providers timed out after '
+            '${_stremioProvidersTimeout.inSeconds}s',
+          );
+          return const <IptvPlaySource>[];
+        },
+      );
       await addBatch(stremio);
     } catch (e, st) {
       debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
@@ -228,6 +245,7 @@ abstract final class LiveResolveStreams {
     return _stremioCatalogEventMatch(a, b);
   }
 
+  /// Providers list only — embed / stream mirrors. Goat unlock happens on play.
   static Future<List<MatchStream>> _forjaLiveStreamsFromSource(
     MatchEvent match,
     MatchSourceRef source,
@@ -237,15 +255,19 @@ abstract final class LiveResolveStreams {
     );
     if (pluginId.isEmpty) return const [];
 
-    final meta = await _inlineStreamsForSourceRef(match, source);
-    if (meta.isNotEmpty) {
-      final pluginSource = source.source.trim().isNotEmpty
-          ? source.source.trim().toLowerCase()
-          : LivePluginEngine.cachedResolveSourceToken(pluginId);
+    final token = source.source.trim().toLowerCase();
+    if (token == 'echo') return const [];
+
+    final pluginSource = token.isNotEmpty
+        ? token
+        : LivePluginEngine.cachedResolveSourceToken(pluginId);
+
+    final inline = await _inlineStreamsForSourceRef(match, source);
+    if (inline.isNotEmpty) {
       final out = <MatchStream>[];
       final seen = <String>{};
-      for (var i = 0; i < meta.length; i++) {
-        final row = meta[i];
+      for (var i = 0; i < inline.length; i++) {
+        final row = inline[i];
         final embed = row.embedUrl.trim().isNotEmpty
             ? row.embedUrl.trim()
             : source.iframe.trim();
@@ -266,60 +288,123 @@ abstract final class LiveResolveStreams {
       if (out.isNotEmpty) return out;
     }
 
-    final rows = await EngineService.instance.runLivePlugin(
-      pluginId: pluginId,
-      action: 'resolve',
-      params: {
-        'matchId': source.id,
-        'eventId': match.id,
-        'source': source.source,
-        'category': match.category,
-        'title': match.title,
-        'stream': '1',
-        'embedUrl': source.iframe,
-        'iframe': source.iframe,
-        'viewers': match.viewers,
-      },
-    );
-    if (rows.isEmpty) {
-      if (source.iframe.trim().isNotEmpty) {
-        final token = LivePluginEngine.cachedResolveSourceToken(pluginId);
+    if (_isStreamedPkGoatSource(token)) {
+      final listed = await _fetchStreamedStreams(source, allowFallback: true);
+      if (listed.isNotEmpty) {
         return [
-          MatchStream(
-            id: source.id,
-            streamNo: 1,
-            language: '',
-            hd: false,
-            embedUrl: source.iframe,
-            source: token.isNotEmpty ? token : source.source,
-            viewers: match.viewers,
-            directPlayback: false,
-          ),
+          for (final s in listed)
+            MatchStream(
+              id: s.id.isNotEmpty ? s.id : source.id,
+              streamNo: s.streamNo > 0 ? s.streamNo : 1,
+              language: s.language,
+              hd: s.hd,
+              embedUrl: s.embedUrl,
+              source: s.source.trim().isNotEmpty ? s.source : pluginSource,
+              viewers: s.viewers > 0 ? s.viewers : match.viewers,
+              directPlayback: false,
+            ),
         ];
       }
-      return const [];
     }
 
-    final pluginSource = source.source.trim().isNotEmpty
-        ? source.source.trim().toLowerCase()
-        : LivePluginEngine.cachedResolveSourceToken(pluginId);
-    final out = <MatchStream>[];
-    for (var i = 0; i < rows.length; i++) {
-      final row = rows[i];
-      if (row['webviewOnly'] == true) continue;
-      final url = (row['url'] ?? '').toString().trim();
-      if (url.isEmpty) continue;
-      out.add(
-        _streamFromResolveRow(
-          row: row,
-          source: source,
-          match: match,
-          pluginSource: pluginSource,
-          index: i,
+    final iframe = source.iframe.trim();
+    if (iframe.isNotEmpty) {
+      return [
+        MatchStream(
+          id: source.id,
+          streamNo: 1,
+          language: '',
+          hd: false,
+          embedUrl: iframe,
+          source: pluginSource.isNotEmpty ? pluginSource : source.source,
+          viewers: match.viewers,
+          directPlayback: false,
         ),
-      );
+      ];
     }
-    return out;
+
+    // Non-Streamed packs: one pending row — unlock only when the user plays.
+    if (source.id.trim().isEmpty) return const [];
+    return [
+      MatchStream(
+        id: source.id,
+        streamNo: 1,
+        language: '',
+        hd: false,
+        embedUrl: 'pending:${match.id}:${source.id}:1',
+        source: pluginSource.isNotEmpty ? pluginSource : source.source,
+        viewers: match.viewers,
+        directPlayback: false,
+      ),
+    ];
+  }
+
+  static bool _isStreamedPkGoatSource(String source) {
+    switch (source.trim().toLowerCase()) {
+      case 'admin':
+      case 'delta':
+      case 'golf':
+      case 'ppv':
+      case 'bravo':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static Future<List<MatchStream>> _fetchStreamedStreams(
+    MatchSourceRef sourceRef, {
+    bool allowFallback = true,
+  }) async {
+    if (sourceRef.source.trim().toLowerCase() == 'echo') return const [];
+    try {
+      final raw = await runLiveSportsFetchJson(
+        jsonEncode({
+          'action': 'streamed_streams',
+          'source': sourceRef.source,
+          'id': sourceRef.id,
+        }),
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) {
+        return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
+      }
+      final list = parsed['items'] as List? ?? [];
+      final rows = list
+          .map((s) {
+            try {
+              return MatchStream.fromJson(s as Map<String, dynamic>);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<MatchStream>()
+          .where((s) => s.embedUrl.isNotEmpty)
+          .toList();
+      if (rows.isNotEmpty) return rows;
+      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
+    } catch (_) {
+      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
+    }
+  }
+
+  static List<MatchStream> _streamedEmbedFallback(MatchSourceRef sourceRef) {
+    final source = sourceRef.source.trim();
+    final id = sourceRef.id.trim();
+    if (source.isEmpty || id.isEmpty) return const [];
+    if (!_isStreamedPkGoatSource(source)) return const [];
+    if (source.toLowerCase() == 'echo') return const [];
+    return [
+      MatchStream(
+        id: id,
+        streamNo: 1,
+        language: '',
+        hd: false,
+        embedUrl: 'https://embed.st/embed/$source/$id/1',
+        source: source,
+        viewers: 0,
+      ),
+    ];
   }
 
   static Future<List<MatchStream>> _inlineStreamsForSourceRef(
@@ -386,13 +471,14 @@ abstract final class LiveResolveStreams {
     final stream = choice.stream;
     final match = choice.match;
     final embed = stream.embedUrl.trim();
+    final pending = embed.isEmpty || embed.startsWith('pending:');
     final sourceLabel = _sourceLabel(stream.source);
     final title = _streamTitle(stream, sourceLabel);
-    final playUrl = embed.isNotEmpty
-        ? embed
-        : 'pending:${match.id}:${stream.id}:${stream.streamNo}';
-    final directPlayback = stream.directPlayback ||
-        (embed.isNotEmpty && iptvLiveEnginePlayUrlReady(embed));
+    final playUrl = pending
+        ? 'pending:${match.id}:${stream.id}:${stream.streamNo}'
+        : embed;
+    final directPlayback = !pending &&
+        (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed));
     return IptvPlaySource(
       url: playUrl,
       label: title,
@@ -402,9 +488,9 @@ abstract final class LiveResolveStreams {
       liveProviderBadge: _serverLabelFor(match),
       liveViewerCount: effectiveMatchStreamViewers(stream, match),
       liveStreamHd: stream.hd,
-      liveEngineEmbedUrl: directPlayback
+      liveEngineEmbedUrl: directPlayback || pending
           ? null
-          : (embed.isEmpty || iptvLiveEnginePlayUrlReady(embed) ? null : embed),
+          : (iptvLiveEnginePlayUrlReady(embed) ? null : embed),
       liveEngineResolveParams: _liveEngineResolveParams(match, stream),
     );
   }
@@ -481,7 +567,7 @@ abstract final class LiveResolveStreams {
     // Soft match against installed sport addons (same event title/teams).
     List<MatchEvent> catalog;
     try {
-      catalog = await _fetchStremioSportMatches();
+      catalog = await fetchLiveStremioSportMatches();
     } catch (e) {
       debugPrint('[LiveResolveStreams] Stremio catalog error: $e');
       return const [];
@@ -583,110 +669,6 @@ abstract final class LiveResolveStreams {
     final titleA = matchTextKey(engine.title);
     final titleB = matchTextKey(stremio.title);
     return titleA.isNotEmpty && titleA == titleB;
-  }
-
-  static Future<List<MatchEvent>> _fetchStremioSportMatches() async {
-    final stremio = StremioService();
-    final addons = await stremio.getAddonsForFeature(StremioAddonFeatures.live);
-    if (addons.isEmpty) return const [];
-    final out = <MatchEvent>[];
-    final seen = <String>{};
-    for (final addon in addons) {
-      final baseUrl = addon['baseUrl']?.toString() ?? '';
-      if (baseUrl.isEmpty) continue;
-      final addonName = (addon['name'] ?? addon['manifest']?['name'] ?? '')
-          .toString()
-          .trim();
-      final catalogs = StremioService.sportCatalogsForLive(addon);
-      for (final cat in catalogs) {
-        final type = cat['type']?.toString() ?? 'sport';
-        final catalogId = cat['id']?.toString() ?? '';
-        if (catalogId.isEmpty) continue;
-        try {
-          final metas = await stremio.getCatalog(
-            baseUrl: baseUrl,
-            type: type,
-            id: catalogId,
-          );
-          for (final meta in metas) {
-            final m = _streamedMatchFromStremioMeta(
-              meta,
-              addonBaseUrl: baseUrl,
-              addonName: addonName,
-            );
-            if (m == null || !seen.add(m.id)) continue;
-            out.add(m);
-          }
-        } catch (e) {
-          debugPrint(
-            '[LiveResolveStreams] Stremio catalog error ($baseUrl/$catalogId): $e',
-          );
-        }
-      }
-    }
-    return out;
-  }
-
-  static MatchEvent? _streamedMatchFromStremioMeta(
-    Map<String, dynamic> meta, {
-    required String addonBaseUrl,
-    String addonName = '',
-  }) {
-    final id = meta['id']?.toString().trim() ?? '';
-    if (id.isEmpty) return null;
-    final title = meta['name']?.toString().trim() ?? '';
-    if (title.isEmpty) return null;
-    final genres = meta['genres'] is List ? meta['genres'] as List : const [];
-    final release = meta['releaseInfo']?.toString().toUpperCase() ?? '';
-    final descRaw = meta['description']?.toString() ?? '';
-    final desc = descRaw.toUpperCase();
-    final dateMs = _stremioKickoffMs(meta);
-    final poster = meta['poster']?.toString() ?? '';
-    final type = meta['type']?.toString().trim();
-    final live = stremioMetaLooksLive(
-      releaseInfoUpper: release,
-      descriptionUpper: desc,
-      poster: poster,
-      genres: genres,
-    );
-    final alwaysOn = stremioMetaIsAlwaysOnChannel(
-      looksLive: live,
-      dateMs: dateMs,
-      descriptionUpper: desc,
-      title: title,
-      genres: genres,
-    );
-    final categoryRaw =
-        alwaysOn ? '24/7' : stremioCategoryFromGenres(genres);
-    return MatchEvent(
-      id: id,
-      title: title,
-      category: categoryRaw.isEmpty ? 'other' : categoryRaw.toLowerCase(),
-      dateMs: dateMs,
-      poster: poster,
-      popular: desc.contains('POPULAR'),
-      airing: live && dateMs <= 0,
-      sources: const [],
-      catalog: 'stremio',
-      stremioBaseUrl: addonBaseUrl,
-      stremioType: (type == null || type.isEmpty) ? 'sport' : type,
-      stremioAddonName: addonName.trim(),
-    );
-  }
-
-  static int _stremioKickoffMs(Map<String, dynamic> meta) {
-    final released = meta['released'];
-    if (released is num) {
-      final n = released.toInt();
-      return n > 20000000000 ? n : n * 1000;
-    }
-    if (released is String) {
-      final asInt = int.tryParse(released);
-      if (asInt != null) return asInt > 20000000000 ? asInt : asInt * 1000;
-      final dt = DateTime.tryParse(released);
-      if (dt != null) return dt.millisecondsSinceEpoch;
-    }
-    return 0;
   }
 
   static Future<void> _playIptvSports(
