@@ -88,6 +88,13 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   }
 
   @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    final portal = _ctrl.activePortal;
+    if (portal != null) _ctrl.ensurePortalHealth(portal);
+  }
+
+  @override
   void initState() {
     super.initState();
     ShellBus.playerSurfaceActive.addListener(_onPlayerSurfaceChanged);

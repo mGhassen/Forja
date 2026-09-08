@@ -1030,15 +1030,23 @@ class IptvController extends ChangeNotifier
         if (_disposed) return;
         await _softReloadPortalsFromStore();
         if (_disposed) return;
-        if (activePortal != null) return;
-        final lastKey = await IptvStore.loadLastPortalKey();
-        if (_disposed || lastKey == null) return;
-        for (final v in verified) {
-          if (v.key == lastKey) {
-            activePortal = v;
-            notifyListeners();
-            return;
+        if (activePortal == null) {
+          final lastKey = await IptvStore.loadLastPortalKey();
+          if (!_disposed && lastKey != null) {
+            for (final v in verified) {
+              if (v.key == lastKey) {
+                activePortal = v;
+                notifyListeners();
+                break;
+              }
+            }
           }
+        }
+        // Hub open (Live Sports / panel prepare) — same probe as select/restore
+        // so the Portals chip status dot updates without hover/focus.
+        final portal = activePortal;
+        if (!_disposed && portal != null) {
+          ensurePortalHealth(portal);
         }
       } finally {
         if (identical(_portalPanelPrepareInflight, run)) {
