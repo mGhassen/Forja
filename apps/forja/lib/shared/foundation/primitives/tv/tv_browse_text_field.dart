@@ -14,6 +14,12 @@ bool shellTvBrowseSearch(BuildContext context) {
 }
 
 /// TV search field: focusable in browse mode; Enter/Select opens the keyboard.
+///
+/// Browse D-pad must not rely on [FocusNode.onKeyEvent] alone. [TextField]
+/// maps arrows to selection / [DirectionalFocusAction.forTextField] intents
+/// (ignoreTextFields) via [DefaultTextEditingShortcuts], which consume keys
+/// without moving focus. Parent [Actions] override those intents while
+/// browsing so ↓/→ reach the panel graph (episode list, filters, …).
 class TvBrowseTextField extends StatefulWidget {
   const TvBrowseTextField({
     super.key,
@@ -72,8 +78,7 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
   @override
   void initState() {
     super.initState();
-    _previousKeyHandler = widget.focusNode.onKeyEvent;
-    widget.focusNode.onKeyEvent = _handleKey;
+    _bindKeyHandler(widget.focusNode);
     widget.focusNode.addListener(_onFocusChange);
   }
 
@@ -83,9 +88,11 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_onFocusChange);
       oldWidget.focusNode.onKeyEvent = _previousKeyHandler;
-      _previousKeyHandler = widget.focusNode.onKeyEvent;
-      widget.focusNode.onKeyEvent = _handleKey;
+      _bindKeyHandler(widget.focusNode);
       widget.focusNode.addListener(_onFocusChange);
+    } else {
+      // EditableText Focus.attach can race hot reload / remount — keep ours.
+      _ensureKeyHandler();
     }
   }
 
@@ -94,6 +101,18 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
     widget.focusNode.removeListener(_onFocusChange);
     widget.focusNode.onKeyEvent = _previousKeyHandler;
     super.dispose();
+  }
+
+  void _bindKeyHandler(FocusNode node) {
+    _previousKeyHandler = node.onKeyEvent;
+    node.onKeyEvent = _handleKey;
+  }
+
+  void _ensureKeyHandler() {
+    if (widget.focusNode.onKeyEvent != _handleKey) {
+      _previousKeyHandler = widget.focusNode.onKeyEvent;
+      widget.focusNode.onKeyEvent = _handleKey;
+    }
   }
 
   void _onFocusChange() {
@@ -131,6 +150,7 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
   }
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    _ensureKeyHandler();
     if (_browseOnly && shellTvIsActivateKey(event)) {
       _beginEditing();
       return KeyEventResult.handled;
@@ -161,8 +181,66 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
     widget.onSubmitted?.call(value);
   }
 
+  /// Synthesize a key for [widget.onKeyEvent] from selection / directional intents.
+  KeyEventResult _dispatchLogicalKey(LogicalKeyboardKey key) {
+    final physical = switch (key) {
+      LogicalKeyboardKey.arrowLeft => PhysicalKeyboardKey.arrowLeft,
+      LogicalKeyboardKey.arrowRight => PhysicalKeyboardKey.arrowRight,
+      LogicalKeyboardKey.arrowUp => PhysicalKeyboardKey.arrowUp,
+      LogicalKeyboardKey.arrowDown => PhysicalKeyboardKey.arrowDown,
+      _ => PhysicalKeyboardKey.arrowDown,
+    };
+    final event = KeyDownEvent(
+      physicalKey: physical,
+      logicalKey: key,
+      timeStamp: Duration.zero,
+      synthesized: true,
+    );
+    return _handleKey(widget.focusNode, event);
+  }
+
+  Map<Type, Action<Intent>> _browseActions() {
+    return <Type, Action<Intent>>{
+      ExtendSelectionByCharacterIntent:
+          _BrowseOrDeferAction<ExtendSelectionByCharacterIntent>(
+        shouldIntercept: () => _browseOnly,
+        onIntercept: (intent) {
+          _dispatchLogicalKey(
+            intent.forward
+                ? LogicalKeyboardKey.arrowRight
+                : LogicalKeyboardKey.arrowLeft,
+          );
+        },
+      ),
+      ExtendSelectionVerticallyToAdjacentLineIntent:
+          _BrowseOrDeferAction<ExtendSelectionVerticallyToAdjacentLineIntent>(
+        shouldIntercept: () => _browseOnly,
+        onIntercept: (intent) {
+          _dispatchLogicalKey(
+            intent.forward
+                ? LogicalKeyboardKey.arrowDown
+                : LogicalKeyboardKey.arrowUp,
+          );
+        },
+      ),
+      DirectionalFocusIntent: _BrowseOrDeferAction<DirectionalFocusIntent>(
+        shouldIntercept: () => _browseOnly,
+        onIntercept: (intent) {
+          final key = switch (intent.direction) {
+            TraversalDirection.left => LogicalKeyboardKey.arrowLeft,
+            TraversalDirection.right => LogicalKeyboardKey.arrowRight,
+            TraversalDirection.up => LogicalKeyboardKey.arrowUp,
+            TraversalDirection.down => LogicalKeyboardKey.arrowDown,
+          };
+          _dispatchLogicalKey(key);
+        },
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    _ensureKeyHandler();
     final showBrowsePlaceholder =
         _browseOnly && widget.focusNode.hasFocus && widget.controller.text.isEmpty;
     // copyWith(hintText: null) keeps the old hint - empty string hides it.
@@ -175,7 +253,7 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
         decoration.prefixIcon != null ? 48.0 : (contentPad?.left ?? 16.0);
     final overlayRight = contentPad?.right ?? 16.0;
 
-    return Stack(
+    Widget field = Stack(
       clipBehavior: Clip.none,
       children: [
         TextField(
@@ -208,5 +286,37 @@ class TvBrowseTextFieldState extends State<TvBrowseTextField> {
           ),
       ],
     );
+
+    if (_tvBrowse) {
+      // Override EditableText selection / directional intents while browsing.
+      field = Actions(actions: _browseActions(), child: field);
+    }
+    return field;
+  }
+}
+
+/// Parent override for EditableText's overridable selection / focus actions.
+class _BrowseOrDeferAction<T extends Intent> extends Action<T> {
+  _BrowseOrDeferAction({
+    required this.shouldIntercept,
+    required this.onIntercept,
+  });
+
+  final bool Function() shouldIntercept;
+  final void Function(T intent) onIntercept;
+
+  @override
+  Object? invoke(T intent) {
+    if (shouldIntercept()) {
+      onIntercept(intent);
+      return null;
+    }
+    return callingAction?.invoke(intent);
+  }
+
+  @override
+  bool consumesKey(T intent) {
+    if (shouldIntercept()) return true;
+    return callingAction?.consumesKey(intent) ?? true;
   }
 }

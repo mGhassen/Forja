@@ -221,6 +221,19 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
   bool get _tvFocus =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  bool _tryFocusEpisodeNode(FocusNode? node) {
+    if (node == null) return false;
+    try {
+      if (!node.canRequestFocus) return false;
+    } catch (_) {
+      return false;
+    }
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    FocusScope.of(ctx).requestFocus(node);
+    return true;
+  }
+
   void _focusEpisodeList({int? preferIndex}) {
     if (!_tvFocus) return;
     final list = _visibleEpisodes;
@@ -232,6 +245,15 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
             (ep['episode_number'] as int? ?? 0) == widget.currentEpisode,
       );
     if (index < 0) index = 0;
+    // Off-screen rows need scroll before FocusableControl registers.
+    if (_scrollController.hasClients) {
+      const rowHeight = 116.0;
+      final target = (index * rowHeight).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(target);
+    }
     var tries = 0;
     void attempt() {
       if (!mounted) return;
@@ -240,11 +262,26 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
         _kEpisodeTvListRowId,
         index!,
       );
-      if (node != null && node.canRequestFocus) {
-        node.requestFocus();
+      if (_tryFocusEpisodeNode(node)) return;
+      if (index != 0 &&
+          _tryFocusEpisodeNode(
+            ShellTvFocusCoordinator.itemNode(
+              _kEpisodeTvTabId,
+              _kEpisodeTvListRowId,
+              0,
+            ),
+          )) {
         return;
       }
-      if (tries++ < 10) {
+      // ListView not registered yet — spatial ↓ from search / top bar.
+      if (tries >= 4) {
+        final primary = FocusManager.instance.primaryFocus;
+        if (primary != null &&
+            primary.focusInDirection(TraversalDirection.down)) {
+          return;
+        }
+      }
+      if (tries++ < 24) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       }
     }
@@ -441,28 +478,37 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
           closeFocusNode: _closeFocus,
           onSearchLeftEdge: showSeason
               ? () {
-                  if (_seasonFocus.canRequestFocus) {
-                    _seasonFocus.requestFocus();
+                  if (!_tryFocusEpisodeNode(_seasonFocus)) {
+                    FocusManager.instance.primaryFocus
+                        ?.focusInDirection(TraversalDirection.left);
                   }
                 }
               : null,
           onSearchRightEdge: () {
-            if (_autoNextFocus.canRequestFocus) {
-              _autoNextFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_autoNextFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.right);
             }
           },
           onSearchDownEdge: _focusEpisodeListFromSearch,
           onSearchSubmitted: _focusEpisodeListFromSearch,
           onAutoNextLeftEdge: () {
-            if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_searchFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.left);
+            }
           },
           onAutoNextRightEdge: () {
-            if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_closeFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.right);
+            }
           },
           onAutoNextDownEdge: _focusEpisodeList,
           onCloseLeftEdge: () {
-            if (_autoNextFocus.canRequestFocus) {
-              _autoNextFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_autoNextFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.left);
             }
           },
           onCloseDownEdge: _focusEpisodeList,
@@ -869,6 +915,19 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   bool get _tvFocus =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  bool _tryFocusEpisodeNode(FocusNode? node) {
+    if (node == null) return false;
+    try {
+      if (!node.canRequestFocus) return false;
+    } catch (_) {
+      return false;
+    }
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    FocusScope.of(ctx).requestFocus(node);
+    return true;
+  }
+
   void _focusEpisodeList({int? preferIndex}) {
     if (!_tvFocus) return;
     final list = _visibleEpisodes;
@@ -876,6 +935,14 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     var index = preferIndex ??
         list.indexWhere((e) => e.number == widget.currentEpisode);
     if (index < 0) index = 0;
+    if (_scrollController.hasClients) {
+      const rowHeight = 116.0;
+      final target = (index * rowHeight).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(target);
+    }
     var tries = 0;
     void attempt() {
       if (!mounted) return;
@@ -884,11 +951,25 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
         _kEpisodeTvListRowId,
         index,
       );
-      if (node != null && node.canRequestFocus) {
-        node.requestFocus();
+      if (_tryFocusEpisodeNode(node)) return;
+      if (index != 0 &&
+          _tryFocusEpisodeNode(
+            ShellTvFocusCoordinator.itemNode(
+              _kEpisodeTvTabId,
+              _kEpisodeTvListRowId,
+              0,
+            ),
+          )) {
         return;
       }
-      if (tries++ < 10) {
+      if (tries >= 4) {
+        final primary = FocusManager.instance.primaryFocus;
+        if (primary != null &&
+            primary.focusInDirection(TraversalDirection.down)) {
+          return;
+        }
+      }
+      if (tries++ < 24) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       }
     }
@@ -994,22 +1075,30 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
           autoNextFocusNode: _autoNextFocus,
           closeFocusNode: _closeFocus,
           onSearchRightEdge: () {
-            if (_autoNextFocus.canRequestFocus) {
-              _autoNextFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_autoNextFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.right);
             }
           },
           onSearchDownEdge: _focusEpisodeListFromSearch,
           onSearchSubmitted: _focusEpisodeListFromSearch,
           onAutoNextLeftEdge: () {
-            if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_searchFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.left);
+            }
           },
           onAutoNextRightEdge: () {
-            if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_closeFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.right);
+            }
           },
           onAutoNextDownEdge: _focusEpisodeList,
           onCloseLeftEdge: () {
-            if (_autoNextFocus.canRequestFocus) {
-              _autoNextFocus.requestFocus();
+            if (!_tryFocusEpisodeNode(_autoNextFocus)) {
+              FocusManager.instance.primaryFocus
+                  ?.focusInDirection(TraversalDirection.left);
             }
           },
           onCloseDownEdge: _focusEpisodeList,

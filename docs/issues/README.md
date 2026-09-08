@@ -250,6 +250,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 3/3 · A 0/1 | — |
 | [245-[open]-…](245-[open]-forja-extract-ships-all-hops.md) | Forja extract ships every hop into every plugin job | P1 | High | open | 3/4 · A 1/3 | — |
+| [247-[open]-…](247-[open]-exo-vod-chrome-dialogs-match-mediakit.md) | Exo VOD chrome / dialogs match MediaKit | P1 | High | open | 5/5 · A 1/5 | [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md) |
+| [248-[open]-…](248-[open]-android-tv-player-episodes-search-dpad.md) | ATV player Episodes Search D-pad stuck | P1 | High | open | 2/2 · A 0/2 | [161](161-[open]-android-tv-sources-panel-dpad.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

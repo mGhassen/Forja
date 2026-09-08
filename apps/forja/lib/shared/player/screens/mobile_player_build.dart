@@ -844,299 +844,64 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
     required ({String label, String? server})? catalogSourceLines,
     required ({String label, String? server})? streamPickerLines,
   }) {
-    Widget ordered(int order, Widget child) => FocusTraversalOrder(
-          order: NumericFocusOrder(order.toDouble()),
-          child: child,
-        );
-
-    // Every control wires its own neighbours - TV D-pad must never fall back
-    // to Flutter geometry for ←/→ (the app-root policy no-ops both).
-    void focusUp() {
-      if (_s._seekbarFocus.canRequestFocus) _s._seekbarFocus.requestFocus();
-    }
-
-    void focusAudio() => _s._transportAudioFocus.requestFocus();
-    void focusEpisodesOrAudio() {
-      if (hasEpisodePicker) {
-        _s._transportEpisodesFocus.requestFocus();
-      } else {
-        focusAudio();
-      }
-    }
-
-    void focusStreamOrAfter() {
-      if (hasStreamPicker) {
-        _s._transportStreamFocus.requestFocus();
-      } else {
-        focusEpisodesOrAudio();
-      }
-    }
-
-    void focusSourcesOrBefore() {
-      if (hasTorrentSources) {
-        _s._transportSourcesFocus.requestFocus();
-      } else {
-        _s._focusLeftOfRightTransport();
-      }
-    }
-
-    void focusStreamOrBefore() {
-      if (hasStreamPicker) {
-        _s._transportStreamFocus.requestFocus();
-      } else {
-        focusSourcesOrBefore();
-      }
-    }
-
-    void focusEpisodesOrBefore() {
-      if (hasEpisodePicker) {
-        _s._transportEpisodesFocus.requestFocus();
-      } else {
-        focusStreamOrBefore();
-      }
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Keep FocusTraversalOrder outside the listenable so Play's focus
-              // host is not recreated when the icon flips (recreate → focus
-              // falls to the video key node → idle hide was restarted forever).
-              ordered(
-                3,
-                ValueListenableBuilder<bool>(
-                  valueListenable: _s._isPlayingNotifier,
-                  builder: (context, playing, _) => PlayerFlatIconButton(
-                    tvFocusable: true,
-                    focusNode: _s._playFocus,
-                    onUpEdge: () {
-                      if (_s._seekbarFocus.canRequestFocus) {
-                        _s._seekbarFocus.requestFocus();
-                      }
-                    },
-                    onRightEdge: () {
-                      if (_s._rewindFocus.canRequestFocus) {
-                        _s._rewindFocus.requestFocus();
-                      }
-                    },
-                    icon: playing
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    size: btnSize,
-                    iconSize: iconSz,
-                    onPressed: () {
-                      playing ? _s._player.pause() : _s._player.play();
-                      _s._syncChromeHideTimer();
-                    },
-                  ),
-                ),
-              ),
-            const SizedBox(width: 2),
-            _s._buildTransportBackButton(
-              btnSize: btnSize,
-              iconSz: iconSz,
-              tvFocusable: true,
-              tvFocusOrder: 4,
-              focusNode: _s._rewindFocus,
-              onLeftEdge: () => _s._playFocus.requestFocus(),
-              onRightEdge: () => _s._forwardFocus.requestFocus(),
-              onUpEdge: () => _s._seekbarFocus.requestFocus(),
-            ),
-            const SizedBox(width: 2),
-            _s._buildTransportForwardButton(
-              btnSize: btnSize,
-              iconSz: iconSz,
-              tvFocusable: true,
-              tvFocusOrder: 5,
-              focusNode: _s._forwardFocus,
-              onLeftEdge: () => _s._rewindFocus.requestFocus(),
-              onRightEdge: _s._focusRightOfForward,
-              onUpEdge: focusUp,
-            ),
-            if (_s._buildTransportPrevEpisodeButton(
-                  btnSize: btnSize,
-                  iconSz: iconSz,
-                  tvFocusable: true,
-                  tvFocusOrder: 6,
-                  focusNode: _s._transportPrevEpFocus,
-                  onLeftEdge: () => _s._forwardFocus.requestFocus(),
-                  onRightEdge: () {
-                    if (_s._hasNextEpisodeAdjacent &&
-                        _s._transportNextEpFocus.canRequestFocus) {
-                      _s._transportNextEpFocus.requestFocus();
-                    } else {
-                      _s._focusFirstRightTransport();
-                    }
-                  },
-                  onUpEdge: focusUp,
-                )
-                case final prevEp?) ...[
-              const SizedBox(width: 2),
-              prevEp,
-            ],
-            if (_s._buildTransportNextEpisodeButton(
-                  btnSize: btnSize,
-                  iconSz: iconSz,
-                  tvFocusable: true,
-                  tvFocusOrder: 7,
-                  focusNode: _s._transportNextEpFocus,
-                  onLeftEdge: () {
-                    if (_s._hasPrevEpisodeAdjacent &&
-                        _s._transportPrevEpFocus.canRequestFocus) {
-                      _s._transportPrevEpFocus.requestFocus();
-                    } else {
-                      _s._forwardFocus.requestFocus();
-                    }
-                  },
-                  onRightEdge: _s._focusFirstRightTransport,
-                  onUpEdge: focusUp,
-                )
-                case final nextEp?) ...[
-              const SizedBox(width: 2),
-              nextEp,
-            ],
-            const SizedBox(width: 6),
-            ExcludeFocus(
-              child: ValueListenableBuilder<Duration>(
-                valueListenable: _s._positionNotifier,
-                builder: (context, pos, _) => ValueListenableBuilder<Duration>(
-                  valueListenable: _s._durationNotifier,
-                  builder: (context, dur, _) => PlayerTimeRange(
-                    position: pos,
-                    duration: dur,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (hasTorrentSources)
-              ordered(
-                8,
-                PlayerSourcesPanelButton(
-                  tvFocusable: true,
-                  focusNode: _s._transportSourcesFocus,
-                  onUpEdge: focusUp,
-                  onLeftEdge: _s._focusLeftOfRightTransport,
-                  onRightEdge: focusStreamOrAfter,
-                  size: btnSize,
-                  iconSize: iconSz,
-                  label: catalogSourceLines!.label,
-                  server: catalogSourceLines.server,
-                  onPressed: _s._showTorrentSourcesPanel,
-                ),
-              ),
-            if (hasTorrentSources) const SizedBox(width: 2),
-            if (hasStreamPicker)
-              ordered(
-                9,
-                PlayerStreamPickerButton(
-                  tvFocusable: true,
-                  focusNode: _s._transportStreamFocus,
-                  onUpEdge: focusUp,
-                  onLeftEdge: focusSourcesOrBefore,
-                  onRightEdge: focusEpisodesOrAudio,
-                  size: btnSize,
-                  iconSize: iconSz - 2,
-                  label: streamPickerLines!.label,
-                  server: streamPickerLines.server,
-                  onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
-                ),
-              ),
-            if (hasStreamPicker) const SizedBox(width: 2),
-            if (hasEpisodePicker)
-              ordered(
-                10,
-                PlayerFlatIconButton(
-                  tvFocusable: true,
-                  focusNode: _s._transportEpisodesFocus,
-                  onUpEdge: focusUp,
-                  onLeftEdge: focusStreamOrBefore,
-                  onRightEdge: focusAudio,
-                  icon: Icons.video_library_outlined,
-                  size: btnSize,
-                  iconSize: iconSz,
-                  tooltip: 'Episodes',
-                  onPressedWithContext: _s._showEpisodesMenu,
-                ),
-              ),
-            if (hasEpisodePicker) const SizedBox(width: 2),
-            ordered(
-              11,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                focusNode: _s._transportAudioFocus,
-                onUpEdge: focusUp,
-                onLeftEdge: focusEpisodesOrBefore,
-                onRightEdge: () => _s._transportSubsFocus.requestFocus(),
-                icon: Icons.audiotrack_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Audio',
-                onPressedWithContext: _s._showAudioMenu,
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              12,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                focusNode: _s._transportSubsFocus,
-                onUpEdge: focusUp,
-                onLeftEdge: focusAudio,
-                onRightEdge: () => _s._transportQualityFocus.requestFocus(),
-                icon: Icons.subtitles_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Subtitles',
-                onPressedWithContext: _s._showSubtitlesMenu,
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              13,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                focusNode: _s._transportQualityFocus,
-                onUpEdge: focusUp,
-                onLeftEdge: () => _s._transportSubsFocus.requestFocus(),
-                onRightEdge: () => _s._transportSettingsFocus.requestFocus(),
-                icon: Icons.hd_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Quality',
-                onPressedWithContext: _s._showQualityMenu,
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              14,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                focusNode: _s._transportSettingsFocus,
-                onUpEdge: focusUp,
-                onLeftEdge: () => _s._transportQualityFocus.requestFocus(),
-                icon: Icons.settings_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Settings',
-                onPressedWithContext: _s._showSettingsMenu,
-              ),
-            ),
-          ],
-        ),
-      ],
-      ),
+    return PlayerVodTvTransportRow(
+      btnSize: btnSize,
+      iconSz: iconSz,
+      isPlayingListenable: _s._isPlayingNotifier,
+      positionListenable: _s._positionNotifier,
+      durationListenable: _s._durationNotifier,
+      playFocus: _s._playFocus,
+      rewindFocus: _s._rewindFocus,
+      forwardFocus: _s._forwardFocus,
+      transportPrevEpFocus: _s._transportPrevEpFocus,
+      transportNextEpFocus: _s._transportNextEpFocus,
+      transportSourcesFocus: _s._transportSourcesFocus,
+      transportStreamFocus: _s._transportStreamFocus,
+      transportEpisodesFocus: _s._transportEpisodesFocus,
+      transportAudioFocus: _s._transportAudioFocus,
+      transportSubsFocus: _s._transportSubsFocus,
+      transportQualityFocus: _s._transportQualityFocus,
+      transportSettingsFocus: _s._transportSettingsFocus,
+      hasPrevEpisode: _s._hasPrevEpisodeAdjacent,
+      hasNextEpisode: _s._hasNextEpisodeAdjacent,
+      hasTorrentSources: hasTorrentSources,
+      hasStreamPicker: hasStreamPicker,
+      hasEpisodePicker: hasEpisodePicker,
+      catalogSourceLines: catalogSourceLines,
+      streamPickerLines: streamPickerLines,
+      onPlayPause: () {
+        if (_s._isPlayingNotifier.value) {
+          _s._player.pause();
+        } else {
+          _s._player.play();
+        }
+        _s._syncChromeHideTimer();
+      },
+      onRewind10: _s._seekBack10Seconds,
+      onForward10: _s._seekForward10Seconds,
+      onPreviousEpisode: () {
+        if (_s._isLoadingNextEp) return;
+        unawaited(_s._previousEpisode());
+      },
+      onNextEpisode: () {
+        if (_s._isLoadingNextEp) return;
+        unawaited(_s._nextEpisode());
+      },
+      onUpFromTransport: () {
+        if (_s._seekbarFocus.canRequestFocus) {
+          _s._seekbarFocus.requestFocus();
+        }
+      },
+      onFocusFirstRightTransport: _s._focusFirstRightTransport,
+      onFocusLeftOfRightTransport: _s._focusLeftOfRightTransport,
+      onFocusRightOfForward: _s._focusRightOfForward,
+      onOpenTorrentSources: _s._showTorrentSourcesPanel,
+      onOpenStreamPicker: (ctx) => _s._showStreamMenu(ctx),
+      onOpenEpisodes: _s._showEpisodesMenu,
+      onOpenAudio: _s._showAudioMenu,
+      onOpenSubtitles: _s._showSubtitlesMenu,
+      onOpenQuality: _s._showQualityMenu,
+      onOpenSettings: _s._showSettingsMenu,
     );
   }
 }

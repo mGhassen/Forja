@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **2 / 8** acceptance (phase 1) |
-| **Current slice** | Android dual-engine MVP — ExoPlayer default (VOD/IPTV/Live); settings + Exo VOD path; external SRT/VTT sideload shipped |
+| **Progress** | **4 / 4** components · **2 / 8** acceptance (phase 1) · **3 / 3** acceptance (chrome parity) |
+| **Current slice** | Exo VOD chrome/dialogs match MediaKit ([issue 247](../issues/247-[open]-exo-vod-chrome-dialogs-match-mediakit.md)) — code shipped; ATV manual QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,6 +41,16 @@
 
 ---
 
+## Acceptance (chrome parity — issue 247)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R29-A09 | Shared `PlayerVodTvTransportRow` used by Exo + MediaKit (TV D-pad transport) | ✅ |
+| 2 | R29-A10 | Exo Source / Subs / Settings match MediaKit dialog shapes | ✅ |
+| 3 | R29-A11 | Exo TV transport includes prev/next episode with MediaKit D-pad edges | ✅ |
+
+---
+
 ## Deferred (phase 2+)
 
 | Feature | Engine |
@@ -64,5 +74,6 @@ Desktop and iOS always use media_kit.
 
 ## Related
 
-- [issue 032](../issues/032-[draft]-exoplayer-parity-gaps.md) — parity gaps
+- [issue 032](../issues/032-[draft]-exoplayer-parity-gaps.md) — engine capability parity gaps
+- [issue 247](../issues/247-[open]-exo-vod-chrome-dialogs-match-mediakit.md) — chrome / dialogs UX parity
 - [playback-settings.md](../features/settings/playback-settings.md)

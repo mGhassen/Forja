@@ -906,19 +906,76 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _showSourcesDialog(BuildContext anchorContext) async {
     if (!_hasStreamPickerSources) return;
-    await PlayerServerStreamDialog.show(
+    final bottom = MediaQuery.paddingOf(context).bottom + 76;
+    await PlayerStreamMenu.show(
       context,
       providers: widget.providers,
-      currentProviderId: _s._currentProvider ?? widget.activeProvider,
-      currentUrl: _s._currentUrl,
-      currentSources: _s._currentSources,
       providerSourcesCache: _s._providerSourcesCache,
-      onLoadServer: _loadServer,
-      onSelectStream: _selectStreamFromDialog,
-      onCheckStream: _checkStreamSource,
-      movie: widget.movie,
+      providerLoadFailures: _s._providerLoadFailures,
+      statusController: _s._statusController,
+      readState: () => PlayerStreamMenuState(
+        currentProviderId: _s._currentProvider ?? widget.activeProvider,
+        sources: _s._currentSources,
+        currentUrl: _s._currentUrl,
+        currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
+        current111477FileUrl: null,
+        is111477: (_s._currentProvider ?? widget.activeProvider) ==
+            'service111477',
+        playbackConfirmed: _s._playbackConfirmedAt != null,
+        mediaPlaying: _s._isPlaying,
+      ),
+      onLoadProvider: (providerId, {forceRefresh = false}) async {
+        final sources = await _loadServer(
+          providerId,
+          forceRefresh: forceRefresh,
+        );
+        if (sources == null || sources.isEmpty) {
+          if (!_s._providerLoadFailures.value.contains(providerId)) {
+            _s._providerLoadFailures.value = {
+              ..._s._providerLoadFailures.value,
+              providerId,
+            };
+          }
+        } else if (_s._providerLoadFailures.value.contains(providerId)) {
+          final next = {..._s._providerLoadFailures.value}..remove(providerId);
+          _s._providerLoadFailures.value = next;
+        }
+        _s._streamMenuRefreshTick.value++;
+        return sources;
+      },
+      onSelectProvider: (providerId) async {
+        if (mounted) {
+          setState(() {
+            _s._currentProvider = providerId;
+            _s._providerPinned = true;
+          });
+        } else {
+          _s._currentProvider = providerId;
+          _s._providerPinned = true;
+        }
+        unawaited(SettingsService().setPlayerAutoServer(false));
+        final sources = await _loadServer(providerId);
+        _s._streamMenuRefreshTick.value++;
+        return sources;
+      },
+      onSelectSource: (source, index) async {
+        final pid = source.providerId ??
+            _s._currentProvider ??
+            widget.activeProvider ??
+            '';
+        await _selectStreamFromDialog(pid, source, index);
+        _s._streamMenuRefreshTick.value++;
+      },
+      onCheckSource: _checkStreamSource,
+      onTogglePlayPause: _s._togglePlayPause,
       anchorContext: anchorContext,
+      margin: EdgeInsets.only(right: 12, bottom: bottom),
+      refreshListenable: _s._streamMenuRefreshTick,
+      movie: widget.movie,
+      selectedSeason: widget.selectedSeason,
+      selectedEpisode: widget.selectedEpisode,
+      hubEpisodeNumber: widget.hubEpisodeNumber,
+      activeProvider: widget.activeProvider,
     );
-    // TV: opener (Sources) restored by playerMenuRestoreReturnFocus.
   }
 }

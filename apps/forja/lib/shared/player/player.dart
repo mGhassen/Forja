@@ -7,6 +7,7 @@ export 'controls/chrome/player_chrome_overlays.dart';
 export 'controls/chrome/player_escape_exit_hint.dart';
 export 'controls/chrome/player_seek_scrub_cancel.dart';
 export 'controls/chrome/player_status_roulette.dart';
+export 'controls/chrome/player_vod_tv_transport.dart';
 export 'controls/episodes/player_episode_menu.dart';
 export 'controls/episodes/player_episode_panel.dart';
 export 'controls/episodes/player_kit_episode.dart';

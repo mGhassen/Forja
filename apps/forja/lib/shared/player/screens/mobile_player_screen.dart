@@ -43,6 +43,7 @@ import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
