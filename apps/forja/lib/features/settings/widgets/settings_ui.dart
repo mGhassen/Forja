@@ -119,17 +119,24 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _chromeActive => widget.selected || _focused || _hovered;
-
   @override
   Widget build(BuildContext context) {
-    final ink = _chromeActive
+    final policy = ShellScope.inputPolicyOf(context);
+    // Desktop: green ink only for hover / keyboard chrome — not mouse-retained focus.
+    final chromeActive = widget.selected ||
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+          context: context,
+        );
+    final ink = chromeActive
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.iconMuted;
-    final titleColor = _chromeActive
+    final titleColor = chromeActive
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textSecondary;
-    final subtitleColor = _chromeActive
+    final subtitleColor = chromeActive
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
         : ForjaShellColors.textSecondary;
     final rail = widget.tvRowId != null;
@@ -152,7 +159,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                     color: titleColor,
                     fontSize: SettingsTokens.categoryTitleSize,
                     fontWeight:
-                        _chromeActive ? FontWeight.w700 : FontWeight.w500,
+                        chromeActive ? FontWeight.w700 : FontWeight.w500,
                   ),
                   adminOnly: widget.adminOnly,
                   sparkSize: 13,

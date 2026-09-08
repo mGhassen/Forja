@@ -1114,9 +1114,8 @@ abstract final class LiveResolveStreams {
     onProgress?.call('Unlocking source…');
     List<Map<String, dynamic>> rows = const [];
     try {
-      rows = await EngineService.instance.runLivePlugin(
+      final resolved = await LivePluginEngine.resolve(
         pluginId: pluginId,
-        action: 'resolve',
         params: {
           'matchId': stream.id.isNotEmpty ? stream.id : ref.id,
           'eventId': match.id,
@@ -1129,6 +1128,18 @@ abstract final class LiveResolveStreams {
           'viewers': stream.viewers > 0 ? stream.viewers : match.viewers,
         },
       );
+      if (resolved == null ||
+          !resolved.playable ||
+          !iptvLiveEnginePlayUrlReady(resolved.url)) {
+        return null;
+      }
+      rows = [
+        {
+          'url': resolved.url,
+          'headers': resolved.headers,
+          'directPlayback': resolved.directPlayback,
+        },
+      ];
     } catch (e) {
       debugPrint('[LiveResolveStreams] unlock ${ref.source}/${ref.id}: $e');
       return null;

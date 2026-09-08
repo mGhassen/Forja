@@ -10,24 +10,10 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "pluginCount": 2,
       "tags": [
         "anime"
-      ]
-    },
-    {
-      "id": "arabic",
-      "kind": "hubs",
-      "name": "ForjaHQ Arabic",
-      "description": "Larozaa Arabic movies and TV hub.",
-      "accent": "flame",
-      "official": true,
-      "recommended": true,
-      "version": "1.4.8",
-      "pluginCount": 1,
-      "tags": [
-        "arabic"
       ]
     },
     {
@@ -55,7 +41,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "pluginCount": 1,
       "tags": [
         "home",
@@ -74,6 +60,22 @@
       "author": "ForjaHQ",
       "version": "1.9.6",
       "pluginCount": 10,
+      "tags": [
+        "live",
+        "sports"
+      ]
+    },
+    {
+      "id": "live-sports",
+      "kind": "hubs",
+      "name": "ForjaHQ Live Sports Hub",
+      "description": "Live sports list with a streams panel.",
+      "accent": "flame",
+      "official": true,
+      "recommended": true,
+      "author": "ForjaHQ",
+      "version": "1.0.16",
+      "pluginCount": 1,
       "tags": [
         "live",
         "sports"
@@ -104,7 +106,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.5.35",
+      "version": "1.5.36",
       "pluginCount": 88,
       "tags": [
         "anime",
@@ -142,6 +144,19 @@
       "pluginCount": 1,
       "tags": [
         "aflem",
+        "arabic"
+      ]
+    },
+    {
+      "id": "arabic",
+      "kind": "hubs",
+      "name": "ForjaHQ Arabic",
+      "description": "Larozaa Arabic movies and TV hub.",
+      "accent": "flame",
+      "official": true,
+      "version": "1.4.8",
+      "pluginCount": 1,
+      "tags": [
         "arabic"
       ]
     },
@@ -197,22 +212,7 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.9",
-      "pluginCount": 1,
-      "tags": [
-        "live",
-        "sports"
-      ]
-    },
-    {
-      "id": "live-sports",
-      "kind": "hubs",
-      "name": "ForjaHQ Live Sports Hub",
-      "description": "Live sports list with a streams panel.",
-      "accent": "flame",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.13",
+      "version": "1.0.11",
       "pluginCount": 1,
       "tags": [
         "live",
@@ -227,7 +227,7 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.9",
+      "version": "1.1.0",
       "pluginCount": 2,
       "tags": [
         "lists"

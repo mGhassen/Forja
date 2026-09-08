@@ -42,7 +42,8 @@ function mountDom(slot, embedOrigin, onJwFile) {
     load: takeFile,
     setConfig: takeFile,
     getConfig: () => jwCfg,
-    setup: () => {},
+    // admin may call setup({ file }) instead of load/setConfig
+    setup: takeFile,
     on: () => {},
     play: () => {},
     getPlaylistItem: () => jwCfg,
@@ -222,9 +223,15 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
       ])
     } catch (err) {
       if (!m3u8) {
-        const msg =
-          (err && (err.stack || err.message || err.name)) ||
-          (err != null ? String(err) : 'set_stream_jw failed')
+        let msg = ''
+        if (err == null) msg = 'set_stream_jw failed (nullish)'
+        else if (typeof err === 'string') msg = err
+        else
+          msg =
+            err.stack ||
+            err.message ||
+            err.name ||
+            (typeof err.toString === 'function' ? err.toString() : String(err))
         throw new Error(String(msg).trim() || 'set_stream_jw failed')
       }
     }

@@ -51,18 +51,32 @@ class _ShellKeyboardFocusHostState extends State<ShellKeyboardFocusHost> {
         key == LogicalKeyboardKey.escape;
   }
 
-  void _onPointerDown(PointerDownEvent event) {
-    if (event.kind != PointerDeviceKind.mouse &&
-        event.kind != PointerDeviceKind.trackpad &&
-        event.kind != PointerDeviceKind.stylus) {
-      return;
-    }
-    final wasKeyboard = _chromeVisible.value;
-    if (wasKeyboard) {
+  bool _isFinePointer(PointerDeviceKind kind) {
+    return kind == PointerDeviceKind.mouse ||
+        kind == PointerDeviceKind.trackpad ||
+        kind == PointerDeviceKind.stylus;
+  }
+
+  void _hideKeyboardChrome() {
+    if (_chromeVisible.value) {
       _chromeVisible.value = false;
+    }
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (!_isFinePointer(event.kind)) return;
+    final wasKeyboard = _chromeVisible.value;
+    _hideKeyboardChrome();
+    if (wasKeyboard) {
       _releaseKeyboardFocus();
     }
     ShellTvFocusCoordinator.unfocusShellNav();
+  }
+
+  /// Mouse move (no click) — hide focus rings; keep FocusNode so Tab resumes.
+  void _onPointerHover(PointerHoverEvent event) {
+    if (!_isFinePointer(event.kind)) return;
+    _hideKeyboardChrome();
   }
 
   void _releaseKeyboardFocus() {
@@ -83,6 +97,7 @@ class _ShellKeyboardFocusHostState extends State<ShellKeyboardFocusHost> {
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: _onPointerDown,
+        onPointerHover: _onPointerHover,
         child: widget.child,
       ),
     );

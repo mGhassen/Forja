@@ -17,4 +17,4 @@ PRODUCT_BUNDLE_IDENTIFIER = com.forjahq.app
 PRODUCT_COPYRIGHT = Copyright © 2026 Forja. All rights reserved.
 
 // Release codename — synced from backlog runway by scripts/bump_version.sh on minor/major.
-PRODUCT_CODENAME = Atarin
+PRODUCT_CODENAME = Berka

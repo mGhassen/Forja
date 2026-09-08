@@ -69,7 +69,6 @@ class LiveGoatUnlock {
 
   static String? _cachedDir;
   static Future<void>? _prepareFuture;
-  static bool _goatAssetsWritten = false;
 
   static String? _cachedGasmDir;
   static Future<void>? _prepareGasmFuture;
@@ -401,51 +400,67 @@ class LiveGoatUnlock {
     if (path.isEmpty) return null;
 
     try {
-      final body = _encodeFetchBody(
-        slotSource,
-        (slot['id'] ?? '').toString(),
-        (slot['stream'] ?? '1').toString(),
-      );
-      final referer = '$origin/embed/$path';
-      final resp = await http
-          .post(
-            Uri.parse('$origin/fetch'),
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              'Origin': origin,
-              'Referer': referer,
-              'User-Agent': _ua,
-            },
-            body: body,
-          )
-          .timeout(const Duration(seconds: 20));
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        debugPrint('[LiveGoatUnlock] /fetch HTTP ${resp.statusCode}');
-        return null;
-      }
-      final goat = resp.headers['goat'] ?? '';
-      if (goat.isEmpty) {
-        debugPrint('[LiveGoatUnlock] /fetch missing goat header');
-        return null;
-      }
-      final bodyHex = resp.bodyBytes
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
-      final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
-      if (m3u8 == null || m3u8.isEmpty) return null;
-
-      final headers = playbackHeadersForSlot(slot);
-      // Echo CDN (`/echo/stream/`) often 500s on Dart/mpv re-GET — don't hand
-      // MediaKit a URL that cannot open natively.
-      if (slotSource == 'echo') {
-        if (!await _probePlayableM3u8(m3u8, headers)) {
+      // One retry: embed.st sometimes returns goat+body that WASM rejects
+      // (offline/gated slot) while a second /fetch yields a crackable pair.
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final body = _encodeFetchBody(
+          slotSource,
+          (slot['id'] ?? '').toString(),
+          (slot['stream'] ?? '1').toString(),
+        );
+        final referer = '$origin/embed/$path';
+        final resp = await http
+            .post(
+              Uri.parse('$origin/fetch'),
+              headers: {
+                'Content-Type': 'application/octet-stream',
+                'Origin': origin,
+                'Referer': referer,
+                'User-Agent': _ua,
+              },
+              body: body,
+            )
+            .timeout(const Duration(seconds: 20));
+        if (resp.statusCode < 200 || resp.statusCode >= 300) {
           debugPrint(
-            '[LiveGoatUnlock] echo GOAT m3u8 not native-playable (CDN probe)',
+            '[LiveGoatUnlock] /fetch HTTP ${resp.statusCode} '
+            'attempt=${attempt + 1}',
           );
-          return null;
+          continue;
         }
+        final goat = resp.headers['goat'] ?? '';
+        if (goat.isEmpty) {
+          debugPrint(
+            '[LiveGoatUnlock] /fetch missing goat header attempt=${attempt + 1}',
+          );
+          continue;
+        }
+        final bodyHex = resp.bodyBytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join();
+        final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
+        if (m3u8 == null || m3u8.isEmpty) {
+          debugPrint(
+            '[LiveGoatUnlock] unlock miss attempt=${attempt + 1} '
+            'path=$path body=${resp.bodyBytes.length}B',
+          );
+          continue;
+        }
+
+        final headers = playbackHeadersForSlot(slot);
+        // Echo CDN (`/echo/stream/`) often 500s on Dart/mpv re-GET — don't hand
+        // MediaKit a URL that cannot open natively.
+        if (slotSource == 'echo') {
+          if (!await _probePlayableM3u8(m3u8, headers)) {
+            debugPrint(
+              '[LiveGoatUnlock] echo GOAT m3u8 not native-playable (CDN probe)',
+            );
+            return null;
+          }
+        }
+        return (url: m3u8, headers: headers);
       }
-      return (url: m3u8, headers: headers);
+      return null;
     } catch (e) {
       debugPrint('[LiveGoatUnlock] native resolve failed: $e');
       return null;
@@ -1233,9 +1248,9 @@ class LiveGoatUnlock {
     if (_cachedDir != null) {
       final ready = File('${_cachedDir!}/node_modules/happy-dom/package.json');
       if (await ready.exists()) {
-        if (!_goatAssetsWritten) {
-          await _refreshGoatAssets(_cachedDir!);
-        }
+        // Always re-copy glue — hot reload can ship a new unlock.mjs/wasm
+        // while this isolate still holds a warm goat dir.
+        await _refreshGoatAssets(_cachedDir!);
         return _cachedDir!;
       }
     }
@@ -1258,7 +1273,6 @@ class LiveGoatUnlock {
       '$_assetRoot/vendor/lock-esm.mjs',
       File('$dir/vendor/lock-esm.mjs'),
     );
-    _goatAssetsWritten = true;
     debugPrint('[LiveGoatUnlock] refreshed goat assets → $dir');
   }
 

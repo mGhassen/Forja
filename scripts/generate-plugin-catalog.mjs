@@ -168,7 +168,7 @@ const RECOMMENDED_PACK_IDS = new Set([
   'live',
   'catalog',
   'torrent',
-  'arabic',
+  'live-sports',
 ])
 
 function build() {

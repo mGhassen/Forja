@@ -19,17 +19,21 @@ const wasmBytesPromise = fetch(assetUrl('/vendor/lock.wasm')).then((r) => {
 function mountJw() {
   const doc = document;
   const jwCfg = { file: null };
+  const takeFile = (cfg) => {
+    const file = cfg?.file;
+    if (typeof file !== 'string' || !file) return;
+    jwCfg.file = file;
+    if (file.includes('.m3u8') || file.includes('/stream/')) {
+      window.__forjaGoatM3u8 = file;
+    }
+  };
   const jwBase = {
     getContainer: () => doc.getElementById('player'),
     getState: () => 'idle',
-    load: (cfg) => {
-      if (cfg?.file) jwCfg.file = cfg.file;
-    },
-    setConfig: (cfg) => {
-      if (cfg?.file) jwCfg.file = cfg.file;
-    },
+    load: takeFile,
+    setConfig: takeFile,
     getConfig: () => jwCfg,
-    setup: () => {},
+    setup: takeFile,
     on: () => {},
     play: () => {},
     getPlaylistItem: () => jwCfg,

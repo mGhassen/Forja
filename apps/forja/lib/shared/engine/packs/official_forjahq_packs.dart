@@ -39,7 +39,7 @@ const kOfficialRecommendedPackIds = <String>{
   'live',
   'catalog',
   'torrent',
-  'arabic',
+  'live-sports',
 };
 
 const _kPacksBase =
@@ -124,6 +124,7 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     name: 'ForjaHQ Live Sports',
     kind: 'hubs',
     tags: ['live', 'sports'],
+    recommended: true,
     description: 'Live sports list with a streams panel.',
     manifestUrl: '$_kPacksBase/hubs/live_sports/manifest.json',
   ),
@@ -149,9 +150,7 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     name: 'ForjaHQ Arabic',
     kind: 'hubs',
     tags: ['arabic'],
-    recommended: true,
-    description:
-        'Arabic hub — Larozaa only (Brstej / كرتون are separate packs).',
+    description: 'Larozaa Arabic movies and TV hub.',
     manifestUrl: '$_kPacksBase/hubs/arabic/manifest.json',
   ),
   OfficialForjaHqPack(
