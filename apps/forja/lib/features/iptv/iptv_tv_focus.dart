@@ -188,6 +188,30 @@ bool iptvFocusPortalList(
   return ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index);
 }
 
+/// Retry until the selected (or first) portal row mounts — Live Sports / IPTV
+/// open from the Portals chip, and lazy ListView after scroll.
+void iptvClaimPortalListFocus(
+  IptvController ctrl, {
+  int maxTries = 24,
+}) {
+  var tries = 0;
+  void attempt() {
+    if (!ctrl.portalPanelOpen) return;
+    if (ctrl.verified.isEmpty) {
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+      return;
+    }
+    if (iptvFocusPortalList(ctrl)) return;
+    if (tries++ < maxTries) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+  }
+
+  WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+}
+
 /// Channel focus memory is per selected category — reset when the group changes.
 void iptvResetBrowserStreamsFocusMemory() {
   ShellTvFocusCoordinator.setRowLastFocusedIndex('iptv', 'browser-streams', 0);

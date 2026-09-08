@@ -768,7 +768,7 @@ abstract final class ShellTvFocusCoordinator {
 
     bool landed() {
       if (!hasMemory) return _pageHasFocus();
-      if (_memoryHasFocus(tabId, snapshot!)) return true;
+      if (_memoryHasFocus(tabId, snapshot)) return true;
       // Lazy ListView may have focused a mounted neighbor in the same row.
       if (snapshot.zone == ShellTvZone.row && snapshot.rowId != null) {
         final live = _tabMemory[tabId];
@@ -785,7 +785,7 @@ abstract final class ShellTvFocusCoordinator {
     void attempt({required bool allowDefault}) {
       if (hasMemory) {
         // Re-apply in case a mid-frame autofocus polluted live memory.
-        saveFocus(tabId, snapshot!);
+        saveFocus(tabId, snapshot);
         if (_restoreOverlayMemory(tabId, snapshot) && landed()) return;
         if (_tryRestoreLiveNode(snapshot) && landed()) return;
         if (!allowDefault) return;

@@ -197,9 +197,4 @@ class _FakeHealthProbe extends ChangeNotifier implements KitUrlHealthProbe {
     _health[key] = true;
     return true;
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

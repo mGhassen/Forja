@@ -52,12 +52,6 @@ class EngineService {
   int _catalogGeneration = 0;
   EngineRuntime? _liveMetaRuntime;
 
-  /// Shared hop scripts for EngineJS extracts — rebuilt once per extract gen.
-  /// Parallel All-walk used to reload all hops per plugin (21×N disk + encode).
-  List<Map<String, Object?>>? _cachedHopPayload;
-  int _cachedHopPayloadGen = -1;
-  Future<List<Map<String, Object?>>>? _hopPayloadInFlight;
-
   static const _liveResolveMaxParallel = 1;
   int _liveResolveInFlight = 0;
   final List<Completer<void>> _liveResolveWaiters = [];

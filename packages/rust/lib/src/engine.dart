@@ -1277,12 +1277,6 @@ typedef _TwoStringNative =
       ffi.Pointer<ffi.Char>,
       ffi.Pointer<ffi.Char>,
     );
-typedef _ThreeStringNative =
-    ffi.Pointer<ffi.Char> Function(
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-    );
 typedef _FiveStringNative =
     ffi.Pointer<ffi.Char> Function(
       ffi.Pointer<ffi.Char>,

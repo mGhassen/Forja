@@ -143,7 +143,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 
   /// Opening the panel: land on the selected portal (first when none). Empty
-  /// list → Add (+). Down from the top-bar Portals button still uses header.
+  /// list waits for prepare (Live Sports cold open), then Add (+).
   void _focusPanelOnOpen() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
     // Already inside the list or header — do not steal (health-probe notifies).
@@ -151,7 +151,25 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       return;
     }
     if (_filtered.isEmpty) {
-      _focusPanelHeader();
+      var tries = 0;
+      void waitForList() {
+        if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
+        if (iptvRowHasFocus('portals') ||
+            iptvRowHasFocus('iptv-portal-header')) {
+          return;
+        }
+        if (_filtered.isNotEmpty) {
+          _focusPortalsFromHeader();
+          return;
+        }
+        if (tries++ < 32) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => waitForList());
+          return;
+        }
+        _focusPanelHeader();
+      }
+
+      waitForList();
       return;
     }
     _focusPortalsFromHeader();

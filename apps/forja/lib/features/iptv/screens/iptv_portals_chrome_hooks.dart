@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
@@ -36,15 +37,25 @@ abstract final class IptvPortalsChromeHooks {
     final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
     if (enabled == false) return null;
     final ctrl = ref.watch(iptvControllerProvider);
+    final panelOpen = ctrl.portalPanelOpen;
     return IptvPortalsTopBarButton(
       ctrl: ctrl,
-      onTogglePanel: ctrl.togglePortalPanel,
+      onTogglePanel: () {
+        final opening = !ctrl.portalPanelOpen;
+        ctrl.togglePortalPanel();
+        // Same as IPTV hub: OK on Portals lands D-pad on the selected portal.
+        if (opening) iptvClaimPortalListFocus(ctrl);
+      },
       tvTabId: tabId,
       tvRowId: rowId,
       tvItemIndex: itemIndex,
       onLeftEdge: onLeftEdge,
-      onRightEdge: () {},
-      onDownEdge: onDownEdge,
+      // When closed, trap → at the chrome edge. When open, enter the list
+      // (IPTV hub Portals chip does the same via iptvFocusPortalList).
+      onRightEdge: panelOpen ? () => iptvClaimPortalListFocus(ctrl) : () {},
+      onDownEdge: panelOpen
+          ? () => iptvClaimPortalListFocus(ctrl)
+          : onDownEdge,
     );
   }
 

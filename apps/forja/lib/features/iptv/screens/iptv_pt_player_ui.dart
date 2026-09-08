@@ -2844,8 +2844,9 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
     try {
       await iptvLiveSourceRunHoverProbe(src, healthProbe: _healthProbe);
     } finally {
-      if (!mounted || (_probeGens[key] ?? 0) != gen) return;
-      setState(() => _checkingKeys.remove(key));
+      if (mounted && (_probeGens[key] ?? 0) == gen) {
+        setState(() => _checkingKeys.remove(key));
+      }
     }
   }
 

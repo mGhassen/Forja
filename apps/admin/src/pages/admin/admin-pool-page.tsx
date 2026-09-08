@@ -1017,7 +1017,7 @@ export function AdminPoolPage() {
               setInventoryFilter(v as 'all' | 'pool' | 'nonpool')
             }
           >
-            <SelectTrigger id="pool-inventory-filter" className="w-[9.5rem]">
+            <SelectTrigger id="pool-inventory-filter" className="w-38">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1040,7 +1040,7 @@ export function AdminPoolPage() {
               setPlatformFilter(v as 'all' | PortalPlatform)
             }
           >
-            <SelectTrigger id="pool-platform-filter" className="w-[9rem]">
+            <SelectTrigger id="pool-platform-filter" className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1064,7 +1064,7 @@ export function AdminPoolPage() {
               setStatusFilter(v as 'all' | 'alive' | 'dead' | 'unchecked')
             }
           >
-            <SelectTrigger id="pool-status-filter" className="w-[9rem]">
+            <SelectTrigger id="pool-status-filter" className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1083,7 +1083,7 @@ export function AdminPoolPage() {
             Region
           </Label>
           <Select value={regionFilter} onValueChange={setRegionFilter}>
-            <SelectTrigger id="pool-region-filter" className="min-w-[8rem]">
+            <SelectTrigger id="pool-region-filter" className="min-w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1288,7 +1288,7 @@ export function AdminPoolPage() {
                   key={g.host}
                   className="border-t border-forja-border first:border-t-0"
                 >
-                  <div className="group/host grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] items-center gap-3 px-3 py-2.5 hover:bg-white/[0.03] focus-within:bg-white/[0.03] sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
+                  <div className="group/host grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_7rem_2.5rem] items-center gap-3 px-3 py-2.5 hover:bg-white/3 focus-within:bg-white/3 sm:grid-cols-[minmax(0,1.4fr)_6rem_5rem_8rem_2.5rem]">
                     <button
                       type="button"
                       onClick={() => toggle(g.host)}
