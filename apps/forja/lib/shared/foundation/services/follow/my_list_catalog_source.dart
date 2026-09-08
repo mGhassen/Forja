@@ -75,6 +75,9 @@ Map<String, dynamic> overlayMyListEnrichFields(
     'tmdbId',
     'pluginId',
     'metaOpen',
+    'open',
+    'kind',
+    'type',
   ]) {
     final v = current[key];
     if (v != null) out[key] = v;
@@ -82,6 +85,7 @@ Map<String, dynamic> overlayMyListEnrichFields(
   // Enrich fields — never replace a filled cache value with '' / 0 from Simkl.
   for (final key in const [
     'title',
+    'name',
     'posterPath',
     'backdropPath',
     'voteAverage',
@@ -241,11 +245,13 @@ MyListCatalogPage myListCatalogPageFromRows(
   final entries = <KitListEntry>[];
   for (final row in enriched) {
     final meta = metaItemFromLegacyListItem(row);
+    final kind = (row['kind'] ?? row['type'] ?? myListItemKind(row))
+        .toString();
     entries.add(
       KitListEntry(
         meta: meta,
         legacyRow: row,
-        kind: myListItemKind(row),
+        kind: kind.isEmpty ? myListItemKind(row) : kind,
         pluginId: row['pluginId']?.toString(),
         listStatus: row['listStatus']?.toString() ?? status,
       ),
@@ -280,53 +286,76 @@ MyListCatalogPage myListCatalogPageFromRows(
   );
 }
 
-/// Sync page from local (+ Simkl cache). Status pin changes update the grid
-/// immediately — no FutureProvider loading gap that keeps a stale card.
+/// One-shot: next [myListHubFeedProvider] run bypasses [MetaCache].
+final myListForceRefreshProvider = StateProvider<bool>((ref) => false);
+
+/// MetaRuntime `feed` for the my-list hub — pack owns composition via
+/// `ctx.host.myList.load`. Watches revision / Simkl gate / hidden keys so pin
+/// updates re-run feed. Enrich epoch is applied in [myListCatalogProvider]
+/// without re-entering the engine.
+final myListHubFeedProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((
+  ref,
+  status,
+) async {
+  final revision = ref.watch(myListRevisionProvider);
+  ref.watch(externalListsGateProvider);
+  final hiddenKeys = ref.watch(myListHiddenKeysProvider);
+
+  var forceRefresh = ref.read(myListForceRefreshProvider);
+
+  var rawItems = <Map<String, dynamic>>[];
+  try {
+    final env = await MetaRuntime.instance.run(
+      pluginId: myListHubPluginId,
+      action: 'feed',
+      params: {
+        'status': status,
+        'hiddenKeys': hiddenKeys.toList(),
+        // Bust MetaCache when local list revision changes.
+        '_rev': revision,
+      },
+      forceRefresh: forceRefresh,
+    );
+    if (forceRefresh) {
+      ref.read(myListForceRefreshProvider.notifier).state = false;
+      forceRefresh = false;
+    }
+    if (env.ok) {
+      final items = env.data?['items'];
+      if (items is List) {
+        for (final e in items) {
+          if (e is Map) {
+            final row = Map<String, dynamic>.from(e);
+            // Host open adapters still read metaOpen.
+            if (row['metaOpen'] == null && row['open'] is Map) {
+              row['metaOpen'] = Map<String, dynamic>.from(row['open'] as Map);
+            }
+            rawItems.add(row);
+          }
+        }
+      }
+    }
+  } catch (e, st) {
+    debugPrint('[my_list] hub feed: $e\n$st');
+    if (forceRefresh) {
+      ref.read(myListForceRefreshProvider.notifier).state = false;
+    }
+  }
+  return rawItems;
+});
+
+/// Thin page over [myListHubFeedProvider] + enrich cache (no second engine hop).
 final myListCatalogProvider =
     Provider.family<AsyncValue<MyListCatalogPage>, String>((ref, status) {
-      ref.watch(myListRevisionProvider);
-      ref.watch(myListEnrichEpochProvider);
-      final localItems = ref.watch(myListItemsProvider);
-      final hiddenKeys = ref.watch(myListHiddenKeysProvider);
-      final gateAsync = ref.watch(externalListsGateProvider);
-
-      if (gateAsync.isLoading && !gateAsync.hasValue) {
-        return const AsyncLoading();
-      }
-      if (gateAsync.hasError && !gateAsync.hasValue) {
-        return AsyncError(gateAsync.error!, gateAsync.stackTrace!);
-      }
-
-      final simklLoggedIn = gateAsync.valueOrNull?.simklLoggedIn == true;
-
-      final localForStatus = localItems
-          .where(
-            (e) => (e['listStatus']?.toString() ?? 'plantowatch') == status,
-          )
-          .toList();
-
-      var loadingSimkl = false;
-      List<Map<String, dynamic>> merged;
-      if (simklLoggedIn) {
-        final simklAsync = ref.watch(simklWatchlistProvider(status));
-        loadingSimkl = simklAsync.isLoading && !simklAsync.hasValue;
-        final simklRaw = simklAsync.valueOrNull ?? const [];
-        final simklItems = [
-          for (final raw in simklRaw) simklCardItem(raw),
-        ].whereType<Map<String, dynamic>>().toList();
-        final filteredSimkl = filterSimklByLocal(
-          simklItems,
-          localItems,
-          status,
-          hiddenKeys,
-        );
-        merged = mergeLocalHubs(filteredSimkl, localForStatus);
-      } else {
-        merged = localForStatus;
-      }
-
-      final enriched = applyMyListEnrichCacheSync(merged);
-      final pendingEnrich = List<Map<String, dynamic>>.from(merged);
+  ref.watch(myListEnrichEpochProvider);
+  final feed = ref.watch(myListHubFeedProvider(status));
+  return feed.when(
+    skipLoadingOnReload: true,
+    skipLoadingOnRefresh: true,
+    data: (rawItems) {
+      final enriched = applyMyListEnrichCacheSync(rawItems);
+      final pendingEnrich = List<Map<String, dynamic>>.from(rawItems);
       Future.microtask(() {
         try {
           ref
@@ -334,16 +363,20 @@ final myListCatalogProvider =
               .scheduleEnrich(pendingEnrich);
         } catch (_) {}
       });
-
       return AsyncData(
         myListCatalogPageFromRows(
           enriched,
           status,
-          loadingSimkl: loadingSimkl,
+          loadingSimkl: false,
         ),
       );
-    });
+    },
+    error: (e, st) => AsyncError(e, st),
+    loading: () => const AsyncLoading(),
+  );
+});
 
+/// Thin kit list backend: MetaRuntime feed for the my-list hub pack.
 final class MyListCatalogSource extends KitListSource {
   const MyListCatalogSource._();
 
@@ -355,9 +388,38 @@ final class MyListCatalogSource extends KitListSource {
   @override
   String? get hubPluginId => myListHubPluginId;
 
+  static AsyncValue<KitListPage> _asListPage(
+    AsyncValue<MyListCatalogPage> next,
+  ) {
+    return next.when(
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
+      data: (page) => AsyncData<KitListPage>(page),
+      error: (e, st) => AsyncError<KitListPage>(e, st),
+      loading: () => const AsyncLoading<KitListPage>(),
+    );
+  }
+
   @override
   AsyncValue<KitListPage> watchPage(WidgetRef ref, String status) {
-    return ref.watch(myListCatalogProvider(status));
+    return _asListPage(ref.watch(myListCatalogProvider(status)));
+  }
+
+  @override
+  AsyncValue<KitListPage> readPage(WidgetRef ref, String status) {
+    return _asListPage(ref.read(myListCatalogProvider(status)));
+  }
+
+  @override
+  void listenPage(
+    WidgetRef ref,
+    String status,
+    void Function(AsyncValue<KitListPage> next) onChange,
+  ) {
+    ref.listen<AsyncValue<MyListCatalogPage>>(myListCatalogProvider(status),
+        (prev, next) {
+      onChange(_asListPage(next));
+    });
   }
 
   @override
@@ -377,9 +439,12 @@ final class MyListCatalogSource extends KitListSource {
   @override
   void invalidateOnRefresh(WidgetRef ref) {
     clearMyListEnrichCache();
+    ref.read(myListForceRefreshProvider.notifier).state = true;
     ref.invalidate(myListRevisionProvider);
     ref.invalidate(simklWatchlistProvider);
     ref.invalidate(myListEnrichEpochProvider);
+    ref.invalidate(myListHubFeedProvider);
+    ref.invalidate(myListCatalogProvider);
   }
 
   @override

@@ -75,9 +75,6 @@ class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
 
-  /// How long the bottom banner stays on "Ready" before dismissing.
-  static const readyDwell = Duration(milliseconds: 2200);
-
   static bool _updateToastShownThisSession = false;
 
   /// Toast → Update: packs to confirm in [PluginPackUpdatePromptHost].
@@ -142,17 +139,6 @@ class PluginInstallCoordinator {
         '[PluginInstall] ready ${pack.name} '
         '(${pack.plugins.length} plugins) $manifestUrl',
       );
-      _setProgress(
-        PluginInstallProgress(
-          label: 'Ready: ${pack.name}',
-          manifestUrl: manifestUrl,
-          sourceUrl: manifestUrl,
-          completedSteps: 1,
-          totalSteps: 1,
-          isUpdate: isUpdate,
-        ),
-      );
-      await Future<void>.delayed(readyDwell);
       await DeferredRemoteInstallStore.clear(manifestUrl);
       return pack;
     } catch (e) {
@@ -473,18 +459,6 @@ class PluginInstallCoordinator {
           isUpdate: job.isUpdate,
         ),
       );
-    }
-
-    if (total > 0) {
-      _setProgress(
-        PluginInstallProgress(
-          label: 'Ready: all plugins',
-          completedSteps: total,
-          totalSteps: total,
-          isUpdate: false,
-        ),
-      );
-      await Future<void>.delayed(readyDwell);
     }
 
     if (installedNames.isNotEmpty) {

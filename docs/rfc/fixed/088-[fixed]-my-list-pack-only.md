@@ -51,5 +51,6 @@ Tab was already pack-gated ([R70-A60](../070-[partial]-catalog-hub-protocol.md))
 
 ### Related
 
+- [RFC-097](097-[fixed]-my-list-explode-host-to-packs.md) — pack MetaRuntime feed (peer of Live Sports RFC-091)
 - [RFC-087](087-[fixed]-live-sports-pack-only.md) — Live Sports pack-only peer
 - [my-list feature](../../features/movies-tv/my-list.md)

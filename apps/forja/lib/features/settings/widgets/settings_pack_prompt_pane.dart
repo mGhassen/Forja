@@ -24,13 +24,29 @@ class SettingsPackPromptDrill {
   /// True while Install / Apply is downloading — Back must not tear this down.
   static final ValueNotifier<bool> applying = ValueNotifier<bool>(false);
 
+  /// Focus before the prompt opened — restored on Back.
+  static ShellTvFocusMemory? returnFocus;
+
   static void open(PluginBatchInstallPrompt prompt) {
+    if (current.value == null) {
+      returnFocus = ShellTvFocusCoordinator.memoryFor('settings');
+    }
     current.value = prompt;
   }
 
   static void close() {
     applying.value = false;
     current.value = null;
+  }
+
+  static void clearReturnFocus() {
+    returnFocus = null;
+  }
+
+  static ShellTvFocusMemory? takeReturnFocus() {
+    final snap = returnFocus;
+    returnFocus = null;
+    return snap;
   }
 
   static bool get isOpen => current.value != null;

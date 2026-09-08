@@ -4,7 +4,7 @@
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "tags": [
     "lists"
   ],
@@ -22,7 +22,8 @@
       ],
       "capabilities": [
         "nav",
-        "layout"
+        "layout",
+        "feed"
       ],
       "enrich": "my-list-enrich-tmdb",
       "nav": {

@@ -18,7 +18,7 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 ## How to open it
 
 1. Install and enable a Live Sports hub pack under **Settings → Forja Packs** (ForjaHQ Live Sports and/or Live Sports Cards).
-2. Configure **Setup** (Forja Live / Sports, merge, leagues) under **Settings → Addons → Live Sports** (appears when the hub is installed) or by expanding the hub under Forja Packs.
+2. Configure **Setup** (Forja Live / Sports, merge) under **Settings → Addons → Live Sports** (appears when the hub is installed) or by expanding the hub under Forja Packs.
 3. Show the tab under **Settings → Features** / the nav rail (pack first-seen defaults the tab on).
 
 ## What you can do

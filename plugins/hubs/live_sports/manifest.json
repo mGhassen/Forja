@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports Hub",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "tags": [
     "sports",
     "live"
@@ -57,121 +57,6 @@
             "label": "Merge matching events",
             "subtitle": "Combine the same game across catalogs and run ESPN enrich. Off is faster with large schedules (default).",
             "default": false
-          },
-          {
-            "id": "leagues",
-            "type": "multi_select",
-            "label": "Leagues",
-            "subtitle": "Which leagues the hub includes when building the schedule",
-            "default": [
-              "NBA",
-              "NFL",
-              "MLB",
-              "NHL",
-              "WNBA",
-              "NCAAMB",
-              "NCAAWB",
-              "NCAAFB",
-              "EPL",
-              "MLS",
-              "LALIGA",
-              "SERIEA",
-              "BUNDESLIGA",
-              "LIGUE1",
-              "UCL",
-              "EUROPA",
-              "EREDIVISIE",
-              "LIGAPORTUGAL",
-              "LIGAMX",
-              "WORLDCUP",
-              "UFC"
-            ],
-            "options": [
-              {
-                "id": "NBA",
-                "label": "NBA"
-              },
-              {
-                "id": "WNBA",
-                "label": "WNBA"
-              },
-              {
-                "id": "NCAAMB",
-                "label": "NCAA Men's Basketball"
-              },
-              {
-                "id": "NCAAWB",
-                "label": "NCAA Women's Basketball"
-              },
-              {
-                "id": "NFL",
-                "label": "NFL"
-              },
-              {
-                "id": "NCAAFB",
-                "label": "NCAA Football"
-              },
-              {
-                "id": "MLB",
-                "label": "MLB"
-              },
-              {
-                "id": "NHL",
-                "label": "NHL"
-              },
-              {
-                "id": "EPL",
-                "label": "Premier League"
-              },
-              {
-                "id": "MLS",
-                "label": "MLS"
-              },
-              {
-                "id": "LALIGA",
-                "label": "La Liga"
-              },
-              {
-                "id": "SERIEA",
-                "label": "Serie A"
-              },
-              {
-                "id": "BUNDESLIGA",
-                "label": "Bundesliga"
-              },
-              {
-                "id": "LIGUE1",
-                "label": "Ligue 1"
-              },
-              {
-                "id": "UCL",
-                "label": "Champions League"
-              },
-              {
-                "id": "EUROPA",
-                "label": "Europa League"
-              },
-              {
-                "id": "EREDIVISIE",
-                "label": "Eredivisie"
-              },
-              {
-                "id": "LIGAPORTUGAL",
-                "label": "Primeira Liga"
-              },
-              {
-                "id": "LIGAMX",
-                "label": "Liga MX"
-              },
-              {
-                "id": "WORLDCUP",
-                "label": "FIFA World Cup"
-              },
-              {
-                "id": "UFC",
-                "label": "UFC"
-              }
-            ]
           }
         ]
       },

@@ -41,10 +41,14 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       FocusScopeNode(debugLabel: 'settings-detail');
   int _detailEnterToken = 0;
 
+  /// Last detail control before Back to the category rail — restored on re-enter.
+  ShellTvFocusMemory? _detailReturnFocus;
+  String? _detailReturnCategoryId;
+
   @override
   void initState() {
     super.initState();
-    // Back ladder: detail → selected category → first category → nav rail.
+    // Back ladder: nested drill → detail (same control) → selected category → nav.
     TvHeroActions.bind(
       'settings',
       pageBack: _handlePageBack,
@@ -64,12 +68,16 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   void didUpdateWidget(covariant SettingsHubScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedId != widget.selectedId) {
+      _detailReturnFocus = null;
+      _detailReturnCategoryId = null;
       if (widget.selectedId != SettingsCategoryId.sources) {
+        SettingsAddonDrill.clearReturnFocus();
         SettingsAddonDrill.close();
       }
       if (widget.selectedId != SettingsCategoryId.forjaPacks &&
           SettingsPackPromptDrill.isOpen &&
           !SettingsPackPromptDrill.isApplying) {
+        SettingsPackPromptDrill.clearReturnFocus();
         unawaited(SettingsPackPromptDrill.dismissWithoutApply());
       }
     }
@@ -95,21 +103,49 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   }
 
   /// OK / → from the category rail: bump [SettingsDetailEnter] so the detail
-  /// scaffold lands focus on the first right-pane control.
+  /// scaffold lands focus on the last detail control (or the first).
   void _enterDetail(String categoryId) {
     if (categoryId != widget.selectedId) {
       widget.onSelect(categoryId);
     }
     setState(() => _detailEnterToken++);
     // Do not focus the bare [FocusScope] — that leaves primary on
-    // `settings-detail` with no row chrome. Land on the first control after
-    // the detail body rebuilds.
+    // `settings-detail` with no row chrome. Land on the remembered control
+    // after the detail body rebuilds.
     WidgetsBinding.instance.addPostFrameCallback((_) => _landDetailFocus(0));
+  }
+
+  bool _tryRestoreDetailReturn() {
+    final snap = _detailReturnFocus;
+    final categoryId = _detailReturnCategoryId;
+    if (snap == null || categoryId != widget.selectedId) return false;
+    if (snap.zone == ShellTvZone.row && snap.rowId != null) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          ) ||
+          ShellTvFocusCoordinator.focusRowItem(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          )) {
+        return true;
+      }
+    }
+    final node = snap.node;
+    if (node != null && node.canRequestFocus && node.context != null) {
+      node.requestFocus();
+      return node.hasPrimaryFocus || node.hasFocus;
+    }
+    return false;
   }
 
   void _landDetailFocus(int attempt) {
     if (!mounted) return;
     if (!ShellScope.metricsOf(context).usesTvDensity) return;
+
+    if (_tryRestoreDetailReturn()) return;
 
     final first = _firstDetailFocusable();
     if (first != null) {
@@ -156,22 +192,13 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     return null;
   }
 
-  int? _focusedCategoryIndex() {
-    final handle =
-        ShellTvFocusCoordinator.rowHandle('settings', _categoryRowId);
-    if (handle == null || handle.itemCount <= 0) return null;
-    for (var i = 0; i < handle.itemCount; i++) {
-      if (handle.nodeAt(i)?.hasFocus ?? false) return i;
-    }
-    return null;
-  }
-
   bool _handlePageBack() {
     if (!mounted) return false;
     if (!SettingsTokens.useSplitLayout(context)) return false;
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
 
     if (SettingsAddonDrill.current.value != null) {
+      // Host restores focus onto the control that opened the drill.
       SettingsAddonDrill.close();
       return true;
     }
@@ -182,23 +209,49 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
         return true;
       }
       unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+      final snap = SettingsPackPromptDrill.takeReturnFocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (snap != null && _restoreMemory(snap)) return;
+        _landDetailFocus(0);
+      });
       return true;
     }
 
     if (_detailScope.hasFocus) {
+      // Remember the exact detail control so OK/→ re-enters there.
+      _detailReturnFocus = ShellTvFocusCoordinator.memoryFor('settings');
+      _detailReturnCategoryId = widget.selectedId;
       if (_detailEnterToken != 0) {
         setState(() => _detailEnterToken = 0);
       }
       return _focusSelectedCategory();
     }
 
-    final categoryIndex = _focusedCategoryIndex();
-    if (categoryIndex != null && categoryIndex > 0) {
-      return ShellTvFocusCoordinator.focusRowItem(
-        'settings',
-        _categoryRowId,
-        0,
-      );
+    // On the category rail (any index): let the shell focus the nav item.
+    // Do not hop to Profile / index 0 — selection must stay where it was.
+    return false;
+  }
+
+  bool _restoreMemory(ShellTvFocusMemory snap) {
+    if (snap.zone == ShellTvZone.row && snap.rowId != null) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          ) ||
+          ShellTvFocusCoordinator.focusRowItem(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          )) {
+        return true;
+      }
+    }
+    final node = snap.node;
+    if (node != null && node.canRequestFocus && node.context != null) {
+      node.requestFocus();
+      return node.hasPrimaryFocus || node.hasFocus;
     }
     return false;
   }
@@ -266,11 +319,13 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                       selectedId: widget.selectedId,
                       onSelect: (id) {
                         if (id != SettingsCategoryId.sources) {
+                          SettingsAddonDrill.clearReturnFocus();
                           SettingsAddonDrill.close();
                         }
                         if (id != SettingsCategoryId.forjaPacks &&
                             SettingsPackPromptDrill.isOpen &&
                             !SettingsPackPromptDrill.isApplying) {
+                          SettingsPackPromptDrill.clearReturnFocus();
                           unawaited(
                             SettingsPackPromptDrill.dismissWithoutApply(),
                           );

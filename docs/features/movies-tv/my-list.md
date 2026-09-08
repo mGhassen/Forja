@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a **hub pack** (ForjaHQ My List) — same class as Home or Anime. The pack declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Host foundation services own local bookmarks and Simkl merge (`MyListService` + `shared/foundation/services/follow/`). There is no host My List feature tab without the hub pack.
+My List is a **hub pack** (ForjaHQ My List) — same class as Home or Live Sports. The pack declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Pack **`feed`** composes the grid via MetaRuntime (`ctx.host.myList.load`); the host keeps local bookmarks and Simkl sync behind that bridge. There is no host My List feature tab without the hub pack.
 
 ## How to open it
 

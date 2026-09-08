@@ -112,7 +112,12 @@ function extract(ctx) {
     return ctx
       .fetch(anilistUrl, {
         method: 'POST',
-        headers: Object.assign({}, hdrs, { 'Content-Type': 'application/json', Accept: 'application/json' }),
+        headers: Object.assign({}, hdrs, {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Origin: 'https://anilist.co',
+          Referer: 'https://anilist.co/',
+        }),
         body: JSON.stringify({
           query: 'query($id:Int){Media(id:$id,type:ANIME){id idMal title{english romaji native} synonyms}}',
           variables: { id: Number(anilistId) },

@@ -936,7 +936,7 @@ async function fetchAniListMedia(anilistId) {
     const q = "query ($id: Int) { Media (id: $id, type: ANIME) { seasonYear startDate { year } title { romaji english native } } }";
     const res = await fetch("https://graphql.anilist.co", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA4, "Origin": "https://anilist.co" },
+      headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA4, "Origin": "https://anilist.co", "Referer": "https://anilist.co/" },
       body: JSON.stringify({ query: q, variables: { id: Number(anilistId) } })
     });
     if (!res.ok) return null;
@@ -1180,7 +1180,7 @@ async function fetchAniListFull(anilistId) {
   }`;
   const res = await fetch("https://graphql.anilist.co", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA4, "Origin": "https://anilist.co" },
+    headers: { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA4, "Origin": "https://anilist.co", "Referer": "https://anilist.co/" },
     body: JSON.stringify({ query: q, variables: { id: Number(anilistId) } })
   });
   if (!res.ok) throw new Error("AniList fetch failed");

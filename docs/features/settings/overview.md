@@ -21,7 +21,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows show a switch on the row. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. Installed packs can declare typed settings that appear **inside** the matching addon (e.g. Live Sports hub → Setup: Forja Live / Sports, merge, leagues). | Always |
+| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows show a switch on the row. **OK / click the row** turns the addon on or off; the **chevron on the right** opens that addon's settings. Installed packs can declare typed settings that appear **inside** the matching addon (e.g. Live Sports hub → Setup: Forja Live / Sports, merge). | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu — Addons/packs unlock features and default them on; Features hide/reorder | Always |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
@@ -47,8 +47,10 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   control (or any control near the top of the page) snaps the detail scroll
   back to the top so the category title and section labels stay on screen;
   holding **↑/↓** speeds up the further you hold; D-pad stays in the
-  right pane. **Back** returns to the selected
-  category, then first category, then the nav rail. **←** on the first category
+  right pane. **Back** steps nested pages first (e.g. **Addons → Stremio**
+  returns to the Addons list), then the selected category on the left rail,
+  then the nav rail — selection stays on that category (no hop to the first
+  item). **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
   Nested switches on ordinary toggle rows do not steal focus (**OK** flips the

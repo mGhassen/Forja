@@ -40,45 +40,60 @@ class NavDestinationIcon extends StatelessWidget {
     final asset = destination.iconAsset?.trim();
     if (asset == null || asset.isEmpty) return _materialIcon();
 
-    // Tint via Image.color so errorBuilder Material glyphs are not wrapped in
-    // ColorFiltered (failed IPTV host asset used to leave an empty rail slot).
-    Widget fallback(BuildContext _, Object _, StackTrace? _) => _materialIcon();
+    // Decode at device pixels + nearest-neighbor. Avoid FilterQuality.medium
+    // (LANCZOS rings hard-edged pack PNGs into a 1px ghost square) and avoid
+    // Image.color (Impeller often paints a hairline bounds rect with srcIn).
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cachePx = (size * dpr).round().clamp(1, 512);
 
+    Widget fallback(BuildContext _, Object _, StackTrace? _) => Icon(
+      selected ? destination.activeIcon : destination.icon,
+      // White so outer ColorFiltered srcIn resolves to [color].
+      color: Colors.white,
+      size: size,
+    );
+
+    final Image image;
     if (asset.startsWith('assets/')) {
-      return Image.asset(
+      image = Image.asset(
         asset,
         width: size,
         height: size,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        color: color,
-        colorBlendMode: BlendMode.srcIn,
+        filterQuality: FilterQuality.none,
         errorBuilder: fallback,
       );
-    }
-    if (asset.startsWith('http://') || asset.startsWith('https://')) {
-      return Image.network(
+    } else if (asset.startsWith('http://') || asset.startsWith('https://')) {
+      image = Image.network(
         asset,
         width: size,
         height: size,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        color: color,
-        colorBlendMode: BlendMode.srcIn,
+        filterQuality: FilterQuality.none,
+        errorBuilder: fallback,
+      );
+    } else {
+      final file = PackAssets.asLocalFile(asset) ?? File(asset);
+      if (!file.existsSync()) return _materialIcon();
+      image = Image.file(
+        file,
+        width: size,
+        height: size,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.none,
         errorBuilder: fallback,
       );
     }
-    final file = PackAssets.asLocalFile(asset) ?? File(asset);
-    if (!file.existsSync()) return _materialIcon();
-    return Image.file(
-      file,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
-      color: color,
-      colorBlendMode: BlendMode.srcIn,
-      errorBuilder: fallback,
+
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      child: image,
     );
   }
 

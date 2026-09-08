@@ -50,7 +50,7 @@
 
 ## Summary
 
-Host IPTV sports surface is **channel search only**: portal credentials, Rust `sport_match_streams`, URL rebuild, logo enrich, short cache. Pack owns `forjaSportsEnabled`, leagues, merge, and the opaque `game` / `sportMatchGame` on schedule rows.
+Host IPTV sports surface is **channel search only**: portal credentials, Rust `sport_match_streams`, URL rebuild, logo enrich, short cache. Pack owns `forjaSportsEnabled`, merge, and the opaque `game` / `sportMatchGame` on schedule rows.
 
 ### Contract
 

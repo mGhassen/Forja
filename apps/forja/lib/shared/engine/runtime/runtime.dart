@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/lists/my_list_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/models/models.dart';
@@ -273,6 +274,21 @@ class EngineRuntime {
             : <String, dynamic>{};
         final gen = _fetchGeneration;
         unawaited(_dispatchLiveFeed(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('MyListStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final queryRaw = m['query'];
+        final query = queryRaw is Map
+            ? Map<String, dynamic>.from(queryRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(_dispatchMyList(id: id, query: query, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -1090,6 +1106,20 @@ class EngineRuntime {
           });
         }
       };
+      h.myList = {
+        load: function(query) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineMyListSeq;
+            globalThis.__engineMyListPending[id] = function(env) {
+              resolve(env && Array.isArray(env.rows) ? env.rows : []);
+            };
+            sendMessage('MyListStart', JSON.stringify({
+              id: id,
+              query: query == null ? {} : query
+            }));
+          });
+        }
+      };
       h.iptv = {
         searchChannels: function(opts) {
           return new Promise(function(resolve) {
@@ -1436,6 +1466,22 @@ class EngineRuntime {
     _resolveLiveFeed(id: id, gen: gen, rows: rows);
   }
 
+  Future<void> _dispatchMyList({
+    required int id,
+    required Map<String, dynamic> query,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await aggregateMyListFeed(MyListFeedQuery.fromHostParams(query));
+    } catch (e, st) {
+      _forjaRuntimeLog('myList.load failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveMyList(id: id, gen: gen, rows: rows);
+  }
+
   Future<void> _dispatchIptvSearchChannels({
     required int id,
     required Map<String, dynamic> game,
@@ -1470,6 +1516,21 @@ class EngineRuntime {
       rt,
       'try { globalThis.__engineLiveFeedResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
       sourceUrl: 'engine://liveFeed/$id',
+    );
+  }
+
+  void _resolveMyList({
+    required int id,
+    required int gen,
+    required List<Map<String, dynamic>> rows,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineMyListResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
+      sourceUrl: 'engine://myList/$id',
     );
   }
 
@@ -1930,6 +1991,12 @@ class EngineRuntime {
   globalThis.__engineLiveFeedResolve = function(id, envelope){
     var p = globalThis.__engineLiveFeedPending[id];
     if (p) { delete globalThis.__engineLiveFeedPending[id]; p(envelope); }
+  };
+  globalThis.__engineMyListPending = globalThis.__engineMyListPending || {};
+  globalThis.__engineMyListSeq = globalThis.__engineMyListSeq || 0;
+  globalThis.__engineMyListResolve = function(id, envelope){
+    var p = globalThis.__engineMyListPending[id];
+    if (p) { delete globalThis.__engineMyListPending[id]; p(envelope); }
   };
   globalThis.__engineIptvSearchPending = globalThis.__engineIptvSearchPending || {};
   globalThis.__engineIptvSearchSeq = globalThis.__engineIptvSearchSeq || 0;

@@ -1,5 +1,5 @@
 // TMDB hydrate for My List legacy rows — companion to my-list-hub.
-// Host pipes this after the my_list list source merges local + Simkl rows.
+// Host schedules this after MetaRuntime feed returns (background enrich cache).
 
 function myListNeedsEnrich(row) {
   if (!row || typeof row !== 'object') return false;

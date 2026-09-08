@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,6 +33,7 @@
 |--:|----|-------------|--------|
 | 1 | I127-A01 | Android TV Settings: OK/→ from a category enters the right pane; ↑/↓/←/→ move only among detail controls | ⬜ |
 | 2 | I127-A02 | Back from detail returns to the selected category; further Back steps to first category then nav rail | ⬜ |
+| 3 | I127-A03 | Back: nested drill → detail list → selected category → nav (no hop to first category); Addons→Stremio restores list focus | ✅ |
 
 ---
 
@@ -40,7 +41,7 @@
 
 On **Android TV**, Settings uses a left category rail and a right detail pane. **OK** / **→** should enter the detail; D-pad should stay in the right pane; only **Back** should return to the left rail. Several detail controls wired `navLeftAlways` / `listIndex: 0` / linear `onBackwardEdge`, so **←** jumped to the category rail or shell nav mid-pane.
 
-**Symptom fix:** Trap D-pad inside the detail `FocusScope` + linear scope; Back ladder unchanged (`detail → selected category → first category → nav`).
+**Symptom fix:** Trap D-pad inside the detail `FocusScope` + linear scope; Back ladder is nested drill → detail → selected category → nav (no Profile hop).
 
 **Root fix:** Same — focus ownership for settings rows/buttons (no geometry leak via raw `InkWell` / `IconButton`).
 

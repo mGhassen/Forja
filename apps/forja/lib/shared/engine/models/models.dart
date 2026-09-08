@@ -93,6 +93,11 @@ class EnginePlugin {
   /// flutter_js for `feed`/`rail` on these plugins (not layout/filters).
   bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
 
+  /// Hub feed that calls `ctx.host.myList.load` (My List packs).
+  /// EngineJS has no myList bridge yet — [EngineService.runCatalog] must use
+  /// flutter_js for `feed`/`rail` on these plugins (not layout).
+  bool get needsMyListHost => isKitPlugin && types.contains('list');
+
   /// Pack install must cache JS for this plugin.
   bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;
 

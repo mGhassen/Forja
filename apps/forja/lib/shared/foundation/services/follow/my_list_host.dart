@@ -5,7 +5,8 @@ import 'package:forja/shared/foundation/services/registry/host_list_registry.dar
 /// Opaque My List kit ids + foundation registration.
 ///
 /// Registers `source: my_list` so pack layouts resolve without importing
-/// list internals. Tab chrome lives only in the hub pack.
+/// list internals. Tab chrome + MetaRuntime `feed` live in the hub pack
+/// (`ctx.host.myList.load`); this host only registers the thin adapter.
 abstract final class MyListHost {
   MyListHost._();
 

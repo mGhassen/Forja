@@ -71,7 +71,11 @@ function extract(ctx) {
     var query = 'query($search:String){Page(perPage:20){media(search:$search,type:ANIME){id type format title{romaji english}startDate{year month day}endDate{year month day}episodes streamingEpisodes{title}}}}';
     return ctx.fetch(anilistUrl, {
       method: 'POST',
-      headers: Object.assign({}, hdrs, { 'Content-Type': 'application/json' }),
+      headers: Object.assign({}, hdrs, {
+        'Content-Type': 'application/json',
+        Origin: 'https://anilist.co',
+        Referer: 'https://anilist.co/',
+      }),
       body: JSON.stringify({ query: query, variables: { search: syncInfo.title } }),
     }).then(function (r) { return r.json(); }).then(function (json) {
       var candidates = (((json.data || {}).Page || {}).media) || [];

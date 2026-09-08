@@ -271,12 +271,16 @@ function anilistRelatedFromMedia(m) {
 }
 
 function anilistQuery(ctx, cfg, query, variables) {
+  // AniList Cloudflare rejects bare POSTs (fake 403 "temporarily disabled").
+  // Browser / Apollo send anilist.co Referer; Origin alone is not enough.
   return ctx
     .fetch(cfg.graphql, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        Origin: 'https://anilist.co',
+        Referer: 'https://anilist.co/',
       },
       body: JSON.stringify({ query: query, variables: variables || {} }),
     })

@@ -26,7 +26,33 @@ class SettingsAddonDrill {
   static final ValueNotifier<SettingsAddonMeta?> current =
       ValueNotifier<SettingsAddonMeta?>(null);
 
-  static void close() => current.value = null;
+  /// Focus on the list control that opened this drill (row / chevron).
+  static ShellTvFocusMemory? returnFocus;
+
+  static void close() {
+    current.value = null;
+    // Keep [returnFocus] until the list host restores it (same frame listeners).
+  }
+
+  static void clearReturnFocus() {
+    returnFocus = null;
+  }
+
+  /// Snapshot [returnFocus] only when leaving the list (null → open).
+  static void open(SettingsAddonMeta meta) {
+    if (current.value == null) {
+      final mem = ShellTvFocusCoordinator.memoryFor('settings');
+      final rowId = 'addon-${meta.id}';
+      returnFocus = (mem != null && mem.rowId == rowId)
+          ? mem
+          : ShellTvFocusMemory(
+              zone: ShellTvZone.row,
+              rowId: rowId,
+              itemIndex: 0,
+            );
+    }
+    current.value = meta;
+  }
 }
 
 /// Category page chrome that swaps title for addon detail or pack install picker.
@@ -134,7 +160,40 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
   }
 
   void _onDrill() {
+    final open = SettingsAddonDrill.current.value;
+    if (open == null) {
+      final snap = SettingsAddonDrill.returnFocus;
+      SettingsAddonDrill.returnFocus = null;
+      if (snap != null) {
+        _scheduleRestoreFocus(snap);
+      }
+    }
     if (mounted) setState(() {});
+  }
+
+  void _scheduleRestoreFocus(ShellTvFocusMemory snap) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+        final rowId = snap.rowId;
+        if (rowId == null || rowId.isEmpty) return;
+        // Prefer exact index (chevron vs row); soft fallback if node not ready.
+        final ok = ShellTvFocusCoordinator.focusRowItemExact(
+              'settings',
+              rowId,
+              snap.itemIndex,
+            ) ||
+            ShellTvFocusCoordinator.focusRowItem(
+              'settings',
+              rowId,
+              snap.itemIndex,
+            );
+        if (!ok && n < 12) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   void _onEngineChanged() {
@@ -161,14 +220,15 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
       addonId,
       packContributed: _packContributed,
     );
-    if (meta != null) SettingsAddonDrill.current.value = meta;
+    if (meta != null) SettingsAddonDrill.open(meta);
   }
 
   void _open(String addonId) {
-    SettingsAddonDrill.current.value = settingsAddonById(
+    final meta = settingsAddonById(
       addonId,
       packContributed: _packContributed,
     );
+    if (meta != null) SettingsAddonDrill.open(meta);
   }
 
   @override

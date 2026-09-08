@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **1 / 6** acceptance (Addons hub) |
+| **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **4 / 4** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **2 / 6** acceptance (Addons hub) |
 | **Current slice** | Addons are built-in app surfaces (always listed, switch activates); plugins contribute extra settings inside addon details |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -68,6 +68,7 @@
 | 1 | R33-A17 | Split TV: OK/→ from category enters detail and lands on the first right-pane control; ↑/↓/←/→ stay in the right pane (no ← exit to rail) | ✅ |
 | 2 | R33-A18 | Back from detail → selected category → first category → nav rail | ✅ |
 | 3 | R33-A19 | TV select rows: OK opens D-pad option list (selected highlighted); chrome unchanged | ✅ |
+| 4 | R33-A27 | Back from selected category goes to nav rail (no hop to first/Profile); selection stays | ✅ |
 
 ---
 
@@ -79,7 +80,7 @@
 | 2 | R33-A22 | Fixed 8 addon rows always listed (IPTV, Live Sports, Torrent, Stremio, Nuvio, Debrid, Connected services, LAN); switch activates; off does not hide the row; plugins add settings inside details | 🔄 |
 | 3 | R33-A23 | Tapping an addon row opens its detail in-pane with back to the list | 🔄 |
 | 4 | R33-A24 | Deep-links (`openSettings(categoryId: 'debrid')` etc.) land on Addons → that addon detail | 🔄 |
-| 5 | R33-A25 | TV D-pad: back from addon detail → addon list → category rail | ⬜ |
+| 5 | R33-A25 | TV D-pad: back from addon detail → addon list → category rail | ✅ |
 | 6 | R33-A26 | TV Addons list: OK opens detail; → focuses activate switch; OK on switch flips | ✅ |
 
 ---
