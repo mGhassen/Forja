@@ -40,11 +40,22 @@ class MetaFeedCatalogPage implements KitListPage {
   }
 }
 
+/// One-shot: next [metaFeedCatalogProvider] run bypasses [MetaCache].
+/// Set by Refresh / pull-to-refresh before [ref.invalidate].
+final metaFeedForceRefreshProvider = StateProvider<bool>((ref) => false);
+
 /// MetaRuntime `feed` for the live hub plugin — pack owns composition via
 /// `ctx.host.liveFeed.load`.
+///
+/// Soft opens reuse pack cache hints (`maxAge` / `swr` on hub `feed`). Refresh
+/// sets [metaFeedForceRefreshProvider] so the next run force-refetches.
 final metaFeedCatalogProvider =
     FutureProvider.autoDispose<MetaFeedCatalogPage>((ref) async {
   final filters = ref.watch(kitScheduleFiltersProvider);
+  final forceRefresh = ref.read(metaFeedForceRefreshProvider);
+  if (forceRefresh) {
+    ref.read(metaFeedForceRefreshProvider.notifier).state = false;
+  }
   final hubId =
       await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
   if (hubId == null || hubId.isEmpty) {
@@ -62,7 +73,7 @@ final metaFeedCatalogProvider =
         'scheduleHorizon': filters.scheduleHorizon.name,
         'sportFilter': filters.sportFilter,
       },
-      forceRefresh: true,
+      forceRefresh: forceRefresh,
     );
     if (env.ok) {
       final items = env.data?['items'];
@@ -209,6 +220,7 @@ final class MetaFeedListSource extends KitListSource {
   void invalidateOnRefresh(WidgetRef ref) {
     EngineService.instance.cancelLiveCatalog();
     LivePluginEngine.warmPluginMeta();
+    ref.read(metaFeedForceRefreshProvider.notifier).state = true;
     ref.invalidate(metaFeedCatalogProvider);
   }
 
