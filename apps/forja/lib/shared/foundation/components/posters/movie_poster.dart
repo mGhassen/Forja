@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/routing/app_router.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
+import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
 
 class MoviePoster extends StatefulWidget {
   final Movie movie;

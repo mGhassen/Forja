@@ -5,7 +5,7 @@ import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
+import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
 
 /// Poster frame for hub catalog rows.
 ///

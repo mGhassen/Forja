@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
@@ -33,7 +33,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   static const _liveTv = KitResolvePanelHost.liveTvTab;
 
   final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
-  late final IptvLazyUrlHealthProbe _healthProbe;
+  KitUrlHealthProbe? _healthProbe;
   late String _tabId;
   bool _streamsVisible = false;
   bool _heroFocusDone = false;
@@ -44,7 +44,8 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     _tabId = _providers;
     // Old live details auto-opened Providers on land.
     _streamsVisible = true;
-    _healthProbe = IptvLazyUrlHealthProbe(
+    final create = KitResolveStreamsHooks.createHealthProbe;
+    _healthProbe = create?.call(
       onResult: (_, _) {
         if (mounted) setState(() {});
       },
@@ -54,7 +55,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   @override
   void dispose() {
     _backFocus.dispose();
-    _healthProbe.dispose();
+    _healthProbe?.dispose();
     super.dispose();
   }
 
@@ -89,6 +90,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final backdrop = kitEventImageUrl(m.poster);
     final viewport = MediaQuery.sizeOf(context);
     final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
+    final probe = _healthProbe;
 
     if (policy.heroPlayAutoFocus && !_heroFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -96,6 +98,41 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
         _heroFocusDone = true;
         if (_backFocus.canRequestFocus) _backFocus.requestFocus();
       });
+    }
+
+    Widget? streamsPanel;
+    if (_streamsVisible) {
+      Widget panelBuilder() => KitSourcesPanel(
+            key: ValueKey(
+              'live-details-${widget.entry.meta.id}-$_tabId-${widget.refreshEpoch}',
+            ),
+            title: title,
+            subtitle: m.categoryLabel,
+            embedded: true,
+            tabs: const [
+              KitSourcesTab(id: _providers, label: 'Providers'),
+              KitSourcesTab(id: _liveTv, label: 'Live TV'),
+            ],
+            initialTabId: _tabId,
+            showTabs: false,
+            loadTab: (tabId) => KitResolvePanelHost.loadTab(
+              widget.entry.legacyRow,
+              tabId,
+              healthProbe: probe,
+            ),
+            onPlayRow: (row) => KitResolvePanelHost.playRow(
+              context,
+              row,
+              title: title,
+            ),
+            tvTabId: MediaDetailsTv.tabId,
+          );
+      streamsPanel = probe == null
+          ? panelBuilder()
+          : ListenableBuilder(
+              listenable: probe,
+              builder: (context, _) => panelBuilder(),
+            );
     }
 
     return Scaffold(
@@ -141,36 +178,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
               ),
             ),
             belowActionRowFullWidth: true,
-            belowActionRow: _streamsVisible
-                ? ListenableBuilder(
-                    listenable: _healthProbe,
-                    builder: (context, _) => KitSourcesPanel(
-                      key: ValueKey(
-                        'live-details-${widget.entry.meta.id}-$_tabId-${widget.refreshEpoch}',
-                      ),
-                      title: title,
-                      subtitle: m.categoryLabel,
-                      embedded: true,
-                      tabs: const [
-                        KitSourcesTab(id: _providers, label: 'Providers'),
-                        KitSourcesTab(id: _liveTv, label: 'Live TV'),
-                      ],
-                      initialTabId: _tabId,
-                      showTabs: false,
-                      loadTab: (tabId) => KitResolvePanelHost.loadTab(
-                        widget.entry.legacyRow,
-                        tabId,
-                        healthProbe: _healthProbe,
-                      ),
-                      onPlayRow: (row) => KitResolvePanelHost.playRow(
-                        context,
-                        row,
-                        title: title,
-                      ),
-                      tvTabId: MediaDetailsTv.tabId,
-                    ),
-                  )
-                : null,
+            belowActionRow: streamsPanel,
           ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],

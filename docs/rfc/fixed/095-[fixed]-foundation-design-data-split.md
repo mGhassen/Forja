@@ -1,15 +1,15 @@
 # RFC-095: Foundation like shadcn — design alone, data alone
 
-**Status:** open  
-**Depends on:** [RFC-085](085-[partial]-catalog-kit-generic-only.md) · [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) · [RFC-092](fixed/092-[fixed]-delete-root-app-live-sports.md)  
+**Status:** fixed  
+**Depends on:** [RFC-085](../085-[partial]-catalog-kit-generic-only.md) · [RFC-025](025-[fixed]-flat-cinematic-shell.md) · [RFC-092](092-[fixed]-delete-root-app-live-sports.md)  
 **Area:** `shared/foundation/`, `features/**`, design system rules
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components (slice A) · **6 / 6** acceptance (slice A) · **0 / 4** deferred slices B–E |
-| **Current slice** | **A** Portals chip + side panel overlay + list panel shell — design alone, IPTV wires data |
+| **Progress** | **3 / 3** components · **10 / 10** acceptance |
+| **Current slice** | Complete — Portals / list status / IPTV play hooks / resolve panel / live product tree removed |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,10 +42,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 7 | R95-A07 | Slice B — `KitListStatusButton`: dumb control + feature wiring (no Riverpod/Simkl in chrome) | ⏭️ |
-| 8 | R95-A08 | Slice C — `kit_details_screen` / `iptv_open` / play blocks: inject hosts; IPTV stays in feature | ⏭️ |
-| 9 | R95-A09 | Slice D — `kit_resolve_panel_host` registers loaders from feature; no direct match import | ⏭️ |
-| 10 | R95-A10 | Slice E — delete or move leftover `foundation/services/live/` product tree | ⏭️ |
+| 7 | R95-A07 | Slice B — `KitListStatusButton`: dumb control + feature wiring (no Riverpod/Simkl in chrome) | ✅ |
+| 8 | R95-A08 | Slice C — `kit_details_screen` / `iptv_open` / play blocks: inject hosts; IPTV stays in feature | ✅ |
+| 9 | R95-A09 | Slice D — `kit_resolve_panel_host` registers loaders from feature; no direct match import | ✅ |
+| 10 | R95-A10 | Slice E — delete or move leftover `foundation/services/live/` product tree | ✅ |
 
 ---
 
@@ -65,21 +65,20 @@ KitSidePanelOverlay → KitPortalListPanel (header/search/body slots)
 IptvController → view props → Kit*
 ```
 
-### Inventory (foundation → features — later slices)
+### Inventory (foundation → features — resolved)
 
 | Path | Smell | Slice |
 |------|-------|-------|
-| `components/chrome/kit_list_status_button.dart` | Riverpod / Simkl inside chrome | B |
-| `components/details/kit_sources.dart` | settings providers | B/C |
-| `blocks/details/kit_details_screen.dart` | IPTV models + controller provider | C |
-| `blocks/shell/iptv_open.dart` | IPTV network/storage/player | C |
-| `blocks/play/iptv_play.dart` / `live_play.dart` | IPTV player screen | C |
-| `services/panel/kit_resolve_panel_host.dart` | portal sports match + player | D |
-| `services/panel/kit_match_details_page.dart` | IPTV health probe | D |
-| `services/live/*` | leftover product live tree | E |
+| `components/chrome/kit_list_status_*` | Riverpod / Simkl inside chrome | B ✅ |
+| `components/details/kit_sources.dart` | settings providers | C ✅ (`KitPanelSourceFlags`) |
+| `blocks/details/kit_details_screen.dart` | IPTV models + settings providers | C ✅ (`KitIptvPlayHooks` + `KitPanelSourceFlagsHooks`) |
+| `features/iptv/open/iptv_open.dart` (+ play) | IPTV network/storage/player | C ✅ (moved out of foundation) |
+| `services/panel/kit_resolve_panel_host.dart` | portal sports match + player | D ✅ (`KitResolveStreamsHooks`) |
+| `services/panel/kit_match_details_page.dart` | IPTV health probe | D ✅ |
+| `services/live/*` | leftover product live tree | E ✅ (deleted) |
 
 ### Related
 
-- [RFC-085](085-[partial]-catalog-kit-generic-only.md) — shadcn folder layout
-- [RFC-092](fixed/092-[fixed]-delete-root-app-live-sports.md) — IPTV match under portal data (not Live Sports product tree)
-- [forja-design-system](../../.cursor/rules/forja-design-system.mdc) · [forja-shared-ui](../../.cursor/rules/forja-shared-ui.mdc)
+- [RFC-085](../085-[partial]-catalog-kit-generic-only.md) — shadcn folder layout
+- [RFC-092](092-[fixed]-delete-root-app-live-sports.md) — IPTV match under portal data (not Live Sports product tree)
+- [forja-design-system](../../../.cursor/rules/forja-design-system.mdc) · [forja-shared-ui](../../../.cursor/rules/forja-shared-ui.mdc)

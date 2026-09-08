@@ -1,20 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
-import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_match.dart';
 import 'package:forja/shared/foundation/services/panel/kit_match_details_page.dart';
-import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
-/// Thin registry host — Providers via live resolve packs; Live TV via
-/// [IptvPortalSportsMatchService] (RFC-091).
+/// Thin registry host — load/play via [KitResolveStreamsHooks] (RFC-095 D).
 final class KitResolvePanelHost implements KitPanelHost {
   const KitResolvePanelHost();
 
@@ -59,81 +54,11 @@ final class KitResolvePanelHost implements KitPanelHost {
   static Future<List<KitSourcesRow>> loadTab(
     Map<String, dynamic> legacyRow,
     String tabId, {
-    IptvLazyUrlHealthProbe? healthProbe,
+    KitUrlHealthProbe? healthProbe,
   }) async {
-    final sources = tabId == liveTvTab
-        ? await IptvPortalSportsMatchService.resolveStreams(
-            MatchEvent.fromLegacyRow(legacyRow),
-          )
-        : await LiveResolveStreams.loadProviders(legacyRow);
-    return [
-      for (var i = 0; i < sources.length; i++)
-        _rowForSource(
-          tabId: tabId,
-          index: i,
-          source: sources[i],
-          all: sources,
-          healthProbe: healthProbe,
-        ),
-    ];
-  }
-
-  static KitSourcesRow _rowForSource({
-    required String tabId,
-    required int index,
-    required IptvPlaySource source,
-    required List<IptvPlaySource> all,
-    IptvLazyUrlHealthProbe? healthProbe,
-  }) {
-    final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
-        ? source.liveProviderBadge!.trim()
-        : (source.pickerSubtitle ?? '').trim();
-    final host = _embedHost(source);
-    final probeKey = _probeKey(source);
-    return KitSourcesRow(
-      id: '${tabId}_$index',
-      title: source.pickerTitle,
-      subtitle: provider.isEmpty ? null : provider,
-      footer: host,
-      badges: [
-        if (source.liveStreamHd) 'HD',
-      ],
-      viewerCount: source.liveViewerCount,
-      payload: _PlayPayload(sources: all, picked: source),
-      probeHealthCache: healthProbe?.healthFor(probeKey),
-      onHoverProbe: healthProbe == null || !iptvLiveSourceCanHoverProbe(source)
-          ? null
-          : () async {
-              final cached = healthProbe.healthFor(probeKey);
-              if (cached != null) return cached;
-              final probeUrl = iptvLiveSourceProbeUrl(source);
-              if (probeUrl == null) {
-                final ok = iptvLiveSourceProbeSkipped(source);
-                healthProbe.remember(probeKey, ok);
-                return ok;
-              }
-              return healthProbe.checkNow(probeKey, probeUrl);
-            },
-    );
-  }
-
-  static String _probeKey(IptvPlaySource source) {
-    final url = source.url.trim();
-    if (url.isNotEmpty) return url;
-    final embed = (source.liveEngineEmbedUrl ?? '').trim();
-    if (embed.isNotEmpty) return embed;
-    return source.pickerTitle;
-  }
-
-  static String? _embedHost(IptvPlaySource source) {
-    final embed = (source.liveEngineEmbedUrl ?? '').trim();
-    final url = source.url.trim();
-    final probe = embed.isNotEmpty
-        ? embed
-        : (url.startsWith('http') ? url : '');
-    if (probe.isEmpty) return null;
-    final host = Uri.tryParse(probe)?.host.trim() ?? '';
-    return host.isEmpty ? null : host;
+    final load = KitResolveStreamsHooks.loadTab;
+    if (load == null) return const [];
+    return load(legacyRow, tabId, healthProbe: healthProbe);
   }
 
   static Future<void> playRow(
@@ -141,15 +66,9 @@ final class KitResolvePanelHost implements KitPanelHost {
     KitSourcesRow kitRow, {
     required String title,
   }) async {
-    final payload = kitRow.payload;
-    if (payload is! _PlayPayload) return;
-    await LiveResolveStreams.play(
-      context,
-      sources: payload.sources,
-      picked: payload.picked,
-      title: title.isEmpty ? payload.picked.pickerTitle : title,
-      subtitle: payload.picked.pickerSubtitle,
-    );
+    final play = KitResolveStreamsHooks.playRow;
+    if (play == null) return;
+    await play(context, kitRow, title: title);
   }
 }
 
@@ -171,12 +90,13 @@ class _KitResolveStreamsPanel extends StatefulWidget {
 }
 
 class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
-  late final IptvLazyUrlHealthProbe _healthProbe;
+  KitUrlHealthProbe? _healthProbe;
 
   @override
   void initState() {
     super.initState();
-    _healthProbe = IptvLazyUrlHealthProbe(
+    final create = KitResolveStreamsHooks.createHealthProbe;
+    _healthProbe = create?.call(
       onResult: (_, _) {
         if (mounted) setState(() {});
       },
@@ -185,7 +105,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
 
   @override
   void dispose() {
-    _healthProbe.dispose();
+    _healthProbe?.dispose();
     super.dispose();
   }
 
@@ -198,6 +118,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
     final subtitle = (row['category'] ?? widget.entry.meta.badge ?? '')
         .toString()
         .trim();
+    final probe = _healthProbe;
 
     return Material(
       color: ForjaShellColors.surfaceElevated,
@@ -207,45 +128,52 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
             left: BorderSide(color: ForjaShellColors.borderSubtle),
           ),
         ),
-        child: ListenableBuilder(
-          listenable: _healthProbe,
-          builder: (context, _) => KitSourcesPanel(
-            key: ValueKey(
-              'live-panel-body-${widget.entry.meta.id}-${widget.refreshEpoch}',
-            ),
-            title: title.isEmpty ? 'Streams' : title,
-            subtitle: subtitle.isEmpty ? null : subtitle,
-            tabs: const [
-              KitSourcesTab(
-                id: KitResolvePanelHost.providersTab,
-                label: 'Providers',
+        child: probe == null
+            ? _buildPanel(context, row, title, subtitle, null)
+            : ListenableBuilder(
+                listenable: probe,
+                builder: (context, _) =>
+                    _buildPanel(context, row, title, subtitle, probe),
               ),
-              KitSourcesTab(
-                id: KitResolvePanelHost.liveTvTab,
-                label: 'Live TV',
-              ),
-            ],
-            initialTabId: KitResolvePanelHost.providersTab,
-            onClosed: widget.onClosed,
-            loadTab: (tabId) => KitResolvePanelHost.loadTab(
-              row,
-              tabId,
-              healthProbe: _healthProbe,
-            ),
-            onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
-              context,
-              kitRow,
-              title: title,
-            ),
-          ),
-        ),
       ),
     );
   }
-}
 
-class _PlayPayload {
-  const _PlayPayload({required this.sources, required this.picked});
-  final List<IptvPlaySource> sources;
-  final IptvPlaySource picked;
+  Widget _buildPanel(
+    BuildContext context,
+    Map<String, dynamic> row,
+    String title,
+    String subtitle,
+    KitUrlHealthProbe? healthProbe,
+  ) {
+    return KitSourcesPanel(
+      key: ValueKey(
+        'live-panel-body-${widget.entry.meta.id}-${widget.refreshEpoch}',
+      ),
+      title: title.isEmpty ? 'Streams' : title,
+      subtitle: subtitle.isEmpty ? null : subtitle,
+      tabs: const [
+        KitSourcesTab(
+          id: KitResolvePanelHost.providersTab,
+          label: 'Providers',
+        ),
+        KitSourcesTab(
+          id: KitResolvePanelHost.liveTvTab,
+          label: 'Live TV',
+        ),
+      ],
+      initialTabId: KitResolvePanelHost.providersTab,
+      onClosed: widget.onClosed,
+      loadTab: (tabId) => KitResolvePanelHost.loadTab(
+        row,
+        tabId,
+        healthProbe: healthProbe,
+      ),
+      onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
+        context,
+        kitRow,
+        title: title,
+      ),
+    );
+  }
 }

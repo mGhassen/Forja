@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
+import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
 import 'package:rust/rust.dart';
 
 /// TMDB [Movie] poster tile — media details, my list, hero bleed (not catalog kit).

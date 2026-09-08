@@ -12,7 +12,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:forja/features/archive/audio/audiobook_player_service.dart';
 import 'package:forja/features/archive/audio/music_player_service.dart';
+import 'package:forja/features/iptv/open/iptv_kit_hooks_register.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_chrome_hooks.dart';
+import 'package:forja/features/settings/settings_kit_hooks_register.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -143,6 +145,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListHost.ensureRegistered();
   KitLiveBoot.ensureRegistered();
   IptvPortalsChromeHooks.ensureRegistered();
+  IptvKitHooksRegister.ensureRegistered();
+  SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();

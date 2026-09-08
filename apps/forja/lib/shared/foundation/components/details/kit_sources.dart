@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
@@ -17,27 +16,40 @@ import 'package:forja/shared/foundation/components/playback/resolve_failure_view
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
+/// Effective play-source toggles for hub details Sources chrome (RFC-095).
+class KitPanelSourceFlags {
+  const KitPanelSourceFlags({
+    required this.torrent,
+    required this.stremio,
+    required this.nuvio,
+    required this.engine,
+  });
+
+  final bool torrent;
+  final bool stremio;
+  final bool nuvio;
+  final bool engine;
+}
+
 /// Whether hub details should show the white link Play (catalog Sources).
 ///
-/// While [settingsPlaybackProvider] is still loading, uses the same optimistic
+/// When [flags] is null (settings still loading), uses the same optimistic
 /// default as movie/TV [DetailsPlaySources.pending] (Forja engine on).
-bool kitHasPanelSources(SettingsPlaybackSnapshot? snap) {
+bool kitHasPanelSources([KitPanelSourceFlags? flags]) {
   final caps = PlatformPlayback.capabilities;
-  if (snap == null) {
+  if (flags == null) {
     return caps.playSourceEngine;
   }
-  final torrent = snap.playSourceTorrent &&
+  final torrent = flags.torrent &&
       ((caps.playSourceTorrent && caps.builtinTorrentSearch) ||
-          (!caps.localTorrentEngine && snap.playSourceTorrent));
-  final stremio = snap.playSourceStremio &&
+          (!caps.localTorrentEngine && flags.torrent));
+  final stremio = flags.stremio &&
       (caps.playSourceStremio ||
-          (!caps.localTorrentEngine && snap.playSourceStremio));
-  final nuvio = snap.playSourceNuvio &&
-      (caps.playSourceNuvio ||
-          (!caps.localTorrentEngine && snap.playSourceNuvio));
-  final engine = snap.playSourceEngine &&
-      (caps.playSourceEngine ||
-          (!caps.localTorrentEngine && snap.playSourceEngine));
+          (!caps.localTorrentEngine && flags.stremio));
+  final nuvio = flags.nuvio &&
+      (caps.playSourceNuvio || (!caps.localTorrentEngine && flags.nuvio));
+  final engine = flags.engine &&
+      (caps.playSourceEngine || (!caps.localTorrentEngine && flags.engine));
   return torrent || stremio || nuvio || engine;
 }
 

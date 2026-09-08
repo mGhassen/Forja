@@ -1,72 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
-import 'package:forja/shared/foundation/services/follow/list_providers.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_list_status_pin.dart';
+import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow.dart';
-import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/foundation/services/follow/list_providers.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-
-const _listStatuses =
-    <
-      ({
-        String id,
-        String label,
-        IconData icon,
-        IconData selectedIcon,
-        Color color,
-      })
-    >[
-      (
-        id: 'plantowatch',
-        label: 'Plan to Watch',
-        icon: Icons.bookmark_add_outlined,
-        selectedIcon: Icons.bookmark_rounded,
-        color: Color(0xFFFBBF24), // amber
-      ),
-      (
-        id: 'watching',
-        label: 'Watching',
-        icon: Icons.play_circle_outline_rounded,
-        selectedIcon: Icons.play_circle_rounded,
-        color: ForjaShellColors.brandGreen,
-      ),
-      (
-        id: 'hold',
-        label: 'On Hold',
-        icon: Icons.pause_circle_outline_rounded,
-        selectedIcon: Icons.pause_circle_rounded,
-        color: Color(0xFFFB923C), // orange
-      ),
-      (
-        id: 'completed',
-        label: 'Completed',
-        icon: Icons.check_circle_outline_rounded,
-        selectedIcon: Icons.check_circle_rounded,
-        color: Color(0xFF38BDF8), // sky
-      ),
-      (
-        id: 'dropped',
-        label: 'Dropped',
-        icon: Icons.cancel_outlined,
-        selectedIcon: Icons.cancel_rounded,
-        color: Color(0xFFF87171), // rose
-      ),
-    ];
-
-Color _statusPinColor(String? status) {
-  if (status == null) return ForjaShellColors.iconMuted;
-  for (final s in _listStatuses) {
-    if (s.id == status) return s.color;
-  }
-  return ForjaShellColors.iconActive;
-}
 
 void _toastStatusWrite(bool ok, String to) {
   if (to.isEmpty) {
@@ -80,8 +25,7 @@ void _toastStatusWrite(bool ok, String to) {
     }
     return;
   }
-  final label =
-      _listStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
+  final label = kitListStatusLabel(to, fallback: to);
   if (ok) {
     ForjaToast.success(label, duration: const Duration(seconds: 1));
   } else {
@@ -89,6 +33,9 @@ void _toastStatusWrite(bool ok, String to) {
   }
 }
 
+/// Wired My List status pin — Riverpod / Simkl / [ListFollow] (RFC-095 data).
+///
+/// Presentational chrome: [KitListStatusPin].
 class KitListStatusButton extends StatelessWidget {
   const KitListStatusButton.movie({
     super.key,
@@ -144,11 +91,10 @@ class KitListStatusButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (followTarget != null) {
-      return _StatusPin(
+      return _WiredStatusPin(
         uniqueId: followTarget!.uniqueId,
         iconSize: iconSize,
         iconColor: iconColor,
-        iconColorActive: iconColorActive,
         excludeFromTvTraversal: excludeFromTvTraversal,
         knownStatus: knownStatus,
         onSetStatus: (to) async {
@@ -161,11 +107,10 @@ class KitListStatusButton extends StatelessWidget {
       );
     }
     if (movie != null && !useHeartIcon) {
-      return _StatusPin(
+      return _WiredStatusPin(
         uniqueId: MyListService.movieId(movie!.id, movie!.mediaType),
         iconSize: iconSize,
         iconColor: iconColor,
-        iconColorActive: iconColorActive,
         excludeFromTvTraversal: excludeFromTvTraversal,
         knownStatus: knownStatus,
         onSetStatus: (to) => _setMovieStatus(context, movie!, to),
@@ -230,13 +175,13 @@ class KitListStatusButton extends StatelessWidget {
   }
 }
 
-class _StatusPin extends StatefulWidget {
-  const _StatusPin({
+/// Listens to [MyListService] and fills [KitListStatusPin] props.
+class _WiredStatusPin extends StatelessWidget {
+  const _WiredStatusPin({
     required this.uniqueId,
     required this.onSetStatus,
     this.iconSize,
     this.iconColor,
-    this.iconColorActive,
     this.excludeFromTvTraversal = false,
     this.knownStatus,
   });
@@ -245,301 +190,29 @@ class _StatusPin extends StatefulWidget {
   final Future<bool> Function(String to) onSetStatus;
   final double? iconSize;
   final Color? iconColor;
-  final Color? iconColorActive;
   final bool excludeFromTvTraversal;
   final String? knownStatus;
 
   @override
-  State<_StatusPin> createState() => _StatusPinState();
-}
-
-class _StatusPinState extends State<_StatusPin> {
-  final LayerLink _link = LayerLink();
-  OverlayEntry? _entry;
-  bool _busy = false;
-
-  bool get _open => _entry != null;
-
-  @override
-  void dispose() {
-    _removeOverlay();
-    super.dispose();
-  }
-
-  void _removeOverlay() {
-    final entry = _entry;
-    if (entry == null) return;
-    _entry = null;
-    entry.remove();
-  }
-
-  void _close() {
-    if (_entry == null) return;
-    _removeOverlay();
-    if (mounted) setState(() {});
-  }
-
-  IconData _pinIcon(String? status) {
-    for (final s in _listStatuses) {
-      if (s.id == status) return s.selectedIcon;
-    }
-    // Same bookmark as Home / Plan to Watch (muted via color when not listed).
-    return Icons.bookmark_rounded;
-  }
-
-  Future<void> _setStatus(String to) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    _entry?.markNeedsBuild();
-    final ok = await widget.onSetStatus(to);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    _close();
-    _toastStatusWrite(ok, to);
-  }
-
-  void _openMenu() {
-    if (_entry != null || _busy) return;
-    final overlay = Overlay.of(context, rootOverlay: true);
-    final policy = ShellScope.inputPolicyOf(context);
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (ctx) {
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _close,
-                child: const ColoredBox(color: Colors.transparent),
-              ),
-            ),
-            CompositedTransformFollower(
-              link: _link,
-              showWhenUnlinked: false,
-              offset: const Offset(0, 28),
-              child: Material(
-                color: Colors.transparent,
-                child: ValueListenableBuilder<int>(
-                  valueListenable: MyListService.changeNotifier,
-                  builder: (context, _, _) {
-                    final inList = MyListService().contains(widget.uniqueId);
-                    final status = inList
-                        ? MyListService().statusOf(widget.uniqueId)
-                        : widget.knownStatus;
-                    return IntrinsicWidth(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (final s in _listStatuses)
-                                _StatusRow(
-                                  selected: s.id == status,
-                                  icon: s.id == status
-                                      ? s.selectedIcon
-                                      : s.icon,
-                                  label: s.label,
-                                  statusColor: s.color,
-                                  onTap: _busy
-                                      ? null
-                                      : () => _setStatus(
-                                            s.id == status ? '' : s.id,
-                                          ),
-                                  tvFocus: policy.useFocusableMoodChips,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: MyListService.changeNotifier,
+      builder: (context, _, _) {
+        final inList = MyListService().contains(uniqueId);
+        final status = inList
+            ? MyListService().statusOf(uniqueId)
+            : knownStatus;
+        return KitListStatusPin(
+          currentStatus: status,
+          iconSize: iconSize,
+          iconColor: iconColor,
+          excludeFromTvTraversal: excludeFromTvTraversal,
+          onSelect: (to) async {
+            final ok = await onSetStatus(to);
+            _toastStatusWrite(ok, to);
+          },
         );
       },
-    );
-    _entry = entry;
-    overlay.insert(entry);
-    setState(() {});
-  }
-
-  void _toggle() {
-    if (_open) {
-      _close();
-    } else {
-      _openMenu();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    // Poster cards: D-pad targets the tile only — hide the pin on leanback TV.
-    // Desktop shares [useFocusableMoodChips] for arrow keys but still has a mouse.
-    if (widget.excludeFromTvTraversal &&
-        policy.useFocusableMoodChips &&
-        !policy.scaleOnHover) {
-      return const SizedBox.shrink();
-    }
-    final size = widget.iconSize ?? 18.0;
-
-    return CompositedTransformTarget(
-      link: _link,
-      child: ValueListenableBuilder<int>(
-        valueListenable: MyListService.changeNotifier,
-        builder: (context, _, _) {
-          final inList = MyListService().contains(widget.uniqueId);
-          final status = inList
-              ? MyListService().statusOf(widget.uniqueId)
-              : widget.knownStatus;
-          return _pinHit(
-            policy: policy,
-            onTap: _busy ? null : _toggle,
-            child: Icon(
-              _pinIcon(status),
-              size: size,
-              color: status != null
-                  ? _statusPinColor(status)
-                  : (widget.iconColor ?? ForjaShellColors.iconMuted),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _pinHit({
-    required ShellInputPolicy policy,
-    required VoidCallback? onTap,
-    required Widget child,
-  }) {
-    // Card overlays: keep the icon flush with the rating badge (no 40×40
-    // focus pad that vertically centers the pin below the score).
-    if (!policy.useFocusableMoodChips || widget.excludeFromTvTraversal) {
-      return GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: child,
-      );
-    }
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: 20,
-      scaleOnFocus: ShellTokens.focusActiveScale,
-      child: SizedBox(width: 40, height: 40, child: Center(child: child)),
-    );
-  }
-}
-
-/// Always shows icon + label. Hover = background; selected = status color.
-class _StatusRow extends StatefulWidget {
-  const _StatusRow({
-    required this.selected,
-    required this.icon,
-    required this.label,
-    required this.statusColor,
-    required this.tvFocus,
-    this.autoFocus = false,
-    this.onTap,
-  });
-
-  final bool selected;
-  final IconData icon;
-  final String label;
-  final Color statusColor;
-  final bool tvFocus;
-  final bool autoFocus;
-  final VoidCallback? onTap;
-
-  @override
-  State<_StatusRow> createState() => _StatusRowState();
-}
-
-class _StatusRowState extends State<_StatusRow> {
-  bool _hovered = false;
-  bool _focused = false;
-
-  bool _active(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    return ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final active = _active(context);
-    final accent = active
-        ? widget.statusColor
-        : (widget.selected ? widget.statusColor : Colors.white);
-    final row = AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: active
-          ? widget.statusColor.withValues(alpha: 0.12)
-          : Colors.transparent,
-      child: Row(
-        children: [
-          Icon(widget.icon, size: 16, color: accent),
-          const SizedBox(width: 8),
-          Text(
-            widget.label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: widget.selected || active
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-              color: accent,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!widget.tvFocus) {
-      return MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: row,
-        ),
-      );
-    }
-
-    return FocusableControl(
-      onTap: widget.onTap,
-      autoFocus: widget.autoFocus,
-      borderRadius: 0,
-      scaleOnFocus: 1.0,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: row,
     );
   }
 }
@@ -601,7 +274,7 @@ class _LegacyTogglePin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    // Same leanback-only hide as [_StatusPin] — keep pins on desktop hover.
+    // Same leanback-only hide as [KitListStatusPin] — keep pins on desktop hover.
     if (excludeFromTvTraversal &&
         policy.useFocusableMoodChips &&
         !policy.scaleOnHover) {
@@ -671,16 +344,11 @@ class MyListHeroIcon extends StatelessWidget {
       builder: (context, _, _) {
         final inList = MyListService().contains(_uniqueId);
         final status = inList ? MyListService().statusOf(_uniqueId) : null;
-        IconData icon = Icons.bookmark_rounded;
-        if (status != null) {
-          for (final s in _listStatuses) {
-            if (s.id == status) {
-              icon = s.selectedIcon;
-              break;
-            }
-          }
-        }
-        return Icon(icon, size: 20, color: _statusPinColor(status));
+        return Icon(
+          kitListStatusPinIcon(status),
+          size: 20,
+          color: kitListStatusPinColor(status),
+        );
       },
     );
   }
@@ -803,51 +471,12 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                         final status = inList
                             ? MyListService().statusOf(widget.uniqueId)
                             : null;
-                        final focusId = status ?? _listStatuses.first.id;
-                        return IntrinsicWidth(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.92),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.45),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (final s in _listStatuses)
-                                    _StatusRow(
-                                      selected: s.id == status,
-                                      icon: s.id == status
-                                          ? s.selectedIcon
-                                          : s.icon,
-                                      label: s.label,
-                                      statusColor: s.color,
-                                      onTap: _busy
-                                          ? null
-                                          : () => _setStatus(
-                                                s.id == status ? '' : s.id,
-                                              ),
-                                      tvFocus: policy.useFocusableMoodChips,
-                                      autoFocus:
-                                          policy.useFocusableMoodChips &&
-                                          s.id == focusId,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        return KitListStatusPopupPanel(
+                          currentStatus: status,
+                          busy: _busy,
+                          tvFocus: policy.useFocusableMoodChips,
+                          autoFocusSelected: policy.useFocusableMoodChips,
+                          onSelect: _setStatus,
                         );
                       },
                     ),
@@ -885,20 +514,6 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     _toastStatusWrite(ok, to);
   }
 
-  IconData _icon(String? status) {
-    for (final s in _listStatuses) {
-      if (s.id == status) return s.selectedIcon;
-    }
-    return Icons.bookmark_rounded;
-  }
-
-  String _label(String? status) {
-    for (final s in _listStatuses) {
-      if (s.id == status) return s.label;
-    }
-    return 'My List';
-  }
-
   @override
   Widget build(BuildContext context) {
     final tv = widget.tvTabId;
@@ -919,11 +534,11 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
             onRightEdge: widget.onRightEdge,
             slots: [
               HeroPillIconSlot(
-                label: _label(status),
+                label: kitListStatusLabel(status),
                 iconWidget: Icon(
-                  _icon(status),
+                  kitListStatusPinIcon(status),
                   size: 20,
-                  color: _statusPinColor(status),
+                  color: kitListStatusPinColor(status),
                 ),
                 onTap: (!widget.enabled || _busy) ? null : _toggle,
               ),

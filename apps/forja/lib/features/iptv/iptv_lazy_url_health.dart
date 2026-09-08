@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
+import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
 /// Only live URLs land in [_sessionHealth]; misses are not cached across panels.
-class IptvLazyUrlHealthProbe extends ChangeNotifier {
+class IptvLazyUrlHealthProbe extends ChangeNotifier
+    implements KitUrlHealthProbe {
   IptvLazyUrlHealthProbe({
     this.delay = const Duration(milliseconds: 350),
     this.maxConcurrent = 2,
@@ -24,9 +26,11 @@ class IptvLazyUrlHealthProbe extends ChangeNotifier {
   final Map<String, Timer> _debounce = {};
   bool _disposed = false;
 
+  @override
   bool? healthFor(String key) => _health[key] ?? _sessionHealth[key];
 
   /// Cache a probe result from a header-aware check (no URL re-fetch).
+  @override
   void remember(String key, bool ok) {
     if (_disposed) return;
     final k = key.trim();
@@ -43,6 +47,7 @@ class IptvLazyUrlHealthProbe extends ChangeNotifier {
   }
 
   /// Immediate probe for Sources-panel hover check (skips dwell debounce).
+  @override
   Future<bool> checkNow(String key, String url) async {
     final cached = healthFor(key);
     if (cached != null) return cached;
@@ -155,3 +160,4 @@ class IptvLazyUrlHealthProbe extends ChangeNotifier {
     super.dispose();
   }
 }
+

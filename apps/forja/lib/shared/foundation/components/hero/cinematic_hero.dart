@@ -19,7 +19,7 @@ import 'package:forja/shared/foundation/services/follow/list_follow.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
 import 'package:forja/shared/foundation/components/hero/kit_list_status_hero.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_list_status_button.dart';
+import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 bool hubIsFullCinematicHero(BuildContext context) =>

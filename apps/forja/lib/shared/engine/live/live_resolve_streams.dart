@@ -5,7 +5,7 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/foundation/blocks/play/live_play.dart';
+import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
@@ -177,6 +177,10 @@ abstract final class LiveResolveStreams {
     final seen = <String>{};
 
     void add(MatchEvent raw) {
+      if (raw.livePluginId.isNotEmpty &&
+          LivePluginEngine.cachedIsScheduleEnrich(raw.livePluginId)) {
+        return;
+      }
       final m = _ensureProviderResolveMatch(raw);
       final key = '${m.livePluginId}|${m.id}';
       if (key == '|' || !seen.add(key)) return;
@@ -706,9 +710,11 @@ abstract final class LiveResolveStreams {
       return;
     }
     final kind = resolved.first.liveSourceKind ?? IptvLiveSourceKind.iptvXtream;
-    await openForjaLiveNativePlayer(
+    final open = KitIptvPlayHooks.openLiveNativePlayer;
+    if (open == null) return;
+    await open(
       context,
-      sources: resolved,
+      sources: List<dynamic>.from(resolved),
       title: title,
       subtitle: resolved.first.pickerTitle,
       logoUrl: resolved.first.logoUrl,
@@ -805,9 +811,11 @@ abstract final class LiveResolveStreams {
     final url = picked.url.trim();
     if (picked.liveSourceKind == IptvLiveSourceKind.stremio &&
         iptvLiveEnginePlayUrlReady(url)) {
-      await openForjaLiveNativePlayer(
+      final open = KitIptvPlayHooks.openLiveNativePlayer;
+      if (open == null) return;
+      await open(
         context,
-        sources: [picked],
+        sources: <dynamic>[picked],
         title: title,
         subtitle: subtitle,
         engineContext: BuiltInPlayerContext.live,
@@ -817,9 +825,11 @@ abstract final class LiveResolveStreams {
     }
 
     if (iptvLiveEnginePlayUrlReady(url)) {
-      await openForjaLiveNativePlayer(
+      final open = KitIptvPlayHooks.openLiveNativePlayer;
+      if (open == null) return;
+      await open(
         context,
-        sources: [picked],
+        sources: <dynamic>[picked],
         title: title,
         subtitle: subtitle,
         engineContext: BuiltInPlayerContext.live,
@@ -848,9 +858,11 @@ abstract final class LiveResolveStreams {
       LivePluginEngine.engineResolveFailed();
       return;
     }
-    await openForjaLiveNativePlayer(
+    final open = KitIptvPlayHooks.openLiveNativePlayer;
+    if (open == null) return;
+    await open(
       context,
-      sources: [handoff],
+      sources: <dynamic>[handoff],
       title: title,
       subtitle: subtitle,
       engineContext: BuiltInPlayerContext.live,
