@@ -445,14 +445,52 @@ function brstejParseEpisodeCards(ctx, html, base) {
   return out;
 }
 
-function brstejBrowseSeries(ctx, cfg, limit) {
+function brstejPageOf(params) {
+  return Number(params && params.page) > 0 ? Number(params.page) : 1;
+}
+
+function brstejLimitOf(params, fallback) {
+  var n = Number(params && params.limit);
+  if (n > 0) return n;
+  n = Number(fallback);
+  return n > 0 ? n : 24;
+}
+
+function brstejWithPage(path, page) {
+  page = Number(page) > 0 ? Number(page) : 1;
+  path = String(path || '');
+  if (/[?&]page=\d+/i.test(path)) {
+    return path.replace(/([?&]page=)\d+/i, '$1' + page);
+  }
+  if (path.indexOf('?') >= 0) return path + '&page=' + page;
+  return path + '?page=' + page;
+}
+
+/** Upstream HTML lists ~30 cards/page; honor host page + return hasMore. */
+function brstejPageResult(raw, limit) {
+  limit = Number(limit) > 0 ? Number(limit) : 24;
+  var list = Array.isArray(raw) ? raw : [];
+  return {
+    items: hubClampList(list, limit),
+    pageSize: limit,
+    // Full-ish upstream page → more pages exist (use raw count, not grouped).
+    hasMore: list.length >= limit,
+  };
+}
+
+function brstejBrowseSeries(ctx, cfg, opts) {
+  opts = typeof opts === 'object' && opts ? opts : { limit: opts };
+  var page = Number(opts.page) > 0 ? Number(opts.page) : 1;
+  var limit = Number(opts.limit) > 0 ? Number(opts.limit) : 24;
   var base = brstejBase(cfg);
-  return brstejFetchHtml(ctx, base + '/moslsalat.php?page=1', base + '/').then(
-    function (got) {
-      var origin = brstejOrigin(got.url) || base;
-      return hubClampList(brstejParseSerieCards(ctx, got.html, origin), limit);
-    },
-  );
+  var url = base + '/moslsalat.php?page=' + page;
+  return brstejFetchHtml(ctx, url, base + '/').then(function (got) {
+    var origin = brstejOrigin(got.url) || base;
+    return brstejPageResult(
+      brstejParseSerieCards(ctx, got.html, origin),
+      limit,
+    );
+  });
 }
 
 function brstejIsMovieTitle(title) {
@@ -511,31 +549,28 @@ function brstejGroupCategoryCards(episodes, asMovies) {
 
 function brstejBrowsePath(ctx, cfg, path, opts) {
   opts = opts || {};
+  var page = Number(opts.page) > 0 ? Number(opts.page) : 1;
+  var limit = Number(opts.limit) > 0 ? Number(opts.limit) : 24;
   var base = brstejBase(cfg);
-  var url;
-  if (/[?&]page=/.test(path)) {
-    url = base + path;
-  } else if (path.indexOf('?') >= 0) {
-    url = base + path + '&page=1';
-  } else {
-    url = base + path + '?page=1';
-  }
+  var url = base + brstejWithPage(path, page);
   return brstejFetchHtml(ctx, url, base + '/').then(function (got) {
     var origin = brstejOrigin(got.url) || base;
     var series = brstejParseSerieCards(ctx, got.html, origin);
-    if (series.length) return hubClampList(series, opts.limit);
+    if (series.length) return brstejPageResult(series, limit);
     var episodes = brstejParseEpisodeCards(ctx, got.html, origin);
-    return hubClampList(
-      brstejGroupCategoryCards(episodes, !!opts.asMovies),
-      opts.limit,
-    );
+    var grouped = brstejGroupCategoryCards(episodes, !!opts.asMovies);
+    // hasMore from raw episode cards — grouping collapses many eps → few shows.
+    var pageOut = brstejPageResult(grouped, limit);
+    pageOut.hasMore = episodes.length >= limit;
+    return pageOut;
   });
 }
 
 function brstejExploreList(ctx, cfg, params) {
   var cat = hubFilterValue(params.filter, 'cat');
   var kind = hubFilterValue(params.filter, 'kind');
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  var limit = brstejLimitOf(params, 24);
+  var page = brstejPageOf(params);
   if (cat) {
     var opt = brstejOptionForCat(cat);
     var path = opt
@@ -544,30 +579,32 @@ function brstejExploreList(ctx, cfg, params) {
     var asMovies =
       kind === 'movie' || (opt && opt.kind === 'movie' && kind !== 'series');
     return brstejBrowsePath(ctx, cfg, path, {
+      page: page,
       limit: limit,
       asMovies: asMovies,
     });
   }
   if (kind === 'movie') {
     return brstejBrowsePath(ctx, cfg, '/category.php?cat=aflam02-2024', {
+      page: page,
       limit: limit,
       asMovies: true,
     });
   }
   if (kind === 'series') {
-    return brstejBrowseSeries(ctx, cfg, limit);
+    return brstejBrowseSeries(ctx, cfg, { page: page, limit: limit });
   }
-  return Promise.resolve([]);
+  return Promise.resolve(brstejPageResult([], limit));
 }
 
 function brstejFilteredFeed(ctx, cfg, params) {
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  var limit = brstejLimitOf(params, 24);
   return brstejExploreList(
     ctx,
     cfg,
-    Object.assign({}, params, { limit: Math.max(limit * 2, 48) }),
-  ).then(function (items) {
-    var list = items || [];
+    Object.assign({}, params, { page: 1, limit: Math.max(limit * 2, 48) }),
+  ).then(function (page) {
+    var list = (page && page.items) || [];
     return hubOk(
       'feed',
       {
@@ -585,10 +622,15 @@ function brstejFilteredFeed(ctx, cfg, params) {
 function brstejSearch(ctx, cfg, params) {
   var q = String(params.query || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 40;
+  var limit = brstejLimitOf(params, 40);
+  var page = brstejPageOf(params);
   var base = brstejBase(cfg);
   var url =
-    base + '/search.php?keywords=' + encodeURIComponent(q) + '&page=1';
+    base +
+    '/search.php?keywords=' +
+    encodeURIComponent(q) +
+    '&page=' +
+    page;
   return brstejFetchHtml(ctx, url, base + '/').then(function (got) {
     var origin = brstejOrigin(got.url) || base;
     var episodes = brstejParseEpisodeCards(ctx, got.html, origin);
@@ -612,7 +654,12 @@ function brstejSearch(ctx, cfg, params) {
     for (i = 0; i < order.length; i++) {
       if (byKey[order[i]]) out.push(byKey[order[i]]);
     }
-    return hubItems('search', hubClampList(out, limit), { maxAge: 300 });
+    var pageOut = brstejPageResult(out, limit);
+    pageOut.hasMore = episodes.length >= limit;
+    return hubItems('search', pageOut.items, { maxAge: 300 }, {
+      pageSize: pageOut.pageSize,
+      hasMore: pageOut.hasMore,
+    });
   });
 }
 
@@ -629,10 +676,21 @@ function brstejRailItems(ctx, cfg, params) {
   }
   var load = brstejChromeFiltered(params)
     ? brstejExploreList(ctx, cfg, params)
-    : brstejBrowseSeries(ctx, cfg, params.limit);
+    : brstejBrowseSeries(ctx, cfg, {
+        page: brstejPageOf(params),
+        limit: brstejLimitOf(params, 24),
+      });
   return load
-    .then(function (items) {
-      return hubItems('rail', items, { maxAge: 600, swr: 3600 });
+    .then(function (page) {
+      return hubItems(
+        'rail',
+        (page && page.items) || [],
+        { maxAge: 600, swr: 3600 },
+        {
+          pageSize: (page && page.pageSize) || brstejLimitOf(params, 24),
+          hasMore: !!(page && page.hasMore),
+        },
+      );
     })
     .catch(function (e) {
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
@@ -645,10 +703,13 @@ function brstejFeed(ctx, cfg, params) {
       return hubFail('feed', 'UPSTREAM', e && e.message, true);
     });
   }
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
-  return brstejBrowseSeries(ctx, cfg, Math.max(limit, 24))
-    .then(function (items) {
-      var list = items || [];
+  var limit = brstejLimitOf(params, 24);
+  return brstejBrowseSeries(ctx, cfg, {
+    page: 1,
+    limit: Math.max(limit, 24),
+  })
+    .then(function (page) {
+      var list = (page && page.items) || [];
       return hubOk(
         'feed',
         {

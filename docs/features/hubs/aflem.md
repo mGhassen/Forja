@@ -12,14 +12,14 @@ Enable the ForjaHQ Aflem pack under **Settings → Forja Packs → Hubs**, turn 
 
 ## What you can do
 
-- Browse latest Brstej series
+- Browse latest Brstej series (scroll a rail to load more pages)
 - Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Egyptian / Shami / Gulf / Turkish / Prestige / Ramadan / movies, …)
 - Search titles (episodes grouped into shows)
 - Open details, pick an episode, and play a direct stream
 
 ## Tips
 
-- Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload (needed for details poster/synopsis fixes)
+- Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload (needed for pagination and details poster/synopsis fixes)
 - Larozaa movies/series stay on the [Arabic](arabic.md) tab
 - Arabic cartoons stay on **[كرتون](cartoon.md)**
 

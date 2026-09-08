@@ -10,7 +10,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.13",
+      "version": "1.0.17",
       "pluginCount": 2,
       "tags": [
         "anime"
@@ -24,7 +24,7 @@
       "accent": "flame",
       "official": true,
       "recommended": true,
-      "version": "1.4.3",
+      "version": "1.4.7",
       "pluginCount": 1,
       "tags": [
         "arabic"
@@ -39,27 +39,11 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.10",
+      "version": "1.0.14",
       "pluginCount": 2,
       "tags": [
         "asian-drama",
         "drama"
-      ]
-    },
-    {
-      "id": "catalog",
-      "kind": "catalog",
-      "name": "ForjaHQ Catalog",
-      "description": "Live Sports schedule catalogs (Streamed, PPV, ESPN, …).",
-      "accent": "brand",
-      "official": true,
-      "recommended": true,
-      "author": "ForjaHQ",
-      "version": "1.9.4",
-      "pluginCount": 10,
-      "tags": [
-        "live",
-        "sports"
       ]
     },
     {
@@ -71,7 +55,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.13",
+      "version": "1.0.17",
       "pluginCount": 1,
       "tags": [
         "home",
@@ -80,15 +64,31 @@
       ]
     },
     {
+      "id": "catalog",
+      "kind": "catalog",
+      "name": "ForjaHQ Live Sports Catalog",
+      "description": "Live Sports schedule catalogs (Streamed, PPV, ESPN, …).",
+      "accent": "brand",
+      "official": true,
+      "recommended": true,
+      "author": "ForjaHQ",
+      "version": "1.9.6",
+      "pluginCount": 10,
+      "tags": [
+        "live",
+        "sports"
+      ]
+    },
+    {
       "id": "live",
       "kind": "live",
-      "name": "ForjaHQ Live",
+      "name": "ForjaHQ Live Sports Streams",
       "description": "Live Sports per-site stream resolve (Forja Live).",
       "accent": "brand",
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.9.7",
+      "version": "1.9.9",
       "pluginCount": 7,
       "tags": [
         "live",
@@ -104,7 +104,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.5.32",
+      "version": "1.5.34",
       "pluginCount": 88,
       "tags": [
         "anime",
@@ -124,7 +124,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.7",
+      "version": "1.0.9",
       "pluginCount": 9,
       "tags": [
         "torrent"
@@ -138,7 +138,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.7",
+      "version": "1.0.12",
       "pluginCount": 1,
       "tags": [
         "aflem",
@@ -153,7 +153,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.6",
+      "version": "1.0.10",
       "pluginCount": 1,
       "tags": [
         "arabic",
@@ -168,7 +168,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.1",
+      "version": "1.0.3",
       "pluginCount": 2,
       "tags": [
         "iptv"
@@ -182,26 +182,11 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.1",
+      "version": "1.0.5",
       "pluginCount": 1,
       "tags": [
         "arabic",
         "kids"
-      ]
-    },
-    {
-      "id": "live-sports",
-      "kind": "hubs",
-      "name": "ForjaHQ Live Sports",
-      "description": "Live sports list with a streams panel.",
-      "accent": "flame",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.6",
-      "pluginCount": 1,
-      "tags": [
-        "live",
-        "sports"
       ]
     },
     {
@@ -212,7 +197,22 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.4",
+      "version": "1.0.9",
+      "pluginCount": 1,
+      "tags": [
+        "live",
+        "sports"
+      ]
+    },
+    {
+      "id": "live-sports",
+      "kind": "hubs",
+      "name": "ForjaHQ Live Sports Hub",
+      "description": "Live sports list with a streams panel.",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.13",
       "pluginCount": 1,
       "tags": [
         "live",
@@ -227,7 +227,7 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.5",
+      "version": "1.0.9",
       "pluginCount": 2,
       "tags": [
         "lists"
