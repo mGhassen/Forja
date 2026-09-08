@@ -15,6 +15,7 @@ import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
 
 /// Layout widget type `because` — pack owns rail logic; host renders meta rows.
@@ -24,6 +25,7 @@ class BecauseSection extends StatefulWidget {
     required this.pluginId,
     required this.tabId,
     required this.spec,
+    this.tvHeaderRowOrder = 0,
     this.tvRowOrder = 0,
     this.prefetchSlot,
   });
@@ -31,6 +33,8 @@ class BecauseSection extends StatefulWidget {
   final String pluginId;
   final String tabId;
   final Map<String, dynamic> spec;
+  /// Shuffle control — between the previous rail and [tvRowOrder] cards.
+  final int tvHeaderRowOrder;
   final int tvRowOrder;
   final KitRowPrefetchSlot? prefetchSlot;
 
@@ -43,6 +47,7 @@ class _BecauseSectionState extends State<BecauseSection> {
   int _shuffleKey = 0;
   int _epoch = 0;
   bool _viewportActivated = false;
+  bool _shuffleHovered = false;
   final FocusNode _shuffleFocusNode = FocusNode(debugLabel: 'because-shuffle');
 
   @override
@@ -50,6 +55,11 @@ class _BecauseSectionState extends State<BecauseSection> {
     super.initState();
     _registerPrefetch();
     WatchHistory.revision.addListener(_onHistoryRevision);
+    _shuffleFocusNode.addListener(_onShuffleFocusChanged);
+  }
+
+  void _onShuffleFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onHistoryRevision() {
@@ -79,6 +89,7 @@ class _BecauseSectionState extends State<BecauseSection> {
   @override
   void dispose() {
     WatchHistory.revision.removeListener(_onHistoryRevision);
+    _shuffleFocusNode.removeListener(_onShuffleFocusChanged);
     _shuffleFocusNode.dispose();
     super.dispose();
   }
@@ -158,7 +169,70 @@ class _BecauseSectionState extends State<BecauseSection> {
           if (payload.items.isEmpty) return const SizedBox.shrink();
 
           final rowId = (widget.spec['id'] ?? 'because').toString();
+          final headerRowId = '${rowId}_header';
           final seedTitle = _becauseSeedTitle(payload.heading);
+          final shuffleActive =
+              _shuffleHovered || _shuffleFocusNode.hasFocus;
+
+          Widget? shuffle;
+          if (payload.canShuffle) {
+            final cardsLast = ShellTvFocusCoordinator.rowHandle(
+                  widget.tabId,
+                  rowId,
+                )?.lastFocusedIndex ??
+                0;
+            shuffle = MouseRegion(
+              onEnter: (_) => setState(() => _shuffleHovered = true),
+              onExit: (_) => setState(() => _shuffleHovered = false),
+              child: shellFocusableTap(
+                context: context,
+                focusNode: _shuffleFocusNode,
+                borderRadius: 20,
+                onTap: _shuffle,
+                onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
+                  widget.tabId,
+                  rowId,
+                  cardsLast,
+                ),
+                tvTabId: widget.tabId,
+                tvRowId: headerRowId,
+                tvZone: ShellTvZone.row,
+                tvItemIndex: 0,
+                child: AnimatedScale(
+                  scale: shuffleActive ? 1.08 : 1.0,
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOutCubic,
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: shuffleActive
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                      ),
+                      child: Icon(
+                        Icons.shuffle_rounded,
+                        size: 24,
+                        color: shuffleActive
+                            ? Colors.white
+                            : ForjaShellColors.iconMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            shuffle = TvKitRow(
+              tabId: widget.tabId,
+              rowId: headerRowId,
+              sortOrder: widget.tvHeaderRowOrder,
+              itemCount: 1,
+              child: shuffle,
+            );
+          }
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -199,26 +273,7 @@ class _BecauseSectionState extends State<BecauseSection> {
                         ],
                       ),
                     ),
-                    if (payload.canShuffle)
-                      shellFocusableTap(
-                        context: context,
-                        focusNode: _shuffleFocusNode,
-                        borderRadius: 20,
-                        onTap: _shuffle,
-                        onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
-                          widget.tabId,
-                          rowId,
-                          0,
-                        ),
-                        tvTabId: widget.tabId,
-                        tvRowId: '${rowId}_header',
-                        tvZone: ShellTvZone.row,
-                        tvItemIndex: 0,
-                        child: const ForjaPlainIcon(
-                          icon: Icons.shuffle_rounded,
-                          tooltip: 'Pick a different show',
-                        ),
-                      ),
+                    ?shuffle,
                   ],
                 ),
               ),
@@ -230,9 +285,6 @@ class _BecauseSectionState extends State<BecauseSection> {
                 tvTabId: widget.tabId,
                 tvRowId: rowId,
                 tvRowOrder: widget.tvRowOrder,
-                tvFocusUp: payload.canShuffle
-                    ? () => _shuffleFocusNode.requestFocus()
-                    : null,
                 cardBuilder: (context, item, index) => KitPosterCard(
                   imageUrl: item.poster,
                   title: item.name,

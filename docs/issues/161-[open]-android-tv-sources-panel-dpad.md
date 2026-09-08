@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **0 / 8** acceptance |
+| **Progress** | **13 / 13** fix · **0 / 9** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,6 +30,8 @@
 | 9 | I161-T09 | Details: Back closing Sources restores D-pad to the Play control that opened it | ✅ |
 | 10 | I161-T10 | Reopen after player: ↓/↑ still move in the list when `sources-list` row handle was unregistered | ✅ |
 | 11 | I161-T11 | Search → right → Filters button; OK opens Filters with D-pad claim; Back restores Filters button then Sources → Play | ✅ |
+| 12 | I161-T12 | Player Sources open / search ↓: scroll playing row into view then claim list (not kind tabs); empty/error list focusable | ✅ |
+| 13 | I161-T13 | List ↑ lands on search (then providers); `listOnly` claim avoids dumping onto kind while ListView mounts | ✅ |
 
 ---
 
@@ -45,6 +47,7 @@
 | 6 | I161-A06 | Android TV details: Back on Sources → D-pad on Play (not empty / Back chevron) | ⬜ |
 | 7 | I161-A07 | Android TV details: leave player → reopen Sources → ↓/↑ move between torrent rows (not stuck on first) | ⬜ |
 | 8 | I161-A08 | Android TV Sources: → from search to Filters; OK opens Filters panel focus; Back → Filters button; Back → Play | ⬜ |
+| 9 | I161-A09 | Android TV player: after a failed stream, reopen Sources → focus on the selected/playing row; ↓ from Search reaches the list (not stuck) | ⬜ |
 
 ---
 
@@ -63,6 +66,8 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 **I161-T10:** after leaving the player, the in-player Sources / torrent-file `TvKitRow` `dispose` unregisters the shared `sources-panel` / `sources-list` handle. Reopening details Sources still focused list-0, but ↓ was `handled` without moving (`moveVerticalInTab` failed, spatial never ran). Arrow resolvers now return ignored on a failed move so spatial can walk the list; `_request` uses the overlay `FocusScope` like claim does.
 
 **I161-T11:** search had ↑/↓ only — → never reached the Filters tune control. Opening Filters also left D-pad on the Sources chrome. Search → now focuses Filters; Filters overlay uses `TvOverlayScope` + autofocus; dismiss restores the Filters button (Sources Back still restores Play).
+
+**I161-T12 / T13:** after a failed stream, reopening player Sources claimed kind tabs while the playing row was still off-screen (ListView). Search ↓ called `focusListItem` which fell through to kind and swallowed the key — felt stuck. Open + search ↓ now scroll the selected row into view and claim the list (`listOnly`); empty/error states register a focusable list row; list ↑ returns to Search.
 
 ---
 

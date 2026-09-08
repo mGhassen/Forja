@@ -392,6 +392,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _openCurrentSource() async {
     if (_opening || _disposed) return;
+    // Capture gen — manual Sources switch bumps `_fallbackGen` and must keep
+    // `_opening` true; do not clear the fence in finally after being superseded.
+    final openGen = _fallbackGen;
     _opening = true;
     _preferredSubtitleApplied = false;
     _exoReady = false;
@@ -414,6 +417,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         .where((s) => (s['url'] ?? '').toString().isNotEmpty)
         .toList();
     final prepared = await _prepareOpenSubtitles(rawSubs);
+    if (_fallbackAborted(openGen)) return;
     _sideloadedSubtitles = prepared;
     if (mounted) {
       // Keep Wyzie / online rows across failover reopen — only refresh provider.
@@ -443,6 +447,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           : Duration.zero;
       _startPositionApplied = true;
       final maxH = await SettingsService().getMaxPlaybackHeight();
+      if (_fallbackAborted(openGen)) return;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
         viewId: _viewId,
@@ -453,6 +458,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
       );
+      if (_fallbackAborted(openGen)) return;
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {
         await ExoPlayerBridge.setRate(_viewId, _rate);
@@ -463,9 +469,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       await _applySubtitleStyle();
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
+      if (_fallbackAborted(openGen)) return;
+      // Drop the fence so failover `_openCurrentSource` can re-enter.
+      _opening = false;
       await _failCurrentSource('Failed to open stream');
     } finally {
-      _opening = false;
+      if (openGen == _fallbackGen) {
+        _opening = false;
+      }
     }
   }
 
@@ -801,6 +812,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         isLocalLoopbackPlayUrl(source.url)) {
       return false;
     }
+    final remountGen = _fallbackGen;
     _opening = true;
     _exoReady = false;
     _statusController.upsert(
@@ -810,6 +822,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     );
     try {
       final maxH = await SettingsService().getMaxPlaybackHeight();
+      if (_fallbackAborted(remountGen)) return false;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       final subs = _sideloadedSubtitles
           .map(
@@ -835,6 +848,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
       );
+      if (_fallbackAborted(remountGen)) return false;
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {
         await ExoPlayerBridge.setRate(_viewId, _rate);
@@ -849,7 +863,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return false;
     } catch (e) {
       debugPrint('[ExoPlayer] Post-seek remount failed: $e');
-      if (!_disposed && mounted) {
+      if (!_disposed && mounted && remountGen == _fallbackGen) {
         _statusController.upsert(
           'post-seek-remount',
           'Reconnect failed',
@@ -859,7 +873,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       }
       return false;
     } finally {
-      _opening = false;
+      if (remountGen == _fallbackGen) {
+        _opening = false;
+      }
     }
   }
 
@@ -1533,6 +1549,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {
+        // Soft-stop before parent unmounts us — MediaCodec release in dispose
+        // mid-switch ANRs ATV (issue 128). stop() keeps the player instance.
+        if (externalPlayer == null && builtInEngine != null) {
+          try {
+            await ExoPlayerBridge.stop(_viewId)
+                .timeout(const Duration(milliseconds: 400));
+          } catch (_) {}
+        }
         await handler(
           _position,
           builtInEngine: builtInEngine,
@@ -1627,17 +1651,28 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _postSeekStall.dispose();
     _surfaceFallback.dispose();
     _eventSub?.cancel();
-    unawaited(_teardownExoPlayer());
+    // Defer MediaCodec release off the dispose frame (issue 128). Track so
+    // Player-menu MediaKit mount can wait briefly via prepareForVideoPlayer.
+    final teardown = Platform.isAndroid
+        ? Future<void>.delayed(
+            const Duration(milliseconds: 50),
+            _teardownExoPlayer,
+          )
+        : _teardownExoPlayer();
+    MpvExclusiveSession.instance.trackVideoDispose(teardown);
+    unawaited(teardown);
     WakelockPlus.disable();
     super.dispose();
   }
 
   Future<void> _teardownExoPlayer() async {
     try {
-      await ExoPlayerBridge.stop(_viewId);
+      await ExoPlayerBridge.stop(_viewId)
+          .timeout(const Duration(milliseconds: 400));
     } catch (_) {}
     try {
-      await ExoPlayerBridge.dispose(_viewId);
+      await ExoPlayerBridge.dispose(_viewId)
+          .timeout(const Duration(milliseconds: 800));
     } catch (_) {}
   }
 

@@ -14,6 +14,10 @@ abstract final class SourcesPanelTv {
   static const providersSort = 1;
   static const listSort = 2;
 
+  /// Isolated graph for the Filters side panel (rows = Category / Quality / …).
+  static const filtersTabId = 'sources-filters';
+  static const filtersHeaderRowId = 'filters-header';
+
   static bool isTv(BuildContext context) {
     final policy = ShellScope.maybeOf(context)?.inputPolicy;
     return policy?.useFocusableMoodChips ??
@@ -57,24 +61,33 @@ abstract final class SourcesPanelTv {
 
   /// Put D-pad on a panel control. Retries while kind/list nodes mount
   /// (reopen after player, ExcludeFocus lift, lazy ListView).
+  ///
+  /// When [listIndex] is set, keeps retrying that row (and index 0) before
+  /// falling back to kind tabs — off-screen ListView tiles need scroll time.
   static void claimFocus({
     int? listIndex,
     FocusNode? search,
     FocusNode? filters,
     FocusNode? close,
-    int maxTries = 12,
+    int maxTries = 20,
+    bool listOnly = false,
   }) {
     var tries = 0;
     void attempt() {
       if (listIndex != null && _tryRow(listRowId, listIndex)) return;
+      if (listIndex != null && listIndex != 0 && _tryRow(listRowId, 0)) {
+        return;
+      }
       final waitingForList = listIndex != null && tries < maxTries;
       if (waitingForList) {
         tries++;
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
         return;
       }
-      if (_tryRow(providersRowId, 0)) return;
+      if (listOnly) return;
+      // Prefer kind tabs on open; providers / search are ↓ from there.
       if (_tryRow(kindRowId, 0)) return;
+      if (_tryRow(providersRowId, 0)) return;
       if (_tryFocus(search)) return;
       if (_tryFocus(filters)) return;
       if (_tryFocus(close)) return;
@@ -86,14 +99,30 @@ abstract final class SourcesPanelTv {
     attempt();
   }
 
+  /// Sync try — used by search ↓ before scheduling [focusListItem] retries.
+  static bool tryFocusListItem({int index = 0}) => _tryRow(listRowId, index);
+
   /// Claim a registered list tile (retries until [ListView] builds the node).
-  static void focusListItem({int index = 0, int maxTries = 12}) {
-    claimFocus(listIndex: index, maxTries: maxTries);
+  static void focusListItem({
+    int index = 0,
+    int maxTries = 20,
+    bool listOnly = false,
+  }) {
+    claimFocus(listIndex: index, maxTries: maxTries, listOnly: listOnly);
   }
 
-  static void focusKindItem({int index = 0}) {
-    if (_tryRow(kindRowId, index)) return;
-    _tryRow(providersRowId, 0);
+  static void focusKindItem({int index = 0, int maxTries = 12}) {
+    var tries = 0;
+    void attempt() {
+      if (_tryRow(kindRowId, index)) return;
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      _tryRow(providersRowId, 0);
+    }
+
+    attempt();
   }
 
   static void focusProvidersItem({int index = 0}) {

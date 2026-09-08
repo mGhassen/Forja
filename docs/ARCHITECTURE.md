@@ -301,7 +301,7 @@ flowchart BT
 
 **Routing:** Splash → shell tabs via `MainScreen` / `nav_config`. Secondary nav via `Navigator` + `AppRouter` (`openMovie`, `openPlayer`, …). No go_router.
 
-**Player (host):** `shared/player/` — **media_kit** (desktop + default Android) and **ExoPlayer/Media3** (Android built-in option). TV menus keep both engines available. Defers to `Engine` for torrent / proxy / resolve jobs.
+**Player (host):** `shared/player/` — **ExoPlayer/Media3** (Android default) and **media_kit** (desktop + Android option). TV menus keep both engines available. Defers to `Engine` for torrent / proxy / resolve jobs.
 
 **Nav destinations** (`nav_config.dart`): Home · Discover · Similar · Search · My List · Downloader · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings. Product polish scope for TV/active work is a subset — see [forja-feature-scope](../.cursor/rules/forja-feature-scope.mdc) / [forja-tv-scope](../.cursor/rules/forja-tv-scope.mdc).
 

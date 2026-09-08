@@ -19,6 +19,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       currentPlayingRowKey: _s._catalogStreamRowKey,
+      playbackConfirmed: _s._playbackConfirmed,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -71,13 +72,16 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final pick = catalogPanelSelectionFromStream(stream);
     _s._markPlaybackConfirmed(false);
     _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
+    _s._statusController.clear();
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
+        _s._currentUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName;
+      _s._catalogAddonName = pick.addonName ??
+          StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
@@ -490,7 +494,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       anchorContext: anchorContext,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
-      onSelect: ({builtInEngine, externalPlayer}) {
+      onSelect: ({builtInEngine, externalPlayer}) async {
         if (externalPlayer != null) {
           final target = _externalHandoffTarget();
           return handler(
@@ -502,6 +506,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
             sources: _s._currentSources,
           );
         }
+        // Silence before parent unmounts — MediaKit→Exo ANR (issue 128).
+        try {
+          await silenceMediaKitPlayer(_s._player)
+              .timeout(const Duration(milliseconds: 400));
+        } catch (_) {}
         final target = _externalHandoffTarget();
         return handler(
           _s._positionNotifier.value,

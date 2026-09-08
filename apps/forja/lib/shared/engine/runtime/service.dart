@@ -124,6 +124,16 @@ class EngineService {
     Engine.cancelEngineJsExtracts();
   }
 
+  /// Stop Sources-panel scrapes only — magnet / torrent resolve stay alive.
+  ///
+  /// Used when the user picks a row (`cancelEngine: false`): full
+  /// [cancelPending] would bump extract gen and kill the fresh resolve that
+  /// starts on the next microtask / dispose frame.
+  void cancelPanelScrapes() {
+    cancelTorrentSearch();
+    Engine.cancelEngineJsExtracts();
+  }
+
   /// Stop in-flight torrent indexer VMs (Sources panel tab switch / new search).
   void cancelTorrentSearch() {
     EngineRuntime.abortTorrentSearchForks();

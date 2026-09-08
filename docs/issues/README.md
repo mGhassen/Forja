@@ -148,7 +148,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [124-[open]-…](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) | Android TV IPTV reconnect banner stuck after recover | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 10/10 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -181,7 +181,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [158-[fixed]-…](fixed/158-[fixed]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 8/8 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 11/11 · A 0/8 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 13/13 · A 0/9 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 26/26 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -200,7 +200,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
 | [179-[fixed]-…](fixed/179-[fixed]-search-progressive-tmdb-live-stampede.md) | Search: TMDB blocked by Stremio live stampede | P1 | High | fixed | Complete · 5/5 · A 4/4 | — |
 | [180-[open]-…](180-[open]-android-tv-details-back-loses-catalog-focus.md) | ATV details Back lands on Home top menu | P1 | High | open | 3/3 · A 0/1 | — |
-| [181-[open]-…](181-[open]-player-source-switch-aborted-by-stale-error.md) | In-player source switch aborted by stale error | P1 | High | open | 6/6 · A 0/4 | — |
+| [181-[open]-…](181-[open]-player-source-switch-aborted-by-stale-error.md) | In-player source switch aborted by stale error | P1 | High | open | 10/10 · A 0/4 | — |
 | [182-[open]-…](182-[open]-android-tv-paused-sleep-green-surface.md) | ATV pause + veille → green video surface | P2 | Medium | open | 3/3 · A 0/2 | — |
 | [183-[fixed]-…](fixed/183-[fixed]-nuvio-quickjs-parallel-empty-streams.md) | Nuvio empty/thin on Android QuickJS parallel | P1 | High | fixed | Complete · 4/4 · A 2/3 | — |
 | [184-[open]-…](184-[open]-post-seek-buffering-remount.md) | Post-seek BUFFERING remount same URL | P1 | High | open | 6/6 · A 0/2 | — |
@@ -231,7 +231,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [209-[fixed]-…](fixed/209-[fixed]-forja-sports-stalker-create-link-all-channels.md) | Forja Sports Stalker mints all channel links before open | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
 | [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
-| [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 2/2 · A 0/2 | — |
+| [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 3/3 · A 0/2 | — |
 | [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 1/9 | — |
 | [214-[open]-…](214-[open]-kisskh-instream-subs-mistimed.md) | KissKh Sub API mistimed vs site (HLS mux) | P1 | High | open | 6/6 · A 0/2 | — |
 | [215-[open]-…](215-[open]-android-tv-skia-glyph-atlas-glitch.md) | Android TV Skia glyph/icon atlas garbage | P1 | High | open | 3/3 · A 0/2 | — |
@@ -250,6 +250,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 3/3 · A 0/1 | — |
 | [245-[open]-…](245-[open]-forja-extract-ships-all-hops.md) | Forja extract ships every hop into every plugin job | P1 | High | open | 3/4 · A 1/3 | — |
+| [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
 | [233-[fixed]-…](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md) | ATV Exo IPTV periodic buffering (Xiaomi / no continuity proxy) | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |

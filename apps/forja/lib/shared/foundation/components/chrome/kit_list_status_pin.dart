@@ -137,14 +137,18 @@ class _KitListStatusMenuRowState extends State<KitListStatusMenuRow> {
         children: [
           Icon(widget.icon, size: 16, color: accent),
           const SizedBox(width: 8),
-          Text(
-            widget.label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              fontWeight: widget.selected || active
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-              color: accent,
+          Expanded(
+            child: Text(
+              widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: widget.selected || active
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: accent,
+              ),
             ),
           ),
         ],
@@ -198,42 +202,47 @@ class KitListStatusPopupPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final focusId = currentStatus ?? options.first.id;
-    return IntrinsicWidth(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final s in options)
-                KitListStatusMenuRow(
-                  selected: s.id == currentStatus,
-                  icon: s.id == currentStatus ? s.selectedIcon : s.icon,
-                  label: s.label,
-                  statusColor: s.color,
-                  onTap: busy
-                      ? null
-                      : () => onSelect(
-                          s.id == currentStatus ? '' : s.id,
-                        ),
-                  tvFocus: tvFocus,
-                  autoFocus:
-                      autoFocusSelected && tvFocus && s.id == focusId,
-                ),
+    // FocusableControl (TV) breaks IntrinsicWidth through Transform; pin a
+    // min width that fits "Plan to Watch" + icon + padding.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 168),
+      child: IntrinsicWidth(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final s in options)
+                  KitListStatusMenuRow(
+                    selected: s.id == currentStatus,
+                    icon: s.id == currentStatus ? s.selectedIcon : s.icon,
+                    label: s.label,
+                    statusColor: s.color,
+                    onTap: busy
+                        ? null
+                        : () => onSelect(
+                            s.id == currentStatus ? '' : s.id,
+                          ),
+                    tvFocus: tvFocus,
+                    autoFocus:
+                        autoFocusSelected && tvFocus && s.id == focusId,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

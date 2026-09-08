@@ -109,15 +109,25 @@ class MetaRuntime {
     MetaCacheEntry? entry,
     required Duration timeout,
   }) async {
-    final raw = await EngineService.instance.runCatalog(
-      pluginId: pluginId,
-      packSourceUrl: packSourceUrl,
-      action: action,
-      params: params,
-      auth: auth,
-      cache: entry?.etag == null ? const {} : {'etag': entry!.etag},
-      timeout: timeout,
-    );
+    // Boot race: MainScreen under splash / early continue can miss scripts
+    // once; retry once before surfacing "did not answer" (same pattern as
+    // enrich companion).
+    Map<String, dynamic>? raw;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+      }
+      raw = await EngineService.instance.runCatalog(
+        pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
+        action: action,
+        params: params,
+        auth: auth,
+        cache: entry?.etag == null ? const {} : {'etag': entry!.etag},
+        timeout: timeout,
+      );
+      if (raw != null) break;
+    }
     if (raw == null) {
       if (entry != null) {
         return _pipeEnrichCached(

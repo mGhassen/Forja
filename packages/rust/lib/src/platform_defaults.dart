@@ -51,7 +51,7 @@ class PlatformDefaults {
       PlatformProfile.androidTv => const PlatformDefaults(
         visibleNavIds: androidTvNavIds,
         externalPlayer: 'Built-in Player',
-        builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
+        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
         subSize: 52,
         subBottomPadding: 48,
         iptvEpgEnabled: true,
@@ -83,7 +83,7 @@ class PlatformDefaults {
       PlatformProfile.phone => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
         externalPlayer: 'Built-in Player',
-        builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
+        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
         subSize: 24,
         subBottomPadding: 24,
         iptvEpgEnabled: true,

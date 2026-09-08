@@ -711,6 +711,7 @@ mixin _DesktopPlayerEpisodes
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       currentPlayingRowKey: _s._catalogStreamRowKey,
+      playbackConfirmed: _s._playbackConfirmed,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -763,13 +764,16 @@ mixin _DesktopPlayerEpisodes
     final pick = catalogPanelSelectionFromStream(stream);
     _s._markPlaybackConfirmed(false);
     _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
+    _s._statusController.clear();
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
+        _s._currentUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName;
+      _s._catalogAddonName = pick.addonName ??
+          StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });

@@ -297,6 +297,11 @@ abstract final class ShellTokens {
 
   /// Catalog row D-pad focus: keep this fraction of viewport below the row.
   static const double tvKitRowFocusBottomInsetFraction = 0.10;
+
+  /// Media-details body rows (Cast / Trailers / …): keep this fraction of
+  /// viewport above the focused row so ↑ does not pin flush to the top edge.
+  static const double tvDetailsRowFocusTopInsetFraction = 0.25;
+
   static const double tvHomeSectionTitleTopCompact = 16;
   static const double tvHomeSectionTitleTop = 24;
   static const double tvHomeSectionHeaderHeight = 26;

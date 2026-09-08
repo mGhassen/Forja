@@ -1777,10 +1777,11 @@ void shellTvEnsureVisibleItem(
 /// Use global coords vs the vertical viewport instead.
 ///
 /// Only scrolls when the card would sit under the bottom inset (or above the
-/// top) — mid-screen rows stay put.
+/// preferred top band) — mid-screen rows stay put.
 void shellTvRevealCatalogRowFocus(
   BuildContext context, {
   double bottomInsetFraction = ShellTokens.tvKitRowFocusBottomInsetFraction,
+  double? topInsetFraction,
   double extraBottomPx = 0,
   double extraTopPx = 0,
 }) {
@@ -1798,13 +1799,26 @@ void shellTvRevealCatalogRowFocus(
   final cardTop = topLeft.dy - extraTopPx;
   final cardBottom = topLeft.dy + box.size.height + extraBottomPx;
   final maxBottom = viewportH * (1.0 - bottomInsetFraction);
+  // Details body: leave ~25% above Cast/Crew/Trailers. Hub rails stay flush
+  // (topInset 0) so Home Featured under the hero does not jump.
+  final inDetails =
+      context.findAncestorWidgetOfExactType<MediaDetailsTvScope>() != null;
+  final minTop = viewportH *
+      (topInsetFraction ??
+          (inDetails
+              ? ShellTokens.tvDetailsRowFocusTopInsetFraction
+              : 0.0));
 
   var delta = 0.0;
   if (cardBottom > maxBottom) {
     delta = cardBottom - maxBottom;
   }
-  if (cardTop - delta < 0) {
-    delta = cardTop;
+  if (cardTop - delta < minTop) {
+    delta = cardTop - minTop;
+  }
+  // Tall cards: bottom inset wins if top preference would clip the bottom.
+  if (cardBottom - delta > maxBottom) {
+    delta = cardBottom - maxBottom;
   }
   if (delta.abs() < 0.5) return;
 

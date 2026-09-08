@@ -322,34 +322,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // Unmount the current engine (spinner), cool down the surface, then mount
     // the new one. Instant MediaKit→Exo left Exo TextureView zoomed/cropped
     // (issue 129). Awaiting full MediaKit dispose on the UI isolate ANRs
-    // physical ATV (issue 128) — cap that wait when mounting Exo.
+    // physical ATV (issue 128) — cap that wait on Android for both directions.
     setState(() {
       _useExternalPlayer = false;
       _switchingBuiltInEngine = true;
     });
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) return;
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    if (!mounted) return;
-
-    if (builtInEngine == BuiltInPlayerEngine.mediaKit) {
-      // Prior MediaKit zombie (if any) must finish; Exo already unmounted.
-      await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    try {
+      await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
-      // Extra beat after Exo PlatformView release before mediacodec_embed.
       await Future<void>.delayed(const Duration(milliseconds: 250));
-    } else {
-      // Mounting Exo after MediaKit: brief MediaCodec detach only — do not
-      // sit on full FFI stop/dispose (ATV ANR). Exo boot uses the same cap.
-      await MpvExclusiveSession.instance.prepareForVideoPlayer(
-        timeout: const Duration(milliseconds: 1200),
-      );
+      if (!mounted) return;
+
+      // Android: never wait past the ~5s input ANR window. Dart timeouts do not
+      // fire while FFI is stuck, so keep the wait short and always remount.
+      // MediaKit mounts used to wait 5s (issue 128 T07); stuck stop/dispose still
+      // froze on `[LAN] release skip` → SIGQUIT (T09). Cap both directions.
+      final prepareTimeout = Platform.isAndroid
+          ? const Duration(milliseconds: 1200)
+          : (builtInEngine == BuiltInPlayerEngine.mediaKit
+              ? const Duration(seconds: 5)
+              : const Duration(milliseconds: 1200));
+      try {
+        await MpvExclusiveSession.instance
+            .prepareForVideoPlayer(timeout: prepareTimeout)
+            .timeout(prepareTimeout + const Duration(milliseconds: 300));
+      } catch (_) {}
+      if (builtInEngine == BuiltInPlayerEngine.mediaKit &&
+          !Platform.isAndroid) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _builtInEngine = builtInEngine;
+          _switchingBuiltInEngine = false;
+        });
+      }
     }
-    if (!mounted) return;
-    setState(() {
-      _builtInEngine = builtInEngine;
-      _switchingBuiltInEngine = false;
-    });
   }
 
   @override
@@ -434,7 +443,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
 
-    // Built-in player - Android defaults to MediaKit; ExoPlayer is optional.
+    // Built-in player - Android defaults to ExoPlayer; MediaKit is optional.
     if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
       if (_builtInEngine == BuiltInPlayerEngine.exoPlayer) {
         return ExoPlayerScreen(

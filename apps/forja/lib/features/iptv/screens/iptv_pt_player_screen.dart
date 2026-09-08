@@ -1297,9 +1297,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   ///
   /// Matches VOD [PlayerScreen] switch: full surface unmount → release without
   /// blocking the UI isolate on MediaKit stop+dispose → cool-down → boot.
-  /// Both directions then await [MpvExclusiveSession.prepareForVideoPlayer] —
-  /// unbounded for MediaKit, capped at 1.2s for Exo so the MediaCodec detach is
-  /// done without crossing the ATV input-ANR window (issue 128).
+  /// Both directions await [MpvExclusiveSession.prepareForVideoPlayer] capped
+  /// at 1.2s so MediaCodec detach cannot cross the ATV input-ANR window
+  /// (issue 128).
   Future<void> _switchBuiltInEngine(
     BuiltInPlayerEngine engine, {
     bool persist = true,
@@ -1337,12 +1337,24 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       // mounting over a live mediacodec_embed surface plays audio with a black
       // picture (issue 129 / 133). Capped at 1.2s like the VOD switch so the
       // wait cannot cross the ATV input-ANR window (issue 128).
-      await MpvExclusiveSession.instance.prepareForVideoPlayer(
-        timeout: const Duration(milliseconds: 1200),
-      );
+      try {
+        await MpvExclusiveSession.instance
+            .prepareForVideoPlayer(
+              timeout: const Duration(milliseconds: 1200),
+            )
+            .timeout(const Duration(milliseconds: 1500));
+      } catch (_) {}
       if (_disposed || !mounted) return;
     } else {
-      await MpvExclusiveSession.instance.prepareForVideoPlayer();
+      // Cap MediaKit mount too — uncapped wait froze VOD on `[LAN] release`
+      // when prior dispose FFI stuck (issue 128 follow-up).
+      try {
+        await MpvExclusiveSession.instance
+            .prepareForVideoPlayer(
+              timeout: const Duration(milliseconds: 1200),
+            )
+            .timeout(const Duration(milliseconds: 1500));
+      } catch (_) {}
       if (_disposed || !mounted) return;
     }
 

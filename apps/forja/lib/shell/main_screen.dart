@@ -141,6 +141,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         key: key,
         pluginId: child.pluginId,
         tabId: child.tabId,
+        packSourceUrl: child.packSourceUrl,
         hostLayout: child.hostLayout,
       );
     }

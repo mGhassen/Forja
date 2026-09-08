@@ -117,6 +117,16 @@ class PlayerSubtitleSettingsDialog {
     'Orange': Color(0xFFFFAB40),
     'Pink': Color(0xFFFF80AB),
   };
+
+  /// TV focus graph — one [TvKitRow] per settings line (not reading-order wrap).
+  static const tvTabId = 'player-sub-settings';
+  static const sizeRowId = 'sub-size';
+  static const delayRowId = 'sub-delay';
+  static const colorRowId = 'sub-color';
+  static const bgRowId = 'sub-bg';
+  static const posRowId = 'sub-pos';
+  static const boldRowId = 'sub-bold';
+  static const fontRowId = 'sub-font';
 }
 
 class _SubtitleSettingsOverlay extends StatefulWidget {
@@ -204,47 +214,61 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _SubSlider(
-                        label: 'Size',
-                        value: _values.size,
-                        min: 10,
-                        max: 80,
-                        trailing: '${_values.size.toInt()}',
-                        tvFocus: tv,
-                        autofocus: tv,
-                        onChanged: (v) => _apply(() => _values =
-                            PlayerSubtitleSettingsValues(
-                              size: v,
-                              delay: _values.delay,
-                              color: _values.color,
-                              bgOpacity: _values.bgOpacity,
-                              bottomPadding: _values.bottomPadding,
-                              bold: _values.bold,
-                              font: _values.font,
-                            )),
-                      ),
-                      const SizedBox(height: 8),
-                      _DelayRow(
-                        delay: _values.delay,
-                        tvFocus: tv,
-                        onDelta: (delta) {
-                          final d = double.parse(
-                            (_values.delay + delta).toStringAsFixed(1),
-                          );
-                          _apply(() => _values = PlayerSubtitleSettingsValues(
-                                size: _values.size,
-                                delay: d,
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.sizeRowId,
+                        sortOrder: 0,
+                        itemCount: 1,
+                        child: _SubSlider(
+                          label: 'Size',
+                          value: _values.size,
+                          min: 10,
+                          max: 80,
+                          trailing: '${_values.size.toInt()}',
+                          tvFocus: tv,
+                          autofocus: tv,
+                          tvRowId: PlayerSubtitleSettingsDialog.sizeRowId,
+                          listIndex: 0,
+                          onChanged: (v) => _apply(() => _values =
+                              PlayerSubtitleSettingsValues(
+                                size: v,
+                                delay: _values.delay,
                                 color: _values.color,
                                 bgOpacity: _values.bgOpacity,
                                 bottomPadding: _values.bottomPadding,
                                 bold: _values.bold,
                                 font: _values.font,
-                              ));
-                          PlayerSubtitleSettingsDialog._applyDelay(
-                            widget.player,
-                            d,
-                          );
-                        },
+                              )),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.delayRowId,
+                        sortOrder: 1,
+                        itemCount: 2,
+                        child: _DelayRow(
+                          delay: _values.delay,
+                          tvFocus: tv,
+                          onDelta: (delta) {
+                            final d = double.parse(
+                              (_values.delay + delta).toStringAsFixed(1),
+                            );
+                            _apply(() => _values = PlayerSubtitleSettingsValues(
+                                  size: _values.size,
+                                  delay: d,
+                                  color: _values.color,
+                                  bgOpacity: _values.bgOpacity,
+                                  bottomPadding: _values.bottomPadding,
+                                  bold: _values.bold,
+                                  font: _values.font,
+                                ));
+                            PlayerSubtitleSettingsDialog._applyDelay(
+                              widget.player,
+                              d,
+                            );
+                          },
+                        ),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -255,91 +279,126 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: PlayerSubtitleSettingsDialog._colorOptions
-                            .entries
-                            .map((e) {
-                          final selected = _values.color.toARGB32() ==
-                              e.value.toARGB32();
-                          return _SubColorSwatch(
-                            key: ValueKey('sub-color-${e.key}'),
-                            color: e.value,
-                            selected: selected,
-                            tvFocus: tv,
-                            onSelect: () {
-                              _apply(() {
-                                _values = PlayerSubtitleSettingsValues(
-                                  size: _values.size,
-                                  delay: _values.delay,
-                                  color: e.value,
-                                  bgOpacity: _values.bgOpacity,
-                                  bottomPadding: _values.bottomPadding,
-                                  bold: _values.bold,
-                                  font: _values.font,
-                                );
-                                SettingsService()
-                                    .setSubColor(e.value.toARGB32());
-                              });
-                            },
-                          );
-                        }).toList(),
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.colorRowId,
+                        sortOrder: 2,
+                        itemCount:
+                            PlayerSubtitleSettingsDialog._colorOptions.length,
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: () {
+                            final entries = PlayerSubtitleSettingsDialog
+                                ._colorOptions.entries
+                                .toList();
+                            return [
+                              for (var i = 0; i < entries.length; i++)
+                                _SubColorSwatch(
+                                  key: ValueKey('sub-color-${entries[i].key}'),
+                                  color: entries[i].value,
+                                  selected: _values.color.toARGB32() ==
+                                      entries[i].value.toARGB32(),
+                                  tvFocus: tv,
+                                  listIndex: i,
+                                  onSelect: () {
+                                    final c = entries[i].value;
+                                    _apply(() {
+                                      _values = PlayerSubtitleSettingsValues(
+                                        size: _values.size,
+                                        delay: _values.delay,
+                                        color: c,
+                                        bgOpacity: _values.bgOpacity,
+                                        bottomPadding: _values.bottomPadding,
+                                        bold: _values.bold,
+                                        font: _values.font,
+                                      );
+                                      SettingsService()
+                                          .setSubColor(c.toARGB32());
+                                    });
+                                  },
+                                ),
+                            ];
+                          }(),
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      _SubSlider(
-                        label: 'BG Opacity',
-                        value: _values.bgOpacity,
-                        min: 0,
-                        max: 1,
-                        trailing: '${(_values.bgOpacity * 100).toInt()}%',
-                        tvFocus: tv,
-                        onChanged: (v) => _apply(() => _values =
-                            PlayerSubtitleSettingsValues(
-                              size: _values.size,
-                              delay: _values.delay,
-                              color: _values.color,
-                              bgOpacity: v,
-                              bottomPadding: _values.bottomPadding,
-                              bold: _values.bold,
-                              font: _values.font,
-                            )),
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.bgRowId,
+                        sortOrder: 3,
+                        itemCount: 1,
+                        child: _SubSlider(
+                          label: 'BG Opacity',
+                          value: _values.bgOpacity,
+                          min: 0,
+                          max: 1,
+                          trailing:
+                              '${(_values.bgOpacity * 100).toInt()}%',
+                          tvFocus: tv,
+                          tvRowId: PlayerSubtitleSettingsDialog.bgRowId,
+                          listIndex: 0,
+                          onChanged: (v) => _apply(() => _values =
+                              PlayerSubtitleSettingsValues(
+                                size: _values.size,
+                                delay: _values.delay,
+                                color: _values.color,
+                                bgOpacity: v,
+                                bottomPadding: _values.bottomPadding,
+                                bold: _values.bold,
+                                font: _values.font,
+                              )),
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      _SubSlider(
-                        label: 'Position',
-                        value: _values.bottomPadding,
-                        min: 0,
-                        max: 120,
-                        trailing: '${_values.bottomPadding.toInt()}',
-                        tvFocus: tv,
-                        onChanged: (v) => _apply(() => _values =
-                            PlayerSubtitleSettingsValues(
-                              size: _values.size,
-                              delay: _values.delay,
-                              color: _values.color,
-                              bgOpacity: _values.bgOpacity,
-                              bottomPadding: v,
-                              bold: _values.bold,
-                              font: _values.font,
-                            )),
-                      ),
-                      const SizedBox(height: 8),
-                      _BoldRow(
-                        bold: _values.bold,
-                        tvFocus: tv,
-                        onChanged: (v) {
-                          _apply(() => _values = PlayerSubtitleSettingsValues(
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.posRowId,
+                        sortOrder: 4,
+                        itemCount: 1,
+                        child: _SubSlider(
+                          label: 'Position',
+                          value: _values.bottomPadding,
+                          min: 0,
+                          max: 120,
+                          trailing: '${_values.bottomPadding.toInt()}',
+                          tvFocus: tv,
+                          tvRowId: PlayerSubtitleSettingsDialog.posRowId,
+                          listIndex: 0,
+                          onChanged: (v) => _apply(() => _values =
+                              PlayerSubtitleSettingsValues(
                                 size: _values.size,
                                 delay: _values.delay,
                                 color: _values.color,
                                 bgOpacity: _values.bgOpacity,
-                                bottomPadding: _values.bottomPadding,
-                                bold: v,
+                                bottomPadding: v,
+                                bold: _values.bold,
                                 font: _values.font,
-                              ));
-                          SettingsService().setSubBold(v);
-                        },
+                              )),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.boldRowId,
+                        sortOrder: 5,
+                        itemCount: 1,
+                        child: _BoldRow(
+                          bold: _values.bold,
+                          tvFocus: tv,
+                          onChanged: (v) {
+                            _apply(() => _values = PlayerSubtitleSettingsValues(
+                                  size: _values.size,
+                                  delay: _values.delay,
+                                  color: _values.color,
+                                  bgOpacity: _values.bgOpacity,
+                                  bottomPadding: _values.bottomPadding,
+                                  bold: v,
+                                  font: _values.font,
+                                ));
+                            SettingsService().setSubBold(v);
+                          },
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -350,86 +409,26 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: PlayerSubtitleSettingsDialog._fonts.map((f) {
-                          final selected = _values.font == f;
-                          final chip = Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? ForjaShellColors.brandGreen
-                                      .withValues(alpha: 0.14)
-                                  : Colors.white.withValues(alpha: 0.06),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: selected
-                                    ? ForjaShellColors.brandGreen
-                                    : Colors.white12,
+                      _tvRow(
+                        tv: tv,
+                        rowId: PlayerSubtitleSettingsDialog.fontRowId,
+                        sortOrder: 6,
+                        itemCount: PlayerSubtitleSettingsDialog._fonts.length,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (var i = 0;
+                                i < PlayerSubtitleSettingsDialog._fonts.length;
+                                i++)
+                              _buildFontChip(
+                                context,
+                                tv: tv,
+                                font: PlayerSubtitleSettingsDialog._fonts[i],
+                                index: i,
                               ),
-                            ),
-                            child: Text(
-                              f,
-                              style: TextStyle(
-                                color: selected
-                                    ? ForjaShellColors.brandGreen
-                                    : Colors.white54,
-                                fontSize: 12,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          );
-                          if (!tv) {
-                            return GestureDetector(
-                              key: ValueKey('sub-font-$f'),
-                              onTap: () {
-                                _apply(() {
-                                  _values = PlayerSubtitleSettingsValues(
-                                    size: _values.size,
-                                    delay: _values.delay,
-                                    color: _values.color,
-                                    bgOpacity: _values.bgOpacity,
-                                    bottomPadding: _values.bottomPadding,
-                                    bold: _values.bold,
-                                    font: f,
-                                  );
-                                  SettingsService().setSubFont(f);
-                                });
-                              },
-                              child: chip,
-                            );
-                          }
-                          return KeyedSubtree(
-                            key: ValueKey('sub-font-$f'),
-                            child: shellFocusableTap(
-                              context: context,
-                              onTap: () {
-                                _apply(() {
-                                  _values = PlayerSubtitleSettingsValues(
-                                    size: _values.size,
-                                    delay: _values.delay,
-                                    color: _values.color,
-                                    bgOpacity: _values.bgOpacity,
-                                    bottomPadding: _values.bottomPadding,
-                                    bold: _values.bold,
-                                    font: f,
-                                  );
-                                  SettingsService().setSubFont(f);
-                                });
-                              },
-                              borderRadius: 8,
-                              scaleOnFocus: 1.0,
-                              showFocusBorder: true,
-                              child: chip,
-                            ),
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -462,13 +461,105 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
 
     if (!tv) return body;
 
-    // Linear reading-order so color/font chips are reachable — spatial
-    // focusInDirection skips the small Wrap circles between wide sliders.
+    // Per-row graph: ←/→ within a line; ↓ from Text Color → BG Opacity
+    // (not reading-order into the next swatch).
     return TvOverlayScope(
       onDismiss: _close,
-      linear: true,
-      policy: ReadingOrderTraversalPolicy(),
-      child: body,
+      autofocusFirst: false,
+      debugLabel: 'player-sub-settings',
+      child: ShellTvDisableLinearFocus(
+        child: TvFocusGraph(
+          tabId: PlayerSubtitleSettingsDialog.tvTabId,
+          child: body,
+        ),
+      ),
+    );
+  }
+
+  Widget _tvRow({
+    required bool tv,
+    required String rowId,
+    required int sortOrder,
+    required int itemCount,
+    required Widget child,
+  }) {
+    if (!tv) return child;
+    return TvKitRow(
+      tabId: PlayerSubtitleSettingsDialog.tvTabId,
+      rowId: rowId,
+      sortOrder: sortOrder,
+      itemCount: itemCount,
+      child: child,
+    );
+  }
+
+  Widget _buildFontChip(
+    BuildContext context, {
+    required bool tv,
+    required String font,
+    required int index,
+  }) {
+    final selected = _values.font == font;
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: selected
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected ? ForjaShellColors.brandGreen : Colors.white12,
+        ),
+      ),
+      child: Text(
+        font,
+        style: TextStyle(
+          color: selected ? ForjaShellColors.brandGreen : Colors.white54,
+          fontSize: 12,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+    );
+    void select() {
+      _apply(() {
+        _values = PlayerSubtitleSettingsValues(
+          size: _values.size,
+          delay: _values.delay,
+          color: _values.color,
+          bgOpacity: _values.bgOpacity,
+          bottomPadding: _values.bottomPadding,
+          bold: _values.bold,
+          font: font,
+        );
+        SettingsService().setSubFont(font);
+      });
+    }
+
+    if (!tv) {
+      return GestureDetector(
+        key: ValueKey('sub-font-$font'),
+        onTap: select,
+        child: chip,
+      );
+    }
+    return KeyedSubtree(
+      key: ValueKey('sub-font-$font'),
+      child: shellFocusableTap(
+        context: context,
+        onTap: select,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        listIndex: index,
+        tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+        tvRowId: PlayerSubtitleSettingsDialog.fontRowId,
+        tvItemIndex: index,
+        tvZone: ShellTvZone.chipStrip,
+        child: chip,
+      ),
     );
   }
 }
@@ -483,6 +574,8 @@ class _SubSlider extends StatefulWidget {
     required this.onChanged,
     required this.tvFocus,
     this.autofocus = false,
+    this.tvRowId,
+    this.listIndex,
   });
 
   final String label;
@@ -493,6 +586,8 @@ class _SubSlider extends StatefulWidget {
   final ValueChanged<double> onChanged;
   final bool tvFocus;
   final bool autofocus;
+  final String? tvRowId;
+  final int? listIndex;
 
   @override
   State<_SubSlider> createState() => _SubSliderState();
@@ -563,8 +658,19 @@ class _SubSliderState extends State<_SubSlider> {
 
     if (!widget.tvFocus) return slider;
 
-    return Focus(
-      autofocus: widget.autofocus,
+    return shellFocusableTap(
+      context: context,
+      onTap: () {},
+      autoFocus: widget.autofocus,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      listIndex: widget.listIndex,
+      tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellTvZone.row,
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
         if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
@@ -576,8 +682,8 @@ class _SubSliderState extends State<_SubSlider> {
           _nudge(1);
           return KeyEventResult.handled;
         }
-        // ↑/↓ leave the slider and walk other controls.
-        return shellTvLinearMenuArrows(context: context, event: event);
+        // ↑/↓ → graph moveVerticalInTab (next settings line).
+        return KeyEventResult.ignored;
       },
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -602,12 +708,14 @@ class _SubColorSwatch extends StatefulWidget {
     required this.selected,
     required this.tvFocus,
     required this.onSelect,
+    this.listIndex,
   });
 
   final Color color;
   final bool selected;
   final bool tvFocus;
   final VoidCallback onSelect;
+  final int? listIndex;
 
   @override
   State<_SubColorSwatch> createState() => _SubColorSwatchState();
@@ -662,6 +770,11 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
+      listIndex: widget.listIndex,
+      tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+      tvRowId: PlayerSubtitleSettingsDialog.colorRowId,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellTvZone.chipStrip,
       onFocusChange: (f) => setState(() => _focused = f),
       child: swatch,
     );
@@ -691,6 +804,7 @@ class _DelayRow extends StatelessWidget {
         _DelayBumpButton(
           icon: Icons.remove,
           tvFocus: tvFocus,
+          listIndex: 0,
           onStep: (steps) => onDelta(-0.1 * steps),
         ),
         SizedBox(
@@ -708,6 +822,7 @@ class _DelayRow extends StatelessWidget {
         _DelayBumpButton(
           icon: Icons.add,
           tvFocus: tvFocus,
+          listIndex: 1,
           onStep: (steps) => onDelta(0.1 * steps),
         ),
       ],
@@ -721,11 +836,13 @@ class _DelayBumpButton extends StatefulWidget {
     required this.icon,
     required this.tvFocus,
     required this.onStep,
+    this.listIndex,
   });
 
   final IconData icon;
   final bool tvFocus;
   final ValueChanged<int> onStep;
+  final int? listIndex;
 
   @override
   State<_DelayBumpButton> createState() => _DelayBumpButtonState();
@@ -816,6 +933,11 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
       showFocusBorder: false,
       showFocusFill: false,
       ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+      listIndex: widget.listIndex,
+      tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+      tvRowId: PlayerSubtitleSettingsDialog.delayRowId,
+      tvItemIndex: widget.listIndex,
+      tvZone: ShellTvZone.chipStrip,
       onFocusChange: (f) {
         setState(() => _focused = f);
         if (!f) _resetHold();
@@ -865,6 +987,11 @@ class _BoldRow extends StatelessWidget {
       borderRadius: 8,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
+      listIndex: 0,
+      tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+      tvRowId: PlayerSubtitleSettingsDialog.boldRowId,
+      tvItemIndex: 0,
+      tvZone: ShellTvZone.row,
       child: row,
     );
   }

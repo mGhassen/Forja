@@ -12,7 +12,7 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## What you can do
 
-- Browse the Hubs pack layout (same order as before Catalog Shell): cinematic **Spotlight** hero with **Featured This Month** bleed, **Popular** (numbered), **Continue Watching**, **What's your mood?** circles + results, **Because you watched**, Trakt rows when signed in, **New Releases**, and rotating genre rows. **Featured** reshuffles from random TMDB pages each hour (Popular stays ranked). **New Releases** rotates pages hourly but only shows titles from roughly the last 90 days (plus upcoming), sorted newest first.
+- Browse the Hubs pack layout (same order as before Catalog Shell): cinematic **Spotlight** hero with **Featured This Month** bleed, **Popular** (numbered), **Continue Watching**, **What's your mood?** circles + results, **Because you watched**, Trakt rows when signed in, **New Releases**, and rotating genre rows. **Featured** reshuffles from random TMDB pages each hour (Popular stays ranked). **New Releases** rotates pages hourly but only shows titles from roughly the last 90 days (plus upcoming), sorted newest first. On **Android TV**, **↑** from Continue Watching walks Popular → Featured → View details (does not skip those rails); **↑** from the Because shuffle control returns to the last focused card on the rail above; the shuffle icon turns white when focused or hovered.
 - **Films / TV Shows / Categories** (desktop / TV / phone hero menu) refetch Home rails via Catalog Shell filters into the pack (`type` / genre). With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit type; **Categories** lists full TMDB genres (Action, Documentary, Horror, …) and refilters the hero, Featured, Popular, mood results, and the rest — **not** the three rotating genre rows at the bottom (those keep their own genre). Pick **All** to clear.
 - **Watch services** — on **desktop**, hover **Home** in the nav for ~1s to open a floating streaming-service panel beside the rail; leave the panel / Home for ~1s to hide it. On **Android TV**, hold **OK** on Home for ~500ms (or long-press on phone). The selected service appears as a mark before **Films**. *(Provider filtering of Catalog Shell rails is not wired yet — logo chrome only.)*
 - Open a poster or hero **View details** for the normal movie/TV details page (Sources / play). Glass **+** on the hero opens Plan to Watch / Watching / … (Simkl when connected).
@@ -26,7 +26,7 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## Tips
 
-- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps. Cold start warms layout + first-paint rails into the shared catalog cache so Home opens without a cold network round-trip.
+- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps. Cold start warms layout + first-paint rails into the shared catalog cache during splash; Home loads after splash so it hits that cache instead of racing pack hydrate.
 - Continue Watching is host-owned (your watch history), not pack data.
 - On **desktop**, drag-select the hero title text to copy it (logo titles are images).
 - On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page. From the top **Search** tab, **↓** lands on the hero gallery; **←/→** swaps slides; **OK** opens details; **↓** continues into **View details** then catalog rails.

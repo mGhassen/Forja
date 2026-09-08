@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **1 / 8** acceptance (phase 1) |
-| **Current slice** | Android dual-engine MVP — settings toggle + ExoPlayer VOD path; external SRT/VTT sideload shipped |
+| **Progress** | **4 / 4** components · **2 / 8** acceptance (phase 1) |
+| **Current slice** | Android dual-engine MVP — ExoPlayer default (VOD/IPTV/Live); settings + Exo VOD path; external SRT/VTT sideload shipped |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -30,7 +30,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R29-A01 | Settings → Built-in engine visible on Android; default ExoPlayer; desktop/iOS hidden | ⬜ |
+| 1 | R29-A01 | Settings → Built-in engine visible on Android; default ExoPlayer; desktop/iOS hidden | ✅ |
 | 2 | R29-A02 | Built-in + ExoPlayer: HLS/mp4 plays with custom headers | ⬜ |
 | 3 | R29-A03 | `sources` list failover on open/play error | ⬜ |
 | 4 | R29-A04 | Resume `startPosition` seeks after ready | ⬜ |

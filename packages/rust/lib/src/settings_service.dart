@@ -76,9 +76,12 @@ class SettingsService {
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
-  /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (new Android default).
+  /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (superseded by Exo default).
   static const String _builtInEngineMediaKitDefaultKey =
       'built_in_engine_mk_default_v1';
+  /// One-shot: flip Android MediaKit (or unset) → Exo on VOD / IPTV / Live.
+  static const String _builtInEngineExoDefaultKey =
+      'built_in_engine_exo_default_v1';
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
@@ -1350,27 +1353,39 @@ class SettingsService {
     if (raw != null && raw.isNotEmpty) {
       return BuiltInPlayerEngine.fromStorage(raw);
     }
-    return BuiltInPlayerEngine.defaultForContext(context);
+    return BuiltInPlayerEngine.defaultForContext(
+      context,
+      profile: platformProfile,
+    );
   }
 
-  /// Seeded Android installs wrote ExoPlayer as the VOD default. Flip VOD and
-  /// IPTV once to MediaKit; Live is already MediaKit-by-default and untouched.
-  /// Users who re-pick Exo after this migration keep that choice.
-  Future<void> _migrateBuiltInEngineDefaultToMediaKit() async {
+  /// Old MediaKit-default migration — mark done so it never flips Exo → MK again.
+  Future<void> _retireBuiltInEngineMediaKitDefaultMigration() async {
     if (await kvHasKey(_builtInEngineMediaKitDefaultKey)) return;
-    for (final ctx in const [
-      BuiltInPlayerContext.vod,
-      BuiltInPlayerContext.iptv,
-    ]) {
+    await kvSetString(_builtInEngineMediaKitDefaultKey, '1');
+  }
+
+  /// Android phone/TV: VOD, IPTV, and Live default to ExoPlayer. Flip stored
+  /// MediaKit (or leave unset → Exo via [defaultForContext]). Desktop skipped.
+  /// Users who re-pick MediaKit after this migration keep that choice.
+  Future<void> _migrateBuiltInEngineDefaultToExo() async {
+    if (await kvHasKey(_builtInEngineExoDefaultKey)) return;
+    if (platformProfile == PlatformProfile.desktop) {
+      await kvSetString(_builtInEngineExoDefaultKey, '1');
+      return;
+    }
+    for (final ctx in BuiltInPlayerContext.values) {
       final raw = await kvGetString(ctx.storageKey);
-      if (raw == BuiltInPlayerEngine.exoPlayer.storageKey) {
+      if (raw == null ||
+          raw.isEmpty ||
+          raw == BuiltInPlayerEngine.mediaKit.storageKey) {
         await kvSetString(
           ctx.storageKey,
-          BuiltInPlayerEngine.mediaKit.storageKey,
+          BuiltInPlayerEngine.exoPlayer.storageKey,
         );
       }
     }
-    await kvSetString(_builtInEngineMediaKitDefaultKey, '1');
+    await kvSetString(_builtInEngineExoDefaultKey, '1');
   }
 
   Future<void> setBuiltInPlayerEngine(
@@ -1958,7 +1973,8 @@ class SettingsService {
     configurePlatformProfile(profile);
     await ensureCanonicalSettingsMigrated();
     await _purgeRetiredWebstreamrSettings();
-    await _migrateBuiltInEngineDefaultToMediaKit();
+    await _retireBuiltInEngineMediaKitDefaultMigration();
+    await _migrateBuiltInEngineDefaultToExo();
     await _migratePlayInBackgroundDeviceLocal();
     await _migrateAtvCatalogPlaySources();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;

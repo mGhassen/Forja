@@ -273,11 +273,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       _s._hasError = false;
       _s._currentProvider = providerId;
       _s._currentPlayingCatalogUrl = source.catalogUrl ?? source.url;
+      _s._currentUrl = source.url;
       _s._sourceIndex = index;
     });
     final resumeAt = _s._position;
     final statusId = 'source-switch-$index';
     final label = source.title.trim().isEmpty ? 'Stream' : source.title;
+    _s._statusController.clear();
     _s._statusController.upsert(
       statusId,
       label,
@@ -457,6 +459,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
             playUrl: _s._currentUrl ?? widget.mediaPath,
           ),
       currentPlayingRowKey: _s._catalogStreamRowKey,
+      playbackConfirmed: _s._playbackStartedNotified,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -503,13 +506,18 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     _s._opening = true;
     final pick = catalogPanelSelectionFromStream(stream);
     _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
+    // Drop stuck CHECKING rows so roulette shows this pick, not the old server.
+    _s._statusController.clear();
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
+        // Claim chrome away from the previous CDN before resolve finishes.
+        _s._currentUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName;
+      _s._catalogAddonName = pick.addonName ??
+          StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });

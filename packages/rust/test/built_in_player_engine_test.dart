@@ -13,7 +13,7 @@ void main() {
     );
     expect(
       BuiltInPlayerEngine.fromStorage(null),
-      BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.exoPlayer,
     );
   });
 
@@ -23,30 +23,51 @@ void main() {
     }
   });
 
-  test('UI options list MediaKit first', () {
+  test('UI options list ExoPlayer first', () {
     final ui = builtInPlayerEngineOptionsForUi;
     expect(ui, isNotEmpty);
-    expect(ui.first, BuiltInPlayerEngine.mediaKit);
+    expect(ui.first, BuiltInPlayerEngine.exoPlayer);
     expect(ui.toSet(), builtInPlayerEngineOptions.toSet());
   });
 
-  test('defaultForContext: live/vod/iptv default to MediaKit', () {
+  test('defaultForContext: Android live/vod/iptv default to Exo', () {
+    for (final profile in [
+      PlatformProfile.phone,
+      PlatformProfile.androidTv,
+    ]) {
+      expect(
+        BuiltInPlayerEngine.defaultForContext(
+          BuiltInPlayerContext.live,
+          profile: profile,
+        ),
+        BuiltInPlayerEngine.exoPlayer,
+      );
+      expect(
+        BuiltInPlayerEngine.defaultForContext(
+          BuiltInPlayerContext.vod,
+          profile: profile,
+        ),
+        BuiltInPlayerEngine.exoPlayer,
+      );
+      expect(
+        BuiltInPlayerEngine.defaultForContext(
+          BuiltInPlayerContext.iptv,
+          profile: profile,
+        ),
+        BuiltInPlayerEngine.exoPlayer,
+      );
+    }
+  });
+
+  test('defaultForContext: desktop stays MediaKit', () {
     expect(
-      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.live),
-      BuiltInPlayerEngine.mediaKit,
-    );
-    expect(
-      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.vod),
-      BuiltInPlayerEngine.mediaKit,
-    );
-    expect(
-      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.iptv),
+      BuiltInPlayerEngine.defaultForContext(
+        BuiltInPlayerContext.vod,
+        profile: PlatformProfile.desktop,
+      ),
       BuiltInPlayerEngine.mediaKit,
     );
   });
-
-  // ATV IPTV MediaKit default is asserted in settings_service_platform_defaults_test
-  // (getBuiltInPlayerEngine — unset IPTV does not inherit VOD Exo).
 
   test('player contexts use distinct storage keys', () {
     expect(

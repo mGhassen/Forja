@@ -75,6 +75,9 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     /// TV: ↓ from search/filters → source list (parent owns list graph).
     this.onFocusList,
 
+    /// TV: parent registers ↑ from the list (search → providers → kind).
+    this.onProvideListFocusUp,
+
     /// TV: claim initial focus when the panel opens (parent may also call).
     this.claimInitialFocus = true,
   });
@@ -131,6 +134,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final bool filterEnableBlur;
   final bool sourcesPanelOpen;
   final VoidCallback? onFocusList;
+  final void Function(VoidCallback focusUp)? onProvideListFocusUp;
   final bool claimInitialFocus;
 
   @override
@@ -196,18 +200,21 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   void _claimPanelFocus() {
     if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
-    if (_showProviders) {
-      SourcesPanelTv.focusProvidersItem();
+    // Player passes onFocusList → playing/selected stream (scroll + claim).
+    // Details / hosts without a list callback land on kind tabs.
+    if (widget.onFocusList != null) {
+      widget.onFocusList!();
       return;
     }
-    SourcesPanelTv.claimFocus(
-      search: _searchFocus,
-      filters: _filtersFocus,
-    );
+    SourcesPanelTv.focusKindItem();
   }
 
   void _focusList() {
-    widget.onFocusList?.call();
+    if (widget.onFocusList != null) {
+      widget.onFocusList!();
+      return;
+    }
+    SourcesPanelTv.focusListItem();
   }
 
   void _focusProvidersOrSearchOrList() {
@@ -234,9 +241,23 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     _focusList();
   }
 
+  /// ↑ from the stream list — search sits between providers and the list.
+  void _focusSearchOrProvidersFromList() {
+    if (_searchFocus.canRequestFocus) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    if (_showProviders) {
+      SourcesPanelTv.focusProvidersItem();
+      return;
+    }
+    _focusKindOrClose();
+  }
+
   @override
   Widget build(BuildContext context) {
     const gap = 8.0;
+    widget.onProvideListFocusUp?.call(_focusSearchOrProvidersFromList);
 
     Widget kind = _KindTabs(
       selected: widget.kindFilter,
@@ -526,11 +547,15 @@ class _KindTabState extends State<_KindTab> {
       focused: _focused || _reloadFocused,
     );
     final emphasize = selected || _hovered || focusStyled;
-    final color = selected
-        ? cinematic.textPrimary
-        : (_hovered || focusStyled
-              ? cinematic.textPrimary.withValues(alpha: 0.88)
+    // Focus / hover → brand green text (selected idle stays white + green bar).
+    final color = (_hovered || focusStyled)
+        ? ForjaShellColors.brandGreen
+        : (selected
+              ? cinematic.textPrimary
               : cinematic.textSecondary);
+    final reloadColor = (_reloadFocused || _reloadHovered)
+        ? ForjaShellColors.brandGreen
+        : color;
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
         : (_hovered || focusStyled
@@ -640,7 +665,7 @@ class _KindTabState extends State<_KindTab> {
                 child: Icon(
                   Icons.refresh_rounded,
                   size: 14,
-                  color: color,
+                  color: reloadColor,
                 ),
               ),
             ),

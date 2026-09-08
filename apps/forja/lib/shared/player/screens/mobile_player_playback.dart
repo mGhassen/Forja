@@ -709,7 +709,9 @@ mixin _MobilePlayerPlayback
         }
       }
     } finally {
-      _s._isInitPlaybackRunning = false;
+      if (initGen == _s._fallbackGen) {
+        _s._isInitPlaybackRunning = false;
+      }
       if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
     }
   }

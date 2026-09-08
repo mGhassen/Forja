@@ -36,6 +36,10 @@ class PlayerSourcesPanel {
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
 
+  /// Set by [dismiss] when `cancelEngine: false` so body [dispose] does not
+  /// call [EngineService.cancelPending] a frame later and kill the fresh resolve.
+  static bool _preserveEngineOnDispose = false;
+
   static bool get isShowing => _entry != null;
 
   /// Closes the Sources overlay.
@@ -46,7 +50,12 @@ class PlayerSourcesPanel {
   /// be cancelled. [dispose] must never cancel Engine jobs: it runs a frame
   /// after [dismiss] and would kill the fresh torrent job.
   static void dismiss({bool cancelEngine = true}) {
-    EngineService.instance.cancelPending();
+    _preserveEngineOnDispose = !cancelEngine;
+    if (cancelEngine) {
+      EngineService.instance.cancelPending();
+    } else {
+      EngineService.instance.cancelPanelScrapes();
+    }
     final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
@@ -64,6 +73,10 @@ class PlayerSourcesPanel {
     String? currentStreamUrl,
     String? currentPlayingCatalogUrl,
     String? currentPlayingRowKey,
+
+    /// When false (CHECKING / failed open), picking a row always switches —
+    /// shared CDN URLs must not no-op as "already current".
+    bool playbackConfirmed = true,
 
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
@@ -109,6 +122,7 @@ class PlayerSourcesPanel {
           currentStreamUrl: currentStreamUrl,
           currentPlayingCatalogUrl: currentPlayingCatalogUrl,
           currentPlayingRowKey: currentPlayingRowKey,
+          playbackConfirmed: playbackConfirmed,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
           open: open,
@@ -143,6 +157,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
     this.currentPlayingRowKey,
+    this.playbackConfirmed = true,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.open,
@@ -162,6 +177,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
   final String? currentPlayingRowKey;
+  final bool playbackConfirmed;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final MetaOpen? open;
@@ -213,6 +229,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentStreamUrl: widget.currentStreamUrl,
           currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
           currentPlayingRowKey: widget.currentPlayingRowKey,
+          playbackConfirmed: widget.playbackConfirmed,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           open: widget.open,
@@ -243,6 +260,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
     this.currentPlayingRowKey,
+    this.playbackConfirmed = true,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.open,
@@ -261,6 +279,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
   final String? currentPlayingRowKey;
+  final bool playbackConfirmed;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final MetaOpen? open;
@@ -425,6 +444,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// User wheel/drag on the list — cancel auto scroll-to-playing for this open.
   bool _userDismissedScrollToCurrent = false;
   int _scrollToCurrentAttempts = 0;
+  /// TV: claim D-pad on the playing/selected row once it is mounted.
+  bool _tvListClaimPending = true;
+  VoidCallback? _tvListFocusUp;
 
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
   /// back to the playing source (e.g. Torrents magnet → Nuvio click).
@@ -603,7 +625,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     // Shared cancel without Engine - [dismiss] already cancelled on user
     // close; on source pick, resolve starts before this dispose and must keep
     // its torrentStream job alive.
-    EngineService.instance.cancelPending();
+    if (!PlayerSourcesPanel._preserveEngineOnDispose) {
+      EngineService.instance.cancelPending();
+    }
+    PlayerSourcesPanel._preserveEngineOnDispose = false;
     _listScrollController.dispose();
     super.dispose();
   }
@@ -849,12 +874,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       // Lists still loading / wrong provider filter - keep pending.
       if (index == null) return;
 
+      void claimTvIfNeeded() {
+        if (!_tvListClaimPending || !SourcesPanelTv.isTv(context)) return;
+        _tvListClaimPending = false;
+        SourcesPanelTv.focusListItem(index: index, listOnly: true);
+      }
+
       if (index == 0) {
         _pendingScrollToCurrent = false;
         _scrollToCurrentAttempts = 0;
         if (_listScrollController.hasClients) {
           _listScrollController.jumpTo(0);
         }
+        claimTvIfNeeded();
         return;
       }
 
@@ -868,7 +900,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           alignment: 0.0,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
-        );
+        ).whenComplete(() {
+          if (mounted) claimTvIfNeeded();
+        });
         return;
       }
 
@@ -879,6 +913,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _scrollToCurrentAttempts++;
       if (_scrollToCurrentAttempts > 10) {
         _pendingScrollToCurrent = false;
+        claimTvIfNeeded();
         return;
       }
       const stride = 98.0; // ~tile height + separator
@@ -889,6 +924,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         final nudged = (target + 160.0).clamp(0.0, maxExtent);
         if ((nudged - target).abs() < 1.0) {
           _pendingScrollToCurrent = false;
+          claimTvIfNeeded();
           return;
         }
         _listScrollController.jumpTo(nudged);
@@ -896,6 +932,45 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       _listScrollController.jumpTo(target);
     });
+  }
+
+  /// TV: ↓ from search / open claim — scroll the selected row into view, then focus.
+  void _focusTvListRow({
+    required List<TorrentResult> torrents,
+    required List<Map<String, dynamic>> stremio,
+    required List<Map<String, dynamic>> nuvio,
+    required List<Map<String, dynamic>> engine,
+    required int totalCount,
+  }) {
+    if (!SourcesPanelTv.isTv(context)) return;
+    if (totalCount <= 0) {
+      // Empty / error placeholder registers list-0 when present.
+      if (!SourcesPanelTv.tryFocusListItem()) {
+        SourcesPanelTv.focusKindItem();
+      }
+      return;
+    }
+    final cur = _currentItemIndex(
+          torrents,
+          stremio,
+          nuvio: nuvio,
+          engine: engine,
+        ) ??
+        0;
+    final index = cur.clamp(0, totalCount - 1);
+    if (SourcesPanelTv.tryFocusListItem(index: index)) {
+      _tvListClaimPending = false;
+      return;
+    }
+    // Off-screen ListView tile — jump then retry without dumping onto kind tabs.
+    if (_listScrollController.hasClients) {
+      const stride = 98.0;
+      final maxExtent = _listScrollController.position.maxScrollExtent;
+      final target = (index * stride).clamp(0.0, maxExtent);
+      _listScrollController.jumpTo(target);
+    }
+    _tvListClaimPending = false;
+    SourcesPanelTv.focusListItem(index: index, listOnly: true);
   }
 
   Future<void> _bootstrap() async {
@@ -3505,7 +3580,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   Future<void> _selectTorrent(TorrentResult result) async {
     if (_sourcePickInFlight) return;
-    if (_isCurrentMagnet(result.magnet)) {
+    if (widget.playbackConfirmed && _isCurrentMagnet(result.magnet)) {
       widget.onClose();
       return;
     }
@@ -3532,7 +3607,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   Future<void> _selectStremio(Map<String, dynamic> stream) async {
     if (_sourcePickInFlight) return;
-    if (_isCurrentStremio(stream)) {
+    if (widget.playbackConfirmed && _isCurrentStremio(stream)) {
       widget.onClose();
       return;
     }
@@ -3689,17 +3764,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           filterEnableBlur: false,
           onReloadKind: _reloadKind,
           sourcesPanelOpen: true,
+          onProvideListFocusUp: (cb) => _tvListFocusUp = cb,
           onFocusList: () {
-            final cur =
-                _currentItemIndex(
-                  torrents,
-                  stremio,
-                  nuvio: nuvio,
-                  engine: engine,
-                ) ??
-                0;
-            final max = totalCount > 0 ? totalCount - 1 : 0;
-            SourcesPanelTv.focusListItem(index: cur.clamp(0, max));
+            _focusTvListRow(
+              torrents: torrents,
+              stremio: stremio,
+              nuvio: nuvio,
+              engine: engine,
+              totalCount: totalCount,
+            );
           },
         ),
         Expanded(
@@ -3784,7 +3857,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         sortOrder: SourcesPanelTv.listSort,
         itemCount: 1,
         orientation: ShellTvRowOrientation.vertical,
-        onFocusUp: SourcesPanelTv.focusProvidersItem,
+        onFocusUp: _tvListFocusUp ?? SourcesPanelTv.focusProvidersItem,
         child: shellFocusableTap(
           context: context,
           onTap: () {},
@@ -3792,13 +3865,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           tvTabId: SourcesPanelTv.tabId,
           tvRowId: SourcesPanelTv.listRowId,
           tvItemIndex: 0,
+          tvZone: ShellTvZone.row,
           ensureVisibleMode: ShellTvEnsureVisibleMode.off,
           child: loading,
         ),
       );
     }
     if (_error != null && totalCount == 0) {
-      return Center(
+      final errBody = Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -3821,6 +3895,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           ),
         ),
       );
+      if (!SourcesPanelTv.isTv(context)) return errBody;
+      return TvKitRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.listRowId,
+        sortOrder: SourcesPanelTv.listSort,
+        itemCount: 1,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _tvListFocusUp ?? SourcesPanelTv.focusProvidersItem,
+        child: shellFocusableTap(
+          context: context,
+          onTap: () => _reloadKind(_kindFilter),
+          listIndex: 0,
+          tvTabId: SourcesPanelTv.tabId,
+          tvRowId: SourcesPanelTv.listRowId,
+          tvItemIndex: 0,
+          tvZone: ShellTvZone.row,
+          showFocusBorder: true,
+          scaleOnFocus: 1.0,
+          child: errBody,
+        ),
+      );
     }
     if (totalCount == 0) {
       final emptyMsg = _showsEngine &&
@@ -3840,7 +3935,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                               ))
                       ? 'Select at least one provider'
                       : 'No matching sources';
-      return Center(
+      final emptyBody = Center(
         child: Text(
           emptyMsg,
           textAlign: TextAlign.center,
@@ -3848,6 +3943,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             color: ForjaShellColors.cinematic.textSecondary,
             fontSize: 13,
           ),
+        ),
+      );
+      if (!SourcesPanelTv.isTv(context)) return emptyBody;
+      return TvKitRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.listRowId,
+        sortOrder: SourcesPanelTv.listSort,
+        itemCount: 1,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _tvListFocusUp ?? SourcesPanelTv.focusProvidersItem,
+        child: shellFocusableTap(
+          context: context,
+          onTap: () {},
+          listIndex: 0,
+          tvTabId: SourcesPanelTv.tabId,
+          tvRowId: SourcesPanelTv.listRowId,
+          tvItemIndex: 0,
+          tvZone: ShellTvZone.row,
+          showFocusBorder: true,
+          scaleOnFocus: 1.0,
+          child: emptyBody,
         ),
       );
     }
@@ -3882,7 +3998,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         separatorBuilder: (_, _) => const SizedBox(height: 6),
         itemBuilder: (context, i) {
           final tvIndex = tv ? i : null;
-          final onUp = i == 0 ? SourcesPanelTv.focusProvidersItem : null;
+          final onUp = i == 0
+              ? (_tvListFocusUp ?? SourcesPanelTv.focusProvidersItem)
+              : null;
           if (i < torrents.length) {
             final r = torrents[i];
             final isCurrent = i == currentIndex;
@@ -3966,7 +4084,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       sortOrder: SourcesPanelTv.listSort,
       itemCount: totalCount,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: SourcesPanelTv.focusProvidersItem,
+      onFocusUp: _tvListFocusUp ?? SourcesPanelTv.focusProvidersItem,
       child: panelList,
     );
   }

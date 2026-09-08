@@ -56,7 +56,7 @@ void main() {
     expect(await service.getExternalPlayer(), 'Built-in Player');
     expect(
       await service.getBuiltInPlayerEngine(),
-      BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.exoPlayer,
     );
     expect(await service.getSubSize(), 52);
     expect(await service.getSubBottomPadding(), 48);
@@ -70,72 +70,72 @@ void main() {
   });
 
   test(
-    'ATV unset IPTV engine stays MediaKit when VOD is Exo; Live stays MediaKit',
+    'ATV unset IPTV engine stays Exo when VOD is MediaKit; Live stays Exo',
     () async {
       addTearDown(() {
         SettingsService.configurePlatformProfile(PlatformProfile.phone);
       });
       SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
       final service = SettingsService();
-      // Mark MediaKit-default migration done so an explicit Exo pick sticks.
+      // Mark Exo-default migration done so an explicit MediaKit pick sticks.
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
       await service.setBuiltInPlayerEngine(
-        BuiltInPlayerEngine.exoPlayer,
+        BuiltInPlayerEngine.mediaKit,
         context: BuiltInPlayerContext.vod,
       );
       expect(
         await service.getBuiltInPlayerEngine(
           context: BuiltInPlayerContext.vod,
         ),
-        BuiltInPlayerEngine.exoPlayer,
+        BuiltInPlayerEngine.mediaKit,
       );
       expect(
         await service.getBuiltInPlayerEngine(
           context: BuiltInPlayerContext.iptv,
         ),
-        BuiltInPlayerEngine.mediaKit,
+        BuiltInPlayerEngine.exoPlayer,
       );
       expect(
         await service.getBuiltInPlayerEngine(
           context: BuiltInPlayerContext.live,
         ),
-        BuiltInPlayerEngine.mediaKit,
+        BuiltInPlayerEngine.exoPlayer,
       );
     },
   );
 
-  test('legacy Exo VOD/IPTV migrate once to MediaKit default', () async {
+  test('legacy MediaKit VOD/IPTV/Live migrate once to Exo default', () async {
     await kvSetString(
       BuiltInPlayerContext.vod.storageKey,
-      BuiltInPlayerEngine.exoPlayer.storageKey,
+      BuiltInPlayerEngine.mediaKit.storageKey,
     );
     await kvSetString(
       BuiltInPlayerContext.iptv.storageKey,
-      BuiltInPlayerEngine.exoPlayer.storageKey,
+      BuiltInPlayerEngine.mediaKit.storageKey,
     );
     await kvSetString(
       BuiltInPlayerContext.live.storageKey,
-      BuiltInPlayerEngine.exoPlayer.storageKey,
+      BuiltInPlayerEngine.mediaKit.storageKey,
     );
     // Pretend an older install already seeded platform defaults.
     await kvSetString('platform_defaults_seeded_v1', 'androidTv');
 
     final service = SettingsService();
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
 
     expect(
       await service.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.vod,
       ),
-      BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.exoPlayer,
     );
     expect(
       await service.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.iptv,
       ),
-      BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.exoPlayer,
     );
-    // Live was an explicit Exo pick — leave alone.
     expect(
       await service.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.live,
@@ -144,7 +144,7 @@ void main() {
     );
 
     await service.setBuiltInPlayerEngine(
-      BuiltInPlayerEngine.exoPlayer,
+      BuiltInPlayerEngine.mediaKit,
       context: BuiltInPlayerContext.vod,
     );
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
@@ -152,7 +152,7 @@ void main() {
       await service.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.vod,
       ),
-      BuiltInPlayerEngine.exoPlayer,
+      BuiltInPlayerEngine.mediaKit,
     );
   });
 

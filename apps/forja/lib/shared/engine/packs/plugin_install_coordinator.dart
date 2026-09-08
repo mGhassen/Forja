@@ -100,6 +100,19 @@ class PluginInstallCoordinator {
 
   bool isInstallingUrl(String url) => progress.value?.matchesUrl(url) ?? false;
 
+  /// Join splash / silent hydrate if one is already running. No-op when idle.
+  ///
+  /// Does **not** start a new [ensureAllInstalled] — that would re-scan packs
+  /// after boot. Hub shells call this before the first layout after an early
+  /// splash dismiss so they do not race missing scripts.
+  Future<void> waitUntilIdle() async {
+    final boot = _inFlight;
+    if (boot != null) await boot;
+    if (_manualByUrl.isNotEmpty) {
+      await Future.wait(_manualByUrl.values);
+    }
+  }
+
   /// Settings → Add plugin (or refresh one pack) with visible download progress.
   ///
   /// Concurrent calls for **different** URLs run one-after-another via the

@@ -115,6 +115,24 @@ bool sourcesPanelOptionIsAllChip(String optionId) =>
     optionId == 'all_nuvio' ||
     optionId == EngineIds.allChip;
 
+/// True when [optionId] is an individual provider used as an All-mode list filter
+/// (tap toggles view filter — must not long-press reload).
+bool sourcesPanelChipIsViewFilterSelection({
+  required String optionId,
+  required String selectedSourceId,
+  bool nuvioAllMode = false,
+  bool engineAllMode = false,
+}) {
+  if (sourcesPanelOptionIsAllChip(optionId)) return false;
+  if (optionId.startsWith('nuvio:') && nuvioAllMode) return true;
+  if (EngineIds.isPluginChip(optionId) && engineAllMode) return true;
+  if (TorrentSearchProviders.isAllChip(selectedSourceId) &&
+      TorrentSearchProviders.isBuiltinSearchChip(optionId)) {
+    return true;
+  }
+  return false;
+}
+
 const kTorrentAudioTags = [
   'Atmos',
   'TrueHD',
@@ -564,6 +582,20 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     );
   }
 
+  bool _canReloadChip(SourcesPanelProviderOption option) {
+    if (widget.onChipReload == null) return false;
+    if (widget.loadingChipIds.contains(option.id)) return false;
+    if (sourcesPanelChipIsViewFilterSelection(
+      optionId: option.id,
+      selectedSourceId: widget.selectedSourceId,
+      nuvioAllMode: widget.nuvioAllMode ?? false,
+      engineAllMode: widget.engineAllMode ?? false,
+    )) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.options.isEmpty) return const SizedBox.shrink();
@@ -598,42 +630,45 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                         ),
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: ForjaShellChip(
-                          label: widget.options[i].label,
-                          selected: _chipSelected(widget.options[i]),
-                          loading: widget.loadingChipIds.contains(
-                            widget.options[i].id,
-                          ),
-                          onTap: () => widget.onChipTap(widget.options[i].id),
-                          onCancel:
-                              widget.onChipCancel == null ||
-                                  !widget.loadingChipIds.contains(
-                                    widget.options[i].id,
-                                  )
-                              ? null
-                              : () => widget.onChipCancel!(
-                                  widget.options[i].id,
-                                ),
-                          onReload:
-                              widget.onChipReload == null ||
-                                  widget.loadingChipIds.contains(
-                                    widget.options[i].id,
-                                  ) ||
-                                  !_chipSelected(widget.options[i])
-                              ? null
-                              : () => widget.onChipReload!(
-                                  widget.options[i].id,
-                                ),
-                          accentHover: true,
-                          radius: 999,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          fontSize: 12,
-                          listIndex: widget.tvRowId != null ? i : null,
-                          tvTabId: widget.tvTabId,
-                          tvRowId: widget.tvRowId,
+                        child: Builder(
+                          builder: (context) {
+                            final option = widget.options[i];
+                            final canReload = _canReloadChip(option);
+                            final selected = _chipSelected(option);
+                            return ForjaShellChip(
+                              label: option.label,
+                              selected: selected,
+                              loading: widget.loadingChipIds.contains(
+                                option.id,
+                              ),
+                              onTap: () => widget.onChipTap(option.id),
+                              onCancel:
+                                  widget.onChipCancel == null ||
+                                      !widget.loadingChipIds.contains(
+                                        option.id,
+                                      )
+                                  ? null
+                                  : () => widget.onChipCancel!(option.id),
+                              // Icon: selected load chips only (not All-mode filters).
+                              onReload: canReload && selected
+                                  ? () => widget.onChipReload!(option.id)
+                                  : null,
+                              // Hold 2s reloads any loadable chip (not filter selection).
+                              onLongPress: canReload
+                                  ? () => widget.onChipReload!(option.id)
+                                  : null,
+                              accentHover: true,
+                              radius: 999,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              fontSize: 12,
+                              listIndex: widget.tvRowId != null ? i : null,
+                              tvTabId: widget.tvTabId,
+                              tvRowId: widget.tvRowId,
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -1670,6 +1705,258 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     final metrics = ShellScope.metricsOf(context);
     final cinematic = ForjaShellColors.cinematic;
     final pad = metrics.torrentPanelPadding;
+    final tv = SourcesPanelTv.isTv(context);
+    var nextSort = 1;
+
+    void clearAll() {
+      widget.onClearAll();
+      final close = widget.onRequestClose;
+      if (close != null) {
+        close();
+      } else {
+        Navigator.pop(context);
+      }
+    }
+
+    final headerActions = <Widget>[
+      _FilterClearButton(
+        onPressed: clearAll,
+        listIndex: tv ? 0 : null,
+      ),
+      if (widget.onRequestClose != null) ...[
+        const SizedBox(width: 4),
+        if (tv)
+          shellFocusableTap(
+            context: context,
+            onTap: widget.onRequestClose,
+            borderRadius: 18,
+            scaleOnFocus: 1.0,
+            showFocusBorder: true,
+            listIndex: 1,
+            tvTabId: SourcesPanelTv.filtersTabId,
+            tvRowId: SourcesPanelTv.filtersHeaderRowId,
+            tvItemIndex: 1,
+            tvZone: ShellTvZone.chipStrip,
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: Icon(
+                Icons.close_rounded,
+                size: 20,
+                color: cinematic.textSecondary,
+              ),
+            ),
+          )
+        else
+          ForjaCloseButton(
+            color: cinematic.textSecondary,
+            onTap: widget.onRequestClose,
+          ),
+      ],
+    ];
+
+    Widget header = Row(
+      children: [
+        Text(
+          'Filters',
+          style: TextStyle(
+            color: cinematic.textPrimary,
+            fontSize: metrics.torrentPanelTitleFontSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const Spacer(),
+        ...headerActions,
+      ],
+    );
+    if (tv) {
+      header = TvKitRow(
+        tabId: SourcesPanelTv.filtersTabId,
+        rowId: SourcesPanelTv.filtersHeaderRowId,
+        sortOrder: 0,
+        itemCount: widget.onRequestClose != null ? 2 : 1,
+        child: header,
+      );
+    }
+
+    final sections = <Widget>[];
+    if (widget.showEngineCategories &&
+        widget.onEngineCategoriesChanged != null) {
+      final ids = EngineCategories.filterTypeOptions(
+        plugins: const [],
+        include: widget.engineVisibleCategories,
+        extra: widget.engineCategoryOptions,
+      );
+      const rowId = 'filters-category';
+      sections.add(
+        _sheetSection(
+          'Category',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < ids.length; i++)
+              _sheetChip(
+                label: EngineCategories.typeLabel(ids[i]),
+                selected: _engineCats.contains(ids[i]),
+                onTap: () => _toggleEngineCategory(ids[i]),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.sortPreference != null && widget.onSortChanged != null) {
+      const sorts = [
+        'Seeders (High to Low)',
+        'Seeders (Low to High)',
+        'Quality (High to Low)',
+        'Quality (Low to High)',
+        'Size (High to Low)',
+        'Size (Low to High)',
+      ];
+      const rowId = 'filters-sort';
+      sections.add(
+        _sheetSection(
+          'Sort',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < sorts.length; i++)
+              _sheetChip(
+                label: sorts[i],
+                selected: _sort == sorts[i],
+                onTap: () {
+                  setState(() => _sort = sorts[i]);
+                  widget.onSortChanged!(sorts[i]);
+                },
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.availableQualities.isNotEmpty) {
+      final qs = TorrentReleaseMetadata.qualityFilters
+          .where(widget.availableQualities.contains)
+          .toList();
+      const rowId = 'filters-quality';
+      sections.add(
+        _sheetSection(
+          'Quality',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < qs.length; i++)
+              _sheetChip(
+                label: qs[i],
+                selected: _quality.contains(qs[i]),
+                onTap: () =>
+                    _toggle(_quality, qs[i], widget.onQualityFiltersChanged),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.availableSizeRanges.isNotEmpty &&
+        widget.onSizeFiltersChanged != null) {
+      final sizes = TorrentReleaseMetadata.sizeFilters
+          .where(widget.availableSizeRanges.contains)
+          .toList();
+      const rowId = 'filters-size';
+      sections.add(
+        _sheetSection(
+          'Size',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < sizes.length; i++)
+              _sheetChip(
+                label: sizes[i],
+                selected: _size.contains(sizes[i]),
+                onTap: () =>
+                    _toggle(_size, sizes[i], widget.onSizeFiltersChanged!),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.availableLanguages.isNotEmpty) {
+      final langs = widget.availableLanguages.toList()..sort();
+      const rowId = 'filters-language';
+      sections.add(
+        _sheetSection(
+          'Language',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < langs.length; i++)
+              _sheetChip(
+                label: _languageChipLabel(langs[i]),
+                selected: _language.contains(langs[i]),
+                onTap: () => _toggle(
+                  _language,
+                  langs[i],
+                  widget.onLanguageFiltersChanged,
+                ),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.availableTech.isNotEmpty) {
+      final tech = TorrentReleaseMetadata.techFilters
+          .where(widget.availableTech.contains)
+          .toList();
+      const rowId = 'filters-tech';
+      sections.add(
+        _sheetSection(
+          'Tech',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < tech.length; i++)
+              _sheetChip(
+                label: tech[i],
+                selected: _tech.contains(tech[i]),
+                onTap: () =>
+                    _toggle(_tech, tech[i], widget.onTechFiltersChanged),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
+    if (widget.showAudioFilters && widget.onAudioFiltersChanged != null) {
+      final tags = kTorrentAudioTags.toList();
+      const rowId = 'filters-audio';
+      sections.add(
+        _sheetSection(
+          'Audio',
+          rowId: rowId,
+          sortOrder: nextSort++,
+          chips: [
+            for (var i = 0; i < tags.length; i++)
+              _sheetChip(
+                label: tags[i],
+                selected: _audio.contains(tags[i]),
+                onTap: () =>
+                    _toggle(_audio, tags[i], widget.onAudioFiltersChanged!),
+                rowId: rowId,
+                index: i,
+              ),
+          ],
+        ),
+      );
+    }
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1677,157 +1964,33 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Text(
-                  'Filters',
-                  style: TextStyle(
-                    color: cinematic.textPrimary,
-                    fontSize: metrics.torrentPanelTitleFontSize,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                _FilterClearButton(
-                  onPressed: () {
-                    widget.onClearAll();
-                    final close = widget.onRequestClose;
-                    if (close != null) {
-                      close();
-                    } else {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-                if (widget.onRequestClose != null) ...[
-                  const SizedBox(width: 4),
-                  ForjaCloseButton(
-                    color: cinematic.textSecondary,
-                    onTap: widget.onRequestClose,
-                  ),
-                ],
-              ],
-            ),
+            header,
             const SizedBox(height: 8),
-            if (widget.showEngineCategories &&
-                widget.onEngineCategoriesChanged != null)
-              _sheetSection(
-                'Category',
-                EngineCategories.filterTypeOptions(
-                  plugins: const [],
-                  include: widget.engineVisibleCategories,
-                  extra: widget.engineCategoryOptions,
-                ).map(
-                  (id) => _sheetChip(
-                    label: EngineCategories.typeLabel(id),
-                    selected: _engineCats.contains(id),
-                    onTap: () => _toggleEngineCategory(id),
-                  ),
-                ),
-              ),
-            if (widget.sortPreference != null && widget.onSortChanged != null)
-              _sheetSection(
-                'Sort',
-                [
-                  'Seeders (High to Low)',
-                  'Seeders (Low to High)',
-                  'Quality (High to Low)',
-                  'Quality (Low to High)',
-                  'Size (High to Low)',
-                  'Size (Low to High)',
-                ].map(
-                  (s) => _sheetChip(
-                    label: s,
-                    selected: _sort == s,
-                    onTap: () {
-                      setState(() => _sort = s);
-                      widget.onSortChanged!(s);
-                    },
-                  ),
-                ),
-              ),
-            if (widget.availableQualities.isNotEmpty)
-              _sheetSection(
-                'Quality',
-                TorrentReleaseMetadata.qualityFilters
-                    .where(widget.availableQualities.contains)
-                    .map(
-                      (q) => _sheetChip(
-                        label: q,
-                        selected: _quality.contains(q),
-                        onTap: () => _toggle(
-                          _quality,
-                          q,
-                          widget.onQualityFiltersChanged,
-                        ),
-                      ),
-                    ),
-              ),
-            if (widget.availableSizeRanges.isNotEmpty &&
-                widget.onSizeFiltersChanged != null)
-              _sheetSection(
-                'Size',
-                TorrentReleaseMetadata.sizeFilters
-                    .where(widget.availableSizeRanges.contains)
-                    .map(
-                      (s) => _sheetChip(
-                        label: s,
-                        selected: _size.contains(s),
-                        onTap: () =>
-                            _toggle(_size, s, widget.onSizeFiltersChanged!),
-                      ),
-                    ),
-              ),
-            if (widget.availableLanguages.isNotEmpty)
-              _sheetSection(
-                'Language',
-                (widget.availableLanguages.toList()..sort()).map(
-                  (code) => _sheetChip(
-                    label: _languageChipLabel(code),
-                    selected: _language.contains(code),
-                    onTap: () => _toggle(
-                      _language,
-                      code,
-                      widget.onLanguageFiltersChanged,
-                    ),
-                  ),
-                ),
-              ),
-            if (widget.availableTech.isNotEmpty)
-              _sheetSection(
-                'Tech',
-                TorrentReleaseMetadata.techFilters
-                    .where(widget.availableTech.contains)
-                    .map(
-                      (t) => _sheetChip(
-                        label: t,
-                        selected: _tech.contains(t),
-                        onTap: () =>
-                            _toggle(_tech, t, widget.onTechFiltersChanged),
-                      ),
-                    ),
-              ),
-            if (widget.showAudioFilters && widget.onAudioFiltersChanged != null)
-              _sheetSection(
-                'Audio',
-                kTorrentAudioTags.map(
-                  (tag) => _sheetChip(
-                    label: tag,
-                    selected: _audio.contains(tag),
-                    onTap: () =>
-                        _toggle(_audio, tag, widget.onAudioFiltersChanged!),
-                  ),
-                ),
-              ),
+            ...sections,
           ],
         ),
       ),
     );
   }
 
-  Widget _sheetSection(String title, Iterable<Widget> chips) {
-    final list = chips.toList();
-    if (list.isEmpty) return const SizedBox.shrink();
+  Widget _sheetSection(
+    String title, {
+    required String rowId,
+    required int sortOrder,
+    required List<Widget> chips,
+  }) {
+    if (chips.isEmpty) return const SizedBox.shrink();
+    final tv = SourcesPanelTv.isTv(context);
+    Widget chipRow = Wrap(spacing: 8, runSpacing: 8, children: chips);
+    if (tv) {
+      chipRow = TvKitRow(
+        tabId: SourcesPanelTv.filtersTabId,
+        rowId: rowId,
+        sortOrder: sortOrder,
+        itemCount: chips.length,
+        child: chipRow,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -1842,7 +2005,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: list),
+          chipRow,
         ],
       ),
     );
@@ -1852,6 +2015,8 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     required String label,
     required bool selected,
     required VoidCallback onTap,
+    String? rowId,
+    int? index,
   }) {
     final metrics = ShellScope.metricsOf(context);
     final tv = SourcesPanelTv.isTv(context);
@@ -1870,14 +2035,21 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         vertical: metrics.torrentPanelChipVerticalPadding,
       ),
       fontSize: metrics.torrentPanelChipFontSize,
+      tvTabId: tv && rowId != null ? SourcesPanelTv.filtersTabId : null,
+      tvRowId: tv ? rowId : null,
+      listIndex: tv ? index : null,
     );
   }
 }
 
 class _FilterClearButton extends StatelessWidget {
-  const _FilterClearButton({required this.onPressed});
+  const _FilterClearButton({
+    required this.onPressed,
+    this.listIndex,
+  });
 
   final VoidCallback onPressed;
+  final int? listIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -1894,6 +2066,11 @@ class _FilterClearButton extends StatelessWidget {
       borderRadius: 8,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
+      listIndex: listIndex,
+      tvTabId: SourcesPanelTv.filtersTabId,
+      tvRowId: SourcesPanelTv.filtersHeaderRowId,
+      tvItemIndex: listIndex,
+      tvZone: ShellTvZone.chipStrip,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: label,
@@ -1957,14 +2134,18 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     );
     // Keep Positioned as OverlayEntry root — wrap only the panel body.
     if (widget.claimTvFocus) {
-      // Reading-order ←/→ so Wrap chip rows continue to the next line
-      // (spatial focusInDirection dead-ends at the end of each run).
+      // Per-section TvKitRows: ←/→ stay in the section; → on last chip traps;
+      // ↓/↑ move between Category / Quality / Size / … (not reading-order wrap).
       panel = TvOverlayScope(
         onDismiss: widget.onClose,
         autofocusFirst: true,
-        linear: true,
         debugLabel: 'sources-filters-tv',
-        child: panel,
+        child: ShellTvDisableLinearFocus(
+          child: TvFocusGraph(
+            tabId: SourcesPanelTv.filtersTabId,
+            child: panel,
+          ),
+        ),
       );
     }
 

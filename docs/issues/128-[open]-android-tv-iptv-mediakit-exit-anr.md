@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 4** acceptance |
+| **Progress** | **13 / 13** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,6 +30,9 @@
 | 8 | I128-T08 | IPTV reload after Exo→MediaKit: live MediaKit reload = live-edge snap (no second `Player.open`); serialize opens; Exo soft reopen without MediaCodec release | ✅ |
 | 9 | I128-T09 | VOD MediaKit→Exo: skip `ao=null` on Android silence; widget dispose defers fast teardown (do not await FFI mid-frame) | ✅ |
 | 10 | I128-T10 | IPTV ATV MediaKit live: watchdog long-buffer recovery snaps live-edge (attempts 1–2); later retries reseat via hot-swap (no `open`/`stop` on busy mpv; `_recreatePlayer` does not await full dispose) | ✅ |
+| 11 | I128-T11 | VOD `_switchPlayer`: cap Android prepare at 1.2s both directions; always clear Switching spinner in finally | ✅ |
+| 12 | I128-T12 | Exo soft-stop before switch + deferred timed dispose tracked in `MpvExclusiveSession`; MediaKit silence before switch handler | ✅ |
+| 13 | I128-T13 | IPTV hot-swap: cap MediaKit-mount prepare at 1.2s (same as Exo) | ✅ |
 
 ---
 
@@ -75,6 +78,7 @@ Flutter logs showed Select on `iptv-player-back` → `[NavBack]` then Signal Cat
 
 **IPTV long buffer → crash (T10):** Watchdog detector 1 after 12s buffering called `Player.open` (attempts 1–2) then `stop`+`open` (3–4) on a stalled live mpv — same ANR as T08 Reload. ATV MediaKit live now snaps to the live edge on early retries; later retries reseat with `_releaseEngineForHotSwap` (tracked dispose, 1.2s cap) then open a **new** Player.
 
+**Follow-up (T11–T13, 2026-09-08):** VOD Player menu still froze on emulator after `[LAN] release skip` — MediaKit-mount path still awaited uncapped 5s prepare, and Exo dispose raced MediaCodec release mid-switch. Cap Android prepare both ways at 1.2s with try/finally so Switching never sticks; soft-stop Exo / silence MediaKit before the parent unmounts; defer+timeout Exo dispose and track it like MediaKit.
 ## Related
 
 - [115](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) — Player menu SIGSEGV (null mpv handle)  

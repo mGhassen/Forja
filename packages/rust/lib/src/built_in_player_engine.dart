@@ -1,3 +1,5 @@
+import 'platform_profile.dart';
+
 /// Where a built-in engine choice applies. Each surface remembers its own
 /// ExoPlayer / MediaKit pick — changing IPTV does not change VOD, etc.
 enum BuiltInPlayerContext {
@@ -21,18 +23,28 @@ enum BuiltInPlayerEngine {
   final String storageKey;
 
   static BuiltInPlayerEngine fromStorage(String? raw) {
+    if (raw == mediaKit.storageKey) return mediaKit;
     if (raw == exoPlayer.storageKey) return exoPlayer;
-    return mediaKit;
+    return forPlatformProfile(PlatformProfile.phone);
   }
 
-  /// All platforms default to media_kit. ExoPlayer remains an Android option.
-  static BuiltInPlayerEngine platformDefault() => mediaKit;
+  /// Android phone/TV → ExoPlayer. Desktop → MediaKit.
+  static BuiltInPlayerEngine forPlatformProfile(PlatformProfile profile) {
+    return switch (profile) {
+      PlatformProfile.desktop => mediaKit,
+      PlatformProfile.phone || PlatformProfile.androidTv => exoPlayer,
+    };
+  }
 
-  /// Per-surface default when no KV value exists (and legacy VOD fallback does not apply).
-  /// Live Matches → MediaKit.
-  static BuiltInPlayerEngine defaultForContext(BuiltInPlayerContext context) {
-    if (context == BuiltInPlayerContext.live) return mediaKit;
-    return platformDefault();
+  /// Early UI paint before profile/settings hydrate (Android-biased).
+  static BuiltInPlayerEngine platformDefault() => exoPlayer;
+
+  /// Per-surface default when no KV value exists.
+  static BuiltInPlayerEngine defaultForContext(
+    BuiltInPlayerContext context, {
+    PlatformProfile profile = PlatformProfile.phone,
+  }) {
+    return forPlatformProfile(profile);
   }
 
   String get displayName => switch (this) {
@@ -41,11 +53,13 @@ enum BuiltInPlayerEngine {
       };
 }
 
-/// Enum declaration order (MediaKit first). Prefer [builtInPlayerEngineOptionsForUi]
-/// in pickers so the default engine appears first.
+/// Enum declaration order. Prefer [builtInPlayerEngineOptionsForUi] in pickers.
 const builtInPlayerEngineOptions = BuiltInPlayerEngine.values;
 
-/// UI order: MediaKit (default) first, then ExoPlayer on Android.
+/// UI order: ExoPlayer (Android default) first, then MediaKit.
 List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
-  return builtInPlayerEngineOptions;
+  return const [
+    BuiltInPlayerEngine.exoPlayer,
+    BuiltInPlayerEngine.mediaKit,
+  ];
 }

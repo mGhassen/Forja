@@ -11,6 +11,7 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/hero/cinematic_hero.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -160,6 +161,25 @@ class _KitShellState extends State<KitShell>
     );
     KitTopMenuRegistry.revision.addListener(_onKitTopMenuRevision);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
+    // MainScreen mounts under the splash Offstage. Layout before packs /
+    // boot prefetch finish returns null → "tmdb did not answer layout" and
+    // never recovers when MetaCache warms. Wait for splash dismiss (prefetch
+    // already ran), then load — cache hit on the happy path.
+    _scheduleFirstLayout();
+  }
+
+  void _scheduleFirstLayout() {
+    if (ShellBus.splashDismissed.value) {
+      unawaited(_loadLayout());
+      return;
+    }
+    ShellBus.splashDismissed.addListener(_onSplashDismissedForLayout);
+  }
+
+  void _onSplashDismissedForLayout() {
+    if (!ShellBus.splashDismissed.value) return;
+    ShellBus.splashDismissed.removeListener(_onSplashDismissedForLayout);
+    if (!mounted) return;
     unawaited(_loadLayout());
   }
 
@@ -182,7 +202,8 @@ class _KitShellState extends State<KitShell>
     markShellTabStale();
     _forceNextRails = true;
     _invalidateRailFutures();
-    if (shellTabVisible) {
+    // Under splash: first layout runs on dismiss. Don't race hydrate.
+    if (shellTabVisible && ShellBus.splashDismissed.value) {
       unawaited(refreshIfStale(force: true));
     }
   }
@@ -198,6 +219,7 @@ class _KitShellState extends State<KitShell>
 
   @override
   void dispose() {
+    ShellBus.splashDismissed.removeListener(_onSplashDismissedForLayout);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     KitTopMenuRegistry.revision.removeListener(_onKitTopMenuRevision);
     if (_verticalFiltersRevisionListener != null) {
@@ -281,6 +303,10 @@ class _KitShellState extends State<KitShell>
     } else {
       setState(() => _error = null);
     }
+
+    // Early "Continue in background" dismisses splash while hydrate still runs.
+    await PluginInstallCoordinator.instance.waitUntilIdle();
+    if (!mounted) return;
 
     final enabled = await PluginNavRegistry.isKitPluginEnabled(
       widget.pluginId,
@@ -1047,6 +1073,12 @@ class _KitShellState extends State<KitShell>
           orders['$id-chips'] = order;
           orders['$id-results'] = order + 1;
           order += 2;
+        case 'because':
+        case 'host.because':
+          // Shuffle header sits above the cards in the focus graph.
+          orders['$id-header'] = order;
+          orders[id] = order + 1;
+          order += 2;
         default:
           if (id.isNotEmpty) {
             orders[id] = order++;
@@ -1497,7 +1529,6 @@ class _KitShellState extends State<KitShell>
           tabId: widget.tabId ?? '',
           mergeHomeWatchHistory: spec['mergeHomeWatchHistory'] == true,
           tvRowOrder: _tvOrder(tvOrders, id),
-          tvFocusUp: _focusHeroPlay,
           prefetchSlot: prefetch,
         );
       case 'because':
@@ -1505,6 +1536,7 @@ class _KitShellState extends State<KitShell>
           pluginId: widget.pluginId,
           tabId: widget.tabId ?? '',
           spec: spec,
+          tvHeaderRowOrder: _tvOrder(tvOrders, '$id-header'),
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,
         );

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -132,6 +135,8 @@ class ForjaShellChip extends StatefulWidget {
     this.icon,
     this.trailing,
     this.onTap,
+    this.onLongPress,
+    this.longPressDuration = const Duration(seconds: 2),
     this.radius = 20,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = 12.5,
@@ -155,6 +160,10 @@ class ForjaShellChip extends StatefulWidget {
   final IconData? icon;
   final Widget? trailing;
   final VoidCallback? onTap;
+
+  /// Hold pointer / OK for [longPressDuration] (Sources provider reload).
+  final VoidCallback? onLongPress;
+  final Duration longPressDuration;
   final double radius;
   final EdgeInsetsGeometry padding;
   final double fontSize;
@@ -192,6 +201,64 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   bool _focused = false;
   bool _busyHovered = false;
   bool _reloadHovered = false;
+  Timer? _holdTimer;
+  bool _longPressFired = false;
+  LogicalKeyboardKey? _holdActivateKey;
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startHold() {
+    if (widget.onLongPress == null) return;
+    _holdTimer?.cancel();
+    _longPressFired = false;
+    _holdTimer = Timer(widget.longPressDuration, () {
+      if (!mounted) return;
+      _longPressFired = true;
+      widget.onLongPress!();
+    });
+  }
+
+  void _cancelHold() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdActivateKey = null;
+  }
+
+  void _onTap() {
+    if (_longPressFired) {
+      _longPressFired = false;
+      return;
+    }
+    widget.onTap?.call();
+  }
+
+  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
+    if (widget.onLongPress == null) return KeyEventResult.ignored;
+    if (!shellTvIsActivateLogicalKey(event.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyDownEvent) {
+      _holdActivateKey = event.logicalKey;
+      _startHold();
+      // Swallow activate — short press fires on KeyUp so hold can win.
+      return KeyEventResult.handled;
+    }
+    if (event is KeyRepeatEvent && _holdActivateKey == event.logicalKey) {
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && _holdActivateKey == event.logicalKey) {
+      final fired = _longPressFired;
+      _cancelHold();
+      if (!fired) _onTap();
+      _longPressFired = false;
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,8 +276,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         : selected
             ? cinematic.textPrimary
             : cinematic.textSecondary;
+    final reloadColor = (_reloadHovered || focusStyled)
+        ? ForjaShellColors.brandGreen
+        : fg;
     final borderRadius = BorderRadius.circular(widget.radius);
-    final trackHover = widget.accentHover || widget.onReload != null;
+    final trackHover = widget.accentHover ||
+        widget.onReload != null ||
+        widget.onLongPress != null;
+    final leanback = tv && !policy.scaleOnHover;
 
     final face = AnimatedContainer(
       duration: tv ? Duration.zero : const Duration(milliseconds: 120),
@@ -261,7 +334,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                     child: Icon(
                       Icons.refresh_rounded,
                       size: 14,
-                      color: fg,
+                      color: reloadColor,
                     ),
                   ),
                 ),
@@ -279,7 +352,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     if (tv) {
       body = shellFocusableTap(
         context: context,
-        onTap: widget.onTap,
+        onTap: leanback && widget.onLongPress != null ? null : _onTap,
         focusNode: widget.focusNode,
         borderRadius: widget.radius,
         scaleOnFocus: 1.0,
@@ -295,8 +368,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         ensureVisibleMode: widget.ensureVisibleMode,
-        onFocusChange: widget.accentHover || widget.onReload != null
-            ? (focused) => setState(() => _focused = focused)
+        onKeyEvent: leanback && widget.onLongPress != null ? _onTvKey : null,
+        onFocusChange: widget.accentHover ||
+                widget.onReload != null ||
+                widget.onLongPress != null
+            ? (focused) {
+                setState(() => _focused = focused);
+                if (!focused) _cancelHold();
+              }
             : null,
         onHoverChange: trackHover
             ? (hovered) => setState(() {
@@ -317,9 +396,22 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     } else {
       body = shellRoundedInkHost(
         radius: widget.radius,
-        onTap: widget.onTap,
+        onTap: _onTap,
         suppressInkHover: widget.accentHover,
         child: face,
+      );
+    }
+
+    if (widget.onLongPress != null) {
+      body = Listener(
+        onPointerDown: (_) => _startHold(),
+        onPointerUp: (_) {
+          final fired = _longPressFired;
+          _cancelHold();
+          if (fired) _longPressFired = true;
+        },
+        onPointerCancel: (_) => _cancelHold(),
+        child: body,
       );
     }
 
