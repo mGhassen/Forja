@@ -36,6 +36,7 @@ export 'components/chrome/kit_category_bar.dart';
 export 'components/chrome/kit_filter_sheet_option.dart';
 export 'components/chrome/kit_top_bar_actions.dart';
 export 'components/chrome/kit_portals_chip.dart';
+export 'components/chrome/kit_schedule_event_search.dart';
 export 'components/chrome/kit_list_status_pin.dart';
 export 'components/chrome/vertical_filters.dart';
 export 'components/chrome/vertical_filters_rail.dart';

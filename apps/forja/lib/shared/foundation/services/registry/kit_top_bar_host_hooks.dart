@@ -38,6 +38,16 @@ typedef KitTopBarTrailingBuilder = Widget? Function(
   VoidCallback? onDownEdge,
 });
 
+/// Trailing focusables after [Spacer] (Search, Portals, …) — each owns TV index.
+typedef KitTopBarTrailingClusterBuilder = List<Widget> Function(
+  BuildContext context,
+  WidgetRef ref, {
+  required String tabId,
+  required String rowId,
+  required int startIndex,
+  VoidCallback? onDownEdge,
+});
+
 /// Wrap kit page content *below* the top bar (e.g. Portals over category + list).
 typedef KitListBodyWrapper = Widget Function(
   BuildContext context, {
@@ -62,6 +72,7 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarScheduleChipSelected? scheduleChipSelected;
   static KitTopBarSchedulePrefReader? readSchedulePref;
   static KitTopBarTrailingBuilder? buildTrailing;
+  static KitTopBarTrailingClusterBuilder? buildTrailingCluster;
   static KitListBodyWrapper? wrapListBody;
   static KitTopBarFeedBusyReader? readFeedBusy;
 
@@ -73,6 +84,7 @@ abstract final class KitTopBarHostHooks {
     scheduleChipSelected = null;
     readSchedulePref = null;
     buildTrailing = null;
+    buildTrailingCluster = null;
     wrapListBody = null;
     readFeedBusy = null;
   }

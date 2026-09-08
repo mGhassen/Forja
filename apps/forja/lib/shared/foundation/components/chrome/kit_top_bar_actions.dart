@@ -59,16 +59,32 @@ class KitTopBarActions extends ConsumerWidget {
     final horizonPref =
         KitTopBarHostHooks.readSchedulePref?.call(ref) ?? layoutHorizon;
     final trailingIndex = actions.length;
-    final trailing = KitTopBarHostHooks.buildTrailing?.call(
-      context,
-      ref,
-      tabId: tabId,
-      rowId: _widgetId,
-      itemIndex: trailingIndex,
-      onLeftEdge: null,
-      onDownEdge: focusDown,
-    );
-    final itemCount = actions.length + (trailing != null ? 1 : 0);
+    final trailingCluster = KitTopBarHostHooks.buildTrailingCluster?.call(
+          context,
+          ref,
+          tabId: tabId,
+          rowId: _widgetId,
+          startIndex: trailingIndex,
+          onDownEdge: focusDown,
+        ) ??
+        const <Widget>[];
+    final trailingLegacy = trailingCluster.isEmpty
+        ? KitTopBarHostHooks.buildTrailing?.call(
+            context,
+            ref,
+            tabId: tabId,
+            rowId: _widgetId,
+            itemIndex: trailingIndex,
+            onLeftEdge: null,
+            onDownEdge: focusDown,
+          )
+        : null;
+    final trailingWidgets = trailingCluster.isNotEmpty
+        ? trailingCluster
+        : [
+            ?trailingLegacy,
+          ];
+    final itemCount = actions.length + trailingWidgets.length;
 
     // Negative sortOrder = chrome (Catalog / Schedule). Content rows
     // (category bar, list) stay ≥ 0 so enter / focusFirstContentRow skip here.
@@ -102,9 +118,9 @@ class KitTopBarActions extends ConsumerWidget {
               ),
             ],
             const Spacer(),
-            if (trailing != null) ...[
+            for (var t = 0; t < trailingWidgets.length; t++) ...[
               const SizedBox(width: 8),
-              trailing,
+              trailingWidgets[t],
             ],
           ],
         ),

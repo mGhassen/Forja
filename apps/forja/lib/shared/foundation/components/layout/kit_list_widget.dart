@@ -16,6 +16,7 @@ import 'package:forja/shared/foundation/services/registry/host_list_registry.dar
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_event_query.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
@@ -356,7 +357,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
-        final entries = page.entriesForKind(kind);
+        final isLiveSchedule = widget.isDenseList || widget.isMatchCards;
+        final eventQuery =
+            isLiveSchedule ? ref.watch(kitScheduleEventQueryProvider) : '';
+        final entries = kitScheduleFilterEntries(
+          page.entriesForKind(kind),
+          eventQuery,
+        );
         _consumePendingOpen(entries);
         if (entries.isEmpty) {
           return _emptyState(
@@ -364,6 +371,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             kind: kind,
             loadingRemote: page.loadingRemote,
             progressLabel: page.loadingProgressLabel,
+            eventQuery: eventQuery,
           );
         }
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
@@ -796,10 +804,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     String? kind,
     bool loadingRemote = false,
     String? progressLabel,
+    String eventQuery = '',
   }) {
     if (loadingRemote) {
       return _catalogLoadingBody(context, label: progressLabel);
     }
+    final searchQ = eventQuery.trim();
+    final searching = searchQ.isNotEmpty;
     final filtered = kind != null && kind.isNotEmpty && kind != 'all';
     String? kindLabel;
     if (filtered) {
@@ -812,16 +823,20 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       }
     }
     final isLiveSchedule = widget.isDenseList || widget.isMatchCards;
-    final title = filtered && kindLabel != null
-        ? 'Nothing in $kindLabel'
-        : isLiveSchedule
-            ? 'No matches'
-            : 'Nothing in this list';
-    final subtitle = filtered
-        ? 'Tap a kind tab again to show everything'
-        : isLiveSchedule
-            ? 'Try Catalog → All, a wider Schedule window, or Refresh'
-            : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped';
+    final title = searching
+        ? 'No matches for “$searchQ”'
+        : filtered && kindLabel != null
+            ? 'Nothing in $kindLabel'
+            : isLiveSchedule
+                ? 'No matches'
+                : 'Nothing in this list';
+    final subtitle = searching
+        ? 'Clear search or try another team / event name'
+        : filtered
+            ? 'Tap a kind tab again to show everything'
+            : isLiveSchedule
+                ? 'Try Catalog → All, a wider Schedule window, or Refresh'
+                : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped';
     return Padding(
       padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
       child: Center(
@@ -831,9 +846,11 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isLiveSchedule
-                    ? Icons.sports_rounded
-                    : Icons.bookmark_border_rounded,
+                searching
+                    ? Icons.search_off_rounded
+                    : isLiveSchedule
+                        ? Icons.sports_rounded
+                        : Icons.bookmark_border_rounded,
                 size: 40,
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
               ),

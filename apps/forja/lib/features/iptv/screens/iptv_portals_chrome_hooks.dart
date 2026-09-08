@@ -8,55 +8,82 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_schedule_event_search.dart';
 import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
-/// Registers Portals chip + panel on kit tabs that use [KitLiveBoot.listSourceId].
+/// Registers event Search + Portals chip on kit tabs that use [KitLiveBoot.listSourceId].
 ///
-/// Design: [KitPortalsChip] / [KitSidePanelOverlay] via adapters. Data: IPTV
-/// controller + pack `forjaSportsEnabled` gate (RFC-096).
+/// Design: [KitScheduleEventSearch] / [KitPortalsChip] / [KitSidePanelOverlay].
+/// Data: IPTV controller + pack `forjaSportsEnabled` gate for Portals (RFC-096).
 abstract final class IptvPortalsChromeHooks {
   IptvPortalsChromeHooks._();
 
   static void ensureRegistered() {
-    KitTopBarHostHooks.buildTrailing = _buildTrailing;
+    KitTopBarHostHooks.buildTrailingCluster = _buildTrailingCluster;
     KitTopBarHostHooks.wrapListBody = _wrapListBody;
   }
 
-  static Widget? _buildTrailing(
+  static List<Widget> _buildTrailingCluster(
     BuildContext context,
     WidgetRef ref, {
     required String tabId,
     required String rowId,
-    required int itemIndex,
-    VoidCallback? onLeftEdge,
+    required int startIndex,
     VoidCallback? onDownEdge,
   }) {
     final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
-    if (enabled == false) return null;
+    final showPortals = enabled != false;
+    final searchIndex = startIndex;
+    final portalsIndex = startIndex + 1;
+    final out = <Widget>[
+      KitScheduleEventSearch(
+        tabId: tabId,
+        rowId: rowId,
+        itemIndex: searchIndex,
+        onDownEdge: onDownEdge,
+        onRightEdge: showPortals
+            ? () => ShellTvFocusCoordinator.focusRowItem(
+                  tabId,
+                  rowId,
+                  portalsIndex,
+                )
+            : () {},
+      ),
+    ];
+    if (!showPortals) return out;
+
     final ctrl = ref.watch(iptvControllerProvider);
     final panelOpen = ctrl.portalPanelOpen;
-    return IptvPortalsTopBarButton(
-      ctrl: ctrl,
-      onTogglePanel: () {
-        final opening = !ctrl.portalPanelOpen;
-        ctrl.togglePortalPanel();
-        // Same as IPTV hub: OK on Portals lands D-pad on the selected portal.
-        if (opening) iptvClaimPortalListFocus(ctrl);
-      },
-      tvTabId: tabId,
-      tvRowId: rowId,
-      tvItemIndex: itemIndex,
-      onLeftEdge: onLeftEdge,
-      // When closed, trap → at the chrome edge. When open, enter the list
-      // (IPTV hub Portals chip does the same via iptvFocusPortalList).
-      onRightEdge: panelOpen ? () => iptvClaimPortalListFocus(ctrl) : () {},
-      onDownEdge: panelOpen
-          ? () => iptvClaimPortalListFocus(ctrl)
-          : onDownEdge,
+    out.add(
+      IptvPortalsTopBarButton(
+        ctrl: ctrl,
+        onTogglePanel: () {
+          final opening = !ctrl.portalPanelOpen;
+          ctrl.togglePortalPanel();
+          // Same as IPTV hub: OK on Portals lands D-pad on the selected portal.
+          if (opening) iptvClaimPortalListFocus(ctrl);
+        },
+        tvTabId: tabId,
+        tvRowId: rowId,
+        tvItemIndex: portalsIndex,
+        onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
+              tabId,
+              rowId,
+              searchIndex,
+            ),
+        // When closed, trap → at the chrome edge. When open, enter the list
+        // (IPTV hub Portals chip does the same via iptvFocusPortalList).
+        onRightEdge: panelOpen ? () => iptvClaimPortalListFocus(ctrl) : () {},
+        onDownEdge: panelOpen
+            ? () => iptvClaimPortalListFocus(ctrl)
+            : onDownEdge,
+      ),
     );
+    return out;
   }
 
   static Widget _wrapListBody(

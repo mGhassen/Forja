@@ -119,6 +119,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [095-[fixed]-…](fixed/095-[fixed]-foundation-design-data-split.md) | Foundation like shadcn — design alone / data alone | v1.4 | fixed | **Complete · 10/10** | — |
 | [096-[open]-…](096-[open]-iptv-channel-search-only.md) | IPTV channel search only — pack owns sports policy | v1.4 | open | **3 / 3** · **8 / 8** · **0 / 1** ⏭️ | — |
 | [097-[fixed]-…](fixed/097-[fixed]-my-list-explode-host-to-packs.md) | Explode My List host → packs MetaRuntime feed | v1.4 | fixed | **Complete** · **4 / 4** · **10 / 10** | — |
+| [098-[fixed]-…](fixed/098-[fixed]-live-sports-event-search.md) | Live Sports event search (top-bar) | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 
 ## Related
 
