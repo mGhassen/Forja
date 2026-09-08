@@ -72,27 +72,25 @@ class _KitFilterSheetOptionState extends State<KitFilterSheetOption> {
       trailing: widget.selected
           ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
           : const Icon(Icons.chevron_right, color: Colors.white38),
+      // Desktop: ListTile owns the tap (nested InkWell hosts ate clicks).
+      onTap: tvFocus ? null : widget.onSelected,
     );
 
-    final row = Material(
+    final body = Material(
       color: highlight ? ForjaShellColors.inkHover : Colors.transparent,
       borderRadius: BorderRadius.circular(radius),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        canRequestFocus: false,
-        onTap: tvFocus ? null : widget.onSelected,
-        borderRadius: BorderRadius.circular(radius),
-        hoverColor: Colors.transparent,
-        splashColor: ForjaShellColors.inkSplash,
-        child: tile,
-      ),
+      child: tile,
     );
 
     if (!tvFocus) {
-      return shellRoundedInkHost(
-        radius: radius,
-        onTap: widget.onSelected,
-        child: tile,
+      return MouseRegion(
+        onEnter: mouseHover ? (_) => setState(() => _hovered = true) : null,
+        onExit: mouseHover ? (_) => setState(() => _hovered = false) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: body,
+        ),
       );
     }
 
@@ -114,7 +112,7 @@ class _KitFilterSheetOptionState extends State<KitFilterSheetOption> {
       onHoverChange: mouseHover
           ? (hovered) => setState(() => _hovered = hovered)
           : null,
-      child: row,
+      child: body,
     );
   }
 }

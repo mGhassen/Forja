@@ -5,21 +5,19 @@ var ARABIC_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 var ARABIC_DEFAULTS = {
-  bootstrap: 'https://laaroza.website',
+  // Live origin first — older hosts chain 6–12 redirects (engine maxRedirects=8).
+  bootstrap: 'https://laaroza.lat',
   mirrors: [
+    'https://laaroza.lat',
     'https://laaroza.website',
+    'https://laaroza.space',
     'https://laaroza.pics',
-    'https://larozza.yachts',
-    'https://larozaa.bond',
-    'https://larozaa.home',
-    'https://larozaa.homes',
-    'https://larozaa.com',
   ],
 };
 
 var ARABIC_RAILS = {
-  trending: { kind: 'larozaa_browse', path: '/newvideos.php', group: true },
-  latest: { kind: 'larozaa_browse', path: '/newvideos.php', group: true },
+  trending: { kind: 'larozaa_browse', path: '/newvideos1.php', group: true },
+  latest: { kind: 'larozaa_browse', path: '/newvideos1.php', group: true },
   series: { kind: 'larozaa_cat', cat: 'arabic-series46', group: true },
   movies: { kind: 'larozaa_cat', cat: 'arabic-movies35', movie: true },
   turkish: { kind: 'larozaa_cat', cat: 'turkish-3isk-seriess47', group: true },
@@ -188,45 +186,73 @@ function arabicChromeFiltered(params) {
   );
 }
 
+function arabicPageOf(params) {
+  return Number(params && params.page) > 0 ? Number(params.page) : 1;
+}
+
+function arabicLimitOf(params, fallback) {
+  var n = Number(params && params.limit);
+  if (n > 0) return n;
+  n = Number(fallback);
+  return n > 0 ? n : 24;
+}
+
+function arabicWithPage(path, page) {
+  page = Number(page) > 0 ? Number(page) : 1;
+  path = String(path || '');
+  if (/[?&]page=\d+/i.test(path)) {
+    return path.replace(/([?&]page=)\d+/i, '$1' + page);
+  }
+  if (path.indexOf('?') >= 0) return path + '&page=' + page;
+  return path + '?page=' + page;
+}
+
+/** Upstream HTML lists ~40 cards/page; honor host page + return hasMore. */
+function arabicPageResult(raw, limit, rawCount) {
+  limit = Number(limit) > 0 ? Number(limit) : 24;
+  var list = Array.isArray(raw) ? raw : [];
+  var count = Number(rawCount) > 0 ? Number(rawCount) : list.length;
+  return {
+    items: hubClampList(list, limit),
+    pageSize: limit,
+    hasMore: count >= limit,
+  };
+}
+
 function arabicExploreList(ctx, cfg, params) {
   var cat = hubFilterValue(params.filter, 'cat');
   var kind = hubFilterValue(params.filter, 'kind');
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  var limit = arabicLimitOf(params, 24);
+  var page = arabicPageOf(params);
   if (cat) {
     var spec = arabicSpecForCat(cat);
     var isMovie = !!(spec && spec.movie);
     if (kind === 'series') isMovie = false;
     else if (kind === 'movie') isMovie = true;
-    return arabicLarozaList(
-      ctx,
-      cfg,
-      '/category.php?cat=' + encodeURIComponent(cat),
-      isMovie,
-      limit,
-      !isMovie && !!(spec && spec.group),
-    );
+    return arabicLarozaList(ctx, cfg, '/category.php?cat=' + encodeURIComponent(cat), {
+      page: page,
+      limit: limit,
+      isMovie: isMovie,
+      group: !isMovie && !!(spec && spec.group),
+    });
   }
   if (kind === 'movie') {
-    return arabicLarozaList(
-      ctx,
-      cfg,
-      '/category.php?cat=arabic-movies35',
-      true,
-      limit,
-      false,
-    );
+    return arabicLarozaList(ctx, cfg, '/category.php?cat=arabic-movies35', {
+      page: page,
+      limit: limit,
+      isMovie: true,
+      group: false,
+    });
   }
   if (kind === 'series') {
-    return arabicLarozaList(
-      ctx,
-      cfg,
-      '/category.php?cat=arabic-series46',
-      false,
-      limit,
-      true,
-    );
+    return arabicLarozaList(ctx, cfg, '/category.php?cat=arabic-series46', {
+      page: page,
+      limit: limit,
+      isMovie: false,
+      group: true,
+    });
   }
-  return Promise.resolve([]);
+  return Promise.resolve(arabicPageResult([], limit));
 }
 
 function arabicFilteredFeed(ctx, cfg, params) {
@@ -235,7 +261,8 @@ function arabicFilteredFeed(ctx, cfg, params) {
     total += arabicFeedRailLimit(ARABIC_FEED_RAILS[i], params);
   }
   var fetchParams = Object.assign({}, params, { limit: total, page: 1 });
-  return arabicExploreList(ctx, cfg, fetchParams).then(function (all) {
+  return arabicExploreList(ctx, cfg, fetchParams).then(function (page) {
+    var all = (page && page.items) || [];
     var rails = {};
     var offset = 0;
     for (var j = 0; j < ARABIC_FEED_RAILS.length; j++) {
@@ -679,22 +706,30 @@ function arabicGroupLarozaSearch(items) {
   return out;
 }
 
-function arabicLarozaList(ctx, cfg, path, isMovie, limit, group, baseOpt) {
-  var baseP = baseOpt
-    ? Promise.resolve(String(baseOpt).replace(/\/$/, ''))
+function arabicLarozaList(ctx, cfg, path, opts) {
+  opts = typeof opts === 'object' && opts ? opts : { limit: opts };
+  var limit = Number(opts.limit) > 0 ? Number(opts.limit) : 24;
+  var page = Number(opts.page) > 0 ? Number(opts.page) : 1;
+  var isMovie = !!opts.isMovie;
+  var group = !!opts.group;
+  var baseP = opts.base
+    ? Promise.resolve(String(opts.base).replace(/\/$/, ''))
     : arabicResolveLaroza(ctx, cfg);
   return baseP.then(function (base) {
-    var url = base + path;
-    if (path.indexOf('?') >= 0) url += '&page=1';
-    else url += '?page=1';
-    if (path.indexOf('category.php') >= 0 && path.indexOf('order=') < 0) {
+    var url = base + arabicWithPage(path, page);
+    if (path.indexOf('category.php') >= 0 && url.indexOf('order=') < 0) {
       url += '&order=DESC';
     }
     return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
       var origin = arabicOrigin(got.url) || base;
       var items = arabicParseLarozaCards(ctx, got.html, origin, isMovie);
+      var rawCount = items.length;
       if (group && !isMovie) items = arabicGroupLarozaSearch(items);
-      return hubClampList(items, limit);
+      return arabicPageResult(
+        items,
+        limit,
+        group && !isMovie ? rawCount : items.length,
+      );
     });
   });
 }
@@ -767,21 +802,23 @@ function arabicFetchHomeRails(ctx, cfg, limit) {
   });
 }
 
-function arabicSearchLaroza(ctx, cfg, query, limit) {
+function arabicSearchLaroza(ctx, cfg, query, opts) {
+  opts = typeof opts === 'object' && opts ? opts : { limit: opts };
+  var limit = Number(opts.limit) > 0 ? Number(opts.limit) : 40;
+  var page = Number(opts.page) > 0 ? Number(opts.page) : 1;
   return arabicResolveLaroza(ctx, cfg).then(function (base) {
     var url =
       base +
       '/search.php?keywords=' +
       encodeURIComponent(query) +
-      '&page=1';
+      '&page=' +
+      page;
     return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
       var origin = arabicOrigin(got.url) || base;
-      return hubClampList(
-        arabicGroupLarozaSearch(
-          arabicParseLarozaCards(ctx, got.html, origin, false),
-        ),
-        limit,
-      );
+      var cards = arabicParseLarozaCards(ctx, got.html, origin, false);
+      var rawCount = cards.length;
+      var grouped = arabicGroupLarozaSearch(cards);
+      return arabicPageResult(grouped, limit, rawCount);
     });
   });
 }
@@ -790,8 +827,16 @@ function arabicRailItems(ctx, cfg, params) {
   var rail = String(params.rail || '');
   if (arabicChromeFiltered(params)) {
     return arabicExploreList(ctx, cfg, params)
-      .then(function (items) {
-        return hubItems('rail', items || [], { maxAge: 600, swr: 3600 });
+      .then(function (page) {
+        return hubItems(
+          'rail',
+          (page && page.items) || [],
+          { maxAge: 600, swr: 3600 },
+          {
+            pageSize: (page && page.pageSize) || arabicLimitOf(params, 24),
+            hasMore: !!(page && page.hasMore),
+          },
+        );
       })
       .catch(function (e) {
         return hubFail('rail', 'UPSTREAM', e && e.message, true);
@@ -803,18 +848,27 @@ function arabicRailItems(ctx, cfg, params) {
       hubFail('rail', 'INVALID_PARAMS', 'unknown rail ' + rail),
     );
   }
-  var limit = params.limit;
+  var limit = arabicLimitOf(params, 24);
+  var page = arabicPageOf(params);
   var p;
   if (spec.kind === 'larozaa_browse') {
-    p = arabicLarozaList(ctx, cfg, spec.path, false, limit, !!spec.group);
+    p = arabicLarozaList(ctx, cfg, spec.path, {
+      page: page,
+      limit: limit,
+      isMovie: false,
+      group: !!spec.group,
+    });
   } else if (spec.kind === 'larozaa_cat') {
     p = arabicLarozaList(
       ctx,
       cfg,
       '/category.php?cat=' + encodeURIComponent(spec.cat),
-      !!spec.movie,
-      limit,
-      !!spec.group,
+      {
+        page: page,
+        limit: limit,
+        isMovie: !!spec.movie,
+        group: !!spec.group,
+      },
     );
   } else {
     return Promise.resolve(
@@ -822,8 +876,16 @@ function arabicRailItems(ctx, cfg, params) {
     );
   }
   return p
-    .then(function (items) {
-      return hubItems('rail', items || [], { maxAge: 600, swr: 3600 });
+    .then(function (pageOut) {
+      return hubItems(
+        'rail',
+        (pageOut && pageOut.items) || [],
+        { maxAge: 600, swr: 3600 },
+        {
+          pageSize: (pageOut && pageOut.pageSize) || limit,
+          hasMore: !!(pageOut && pageOut.hasMore),
+        },
+      );
     })
     .catch(function (e) {
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
@@ -840,17 +902,29 @@ function arabicLoadRailList(ctx, cfg, railId, limit) {
   var spec = ARABIC_RAILS[railId];
   if (!spec) return Promise.resolve([]);
   if (spec.kind === 'larozaa_browse') {
-    return arabicLarozaList(ctx, cfg, spec.path, false, limit, !!spec.group);
+    return arabicLarozaList(ctx, cfg, spec.path, {
+      page: 1,
+      limit: limit,
+      isMovie: false,
+      group: !!spec.group,
+    }).then(function (page) {
+      return (page && page.items) || [];
+    });
   }
   if (spec.kind === 'larozaa_cat') {
     return arabicLarozaList(
       ctx,
       cfg,
       '/category.php?cat=' + encodeURIComponent(spec.cat),
-      !!spec.movie,
-      limit,
-      !!spec.group,
-    );
+      {
+        page: 1,
+        limit: limit,
+        isMovie: !!spec.movie,
+        group: !!spec.group,
+      },
+    ).then(function (page) {
+      return (page && page.items) || [];
+    });
   }
   return Promise.resolve([]);
 }
@@ -903,10 +977,19 @@ function arabicFeed(ctx, cfg, params) {
 function arabicSearch(ctx, cfg, params) {
   var q = String(params.query || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
-  var limit = Number(params.limit) > 0 ? Number(params.limit) : 40;
-  return arabicSearchLaroza(ctx, cfg, q, limit)
-    .then(function (items) {
-      return hubItems('search', items || [], { maxAge: 300 });
+  var limit = arabicLimitOf(params, 40);
+  var page = arabicPageOf(params);
+  return arabicSearchLaroza(ctx, cfg, q, { page: page, limit: limit })
+    .then(function (pageOut) {
+      return hubItems(
+        'search',
+        (pageOut && pageOut.items) || [],
+        { maxAge: 300 },
+        {
+          pageSize: (pageOut && pageOut.pageSize) || limit,
+          hasMore: !!(pageOut && pageOut.hasMore),
+        },
+      );
     })
     .catch(function (e) {
       return hubFail('search', 'UPSTREAM', e && e.message, true);

@@ -1,13 +1,10 @@
 var SPECS = {
-  bootstrap: 'https://laaroza.website',
+  bootstrap: 'https://laaroza.lat',
   mirrors: [
+    'https://laaroza.lat',
     'https://laaroza.website',
+    'https://laaroza.space',
     'https://laaroza.pics',
-    'https://larozza.yachts',
-    'https://larozaa.bond',
-    'https://larozaa.home',
-    'https://larozaa.homes',
-    'https://larozaa.com',
   ],
 };
 

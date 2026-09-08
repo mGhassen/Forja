@@ -4,7 +4,7 @@
   "name": "ForjaHQ Providers",
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
-  "version": "1.5.34",
+  "version": "1.5.35",
   "tags": [
     "providers",
     "anime",
@@ -137,15 +137,12 @@
         "videoId": "videoId"
       },
       "config": {
-        "bootstrap": "https://laaroza.website",
+        "bootstrap": "https://laaroza.lat",
         "mirrors": [
+          "https://laaroza.lat",
           "https://laaroza.website",
-          "https://laaroza.pics",
-          "https://larozza.yachts",
-          "https://larozaa.bond",
-          "https://larozaa.home",
-          "https://larozaa.homes",
-          "https://larozaa.com"
+          "https://laaroza.space",
+          "https://laaroza.pics"
         ]
       }
     },

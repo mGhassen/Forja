@@ -53,9 +53,11 @@ class KitTopBarActions extends ConsumerWidget {
     final scope = KitLayoutScope.of(context);
     final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
     final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
-    final horizonPref = scope.selectedId('horizon') ??
+    final layoutHorizon = scope.selectedId('horizon') ??
         scope.selectedId('schedule') ??
         scope.selectedId('time');
+    final horizonPref =
+        KitTopBarHostHooks.readSchedulePref?.call(ref) ?? layoutHorizon;
     final trailingIndex = actions.length;
     final trailing = KitTopBarHostHooks.buildTrailing?.call(
       context,

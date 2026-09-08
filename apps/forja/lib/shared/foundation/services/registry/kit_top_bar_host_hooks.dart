@@ -24,6 +24,9 @@ typedef KitTopBarScheduleChipLabel = String Function(String? selectedPref);
 
 typedef KitTopBarScheduleChipSelected = bool Function(String? selectedPref);
 
+/// Optional live schedule pref from host state (overrides layout selection).
+typedef KitTopBarSchedulePrefReader = String? Function(WidgetRef ref);
+
 /// Optional trailing chrome after the top-bar [Spacer] (e.g. IPTV Portals).
 typedef KitTopBarTrailingBuilder = Widget? Function(
   BuildContext context,
@@ -52,6 +55,7 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarScheduleSheetOpener? openScheduleSheet;
   static KitTopBarScheduleChipLabel? scheduleChipLabel;
   static KitTopBarScheduleChipSelected? scheduleChipSelected;
+  static KitTopBarSchedulePrefReader? readSchedulePref;
   static KitTopBarTrailingBuilder? buildTrailing;
   static KitListBodyWrapper? wrapListBody;
 
@@ -61,6 +65,7 @@ abstract final class KitTopBarHostHooks {
     openScheduleSheet = null;
     scheduleChipLabel = null;
     scheduleChipSelected = null;
+    readSchedulePref = null;
     buildTrailing = null;
     wrapListBody = null;
   }

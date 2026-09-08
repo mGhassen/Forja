@@ -483,7 +483,8 @@ function brstejBrowseSeries(ctx, cfg, opts) {
   var page = Number(opts.page) > 0 ? Number(opts.page) : 1;
   var limit = Number(opts.limit) > 0 ? Number(opts.limit) : 24;
   var base = brstejBase(cfg);
-  var url = base + '/moslsalat.php?page=' + page;
+  // Site typo: paginated list is moslslat.php (moslsalat.php ignores ?page=).
+  var url = base + '/moslslat.php?page=' + page;
   return brstejFetchHtml(ctx, url, base + '/').then(function (got) {
     var origin = brstejOrigin(got.url) || base;
     return brstejPageResult(

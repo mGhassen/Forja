@@ -4,9 +4,11 @@ globs: apps/forja/lib/**/*.dart
 alwaysApply: false
 ---
 
-# Shared UI components (RFC-026)
+# Shared UI components (RFC-026 · RFC-095)
 
 Extract **presentation** into `shared/foundation/` (`primitives/` atoms, `components/` composers); keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
+
+**Design alone / data alone:** `components/` widgets must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt.
 
 ## Folder map
 
@@ -14,8 +16,9 @@ Extract **presentation** into `shared/foundation/` (`primitives/` atoms, `compon
 shared/foundation/components/hero/            # titles, meta, cinematic hero, overview, banner
 shared/foundation/components/media_details/   # details page, cast/trailers, torrent sources, episodes
 shared/foundation/components/posters/         # rows, posters, atmosphere, loading skeleton
-shared/foundation/components/rows|cards|chrome/  # kit section / poster / search
+shared/foundation/components/rows|cards|chrome/  # kit section / poster / search / portals chip
 shared/foundation/components/details/         # kit details chrome / play / sources
+shared/foundation/components/panel/           # sources panel, side overlay, portal list shell
 shared/foundation/primitives/chrome/          # focusable tap, scroller, overlays, mood chip
 shared/foundation/primitives/desktop/         # window chrome / focus / geometry
 shared/foundation/primitives/tv/              # browse text field, search overlay
@@ -23,7 +26,7 @@ shared/foundation/components/update/          # update dialog + progress banner
 shared/foundation/components/packs/           # pack choice cards, install progress
 shared/foundation/primitives/brand/           # logo, splash logo, profile avatar
 shared/foundation/components/playback/        # stream/torrent loading, resolve failure
-shared/foundation/components/chrome/          # kit search page/filters, recent queries/tile, letter jump, status pin
+shared/foundation/components/chrome/          # kit search page/filters, recent queries/tile, letter jump, status pin, portals chip
 shared/foundation/components/account/         # keychain consent
 ```
 

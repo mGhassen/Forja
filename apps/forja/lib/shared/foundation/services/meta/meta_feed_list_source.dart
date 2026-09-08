@@ -53,11 +53,13 @@ final metaFeedCatalogProvider =
     FutureProvider.autoDispose<MetaFeedCatalogPage>((ref) async {
   final filters = ref.watch(kitScheduleFiltersProvider);
   final forceRefresh = ref.read(metaFeedForceRefreshProvider);
+  // Yield before clearing — mutating StateProvider during FutureProvider
+  // create throws and aborts the feed (skeleton stutter).
+  final hubId =
+      await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
   if (forceRefresh) {
     ref.read(metaFeedForceRefreshProvider.notifier).state = false;
   }
-  final hubId =
-      await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
   if (hubId == null || hubId.isEmpty) {
     return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
   }
@@ -194,7 +196,6 @@ final class MetaFeedListSource extends KitListSource {
   @override
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
     final catalog = filters['catalog'];
-    final horizon = filters['horizon'];
     final current = ref.read(kitScheduleFiltersProvider);
     final notifier = ref.read(kitScheduleFiltersProvider.notifier);
     if (catalog != null &&
@@ -202,11 +203,9 @@ final class MetaFeedListSource extends KitListSource {
         catalog != current.catalogFilter) {
       notifier.setCatalogFilter(catalog);
     }
-    if (horizon != null &&
-        horizon.isNotEmpty &&
-        horizon != current.schedulePref) {
-      notifier.setScheduleFromPrefToken(horizon);
-    }
+    // Schedule Status×Horizon is owned by [kitScheduleFiltersProvider] (sheet /
+    // hydrate). Do not push layout `horizon` back into the provider — that raced
+    // the sheet and reset picks to the pack default `both|24h`.
   }
 
   @override

@@ -9,6 +9,7 @@ import 'package:forja/shared/foundation/blocks/play/live_play.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/portal_sports/iptv_portal_sports_config.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
@@ -22,9 +23,10 @@ abstract final class LiveResolveStreams {
   LiveResolveStreams._();
 
   static const _providersCacheTtl = Duration(minutes: 30);
+  static const _stremioProvidersTimeout = Duration(seconds: 12);
   static final Map<String, _ProvidersCacheEntry> _providersCache = {};
 
-  /// Providers rail: Forja Live plugin resolve + Stremio (single-row, no sibling merge).
+  /// Providers rail: Forja Live (all soft-matched catalog siblings) + Stremio.
   static Future<List<IptvPlaySource>> loadProviders(
     Map<String, dynamic> legacyRow, {
     bool force = false,
@@ -58,15 +60,28 @@ abstract final class LiveResolveStreams {
       }
     }
 
+    // Start Stremio soft-match in parallel, but never let it strand the panel
+    // after Forja rows are ready (getStreams can hang past catalog soft-match).
+    final stremioFuture = _loadStremioProviders(match);
+    List<IptvPlaySource> forja = const [];
     try {
-      final forja = await _loadForjaLiveProviders(match);
+      forja = await _loadForjaLiveProviders(match);
       await addBatch(forja);
     } catch (e, st) {
       debugPrint('[LiveResolveStreams] Forja Live providers error: $e\n$st');
     }
 
+    final stremioGrace = forja.isEmpty
+        ? _stremioProvidersTimeout
+        : const Duration(seconds: 4);
     try {
-      final stremio = await _loadStremioProviders(match);
+      final stremio = await stremioFuture.timeout(stremioGrace, onTimeout: () {
+        debugPrint(
+          '[LiveResolveStreams] Stremio providers timed out after '
+          '${stremioGrace.inSeconds}s',
+        );
+        return const <IptvPlaySource>[];
+      });
       await addBatch(stremio);
     } catch (e, st) {
       debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
@@ -118,17 +133,19 @@ abstract final class LiveResolveStreams {
     final seenUrls = <String>{};
     final seenRefs = <String>{};
 
-    for (final stream in match.inlineStreams) {
-      final url = stream.embedUrl.trim();
-      if (url.isEmpty || !seenUrls.add(url)) continue;
-      choices.add(_StreamChoice(match: match, stream: stream));
-    }
-
+    final siblings = await _forjaProviderResolveMatches(match);
     final jobs = <(MatchEvent, MatchSourceRef)>[];
-    for (final ref in match.sources) {
-      final key = 'ref:${match.livePluginId}:${ref.source}:${ref.id}';
-      if (!seenRefs.add(key)) continue;
-      jobs.add((match, ref));
+    for (final m in siblings) {
+      for (final stream in m.inlineStreams) {
+        final url = stream.embedUrl.trim();
+        if (url.isEmpty || !seenUrls.add(url)) continue;
+        choices.add(_StreamChoice(match: m, stream: stream));
+      }
+      for (final ref in m.sources) {
+        final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
+        if (!seenRefs.add(key)) continue;
+        jobs.add((m, ref));
+      }
     }
 
     for (final (m, ref) in jobs) {
@@ -150,6 +167,61 @@ abstract final class LiveResolveStreams {
       ),
     );
     return [for (final c in choices) _choiceToPanelSource(c)];
+  }
+
+  /// Same fixture across Forja Live catalogs — resolve every sibling plugin.
+  static Future<List<MatchEvent>> _forjaProviderResolveMatches(
+    MatchEvent anchor,
+  ) async {
+    final out = <MatchEvent>[];
+    final seen = <String>{};
+
+    void add(MatchEvent raw) {
+      final m = _ensureProviderResolveMatch(raw);
+      final key = '${m.livePluginId}|${m.id}';
+      if (key == '|' || !seen.add(key)) return;
+      if (m.sources.isEmpty && m.inlineStreams.isEmpty) return;
+      out.add(m);
+    }
+
+    add(anchor);
+
+    List<Map<String, dynamic>> pool =
+        rememberedLiveFeedAllCatalogPool() ?? const [];
+    if (pool.isEmpty) {
+      try {
+        pool = await aggregateLiveFeed(const LiveFeedQuery());
+      } catch (e) {
+        debugPrint('[LiveResolveStreams] Forja sibling pool error: $e');
+        return out;
+      }
+    }
+
+    for (final row in pool) {
+      final m = MatchEvent.fromLegacyRow(row);
+      if (!_liveCatalogEventMatch(anchor, m)) continue;
+      add(m);
+    }
+    return out;
+  }
+
+  /// Catalog rows normally carry `sources[]`; synthesize when the grid lost them.
+  static MatchEvent _ensureProviderResolveMatch(MatchEvent match) {
+    if (match.sources.isNotEmpty || match.inlineStreams.isNotEmpty) {
+      return match;
+    }
+    final pluginId = match.livePluginId.trim();
+    if (pluginId.isEmpty || match.id.isEmpty) return match;
+    final source = LivePluginEngine.cachedResolveSourceToken(pluginId);
+    final refId = LivePluginEngine.cachedResolveRefId(match.id, pluginId);
+    if (source.isEmpty || refId.isEmpty) return match;
+    return match.copyWith(
+      sources: [MatchSourceRef(source: source, id: refId)],
+    );
+  }
+
+  static bool _liveCatalogEventMatch(MatchEvent a, MatchEvent b) {
+    return _stremioCatalogEventMatch(a, b);
   }
 
   static Future<List<MatchStream>> _forjaLiveStreamsFromSource(

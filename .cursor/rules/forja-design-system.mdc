@@ -4,9 +4,22 @@ globs: apps/forja/lib/**/*.dart
 alwaysApply: false
 ---
 
-# Forja design system (RFC-025)
+# Forja design system (RFC-025 · RFC-095)
 
 **Source of truth:** `apps/forja/lib/shared/foundation/primitives/` — import via `package:forja/shared/foundation/primitives/primitives.dart`.
+
+## Design alone / data alone (RFC-095)
+
+Foundation is a **shadcn-style** design system. Composers under `foundation/components/` take **props + callbacks only**. Features own controllers/stores and map domain data into those props.
+
+| Layer | Owns | Forbidden |
+|-------|------|-----------|
+| `primitives/` · `components/` | Visual chrome, layout, tokens | `features/**` imports, god controllers, `ref.watch` for product state |
+| `features/**` + boot hooks | Controllers, match, config; fill chip/panel props | Re-drawing shared chrome that belongs in foundation |
+
+**Example:** `KitPortalsChip` / `KitSidePanelOverlay` / `KitPortalListPanel` ← IPTV (`IptvPortalsTopBarButton`, `IptvPortalsChromeHooks`) wires portal label, health, seats, list.
+
+Golden reference: `KitSourcesPanel` — features wire load/play via callbacks.
 
 ## Visual language
 

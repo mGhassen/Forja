@@ -147,7 +147,8 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
-| IPTV portal sports match | ~1k | `live-sports` + `features/iptv/portal_sports/` | Fixture→channel match | ✅ |
+| IPTV portal sports match | ~1k | `live-sports` + `features/iptv/portal_sports/` | Fixture→channel match (data) | ✅ |
+| Portals chrome (design) | — | `foundation` `KitPortalsChip` / overlay / list panel + IPTV hooks | Props-only chip + panel; IPTV wires (RFC-095) | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
 ---

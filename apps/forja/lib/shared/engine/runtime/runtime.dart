@@ -1758,6 +1758,20 @@ class EngineRuntime {
         if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k)) lowered[String(k).toLowerCase()] = String(env.headers[k]);
         var body = env.body == null ? '' : String(env.body);
         var bodyB64 = env.bodyB64 == null ? '' : String(env.bodyB64);
+        function decodeBodyText(){
+          if (bodyB64) {
+            var bin = atob(bodyB64);
+            try {
+              if (typeof TextDecoder !== 'undefined') {
+                var bytes = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+                return new TextDecoder('utf-8').decode(bytes);
+              }
+            } catch (e) {}
+            return bin;
+          }
+          return body;
+        }
         resolve({
           ok: !!env.ok,
           status: env.status | 0,
@@ -1765,9 +1779,12 @@ class EngineRuntime {
           url: env.url || url,
           _bodyB64: bodyB64,
           headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
-          text: function(){ return Promise.resolve(body); },
+          text: function(){ return Promise.resolve(decodeBodyText()); },
           json: function(){
-            try { return Promise.resolve(body ? JSON.parse(body) : null); }
+            try {
+              var t = decodeBodyText();
+              return Promise.resolve(t ? JSON.parse(t) : null);
+            }
             catch (e) { return Promise.resolve(null); }
           },
           arrayBuffer: function(){

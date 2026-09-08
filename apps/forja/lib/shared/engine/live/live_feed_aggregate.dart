@@ -34,6 +34,27 @@ class LiveFeedQuery {
   }
 }
 
+/// Last full-catalog schedule rows (Catalog = All) for Providers soft-match.
+List<Map<String, dynamic>>? _rememberedAllCatalogPool;
+DateTime? _rememberedAllCatalogPoolAt;
+const _allCatalogPoolTtl = Duration(minutes: 3);
+
+/// Warm/read the unscoped schedule pool used when resolving Providers.
+List<Map<String, dynamic>>? rememberedLiveFeedAllCatalogPool() {
+  final at = _rememberedAllCatalogPoolAt;
+  final pool = _rememberedAllCatalogPool;
+  if (pool == null || at == null) return null;
+  if (DateTime.now().difference(at) > _allCatalogPoolTtl) return null;
+  return pool;
+}
+
+void rememberLiveFeedAllCatalogPool(List<Map<String, dynamic>> rows) {
+  _rememberedAllCatalogPool = [
+    for (final r in rows) Map<String, dynamic>.from(r),
+  ];
+  _rememberedAllCatalogPoolAt = DateTime.now();
+}
+
 /// Aggregate enabled live catalog plugins into opaque schedule row maps.
 ///
 /// Called from `ctx.host.liveFeed.load` (hub feed owns composition) — not from
@@ -85,6 +106,9 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     } catch (_) {
       // Skip failed catalogs — hub UI shows per-plugin errors separately.
     }
+  }
+  if (filter.isEmpty || filter == 'all') {
+    rememberLiveFeedAllCatalogPool(out);
   }
   return out;
 }

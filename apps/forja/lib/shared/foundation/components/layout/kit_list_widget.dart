@@ -193,7 +193,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       _source = _resolveSource();
     }
     if (widget.refreshEpoch != oldWidget.refreshEpoch) {
-      _source?.invalidateOnRefresh(ref);
+      // Invalidate after this frame — mutating providers in didUpdateWidget
+      // throws and aborts the rebuild (Live Sports skeleton stutter).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _source?.invalidateOnRefresh(ref);
+      });
     }
   }
 
@@ -560,21 +565,20 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final entry = entries[index];
                     final match = MatchEvent.fromLegacyRow(entry.legacyRow);
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: KitEventCard(
-                        match: match,
-                        gridIndex: index,
-                        gridColumns: grid.columns,
-                        tvTabId: widget.tabId,
-                        tvRowId: widget.gridRowId,
-                        onUpEdge: index < grid.columns
-                            ? () =>
-                                _focusRowLast(widget.kindMenuId) ||
-                                _focusRow(widget.kindMenuId, 0)
-                            : null,
-                        onTap: () => _openEntry(context, source, entry),
-                      ),
+                    return KitEventCard(
+                      match: match,
+                      width: grid.cardW,
+                      height: grid.cardH,
+                      gridIndex: index,
+                      gridColumns: grid.columns,
+                      tvTabId: widget.tabId,
+                      tvRowId: widget.gridRowId,
+                      onUpEdge: index < grid.columns
+                          ? () =>
+                              _focusRowLast(widget.kindMenuId) ||
+                              _focusRow(widget.kindMenuId, 0)
+                          : null,
+                      onTap: () => _openEntry(context, source, entry),
                     );
                   }, childCount: entries.length),
                 ),
@@ -880,24 +884,27 @@ _HomeGrid _liveCardsGrid(
   double maxWidth, {
   double chromeTop = 0,
 }) {
-  final cardW = KitEventCard.cardWidth(context);
-  final cardH = KitEventCard.cardHeight(context);
+  final minW = KitEventCard.cardWidth(context);
+  final minH = KitEventCard.cardHeight(context);
   final gap = KitEventCard.gridGap(context);
-  final leading = shellHomeSectionHorizontalPadding(context);
-  final trailing = leading;
-  final inner = math.max(0.0, maxWidth - leading - trailing);
+  final pad = shellHomeSectionHorizontalPadding(context);
+  final inner = math.max(0.0, maxWidth - pad * 2);
+  // Fit as many columns as the preferred min width allows, then stretch
+  // each card so the row uses the full inner width (no leftover right gutter).
   final columns =
-      math.max(1, ((inner + gap) / (cardW + gap)).floor()).clamp(1, 8);
-  final gridW = columns * cardW + (columns - 1) * gap;
-  final rightPad = math.max(trailing, maxWidth - leading - gridW);
+      math.max(1, ((inner + gap) / (minW + gap)).floor()).clamp(1, 8);
+  final cardW = columns <= 1
+      ? inner
+      : (inner - (columns - 1) * gap) / columns;
+  final cardH = minW > 0 ? minH * (cardW / minW) : minH;
   final topPad = chromeTop + 4;
   return _HomeGrid(
     columns: columns,
     cardW: cardW,
     cardH: cardH,
     gap: gap,
-    leading: leading,
-    rightPad: rightPad,
+    leading: pad,
+    rightPad: pad,
     topPad: topPad,
   );
 }

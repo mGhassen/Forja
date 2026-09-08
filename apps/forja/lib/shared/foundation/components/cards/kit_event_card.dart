@@ -19,6 +19,8 @@ class KitEventCard extends StatefulWidget {
     this.tvRowId = 'schedule',
     this.tvZone = ShellTvZone.grid,
     this.viewersOverride,
+    this.width,
+    this.height,
   });
 
   final MatchEvent match;
@@ -32,6 +34,10 @@ class KitEventCard extends StatefulWidget {
   final String tvRowId;
   final ShellTvZone tvZone;
   final int? viewersOverride;
+
+  /// Grid cell size when stretching to fill row width. Null → [cardWidth]/[cardHeight].
+  final double? width;
+  final double? height;
 
   static const widthScale = 1.15;
   static const heightScale = 1.32;
@@ -313,8 +319,8 @@ class _KitEventCardState extends State<KitEventCard> {
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: SizedBox(
-        width: KitEventCard.cardWidth(context),
-        height: KitEventCard.cardHeight(context),
+        width: widget.width ?? KitEventCard.cardWidth(context),
+        height: widget.height ?? KitEventCard.cardHeight(context),
         child: card,
       ),
     );

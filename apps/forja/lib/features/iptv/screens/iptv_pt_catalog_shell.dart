@@ -38,49 +38,43 @@ class _IptvKitShell extends StatelessWidget {
               onSection: ctrl.requestSection,
             ),
             Expanded(
-              child: Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _BrowserView(
-                          ctrl: ctrl,
-                          compact: compact,
-                          wide: wide,
-                          embedded: true,
-                        ),
-                      ),
-                      if (ctrl.portalPanelOpen && _useSidePanel(context))
-                        IptvPortalPanel(
-                          ctrl: ctrl,
-                          width: _panelWidth,
-                          onClose: ctrl.closePortalPanel,
-                        ),
-                    ],
-                  ),
-                  if (ctrl.portalPanelOpen && !_useSidePanel(context))
-                    Positioned.fill(
-                      child: GestureDetector(
-                        onTap: ctrl.closePortalPanel,
-                        child: ColoredBox(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: () {},
-                              child: IptvPortalPanel(
-                                ctrl: ctrl,
-                                width: MediaQuery.sizeOf(context).width * 0.92,
-                                onClose: ctrl.closePortalPanel,
-                              ),
-                            ),
+              child: _useSidePanel(context)
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _BrowserView(
+                            ctrl: ctrl,
+                            compact: compact,
+                            wide: wide,
+                            embedded: true,
                           ),
                         ),
+                        if (ctrl.portalPanelOpen)
+                          IptvPortalPanel(
+                            ctrl: ctrl,
+                            width: _panelWidth,
+                            onClose: ctrl.closePortalPanel,
+                          ),
+                      ],
+                    )
+                  : KitSidePanelOverlay(
+                      open: ctrl.portalPanelOpen,
+                      useSideRail: false,
+                      panelWidth: MediaQuery.sizeOf(context).width * 0.92,
+                      onDismiss: ctrl.closePortalPanel,
+                      panel: IptvPortalPanel(
+                        ctrl: ctrl,
+                        width: MediaQuery.sizeOf(context).width * 0.92,
+                        onClose: ctrl.closePortalPanel,
+                      ),
+                      child: _BrowserView(
+                        ctrl: ctrl,
+                        compact: compact,
+                        wide: wide,
+                        embedded: true,
                       ),
                     ),
-                ],
-              ),
             ),
           ],
         );

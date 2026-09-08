@@ -379,128 +379,92 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     final list = _filtered;
     final activeKey = ctrl.activePortal?.key;
     final totalCount = list.length;
+    final status = ctrl.statusText.isEmpty
+        ? '$totalCount portal${totalCount == 1 ? '' : 's'}'
+        : ctrl.statusText;
 
-    return Focus(
+    return KitPortalListPanel(
+      width: widget.width,
+      surfaceColor: IptvShellStyle.surface,
       focusNode: _panelFocus,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.escape ||
-            key == LogicalKeyboardKey.goBack) {
-          if (_searchOpen) {
-            _closeSearch();
-            return KeyEventResult.handled;
-          }
-          widget.onClose();
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!iptvFocusBrowserCategories(ctrl)) {
-              iptvFocusRowItem('browser-streams', 0);
-            }
-          });
-          return KeyEventResult.handled;
+      onEscape: () {
+        if (_searchOpen) {
+          _closeSearch();
+          return;
         }
-        return KeyEventResult.ignored;
+        widget.onClose();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!iptvFocusBrowserCategories(ctrl)) {
+            iptvFocusRowItem('browser-streams', 0);
+          }
+        });
       },
-      child: Material(
-        color: IptvShellStyle.surface,
-        child: SizedBox(
-          width: widget.width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(context),
-              ClipRect(
-                child: AnimatedAlign(
-                  alignment: Alignment.topCenter,
-                  heightFactor: _searchOpen ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    child: TvBrowseTextField(
-                      controller: _searchCtrl,
-                      focusNode: _searchFocus,
-                      onChanged: (v) {
-                        _lastFocusedPortalIndex = null;
-                        setState(() => _query = v);
-                      },
-                      onEscape: _closeSearch,
-                      browsePlaceholder: 'Search portals…',
-                      browseHintStyle: GoogleFonts.plusJakartaSans(
-                        color: Colors.white38,
-                        fontSize: 13,
-                      ),
-                      caretHeight: 18,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search portals…',
-                        hintStyle: GoogleFonts.plusJakartaSans(
-                          color: Colors.white38,
-                          fontSize: 13,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          color: Colors.white54,
-                          size: 20,
-                        ),
-                        suffixIcon: _query.isEmpty
-                            ? null
-                            : iptvCloseButton(
-                                context,
-                                onTap: () {
-                                  _searchCtrl.clear();
-                                  _lastFocusedPortalIndex = null;
-                                  setState(() => _query = '');
-                                  _searchFocus.requestFocus();
-                                },
-                              ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
-                        isDense: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                      ),
-                    ),
+      header: _buildHeader(context),
+      searchOpen: _searchOpen,
+      search: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        child: TvBrowseTextField(
+          controller: _searchCtrl,
+          focusNode: _searchFocus,
+          onChanged: (v) {
+            _lastFocusedPortalIndex = null;
+            setState(() => _query = v);
+          },
+          onEscape: _closeSearch,
+          browsePlaceholder: 'Search portals…',
+          browseHintStyle: GoogleFonts.plusJakartaSans(
+            color: Colors.white38,
+            fontSize: 13,
+          ),
+          caretHeight: 18,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white,
+            fontSize: 13,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Search portals…',
+            hintStyle: GoogleFonts.plusJakartaSans(
+              color: Colors.white38,
+              fontSize: 13,
+            ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Colors.white54,
+              size: 20,
+            ),
+            suffixIcon: _query.isEmpty
+                ? null
+                : iptvCloseButton(
+                    context,
+                    onTap: () {
+                      _searchCtrl.clear();
+                      _lastFocusedPortalIndex = null;
+                      setState(() => _query = '');
+                      _searchFocus.requestFocus();
+                    },
                   ),
-                ),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.05),
+            isDense: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                child: Text(
-                  ctrl.statusText.isEmpty
-                      ? '$totalCount portal${totalCount == 1 ? '' : 's'}'
-                      : ctrl.statusText,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white54,
-                    fontSize: 11,
-                  ),
-                ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
               ),
-              Expanded(
-                child: list.isEmpty
-                    ? _buildEmpty()
-                    : _buildPortalList(list, activeKey),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+      statusText: status,
+      body: list.isEmpty
+          ? _buildEmpty()
+          : _buildPortalList(list, activeKey),
     );
   }
 

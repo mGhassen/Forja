@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -52,24 +54,33 @@ abstract final class KitLiveBoot {
       ];
     };
     KitTopBarHostHooks.openCatalogSheet = showKitCatalogFilterSheet;
+    KitTopBarHostHooks.readSchedulePref = (ref) {
+      return ref.watch(kitScheduleFiltersProvider).schedulePref;
+    };
     KitTopBarHostHooks.openScheduleSheet =
         (context, {required currentPref, required onChanged}) async {
-      final window = kitScheduleWindowFromPref(currentPref) ??
-          (
-            status: KitScheduleStatus.both,
-            horizon: KitScheduleHorizon.h24,
-          );
       final container = ProviderScope.containerOf(context);
+      final filters = container.read(kitScheduleFiltersProvider);
       await showKitScheduleWindowSheet(
         context,
-        status: window.status,
-        horizon: window.horizon,
+        status: filters.scheduleStatus,
+        horizon: filters.scheduleHorizon,
         onChanged: ({status, horizon}) {
-          final notifier = container.read(kitScheduleFiltersProvider.notifier);
-          notifier.setScheduleWindow(status: status, horizon: horizon).then((_) {
-            final next = container.read(kitScheduleFiltersProvider);
-            onChanged(next.schedulePref);
-          });
+          final cur = container.read(kitScheduleFiltersProvider);
+          final nextStatus = status ?? cur.scheduleStatus;
+          final nextHorizon = horizon ?? cur.scheduleHorizon;
+          final pref = kitScheduleWindowPref(
+            status: nextStatus,
+            horizon: nextHorizon,
+          );
+          // Mirror into layout scope immediately (chip / focus), then persist.
+          onChanged(pref);
+          unawaited(
+            container.read(kitScheduleFiltersProvider.notifier).setScheduleWindow(
+                  status: status,
+                  horizon: horizon,
+                ),
+          );
         },
       );
     };

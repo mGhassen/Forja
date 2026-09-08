@@ -3,8 +3,10 @@
 /// Layout: [primitives] · [components] · [blocks] · [protocol] · [services] · [lib].
 /// Services domains: `meta/` · `registry/` · `nav/` · `pack/` · `follow/` · `watch/`.
 /// Product hub tabs are pack-owned. Live schedule browse uses generic kit
-/// services + MetaRuntime feed; IPTV portal sports match lives under
-/// `features/iptv/portal_sports/` (RFC-092) — not a Live Sports product tree.
+/// services + MetaRuntime feed. Portals chrome is foundation design
+/// (`KitPortalsChip` / `KitSidePanelOverlay` / `KitPortalListPanel`); IPTV
+/// wires data via `IptvPortalsChromeHooks` (RFC-095). Fixture→channel match
+/// stays under `features/iptv/portal_sports/` (RFC-092).
 library;
 
 export 'primitives/primitives.dart';
@@ -30,6 +32,7 @@ export 'components/chrome/chrome_filters.dart';
 export 'components/chrome/kit_category_bar.dart';
 export 'components/chrome/kit_filter_sheet_option.dart';
 export 'components/chrome/kit_top_bar_actions.dart';
+export 'components/chrome/kit_portals_chip.dart';
 export 'components/chrome/vertical_filters.dart';
 export 'components/chrome/vertical_filters_rail.dart';
 export 'components/chrome/kit_search_filters.dart';
@@ -61,6 +64,8 @@ export 'blocks/play/live_play.dart';
 export 'blocks/play/sources_request_context.dart';
 export 'components/layout/kit_panel_host.dart';
 export 'components/panel/kit_sources_panel.dart';
+export 'components/panel/kit_side_panel_overlay.dart';
+export 'components/panel/kit_portal_list_panel.dart';
 export 'blocks/play/stremio_stream_id.dart';
 export 'components/meta/meta_movie.dart';
 export 'services/follow/list_follow.dart';
