@@ -23,7 +23,6 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
-import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:rust/rust.dart';
 
 /// Layout widget [`KitTypes.list`] — poster grid or dense list from a
@@ -407,16 +406,6 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
               ],
             );
           }
-        }
-        final wrap = KitTopBarHostHooks.wrapListBody;
-        if (wrap != null) {
-          listBody = wrap(
-            context,
-            child: listBody,
-            tabId: widget.tabId,
-            sourceId: source.id,
-            shellTabVisible: widget.shellTabVisible,
-          );
         }
         final chips = _dynamicKinds;
         if (_layoutHasCategoryBar || !_autoPanel || chips.length <= 1) {

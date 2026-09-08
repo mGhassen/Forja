@@ -38,7 +38,7 @@ typedef KitTopBarTrailingBuilder = Widget? Function(
   VoidCallback? onDownEdge,
 });
 
-/// Wrap a kit list body so host chrome (e.g. Portals panel) stacks above it.
+/// Wrap kit page content *below* the top bar (e.g. Portals over category + list).
 typedef KitListBodyWrapper = Widget Function(
   BuildContext context, {
   required Widget child,

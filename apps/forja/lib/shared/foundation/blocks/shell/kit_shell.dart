@@ -42,6 +42,8 @@ import '../../protocol/protocol.dart';
 import '../../services/meta/runtime.dart';
 import '../../components/chrome/chrome_filters.dart';
 import '../../services/registry/host_list_registry.dart';
+import '../../services/registry/kit_top_bar_host_hooks.dart';
+import '../../services/schedule/kit_live_boot.dart';
 import '../../components/layout/kit_list_source.dart';
 import 'kit_open.dart';
 
@@ -448,14 +450,7 @@ class _KitShellState extends State<KitShell>
     final type = _layoutWidgetType(spec);
     switch (type) {
       case KitTypes.stack:
-        return KitStackWidget(
-          spec: spec,
-          childBuilder: (childSpec, index) => _buildLayoutWidget(
-            childSpec,
-            tvOrders: tvOrders,
-            stackIndex: index,
-          ),
-        );
+        return _buildStackWidget(spec, tvOrders: tvOrders);
       case KitTypes.menu:
         if (_menuIsHoisted(spec)) return null;
         return KitMenuWidget(
@@ -489,6 +484,119 @@ class _KitShellState extends State<KitShell>
       default:
         return _widgetFor(spec, tvOrders: tvOrders, prefetch: null);
     }
+  }
+
+  /// Vertical pack stack. Live Sports Portals wrap content *below* the top bar
+  /// so the panel covers the category bar + list (Providers stays in the list).
+  Widget? _buildStackWidget(
+    Map<String, dynamic> spec, {
+    required Map<String, int> tvOrders,
+  }) {
+    final wrap = KitTopBarHostHooks.wrapListBody;
+    final listSourceId = _stackListSourceId(spec);
+    final hoistPortals = wrap != null &&
+        listSourceId == KitLiveBoot.listSourceId;
+    if (!hoistPortals) {
+      return KitStackWidget(
+        spec: spec,
+        childBuilder: (childSpec, index) => _buildLayoutWidget(
+          childSpec,
+          tvOrders: tvOrders,
+          stackIndex: index,
+        ),
+      );
+    }
+
+    final raw = spec['children'];
+    if (raw is! List || raw.isEmpty) return const SizedBox.shrink();
+
+    final expandLast = spec['expandLast'] == true || spec['expand'] == true;
+    final leading = <Widget>[];
+    final content = <Widget>[];
+    var childIndex = 0;
+    final maps = <Map<String, dynamic>>[];
+
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      maps.add(Map<String, dynamic>.from(entry));
+    }
+
+    for (var i = 0; i < maps.length; i++) {
+      final childSpec = maps[i];
+      final type = _layoutWidgetType(childSpec);
+      final child = _buildLayoutWidget(
+        childSpec,
+        tvOrders: tvOrders,
+        stackIndex: childIndex,
+      );
+      childIndex++;
+      if (child == null) continue;
+
+      if (type == KitTypes.topBar && content.isEmpty) {
+        leading.add(child);
+      } else {
+        content.add(child);
+      }
+    }
+
+    if (leading.isEmpty && content.isEmpty) return const SizedBox.shrink();
+    if (content.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: leading,
+      );
+    }
+
+    final contentChildren = <Widget>[];
+    for (var i = 0; i < content.length; i++) {
+      final child = content[i];
+      if (expandLast && i == content.length - 1) {
+        contentChildren.add(Expanded(child: child));
+      } else {
+        contentChildren.add(child);
+      }
+    }
+    var belowChrome = contentChildren.length == 1
+        ? contentChildren.first
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: contentChildren,
+          );
+    // Sole Expanded list: unwrap so the outer Expanded owns flex.
+    if (belowChrome is Expanded) {
+      belowChrome = belowChrome.child;
+    }
+    final sourceId = listSourceId!;
+    belowChrome = wrap(
+      context,
+      child: belowChrome,
+      tabId: _pageKey,
+      sourceId: sourceId,
+      shellTabVisible: shellTabVisible,
+    );
+
+    if (leading.isEmpty) return belowChrome;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...leading,
+        Expanded(child: belowChrome),
+      ],
+    );
+  }
+
+  String? _stackListSourceId(Map<String, dynamic> spec) {
+    final raw = spec['children'];
+    if (raw is! List) return null;
+    String? found;
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final child = Map<String, dynamic>.from(entry);
+      if (_layoutWidgetType(child) != KitTypes.list) continue;
+      final id = (child['source'] ?? '').toString().trim();
+      if (id.isNotEmpty) found = id;
+    }
+    return found;
   }
 
   bool _menuIsHoisted(Map<String, dynamic> spec) {
@@ -1543,14 +1651,7 @@ class _KitShellState extends State<KitShell>
       case KitTypes.list:
         return _hostOrKitListWidget(spec, tvOrders: tvOrders);
       case KitTypes.stack:
-        return KitStackWidget(
-          spec: spec,
-          childBuilder: (childSpec, index) => _buildLayoutWidget(
-            childSpec,
-            tvOrders: tvOrders,
-            stackIndex: index,
-          ),
-        );
+        return _buildStackWidget(spec, tvOrders: tvOrders);
       case KitTypes.topBar:
         return KitTopBarActions(
           tabId: _pageKey,
