@@ -21,6 +21,7 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
+import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/components/posters/home_loading_skeleton.dart';
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:rust/rust.dart';
@@ -165,9 +166,24 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     }
     if (_autoPanel) {
       setState(() => _selected = entry);
+      _claimPanelProvidersFocus();
       return;
     }
     source.openEntry(context, entry);
+  }
+
+  /// TV: after opening a match, land D-pad on Providers in the side panel.
+  void _claimPanelProvidersFocus() {
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    KitSourcesPanel.claimProvidersFocus();
+  }
+
+  void _focusSelectedEvent() {
+    final handle =
+        ShellTvFocusCoordinator.rowHandle(widget.tabId, widget.gridRowId);
+    if (handle == null || handle.itemCount <= 0) return;
+    final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+    ShellTvFocusCoordinator.focusRowItem(widget.tabId, widget.gridRowId, idx);
   }
 
   @override
@@ -456,11 +472,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     if (hit == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_autoPanel) {
-        setState(() => _selected = hit);
-        widget.onEntrySelected?.call(hit!);
-        return;
-      }
+    if (_autoPanel) {
+      setState(() => _selected = hit);
+      widget.onEntrySelected?.call(hit!);
+      _claimPanelProvidersFocus();
+      return;
+    }
       _openEntry(context, _source!, hit!);
     });
   }
@@ -480,6 +497,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       shellTabVisible: widget.shellTabVisible,
       refreshEpoch: widget.refreshEpoch,
       onClosed: () => setState(() => _selected = null),
+      onPanelLeftEdge: () => _focusSelectedEvent(),
     );
   }
 
@@ -539,7 +557,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                   _focusRow(widget.statusTabId, 0) ||
                   _focusRow(widget.kindMenuId, 0)
               : null,
-          onRightEdge: selected && panelActive ? () {} : null,
+          onRightEdge: selected && panelActive
+              ? _claimPanelProvidersFocus
+              : null,
           onTap: () => _openEntry(context, source, entry),
         );
       },

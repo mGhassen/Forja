@@ -53,7 +53,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [029-[draft]-…](029-[draft]-lan-range-seek-unverified.md) | LAN range seek unverified | P3 | Low | draft | 0/2 | — |
 | [030-[draft]-…](030-[draft]-lan-hdr-passthrough-unverified.md) | LAN HDR passthrough unverified | P3 | Low | draft | 0/1 | — |
 | [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 6/12 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 7/13 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [033-[open]-…](033-[open]-vod-decoder-recovery.md) | VOD player decoder recovery | P2 | Medium | open | 4/5 | — |
 | [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 3/4 · A 0/1 | — |
 | [035-[fixed]-…](fixed/035-[fixed]-nuvio-torrent-scraper-in-direct-streaming.md) | Nuvio torrent scraper (Torrentio) in Direct Streaming | P1 | High | fixed | Complete · 7/7 | — |
@@ -252,6 +252,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [245-[open]-…](245-[open]-forja-extract-ships-all-hops.md) | Forja extract ships every hop into every plugin job | P1 | High | open | 3/4 · A 1/3 | — |
 | [247-[open]-…](247-[open]-exo-vod-chrome-dialogs-match-mediakit.md) | Exo VOD chrome / dialogs match MediaKit | P1 | High | open | 5/5 · A 1/5 | [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md) |
 | [248-[open]-…](248-[open]-android-tv-player-episodes-search-dpad.md) | ATV player Episodes Search D-pad stuck | P1 | High | open | 2/2 · A 0/2 | [161](161-[open]-android-tv-sources-panel-dpad.md) |
+| [249-[open]-…](249-[open]-exoplayer-auto-failover.md) | ExoPlayer Auto failover on stream failure | P1 | High | open | 4/4 · A 0/2 | [032](032-[draft]-exoplayer-parity-gaps.md) · [037](037-[open]-webstreaming-all-providers-open-validate.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

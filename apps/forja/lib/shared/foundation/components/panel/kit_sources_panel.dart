@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Opaque tab for [KitSourcesPanel].
 @immutable
@@ -61,10 +64,11 @@ class KitSourcesPanel extends StatefulWidget {
     this.initialTabId,
     this.onClosed,
     this.tvTabId,
-    this.listRowId = 'sources-list',
-    this.tabsRowId = 'sources-tabs',
+    this.listRowId = SourcesPanelTv.listRowId,
+    this.tabsRowId = SourcesPanelTv.kindRowId,
     this.embedded = false,
     this.showTabs = true,
+    this.onTabsLeftEdge,
   });
 
   final String title;
@@ -87,6 +91,14 @@ class KitSourcesPanel extends StatefulWidget {
 
   /// When false, only the list body is shown (parent owns tab chrome).
   final bool showTabs;
+
+  /// TV: ← from Providers / Live TV (and stream rows) — e.g. back to match list.
+  final VoidCallback? onTabsLeftEdge;
+
+  /// Put D-pad on the first tab (Providers). Retries while nodes mount.
+  static void claimProvidersFocus({int maxTries = 24}) {
+    SourcesPanelTv.focusKindItem(maxTries: maxTries);
+  }
 
   @override
   State<KitSourcesPanel> createState() => _KitSourcesPanelState();
@@ -154,6 +166,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     if (id == _tabId) return;
     setState(() => _tabId = id);
     unawaited(_ensureLoaded(id));
+  }
+
+  String? _effectiveTvTabId(BuildContext context) {
+    if (widget.tvTabId != null) return widget.tvTabId;
+    if (SourcesPanelTv.isTv(context)) return SourcesPanelTv.tabId;
+    return null;
   }
 
   @override
@@ -225,26 +243,41 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   }
 
   Widget _tabs(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: HeroPillSegmentedChoice<String>(
-          selected: _tabId,
-          onSelected: _selectTab,
-          tvTabId: widget.tvTabId,
-          tvRowId: widget.tabsRowId,
-          tvItemIndexStart: 0,
-          segments: [
-            for (var i = 0; i < widget.tabs.length; i++)
-              HeroPillSegment(
-                value: widget.tabs[i].id,
-                label: widget.tabs[i].label,
-                icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
-              ),
-          ],
-        ),
+    final tvTabId = _effectiveTvTabId(context);
+    final choice = Align(
+      alignment: Alignment.centerLeft,
+      child: HeroPillSegmentedChoice<String>(
+        selected: _tabId,
+        onSelected: _selectTab,
+        tvTabId: tvTabId,
+        tvRowId: widget.tabsRowId,
+        tvItemIndexStart: 0,
+        onLeftEdge: widget.onTabsLeftEdge,
+        onDownEdge: tvTabId != null
+            ? () => SourcesPanelTv.focusListItem(index: 0)
+            : null,
+        segments: [
+          for (var i = 0; i < widget.tabs.length; i++)
+            HeroPillSegment(
+              value: widget.tabs[i].id,
+              label: widget.tabs[i].label,
+              icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
+            ),
+        ],
       ),
+    );
+    final padded = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: choice,
+    );
+    if (tvTabId == null || widget.tabs.isEmpty) return padded;
+    return TvKitRow(
+      tabId: tvTabId,
+      rowId: widget.tabsRowId,
+      sortOrder: SourcesPanelTv.kindSort,
+      itemCount: widget.tabs.length,
+      onFocusDown: () => SourcesPanelTv.focusListItem(index: 0),
+      child: padded,
     );
   }
 
@@ -284,11 +317,26 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     if (widget.embedded) {
       return _embeddedSourcesGrid(context, rows);
     }
-    return ListView.separated(
+    return _sidePanelList(context, rows);
+  }
+
+  Widget _sidePanelList(BuildContext context, List<KitSourcesRow> rows) {
+    final tvTabId = _effectiveTvTabId(context);
+    final list = ListView.separated(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       itemCount: rows.length,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) => _tile(context, rows[i], i),
+    );
+    if (tvTabId == null) return list;
+    return TvKitRow(
+      tabId: tvTabId,
+      rowId: widget.listRowId,
+      sortOrder: SourcesPanelTv.listSort,
+      itemCount: rows.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: () => SourcesPanelTv.focusKindItem(),
+      child: list,
     );
   }
 
@@ -342,6 +390,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
 
   Widget _tile(BuildContext context, KitSourcesRow row, int index) {
     final footer = (row.footer ?? '').trim();
+    final tvTabId = _effectiveTvTabId(context);
     return SourcesPanelChannelTile(
       title: row.title,
       provider: row.subtitle,
@@ -358,11 +407,15 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
                 fontSize: 11,
               ),
             ),
-      tvTabId: widget.tvTabId,
+      tvTabId: tvTabId,
       tvRowId: widget.listRowId,
       tvItemIndex: index,
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
+      onUpEdge: index == 0 && tvTabId != null
+          ? () => SourcesPanelTv.focusKindItem()
+          : null,
+      onLeftEdge: widget.onTabsLeftEdge,
       onPlay: () => unawaited(widget.onPlayRow(row)),
     );
   }

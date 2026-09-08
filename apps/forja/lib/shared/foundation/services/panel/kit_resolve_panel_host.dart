@@ -42,12 +42,14 @@ final class KitResolvePanelHost implements KitPanelHost {
     required bool shellTabVisible,
     required int refreshEpoch,
     VoidCallback? onClosed,
+    VoidCallback? onPanelLeftEdge,
   }) {
     return _KitResolveStreamsPanel(
       key: ValueKey('live-panel-${entry.meta.id}'),
       entry: entry,
       refreshEpoch: refreshEpoch,
       onClosed: onClosed,
+      onPanelLeftEdge: onPanelLeftEdge,
     );
   }
 
@@ -78,11 +80,13 @@ class _KitResolveStreamsPanel extends StatefulWidget {
     required this.entry,
     required this.refreshEpoch,
     this.onClosed,
+    this.onPanelLeftEdge,
   });
 
   final KitListEntry entry;
   final int refreshEpoch;
   final VoidCallback? onClosed;
+  final VoidCallback? onPanelLeftEdge;
 
   @override
   State<_KitResolveStreamsPanel> createState() =>
@@ -164,6 +168,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       ],
       initialTabId: KitResolvePanelHost.providersTab,
       onClosed: widget.onClosed,
+      onTabsLeftEdge: widget.onPanelLeftEdge,
       loadTab: (tabId) => KitResolvePanelHost.loadTab(
         row,
         tabId,

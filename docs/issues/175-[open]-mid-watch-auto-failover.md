@@ -44,5 +44,6 @@ After playback confirmed, a fatal mpv `Failed to open` (dead CDN, ABR variant de
 
 - [037](037-[open]-webstreaming-all-providers-open-validate.md) — Auto open failover vs pin stop
 - [043](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) — dead cache → re-resolve
+- [249](249-[open]-exoplayer-auto-failover.md) — Exo Auto hop parity
 - [Stream providers](../features/sources/stream-providers.md)
 - [Player](../features/playback/player.md)

@@ -104,19 +104,9 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
             ),
           ),
         ),
-        FilledButton(
+        ForjaButton.primary(
+          label: 'Use Keychain',
           onPressed: () => _choose(context, ForjaKeychainConsent.accepted),
-          style: FilledButton.styleFrom(
-            backgroundColor: ForjaShellColors.brandGreen,
-            foregroundColor: Colors.black,
-          ),
-          child: const Text(
-            'Use Keychain',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              decoration: TextDecoration.none,
-            ),
-          ),
         ),
       ],
     );

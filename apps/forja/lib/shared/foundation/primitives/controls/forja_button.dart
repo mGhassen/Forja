@@ -126,13 +126,6 @@ class _ForjaButtonState extends State<ForjaButton> {
       fill = Colors.transparent;
       border = ForjaShellColors.borderSubtle;
       foreground = ForjaShellColors.textSecondary.withValues(alpha: 0.45);
-    } else if (widget.variant == ForjaButtonVariant.primary) {
-      // Solid brand-green fill with dark text for maximum legibility.
-      fill = active
-          ? const Color(0xFF3CEF98) // slightly brighter on hover/focus
-          : ForjaShellColors.brandGreen;
-      border = fill;
-      foreground = const Color(0xFF06130D);
     } else if (widget.variant == ForjaButtonVariant.neutral) {
       fill = Colors.white.withValues(alpha: active ? 0.06 : 0.03);
       border = active
@@ -140,7 +133,7 @@ class _ForjaButtonState extends State<ForjaButton> {
           : ForjaShellColors.ghostBorder;
       foreground = ForjaShellColors.textPrimary;
     } else {
-      // Destructive - tinted fill + red border/text.
+      // Primary / destructive — lightly tinted fill + accent border/text.
       fill = accent.withValues(alpha: active ? 0.20 : 0.12);
       border = accent.withValues(alpha: active ? 0.95 : 0.55);
       foreground = accent;

@@ -17,6 +17,8 @@ abstract class KitPanelHost {
     required bool shellTabVisible,
     required int refreshEpoch,
     VoidCallback? onClosed,
+    /// TV: ← from Providers / Live TV (and stream rows) returns here.
+    VoidCallback? onPanelLeftEdge,
   });
 
   /// Optional full-page details (cards pack). Null → generic scaffold panel.

@@ -476,6 +476,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           onSaveProgress: widget.onSaveProgress,
           onPlaybackStarted: widget.onPlaybackStarted,
           onAllSourcesExhausted: widget.onAllSourcesExhausted,
+          pinSource: widget.pinSource,
+          streamsPrevalidated: widget.streamsPrevalidated,
+          onReloadStreams: widget.onReloadStreams,
           builtInEngine: _builtInEngine,
           onSwitchPlayer: _switchPlayer,
         );
@@ -555,6 +558,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           onSaveProgress: widget.onSaveProgress,
           onPlaybackStarted: widget.onPlaybackStarted,
           onAllSourcesExhausted: widget.onAllSourcesExhausted,
+          pinSource: widget.pinSource,
+          streamsPrevalidated: widget.streamsPrevalidated,
+          onReloadStreams: widget.onReloadStreams,
           builtInEngine: _builtInEngine,
           onSwitchPlayer: _switchPlayer,
         );

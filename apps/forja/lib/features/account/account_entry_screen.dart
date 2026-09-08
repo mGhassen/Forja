@@ -591,10 +591,19 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     child: FilledButton(
                       onPressed: _mfaBusy ? null : _submitMfa,
                       style: FilledButton.styleFrom(
-                        backgroundColor: ForjaShellColors.brandGreen,
-                        foregroundColor: Colors.black,
+                        backgroundColor: ForjaShellColors.brandGreen
+                            .withValues(alpha: 0.12),
+                        foregroundColor: ForjaShellColors.brandGreen,
                         disabledBackgroundColor: ForjaShellColors.brandGreen
-                            .withValues(alpha: 0.35),
+                            .withValues(alpha: 0.06),
+                        disabledForegroundColor: ForjaShellColors.brandGreen
+                            .withValues(alpha: 0.45),
+                        side: BorderSide(
+                          color: ForjaShellColors.brandGreen.withValues(
+                            alpha: _mfaBusy ? 0.35 : 0.55,
+                          ),
+                          width: 1.5,
+                        ),
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.zero,
                         ),
@@ -620,11 +629,21 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                           child: FilledButton(
                             onPressed: _canSubmitPassword ? _submit : null,
                             style: FilledButton.styleFrom(
-                              backgroundColor: ForjaShellColors.brandGreen,
-                              foregroundColor: Colors.black,
+                              backgroundColor: ForjaShellColors.brandGreen
+                                  .withValues(alpha: 0.12),
+                              foregroundColor: ForjaShellColors.brandGreen,
                               disabledBackgroundColor: ForjaShellColors
                                   .brandGreen
-                                  .withValues(alpha: 0.35),
+                                  .withValues(alpha: 0.06),
+                              disabledForegroundColor: ForjaShellColors
+                                  .brandGreen
+                                  .withValues(alpha: 0.45),
+                              side: BorderSide(
+                                color: ForjaShellColors.brandGreen.withValues(
+                                  alpha: _canSubmitPassword ? 0.55 : 0.35,
+                                ),
+                                width: 1.5,
+                              ),
                               shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.zero,
                               ),

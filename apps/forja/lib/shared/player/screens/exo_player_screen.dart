@@ -10,6 +10,7 @@ import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
@@ -57,6 +58,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';
+part 'exo_player_failover.dart';
 
 /// Android built-in player using native Media3 ExoPlayer.
 class ExoPlayerScreen extends ConsumerStatefulWidget {
@@ -88,6 +90,9 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
     this.onSaveProgress,
     this.onPlaybackStarted,
     this.onAllSourcesExhausted,
+    this.pinSource = false,
+    this.streamsPrevalidated = false,
+    this.onReloadStreams,
     this.builtInEngine = BuiltInPlayerEngine.exoPlayer,
     this.onSwitchPlayer,
   });
@@ -118,6 +123,9 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
+  final bool pinSource;
+  final bool streamsPrevalidated;
+  final Future<List<StreamSource>?> Function()? onReloadStreams;
   final BuiltInPlayerEngine builtInEngine;
   final PlayerSwitchHandler? onSwitchPlayer;
 
@@ -126,7 +134,11 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
-    with WidgetsBindingObserver, _ExoPlayerSources, _ExoPlayerTracks {
+    with
+        WidgetsBindingObserver,
+        _ExoPlayerSources,
+        _ExoPlayerTracks,
+        _ExoPlayerFailover {
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
@@ -173,6 +185,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _hasError = false;
   bool _playbackStartedNotified = false;
   bool _opening = false;
+  bool _failoverInFlight = false;
+  bool _allSourcesExhaustedNotified = false;
+  /// Native error while `_opening` / mid-failover open — drained by failover.
+  String? _pendingOpenError;
+  /// Mid-watch Auto hop resume seek consumed by [_openCurrentSource].
+  Duration? _pendingOpenSeek;
   bool _networkRemountInFlight = false;
   bool _startPositionApplied = false;
   bool _loadingNextEp = false;
@@ -465,10 +483,18 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         )
         .toList();
     try {
-      final start = !_startPositionApplied
-          ? (widget.startPosition ?? Duration.zero)
-          : Duration.zero;
-      _startPositionApplied = true;
+      final pendingSeek = _pendingOpenSeek;
+      _pendingOpenSeek = null;
+      final Duration start;
+      if (pendingSeek != null) {
+        start = pendingSeek;
+        _startPositionApplied = true;
+      } else if (!_startPositionApplied) {
+        start = widget.startPosition ?? Duration.zero;
+        _startPositionApplied = true;
+      } else {
+        start = Duration.zero;
+      }
       final maxH = await SettingsService().getMaxPlaybackHeight();
       if (_fallbackAborted(openGen)) return;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
@@ -495,39 +521,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (_fallbackAborted(openGen)) return;
       // Drop the fence so failover `_openCurrentSource` can re-enter.
       _opening = false;
-      await _failCurrentSource('Failed to open stream');
+      if (_failoverInFlight) {
+        _pendingOpenError = 'Failed to open stream';
+      } else {
+        await _failCurrentSource('Failed to open stream');
+      }
     } finally {
       if (openGen == _fallbackGen) {
         _opening = false;
+        final pending = _pendingOpenError;
+        if (pending != null && !_failoverInFlight) {
+          _pendingOpenError = null;
+          unawaited(_failCurrentSource(pending));
+        }
       }
-    }
-  }
-
-  Future<void> _failCurrentSource(String message) async {
-    if (_playbackStartedNotified) {
-      if (await _tryNetworkRemount(message)) return;
-    }
-    if (_sourceIndex < _sources.length) {
-      PlaybackSelection.recordFailedUrl(_sources[_sourceIndex].url);
-      _statusController.upsert(
-        'source-$_sourceIndex',
-        _sources[_sourceIndex].title,
-        kind: StatusRouletteKind.failed,
-      );
-    }
-    if (!_playbackStartedNotified && _sourceIndex + 1 < _sources.length) {
-      _sourceIndex++;
-      await ExoPlayerBridge.stop(_viewId);
-      await _openCurrentSource();
-      return;
-    }
-    if (!mounted) return;
-    setState(() {
-      _hasError = true;
-      _showControls = true;
-    });
-    if (!_playbackStartedNotified) {
-      widget.onAllSourcesExhausted?.call();
     }
   }
 
@@ -656,8 +663,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         break;
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
-        if (_opening) {
-          debugPrint('[ExoPlayer] error during open/switch (ignored): $msg');
+        if (_opening || _failoverInFlight) {
+          // Queue — never swallow. Failover loop / open finally drains this.
+          _pendingOpenError = msg;
+          debugPrint('[ExoPlayer] error during open/failover (queued): $msg');
           return;
         }
         if (isVideoDecoderError(msg)) {

@@ -561,7 +561,8 @@ class HeroPillSegment<T> {
   final IconData icon;
 }
 
-/// Segmented hero pill (e.g. SUB | DUB) - glass shell, white hover on segment.
+/// Segmented hero pill (e.g. SUB | DUB / Providers | Live TV) — glass shell,
+/// brand-green fill on hover / D-pad focus.
 class HeroPillSegmentedChoice<T> extends StatelessWidget {
   const HeroPillSegmentedChoice({
     super.key,
@@ -659,9 +660,6 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected
-        ? Colors.white
-        : Colors.white.withValues(alpha: 0.55);
     final tvMeta = tvTabId != null && useTvCompact
         ? ShellTvFocusMeta(
             tabId: tvTabId!,
@@ -704,7 +702,13 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
       tvMeta: tvMeta,
       onKeyEvent: effectiveOnKey,
       builder: (hover, pressed) {
-        final active = selected || hover || pressed;
+        // hover already includes D-pad focus via ForjaInteractive._activeFor.
+        final lit = hover || pressed;
+        final foreground = lit
+            ? _kHeroPillForegroundDark
+            : selected
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.55);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
@@ -712,9 +716,12 @@ class _HeroPillSegmentButton<T> extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active
-                ? _heroPillHoverFill(pressed: pressed)
-                : Colors.transparent,
+            color: lit
+                ? ForjaShellColors.brandGreen
+                    .withValues(alpha: pressed ? 1.0 : 0.92)
+                : selected
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : Colors.transparent,
             borderRadius: _heroPillSlotBorderRadius(
               isFirst: isFirst,
               isLast: isLast,

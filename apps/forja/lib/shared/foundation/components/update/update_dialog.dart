@@ -1385,10 +1385,16 @@ class _UpdatePrimaryAction extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: layout.isTv ? 20 : 0),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.88)
-                : ForjaShellColors.brandGreen,
+            color: ForjaShellColors.brandGreen.withValues(
+              alpha: active ? 0.20 : 0.12,
+            ),
             borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: ForjaShellColors.brandGreen.withValues(
+                alpha: active ? 0.95 : 0.55,
+              ),
+              width: 1.5,
+            ),
           ),
           child: Text(
             label,
@@ -1396,7 +1402,7 @@ class _UpdatePrimaryAction extends StatelessWidget {
               fontSize: layout.buttonFontSize,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.1,
-              color: AppTheme.bgDark,
+              color: ForjaShellColors.brandGreen,
             ),
           ),
         );
