@@ -58,6 +58,8 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
   @override
   Widget build(BuildContext context) {
     final gap = widget.compact ? 10.0 : 14.0;
+    // Explicit ←/→ between the pair — Settings linear scope used to make
+    // → === ↓ (nextFocus), so cards felt like one column.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -68,6 +70,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             compact: widget.compact,
             settingsTvFocus: widget.settingsTvFocus,
             tvItemIndex: 0,
+            onRightEdge: () => _browseNode.requestFocus(),
             icon: Icons.inventory_2_rounded,
             title: 'Official packs',
             subtitle: widget.compact
@@ -84,6 +87,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             compact: widget.compact,
             settingsTvFocus: widget.settingsTvFocus,
             tvItemIndex: 1,
+            onLeftEdge: () => _installNode.requestFocus(),
             icon: Icons.public_rounded,
             title: 'Community Packs',
             subtitle: widget.communitySubtitle ??
@@ -111,6 +115,8 @@ class ForjaPackChoiceCard extends StatefulWidget {
     this.compact = false,
     this.settingsTvFocus = false,
     this.tvItemIndex,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final FocusNode focusNode;
@@ -123,6 +129,8 @@ class ForjaPackChoiceCard extends StatefulWidget {
   final bool compact;
   final bool settingsTvFocus;
   final int? tvItemIndex;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<ForjaPackChoiceCard> createState() => _ForjaPackChoiceCardState();
@@ -228,6 +236,8 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
         showFocusFill: false,
         showFocusRail: false,
         onHoverChange: onHover,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
         tvMeta: ShellTvFocusMeta(
           tabId: 'settings',
           zone: ShellTvZone.settings,
@@ -248,6 +258,8 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
       showFocusFill: false,
       showFocusRail: false,
       onHoverChange: onHover,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       child: body,
     );
   }

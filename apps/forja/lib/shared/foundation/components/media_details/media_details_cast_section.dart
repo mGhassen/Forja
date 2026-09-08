@@ -38,8 +38,14 @@ class MediaDetailsCastSection extends StatelessWidget {
   static const double _nameCharacterGap = 3;
 
   // name: 13×1.2 → 16; character: 12×1.2 → 15 (ceil)
+  // Focus scale lifts the circle; keep scroller tall enough for the ring.
   static const double _rowHeight =
-      _avatarSize + _avatarNameGap + 16 + _nameCharacterGap + 15;
+      _avatarSize * ShellTokens.focusActiveScale +
+      _avatarNameGap +
+      16 +
+      _nameCharacterGap +
+      15 +
+      4;
 
   @override
   Widget build(BuildContext context) {
@@ -84,18 +90,22 @@ class MediaDetailsCastSection extends StatelessWidget {
               final profilePath = m['profilePath'] ?? '';
               final name = m['name'] ?? '';
               final character = m['character'] ?? '';
-              return shellFocusableTap(
-                context: context,
-                borderRadius: _avatarSize / 2,
-                listIndex: i,
-                tvTabId: tabId,
-                tvRowId: tvRowId != null ? rowId : null,
-                tvItemIndex: i,
-                child: SizedBox(
-                  width: _itemWidth,
-                  child: Column(
-                    children: [
-                      ClipOval(
+              // Focus ring only on the circle — not around name/character text.
+              return SizedBox(
+                width: _itemWidth,
+                child: Column(
+                  children: [
+                    shellFocusableTap(
+                      context: context,
+                      borderRadius: _avatarSize / 2,
+                      showFocusBorder: true,
+                      showFocusFill: false,
+                      focusBleedWidth: _avatarSize,
+                      listIndex: i,
+                      tvTabId: tabId,
+                      tvRowId: tvRowId != null ? rowId : null,
+                      tvItemIndex: i,
+                      child: ClipOval(
                         child: profilePath.isNotEmpty
                             ? CachedNetworkImage(
                                 imageUrl: profilePath.startsWith('http')
@@ -116,35 +126,35 @@ class MediaDetailsCastSection extends StatelessWidget {
                                 ),
                               ),
                       ),
-                      const SizedBox(height: _avatarNameGap),
+                    ),
+                    const SizedBox(height: _avatarNameGap),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (character.isNotEmpty) ...[
+                      const SizedBox(height: _nameCharacterGap),
                       Text(
-                        name,
+                        character,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 12,
                           height: 1.2,
                         ),
                       ),
-                      if (character.isNotEmpty) ...[
-                        const SizedBox(height: _nameCharacterGap),
-                        Text(
-                          character,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 12,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               );
             },

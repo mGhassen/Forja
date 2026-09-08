@@ -2758,10 +2758,13 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
 }
 
 class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList> {
-  final _healthProbe = IptvLazyUrlHealthProbe(
-    delay: const Duration(milliseconds: 500),
-  );
+  static const _hoverProbeDelay = Duration(milliseconds: 400);
+
+  final _healthProbe = IptvLazyUrlHealthProbe();
   final _rowKeys = <int, GlobalKey>{};
+  final _checkingKeys = <String>{};
+  final _hoverTimers = <String, Timer>{};
+  final _probeGens = <String, int>{};
 
   @override
   void initState() {
@@ -2771,6 +2774,10 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
 
   @override
   void dispose() {
+    for (final t in _hoverTimers.values) {
+      t.cancel();
+    }
+    _hoverTimers.clear();
     _healthProbe.dispose();
     super.dispose();
   }
@@ -2789,28 +2796,56 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
 
   PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
     if (index == widget.selectedIndex) return PlayerSourceStatus.active;
-    if (iptvLiveSourceProbeUrl(src) == null) return null;
+    if (!iptvLiveSourceCanHoverProbe(src)) return null;
     final key = iptvLiveSourceProbeKey(src);
+    if (_checkingKeys.contains(key)) return PlayerSourceStatus.checking;
     final health = _healthProbe.healthFor(key);
-    if (health == null) return null;
-    return health ? PlayerSourceStatus.ready : PlayerSourceStatus.failed;
+    if (health == true) return PlayerSourceStatus.ready;
+    if (health == false) return PlayerSourceStatus.failed;
+    // Gray status slot so rows match other PlayerPopupListTile menus.
+    return PlayerSourceStatus.unchecked;
   }
 
-  void _syncProbe(IptvPlaySource src, bool active) {
+  void _syncProbe(int index, IptvPlaySource src, bool active) {
+    if (!iptvLiveSourceCanHoverProbe(src)) return;
+    // Playing row already shows active — skip redundant probe work.
+    if (index == widget.selectedIndex) return;
     final key = iptvLiveSourceProbeKey(src);
-    final probeUrl = iptvLiveSourceProbeUrl(src);
-    if (probeUrl == null) {
-      if (!active) _healthProbe.cancel(key);
+    _hoverTimers.remove(key)?.cancel();
+
+    if (!active) {
+      _probeGens[key] = (_probeGens[key] ?? 0) + 1;
+      if (_checkingKeys.remove(key) && mounted) setState(() {});
       return;
     }
-    if (active) {
-      _healthProbe.schedule(
-        key,
-        probeUrl,
-        onlyThis: iptvUseTvFocus(context),
-      );
-    } else {
-      _healthProbe.cancel(key);
+
+    if (_healthProbe.healthFor(key) != null) return;
+
+    _hoverTimers[key] = Timer(_hoverProbeDelay, () {
+      _hoverTimers.remove(key);
+      if (!mounted) return;
+      unawaited(_runProbe(src));
+    });
+  }
+
+  Future<void> _runProbe(IptvPlaySource src) async {
+    final key = iptvLiveSourceProbeKey(src);
+    if (_healthProbe.healthFor(key) != null) return;
+    // Skipped rows (portal Live TV, signed HLS) remember green instantly —
+    // no Checking… flash. Real URLs show the spinner while checkNow runs.
+    if (iptvLiveSourceProbeUrl(src) == null) {
+      await iptvLiveSourceRunHoverProbe(src, healthProbe: _healthProbe);
+      return;
+    }
+    final gen = (_probeGens[key] ?? 0) + 1;
+    _probeGens[key] = gen;
+    if (!mounted) return;
+    setState(() => _checkingKeys.add(key));
+    try {
+      await iptvLiveSourceRunHoverProbe(src, healthProbe: _healthProbe);
+    } finally {
+      if (!mounted || (_probeGens[key] ?? 0) != gen) return;
+      setState(() => _checkingKeys.remove(key));
     }
   }
 
@@ -2827,8 +2862,10 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
               Builder(
                 builder: (context) {
                   final src = widget.sources[i];
-                  final rowKey =
-                      _rowKeys.putIfAbsent(i, () => GlobalKey(debugLabel: 'iptv-source-$i'));
+                  final rowKey = _rowKeys.putIfAbsent(
+                    i,
+                    () => GlobalKey(debugLabel: 'iptv-source-$i'),
+                  );
                   return KeyedSubtree(
                     key: rowKey,
                     child: buildIptvSourcePickerTile(
@@ -2837,7 +2874,8 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
                       sourceLogo: widget.sourceLogo,
                       selected: i == widget.selectedIndex,
                       status: _statusFor(i, src),
-                      onInteractiveChange: (active) => _syncProbe(src, active),
+                      onInteractiveChange: (active) =>
+                          _syncProbe(i, src, active),
                       onTap: () => widget.onPick(i),
                     ),
                   );

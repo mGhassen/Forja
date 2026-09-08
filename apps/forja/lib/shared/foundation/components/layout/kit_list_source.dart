@@ -23,6 +23,10 @@ class KitListEntry {
 abstract class KitListPage {
   int get totalCount;
   bool get loadingRemote;
+
+  /// Optional scrape progress for top-bar / empty loading copy.
+  String? get loadingProgressLabel;
+
   List<KitListEntry> entriesForKind(String? kind);
 }
 

@@ -380,12 +380,23 @@ class _SettingsNavigationPageBodyState
     if (!_loaded || _navbarOrder.isEmpty) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_firstTabFocus.canRequestFocus) return;
+      if (!mounted) return;
       if (SettingsDetailEnter.tokenOf(context) != token) return;
       // Only while the detail pane owns focus (not when ↑/↓ only selected Features).
       if (!FocusScope.of(context).hasFocus) return;
       _handledEnterToken = token;
-      _firstTabFocus.requestFocus();
+      final firstId = _navbarOrder.first;
+      // Column 0 = tab label (not the star). Reading-order land can miss hover.
+      if (ShellTvFocusCoordinator.focusRowItem(
+        'settings',
+        'feat-$firstId',
+        0,
+      )) {
+        return;
+      }
+      if (_firstTabFocus.canRequestFocus) {
+        _firstTabFocus.requestFocus();
+      }
     });
   }
 
@@ -809,11 +820,61 @@ class _SettingsNavigationPageBodyState
                     );
 
                     if (tv && itemCount > 0) {
+                      // Column stickiness: pass the *current* column into the
+                      // next/prev feature row. moveVerticalInTab would restore
+                      // that row's lastFocusedIndex (often the star) instead.
+                      // First-row ↑ must trap — otherwise focusHero jumps to the
+                      // category rail ("menu settings").
+                      int currentColumn() {
+                        final h = ShellTvFocusCoordinator.rowHandle(
+                          'settings',
+                          rowId,
+                        );
+                        return (h?.lastFocusedIndex ?? 0)
+                            .clamp(0, itemCount - 1);
+                      }
+
+                      void focusFeatureAt(int rowIndex, int column) {
+                        if (rowIndex < 0 || rowIndex >= _navbarOrder.length) {
+                          return;
+                        }
+                        final targetId = _navbarOrder[rowIndex];
+                        final targetRow = 'feat-$targetId';
+                        final targetCount = leanback ? 4 : 2;
+                        final c = column.clamp(0, targetCount - 1);
+                        ShellTvFocusCoordinator.focusRowItem(
+                          'settings',
+                          targetRow,
+                          c,
+                        );
+                      }
+
                       row = TvKitRow(
                         tabId: 'settings',
                         rowId: rowId,
-                        sortOrder: index,
+                        // Keep clear of settings-categories (sortOrder 0).
+                        sortOrder: 100 + index,
                         itemCount: itemCount,
+                        onFocusUp: () {
+                          final column = currentColumn();
+                          if (index <= 0) {
+                            focusFeatureAt(0, column);
+                            return;
+                          }
+                          focusFeatureAt(index - 1, column);
+                        },
+                        onFocusDown: () {
+                          final column = currentColumn();
+                          if (index >= _navbarOrder.length - 1) {
+                            ShellTvFocusCoordinator.focusRowItem(
+                              'settings',
+                              'feat-settings',
+                              0,
+                            );
+                            return;
+                          }
+                          focusFeatureAt(index + 1, column);
+                        },
                         child: row,
                       );
                     }
@@ -829,51 +890,81 @@ class _SettingsNavigationPageBodyState
                 return ShellTvDisableLinearFocus(child: list);
               },
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.settings,
-                    color: ForjaShellColors.brandGreen,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Settings',
-                      style: TextStyle(
+            Builder(
+              builder: (context) {
+                Widget footer = Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.settings,
                         color: ForjaShellColors.brandGreen,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        size: 22,
                       ),
-                    ),
-                  ),
-                  _defaultNavStar(
-                    context,
-                    'settings',
-                    enabled: true,
-                    tv: tv,
-                    tvRowId: 'feat-settings',
-                    tvItemIndex: 0,
-                  ),
-                  Icon(
-                    Icons.lock_outline,
-                    color: ForjaShellColors.iconMuted.withValues(alpha: 0.5),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Always visible',
-                    style: TextStyle(
-                      color: ForjaShellColors.textSecondary.withValues(
-                        alpha: 0.7,
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          'Settings',
+                          style: TextStyle(
+                            color: ForjaShellColors.brandGreen,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      fontSize: 11,
-                    ),
+                      _defaultNavStar(
+                        context,
+                        'settings',
+                        enabled: true,
+                        tv: tv,
+                        tvRowId: 'feat-settings',
+                        tvItemIndex: 0,
+                      ),
+                      Icon(
+                        Icons.lock_outline,
+                        color: ForjaShellColors.iconMuted.withValues(alpha: 0.5),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Always visible',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary.withValues(
+                            alpha: 0.7,
+                          ),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+                if (!tv) return footer;
+                // Own row so reading-order cannot yank ↑/↓ onto this star mid-list.
+                return TvKitRow(
+                  tabId: 'settings',
+                  rowId: 'feat-settings',
+                  sortOrder: 100 + _navbarOrder.length,
+                  itemCount: 1,
+                  onFocusUp: () {
+                    if (_navbarOrder.isEmpty) return;
+                    final last = _navbarOrder.last;
+                    ShellTvFocusCoordinator.focusRowItem(
+                      'settings',
+                      'feat-$last',
+                      0,
+                    );
+                  },
+                  onFocusDown: () {
+                    ShellTvFocusCoordinator.focusRowItem(
+                      'settings',
+                      'feat-settings',
+                      0,
+                    );
+                  },
+                  child: footer,
+                );
+              },
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
 void main() {
   test('keeps full Xtream channel name (no callsign rewrite)', () {
@@ -164,4 +165,41 @@ void main() {
       'http://portal.example/live/u/p/1.m3u8',
     );
   });
+
+  test('iptvLiveSourceRunHoverProbe remembers skipped rows as ready', () async {
+    final probe = _FakeHealthProbe();
+    const portal = IptvPlaySource(
+      url: 'http://portal.example/live/u/p/1.m3u8',
+      label: 'Golf',
+      streamId: '42',
+      liveSourceKind: IptvLiveSourceKind.iptvXtream,
+    );
+    final ok = await iptvLiveSourceRunHoverProbe(portal, healthProbe: probe);
+    expect(ok, isTrue);
+    expect(probe.healthFor(iptvLiveSourceProbeKey(portal)), isTrue);
+    expect(probe.checkNowCalls, isEmpty);
+  });
+}
+
+class _FakeHealthProbe extends ChangeNotifier implements KitUrlHealthProbe {
+  final Map<String, bool> _health = {};
+  final List<(String, String)> checkNowCalls = [];
+
+  @override
+  bool? healthFor(String key) => _health[key];
+
+  @override
+  void remember(String key, bool ok) => _health[key] = ok;
+
+  @override
+  Future<bool> checkNow(String key, String url) async {
+    checkNowCalls.add((key, url));
+    _health[key] = true;
+    return true;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 }

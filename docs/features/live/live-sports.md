@@ -23,12 +23,13 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 
 ## What you can do
 
-- Browse a **list of matches** (time, teams, status) on the list pack — loading uses the same dense-row layout (not cards). Tap a match to open the **right panel** (~40% width on desktop/TV) with **Providers** and **Live TV**. On phone the panel is a near-full-width sheet.
+- Browse a **list of matches** (time, teams, status) on the list pack — while catalogs load you see **Loading live catalogs…** (and top-bar progress in place of **Refresh**); rows appear as each catalog finishes, not only after every site is done. Tap a match to open the **right panel** (~40% width on desktop/TV) with **Providers** and **Live TV**. On phone the panel is a near-full-width sheet.
 - Use **Catalog** / **Schedule** in the top bar. **Catalog** lists Forja Live packs plus each Stremio addon enabled for **Live** (Settings → Sources). Pick an addon name to browse that sport schedule. **Schedule** opens Status (Airing / Upcoming / Airing + upcoming) and Horizon (1h–24h) — same sheet as before. Returning to the tab or a filter you already loaded reuses the recent schedule cache; **Refresh** (and pull-to-refresh) forces a full reload.
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same panel as IPTV; needed for **Live TV** matching when Forja Sports is on).
 - Filter by **sport circles** in the category bar when more than one sport is in the list. **24/7** covers always-on channels. The bar stays visible while the schedule loads or refreshes (All until sports appear). On **Android TV**, OK from the nav rail lands D-pad on the sport circles (All); **↑** reaches **Catalog** / **Schedule** / **Refresh**; **←** / **→** walk those chips and **Portals**.
 - On the **Live Sports Cards** tab, browse a **landscape match card** grid and open **hero details** (Providers / Live TV in a two-column stream grid on desktop; shell navbar stays visible). Same streams as the side panel.
 - Tap a stream row to play in Forja’s **native** live player (never an embed WebView for Forja Live). If unlock fails, you get **No playable stream**.
+- In the player, use the bottom **swap** control to open **Source** (same floating menu chrome as Quality / Player). The playing row shows **Playing** + check; hover or D-pad focus on another row runs a status check (gray → green/red, or Checking… while probing) like the pre-play Providers panel.
 - Pull-to-refresh / shell refresh force-reloads the match list (same as **Refresh**). With **Merge matching events** on (hub **Setup** under Forja Packs), matching events across catalogs may collapse into one row.
 
 ## Tips

@@ -50,7 +50,7 @@ abstract final class IptvResolveStreamsAdapter {
         ? source.liveProviderBadge!.trim()
         : (source.pickerSubtitle ?? '').trim();
     final host = _embedHost(source);
-    final probeKey = _probeKey(source);
+    final probeKey = iptvLiveSourceProbeKey(source);
     return KitSourcesRow(
       id: '${tabId}_$index',
       title: source.pickerTitle,
@@ -64,26 +64,11 @@ abstract final class IptvResolveStreamsAdapter {
       probeHealthCache: healthProbe?.healthFor(probeKey),
       onHoverProbe: healthProbe == null || !iptvLiveSourceCanHoverProbe(source)
           ? null
-          : () async {
-              final cached = healthProbe.healthFor(probeKey);
-              if (cached != null) return cached;
-              final probeUrl = iptvLiveSourceProbeUrl(source);
-              if (probeUrl == null) {
-                final ok = iptvLiveSourceProbeSkipped(source);
-                healthProbe.remember(probeKey, ok);
-                return ok;
-              }
-              return healthProbe.checkNow(probeKey, probeUrl);
-            },
+          : () => iptvLiveSourceRunHoverProbe(
+                source,
+                healthProbe: healthProbe,
+              ),
     );
-  }
-
-  static String _probeKey(IptvPlaySource source) {
-    final url = source.url.trim();
-    if (url.isNotEmpty) return url;
-    final embed = (source.liveEngineEmbedUrl ?? '').trim();
-    if (embed.isNotEmpty) return embed;
-    return source.pickerTitle;
   }
 
   static String? _embedHost(IptvPlaySource source) {

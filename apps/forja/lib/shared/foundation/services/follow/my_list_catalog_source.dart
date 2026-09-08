@@ -222,6 +222,9 @@ class MyListCatalogPage implements KitListPage {
   bool get loadingRemote => loadingSimkl;
 
   @override
+  String? get loadingProgressLabel => null;
+
+  @override
   List<KitListEntry> entriesForKind(String? kind) {
     if (kind == null) {
       return [...films, ...tv, ...anime, ...asianDrama];

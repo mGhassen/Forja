@@ -38,6 +38,7 @@ import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
+import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
@@ -366,6 +367,26 @@ bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
     return true;
   }
   return iptvLiveEnginePlayUrlReady(src.url.trim());
+}
+
+/// Shared hover / focus probe for Providers tiles and in-player Source menu.
+/// Skipped rows (signed HLS, portal Live TV, embeds) remember green without
+/// a bare HTTP check — same contract as [IptvResolveStreamsAdapter].
+Future<bool> iptvLiveSourceRunHoverProbe(
+  IptvPlaySource src, {
+  required KitUrlHealthProbe healthProbe,
+}) async {
+  if (!iptvLiveSourceCanHoverProbe(src)) return true;
+  final key = iptvLiveSourceProbeKey(src);
+  final cached = healthProbe.healthFor(key);
+  if (cached != null) return cached;
+  final probeUrl = iptvLiveSourceProbeUrl(src);
+  if (probeUrl == null) {
+    final ok = iptvLiveSourceProbeSkipped(src);
+    healthProbe.remember(key, ok);
+    return ok;
+  }
+  return healthProbe.checkNow(key, probeUrl);
 }
 
 typedef IptvLiveEngineResolveSource =

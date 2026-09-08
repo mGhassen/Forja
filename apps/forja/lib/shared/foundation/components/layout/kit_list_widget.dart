@@ -318,9 +318,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         if (page.loadingRemote && page.totalCount == 0) {
           return _catalogLoadingBody(
             context,
-            label: page is MetaFeedCatalogPage
-                ? page.loadingProgressLabel
-                : null,
+            label: page.loadingProgressLabel,
           );
         }
         final wantKinds =
@@ -350,9 +348,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             context,
             kind: kind,
             loadingRemote: page.loadingRemote,
-            progressLabel: page is MetaFeedCatalogPage
-                ? page.loadingProgressLabel
-                : null,
+            progressLabel: page.loadingProgressLabel,
           );
         }
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
@@ -720,20 +716,16 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }
 
   Widget _loadingGrid(BuildContext context) {
-    if (widget.isDenseList) return _loadingDenseList(context);
+    if (widget.isDenseList || widget.isMatchCards) {
+      return _catalogLoadingBody(context);
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = widget.isMatchCards
-            ? _liveCardsGrid(
-                context,
-                constraints.maxWidth,
-                chromeTop: _hoistedTopBarInset(context),
-              )
-            : _homeGrid(
-                context,
-                constraints.maxWidth,
-                chromeTop: _hoistedTopBarInset(context),
-              );
+        final grid = _homeGrid(
+          context,
+          constraints.maxWidth,
+          chromeTop: _hoistedTopBarInset(context),
+        );
         return homeLoadingShimmer(
           GridView.builder(
             padding: EdgeInsets.fromLTRB(
@@ -742,19 +734,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
               grid.rightPad,
               ShellTokens.bodyHorizontalPadding,
             ),
-            gridDelegate: widget.isMatchCards
-                ? SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: grid.columns,
-                    mainAxisSpacing: grid.gap,
-                    crossAxisSpacing: grid.gap,
-                    mainAxisExtent: grid.cardH,
-                  )
-                : SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: grid.columns,
-                    mainAxisSpacing: grid.gap,
-                    crossAxisSpacing: grid.gap,
-                    childAspectRatio: grid.cardW / grid.cardH,
-                  ),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: grid.columns,
+              mainAxisSpacing: grid.gap,
+              crossAxisSpacing: grid.gap,
+              childAspectRatio: grid.cardW / grid.cardH,
+            ),
             itemCount: grid.columns * 2,
             itemBuilder: (context, _) => DecoratedBox(
               decoration: BoxDecoration(
@@ -770,55 +755,42 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     );
   }
 
-  Widget _loadingDenseList(BuildContext context) {
-    final leading = ShellTokens.compactChromeLeadingInset(context);
-    // Vary bar widths so shimmer rows don't look like one solid block.
-    const titleWidths = <double>[220, 180, 260, 200, 240, 170, 210, 190];
-    const metaWidths = <double>[120, 90, 140, 110, 100, 130, 95, 125];
-    return homeLoadingShimmer(
-      ListView.separated(
-        padding: EdgeInsets.fromLTRB(
-          leading,
-          4 + _hoistedTopBarInset(context),
-          ShellTokens.bodyHorizontalPadding,
-          shellTvKitScrollBottomGap(context),
-        ),
-        itemCount: titleWidths.length,
-        separatorBuilder: (_, _) => Divider(
-          height: 1,
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-        ),
-        itemBuilder: (context, index) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    homeTitleBarSkeleton(
-                      context,
-                      width: titleWidths[index % titleWidths.length],
-                      height: 14,
-                    ),
-                    const SizedBox(height: 6),
-                    homeTitleBarSkeleton(
-                      context,
-                      width: metaWidths[index % metaWidths.length],
-                      height: 12,
-                    ),
-                  ],
-                ),
+  /// Live schedule / cards — spinner + label (not My List empty copy).
+  Widget _catalogLoadingBody(BuildContext context, {String? label}) {
+    final text = (label ?? '').trim().isEmpty
+        ? 'Loading live catalogs…'
+        : label!.trim();
+    return Padding(
+      padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+            const SizedBox(height: 12),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _emptyState(BuildContext context, {String? kind}) {
+  Widget _emptyState(
+    BuildContext context, {
+    String? kind,
+    bool loadingRemote = false,
+    String? progressLabel,
+  }) {
+    if (loadingRemote) {
+      return _catalogLoadingBody(context, label: progressLabel);
+    }
     final filtered = kind != null && kind.isNotEmpty && kind != 'all';
     String? kindLabel;
     if (filtered) {
@@ -830,6 +802,17 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
       }
     }
+    final isLiveSchedule = widget.isDenseList || widget.isMatchCards;
+    final title = filtered && kindLabel != null
+        ? 'Nothing in $kindLabel'
+        : isLiveSchedule
+            ? 'No matches'
+            : 'Nothing in this list';
+    final subtitle = filtered
+        ? 'Tap a kind tab again to show everything'
+        : isLiveSchedule
+            ? 'Try Catalog → All, a wider Schedule window, or Refresh'
+            : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped';
     return Padding(
       padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
       child: Center(
@@ -839,15 +822,15 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.bookmark_border_rounded,
+                isLiveSchedule
+                    ? Icons.sports_rounded
+                    : Icons.bookmark_border_rounded,
                 size: 40,
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
               ),
               const SizedBox(height: 14),
               Text(
-                filtered && kindLabel != null
-                    ? 'Nothing in $kindLabel'
-                    : 'Nothing in this list',
+                title,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -856,9 +839,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
               ),
               const SizedBox(height: 6),
               Text(
-                filtered
-                    ? 'Tap a kind tab again to show everything'
-                    : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped',
+                subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,

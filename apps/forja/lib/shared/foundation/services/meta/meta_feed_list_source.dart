@@ -26,6 +26,7 @@ class MetaFeedCatalogPage implements KitListPage {
   final List<String> kindIds;
 
   /// Top-bar chip while catalogs scrape — e.g. `Loading ESPN… 2/10`.
+  @override
   final String? loadingProgressLabel;
 
   @override

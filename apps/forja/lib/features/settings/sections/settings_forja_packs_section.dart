@@ -125,122 +125,125 @@ class _SettingsForjaPacksSectionState
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (packs.isEmpty) ...[
+      // Settings category is ShellTvLinearFocusScope (↓ === →). This page is a
+      // 2D chrome (cards side-by-side, then Add pack / buttons / Update all) —
+      // opt out so Right ≠ Down. Pack rows already needed the same.
+      child: ShellTvDisableLinearFocus(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (packs.isEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+                child: Text(
+                  installError == null
+                      ? 'No packs installed. Paste a manifest URL below, or sign in to sync from your profile.'
+                      : 'Pack install failed: $installError',
+                  style: TextStyle(
+                    color: installError == null
+                        ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
+                        : const Color(0xFFF87171),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              if (installError != null) ...[
+                SettingsFilledButton(
+                  label: 'Retry install',
+                  icon: Icons.refresh_rounded,
+                  busy: _engineInstalling,
+                  onPressed: _retryOfficialEnginePack,
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
             Padding(
-              padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+              padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
               child: Text(
-                installError == null
-                    ? 'No packs installed. Paste a manifest URL below, or sign in to sync from your profile.'
-                    : 'Pack install failed: $installError',
+                'Each pack is a manifest.json URL. Forja downloads the manifest, '
+                'then every plugin script, before the pack is fully usable.',
                 style: TextStyle(
-                  color: installError == null
-                      ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
-                      : const Color(0xFFF87171),
-                  fontSize: 13,
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                  fontSize: 12,
                   height: 1.4,
                 ),
               ),
             ),
-            if (installError != null) ...[
-              SettingsFilledButton(
-                label: 'Retry install',
-                icon: Icons.refresh_rounded,
-                busy: _engineInstalling,
-                onPressed: _retryOfficialEnginePack,
-              ),
-              const SizedBox(height: 12),
-            ],
-          ],
-          Padding(
-            padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-            child: Text(
-              'Each pack is a manifest.json URL. Forja downloads the manifest, '
-              'then every plugin script, before the pack is fully usable.',
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                fontSize: 12,
-                height: 1.4,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
+              child: ForjaPackChoiceCards(
+                compact: true,
+                settingsTvFocus: true,
+                communitySubtitle: PlatformInfo.isAndroidTv
+                    ? 'Copy catalog URL for your phone'
+                    : 'Browse packs on the web',
+                onInstallOfficial: () => unawaited(_installOfficialBundle()),
+                onBrowseCommunity: () => unawaited(_browseCommunityPacks()),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
-            child: ForjaPackChoiceCards(
-              compact: true,
-              settingsTvFocus: true,
-              communitySubtitle: PlatformInfo.isAndroidTv
-                  ? 'Copy catalog URL for your phone'
-                  : 'Browse packs on the web',
-              onInstallOfficial: () => unawaited(_installOfficialBundle()),
-              onBrowseCommunity: () => unawaited(_browseCommunityPacks()),
+            SettingsTextField(
+              controller: _engineController,
+              label: 'Add pack',
+              hint: 'https://.../manifest.json',
+              onSubmitted: (_) => _installEnginePack(),
             ),
-          ),
-          SettingsTextField(
-            controller: _engineController,
-            label: 'Add pack',
-            hint: 'https://.../manifest.json',
-            onSubmitted: (_) => _installEnginePack(),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (downloadable.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (downloadable.isNotEmpty) ...[
+                  SettingsFilledButton(
+                    label: 'Download all',
+                    icon: Icons.download_rounded,
+                    secondary: true,
+                    busy: _engineInstalling,
+                    onPressed: _engineReloading || _engineUpdatingAll
+                        ? null
+                        : () =>
+                              unawaited(_downloadAllPendingPacks(downloadable)),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                if (reloadable.isNotEmpty) ...[
+                  SettingsFilledButton(
+                    label: 'Reload',
+                    icon: Icons.refresh_rounded,
+                    secondary: true,
+                    busy: _engineReloading,
+                    onPressed:
+                        _engineInstalling ||
+                            _engineReloading ||
+                            _engineUpdatingAll
+                        ? null
+                        : () => unawaited(_reloadAllEnginePacks(reloadable)),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 SettingsFilledButton(
-                  label: 'Download all',
-                  icon: Icons.download_rounded,
-                  secondary: true,
+                  label: 'Install',
+                  icon: Icons.add_rounded,
                   busy: _engineInstalling,
-                  onPressed: _engineReloading || _engineUpdatingAll
-                      ? null
-                      : () => unawaited(_downloadAllPendingPacks(downloadable)),
+                  onPressed: _engineReloading ? null : _installEnginePack,
                 ),
-                const SizedBox(width: 12),
               ],
-              if (reloadable.isNotEmpty) ...[
-                SettingsFilledButton(
-                  label: 'Reload',
-                  icon: Icons.refresh_rounded,
-                  secondary: true,
-                  busy: _engineReloading,
-                  onPressed:
-                      _engineInstalling ||
-                          _engineReloading ||
-                          _engineUpdatingAll
-                      ? null
-                      : () => unawaited(_reloadAllEnginePacks(reloadable)),
-                ),
-                const SizedBox(width: 12),
-              ],
-              SettingsFilledButton(
-                label: 'Install',
-                icon: Icons.add_rounded,
-                busy: _engineInstalling,
-                onPressed: _engineReloading ? null : _installEnginePack,
+            ),
+            if (packs.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              SettingsEnginePackUpdatesBar(
+                updateCount: packUpdates.count,
+                checking: packUpdates.checking,
+                updating: _engineUpdatingAll,
+                onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
+                onCheckAgain: () =>
+                    ref.read(enginePackUpdatesProvider.notifier).refresh(),
               ),
-            ],
-          ),
-          if (packs.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            SettingsEnginePackUpdatesBar(
-              updateCount: packUpdates.count,
-              checking: packUpdates.checking,
-              updating: _engineUpdatingAll,
-              onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
-              onCheckAgain: () =>
-                  ref.read(enginePackUpdatesProvider.notifier).refresh(),
-            ),
-            SettingsEngineMiniLabel(
-              downloadable.isNotEmpty && reloadable.isEmpty
-                  ? 'Pending downloads'
-                  : 'Installed packs',
-            ),
-            // Spatial focus: ↓ walks packs; → reaches enable / refresh / remove.
-            ShellTvDisableLinearFocus(
-              child: Column(
+              SettingsEngineMiniLabel(
+                downloadable.isNotEmpty && reloadable.isEmpty
+                    ? 'Pending downloads'
+                    : 'Installed packs',
+              ),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: _buildEnginePacksByKind(
                   packs,
@@ -248,9 +251,9 @@ class _SettingsForjaPacksSectionState
                   packUpdates: packUpdates,
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
