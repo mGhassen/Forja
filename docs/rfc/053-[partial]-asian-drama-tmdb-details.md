@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **2 / 2** acceptance (catalog Sources) |
-| **Current slice** | Catalog Sources link Play shipped — enrich/images smoke still open |
+| **Progress** | **4 / 4** components · **6 / 7** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **2 / 2** acceptance (catalog Sources) |
+| **Current slice** | More Like This kit open routes to TMDB plugin — enrich/images smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,6 +36,7 @@
 | 4 | R53-A04 | Hub hero synopsis enrich uses the same matcher (overview only) | ✅ |
 | 5 | R53-A05 | More Like This opens Home/Search-style TMDB details (`AppRouter.openDetails`) | ✅ |
 | 6 | R53-A06 | Device smoke: open a known K-drama details → cast row visible when TMDB match succeeds | ⬜ |
+| 7 | R53-A13 | Kit path: TMDB `open.surface` More Like This resolves to TMDB catalog plugin (not `kisskh-hub` + TMDB id) | ✅ |
 
 ---
 

@@ -58,9 +58,11 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
 /// Uses [OverlayEntry] - never touches the shell route stack.
 class PlayerPopupPanel {
   static const _bottomControlsZoneHeight = 120.0;
-  /// Gap between panel bottom and the transport button when the seek bar sits
-  /// between them — keep tight so menus read next to the chrome, not mid-frame.
-  static const _progressBarClearance = 36.0;
+  /// Lift above the seekbar when the panel anchors to a transport button under it.
+  /// Desktop IPTV chrome (seek row + padded round icons) needs ~56; leanback stays
+  /// tighter so menus sit closer to the ATV control strip.
+  static const _progressBarClearance = 56.0;
+  static const _tvProgressBarClearance = 36.0;
   static const _tvMaxWidth = 280.0;
   static const _tvMaxHeight = 340.0;
   static const _tvFallbackMargin = EdgeInsets.only(left: 16, bottom: 72);
@@ -212,6 +214,9 @@ class PlayerPopupPanel {
                       overlaySize: overlaySize,
                       anchorRect: anchorRect,
                       screenPadding: screenPadding,
+                      clearance: leanback
+                          ? _tvProgressBarClearance
+                          : _progressBarClearance,
                     );
 
               final panel = Material(
@@ -330,12 +335,11 @@ class PlayerPopupPanel {
     required Size overlaySize,
     required Rect anchorRect,
     required EdgeInsets screenPadding,
+    required double clearance,
   }) {
     final anchorFromBottom =
         overlaySize.height - anchorRect.bottom - screenPadding.bottom;
-    return anchorFromBottom < _bottomControlsZoneHeight
-        ? _progressBarClearance
-        : 0.0;
+    return anchorFromBottom < _bottomControlsZoneHeight ? clearance : 0.0;
   }
 
   static double _anchoredMaxHeight({

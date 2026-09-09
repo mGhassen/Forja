@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/services/registry/meta_surface_open.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from
@@ -25,6 +26,26 @@ bool _openUsesFeatureDetailsRoute(MetaOpen open) {
   return route != null && route.isNotEmpty;
 }
 
+/// Engine type token for resolving the TMDB catalog plugin from a meta row.
+String tmdbCatalogTypeToken(MetaItem item) {
+  final media = (item.tmdbMediaType ?? item.type).trim().toLowerCase();
+  return media == 'tv' ? 'tv' : 'movie';
+}
+
+/// When [item.open.surface] is `tmdb`, prefer the TMDB catalog plugin even if
+/// the caller still passes a browse hub id (Asian Drama More Like This, etc.).
+Future<String> resolveOpenPluginId({
+  required String pluginId,
+  required MetaItem item,
+}) async {
+  final surface = item.open?.surface.trim() ?? '';
+  if (surface != 'tmdb') return pluginId;
+  final resolved =
+      await PluginNavRegistry.pluginIdForEngineType(tmdbCatalogTypeToken(item));
+  if (resolved != null && resolved.isNotEmpty) return resolved;
+  return pluginId;
+}
+
 /// Open details from hub meta already on the shell (rail / hero / search).
 Future<void> openMetaItem(
   BuildContext context, {
@@ -36,7 +57,9 @@ Future<void> openMetaItem(
   Duration? startPosition,
   bool autoPlay = false,
 }) async {
-  final key = '$pluginId\x1f${item.id}';
+  final effectivePluginId =
+      await resolveOpenPluginId(pluginId: pluginId, item: item);
+  final key = '$effectivePluginId\x1f${item.id}';
   if (!_metaOpenInFlight.add(key)) return;
   try {
     if (!context.mounted) return;
@@ -57,7 +80,7 @@ Future<void> openMetaItem(
     }
     await openKitDetails(
       context,
-      pluginId: pluginId,
+      pluginId: effectivePluginId,
       item: item,
       shellTabId: shellTabId,
       initialSeason: initialSeason,

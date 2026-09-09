@@ -72,6 +72,23 @@ void main() {
       expect(meta.open?.surface, 'tmdb');
       expect(meta.ids['tmdb'], '603');
       expect(meta.ids['imdb'], 'tt0133093');
+      expect(tmdbCatalogTypeToken(meta), 'movie');
+    });
+
+    test('tmdbCatalogTypeToken prefers tv media type', () {
+      final meta = MetaItem(
+        id: 'tmdb:tv:1396',
+        type: 'tv',
+        name: 'Breaking Bad',
+        tmdbMediaType: 'tv',
+        ids: const {'tmdb': '1396'},
+        open: const MetaOpen(
+          surface: 'tmdb',
+          id: '1396',
+          extras: {'mediaType': 'tv'},
+        ),
+      );
+      expect(tmdbCatalogTypeToken(meta), 'tv');
     });
   });
 }
