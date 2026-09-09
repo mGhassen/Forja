@@ -30,8 +30,8 @@ abstract final class PackAssets {
     return null;
   }
 
-  /// True when [ref] is a pack-owned nav icon (relative path or http(s)).
-  static bool isPackNavIcon(String? ref) {
+  /// True when [ref] is a pack-owned asset (relative path or http(s)).
+  static bool isPackAsset(String? ref) {
     final s = ref?.trim() ?? '';
     if (s.isEmpty) return false;
     if (s.startsWith('forja://')) return false;
@@ -43,30 +43,36 @@ abstract final class PackAssets {
   }
 
   /// Pack-relative path only (not absolute http(s) / file).
-  static bool isPackRelativeNavIcon(String? ref) {
+  static bool isPackRelativeAsset(String? ref) {
     final s = ref?.trim() ?? '';
-    if (!isPackNavIcon(s)) return false;
+    if (!isPackAsset(s)) return false;
     if (s.startsWith('http://') || s.startsWith('https://')) return false;
     if (s.startsWith('file://')) return false;
     return true;
   }
 
-  /// Resolve [nav.icon] to a display path for [NavDestination.iconAsset].
+  /// Alias — hub nav icons use the same rules as other pack assets.
+  static bool isPackNavIcon(String? ref) => isPackAsset(ref);
+
+  /// Alias — pack-relative nav icon / logo path.
+  static bool isPackRelativeNavIcon(String? ref) => isPackRelativeAsset(ref);
+
+  /// Resolve a pack asset ([nav.icon], `logos/…`, …) for display.
   ///
   /// Prefers an on-disk pack file (checkout or [PluginScriptDiskStore]) so the
-  /// rail does not depend on a live CDN fetch. Falls back to http(s) when the
-  /// icon is not cached yet.
+  /// UI does not depend on a live CDN fetch. Falls back to http(s) when the
+  /// file is not cached yet.
   ///
-  /// Returns an absolute file path or http(s) URL. Null → Material default.
-  static Future<String?> resolveNavIconDisplay({
+  /// Returns an absolute file path or http(s) URL. Null → caller fallback.
+  static Future<String?> resolvePackAssetDisplay({
     required String? packSourceUrl,
-    required String? icon,
+    required String? relative,
   }) async {
-    final raw = icon?.trim() ?? '';
+    final raw = relative?.trim() ?? '';
     if (raw.isEmpty) return null;
     if (raw.startsWith('forja://')) return null;
     if (raw.startsWith('assets/')) return null;
-    if (!isPackNavIcon(raw)) return null;
+    if (!isPackAsset(raw)) return null;
 
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
       return raw;
@@ -84,7 +90,7 @@ abstract final class PackAssets {
     if (base.isNotEmpty &&
         !PluginRegistry.isLegacyAssetPack(base) &&
         !PluginRegistry.isLocalManifestUrl(base) &&
-        isPackRelativeNavIcon(raw)) {
+        isPackRelativeAsset(raw)) {
       final disk = await PluginScriptDiskStore.packRelativeFile(
         sourceUrl: base,
         relative: raw,
@@ -97,4 +103,11 @@ abstract final class PackAssets {
     }
     return null;
   }
+
+  /// Alias for [resolvePackAssetDisplay] (hub nav icons).
+  static Future<String?> resolveNavIconDisplay({
+    required String? packSourceUrl,
+    required String? icon,
+  }) =>
+      resolvePackAssetDisplay(packSourceUrl: packSourceUrl, relative: icon);
 }

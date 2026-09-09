@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
@@ -7,7 +8,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 
 /// Pack-owned logo on a contrasting tile.
-class VerticalFilterLogoMark extends StatelessWidget {
+class VerticalFilterLogoMark extends StatefulWidget {
   const VerticalFilterLogoMark({
     super.key,
     required this.option,
@@ -28,46 +29,121 @@ class VerticalFilterLogoMark extends StatelessWidget {
   final bool showTile;
 
   @override
-  Widget build(BuildContext context) {
-    final radius =
-        borderRadius ??
-        BorderRadius.circular(ShellTokens.shellProviderCardRadius);
-    final pad = (width < height ? width : height) * (inset ?? option.inset);
-    final url = PackAssets.resolveUrl(
-      packSourceUrl: packSourceUrl,
-      relative: option.logo,
-    );
-    Widget logo = _PackSvg(url: url, fit: BoxFit.contain);
-    if (option.forceWhiteLogo) {
-      logo = ColorFiltered(
-        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-        child: logo,
+  State<VerticalFilterLogoMark> createState() => _VerticalFilterLogoMarkState();
+}
+
+class _VerticalFilterLogoMarkState extends State<VerticalFilterLogoMark> {
+  late Future<String?> _resolved;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolved = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant VerticalFilterLogoMark oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.option.logo != widget.option.logo ||
+        oldWidget.packSourceUrl != widget.packSourceUrl) {
+      _resolved = _load();
+    }
+  }
+
+  Future<String?> _load() async {
+    final rel = widget.option.logo.trim();
+    final base = widget.packSourceUrl.trim();
+    if (rel.isEmpty) return null;
+    if (base.isNotEmpty && PackAssets.isPackRelativeAsset(rel)) {
+      await PluginRegistry.instance.ensureRemotePackRelativeFile(
+        sourceUrl: base,
+        relative: rel,
       );
     }
-    logo = Padding(padding: EdgeInsets.all(pad), child: logo);
-    return ClipRRect(
-      borderRadius: radius,
-      child: ColoredBox(
-        color: showTile ? option.tileColor : Colors.transparent,
-        child: SizedBox(width: width, height: height, child: logo),
-      ),
+    return PackAssets.resolvePackAssetDisplay(
+      packSourceUrl: base.isEmpty ? null : base,
+      relative: rel,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius =
+        widget.borderRadius ??
+        BorderRadius.circular(ShellTokens.shellProviderCardRadius);
+    final pad = (widget.width < widget.height ? widget.width : widget.height) *
+        (widget.inset ?? widget.option.inset);
+    return FutureBuilder<String?>(
+      future: _resolved,
+      builder: (context, snap) {
+        final url = snap.data?.trim() ?? '';
+        Widget logo = url.isEmpty
+            ? const SizedBox.shrink()
+            : _PackSvg(url: url, fit: BoxFit.contain);
+        if (widget.option.forceWhiteLogo) {
+          logo = ColorFiltered(
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            child: logo,
+          );
+        }
+        logo = Padding(padding: EdgeInsets.all(pad), child: logo);
+        return ClipRRect(
+          borderRadius: radius,
+          child: ColoredBox(
+            color: widget.showTile ? widget.option.tileColor : Colors.transparent,
+            child: SizedBox(
+              width: widget.width,
+              height: widget.height,
+              child: logo,
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _PackSvg extends StatelessWidget {
+class _PackSvg extends StatefulWidget {
   const _PackSvg({required this.url, required this.fit});
 
   final String url;
   final BoxFit fit;
 
   @override
+  State<_PackSvg> createState() => _PackSvgState();
+}
+
+class _PackSvgState extends State<_PackSvg> with WidgetsBindingObserver {
+  int _networkEpoch = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final url = widget.url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+    setState(() => _networkEpoch++);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final url = widget.url;
     if (url.isEmpty) return const SizedBox.shrink();
     if (url.startsWith('assets/')) {
       return SvgPicture.asset(
         url,
-        fit: fit,
+        fit: widget.fit,
         alignment: Alignment.center,
         allowDrawingOutsideViewBox: false,
       );
@@ -76,7 +152,7 @@ class _PackSvg extends StatelessWidget {
     if (file != null) {
       return SvgPicture.file(
         file,
-        fit: fit,
+        fit: widget.fit,
         alignment: Alignment.center,
         allowDrawingOutsideViewBox: false,
       );
@@ -84,7 +160,8 @@ class _PackSvg extends StatelessWidget {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return SvgPicture.network(
         url,
-        fit: fit,
+        key: ValueKey('vf-svg-$url-$_networkEpoch'),
+        fit: widget.fit,
         alignment: Alignment.center,
         allowDrawingOutsideViewBox: false,
       );

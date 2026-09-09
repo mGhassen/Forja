@@ -480,7 +480,7 @@ abstract final class PluginNavRegistry {
       );
       // Cache pack-relative icons on disk so Image.network CDN fails do not
       // stick as Material grid glyphs after a transient offline blip.
-      if (PackAssets.isPackRelativeNavIcon(nav.icon)) {
+      if (PackAssets.isPackRelativeAsset(nav.icon)) {
         await PluginRegistry.instance.ensureRemotePackRelativeFile(
           sourceUrl: pack.sourceUrl,
           relative: nav.icon!,

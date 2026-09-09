@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **3 / 3** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **4 / 4** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
 | **Current slice** | Disk-cached hub nav icons (offline rail); A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -158,13 +158,14 @@ Supersedes the host-PNG reading of R70-A39 / R70-A40. Hub glyphs live in packs; 
 
 ## Acceptance (disk-cached hub nav icons)
 
-Hub `icons/nav.png` must survive offline — no sticky CDN `Image.network` grid fallback.
+Hub `icons/nav.png` and Home `logos/*.svg` must survive offline — no sticky CDN network fallback.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R70-A77 | Hub pack `bundle` includes `icons/nav.png`; install always fetches pack-relative `nav.icon` | ✅ |
-| 2 | R70-A78 | `PackAssets.resolveNavIconDisplay` prefers [PluginScriptDiskStore] over CDN URL | ✅ |
+| 2 | R70-A78 | `PackAssets.resolvePackAssetDisplay` prefers [PluginScriptDiskStore] over CDN URL | ✅ |
 | 3 | R70-A79 | `PluginNavRegistry.refresh` ensures missing nav icons on disk; network glyphs remount on app resume | ✅ |
+| 4 | R70-A80 | Home `bundle` includes `logos/*.svg`; vertical filter marks resolve/ensure from disk like nav icons | ✅ |
 
 ---
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/foundation/lib/pack_assets.dart';
 
 import '../../protocol/protocol.dart';
 
@@ -145,7 +147,24 @@ abstract final class VerticalFiltersRegistry {
     _specs[tabId] = spec;
     menuVisibleFor(tabId);
     selectedIdFor(tabId);
+    _ensurePackLogos(spec);
     _bump();
+  }
+
+  /// Pull pack-relative provider logos onto disk (same path as hub nav icons).
+  static void _ensurePackLogos(VerticalFiltersSpec spec) {
+    final base = spec.packSourceUrl.trim();
+    if (base.isEmpty) return;
+    for (final o in spec.options) {
+      final logo = o.logo.trim();
+      if (!PackAssets.isPackRelativeAsset(logo)) continue;
+      unawaited(
+        PluginRegistry.instance.ensureRemotePackRelativeFile(
+          sourceUrl: base,
+          relative: logo,
+        ),
+      );
+    }
   }
 
   static void unregister(String tabId) {

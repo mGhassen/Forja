@@ -6,6 +6,10 @@ set -euo pipefail
 # Usage:
 #   ./scripts/release_local.sh                         # interactive step wizard
 #   ./scripts/release_local.sh bump [patch|minor|major]
+#   ./scripts/release_local.sh bump-engine [patch|minor|major]
+#                                    Rust workspace + packages/rust + versioning rule
+#                                    (no commit/tag; also runs during bump / New version
+#                                    unless FORJA_SKIP_ENGINE_BUMP=1)
 #   ./scripts/release_local.sh tag v1.2.404             # build + publish selected platforms
 #   ./scripts/release_local.sh backfill [--dry-run]     # tag untagged commits (push)
 #   ./scripts/release_local.sh build v1.2.404           # macOS DMG (host arch)
@@ -32,6 +36,7 @@ set -euo pipefail
 #   FORJA_SYNC_REPO=forjahq/forja    org mirror; force-push after origin (branch + release tag)
 #   FORJA_SYNC_SKIP=1                skip org mirror push / pull
 #   NONINTERACTIVE=1                 skip confirm / platform prompts
+#   FORJA_SKIP_ENGINE_BUMP=1         skip Rust engine bump during app bump / New version
 #   FORJA_HQ_MANIFEST_SOURCE=github|local
 #                                    Official pack dart-defines: GitHub Actions
 #                                    variables (same as CI) or values already in
@@ -1823,6 +1828,117 @@ cmd_tag() {
   ok "Done: $tag"
 }
 
+# Bump Rust engine semver (independent of app). Writes:
+#   crates/Cargo.toml [workspace.package] version
+#   packages/rust/pubspec.yaml
+#   .cursor/rules/rust-engine-versioning.mdc  (**Current engine version:**)
+# Prints new X.Y.Z to stdout. Does not commit.
+bump_engine_version() {
+  local bump="${1:-patch}"
+  case "$bump" in
+    patch|minor|major) ;;
+    *) die "engine bump must be patch, minor, or major" ;;
+  esac
+
+  python3 - "$ROOT" "$bump" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+bump = sys.argv[2]
+cargo = root / "crates" / "Cargo.toml"
+pubspec = root / "packages" / "rust" / "pubspec.yaml"
+rule = root / ".cursor" / "rules" / "rust-engine-versioning.mdc"
+
+cargo_text = cargo.read_text(encoding="utf-8")
+wp = re.search(r"(?ms)^\[workspace\.package\]\n(.*?)(?=\n\[|\Z)", cargo_text)
+if not wp:
+    raise SystemExit("bump_engine: [workspace.package] missing in crates/Cargo.toml")
+vm = re.search(r'(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', wp.group(1))
+if not vm:
+    raise SystemExit("bump_engine: version missing under [workspace.package]")
+old = vm.group(1)
+
+major, minor, patch = (int(x) for x in old.split("."))
+if bump == "patch":
+    patch += 1
+elif bump == "minor":
+    minor += 1
+    patch = 0
+else:
+    major += 1
+    minor = 0
+    patch = 0
+new = f"{major}.{minor}.{patch}"
+
+def replace_workspace_version(text: str, new_ver: str) -> str:
+    def sub_block(match: re.Match) -> str:
+        block = match.group(0)
+        return re.sub(
+            r'(?m)^(version\s*=\s*")[0-9]+\.[0-9]+\.[0-9]+(")',
+            rf"\g<1>{new_ver}\2",
+            block,
+            count=1,
+        )
+
+    out, n = re.subn(
+        r"(?ms)^\[workspace\.package\]\n.*?(?=\n\[|\Z)",
+        sub_block,
+        text,
+        count=1,
+    )
+    if n != 1:
+        raise SystemExit("bump_engine: failed to rewrite crates/Cargo.toml version")
+    return out
+
+cargo.write_text(replace_workspace_version(cargo_text, new), encoding="utf-8")
+
+pub = pubspec.read_text(encoding="utf-8")
+pub2, n = re.subn(
+    r"(?m)^(version:\s*)[0-9]+\.[0-9]+\.[0-9]+(\s*)$",
+    rf"\g<1>{new}\2",
+    pub,
+    count=1,
+)
+if n != 1:
+    raise SystemExit("bump_engine: failed to rewrite packages/rust/pubspec.yaml version")
+pubspec.write_text(pub2, encoding="utf-8")
+
+if rule.is_file():
+    rule_text = rule.read_text(encoding="utf-8")
+    rule2, n = re.subn(
+        r"(?m)^(\*\*Current engine version:\*\*\s*`)[0-9]+\.[0-9]+\.[0-9]+(`)",
+        rf"\g<1>{new}\2",
+        rule_text,
+        count=1,
+    )
+    if n != 1:
+        raise SystemExit(
+            "bump_engine: failed to rewrite Current engine version in rust-engine-versioning.mdc"
+        )
+    next_patch = f"{major}.{minor}.{patch + 1}"
+    rule2 = re.sub(
+        r"(?m)^(\|\s*\*\*patch\*\*\s*\(`)[0-9]+\.[0-9]+\.[0-9]+(\s*→\s*`)[0-9]+\.[0-9]+\.[0-9]+(`\))",
+        rf"\g<1>{new}\2{next_patch}\3",
+        rule2,
+        count=1,
+    )
+    rule.write_text(rule2, encoding="utf-8")
+
+print(f"bump_engine: {old} → {new} ({bump})", file=sys.stderr)
+print(new)
+PY
+}
+
+cmd_bump_engine() {
+  local bump="${1:-patch}" engine_ver
+  engine_ver="$(bump_engine_version "$bump")"
+  info "Rust engine → ${engine_ver} (Cargo + packages/rust + versioning rule)"
+  ok "Engine bump done — commit these files with your engine change (no app tag)."
+  printf '%s\n' "$engine_ver"
+}
+
 cmd_bump() {
   local bump="${1:-patch}"
   case "$bump" in
@@ -1837,20 +1953,32 @@ cmd_bump() {
 
   require_clean_tree
 
-  local ver
+  local ver engine_ver=""
   ver="$(./scripts/bump_version.sh "$bump")"
-  info "Bumped pubspec → $ver (platforms: $(platforms))"
+  if [[ "${FORJA_SKIP_ENGINE_BUMP:-}" != "1" ]]; then
+    engine_ver="$(bump_engine_version "$bump")"
+    info "Bumped pubspec → $ver · Rust engine → $engine_ver (platforms: $(platforms))"
+  else
+    info "Bumped pubspec → $ver (platforms: $(platforms); engine bump skipped)"
+  fi
   confirm "Freeze changelog, commit, tag v${ver}, push, then build + publish?" || {
     git checkout -- apps/forja/pubspec.yaml \
       apps/forja/lib/shared/services/update/app_version.dart \
       installer/windows/setup.iss \
-      docs/backlog/README.md
+      docs/backlog/README.md \
+      crates/Cargo.toml \
+      packages/rust/pubspec.yaml \
+      .cursor/rules/rust-engine-versioning.mdc 2>/dev/null || true
     die "aborted (version files restored)"
   }
 
   ./scripts/changelog_freeze.sh "$ver"
   git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/update/app_version.dart \
     installer/windows/setup.iss docs/changelog docs/backlog/README.md
+  if [[ -n "$engine_ver" ]]; then
+    git add crates/Cargo.toml packages/rust/pubspec.yaml \
+      .cursor/rules/rust-engine-versioning.mdc
+  fi
   git commit -m "chore: release v${ver}"
   if git rev-parse "v${ver}" >/dev/null 2>&1; then
     die "Tag v${ver} already exists (often a stale tag from another era). Delete or retarget it, then re-run."
@@ -1867,7 +1995,7 @@ cmd_bump() {
   build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
-  ok "Done: v${ver}"
+  ok "Done: v${ver}${engine_ver:+ · engine ${engine_ver}}"
 }
 
 wizard_release_tag() {
@@ -1962,7 +2090,7 @@ wizard_new_version() {
     fi
 
     do_sync=1
-    if ui_confirm_screen 4 7 "Sync to ${SYNC_REPO} after origin push?" \
+    if ui_confirm_screen 4 8 "Sync to ${SYNC_REPO} after origin push?" \
       "Pushes this branch + new tag from mGhassen/Forja → ${SYNC_REPO}." 1; then
       do_sync=1
     else
@@ -1972,13 +2100,26 @@ wizard_new_version() {
       do_sync=0
     fi
 
+    if ui_confirm_screen 5 8 "Also bump Rust engine (${bump})?" \
+      "Updates crates/Cargo.toml, packages/rust/pubspec.yaml, rust-engine-versioning.mdc.
+Skip if this release has no engine change (FORJA_SKIP_ENGINE_BUMP)." 1; then
+      unset FORJA_SKIP_ENGINE_BUMP || true
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ((rc == 3)) && ui_abort
+      FORJA_SKIP_ENGINE_BUMP=1
+    fi
+    export FORJA_SKIP_ENGINE_BUMP
+
     detail="Bump:      ${bump}
+Engine:    $([[ "${FORJA_SKIP_ENGINE_BUMP:-}" == "1" ]] && echo skip || echo "same bump → crates + packages/rust")
 Platforms: $(platforms)
 Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
 Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
 Action:    freeze changelog → commit → tag → push → build + publish
 Note:      Android TV selected → Downloader codes prompted after R2 upload"
-    if ui_confirm_screen 5 7 "Confirm new version" "$detail" 1; then
+    if ui_confirm_screen 6 8 "Confirm new version" "$detail" 1; then
       :
     else
       rc=$?
@@ -1989,9 +2130,9 @@ Note:      Android TV selected → Downloader codes prompted after R2 upload"
     ui_raw_off
     ui_clear
     if ((do_backfill)); then
-      if ui_confirm_screen 6 7 "Dry-run backfill first?" "" 1; then
+      if ui_confirm_screen 7 8 "Dry-run backfill first?" "" 1; then
         cmd_backfill --dry-run
-        ui_confirm_screen 6 7 "Looks good — run real backfill (push tags)?" "" 1 || ui_abort
+        ui_confirm_screen 7 8 "Looks good — run real backfill (push tags)?" "" 1 || ui_abort
       else
         rc=$?
         ((rc == 3)) && ui_abort
@@ -2171,6 +2312,7 @@ wizard_tools() {
     "build_android_tv|Build Android TV APKs (per selected ABI)" \
     "publish|Publish dist/…" \
     "publish_r2|Upload dist/ → R2 only (retry)" \
+    "bump_engine|Bump Rust engine version (Cargo + packages/rust)" \
     "downloader_codes|Set Android TV Downloader codes (patch R2 manifest)" \
     "clean_gh_assets|Clean old GitHub release assets…" \
     "setup_windows|Setup Windows VM")" || {
@@ -2183,6 +2325,20 @@ wizard_tools() {
       ui_raw_off
       ui_clear
       cmd_setup_windows
+      ;;
+    bump_engine)
+      local engine_bump
+      engine_bump="$(ui_choose 2 2 "Rust engine bump" -- \
+        "patch|patch — bugfix / existing FFI" \
+        "minor|minor — new FFI / capability" \
+        "major|major — breaking FFI")" || {
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      }
+      ui_raw_off
+      ui_clear
+      cmd_bump_engine "$engine_bump"
       ;;
     downloader_codes)
       tag="$(pick_tag_interactive)" || {
@@ -2476,6 +2632,7 @@ main() {
   case "$cmd" in
     "") interactive_menu ;;
     bump) cmd_bump "${1:-patch}" ;;
+    bump-engine) cmd_bump_engine "${1:-patch}" ;;
     tag) cmd_tag "${1:?usage: release_local.sh tag vX.Y.Z}" ;;
     backfill) cmd_backfill "${1:-}" ;;
     build) cmd_build "${1:?usage: release_local.sh build vX.Y.Z}" ;;
@@ -2488,7 +2645,7 @@ main() {
     sync-from) cmd_sync_from "${1:-}" ;;
     clean-gh-assets) cmd_clean_gh_assets "$@" ;;
     -h|--help)
-      sed -n '3,38p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,55p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"

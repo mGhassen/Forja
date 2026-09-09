@@ -895,6 +895,33 @@ void main() {
       expect(File(resolved).existsSync(), isTrue);
     });
 
+    test('resolvePackAssetDisplay prefers disk for Home provider logos', () async {
+      final root = Directory.systemTemp.createTempSync('forja-home-logo-');
+      addTearDown(() {
+        PluginScriptDiskStore.resetForTest();
+        try {
+          root.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      PluginScriptDiskStore.debugRoot = root;
+      const sourceUrl =
+          'https://cdn.example/plugins/hubs/home/manifest.json';
+      final bytes =
+          File('../../plugins/hubs/home/logos/netflix.svg').readAsBytesSync();
+      await PluginScriptDiskStore.savePackRelativeFile(
+        sourceUrl: sourceUrl,
+        relative: 'logos/netflix.svg',
+        bytes: bytes,
+      );
+      final resolved = await PackAssets.resolvePackAssetDisplay(
+        packSourceUrl: sourceUrl,
+        relative: 'logos/netflix.svg',
+      );
+      expect(resolved, isNotNull);
+      expect(resolved!.startsWith('http'), isFalse);
+      expect(File(resolved).existsSync(), isTrue);
+    });
+
     test('forjaHqSlot extracts arbitrary hub path segment from manifest url', () {
       expect(
         PluginRegistry.forjaHqSlot(
