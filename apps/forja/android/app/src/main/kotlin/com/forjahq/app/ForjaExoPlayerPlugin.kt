@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -33,6 +34,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LivePlaybackSpeedControl
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -131,6 +134,14 @@ class ExoPlayerHost(
      * sample so HD keeps 0.97–1.03 (issue 138).
      */
     private var liveSpeedDisabledForUhd: Boolean? = null
+
+    /** Media3 BandwidthMeter estimate (bps). Often the only rate on IPTV TS. */
+    private var bandwidthEstimateBps: Int = 0
+    /** EWMA from DATA_TYPE_MEDIA load completions (bps). */
+    private var measuredMediaBitrateBps: Int = 0
+    private var loadWindowBytes: Long = 0L
+    private var loadWindowStartMs: Long = 0L
+    private var droppedFramesAccum: Int = 0
 
     /**
      * Live edge catch-up. Returns 1.0 on Android TV (periodic rebuffer cycle)
@@ -277,9 +288,8 @@ class ExoPlayerHost(
     }
 
     /**
-     * Frame-health telemetry to `logcat -s ForjaExo`. Needed because
-     * `setEnableDecoderFallback(true)` can silently swap in a software decoder,
-     * which looks identical to a compositing stutter from the couch (issue 108).
+     * Frame-health + stream-stats telemetry. Decoder logs stay in
+     * `logcat -s ForjaExo` (issue 108). Bitrate/drop counters feed Dart stats.
      */
     private val frameHealthListener = object : AnalyticsListener {
         override fun onVideoDecoderInitialized(
@@ -308,8 +318,51 @@ class ExoPlayerHost(
             droppedFrames: Int,
             elapsedMs: Long,
         ) {
+            droppedFramesAccum += droppedFrames.coerceAtLeast(0)
             Log.w("ForjaExo", "dropped $droppedFrames frames in ${elapsedMs}ms")
         }
+
+        override fun onBandwidthEstimate(
+            eventTime: AnalyticsListener.EventTime,
+            totalLoadTimeMs: Int,
+            totalBytesLoaded: Long,
+            bitrateEstimate: Long,
+        ) {
+            if (bitrateEstimate > 0) {
+                bandwidthEstimateBps = bitrateEstimate.toInt().coerceAtLeast(0)
+            }
+        }
+
+        override fun onLoadCompleted(
+            eventTime: AnalyticsListener.EventTime,
+            loadEventInfo: LoadEventInfo,
+            mediaLoadData: MediaLoadData,
+        ) {
+            if (mediaLoadData.dataType != C.DATA_TYPE_MEDIA) return
+            val bytes = loadEventInfo.bytesLoaded
+            if (bytes <= 0L) return
+            val now = SystemClock.elapsedRealtime()
+            if (loadWindowStartMs == 0L) loadWindowStartMs = now
+            loadWindowBytes += bytes
+            val elapsed = now - loadWindowStartMs
+            if (elapsed >= 2_000L && loadWindowBytes > 0L) {
+                measuredMediaBitrateBps =
+                    ((loadWindowBytes * 8L * 1000L) / elapsed).toInt().coerceAtLeast(0)
+                // Slide the window so a long live session stays responsive.
+                if (elapsed >= 5_000L) {
+                    loadWindowBytes /= 2
+                    loadWindowStartMs = now - (elapsed / 2)
+                }
+            }
+        }
+    }
+
+    private fun resetPlaybackStats() {
+        bandwidthEstimateBps = 0
+        measuredMediaBitrateBps = 0
+        loadWindowBytes = 0L
+        loadWindowStartMs = 0L
+        droppedFramesAccum = 0
     }
 
     fun attachView(view: PlayerView) {
@@ -361,6 +414,7 @@ class ExoPlayerHost(
         lastOptions = options
         lastHeaders = headers
         lastCached = cached
+        resetPlaybackStats()
         if (canReuse) {
             applyLiveTrackCaps(existing!!, options)
             existing.setMediaItem(
@@ -755,7 +809,52 @@ class ExoPlayerHost(
             "videoAuto" to videoAuto,
             "textOff" to !p.currentTracks.isTypeSelected(C.TRACK_TYPE_TEXT),
             "rate" to p.playbackParameters.speed.toDouble(),
+            "playback" to playbackStats(p),
         )
+    }
+
+    /**
+     * Live / declared codecs + bitrates for Stream stats.
+     * Prefer Format.bitrate; fall back to measured media / bandwidth for IPTV
+     * progressive TS where Media3 leaves Format.NO_VALUE.
+     */
+    private fun playbackStats(p: ExoPlayer): Map<String, Any?> {
+        val video = p.videoFormat
+        val audio = p.audioFormat
+        val declaredVideo = positiveBitrate(video?.bitrate)
+        val declaredAudio = positiveBitrate(audio?.bitrate)
+        val measured = when {
+            measuredMediaBitrateBps > 0 -> measuredMediaBitrateBps
+            bandwidthEstimateBps > 0 -> bandwidthEstimateBps
+            else -> 0
+        }
+        val bufferedMs = (p.bufferedPosition - p.currentPosition).coerceAtLeast(0L)
+        val fps = video?.frameRate?.takeIf { it > 0f && it != Format.NO_VALUE.toFloat() } ?: 0f
+        return mapOf(
+            "videoCodec" to codecLabel(video?.sampleMimeType),
+            "audioCodec" to codecLabel(audio?.sampleMimeType),
+            "width" to positiveOrZero(video?.width ?: 0),
+            "height" to positiveOrZero(video?.height ?: 0),
+            "fps" to fps.toDouble(),
+            "videoBitrate" to if (declaredVideo > 0) declaredVideo else measured,
+            "audioBitrate" to declaredAudio,
+            "bandwidthEstimate" to bandwidthEstimateBps,
+            "droppedFrames" to droppedFramesAccum,
+            "bufferedMs" to bufferedMs,
+        )
+    }
+
+    private fun positiveBitrate(raw: Int?): Int {
+        if (raw == null || raw == Format.NO_VALUE || raw <= 0) return 0
+        return raw
+    }
+
+    private fun positiveOrZero(raw: Int): Int =
+        if (raw == Format.NO_VALUE || raw < 0) 0 else raw
+
+    private fun codecLabel(mime: String?): String {
+        if (mime.isNullOrBlank()) return ""
+        return mime.substringAfter('/', mime)
     }
 
     fun selectTrack(type: String, trackId: String?) {
@@ -831,6 +930,20 @@ class ExoPlayerHost(
         "videoAuto" to true,
         "textOff" to true,
         "rate" to 1.0,
+        "playback" to emptyPlaybackStats(),
+    )
+
+    private fun emptyPlaybackStats(): Map<String, Any?> = mapOf(
+        "videoCodec" to "",
+        "audioCodec" to "",
+        "width" to 0,
+        "height" to 0,
+        "fps" to 0.0,
+        "videoBitrate" to 0,
+        "audioBitrate" to 0,
+        "bandwidthEstimate" to 0,
+        "droppedFrames" to 0,
+        "bufferedMs" to 0L,
     )
 
     private fun trackList(tracks: Tracks, type: Int): List<Map<String, Any?>> {
@@ -883,14 +996,27 @@ class ExoPlayerHost(
                     else -> group.isTrackSelected(ti)
                 }
                 if (type == C.TRACK_TYPE_VIDEO) videoIndex++
+                val declared = positiveBitrate(format.bitrate)
+                val bitrate = when {
+                    declared > 0 -> declared
+                    // Progressive IPTV often leaves ladder Format.NO_VALUE —
+                    // surface the playing format / measured rate on the check.
+                    type == C.TRACK_TYPE_VIDEO && selected ->
+                        positiveBitrate(playingVideo?.bitrate).takeIf { it > 0 }
+                            ?: measuredMediaBitrateBps.takeIf { it > 0 }
+                            ?: bandwidthEstimateBps
+                    type == C.TRACK_TYPE_AUDIO && selected ->
+                        positiveBitrate(player?.audioFormat?.bitrate)
+                    else -> 0
+                }
                 out.add(
                     mapOf(
                         "id" to id,
                         "label" to label,
                         "language" to (format.language ?: ""),
                         "selected" to selected,
-                        "height" to format.height,
-                        "bitrate" to format.bitrate,
+                        "height" to positiveOrZero(format.height),
+                        "bitrate" to bitrate,
                         "mimeType" to (format.sampleMimeType ?: ""),
                     ),
                 )
@@ -971,6 +1097,7 @@ class ExoPlayerHost(
         }
         videoAuto = true
         liveSpeedDisabledForUhd = null
+        resetPlaybackStats()
     }
 
 

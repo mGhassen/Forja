@@ -318,11 +318,35 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
     final video = selected(_tracks.video);
     final audio = selected(_tracks.audio);
     final text = selected(_tracks.text);
-    final bufferedAhead = _fmtBufferedAhead(snap);
+    final pb = _tracks.playback;
+    final bufferedAhead = _fmtBufferedAhead(snap) ??
+        _fmtBufferedMs(pb.bufferedMs);
 
-    final resolution = video != null && video.height > 0
-        ? '${video.height}p'
-        : '-';
+    final resolution = () {
+      if (pb.width > 0 && pb.height > 0) return '${pb.width}×${pb.height}';
+      if (pb.height > 0) return '${pb.height}p';
+      if (video != null && video.height > 0) return '${video.height}p';
+      return '-';
+    }();
+
+    final videoBitrate =
+        pb.videoBitrate > 0 ? pb.videoBitrate : (video?.bitrate ?? 0);
+    final audioBitrate =
+        pb.audioBitrate > 0 ? pb.audioBitrate : (audio?.bitrate ?? 0);
+
+    final videoLabel = () {
+      final codec = pb.videoCodec;
+      if (_tracks.videoAuto) {
+        final rung = video?.label;
+        if (codec.isNotEmpty && rung != null && rung.isNotEmpty) {
+          return 'Auto · $codec ($rung)';
+        }
+        if (codec.isNotEmpty) return 'Auto · $codec';
+        return 'Auto${rung != null ? ' ($rung)' : ''}';
+      }
+      if (codec.isNotEmpty) return codec;
+      return video?.label ?? '-';
+    }();
 
     final rows = <_StatRow>[
       _StatRow(
@@ -337,22 +361,22 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
       _StatRow('Source', snap.sourceLabel),
       if (snap.retryAttempt > 0) _StatRow('Recoveries', '${snap.retryAttempt}'),
       _StatRow('Resolution', resolution),
-      _StatRow(
-        'Video',
-        _tracks.videoAuto
-            ? 'Auto${video != null ? ' (${video.label})' : ''}'
-            : (video?.label ?? '-'),
-      ),
-      _StatRow('Video bitrate', _fmtBitrate(video?.bitrate ?? 0)),
+      _StatRow('Video', videoLabel),
+      _StatRow('Video bitrate', _fmtBitrate(videoBitrate)),
+      if (pb.fps > 0) _StatRow('FPS', pb.fps.toStringAsFixed(2)),
       _StatRow(
         'Audio',
+        pb.audioCodec.isNotEmpty ? pb.audioCodec : '-',
+      ),
+      _StatRow(
+        'Audio track',
         audio == null
             ? '-'
             : (audio.language.isNotEmpty
                 ? '${audio.label} (${audio.language})'
                 : audio.label),
       ),
-      _StatRow('Audio bitrate', _fmtBitrate(audio?.bitrate ?? 0)),
+      _StatRow('Audio bitrate', _fmtBitrate(audioBitrate)),
       _StatRow(
         'Subtitle',
         _tracks.textOff
@@ -362,9 +386,19 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
       if (bufferedAhead != null) _StatRow('Buffered ahead', bufferedAhead),
       _StatRow('Volume', '${snap.volume.round()}%'),
       _StatRow('Speed', '${_tracks.rate.toStringAsFixed(2)}x'),
+      if (pb.droppedFrames > 0)
+        _StatRow('Dropped frames', '${pb.droppedFrames}'),
     ];
 
     return _StatsList(rows: rows);
+  }
+
+  static String? _fmtBufferedMs(int ms) {
+    if (ms <= 0) return null;
+    final secs = ms / 1000.0;
+    if (secs > _maxSaneCacheAheadSecs) return null;
+    if (secs < 60) return '${secs.toStringAsFixed(1)} s';
+    return '${(secs / 60).toStringAsFixed(1)} min';
   }
 }
 

@@ -50,6 +50,51 @@ class ExoTrackInfo {
   }
 }
 
+/// Live / measured playback fields for Stream stats (codecs, bitrates, drops).
+class ExoPlaybackStats {
+  const ExoPlaybackStats({
+    this.videoCodec = '',
+    this.audioCodec = '',
+    this.width = 0,
+    this.height = 0,
+    this.fps = 0,
+    this.videoBitrate = 0,
+    this.audioBitrate = 0,
+    this.bandwidthEstimate = 0,
+    this.droppedFrames = 0,
+    this.bufferedMs = 0,
+  });
+
+  final String videoCodec;
+  final String audioCodec;
+  final int width;
+  final int height;
+  final double fps;
+  final int videoBitrate;
+  final int audioBitrate;
+  final int bandwidthEstimate;
+  final int droppedFrames;
+  final int bufferedMs;
+
+  static const empty = ExoPlaybackStats();
+
+  factory ExoPlaybackStats.fromMap(Map<dynamic, dynamic>? map) {
+    if (map == null) return empty;
+    return ExoPlaybackStats(
+      videoCodec: map['videoCodec']?.toString() ?? '',
+      audioCodec: map['audioCodec']?.toString() ?? '',
+      width: (map['width'] as num?)?.toInt() ?? 0,
+      height: (map['height'] as num?)?.toInt() ?? 0,
+      fps: (map['fps'] as num?)?.toDouble() ?? 0,
+      videoBitrate: (map['videoBitrate'] as num?)?.toInt() ?? 0,
+      audioBitrate: (map['audioBitrate'] as num?)?.toInt() ?? 0,
+      bandwidthEstimate: (map['bandwidthEstimate'] as num?)?.toInt() ?? 0,
+      droppedFrames: (map['droppedFrames'] as num?)?.toInt() ?? 0,
+      bufferedMs: (map['bufferedMs'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 /// Snapshot of audio / text / video tracks from the native ExoPlayer host.
 class ExoTracksSnapshot {
   const ExoTracksSnapshot({
@@ -59,6 +104,7 @@ class ExoTracksSnapshot {
     this.videoAuto = true,
     this.textOff = true,
     this.rate = 1.0,
+    this.playback = ExoPlaybackStats.empty,
   });
 
   final List<ExoTrackInfo> audio;
@@ -67,6 +113,7 @@ class ExoTracksSnapshot {
   final bool videoAuto;
   final bool textOff;
   final double rate;
+  final ExoPlaybackStats playback;
 
   static const empty = ExoTracksSnapshot();
 
@@ -81,6 +128,7 @@ class ExoTracksSnapshot {
           .toList();
     }
 
+    final playbackRaw = map['playback'];
     return ExoTracksSnapshot(
       audio: parse(map['audio']),
       text: parse(map['text']),
@@ -88,6 +136,11 @@ class ExoTracksSnapshot {
       videoAuto: map['videoAuto'] != false,
       textOff: map['textOff'] == true,
       rate: (map['rate'] as num?)?.toDouble() ?? 1.0,
+      playback: ExoPlaybackStats.fromMap(
+        playbackRaw is Map
+            ? Map<dynamic, dynamic>.from(playbackRaw)
+            : null,
+      ),
     );
   }
 }
