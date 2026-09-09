@@ -16,12 +16,14 @@ import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Owns engine pack install / refresh / remove / script cache.
 ///
 /// [EngineService] stays the extract host and delegates pack lifecycle here.
-/// Remote JS bodies live on disk ([PluginScriptDiskStore]); pack metadata in prefs.
+/// Remote JS bodies live on disk ([PluginScriptDiskStore]); pack metadata in
+/// prefs scoped per launched profile ([LocalDataScope]).
 class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
@@ -56,6 +58,28 @@ class PluginRegistry {
   http.Client? debugHttpClient;
 
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
+
+  /// Pack index for the launched profile (`engine_js_packs_v2@account:profile`).
+  static String get packsPrefsKey => LocalDataScope.storageKey(_packsKeyV2);
+
+  /// Read pack JSON for the active profile; lazy-copy unscoped legacy once.
+  Future<String?> _readPacksJson(SharedPreferences prefs) async {
+    final scoped = packsPrefsKey;
+    final scopedRaw = prefs.getString(scoped);
+    if (scopedRaw != null && scopedRaw.isNotEmpty) return scopedRaw;
+    final bare = prefs.getString(_packsKeyV2);
+    if (bare == null || bare.isEmpty) return null;
+    await prefs.setString(scoped, bare);
+    await prefs.remove(_packsKeyV2);
+    return bare;
+  }
+
+  Future<void> _writePacksJson(SharedPreferences prefs, String json) async {
+    await prefs.setString(packsPrefsKey, json);
+    if (prefs.containsKey(_packsKeyV2)) {
+      await prefs.remove(_packsKeyV2);
+    }
+  }
 
   Future<http.Response> _httpGet(Uri uri) async {
     final c = debugHttpClient;
@@ -323,8 +347,8 @@ class PluginRegistry {
     return true;
   }
 
-  /// Restore lean stubs from per-profile disk `pack.json` when scripts are
-  /// already present (sign-out clears prefs index with `purgeDisk: false`).
+  /// Restore lean stubs from this profile's disk `pack.json` when scripts are
+  /// already present (e.g. after a lean soft-pull stubbed the prefs index).
   Future<int> rehydrateLeanStubsFromDisk() async {
     final all = await listPacksRaw();
     var restored = 0;
@@ -389,7 +413,7 @@ class PluginRegistry {
   Future<void> migrateScriptsToDiskIfNeeded() async {
     final prefs = await _prefs;
     if (prefs.getBool(_scriptsDiskMigratedKey) == true) return;
-    final raw = prefs.getString(_packsKeyV2);
+    final raw = await _readPacksJson(prefs);
     if (raw == null || raw.isEmpty) {
       await prefs.setBool(_scriptsDiskMigratedKey, true);
       return;
@@ -462,8 +486,8 @@ class PluginRegistry {
 
   Future<void> _savePacks(List<EnginePack> packs) async {
     final prefs = await _prefs;
-    await prefs.setString(
-      _packsKeyV2,
+    await _writePacksJson(
+      prefs,
       jsonEncode([for (final p in packs) p.toJson()]),
     );
     notifyChanged();
@@ -474,7 +498,7 @@ class PluginRegistry {
     await _wipeLegacyMonolithIfNeeded();
     await migrateScriptsToDiskIfNeeded();
     final prefs = await _prefs;
-    final raw = prefs.getString(_packsKeyV2);
+    final raw = await _readPacksJson(prefs);
     if (raw == null || raw.isEmpty) return [];
     try {
       final decoded = jsonDecode(raw);
@@ -493,7 +517,7 @@ class PluginRegistry {
   Future<void> _wipeLegacyMonolithIfNeeded() async {
     final prefs = await _prefs;
     if (prefs.getBool(_legacyMonolithWipedKey) == true) return;
-    final raw = prefs.getString(_packsKeyV2);
+    final raw = await _readPacksJson(prefs);
     if (raw == null || raw.isEmpty) {
       await prefs.setBool(_legacyMonolithWipedKey, true);
       return;
@@ -517,8 +541,8 @@ class PluginRegistry {
         await _purgePackScriptStorage(pack);
       }
       final keep = packs.where((p) => !isLegacyMonolithPack(p)).toList();
-      await prefs.setString(
-        _packsKeyV2,
+      await _writePacksJson(
+        prefs,
         jsonEncode([for (final p in keep) p.toJson()]),
       );
       notifyChanged();
@@ -541,7 +565,7 @@ class PluginRegistry {
   Future<void> _migrateV1IfNeeded() async {
     final prefs = await _prefs;
     if (prefs.getBool(_migratedKey) == true) return;
-    final v2 = prefs.getString(_packsKeyV2);
+    final v2 = await _readPacksJson(prefs);
     if (v2 != null && v2.isNotEmpty) {
       await prefs.setBool(_migratedKey, true);
       return;
@@ -594,8 +618,8 @@ class PluginRegistry {
           }
         }
       }
-      await prefs.setString(
-        _packsKeyV2,
+      await _writePacksJson(
+        prefs,
         jsonEncode([for (final p in packs) p.toJson()]),
       );
       await prefs.remove(_packsKeyV1);
@@ -642,7 +666,12 @@ class PluginRegistry {
   /// Log-only marker for remote packs still missing disk JS.
   /// Downloads belong to [PluginInstallCoordinator.ensureAllInstalled] (boot)
   /// / mid-session cloud auto-install — this never prompts or fetches.
+  ///
+  /// Quiet until a profile was launched ([PluginScriptDiskStore.hasBoundProfileScope]).
+  /// Guest local profile and signed-in [selectProfile] both count; profile
+  /// picker / account gate do not (issue 259).
   Future<void> repairMissingScripts(List<EnginePack> packs) async {
+    if (!PluginScriptDiskStore.hasBoundProfileScope) return;
     for (final pack in packs) {
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
       if (isLocalManifestUrl(pack.sourceUrl)) continue;
@@ -1790,11 +1819,14 @@ class PluginRegistry {
       final remoteKey = _leanRemoteKeyForPack(remote, pack.sourceUrl);
       if (removeMissingUserPacks && remoteKey == null) {
         // Readable local checkout is device-local membership — soft-pull must
-        // not delete it just because cloud omitted the absolute path.
+        // not delete it just because cloud omitted the absolute path (or has
+        // the official GitHub twin).
         if (isLocalManifestUrl(pack.sourceUrl) &&
-            await _localManifestExists(pack.sourceUrl) &&
-            pack.plugins.isNotEmpty) {
+            await _localManifestExists(pack.sourceUrl)) {
           next.add(pack);
+          final safe = cloudSafeManifestUrl(pack.sourceUrl);
+          if (safe.isNotEmpty) satisfiedRemote.add(safe);
+          satisfiedRemote.add(pack.sourceUrl);
           continue;
         }
         final stub = pack.plugins.isEmpty;
@@ -1846,8 +1878,7 @@ class PluginRegistry {
         await PendingRemotePurgeStore.clear(entry.key);
         continue;
       }
-      // Sign-out / profile reset wipe prefs with purgeDisk:false. Prefer the
-      // on-disk pack.json + scripts for this profile scope over a lean stub
+      // Prefer on-disk pack.json + scripts for this profile over a lean stub
       // that would force a full re-download (issue 259).
       final diskPack = await PluginScriptDiskStore.loadEnginePackMeta(
         entry.key,

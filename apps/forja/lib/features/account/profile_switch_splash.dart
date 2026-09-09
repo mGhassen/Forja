@@ -127,6 +127,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       if (!selected) {
         throw StateError('Profile unavailable');
       }
+      // selectProfile bound disk scope — restore pack index from this profile's
+      // disk before BootNeeds / listPacks (issue 259).
+      await PluginRegistry.instance.rehydrateLeanStubsFromDisk();
       await _syncProfileSettings();
       if (!mounted) return;
 

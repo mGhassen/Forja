@@ -26,6 +26,12 @@ abstract final class PluginScriptDiskStore {
   static Directory? _cachedRoot;
   static String _accountId = 'local';
   static String _profileId = 'default';
+  static bool _scopeConfigured = false;
+
+  /// True after a profile was launched: guest (`local`/`default`) or a
+  /// signed-in profile id via [selectProfile]. False on account / profile
+  /// picker — shell init has not started yet.
+  static bool get hasBoundProfileScope => _scopeConfigured;
 
   @visibleForTesting
   static void resetForTest() {
@@ -33,6 +39,7 @@ abstract final class PluginScriptDiskStore {
     _cachedRoot = null;
     _accountId = 'local';
     _profileId = 'default';
+    _scopeConfigured = false;
   }
 
   /// Active account + profile — must track [SyncService.selectProfile].
@@ -42,9 +49,12 @@ abstract final class PluginScriptDiskStore {
   }) async {
     final account = _sanitizePathSegment(accountId ?? 'local');
     final profile = _sanitizePathSegment(profileId ?? 'default');
-    if (_accountId == account && _profileId == profile) return;
+    if (_scopeConfigured && _accountId == account && _profileId == profile) {
+      return;
+    }
     _accountId = account;
     _profileId = profile;
+    _scopeConfigured = true;
     _cachedRoot = null;
     await _migrateLegacyLayoutIfNeeded();
   }

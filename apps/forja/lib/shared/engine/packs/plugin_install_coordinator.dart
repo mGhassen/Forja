@@ -6,6 +6,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
@@ -396,6 +397,13 @@ class PluginInstallCoordinator {
     required bool notifyUpdates,
     required bool awaitCloudLean,
   }) async {
+    // Packs only after a profile was launched (guest local profile or selectProfile).
+    if (!PluginScriptDiskStore.hasBoundProfileScope) {
+      debugPrint(
+        '[PluginInstall] skip — no profile launched yet',
+      );
+      return;
+    }
     _bootWarm = true;
     final registry = PluginRegistry.instance;
 

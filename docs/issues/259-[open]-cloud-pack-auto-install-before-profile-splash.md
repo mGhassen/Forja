@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 4** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,8 @@
 | 2 | I259-T02 | Batch hub Features activate: one navbar write + one sync push after multi-pack install (no N cloud upserts freezing the shell) | ✅ |
 | 3 | I259-T03 | Sign-out / profile reset keep disk scripts; lean soft-pull rehydrates from per-profile `pack.json` instead of re-downloading | ✅ |
 | 4 | I259-T04 | Features push exports raw `visibleIds` (no lean-stub strip); hub filter skips while hydration pending so cloud Features stop reverting on logout | ✅ |
+| 5 | I259-T05 | Bind plugin disk scope before BootNeeds / `repairMissingScripts`; never wipe local checkout packs on sign-out reset; soft-pull keeps readable local manifests | ✅ |
+| 6 | I259-T06 | Packs fire only after profile launched; pack prefs scoped per profile (`LocalDataScope`); no reset wipe of pack index; rehydrate before BootNeeds | ✅ |
 
 ---
 
@@ -34,6 +36,7 @@
 | 2 | I259-A02 | After profile lands, rail/Settings taps work; no navbar write/sync storm (`[]→[home]→…` with per-tab upsert) from pack activate | ⬜ |
 | 3 | I259-A03 | Logout → login → same profile: splash shows `0 silent install job(s)` (or rehydrate log) when scripts already on disk; no full pack re-download | ⬜ |
 | 4 | I259-A04 | Features: toggle tabs / reorder / star → logout → login → same Features state (not an older cloud set) | ⬜ |
+| 5 | I259-A05 | Local checkout pack (e.g. Shahid path) survives logout/login — not replaced by GitHub Pending download; no false `scripts missing` before profile disk scope binds | ⬜ |
 
 ---
 

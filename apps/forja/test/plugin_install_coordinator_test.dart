@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -23,8 +24,15 @@ void main() {
       'nuvio_scripts_disk_v1_migrated': true,
       'nuvio_addons_kv_v1': '1',
     });
+    LocalDataScope.resetForTest();
+    await LocalDataScope.configure(accountId: null, profileId: null);
     diskRoot = await Directory.systemTemp.createTemp('coord_disk_');
+    PluginScriptDiskStore.resetForTest();
     PluginScriptDiskStore.debugRoot = diskRoot;
+    await PluginScriptDiskStore.configureScope(
+      accountId: null,
+      profileId: null,
+    );
     registry = PluginRegistry.instance;
     registry.debugHttpClient = null;
     ShellBus.splashDismissed.value = true;
@@ -41,7 +49,7 @@ void main() {
   test('packNeedsDiskInstall true for lean stub', () async {
     const url = 'https://lean.example/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'lean',
@@ -60,7 +68,7 @@ void main() {
   test('ensurePackScriptsReady refuses remote lean without downloading', () async {
     const url = 'https://hydrate.example/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'hydrate-pack',
@@ -81,7 +89,7 @@ void main() {
   test('ensurePluginReady does not prompt or download remote lean', () async {
     const url = 'https://prompt.example/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'prompt-pack',
@@ -104,7 +112,7 @@ void main() {
     // Re-seed after setMockInitialValues wiped SharedPreferences instance.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -135,7 +143,7 @@ void main() {
   test('ensureAllInstalled installs missing lean pack with progress', () async {
     const url = 'https://coord.example/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'coord',
@@ -153,7 +161,7 @@ void main() {
     // Re-seed after setMockInitialValues wiped SharedPreferences instance.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -225,7 +233,7 @@ void main() {
       () async {
     const url = 'https://coord.example/later/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'later',
@@ -242,7 +250,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -342,7 +350,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -423,7 +431,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -493,7 +501,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'engine_js_packs_v2',
+      PluginRegistry.packsPrefsKey,
       jsonEncode([
         {
           'sourceUrl': url,
@@ -571,7 +579,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2_migrated': true,
       'engine_js_scripts_disk_v3_migrated': true,
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'local-live',
@@ -600,7 +608,7 @@ void main() {
   test('ensureAllInstalled silent-downloads new lean stubs', () async {
     const url = 'https://coord.example/new-lean/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'new-lean',
@@ -670,7 +678,7 @@ void main() {
       () async {
     const url = 'https://coord.example/repair/manifest.json';
     SharedPreferences.setMockInitialValues({
-      'engine_js_packs_v2': jsonEncode([
+      PluginRegistry.packsPrefsKey: jsonEncode([
         {
           'sourceUrl': url,
           'packId': 'repair',

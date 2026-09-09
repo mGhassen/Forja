@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D |
-| **Current slice** | Connected Services auth via [RFC-102](102-[open]-pack-connected-services-auth.md); manual DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
+| **Progress** | **4 / 4** components · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **1 / 1** E |
+| **Current slice** | Catalog API retarget (top-ranking + search); Connected Services auth via [RFC-102](102-[open]-pack-connected-services-auth.md); manual DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -70,6 +70,14 @@
 | 1 | R101-A17 | Shahid hub declares `settings.addon: connected_services` + `auth` (no permanent Account fields) | ✅ |
 | 2 | R101-A18 | Login methods (email / phone) via pack `auth_*` actions; session secrets inject into extract | ✅ |
 | 3 | R101-A19 | Feature docs describe Connected services Login (not pack Account fields) | ✅ |
+
+---
+
+## Acceptance (slice E — catalog API)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R101-A20 | Hub feed/rail/search use live Shahid endpoints (`top-ranking` / `related` / `search/{tab}` + `country` + profile headers); drop dead `product/filter` | ✅ |
 
 ---
 

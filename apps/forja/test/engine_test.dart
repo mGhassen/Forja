@@ -466,10 +466,17 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
+      LocalDataScope.resetForTest();
+      await LocalDataScope.configure(accountId: null, profileId: null);
+      diskRoot = await Directory.systemTemp.createTemp('engine_disk_');
+      PluginScriptDiskStore.resetForTest();
+      PluginScriptDiskStore.debugRoot = diskRoot;
+      await PluginScriptDiskStore.configureScope(
+        accountId: null,
+        profileId: null,
+      );
       registry = PluginRegistry.instance;
       registry.debugHttpClient = null;
-      diskRoot = await Directory.systemTemp.createTemp('engine_disk_');
-      PluginScriptDiskStore.debugRoot = diskRoot;
     });
 
     tearDown(() async {
@@ -581,7 +588,7 @@ void main() {
       const urlA = 'https://a.example/manifest.json';
       const urlB = 'https://b.example/manifest.json';
       SharedPreferences.setMockInitialValues({
-        'engine_js_packs_v2': jsonEncode([
+        PluginRegistry.packsPrefsKey: jsonEncode([
           {
             'sourceUrl': urlA,
             'packId': 'pack-a',
@@ -647,7 +654,7 @@ void main() {
           'https://raw.githubusercontent.com/example/Forja/main/plugins/providers/manifest.json';
       const local = '/tmp/forja-dev/plugins/providers/manifest.json';
       SharedPreferences.setMockInitialValues({
-        'engine_js_packs_v2': jsonEncode([
+        PluginRegistry.packsPrefsKey: jsonEncode([
           {
             'sourceUrl': github,
             'packId': 'forjahq-providers',
@@ -865,7 +872,7 @@ void main() {
       const liveUrl = '/Users/x/Forja/plugins/live/manifest.json';
       const catalogUrl = '/Users/x/Forja/plugins/catalog/manifest.json';
       SharedPreferences.setMockInitialValues({
-        'engine_js_packs_v2': jsonEncode([
+        PluginRegistry.packsPrefsKey: jsonEncode([
           {
             'sourceUrl': liveUrl,
             'packId': 'forjahq-live',
@@ -888,7 +895,7 @@ void main() {
       expect(packs, hasLength(2));
       expect(packs.map((p) => p.sourceUrl), containsAll([liveUrl, catalogUrl]));
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('engine_js_packs_v2');
+      final raw = prefs.getString(PluginRegistry.packsPrefsKey);
       expect(raw, isNotNull);
       expect(raw!, contains('forjahq-catalog'));
       expect(raw, contains('forjahq-live'));
@@ -1047,7 +1054,7 @@ void main() {
         ),
       );
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('engine_js_packs_v2'), isNull);
+      expect(prefs.getString(PluginRegistry.packsPrefsKey), isNull);
       expect(
         await PluginScriptDiskStore.hasEngineScript(
           sourceUrl: url,

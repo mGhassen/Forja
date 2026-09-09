@@ -722,6 +722,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initOfflineBoot() async {
     debugPrint('[Init] offline boot - local packs only');
+    await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
+    await PluginRegistry.instance.rehydrateLeanStubsFromDisk();
     final needs = await BootNeeds.resolve();
     await ProfileEngineWarm.warm(
       needs,
@@ -739,6 +741,11 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initOnlineBoot() async {
     debugPrint('[Init] resolving profile boot needs...');
     _setBootStatus('Loading your profile…');
+    // Packs only after a profile was launched (guest or selectProfile).
+    // Rehydrate prefs from this profile's disk before BootNeeds so we do not
+    // log scripts missing / pendingPackDisk for lean stubs (issue 259).
+    await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
+    await PluginRegistry.instance.rehydrateLeanStubsFromDisk();
     final needs = await BootNeeds.resolve();
     debugPrint('[Init] $needs');
 

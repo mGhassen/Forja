@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s catalog (series and movies by genre). Playback uses the **Shahid** stream provider. Premium titles play on **Android** with the built-in ExoPlayer and Widevine using your Shahid login. Clear / free streams can play on other engines when available.
+The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s top and related titles (series and movies). Playback uses the **Shahid** stream provider. Premium titles play on **Android** with the built-in ExoPlayer and Widevine using your Shahid login. Clear / free streams can play on other engines when available.
 
 ## How to open it
 
@@ -15,7 +15,7 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## What you can do
 
-- Browse genre rails (drama, comedy, action movies, Ramadan, …)
+- Browse top series / movies and related rails
 - Search Shahid titles
 - Open details and play episodes / movies
 - Sign in under Connected services so premium playout can request a license on Android

@@ -1,6 +1,7 @@
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
@@ -102,6 +103,7 @@ class BootNeeds {
   }
 
   static Future<bool> anyPackNeedsDiskInstall() async {
+    if (!PluginScriptDiskStore.hasBoundProfileScope) return false;
     final registry = PluginRegistry.instance;
     final packs = await registry.listPacksRaw();
     for (final pack in packs) {

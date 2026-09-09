@@ -17,8 +17,8 @@ import 'package:forja/shell/bus/shell_bus.dart';
 ///   (`bootWarm` + `awaitCloudLean`). Soft-pull under warm is lean-index only.
 /// - Mid-session (shell open, [ShellBus.splashDismissed]) → this path.
 ///
-/// Soft-pull before Who's watching / profile splash must **not** download or
-/// activate hubs — profile scope is not ready yet (issue 259).
+/// Soft-pull before a profile is launched / profile splash must **not**
+/// download or activate hubs — pack scope is not ready yet (issue 259).
 abstract final class PluginInstallPromptService {
   /// Mid-session cloud sync: download new packs; toast installs + removals.
   static Future<void> applyCloudLeanDiff(LeanApplyResult diff) async {
@@ -36,8 +36,8 @@ abstract final class PluginInstallPromptService {
     }
 
     // Profile splash / logo intro hydrate via ensureAllInstalled. Early soft
-    // pulls (sign-in → Who's watching, restored-session bg pull, profile
-    // settings merge before warm) only update lean membership.
+    // pulls (profile picker, restored-session bg pull before warm) only
+    // update lean membership.
     if (!ShellBus.splashDismissed.value) {
       if (diff.added.isNotEmpty) {
         debugPrint(

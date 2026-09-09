@@ -7,10 +7,11 @@ import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, Object> _basePrefs(List<Map<String, dynamic>> packs) => {
-      'engine_js_packs_v2': jsonEncode(packs),
+      PluginRegistry.packsPrefsKey: jsonEncode(packs),
       'engine_js_packs_v2_migrated': true,
       'engine_js_scripts_disk_v3_migrated': true,
       'engine_js_legacy_forjahq_wiped': true,
@@ -20,7 +21,7 @@ Map<String, Object> _basePrefs(List<Map<String, dynamic>> packs) => {
 Future<void> _seedPacks(List<Map<String, dynamic>> packs) async {
   SharedPreferences.setMockInitialValues(_basePrefs(packs));
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('engine_js_packs_v2', jsonEncode(packs));
+  await prefs.setString(PluginRegistry.packsPrefsKey, jsonEncode(packs));
 }
 
 void main() {
@@ -29,8 +30,15 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues(_basePrefs(const []));
+    LocalDataScope.resetForTest();
+    await LocalDataScope.configure(accountId: null, profileId: null);
     diskRoot = await Directory.systemTemp.createTemp('remote_profile_');
+    PluginScriptDiskStore.resetForTest();
     PluginScriptDiskStore.debugRoot = diskRoot;
+    await PluginScriptDiskStore.configureScope(
+      accountId: null,
+      profileId: null,
+    );
     ShellBus.resetPluginInstallQueueForTest();
     ShellBus.splashDismissed.value = true;
     PluginInstallCoordinator.debugSetBootWarm(false);

@@ -709,11 +709,17 @@ class SyncService {
     await ProviderScoreMemory.syncIdentityScope();
   }
 
-  /// Guest / signed-out local shell.
+  /// Guest / signed-out local profile (`accounts/local/profiles/default`).
+  /// Launching guest is launching a profile — same as [selectProfile] for pack init.
   Future<void> useGuestPluginDiskScope() =>
       _syncPluginDiskScope(accountId: null, profileId: null);
 
-  /// Resolve account + saved profile id before any plugin disk I/O (boot warm).
+  /// Bind pack disk for the launched profile before pack I/O.
+  ///
+  /// - Guest / no session → [useGuestPluginDiskScope] (local profile).
+  /// - Signed-in with an active profile id (picker or restored) → that profile.
+  /// - Signed-in on the profile picker with no active profile yet → no-op; init
+  ///   has not started. [selectProfile] binds scope when the user picks one.
   Future<void> ensurePluginDiskScopeForCurrentSession() async {
     final userId = session?.user.id;
     if (userId == null) {
@@ -721,7 +727,10 @@ class SyncService {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId');
+    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+    if (profileId == null || profileId.isEmpty) {
+      return;
+    }
     await _syncPluginDiskScope(accountId: userId, profileId: profileId);
   }
 

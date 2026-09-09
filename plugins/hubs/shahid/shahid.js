@@ -1,67 +1,87 @@
-// Shahid hub — catalog via api2.shahid.net (Kodi/yt-dlp shape).
+// Shahid hub — catalog via api2.shahid.net.
 // Playback: provider `shahid`. Host surface: shahid → KitDetails.
+// Note: product/filter returns 400 on current API; browse uses top-ranking + related.
 
 var SHAHID_UA =
   'Shahid/6.8.3.3660 CFNetwork/1220.1 Darwin/20.3.0 (iPhone/6s iOS/14.4) Safari/604.1';
 var SHAHID_PROXY = 'https://api2.shahid.net/proxy';
 var SHAHID_AES_KEY = 'gx8KSZyPdfJhXes7';
+var SHAHID_GUEST_PROFILE = JSON.stringify({
+  id: '00000000-0000-0000-0000-000000000000',
+  ageRestriction: false,
+  master: true,
+});
+var SHAHID_PROFILE_KEY = JSON.stringify({
+  isAdult: true,
+  ageRestriction: false,
+});
 
 var SHAHID_DEFAULTS = { language: 'ar' };
 
 var SHAHID_RAILS = {
-  series_drama: {
-    label: 'مسلسلات · دراما',
-    productType: 'SERIES',
-    genreId: 7876,
+  top_series: {
+    label: 'الأكثر مشاهدة · مسلسلات',
+    kind: 'top',
+    bucket: 'series',
   },
-  series_comedy: {
-    label: 'مسلسلات · كوميديا',
-    productType: 'SERIES',
-    genreId: 7858,
+  top_movies: {
+    label: 'الأكثر مشاهدة · أفلام',
+    kind: 'top',
+    bucket: 'movie',
   },
-  series_ramadan: {
-    label: 'رمضان',
-    productType: 'SERIES',
-    genreId: 10354,
+  more_series: {
+    label: 'المزيد من المسلسلات',
+    kind: 'related',
+    bucket: 'series',
   },
-  movies_action: {
-    label: 'أفلام · أكشن',
-    productType: 'MOVIE',
-    genreId: 7935,
-  },
-  movies_drama: {
-    label: 'أفلام · دراما',
-    productType: 'MOVIE',
-    genreId: 7876,
-  },
-  movies_comedy: {
-    label: 'أفلام · كوميديا',
-    productType: 'MOVIE',
-    genreId: 7858,
+  more_movies: {
+    label: 'المزيد من الأفلام',
+    kind: 'related',
+    bucket: 'movie',
   },
 };
 
 var SHAHID_FEED_RAILS = [
-  'series_drama',
-  'series_comedy',
-  'movies_action',
-  'movies_drama',
-  'movies_comedy',
+  'top_series',
+  'top_movies',
+  'more_series',
+  'more_movies',
 ];
 
 var _shahidJwt = '';
 var _shahidSessionId = '';
+var _shahidCountry = '';
 
 function shahidHeaders(sessionId, jwt, language) {
   var h = {
     'User-Agent': SHAHID_UA,
     'Shahid-Agent': SHAHID_UA,
     UUID: 'ios',
-    language: language || 'ar',
+    language: String(language || 'ar').toUpperCase(),
+    Accept: 'application/json',
+    'shahid_os': 'WEB',
+    profile: SHAHID_GUEST_PROFILE,
+    'profile-key': SHAHID_PROFILE_KEY,
   };
   if (jwt) h['S-Session'] = jwt;
   if (sessionId) h.Token = sessionId;
   return h;
+}
+
+function apiQs(requestObj, country) {
+  return (
+    'request=' +
+    encodeURIComponent(JSON.stringify(requestObj || {})) +
+    '&country=' +
+    encodeURIComponent(country || 'SA')
+  );
+}
+
+function productsFromList(list) {
+  if (!list) return [];
+  if (Array.isArray(list)) return list;
+  if (Array.isArray(list.products)) return list.products;
+  return [];
 }
 
 function encryptPassword(ctx, password) {
@@ -92,11 +112,16 @@ function getJwt(ctx) {
     })
     .then(function (j) {
       _shahidJwt = (j && j.jwt) || '';
+      if (j && j.country) _shahidCountry = String(j.country);
       return _shahidJwt;
     })
     .catch(function () {
       return '';
     });
+}
+
+function sessionCountry(auth) {
+  return _shahidCountry || (auth && auth.country) || 'SA';
 }
 
 function ensureAuth(ctx, cfg) {
@@ -288,17 +313,6 @@ function formatImg(url, kind) {
   return url;
 }
 
-function productFilterQuery(opts) {
-  var filter = {
-    pageNumber: String(opts.page || 0),
-    pageSize: opts.pageSize || 30,
-    productType: opts.productType || 'SERIES',
-    sorts: [{ order: 'DESC', type: 'SORTDATE' }],
-  };
-  if (opts.genreId) filter.genres = [opts.genreId];
-  return 'filter=' + encodeURIComponent(JSON.stringify(filter));
-}
-
 function metaOpen(id, productType) {
   return {
     surface: 'shahid',
@@ -308,7 +322,7 @@ function metaOpen(id, productType) {
       panelCategory: 'shahid',
       ctx: {
         videoId: String(id),
-        productType: String(productType || 'SERIES'),
+        productType: String(productType || 'SHOW'),
       },
     },
   };
@@ -317,7 +331,9 @@ function metaOpen(id, productType) {
 function productToMeta(item) {
   if (!item || !item.id) return null;
   var id = String(item.id);
-  var productType = String(item.productType || item.type || 'SERIES').toUpperCase();
+  var productType = String(
+    item.productType || item.type || item.showType || 'SHOW',
+  ).toUpperCase();
   var isMovie = productType === 'MOVIE';
   var img = item.image || {};
   var poster = formatImg(img.posterImage || img.thumbnailImage || '', 'poster');
@@ -332,33 +348,91 @@ function productToMeta(item) {
     description: item.description || '',
     poster: poster,
     background: bg,
-    open: metaOpen(id, productType),
+    open: metaOpen(id, isMovie ? 'MOVIE' : 'SHOW'),
   };
 }
 
-function fetchProducts(ctx, cfg, opts) {
+function mapProducts(list) {
+  var items = [];
+  var raw = productsFromList(list);
+  for (var i = 0; i < raw.length; i++) {
+    var m = productToMeta(raw[i]);
+    if (m) items.push(m);
+  }
+  return items;
+}
+
+function fetchTopRanking(ctx, cfg, pageSize) {
   return ensureAuth(ctx, cfg).then(function (auth) {
-    var q = productFilterQuery(opts);
+    var country = sessionCountry(auth);
+    var size = pageSize || 20;
     return ctx
-      .fetch(SHAHID_PROXY + '/v2.1/product/filter?' + q, {
-        headers: shahidHeaders(auth.sessionId, auth.jwt, cfg.language),
-      })
+      .fetch(
+        SHAHID_PROXY +
+          '/v2.1/product/top-ranking-by-type?' +
+          apiQs({ productType: 'SERIES', country: country, pageSize: size }, country),
+        { headers: shahidHeaders(auth.sessionId, auth.jwt, cfg.language) },
+      )
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
       .then(function (j) {
-        var list = ((j && j.productList) || {}).products || [];
-        var items = [];
-        for (var i = 0; i < list.length; i++) {
-          var m = productToMeta(list[i]);
-          if (m) items.push(m);
-        }
+        var top = (j && j.top) || {};
         return {
-          items: items,
-          hasMore: !!(j && j.productList && j.productList.hasMore),
+          series: mapProducts((top.series || {}).products),
+          movies: mapProducts((top.movie || {}).products),
         };
       });
+  });
+}
+
+function fetchRelated(ctx, cfg, seedId, productType, pageSize) {
+  if (!seedId) return Promise.resolve({ items: [], hasMore: false });
+  return ensureAuth(ctx, cfg).then(function (auth) {
+    var country = sessionCountry(auth);
+    return ctx
+      .fetch(
+        SHAHID_PROXY +
+          '/v2.1/product/related?' +
+          apiQs(
+            {
+              id: Number(seedId) || seedId,
+              productType: productType || 'SHOW',
+              pageNumber: 0,
+              pageSize: pageSize || 30,
+            },
+            country,
+          ),
+        { headers: shahidHeaders(auth.sessionId, auth.jwt, cfg.language) },
+      )
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (j) {
+        var list = (j && j.productList) || [];
+        return {
+          items: mapProducts(list),
+          hasMore: !!(list && list.hasMore),
+        };
+      });
+  });
+}
+
+function fetchRailItems(ctx, cfg, railId) {
+  var def = SHAHID_RAILS[railId];
+  if (!def) return Promise.resolve({ items: [], hasMore: false });
+  return fetchTopRanking(ctx, cfg, 30).then(function (top) {
+    if (def.kind === 'top') {
+      var items = def.bucket === 'movie' ? top.movies : top.series;
+      return { items: items, hasMore: false };
+    }
+    var seedList = def.bucket === 'movie' ? top.movies : top.series;
+    var seed = seedList && seedList[0];
+    var seedId = seed && seed.open ? String(seed.open.id) : '';
+    var pType = def.bucket === 'movie' ? 'MOVIE' : 'SHOW';
+    return fetchRelated(ctx, cfg, seedId, pType, 30);
   });
 }
 
@@ -368,8 +442,8 @@ function layout() {
       type: 'hero',
       id: 'spotlight',
       title: 'Shahid',
-      rail: 'series_drama',
-      bleed: 'series_comedy',
+      rail: 'top_series',
+      bleed: 'top_movies',
     },
   ];
   for (var i = 0; i < SHAHID_FEED_RAILS.length; i++) {
@@ -381,7 +455,7 @@ function layout() {
       id: id,
       title: def.label,
       rail: id,
-      hideWhenBleed: id === 'series_drama',
+      hideWhenBleed: id === 'top_series',
     });
   }
   return hubOk(
@@ -402,23 +476,28 @@ function layout() {
 
 function feed(ctx) {
   var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
-  var jobs = SHAHID_FEED_RAILS.map(function (railId) {
-    var def = SHAHID_RAILS[railId];
-    return fetchProducts(ctx, cfg, {
-      productType: def.productType,
-      genreId: def.genreId,
-      page: 0,
-      pageSize: 20,
-    }).then(function (r) {
-      return { id: railId, items: r.items };
+  return fetchTopRanking(ctx, cfg, 20).then(function (top) {
+    var seriesSeed =
+      top.series && top.series[0]
+        ? String(top.series[0].open.id)
+        : '';
+    var movieSeed =
+      top.movies && top.movies[0]
+        ? String(top.movies[0].open.id)
+        : '';
+    return Promise.all([
+      fetchRelated(ctx, cfg, seriesSeed, 'SHOW', 20),
+      fetchRelated(ctx, cfg, movieSeed, 'MOVIE', 20),
+    ]).then(function (more) {
+      return hubOk('feed', {
+        rails: {
+          top_series: { items: top.series },
+          top_movies: { items: top.movies },
+          more_series: { items: more[0].items },
+          more_movies: { items: more[1].items },
+        },
+      });
     });
-  });
-  return Promise.all(jobs).then(function (rows) {
-    var rails = {};
-    for (var i = 0; i < rows.length; i++) {
-      rails[rows[i].id] = { items: rows[i].items };
-    }
-    return hubOk('feed', { rails: rails });
   });
 }
 
@@ -426,20 +505,39 @@ function rail(ctx) {
   var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
   var params = hubParams(ctx);
   var railId = String(params.railId || params.id || '');
-  var def = SHAHID_RAILS[railId];
-  if (!def) return Promise.resolve(hubItems('rail', []));
-  var page = Number(params.page || 0) || 0;
-  return fetchProducts(ctx, cfg, {
-    productType: def.productType,
-    genreId: def.genreId,
-    page: page,
-    pageSize: 30,
-  }).then(function (r) {
+  if (!SHAHID_RAILS[railId]) return Promise.resolve(hubItems('rail', []));
+  return fetchRailItems(ctx, cfg, railId).then(function (r) {
     return hubItems('rail', r.items, null, {
       pageSize: 30,
       hasMore: r.hasMore,
     });
   });
+}
+
+function searchTab(ctx, auth, country, language, tab, q) {
+  var body = {
+    name: q,
+    pageNumber: 0,
+    pageSize: 30,
+  };
+  return ctx
+    .fetch(
+      SHAHID_PROXY +
+        '/v2.1/search/' +
+        tab +
+        '?' +
+        apiQs(body, country),
+      { headers: shahidHeaders(auth.sessionId, auth.jwt, language) },
+    )
+    .then(function (res) {
+      if (!res.ok) return [];
+      return res.json().then(function (j) {
+        return mapProducts((j && j.productList) || []);
+      });
+    })
+    .catch(function () {
+      return [];
+    });
 }
 
 function search(ctx) {
@@ -448,34 +546,24 @@ function search(ctx) {
   var q = String(params.query || params.q || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
   return ensureAuth(ctx, cfg).then(function (auth) {
-    var body = {
-      query: q,
-      pageNumber: 0,
-      pageSize: 30,
-    };
-    return ctx
-      .fetch(
-        SHAHID_PROXY +
-          '/v2.1/search/grid?request=' +
-          encodeURIComponent(JSON.stringify(body)),
-        { headers: shahidHeaders(auth.sessionId, auth.jwt, cfg.language) },
-      )
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      })
-      .then(function (j) {
-        var products =
-          (j && j.productList && j.productList.products) ||
-          (j && j.products) ||
-          [];
-        var items = [];
-        for (var i = 0; i < products.length; i++) {
-          var m = productToMeta(products[i]);
-          if (m) items.push(m);
+    var country = sessionCountry(auth);
+    return Promise.all([
+      searchTab(ctx, auth, country, cfg.language, 'TV_SHOWS', q),
+      searchTab(ctx, auth, country, cfg.language, 'MOVIES', q),
+    ]).then(function (parts) {
+      var seen = {};
+      var items = [];
+      for (var p = 0; p < parts.length; p++) {
+        var list = parts[p] || [];
+        for (var i = 0; i < list.length; i++) {
+          var m = list[i];
+          if (!m || seen[m.id]) continue;
+          seen[m.id] = true;
+          items.push(m);
         }
-        return hubItems('search', items);
-      });
+      }
+      return hubItems('search', items);
+    });
   });
 }
 
@@ -508,29 +596,21 @@ function details(ctx) {
 
   return ensureAuth(ctx, cfg).then(function (auth) {
     var hdrs = shahidHeaders(auth.sessionId, auth.jwt, cfg.language);
-    // Try playableAsset for series; product/id for movies.
-    var showReq =
-      'request=' +
-      encodeURIComponent(JSON.stringify({ showId: id }));
+    var country = sessionCountry(auth);
+    var showReq = apiQs({ showId: Number(id) || id }, country);
     return ctx
       .fetch(SHAHID_PROXY + '/v2.1/playableAsset?' + showReq, {
         headers: hdrs,
       })
       .then(function (res) {
         if (res.ok) return res.json();
-        var prodReq =
-          'request=' +
-          encodeURIComponent(
-            JSON.stringify({
-              id: id,
-              productType: 'ASSET',
-              productSubType: 'MOVIE',
-            }),
-          );
         return ctx
-          .fetch(SHAHID_PROXY + '/v2/product/id?' + prodReq, {
-            headers: hdrs,
-          })
+          .fetch(
+            SHAHID_PROXY +
+              '/v2.1/product/id?' +
+              apiQs({ id: Number(id) || id }, country),
+            { headers: hdrs },
+          )
           .then(function (r2) {
             if (!r2.ok) throw new Error('HTTP ' + r2.status);
             return r2.json();
@@ -553,12 +633,11 @@ function details(ctx) {
             img.thumbnailImage || img.posterImage || '',
             'background',
           ),
-          open: metaOpen(id, playlist.id ? 'SERIES' : 'MOVIE'),
+          open: metaOpen(id, playlist.id ? 'SHOW' : 'MOVIE'),
           videos: [],
         };
 
         if (!playlist.id) {
-          // Movie / single asset — one playable video.
           meta.videos = [
             {
               id: 'shahid:' + id,
@@ -570,27 +649,27 @@ function details(ctx) {
           return hubOk('details', { meta: meta });
         }
 
-        var plReq =
-          'request=' +
-          encodeURIComponent(
-            JSON.stringify({
-              playListId: playlist.id,
-              pageNumber: 0,
-              pageSize: 100,
-              sorts: [{ order: 'ASC', type: 'SORTDATE' }],
-            }),
-          );
         return ctx
-          .fetch(SHAHID_PROXY + '/v2.1/product/playlist?' + plReq, {
-            headers: hdrs,
-          })
+          .fetch(
+            SHAHID_PROXY +
+              '/v2.1/product/playlist?' +
+              apiQs(
+                {
+                  playListId: playlist.id,
+                  pageNumber: 0,
+                  pageSize: 100,
+                  sorts: [{ order: 'ASC', type: 'SORTDATE' }],
+                },
+                country,
+              ),
+            { headers: hdrs },
+          )
           .then(function (res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
           })
           .then(function (pj) {
-            var products =
-              ((pj && pj.productList) || {}).products || [];
+            var products = productsFromList((pj && pj.productList) || []);
             var videos = [];
             for (var i = 0; i < products.length; i++) {
               var p = products[i];

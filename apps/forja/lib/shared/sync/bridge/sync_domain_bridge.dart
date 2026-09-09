@@ -179,16 +179,8 @@ class SyncDomainBridge {
       }
     }
 
-    final packs = await EngineService.instance.listPacks();
-    for (final pack in packs) {
-      if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
-      try {
-        await EngineService.instance.removePack(
-          pack.sourceUrl,
-          purgeDisk: false,
-        );
-      } catch (_) {}
-    }
+    // Pack index is per launched profile ([LocalDataScope]); lean apply after
+    // selectProfile owns membership. Do not removePack here.
     await PacksOnboardingStore.clearLocalForActiveProfile();
 
     final nuvioAddons = await NuvioService.instance.listAddons();
@@ -1550,6 +1542,12 @@ class SyncDomainBridge {
   /// [PluginInstallCoordinator.ensureAllInstalled] owns pre-shell hydrate
   /// (issue 259).
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
+    // Pack membership only after a profile was launched (guest or selectProfile).
+    if (SyncService.instance.isSignedIn &&
+        !PluginScriptDiskStore.hasBoundProfileScope) {
+      debugPrint('[Sync] importForja skip — no profile launched yet');
+      return LeanApplyResult.empty;
+    }
     await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
@@ -1567,8 +1565,7 @@ class SyncDomainBridge {
       );
     }
     // Downloads / hub activate only when splash dismissed (or no-op under
-    // bootWarm). Soft-pull on Who's watching / profile settings merge must
-    // not install for a profile that splash has not finished binding.
+    // bootWarm). Soft-pull before profile splash must not install early.
     await PluginInstallPromptService.applyCloudLeanDiff(result);
     return result;
   }
