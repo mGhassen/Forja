@@ -1,7 +1,6 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/probe/sources_panel_stream_probe.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
 
@@ -52,7 +51,9 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    if (check is StremioPlayable) probeTotal++;
+    if (check is! StremioPlayable) continue;
+    if (streamDrmBlockedOffAndroid(row['drm'])) continue;
+    probeTotal++;
   }
   for (final row in ordered) {
     if (isAborted()) break;
@@ -63,6 +64,8 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
       debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
+    // Widevine only on Android Exo (RFC-101) — skip before HTTP probe.
+    if (streamDrmBlockedOffAndroid(row['drm'])) continue;
     probeOrdinal++;
     messageNotifier?.value = probeTotal > 1
         ? 'Probing streams ($probeOrdinal/$probeTotal)…'
@@ -80,8 +83,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final url = proxied.url;
     final resolvedCatalogUrl = row['url']?.toString() ?? url;
     final drm = StreamDrmConfig.tryParse(row['drm']);
-    // Widevine only on Android Exo (RFC-101) — skip DRM rows elsewhere.
-    if (drm != null && !Platform.isAndroid) continue;
     final pluginId = row['_enginePluginId']?.toString() ?? '';
     final type = urlLooksLikeHls(url)
         ? 'hls'

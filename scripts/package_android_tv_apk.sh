@@ -30,6 +30,34 @@ verify_libffi() {
   fi
 }
 
+# Refuse packaging a stale flutter-apk left over from a failed rebuild.
+verify_version_name() {
+  local apk="$1"
+  local expect="$2"
+  local aapt badging got
+  aapt="$(command -v aapt 2>/dev/null || true)"
+  if [[ -z "$aapt" ]]; then
+    local bt
+    for bt in \
+      "${ANDROID_HOME:-}${ANDROID_HOME:+/}build-tools"/*/aapt \
+      "${ANDROID_SDK_ROOT:-}${ANDROID_SDK_ROOT:+/}build-tools"/*/aapt \
+      "$HOME/Library/Android/sdk/build-tools"/*/aapt; do
+      [[ -x "$bt" ]] || continue
+      aapt="$bt"
+    done
+  fi
+  if [[ -z "$aapt" ]]; then
+    echo "error: aapt not found — cannot verify versionName in $apk" >&2
+    exit 1
+  fi
+  badging="$("$aapt" dump badging "$apk")"
+  got="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" <<<"$badging" | head -1)"
+  if [[ "$got" != "$expect" ]]; then
+    echo "error: $apk versionName='$got' (expected '$expect') — stale APK from a failed build?" >&2
+    exit 1
+  fi
+}
+
 mkdir -p "$DIST"
 created=0
 
@@ -56,8 +84,22 @@ for abi in "$@"; do
     exit 1
   fi
 
+  # Source mtime must be newer than a few minutes before this script started —
+  # catches "flutter build failed → copy yesterday's APK" releases.
+  if [[ "$(uname -s)" == Darwin ]]; then
+    src_mtime="$(stat -f '%m' "$src")"
+  else
+    src_mtime="$(stat -c '%Y' "$src")"
+  fi
+  now="$(date +%s)"
+  if (( now - src_mtime > 7200 )); then
+    echo "error: $src is older than 2h (mtime $(date -r "$src_mtime" 2>/dev/null || date -d "@$src_mtime")) — rebuild before packaging" >&2
+    exit 1
+  fi
+
   cp -f "$src" "$out"
   verify_libffi "$out" "$lib"
+  verify_version_name "$out" "$VERSION"
   echo "Created $out"
   created=$((created + 1))
 done

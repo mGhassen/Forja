@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) · **4 / 4** acceptance (per-arch latest) · **1 / 1** acceptance (ATV focus trap) · **2 / 2** acceptance (ATV two-column changelog, historical) · **1 / 1** acceptance (ATV stacked changelog) |
-| **Current slice** | Per-arch `arches` map shipped; hosted smoke A37 / A45 still open |
+| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) · **4 / 4** acceptance (per-arch latest) · **1 / 1** acceptance (ATV focus trap) · **2 / 2** acceptance (ATV two-column changelog, historical) · **1 / 1** acceptance (ATV stacked changelog) · **3 / 3** acceptance (macOS silent apply) |
+| **Current slice** | macOS silent ditto apply shipped; hosted smoke A37 / A45 still open; Win/Linux open-installer unchanged |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 5 | R15-C05 | Android OTA (`ota_update`) | ✅ |
 | 6 | R15-C06 | macOS/iOS open download page | ✅ |
 | 7 | R15-C07 | Semver compare + GitHub API | ✅ |
+| 8 | R15-C08 | macOS silent apply (`app_update_macos_installer.dart`) | ✅ |
 
 ---
 
@@ -336,10 +337,22 @@ Settings → About → **Check for updates** → same dialog or "You're up to da
 | Platform | Shipped | Remaining |
 |----------|---------|-----------|
 | Android | OTA download + install intent | + SHA256 verify asset |
-| Windows | Download `.exe` with in-dialog progress | silent optional |
+| Windows | Download `.exe` with in-dialog progress; open installer after confirm | silent optional |
 | Linux | Download AppImage/deb with progress | AppImage exec helper |
-| macOS | Download `.dmg` to Downloads + `open` | SHA256 verify |
+| macOS | Download `.dmg`; silent mount + `ditto` into installed `Forja.app` + `xattr -cr` + relaunch after confirm | SHA256 verify; Developer ID / notarization |
 | iOS | Open releases URL | TestFlight deep link if configured |
+
+---
+
+## Acceptance (macOS silent apply)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A46 | After Install confirm on macOS, detached helper mounts the downloaded DMG, `ditto`s `Forja.app` onto the running bundle (or `~/Applications/Forja.app` if not writable), runs `xattr -cr`, and relaunches — no Finder / no `open` of the DMG | ✅ |
+| 2 | R15-A47 | If relaunch fails (Gatekeeper / open), helper writes `apply_failed` marker and shows an `osascript` dialog with allow / Right-click Open guidance | ✅ |
+| 3 | R15-A48 | Next macOS launch toasts when `apply_failed` is set or `pending_version` remains on an older build | ✅ |
+
+---
 
 ## Settings keys (v1.1)
 
@@ -371,6 +384,7 @@ Add to `SettingsService` / `storage`:
 | Rate limit (GitHub API) | Cache last successful response 1h |
 | Download interrupted | Retry button in dialog |
 | OTA permission denied | Snackbar + link to settings |
+| macOS silent apply / Gatekeeper block | Helper `osascript` dialog + `apply_failed` marker; toast on next launch |
 
 ## CI / release integration
 
@@ -396,7 +410,8 @@ GitHub Release keeps tags/notes (+ optional backup assets). App updater matches 
 - Custom update endpoint (JSON manifest) for mirrors / China
 - Beta channel: `GET /repos/{repo}/releases` filter `prerelease`
 - Mandatory update flag in manifest for critical security fixes
-- macOS Sparkle framework alternative for signed delta updates
+- macOS Sparkle / notarized Developer ID (quieter Gatekeeper after self-replace)
+- Windows silent Inno (optional)
 
 
 ## Related

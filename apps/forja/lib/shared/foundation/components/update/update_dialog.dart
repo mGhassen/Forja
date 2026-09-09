@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
+import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_release_notes.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -502,6 +503,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       filePath: filePath,
       dirPath: File(filePath).parent.path,
       fileName: File(filePath).uri.pathSegments.last,
+      version: current.updateInfo?.latestVersion ?? '',
     );
     if (mounted) Navigator.of(context).pop();
   }
@@ -1764,17 +1766,20 @@ class _DownloadCompleteScreen extends StatelessWidget {
     required this.filePath,
     required this.dirPath,
     required this.fileName,
+    required this.version,
   });
 
   final String filePath;
   final String dirPath;
   final String fileName;
+  final String version;
 
   static Future<void> show({
     required BuildContext context,
     required String filePath,
     required String dirPath,
     required String fileName,
+    required String version,
   }) {
     return showGeneralDialog<void>(
       context: context,
@@ -1788,6 +1793,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
           filePath: filePath,
           dirPath: dirPath,
           fileName: fileName,
+          version: version,
         ),
       ),
       transitionBuilder: (context, animation, _, child) {
@@ -1852,7 +1858,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
                           Platform.isWindows
                               ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
                               : Platform.isMacOS
-                              ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
+                              ? 'Forja must close before installing. Choose Install to apply the update and reopen Forja, or skip for now.'
                               : 'Make the file executable, then run it:\n'
                                     'chmod +x "$fileName"\n./$fileName',
                           style: GoogleFonts.plusJakartaSans(
@@ -1907,16 +1913,19 @@ class _DownloadCompleteScreen extends StatelessWidget {
   Future<void> _installDesktopUpdate(BuildContext context) async {
     try {
       if (Platform.isMacOS) {
-        await Process.start('open', [
-          filePath,
-        ], mode: ProcessStartMode.detached);
-      } else {
-        await Process.start(
-          filePath,
-          const [],
-          mode: ProcessStartMode.detached,
+        if (version.isEmpty) {
+          if (context.mounted) {
+            ForjaToast.error('Could not install the update: missing version.');
+          }
+          return;
+        }
+        await AppUpdateMacosInstaller.applyAndQuit(
+          dmgPath: filePath,
+          version: version,
         );
+        return;
       }
+      await Process.start(filePath, const [], mode: ProcessStartMode.detached);
       exit(0);
     } catch (error) {
       if (context.mounted) {

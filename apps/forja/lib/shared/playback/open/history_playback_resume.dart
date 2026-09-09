@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -94,6 +95,10 @@ Future<bool> _resumeStremioDirectStream(
   }
   if (precheck is StremioResolveFailure) {
     if (precheck.message.isNotEmpty) ForjaToast.info(precheck.message);
+    return false;
+  }
+  if (streamDrmBlockedOffAndroid(matched['drm'])) {
+    ForjaToast.info(kStreamDrmAndroidOnlyMessage);
     return false;
   }
   if (precheck == null) {

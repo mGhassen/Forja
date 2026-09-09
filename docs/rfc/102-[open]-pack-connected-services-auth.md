@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **7 / 8** acceptance (1 ⏭️ pin) |
-| **Current slice** | Form session auth shipped; PIN flow deferred |
+| **Progress** | **4 / 4** components · **8 / 10** acceptance (1 ⏭️ pin · 1 ⬜ browser QA) |
+| **Current slice** | Browser session import shipped (Shahid SSO); PIN flow deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,6 +41,15 @@
 
 ---
 
+## Acceptance (slice — browser session import)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R102-A09 | Host handles `auth_begin` `flow: "browser"` — open pack URL, harvest capture keys, `auth_login` method `browser` | ✅ |
+| 2 | R102-A10 | Shahid: Login opens shahid.mbc.net; Google/email web sign-in imports `token` cookie → Connected | ⬜ |
+
+---
+
 ## Summary
 
 Simkl stays a built-in host panel. Packs that need account sessions declare auth under **Settings → Connected services** without hardcoding the pack in the Flutter root.
@@ -66,11 +75,13 @@ Simkl stays a built-in host panel. Packs that need account sessions declare auth
 | Action | Role |
 |--------|------|
 | `auth_status` | `{ connected, label? }` |
-| `auth_begin` | `{ flow: "form", methods: [...] }` or `{ flow: "pin", … }` |
+| `auth_begin` | `{ flow: "form", methods: [...] }` or `{ flow: "browser", url, capture }` or `{ flow: "pin", … }` |
 | `auth_login` | params: method + field values → `{ connected, label?, secrets?, config? }` |
 | `auth_logout` | clear pack-side state; host clears Keychain |
 
-Host never branches on pack id. Shahid (and future packs) own login methods (email, phone OTP, …) inside `auth_begin` / `auth_login`.
+Host never branches on pack id. Shahid (and future packs) own login methods (browser SSO, email, phone OTP, …) inside `auth_begin` / `auth_login`.
+
+**Browser flow:** pack returns `flow: "browser"` + `url` + optional `capture` (`cookieNames`, `localStorageKeys`, `originHosts`). Host opens the URL in an in-app WebView, harvests session material, calls `auth_login` with `method: "browser"` and fields (e.g. `sessionId`).
 
 ### Related
 

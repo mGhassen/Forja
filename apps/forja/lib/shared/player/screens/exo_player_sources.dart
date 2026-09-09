@@ -577,6 +577,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
           providerId: catalogHttpPlayProviderId(stream),
         ),
         switchGen: switchGen,
+        drm: StreamDrmConfig.tryParse(stream['drm']),
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
@@ -865,6 +866,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     required String url,
     required Map<String, String>? headers,
     required int switchGen,
+    StreamDrmConfig? drm,
   }) async {
     final resumeAt = _s._position;
     final prepared = await _s._prepareOpenSubtitles(
@@ -895,6 +897,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
           .toList(),
       maxVideoHeight: caps.maxVideoHeight,
       maxVideoBitrate: caps.maxVideoBitrate,
+      drm: drm?.toJson(),
     );
     if (!mounted || _s._fallbackAborted(switchGen)) return;
     await ExoPlayerBridge.setVolume(_s._viewId, _s._volume / 100.0);

@@ -20,6 +20,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';

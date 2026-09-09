@@ -53,7 +53,7 @@ Migrations and the `sync-github-releases` Edge Function live under [`supabase/`]
 
 1. Create a Supabase project (or link an existing one)
 2. Apply migrations: `supabase db push` (from `apps/web` with CLI linked)
-3. Set host env `RELEASE_CDN_URL` / `VITE_RELEASE_CDN_URL` to the public R2 CDN base (required for `/download` and `/api/changelog`)
+3. Set host env `RELEASE_CDN_URL` / `VITE_RELEASE_CDN_URL` to the public R2 CDN base (required for `/download`, `/api/changelog`, and `/api/release-archive`)
 
 Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`.
 
@@ -64,7 +64,7 @@ Same project URL/publishable key are used by Flutter via `--dart-define=SUPABASE
 | `/` | Public landing |
 | `/iptv` | IPTV player story — live playlists & controls |
 | `/plugins` | Public — official remote engine packs + **Add to Forja** |
-| `/download` | Public — per-platform latest installers from R2 `latest/manifest.json` |
+| `/download` | Public — per-platform latest installers from R2 `latest/manifest.json` (+ other versions from the last few `v{version}/` trees) |
 | `/changelog` | Public — release notes from R2 `changelog/` |
 | `/terms` | Terms of use |
 | `/dmca` | DMCA / copyright notice |

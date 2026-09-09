@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
+import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -236,10 +237,16 @@ class AppUpdateDownloadService {
 
     try {
       if (Platform.isMacOS) {
-        await Process.start('open', [
-          filePath,
-        ], mode: ProcessStartMode.detached);
-        exit(0);
+        final version = state.value.updateInfo?.latestVersion;
+        if (version == null || version.isEmpty) {
+          ForjaToast.error('Could not install the update: missing version.');
+          return;
+        }
+        await AppUpdateMacosInstaller.applyAndQuit(
+          dmgPath: filePath,
+          version: version,
+        );
+        return;
       } else if (Platform.isWindows) {
         await Process.start(
           filePath,

@@ -180,12 +180,22 @@ function authStatus(ctx) {
 }
 
 function authBegin() {
+  // Browser SSO (Google/Apple/Facebook on Shahid web) — host opens URL, harvests
+  // cookie `token` (= sessionId), then auth_login(method: browser).
   return hubOk('auth_begin', {
-    flow: 'form',
+    flow: 'browser',
+    url: 'https://shahid.mbc.net/en/hub/login',
+    title: 'Sign in to Shahid',
+    hint: 'Sign in on Shahid (Google or email). Forja imports the session when you finish.',
+    capture: {
+      cookieNames: ['token'],
+      localStorageKeys: ['persist:modules'],
+      originHosts: ['shahid.mbc.net', 'www.shahid.mbc.net'],
+    },
     methods: [
       {
         id: 'email',
-        label: 'Email',
+        label: 'Email + password',
         fields: [
           { id: 'email', type: 'text', label: 'Email' },
           { id: 'password', type: 'password', label: 'Password' },
@@ -193,7 +203,7 @@ function authBegin() {
       },
       {
         id: 'phone',
-        label: 'Phone',
+        label: 'Phone + password',
         fields: [
           { id: 'phone', type: 'phone', label: 'Phone' },
           { id: 'password', type: 'password', label: 'Password' },
@@ -203,11 +213,93 @@ function authBegin() {
   });
 }
 
+function authLoginFromSession(ctx, sessionId, labelHint) {
+  var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
+  return getJwt(ctx).then(function (jwt) {
+    var hdrs = Object.assign(shahidHeaders(sessionId, jwt, cfg.language), {
+      Token: sessionId,
+    });
+    return ctx
+      .fetch(SHAHID_PROXY + '/v2.1/usersservice', {
+        method: 'GET',
+        headers: hdrs,
+      })
+      .then(function (res) {
+        return res.json().then(function (j) {
+          if (!res.ok) {
+            var msg =
+              (j && j.message) ||
+              (j && j.faults && j.faults[0] && j.faults[0].userMessage) ||
+              'Session invalid';
+            throw new Error(String(msg));
+          }
+          return j;
+        });
+      })
+      .then(function (j) {
+        var user = (j && j.user) || j || {};
+        var sid = String(user.sessionId || sessionId || '').trim();
+        if (!sid) {
+          return hubFail('auth_login', 'AUTH_REQUIRED', 'no session returned');
+        }
+        _shahidSessionId = sid;
+        _shahidJwt = jwt || '';
+        var label = String(
+          user.email ||
+            user.userName ||
+            user.communicationEmail ||
+            labelHint ||
+            '',
+        ).trim();
+        return hubOk('auth_login', {
+          connected: true,
+          label: label || 'Shahid',
+          secrets: {
+            sessionId: sid,
+            jwt: jwt || '',
+            email: String(user.email || '').trim(),
+          },
+        });
+      })
+      .catch(function () {
+        // Profile GET can 401 on some regions; cookie token is still the session.
+        if (sessionId.length < 8) {
+          return hubFail('auth_login', 'AUTH_REQUIRED', 'Session invalid');
+        }
+        _shahidSessionId = sessionId;
+        _shahidJwt = jwt || '';
+        return hubOk('auth_login', {
+          connected: true,
+          label: labelHint || 'Shahid',
+          secrets: {
+            sessionId: sessionId,
+            jwt: jwt || '',
+          },
+        });
+      });
+  });
+}
+
 function authLogin(ctx) {
   var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
   var params = hubParams(ctx);
   var fields = params.fields || {};
   var method = String(params.method || 'email');
+  if (method === 'browser') {
+    var sessionId = String(
+      fields.sessionId || fields.token || '',
+    ).trim();
+    if (!sessionId) {
+      return Promise.resolve(
+        hubFail('auth_login', 'AUTH_REQUIRED', 'session token required'),
+      );
+    }
+    return authLoginFromSession(
+      ctx,
+      sessionId,
+      String(fields.label || fields.email || '').trim(),
+    );
+  }
   var email = String(fields.email || '').trim();
   var phone = String(fields.phone || '').trim();
   var password = String(fields.password || '').trim();

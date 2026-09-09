@@ -12,11 +12,13 @@ import {
   primaryDownloadsByPlatform,
   useChangelogNotes,
   useLatestRelease,
+  useReleaseArchive,
   versionForAsset,
   versionForPlatform,
   type ShowcasePlatform,
   type ShowcasePlatformId,
 } from '@/hooks/use-releases'
+import { compareSemverDesc } from '@/lib/changelog-docs'
 import {
   guessCpuArch,
   guessOsPlatform,
@@ -308,6 +310,134 @@ function MagnetDownload({
   )
 }
 
+/** Quiet download control for older builds (hierarchy under primary). */
+function QuietDownload({
+  href,
+  label,
+  icon,
+}: {
+  href: string
+  label: string
+  icon?: ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      data-hover=""
+      onClick={(e) => {
+        e.preventDefault()
+        startBackgroundDownload(href)
+      }}
+      className="inline-flex max-w-full items-center justify-center gap-2.5 rounded-full border border-[rgba(237,230,218,0.22)] px-5 py-3 text-center font-mono-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[rgba(237,230,218,0.78)] transition-colors hover:border-brand hover:text-brand sm:px-6"
+    >
+      {icon}
+      {label}
+    </a>
+  )
+}
+
+/**
+ * Older installers still on CDN (last ~3 version trees), excluding whatever
+ * the primary latest buttons already offer for this platform.
+ */
+function OtherVersions({
+  platform,
+  archiveAssets,
+  currentVersions,
+}: {
+  platform: ShowcasePlatform
+  archiveAssets: ReleaseAsset[]
+  currentVersions: string[]
+}) {
+  const [open, setOpen] = useState(false)
+
+  const groups = useMemo(() => {
+    const skip = new Set(currentVersions)
+    const list = assetsForPlatform(archiveAssets, platform).filter((a) => {
+      const ver = versionForAsset(a)
+      return ver != null && !skip.has(ver)
+    })
+    if (!list.length) return [] as Array<{ version: string; assets: ReleaseAsset[] }>
+
+    const byVersion = new Map<string, ReleaseAsset[]>()
+    for (const asset of list) {
+      const ver = versionForAsset(asset)
+      if (!ver) continue
+      const bucket = byVersion.get(ver) ?? []
+      bucket.push(asset)
+      byVersion.set(ver, bucket)
+    }
+    return [...byVersion.entries()]
+      .sort(([a], [b]) => compareSemverDesc(a, b))
+      .map(([version, assets]) => ({ version, assets }))
+  }, [archiveAssets, platform, currentVersions])
+
+  if (!groups.length) return null
+
+  return (
+    <div className="border-t border-[rgba(237,230,218,0.1)] pt-5">
+      <button
+        type="button"
+        data-hover=""
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.45)] transition-colors hover:text-brand"
+      >
+        {open ? 'Hide other versions ↑' : 'Other versions ↓'}
+      </button>
+      {open ? (
+        <div className="mt-5 space-y-6">
+          {groups.map((group) => (
+            <div key={group.version} className="space-y-3">
+              <p className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.38)]">
+                v{group.version}
+              </p>
+              <div className="flex flex-col items-start gap-3">
+                {group.assets.map((a) => {
+                  const multi = group.assets.length > 1
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1.5"
+                    >
+                      <QuietDownload
+                        href={a.download_url}
+                        label={downloadButtonLabel(platform, a, {
+                          multi,
+                          showVersion: false,
+                        })}
+                        icon={
+                          <PlatformGlyph
+                            id={platform.id}
+                            className="size-3.5 shrink-0 opacity-70"
+                          />
+                        }
+                      />
+                      {a.downloader_code ? (
+                        <>
+                          <span
+                            aria-hidden
+                            className="font-mono-ui text-base text-[rgba(237,230,218,0.35)]"
+                          >
+                            →
+                          </span>
+                          <span className="font-mono-ui text-[clamp(18px,3.5vw,26px)] font-bold leading-none tracking-[0.16em] text-[rgba(237,230,218,0.72)]">
+                            {a.downloader_code}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function PlatformPicker({
   platforms,
   selectedId,
@@ -315,6 +445,7 @@ function PlatformPicker({
   assetsById,
   primaryById,
   versionById,
+  archiveAssets,
   resolveNotes,
 }: {
   platforms: ShowcasePlatform[]
@@ -323,6 +454,7 @@ function PlatformPicker({
   assetsById: Record<ShowcasePlatformId, ReleaseAsset[]>
   primaryById: Record<ShowcasePlatformId, ReleaseAsset | null>
   versionById: Record<ShowcasePlatformId, string | null>
+  archiveAssets: ReleaseAsset[]
   resolveNotes: (version: string | null) => string | null
 }) {
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
@@ -525,6 +657,12 @@ function PlatformPicker({
             </span>
           )}
 
+          <OtherVersions
+            platform={selected}
+            archiveAssets={archiveAssets}
+            currentVersions={uniqueVersions}
+          />
+
           <PlatformOpenHelp platformId={selected.id} />
 
           {changelogEntries.length > 0 ? (
@@ -568,6 +706,7 @@ function PlatformPicker({
 export function DownloadPage() {
   const { data, isLoading, isError, error } = useLatestRelease()
   const { data: archiveNotes } = useChangelogNotes()
+  const { data: releaseArchive } = useReleaseArchive()
   const [selectedId, setSelectedId] = useState<ShowcasePlatformId>('windows')
   const [preferredArch, setPreferredArch] = useState<ClientCpuArch | null>(null)
 
@@ -596,6 +735,8 @@ export function DownloadPage() {
     }
     return map
   }, [data, preferredArch])
+
+  const archiveAssets = releaseArchive?.assets ?? []
 
   const resolveNotes = useMemo(
     () => (version: string | null) =>
@@ -659,6 +800,7 @@ export function DownloadPage() {
               assetsById={assetsById}
               primaryById={primaryById}
               versionById={versionById}
+              archiveAssets={archiveAssets}
               resolveNotes={resolveNotes}
             />
           </div>

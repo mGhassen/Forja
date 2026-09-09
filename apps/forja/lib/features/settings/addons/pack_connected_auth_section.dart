@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/addons/pack_auth_browser_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/pack/pack_connected_auth_service.dart';
@@ -54,6 +55,10 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
         );
         return;
       }
+      if (flow == 'browser') {
+        await _loginBrowser(spec, begin ?? const {});
+        return;
+      }
       final methodsRaw = begin?['methods'];
       if (methodsRaw is! List || methodsRaw.isEmpty) {
         ForjaToast.error('No login methods from ${spec.label}');
@@ -69,12 +74,10 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
       }
       final submitted =
           await showDialog<({String method, Map<String, String> fields})>(
-        context: context,
-        builder: (ctx) => _PackAuthLoginDialog(
-          title: spec.label,
-          methods: methods,
-        ),
-      );
+            context: context,
+            builder: (ctx) =>
+                _PackAuthLoginDialog(title: spec.label, methods: methods),
+          );
       if (submitted == null || !mounted) return;
       await PackConnectedAuthService.login(
         spec,
@@ -91,6 +94,45 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
     } finally {
       if (mounted) setState(() => _busy.remove(spec.pluginId));
     }
+  }
+
+  Future<void> _loginBrowser(
+    PackConnectedAuthSpec spec,
+    Map<String, dynamic> begin,
+  ) async {
+    final url = (begin['url'] ?? '').toString().trim();
+    if (url.isEmpty) {
+      ForjaToast.error('No login URL from ${spec.label}');
+      return;
+    }
+    final captureRaw = begin['capture'];
+    final capture = captureRaw is Map
+        ? Map<String, dynamic>.from(captureRaw)
+        : <String, dynamic>{};
+    final fields = await showDialog<Map<String, String>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PackAuthBrowserDialog(
+        title: (begin['title'] ?? 'Sign in to ${spec.label}').toString(),
+        url: url,
+        hint: (begin['hint'] ?? '').toString(),
+        capture: capture,
+      ),
+    );
+    if (fields == null || !mounted) return;
+    final sessionId = (fields['sessionId'] ?? '').trim();
+    if (sessionId.isEmpty) {
+      ForjaToast.error('No session imported from ${spec.label}');
+      return;
+    }
+    await PackConnectedAuthService.login(
+      spec,
+      method: 'browser',
+      fields: fields,
+    );
+    if (!mounted) return;
+    ForjaToast.success('Connected to ${spec.label}');
+    await _reload();
   }
 
   Future<void> _logout(PackConnectedAuthSpec spec) async {
@@ -176,10 +218,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
 }
 
 class _PackAuthLoginDialog extends StatefulWidget {
-  const _PackAuthLoginDialog({
-    required this.title,
-    required this.methods,
-  });
+  const _PackAuthLoginDialog({required this.title, required this.methods});
 
   final String title;
   final List<Map<String, dynamic>> methods;
@@ -267,11 +306,11 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
                 controller: _controllers[(f['id'] ?? '').toString()],
                 obscureText:
                     (f['type'] ?? '').toString().toLowerCase() == 'password' ||
-                        (f['type'] ?? '').toString().toLowerCase() == 'secret',
+                    (f['type'] ?? '').toString().toLowerCase() == 'secret',
                 keyboardType:
                     (f['type'] ?? '').toString().toLowerCase() == 'phone'
-                        ? TextInputType.phone
-                        : TextInputType.text,
+                    ? TextInputType.phone
+                    : TextInputType.text,
                 decoration: InputDecoration(
                   labelText: (f['label'] ?? f['id'] ?? '').toString(),
                 ),

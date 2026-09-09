@@ -22,21 +22,26 @@ var _shahidSessionId = '';
 var _shahidJwt = '';
 var _shahidCountry = '';
 
+// Web Mac Chrome headers — DRMType resolves with MAC/MACOS (WEB/WINDOWS → 400).
+var SHAHID_WEB_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
 function shahidHeaders(sessionId, jwt) {
   var h = {
-    'User-Agent': SHAHID_UA,
+    'User-Agent': SHAHID_WEB_UA,
     'Shahid-Agent': SHAHID_UA,
     UUID: 'ios',
     language: 'AR',
+    'Accept-Language': 'ar',
     Accept: 'application/json',
-    shahid_os: 'WEB',
-    SHAHID_OS: 'WEB',
+    shahid_os: 'MAC',
+    SHAHID_OS: 'MAC',
     BROWSER_NAME: 'CHROME',
     BROWSER_VERSION: '120.0',
     OS_VERSION: '10',
     'Shd-Platform': 'WEB',
     'Shd-App-Name': 'WEB',
-    'Shd-OS': 'WINDOWS',
+    'Shd-OS': 'MACOS',
     'Shd-OS-Version': '10',
     'Shd-Browser': 'CHROME',
     'Shd-Browser-Version': '120.0',
@@ -77,23 +82,27 @@ function signParams(ctx, obj) {
 }
 
 function getJwt(ctx) {
-  if (_shahidJwt) return Promise.resolve(_shahidJwt);
+  // Always hit session when country unknown — host-injected jwt skips country otherwise.
+  if (_shahidJwt && _shahidCountry) return Promise.resolve(_shahidJwt);
   return ctx
     .fetch(SHAHID_PROXY + '/v2/session/ios', {
       method: 'POST',
-      headers: shahidHeaders('', ''),
+      headers: Object.assign(shahidHeaders('', ''), {
+        'User-Agent': SHAHID_UA,
+        'Content-Type': 'application/json',
+      }),
       body: '{}',
     })
     .then(function (res) {
       return res.json();
     })
     .then(function (j) {
-      _shahidJwt = (j && j.jwt) || '';
+      if (!_shahidJwt) _shahidJwt = (j && j.jwt) || '';
       if (j && j.country) _shahidCountry = String(j.country);
-      return _shahidJwt;
+      return _shahidJwt || (j && j.jwt) || '';
     })
     .catch(function () {
-      return '';
+      return _shahidJwt || '';
     });
 }
 
@@ -185,9 +194,9 @@ function buildDrmRow(videoUrl, licenceUrl) {
 function fetchLicenseUrl(ctx, streamId, auth) {
   var country = _shahidCountry || 'SA';
   var ts = Date.now();
-  // Compact JSON — web + Kodi both omit spaces.
   var assetId = Number(streamId);
   if (!isFinite(assetId)) assetId = streamId;
+  // Compact JSON (no spaces) — must match signed `request=` value.
   var requestStr = JSON.stringify({ assetId: assetId });
   var authSig = signParams(ctx, {
     country: String(country),
@@ -198,66 +207,37 @@ function fetchLicenseUrl(ctx, streamId, auth) {
     if (ctx && ctx.log) ctx.log('shahid drm: hmac unavailable');
     return Promise.resolve('');
   }
-  // Web: request + ts + country. Do NOT send DRMSCHEMA (500s). Shd-* required.
+  // Do NOT send DRMSCHEMA — 500s. DRMType comes from shahid_os=MAC + Shd-OS=MACOS.
   var qs =
     'request=' +
     encodeURIComponent(requestStr) +
     '&ts=' +
     String(ts) +
     '&country=' +
-    encodeURIComponent(String(country));
+    String(country);
   var hdrs = Object.assign(shahidHeaders(auth.sessionId, auth.jwt), {
     Authorization: authSig,
-    'Accept-Language': 'ar',
   });
-
-  function readSig(res, label) {
-    if (!res.ok) {
-      return res.text().then(function (body) {
-        if (ctx && ctx.log) {
-          ctx.log(
-            'shahid drm: ' +
-              label +
-              ' HTTP ' +
-              res.status +
-              ' ' +
-              String(body || '').slice(0, 160),
-          );
-        }
-        return '';
-      });
-    }
-    return res.json().then(function (j) {
-      return (j && j.signature) || '';
-    });
-  }
 
   return ctx
     .fetch(SHAHID_PROXY + '/v2.1/playout/new/drm?' + qs, { headers: hdrs })
     .then(function (res) {
-      return readSig(res, 'v2.1');
-    })
-    .then(function (sig) {
-      if (sig) return sig;
-      // Kodi fallback: unsigned v2 + browser OS headers only.
-      var kodiQs = 'request=' + encodeURIComponent(requestStr);
-      return ctx
-        .fetch(SHAHID_PROXY + '/v2/playout/new/drm?' + kodiQs, {
-          headers: {
-            'User-Agent': SHAHID_UA,
-            'Shahid-Agent': SHAHID_UA,
-            UUID: 'ios',
-            language: 'AR',
-            'S-Session': auth.jwt || '',
-            Token: auth.sessionId || '',
-            BROWSER_NAME: 'CHROME',
-            SHAHID_OS: 'LINUX',
-            BROWSER_VERSION: '79.0',
-          },
-        })
-        .then(function (res) {
-          return readSig(res, 'v2-kodi');
+      if (!res.ok) {
+        return res.text().then(function (body) {
+          if (ctx && ctx.log) {
+            ctx.log(
+              'shahid drm: HTTP ' +
+                res.status +
+                ' ' +
+                String(body || '').slice(0, 160),
+            );
+          }
+          return '';
         });
+      }
+      return res.json().then(function (j) {
+        return (j && j.signature) || '';
+      });
     })
     .catch(function (e) {
       if (ctx && ctx.log) {

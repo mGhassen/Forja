@@ -8,6 +8,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -356,6 +357,10 @@ Future<void> _playStremio({
   }
 
   if (precheck is StremioPlayable) {
+    if (streamDrmBlockedOffAndroid(stream['drm'])) {
+      ForjaToast.info(kStreamDrmAndroidOnlyMessage);
+      return;
+    }
     try {
       final proxied = await proxyCatalogHttpStreamIfNeeded(
         streamUrl: precheck.streamUrl,
@@ -363,6 +368,17 @@ Future<void> _playStremio({
         stream: stream,
       );
       if (!context.mounted) return;
+      final drm = StreamDrmConfig.tryParse(stream['drm']);
+      final playSource = StreamSource(
+        url: proxied.url,
+        title: (stream['_addonName'] ?? stream['name'] ?? stream['title'] ?? 'Forja')
+            .toString(),
+        type: urlLooksLikeHls(proxied.url) ? 'hls' : 'mp4',
+        headers: proxied.headers,
+        providerId: catalogHttpPlayProviderId(stream),
+        catalogUrl: stream['url']?.toString() ?? proxied.url,
+        drm: drm,
+      );
       await _openKitPlayer(
         context: context,
         movie: movie,
@@ -371,13 +387,15 @@ Future<void> _playStremio({
         episode: episode,
         open: () => AppRouter.openPlayer(
           context,
-          streamUrl: proxied.url,
+          streamUrl: playSource.url,
           title: movie.title,
-          headers: proxied.headers,
+          headers: playSource.headers,
           movie: movie,
           selectedSeason: episodic ? (season ?? 1) : null,
           selectedEpisode: episodic ? (episode ?? 1) : null,
-          activeProvider: catalogHttpPlayProviderId(stream),
+          activeProvider: playSource.providerId,
+          sources: [playSource],
+          streamsPrevalidated: true,
           externalSubtitles: catalogStreamExternalSubtitles(stream),
           stremioId: stremioId,
           stremioAddonBaseUrl: stremioAddonBaseUrl,

@@ -749,6 +749,10 @@ mixin _DesktopPlayerEpisodes
       ForjaToast.info(precheck.message);
       return;
     }
+    if (streamDrmBlockedOffAndroid(stream['drm'])) {
+      ForjaToast.info(kStreamDrmAndroidOnlyMessage);
+      return;
+    }
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
       return;

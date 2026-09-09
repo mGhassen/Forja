@@ -9,6 +9,7 @@
 
 import {
   releaseCdnLatestUrl,
+  releaseCdnPublicUrl,
 } from '@/lib/release-storage'
 
 export type R2ArchEntry = {
@@ -278,11 +279,20 @@ function normalizePlatforms(
   return out
 }
 
-export function fromR2Manifest(
+/**
+ * Installer rows from a release manifest.
+ * `latest` → CDN `latest/{file}`; `versioned` → CDN `v{semver}/{file}`.
+ */
+export function assetsFromManifest(
   base: string,
   manifest: R2LatestManifest,
-  notesByVersion: Record<string, string> = {},
-): R2LatestRelease | null {
+  urlMode: 'latest' | 'versioned' = 'latest',
+): {
+  assets: R2LatestReleaseAsset[]
+  platformVersions: Record<string, string>
+  maxVersion: string
+  publishedAt: string
+} | null {
   const platforms = normalizePlatforms(manifest)
   if (!Object.keys(platforms).length) return null
 
@@ -320,13 +330,17 @@ export function fromR2Manifest(
       const name = meta.filename
       const fileVersion = meta.version || versionFromFilename(name) || entry.version
       const code = entry.downloader_codes?.[arch]
+      const download_url =
+        urlMode === 'versioned'
+          ? releaseCdnPublicUrl(base, fileVersion, name)
+          : releaseCdnLatestUrl(base, name)
       assets.push({
         id: `r2-asset-${platform}-${fileVersion}-${arch}-${i}`,
         release_id: `r2-${fileVersion}`,
         platform,
         version: fileVersion,
         name,
-        download_url: releaseCdnLatestUrl(base, name),
+        download_url,
         size_bytes: null,
         downloader_code: code ?? null,
       })
@@ -335,7 +349,18 @@ export function fromR2Manifest(
   }
 
   if (!maxVersion || !assets.length) return null
+  return { assets, platformVersions, maxVersion, publishedAt }
+}
 
+export function fromR2Manifest(
+  base: string,
+  manifest: R2LatestManifest,
+  notesByVersion: Record<string, string> = {},
+): R2LatestRelease | null {
+  const parsed = assetsFromManifest(base, manifest, 'latest')
+  if (!parsed) return null
+
+  const { assets, platformVersions, maxVersion, publishedAt } = parsed
   const body = notesByVersion[maxVersion] ?? null
 
   return {

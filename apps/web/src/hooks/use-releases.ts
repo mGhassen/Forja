@@ -6,6 +6,7 @@ import {
   detectPlatformFromFilename,
   versionFromFilename,
 } from '@/lib/r2-latest-release'
+import type { R2ReleaseArchive } from '@/lib/r2-release-archive'
 import {
   filenameMatchesArch,
   type ClientCpuArch,
@@ -240,6 +241,28 @@ export function useLatestRelease() {
     queryKey: ['releases', 'latest'],
     queryFn: async (): Promise<ReleaseWithAssets | null> =>
       fetchLatestReleaseFromApi(),
+    staleTime: 60_000,
+  })
+}
+
+async function fetchReleaseArchiveFromApi(): Promise<R2ReleaseArchive> {
+  const res = await fetch('/api/release-archive', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    throw new Error(`Release archive ${res.status}`)
+  }
+  return (await res.json()) as R2ReleaseArchive
+}
+
+/**
+ * Last few versioned installer trees still on CDN (via /api/release-archive).
+ * Used for “Other versions” on the download page.
+ */
+export function useReleaseArchive() {
+  return useQuery({
+    queryKey: ['releases', 'archive'],
+    queryFn: fetchReleaseArchiveFromApi,
     staleTime: 60_000,
   })
 }

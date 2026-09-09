@@ -188,8 +188,8 @@ class _SettingsPlaybackSectionState
                 context,
                 'Play in background',
                 SettingsService.platformProfile == PlatformProfile.desktop
-                    ? 'Keep movies, series, and IPTV playing when Forja is in the background. On by default on desktop.'
-                    : 'Keep movies, series, and IPTV playing when Forja is in the background. Off by default (playback pauses until you return).',
+                    ? 'Keep movies, series, and IPTV playing when Forja is in the background.'
+                    : 'Keep movies, series, and IPTV playing when Forja is in the background. (playback pauses until you return).',
                 snap.playInBackground,
                 (val) async {
                   await _settings.setPlayInBackground(val);

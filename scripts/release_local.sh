@@ -1281,6 +1281,9 @@ build_android_tv() {
   (
     cd "$APP_DIR"
     flutter pub get
+    # NOTE: the trailing \ after TMDB_API_KEY is mandatory — without it bash
+    # runs flutter unsigned, then tries to exec -PFORJA_… as a command, and
+    # package_android_tv_apk.sh can still pick up stale flutter-apk outputs.
     flutter build apk --release --split-per-abi \
       --target-platform "$target_platform" \
       --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
@@ -1292,12 +1295,12 @@ build_android_tv() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=TMDB_API_KEY="${TMDB_API_KEY:-}"
+      --dart-define=TMDB_API_KEY="${TMDB_API_KEY:-}" \
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \
       -PFORJA_KEY_PASSWORD="${FORJA_KEY_PASSWORD}"
-  )
+  ) || die "flutter build apk failed — refusing to package/upload stale APKs"
   ./scripts/package_android_tv_apk.sh "$ver" "${package_abis[@]}"
   local out
   for abi in "${package_abis[@]}"; do

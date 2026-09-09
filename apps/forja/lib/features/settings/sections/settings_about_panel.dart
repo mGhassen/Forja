@@ -103,7 +103,7 @@ class _SettingsCrashReportingRowState
     return SettingsToggleRow(
       title: 'Crash reporting',
       subtitle: Telemetry.isConfigured
-          ? 'Sends crash details so we can fix bugs. No passwords or stream links. On by default.'
+          ? 'Sends crash details so we can fix bugs. No passwords or stream links.'
           : 'Not available in this build. Your choice is still saved.',
       value: enabled,
       onChanged: _setCrashReporting,
@@ -154,7 +154,7 @@ class _SettingsProductAnalyticsRowState
     return SettingsToggleRow(
       title: 'Product analytics',
       subtitle: ProductAnalytics.isConfigured
-          ? 'Shares how you use Forja so we can improve it. On by default.'
+          ? 'Shares how you use Forja so we can improve it.'
           : 'Not available in this build. Your choice is still saved.',
       value: enabled,
       onChanged: _setEnabled,

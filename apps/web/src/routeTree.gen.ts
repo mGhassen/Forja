@@ -27,6 +27,7 @@ import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 import { Route as ApiChangelogRouteImport } from './routes/api.changelog'
 import { Route as ApiLatestReleaseRouteImport } from './routes/api.latest-release'
+import { Route as ApiReleaseArchiveRouteImport } from './routes/api.release-archive'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
@@ -128,6 +129,11 @@ const ApiChangelogRoute = ApiChangelogRouteImport.update({
 const ApiLatestReleaseRoute = ApiLatestReleaseRouteImport.update({
   id: '/api/latest-release',
   path: '/api/latest-release',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReleaseArchiveRoute = ApiReleaseArchiveRouteImport.update({
+  id: '/api/release-archive',
+  path: '/api/release-archive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -241,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChangelogRoute: ApiChangelogRoute,
   ApiLatestReleaseRoute: ApiLatestReleaseRoute,
+  ApiReleaseArchiveRoute: ApiReleaseArchiveRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
