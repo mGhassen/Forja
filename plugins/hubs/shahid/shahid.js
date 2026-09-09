@@ -489,12 +489,13 @@ function feed(ctx) {
       fetchRelated(ctx, cfg, seriesSeed, 'SHOW', 20),
       fetchRelated(ctx, cfg, movieSeed, 'MOVIE', 20),
     ]).then(function (more) {
+      // KitShell expects rails[id] = MetaItem[], not { items: [...] }.
       return hubOk('feed', {
         rails: {
-          top_series: { items: top.series },
-          top_movies: { items: top.movies },
-          more_series: { items: more[0].items },
-          more_movies: { items: more[1].items },
+          top_series: top.series || [],
+          top_movies: top.movies || [],
+          more_series: (more[0] && more[0].items) || [],
+          more_movies: (more[1] && more[1].items) || [],
         },
       });
     });
@@ -504,7 +505,7 @@ function feed(ctx) {
 function rail(ctx) {
   var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
   var params = hubParams(ctx);
-  var railId = String(params.railId || params.id || '');
+  var railId = String(params.rail || params.railId || params.id || '');
   if (!SHAHID_RAILS[railId]) return Promise.resolve(hubItems('rail', []));
   return fetchRailItems(ctx, cfg, railId).then(function (r) {
     return hubItems('rail', r.items, null, {
