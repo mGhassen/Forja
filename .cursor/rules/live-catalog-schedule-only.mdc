@@ -1,0 +1,47 @@
+---
+description: Live Sports catalog packs are schedule-only — stream find/resolve lives in plugins/live only
+alwaysApply: true
+---
+
+# Catalog schedule-only (Live Sports)
+
+Index: [no-embed-playback](./no-embed-playback.mdc) · [issue 254](../../docs/issues/254-[open]-live-catalog-schedule-only-no-streams.md)
+
+**Catalog packs** (`plugins/catalog/**`) publish the **match schedule** only.  
+**Live packs** (`plugins/live/**`) **discover streams and unlock** playback.
+
+---
+
+## Forbidden in `plugins/catalog/**`
+
+| Do not | Why |
+|--------|-----|
+| Emit `streams[]`, `streamCount`, row `iframe`, `embedUrl` | That is stream discovery |
+| Map upstream `ev.streams` / embeds into schedule rows | Belongs in live `resolve` |
+| Implement `action: 'resolve'` / unlock / goat / gasm | Catalog extract is `catalog` only |
+| Surface broadcast/TV-guide packs as Providers sources | No `providerId` → not a stream feed |
+
+**Allowed on catalog rows:** `id`, title, time, category, teams, posters, airing/viewers, opaque `sources: [{ source, id }]` (resolve handoff keys only — **no** `iframe`/`url`), `sportMatchGame.broadcastChannels` for Live TV matching.
+
+---
+
+## Forbidden in host Providers / schedule ingest
+
+| Do not | Why |
+|--------|-----|
+| Promote catalog `streams[]` or `sources[].iframe` into Providers | Catalog is not a resolver |
+| Soft-match broadcast-only catalogs into stream rows | Guides ≠ streams |
+| Require a catalog iframe before calling live `resolve` | Live packs take `matchId` / `eventId` |
+
+**Right:** soft-match `providerId` catalogs → pending / Streamed list → `LivePluginEngine.resolve` on play.
+
+---
+
+## Wrong / right
+
+```
+❌ catalog row: { streams: [{ embedUrl }], iframe: 'https://embed…' }
+❌ Providers paints Live Soccer TV as a stream source
+✅ catalog row: { sources: [{ source: 'ppv', id: '123' }] }
+✅ live-ppv resolve(matchId) fetches embeds + unlocks
+```

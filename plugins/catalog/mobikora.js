@@ -158,7 +158,6 @@ function parseMatchBlock(block, origin, tzOffset) {
   var mid = b64url(channelUrl);
   var title =
     home && away ? home + ' vs ' + away : home || away || channelLabel(channelUrl);
-  var label = channelLabel(channelUrl);
 
   var row = {
     id: 'mk_' + mid,
@@ -170,19 +169,7 @@ function parseMatchBlock(block, origin, tzOffset) {
     airing: airing,
     viewers: 0,
     sources: [{ source: 'mobikora', id: mid }],
-    streams: [
-      {
-        id: mid + '_1',
-        streamNo: 1,
-        language: label,
-        hd: false,
-        embedUrl: channelUrl,
-        source: 'mobikora',
-        viewers: 0,
-      },
-    ],
     catalog: 'forja_live',
-    streamCount: 1,
   };
   if (home) row.homeTeam = home;
   if (away) row.awayTeam = away;

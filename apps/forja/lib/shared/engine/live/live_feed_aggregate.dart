@@ -303,7 +303,13 @@ MetaItem liveMetaFromFeedRow(Map<String, dynamic> row) {
   final sources = <Map<String, dynamic>>[];
   if (sourcesRaw is List) {
     for (final s in sourcesRaw) {
-      if (s is Map) sources.add(Map<String, dynamic>.from(s));
+      if (s is! Map) continue;
+      final m = Map<String, dynamic>.from(s);
+      final source = (m['source'] ?? '').toString().trim();
+      final id = (m['id'] ?? '').toString().trim();
+      if (source.isEmpty || id.isEmpty) continue;
+      // Opaque resolve keys only — drop catalog iframe/url embeds.
+      sources.add({'source': source, 'id': id});
     }
   }
   final kind = (row['kind'] ??

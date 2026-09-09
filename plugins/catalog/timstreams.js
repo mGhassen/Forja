@@ -59,20 +59,12 @@ async function extract(ctx) {
   var data = await res.json();
   var rows = [];
   (data.events || []).forEach(function (ev, idx) {
-    var sources = (ev.streams || [])
-      .filter(function (st) { return !st.vip; })
-      .map(function (st, i) {
-        return {
-          source: 'timstreams',
-          id: String(st.name || i),
-          iframe: String(st.url || ''),
-        };
-      });
-    if (!sources.length) return;
+    var eventToken = String(ev.url || idx);
+    if (!eventToken) return;
     var startTime = parseEventTime(ev);
     var airing = isAiring(startTime);
     rows.push({
-      id: 'ts_' + String(ev.url || idx),
+      id: 'ts_' + eventToken,
       title: String(ev.name || 'TimStreams event'),
       category: timstreamsCategory(ev),
       date: startTime > 0 ? startTime : Date.now(),
@@ -80,7 +72,7 @@ async function extract(ctx) {
       popular: ev.featured === true || (ev.viewers ? Number(ev.viewers) > 100 : false),
       airing: airing,
       viewers: Number(ev.viewers || 0),
-      sources: sources,
+      sources: [{ source: 'timstreams', id: eventToken }],
       catalog: 'forja_live',
       pluginId: pluginId,
     });

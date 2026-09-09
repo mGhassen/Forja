@@ -151,55 +151,6 @@ function isAiring(startTime) {
   return startTime <= nowSec && startTime >= nowSec - 6 * 3600;
 }
 
-function embedRows(group) {
-  var embeds = group && group.embeds;
-  if (!embeds) return [];
-  if (Array.isArray(embeds)) return embeds;
-  if (typeof embeds === 'object') {
-    return Object.keys(embeds)
-      .sort()
-      .map(function (k) {
-        return embeds[k];
-      })
-      .filter(Boolean);
-  }
-  return [];
-}
-
-function countEmbeds(m) {
-  var n = 0;
-  (m._embeds || []).forEach(function (group) {
-    n += embedRows(group).length;
-  });
-  return n;
-}
-
-function streamsFromEmbeds(m) {
-  var out = [];
-  var n = 0;
-  var id = String((m && m.id) || '');
-  (m._embeds || []).forEach(function (group) {
-    var lang = String(group.language || '').trim();
-    embedRows(group).forEach(function (e) {
-      var url = String((e && (e.embed || e.url)) || '').trim();
-      if (!url) return;
-      n += 1;
-      var label = String((e && e.label) || '').trim();
-      var language = lang && label ? lang + ' · ' + label : lang || label || '';
-      out.push({
-        id: id ? id + '_' + n : String(n),
-        streamNo: n,
-        language: language,
-        hd: /uhd|fhd|\bhd\b|4k/i.test(label + ' ' + lang),
-        embedUrl: url,
-        source: 'streamic',
-        viewers: 0,
-      });
-    });
-  });
-  return out;
-}
-
 async function fetchPopularList(ctx, cfg) {
   var origin = streamicOrigin(cfg);
   var api = (cfg && cfg.popularApi) || origin + '/api/J.php';
@@ -247,7 +198,6 @@ async function extract(ctx) {
     if (!m) return;
     var id = String(m.id || 'evt_' + i);
     if (!byId[id]) byId[id] = m;
-    else if (m._embeds && m._embeds.length) byId[id]._embeds = m._embeds;
   });
 
   return Object.keys(byId)
@@ -268,8 +218,6 @@ async function extract(ctx) {
       var startTime = m.startTime ? Number(m.startTime) : 0;
       var airing = isAiring(startTime);
       var teams = parseTeams(m);
-      var nEmbeds = countEmbeds(m);
-      var streams = streamsFromEmbeds(m);
       var row = {
         id: 'sic_' + id,
         title: eventTitle(m),
@@ -280,10 +228,8 @@ async function extract(ctx) {
         airing: airing,
         viewers: 0,
         sources: [{ source: 'streamic', id: id }],
-        streams: streams,
         catalog: 'forja_live',
         pluginId: pluginId,
-        streamCount: nEmbeds || streams.length,
       };
       if (teams.home) row.homeTeam = teams.home;
       if (teams.away) row.awayTeam = teams.away;

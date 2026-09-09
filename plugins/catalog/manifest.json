@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports Catalog",
   "description": "Live Sports schedule catalogs (Streamed, PPV, ESPN, …).",
   "author": "ForjaHQ",
-  "version": "1.9.6",
+  "version": "1.9.7",
   "prelude": "_wire.js",
   "tags": [
     "sports",

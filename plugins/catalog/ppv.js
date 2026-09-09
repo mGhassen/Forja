@@ -71,11 +71,9 @@ async function extract(ctx) {
             ends_at: Number(s.ends_at || 0),
             category_name: category,
             always_live: s.always_live === true,
-            iframe: String(s.iframe || ''),
             sources: [{
               source: 'ppv',
               id: String(s.id),
-              iframe: String(s.iframe || ''),
             }],
             catalog: 'forja_live',
             pluginId: pluginId,

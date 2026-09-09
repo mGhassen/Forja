@@ -229,34 +229,30 @@ class MatchEvent {
   }
 
   /// Normalize kit [KitListEntry.legacyRow] then parse.
+  ///
+  /// Schedule catalogs may only carry opaque `sources[{source,id}]` resolve
+  /// keys. Embed URLs / `streams[]` / `iframe` on catalog rows are dropped —
+  /// live resolve packs own stream discovery (issue 254).
   factory MatchEvent.fromLegacyRow(Map<String, dynamic> row) {
     final normalized = normalizeMatchLegacyRow(row);
     final sourcesRaw = normalized['sources'];
-    final inline = <Map<String, dynamic>>[];
     final refs = <Map<String, dynamic>>[];
     if (sourcesRaw is List) {
       for (final s in sourcesRaw) {
         if (s is! Map) continue;
         final m = Map<String, dynamic>.from(s);
-        final url = (m['url'] ?? m['iframe'] ?? '').toString();
-        if (url.isNotEmpty) {
-          inline.add({
-            'id': m['id'] ?? '',
-            'streamNo': 1,
-            'language': '',
-            'hd': false,
-            'embedUrl': url,
-            'source': m['source'] ?? '',
-            'viewers': parseLiveViewerCount(m['viewers']),
-          });
-        } else {
-          refs.add(m);
-        }
+        final source = (m['source'] ?? '').toString().trim();
+        final id = (m['id'] ?? '').toString().trim();
+        if (source.isEmpty || id.isEmpty) continue;
+        if (source.toLowerCase() == 'echo') continue;
+        refs.add({'source': source, 'id': id});
       }
     }
     final enriched = Map<String, dynamic>.from(normalized);
     enriched['sources'] = refs;
-    enriched['streams'] = inline;
+    // Catalog schedule rows never ship playable stream payloads.
+    enriched.remove('streams');
+    enriched.remove('iframe');
     if (normalized['homeTeam'] != null && enriched['teams'] == null) {
       enriched['teams'] = {
         'home': {

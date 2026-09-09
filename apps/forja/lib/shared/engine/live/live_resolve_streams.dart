@@ -153,11 +153,8 @@ abstract final class LiveResolveStreams {
     final siblings = await _forjaProviderResolveMatches(match);
     final jobs = <(MatchEvent, MatchSourceRef)>[];
     for (final m in siblings) {
-      for (final stream in m.inlineStreams) {
-        final url = stream.embedUrl.trim();
-        if (url.isEmpty || !seenUrls.add(url)) continue;
-        choices.add(_StreamChoice(match: m, stream: stream));
-      }
+      // Catalog rows are schedule-only — never promote catalog `streams[]` /
+      // iframe payloads into Providers (issue 254).
       for (final ref in m.sources) {
         final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
         if (!seenRefs.add(key)) continue;
@@ -189,7 +186,8 @@ abstract final class LiveResolveStreams {
   /// Same fixture across Forja Live catalogs — resolve every sibling plugin.
   ///
   /// Only catalogs that link to a live resolve pack (`providerId`). Broadcast
-  /// guides and scoreboard enrich rows stay out of Providers.
+  /// guides and scoreboard enrich rows stay out of Providers. Catalog rows
+  /// never contribute embeds — live packs discover streams on demand.
   static Future<List<MatchEvent>> _forjaProviderResolveMatches(
     MatchEvent anchor,
   ) async {
@@ -204,7 +202,7 @@ abstract final class LiveResolveStreams {
       final m = _ensureProviderResolveMatch(raw);
       final key = '${m.livePluginId}|${m.id}';
       if (key == '|' || !seen.add(key)) return;
-      if (m.sources.isEmpty && m.inlineStreams.isEmpty) return;
+      if (m.sources.isEmpty) return;
       out.add(m);
     }
 
@@ -229,9 +227,9 @@ abstract final class LiveResolveStreams {
     return out;
   }
 
-  /// Catalog rows normally carry `sources[]`; synthesize when the grid lost them.
+  /// Catalog rows normally carry opaque `sources[]`; synthesize when lost.
   static MatchEvent _ensureProviderResolveMatch(MatchEvent match) {
-    if (match.sources.isNotEmpty || match.inlineStreams.isNotEmpty) {
+    if (match.sources.isNotEmpty) {
       return match;
     }
     final pluginId = match.livePluginId.trim();
@@ -269,32 +267,7 @@ abstract final class LiveResolveStreams {
         ? token
         : LivePluginEngine.cachedResolveSourceToken(pluginId);
 
-    final inline = await _inlineStreamsForSourceRef(match, source);
-    if (inline.isNotEmpty) {
-      final out = <MatchStream>[];
-      final seen = <String>{};
-      for (var i = 0; i < inline.length; i++) {
-        final row = inline[i];
-        final embed = row.embedUrl.trim().isNotEmpty
-            ? row.embedUrl.trim()
-            : source.iframe.trim();
-        if (embed.isEmpty || !seen.add(embed)) continue;
-        out.add(
-          MatchStream(
-            id: row.id.isNotEmpty ? row.id : source.id,
-            streamNo: row.streamNo > 0 ? row.streamNo : i + 1,
-            language: row.language,
-            hd: row.hd,
-            embedUrl: embed,
-            source: row.source.trim().isNotEmpty ? row.source : pluginSource,
-            viewers: row.viewers > 0 ? row.viewers : match.viewers,
-            directPlayback: false,
-          ),
-        );
-      }
-      if (out.isNotEmpty) return out;
-    }
-
+    // Streamed: live/Rust lists mirrors by source+id (never catalog embeds).
     if (_isStreamedPkGoatSource(token)) {
       final listed = await _fetchStreamedStreams(source, allowFallback: true);
       if (listed.isNotEmpty) {
@@ -314,23 +287,7 @@ abstract final class LiveResolveStreams {
       }
     }
 
-    final iframe = source.iframe.trim();
-    if (iframe.isNotEmpty) {
-      return [
-        MatchStream(
-          id: source.id,
-          streamNo: 1,
-          language: '',
-          hd: false,
-          embedUrl: iframe,
-          source: pluginSource.isNotEmpty ? pluginSource : source.source,
-          viewers: match.viewers,
-          directPlayback: false,
-        ),
-      ];
-    }
-
-    // Non-Streamed packs: one pending row — unlock only when the user plays.
+    // Non-Streamed packs: one pending row — live resolve discovers on play.
     if (source.id.trim().isEmpty) return const [];
     return [
       MatchStream(
@@ -412,17 +369,6 @@ abstract final class LiveResolveStreams {
         viewers: 0,
       ),
     ];
-  }
-
-  static Future<List<MatchStream>> _inlineStreamsForSourceRef(
-    MatchEvent match,
-    MatchSourceRef sourceRef,
-  ) async {
-    final token = sourceRef.source.trim().toLowerCase();
-    if (token.isEmpty) return const [];
-    return match.inlineStreams
-        .where((s) => s.source.trim().toLowerCase() == token)
-        .toList();
   }
 
   static MatchStream _streamFromResolveRow({
@@ -1086,6 +1032,7 @@ abstract final class LiveResolveStreams {
           if (embed.isNotEmpty) 'url': embed,
           'source': stream.source,
           'matchId': stream.id,
+          'eventId': match.id,
           'stream': stream.streamNo.toString(),
           'category': match.category,
           'title': match.title,
@@ -1150,7 +1097,8 @@ abstract final class LiveResolveStreams {
     if (embed.isEmpty || embed.startsWith('pending:')) {
       embed = ref.iframe.trim();
     }
-    if (embed.isEmpty) return null;
+    // Catalog schedule rows never carry iframes — live packs resolve from
+    // matchId / eventId alone.
     onProgress?.call('Unlocking source…');
     List<Map<String, dynamic>> rows = const [];
     try {
@@ -1163,8 +1111,8 @@ abstract final class LiveResolveStreams {
           'category': match.category,
           'title': match.title,
           'stream': stream.streamNo > 0 ? stream.streamNo.toString() : '1',
-          'embedUrl': embed,
-          'iframe': embed,
+          if (embed.isNotEmpty) 'embedUrl': embed,
+          if (embed.isNotEmpty) 'iframe': embed,
           'viewers': stream.viewers > 0 ? stream.viewers : match.viewers,
         },
       );

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -2431,6 +2432,40 @@ void main() {
         );
       },
     );
+
+    test('schedule catalog rows drop iframe and streams on ingest', () {
+      final event = MatchEvent.fromLegacyRow({
+        'id': 'ppv_1',
+        'title': 'Team A vs Team B',
+        'category': 'football',
+        'date': DateTime.now().millisecondsSinceEpoch,
+        'pluginId': 'catalog-test-streams',
+        'iframe': 'https://embed.example/x',
+        'streams': [
+          {
+            'id': '1',
+            'streamNo': 1,
+            'language': '',
+            'hd': false,
+            'embedUrl': 'https://embed.example/y',
+            'source': 'ppv',
+            'viewers': 0,
+          },
+        ],
+        'sources': [
+          {
+            'source': 'ppv',
+            'id': '1',
+            'iframe': 'https://embed.example/z',
+          },
+        ],
+      });
+      expect(event.inlineStreams, isEmpty);
+      expect(event.sources, hasLength(1));
+      expect(event.sources.single.source, 'ppv');
+      expect(event.sources.single.id, '1');
+      expect(event.sources.single.iframe, isEmpty);
+    });
 
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
       final src = await loadForjaHqFile('providers/vidnest.js');

@@ -13,7 +13,7 @@ Live Sports is a **hub pack** (ForjaHQ Live Sports / Live Sports Cards) — same
 
 Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV channel search under `features/iptv/channel_search/` (RFC-096). **Portals** top-bar chip and side panel are foundation design (`KitPortalsChip` / `KitSidePanelOverlay` / `KitPortalListPanel`); IPTV wires data via `IptvPortalsChromeHooks` and play/resolve via `IptvKitHooksRegister` (RFC-095). Hub packs own layout + schedule composition (`ctx.host.liveFeed.load`) and put `sportMatchGame` on feed rows for Live TV. There is **no** root-app Live Sports product tree and **no** built-in Addons → Live Sports host row (RFC-093). When the hub pack is installed, its `settings` show under **Settings → Addons** (pack-discovered) and on the Forja Packs expand.
 
-Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
+Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, StreamFree by default; TimStreams, ESPN, MobiKora, … optional). Catalogs are **schedule only** — they do not find or unlock streams. Streams come from **live** resolve packs, installed **Stremio** sport addons, and **Live TV** (your Xtream/Stalker/M3U portals matched to the fixture). Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
 
 ## How to open it
 
@@ -36,7 +36,7 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region. If the site shows no stream links yet, Forja skips that mirror (**No playable stream**) instead of opening a dead player.
-- **Providers** soft-matches the same fixture across enabled Forja Live **stream** catalogs (ones that link to a resolve pack) and installed Stremio sport addons — Streamed, PPV, StreamFree, and similar. TV-guide catalogs (broadcast channel lists) feed Live TV name matching only; they are not stream sources.
+- **Providers** soft-matches the same fixture across enabled Forja Live **stream** catalogs (ones that link to a resolve pack) and installed Stremio sport addons — Streamed, PPV, StreamFree, and similar. TV-guide catalogs (broadcast channel lists) feed Live TV name matching only; they are not stream sources. Stream unlock always runs in the live resolve pack when you play.
 - Escape / Back closes the streams panel (or details page), then leaves the player and stops audio.
 - **Merge matching events** is **off** by default — leave it off for large schedules. With merge off, cards stay separate; Providers still pulls sibling catalog streams for the tapped game.
 - Enable or disable individual schedule catalogs under **Settings → Forja Packs** (expand a live pack).
