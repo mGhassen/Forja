@@ -1174,6 +1174,7 @@ Map<String, dynamic>? mapEngineStream({
     if (needsSeekProxy) 'requires_proxy': true,
     if (raw['subtitles'] is List && (raw['subtitles'] as List).isNotEmpty)
       'subtitles': raw['subtitles'],
+    if (raw['drm'] is Map) 'drm': raw['drm'],
     '_addonBaseUrl': 'engine:${plugin.id}',
     '_addonName': addonName,
     '_enginePluginId': plugin.id,

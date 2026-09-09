@@ -162,6 +162,14 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
     manifestUrl: '$_kPacksBase/hubs/aflem/manifest.json',
   ),
   OfficialForjaHqPack(
+    id: 'shahid',
+    name: 'ForjaHQ Shahid',
+    kind: 'hubs',
+    tags: ['arabic', 'shahid'],
+    description: 'Shahid movies and series.',
+    manifestUrl: '$_kPacksBase/hubs/shahid/manifest.json',
+  ),
+  OfficialForjaHqPack(
     id: 'cartoon',
     name: 'ForjaHQ Cartoon',
     kind: 'hubs',

@@ -97,6 +97,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
     implementation("androidx.media3:media3-exoplayer-dash:$media3Version")
+    implementation("androidx.media3:media3-exoplayer-smoothstreaming:$media3Version")
+    implementation("androidx.media3:media3-exoplayer-drm:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-datasource:$media3Version")
     // StandaloneDatabaseProvider for the VOD disk cache. media3-datasource only

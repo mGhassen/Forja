@@ -104,6 +104,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
               field.id,
               defaultValue: field.defaultString,
             ),
+          PackAddonSettingsFieldType.password =>
+            await PackSettingsStore.getSecret(
+              spec.pluginId,
+              field.id,
+              defaultValue: field.defaultString,
+            ),
           PackAddonSettingsFieldType.multiSelect =>
             await PackSettingsStore.getStringList(
               spec.pluginId,
@@ -131,16 +137,22 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     final keep = <String>{};
     for (final spec in specs) {
       for (final field in spec.fields) {
-        if (field.type != PackAddonSettingsFieldType.text) continue;
+        if (field.type != PackAddonSettingsFieldType.text &&
+            field.type != PackAddonSettingsFieldType.password) {
+          continue;
+        }
         final k = _valueKey(spec.pluginId, field.id);
         keep.add(k);
         final text = (values[k] ?? field.defaultString).toString();
         final existing = _textControllers[k];
         if (existing == null) {
           final c = TextEditingController(text: text);
+          final isSecret = field.type == PackAddonSettingsFieldType.password;
           c.addListener(() {
             unawaited(
-              PackSettingsStore.setString(spec.pluginId, field.id, c.text),
+              isSecret
+                  ? PackSettingsStore.setSecret(spec.pluginId, field.id, c.text)
+                  : PackSettingsStore.setString(spec.pluginId, field.id, c.text),
             );
           });
           _textControllers[k] = c;
@@ -238,12 +250,14 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
           },
         );
       case PackAddonSettingsFieldType.text:
+      case PackAddonSettingsFieldType.password:
         final controller = _textControllers[key];
         if (controller == null) return const SizedBox.shrink();
         return SettingsTextField(
           controller: controller,
           label: field.label,
           hint: field.subtitle.isEmpty ? null : field.subtitle,
+          obscureText: field.type == PackAddonSettingsFieldType.password,
         );
       case PackAddonSettingsFieldType.multiSelect:
         final selected = <String>{

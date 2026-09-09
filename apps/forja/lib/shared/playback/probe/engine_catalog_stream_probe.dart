@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/probe/sources_panel_stream_probe.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -77,6 +79,9 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     if (!await probeSourcesPanelStream(probeRow)) continue;
     final url = proxied.url;
     final resolvedCatalogUrl = row['url']?.toString() ?? url;
+    final drm = StreamDrmConfig.tryParse(row['drm']);
+    // Widevine only on Android Exo (RFC-101) — skip DRM rows elsewhere.
+    if (drm != null && !Platform.isAndroid) continue;
     final pluginId = row['_enginePluginId']?.toString() ?? '';
     final type = urlLooksLikeHls(url)
         ? 'hls'
@@ -93,6 +98,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
           headers: proxied.headers,
           providerId: catalogHttpPlayProviderId(row),
           catalogUrl: resolvedCatalogUrl,
+          drm: drm,
         ),
       ),
     );

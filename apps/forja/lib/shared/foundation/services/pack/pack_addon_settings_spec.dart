@@ -1,4 +1,5 @@
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 
 class PackAddonSettingsOption {
   const PackAddonSettingsOption({required this.id, required this.label});
@@ -7,7 +8,7 @@ class PackAddonSettingsOption {
   final String label;
 }
 
-enum PackAddonSettingsFieldType { toggle, select, text, multiSelect }
+enum PackAddonSettingsFieldType { toggle, select, text, multiSelect, password }
 
 class PackAddonSettingsField {
   const PackAddonSettingsField({
@@ -41,6 +42,7 @@ class PackAddonSettingsField {
       'toggle' => PackAddonSettingsFieldType.toggle,
       'select' => PackAddonSettingsFieldType.select,
       'text' => PackAddonSettingsFieldType.text,
+      'password' || 'secret' => PackAddonSettingsFieldType.password,
       'multi_select' || 'chips' || 'multiselect' =>
         PackAddonSettingsFieldType.multiSelect,
       _ => null,
@@ -101,6 +103,7 @@ class PackAddonSettingsSpec {
     required this.group,
     required this.order,
     required this.fields,
+    this.extractPluginIds = const [],
   });
 
   final String pluginId;
@@ -111,6 +114,10 @@ class PackAddonSettingsSpec {
   final String group;
   final int order;
   final List<PackAddonSettingsField> fields;
+
+  /// When non-empty, these settings also merge into extract config for these
+  /// provider plugin ids (RFC-101 hub account → provider extract).
+  final List<String> extractPluginIds;
 
   /// Parses [plugin.settings] when the block has fields.
   ///
@@ -136,6 +143,14 @@ class PackAddonSettingsSpec {
     final order = orderRaw is int
         ? orderRaw
         : int.tryParse(orderRaw?.toString() ?? '') ?? 100;
+    final extractIds = <String>[];
+    final extractRaw = raw['extractPluginIds'] ?? raw['extract_plugin_ids'];
+    if (extractRaw is List) {
+      for (final e in extractRaw) {
+        final id = e.toString().trim();
+        if (id.isNotEmpty) extractIds.add(id);
+      }
+    }
     return PackAddonSettingsSpec(
       pluginId: plugin.id,
       pluginName: plugin.name,
@@ -143,7 +158,52 @@ class PackAddonSettingsSpec {
       group: groupRaw.isNotEmpty ? groupRaw : plugin.name,
       order: order,
       fields: fields,
+      extractPluginIds: extractIds,
     );
+  }
+
+  /// Load stored values for this spec into a config overlay (RFC-101).
+  Future<Map<String, dynamic>> loadConfigOverlay() async {
+    return PackSettingsStore.configOverlayForPlugin(
+      pluginId: pluginId,
+      fields: [
+        for (final f in fields)
+          (
+            id: f.id,
+            type: switch (f.type) {
+              PackAddonSettingsFieldType.toggle => 'toggle',
+              PackAddonSettingsFieldType.select => 'select',
+              PackAddonSettingsFieldType.text => 'text',
+              PackAddonSettingsFieldType.password => 'password',
+              PackAddonSettingsFieldType.multiSelect => 'multi_select',
+            },
+            defaultString: f.defaultString,
+            defaultBool: f.defaultBool,
+            defaultStringList: f.defaultStringList,
+          ),
+      ],
+    );
+  }
+
+  /// Load overlays for [extractPluginId]: the plugin's own settings plus any
+  /// other enabled plugin that lists it in `settings.extractPluginIds`.
+  static Future<Map<String, dynamic>> loadExtractConfigOverlay({
+    required String extractPluginId,
+    required Iterable<EnginePlugin> plugins,
+  }) async {
+    final want = extractPluginId.trim();
+    if (want.isEmpty) return const {};
+    final out = <String, dynamic>{};
+    for (final p in plugins) {
+      if (!p.enabled) continue;
+      final spec = fromPlugin(p);
+      if (spec == null) continue;
+      final applies =
+          p.id == want || spec.extractPluginIds.contains(want);
+      if (!applies) continue;
+      out.addAll(await spec.loadConfigOverlay());
+    }
+    return out;
   }
 
   /// Specs for [addonId] from enabled plugins (sorted by [order] then name).

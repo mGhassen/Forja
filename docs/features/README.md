@@ -32,6 +32,7 @@ Your cinema universe in one app. This guide explains every **in-scope** feature 
 - [Asian Drama](hubs/asian-drama.md)
 - [Arabic](hubs/arabic.md)
 - [Aflem](hubs/aflem.md)
+- [Shahid](hubs/shahid.md)
 - [كرتون](hubs/cartoon.md)
 - [Kids](hubs/kids.md)
 

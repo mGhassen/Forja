@@ -193,6 +193,18 @@
       }
     },
     {
+      "id": "shahid",
+      "name": "Shahid",
+      "entry": "shahid.js",
+      "types": [
+        "shahid"
+      ],
+      "kind": "http",
+      "ctxConfigMap": {
+        "videoId": "videoId"
+      }
+    },
+    {
       "id": "hexa",
       "name": "Hexa",
       "entry": "hexa.js",
@@ -1291,6 +1303,7 @@
     "dimatoon.js",
     "dimakids.js",
     "brstej.js",
+    "shahid.js",
     "hexa.js",
     "flixcloud.js",
     "vidcore.js",

@@ -15,5 +15,6 @@ export const PLUGIN_PACK_SOURCES: Readonly<Record<string, string>> = {
   "live-sports-cards": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/live_sports_cards/manifest.json",
   "my-list": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/my_list/manifest.json",
   "providers": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json",
+  "shahid": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/shahid/manifest.json",
   "torrent": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/torrent/manifest.json",
 }

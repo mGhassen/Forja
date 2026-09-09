@@ -1,6 +1,6 @@
 ---
-description: Rust engine semver — workspace SoT, bump with engine PRs, independent of app
-globs: crates/**,packages/rust/**,scripts/build_rust*
+description: Rust engine semver — workspace SoT, bump via release_local, independent of app
+globs: crates/**,packages/rust/**,scripts/build_rust*,scripts/release_local.sh
 alwaysApply: false
 ---
 
@@ -14,26 +14,44 @@ The Rust engine has its **own** semver. It is **not** the app version (`apps/for
 
 ---
 
+## How to bump (automated)
+
+```bash
+./scripts/release_local.sh bump-engine patch|minor|major
+```
+
+Updates in one shot:
+
+1. `crates/Cargo.toml` → `[workspace.package] version`
+2. `packages/rust/pubspec.yaml` `version:`
+3. **Current engine version** in this rule
+
+Does **not** commit, tag, or publish. Commit with the engine PR.
+
+**App release (`release_local` New version / `bump`):** asks “Also bump Rust engine?” (default yes, same patch|minor|major). Skip with answer no or `FORJA_SKIP_ENGINE_BUMP=1`.
+
+---
+
 ## Source of truth
 
 | Field | File | Notes |
 |-------|------|-------|
-| **Engine version** | [`crates/Cargo.toml`](../../crates/Cargo.toml) → `[workspace.package] version` | Only place to bump. Crates use `version.workspace = true`. Boot string is `env!("CARGO_PKG_VERSION")` via `ffi_version`. |
-| **Dart bridge label** | [`packages/rust/pubspec.yaml`](../../packages/rust/pubspec.yaml) `version:` | Keep **identical** to workspace version in the same PR. Not what boot prints; drift confuses. |
+| **Engine version** | [`crates/Cargo.toml`](../../crates/Cargo.toml) → `[workspace.package] version` | Only place to bump by hand. Crates use `version.workspace = true`. Boot string is `env!("CARGO_PKG_VERSION")` via `ffi_version`. |
+| **Dart bridge label** | [`packages/rust/pubspec.yaml`](../../packages/rust/pubspec.yaml) `version:` | Kept identical by `bump-engine`. |
 
-When the version changes, update **Current engine version** above in the same PR. Dev docs may say `Rust engine v1.2.67` as a smoke example; prefer “matches workspace version” if the line will go stale.
+Prefer the script over hand-editing.
 
 ---
 
-## When to bump (same PR as the engine change)
+## When to bump
 
 | Bump | Trigger |
 |------|---------|
-| **patch** (`1.2.67` → `1.2.68`) | Bug fix, unlock/headers, crash, behavior fix on existing FFI surface |
-| **minor** (`1.2.x` → `1.3.0`) | New FFI / new crate capability; host still works on old symbols |
-| **major** (`1.x` → `2.0.0`) | Breaking FFI — deleted/renamed symbols, required host change |
+| **patch** | Bug fix, unlock/headers, crash, behavior fix on existing FFI surface |
+| **minor** | New FFI / new crate capability; host still works on old symbols |
+| **major** | Breaking FFI — deleted/renamed symbols, required host change |
 
-Bump in the PR that lands the change. Do **not** wait for the app release workflow.
+Bump in the PR that lands the change (via `bump-engine`), or at app release if the release includes engine work.
 
 No bump for: docs-only, comment-only, `packages/rust` Dart glue that does not change Rust, or host-only Dart.
 
@@ -43,24 +61,25 @@ No bump for: docs-only, comment-only, `packages/rust` Dart glue that does not ch
 
 | Forbidden | Why |
 |-----------|-----|
-| Tie engine bump to `bump_version.sh` / app `v*` tag | App and engine ship on different clocks; engine is embedded in the binary |
 | Invent `engine-v*` git tags (unless we ship a standalone dylib later) | Engine is not a separate download today |
 | Edit per-crate `version =` instead of workspace | Breaks single SoT |
 | Bump app `pubspec` because crates changed | App patch is a separate admin decision |
 | Leave `packages/rust` pubspec behind workspace | Two “engine versions” in the tree |
+| Hand-edit only one of the three files | Use `bump-engine` |
 
 ---
 
-## User-facing notes
+## User-facing notes (changelog)
 
 If the change is user-visible, add/edit a bullet in the active app [`docs/changelog/*-[draft].md`](../../docs/changelog/) under **Sources**, **Player**, or **Live & IPTV** — same turn as code ([changelog](./changelog.mdc)). No separate engine changelog until we ship the engine as its own artifact.
+
+`bump-engine` does **not** touch the app changelog — you still add the bullet when users would notice.
 
 ---
 
 ## Checklist (engine PR)
 
-1. Bump `[workspace.package] version` in `crates/Cargo.toml`
-2. Match `packages/rust/pubspec.yaml` `version:`
-3. Update **Current engine version** in this rule
-4. Rebuild (`./scripts/build_rust.sh` or CI) so boot log shows the new `Rust engine v…`
-5. Changelog bullet if users would notice
+1. `./scripts/release_local.sh bump-engine patch` (or minor/major)
+2. Rebuild (`./scripts/build_rust.sh` or CI) so boot log shows the new `Rust engine v…`
+3. Changelog bullet if users would notice
+4. Commit engine code + version files together

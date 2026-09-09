@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** are host-owned core tabs that stay off until **Settings → Addons** (turning an Addons switch on also puts the tab on the rail by default; **Features** hides or reorders after that). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and the pack enable path defaults the rail **on** the first time. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** are host-owned core tabs that stay off until **Settings → Addons** (turning an Addons switch on also puts the tab on the rail by default; **Features** hides or reorders after that). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, Shahid, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and the pack enable path defaults the rail **on** the first time. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -54,9 +54,9 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 
 ## Available tabs
 
-**Default (fresh install):** Settings only. **Addons:** turn on IPTV / Live Sports when you want them (rail on by default). **After hub packs install / enable:** those hub tabs land on the rail by default (typical official bundle: Home · Asian Drama · Anime · My List, plus optional Arabic / Aflem / كرتون / Kids). Use **Features** to hide or reorder.
+**Default (fresh install):** Settings only. **Addons:** turn on IPTV / Live Sports when you want them (rail on by default). **After hub packs install / enable:** those hub tabs land on the rail by default (typical official bundle: Home · Asian Drama · Anime · My List, plus optional Arabic / Aflem / Shahid / كرتون / Kids). Use **Features** to hide or reorder.
 
-Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
+Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **Shahid** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 
 **Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic — see [archive](../archive/README.md).
 

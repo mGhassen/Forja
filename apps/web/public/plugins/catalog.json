@@ -10,7 +10,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "pluginCount": 2,
       "tags": [
         "anime"
@@ -25,7 +25,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.14",
+      "version": "1.0.15",
       "pluginCount": 2,
       "tags": [
         "asian-drama",
@@ -41,7 +41,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.19",
+      "version": "1.0.23",
       "pluginCount": 1,
       "tags": [
         "home",
@@ -58,7 +58,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.9.6",
+      "version": "1.9.7",
       "pluginCount": 10,
       "tags": [
         "live",
@@ -74,7 +74,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.16",
+      "version": "1.0.18",
       "pluginCount": 1,
       "tags": [
         "live",
@@ -86,11 +86,11 @@
       "kind": "live",
       "name": "ForjaHQ Live Sports Streams",
       "description": "Live Sports per-site stream resolve (Forja Live).",
-      "accent": "brand",
+      "accent": "flame",
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "pluginCount": 7,
       "tags": [
         "live",
@@ -102,12 +102,12 @@
       "kind": "providers",
       "name": "ForjaHQ Providers",
       "description": "VOD, anime, and drama stream extractors plus file-host hops.",
-      "accent": "flame",
+      "accent": "brand",
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.5.36",
-      "pluginCount": 88,
+      "version": "1.5.37",
+      "pluginCount": 89,
       "tags": [
         "anime",
         "arabic",
@@ -122,7 +122,7 @@
       "kind": "torrent",
       "name": "ForjaHQ Torrent",
       "description": "Built-in torrent indexer search for movies and series.",
-      "accent": "brand",
+      "accent": "flame",
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
@@ -140,7 +140,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.14",
+      "version": "1.0.15",
       "pluginCount": 1,
       "tags": [
         "aflem",
@@ -154,7 +154,7 @@
       "description": "Larozaa Arabic movies and TV hub.",
       "accent": "flame",
       "official": true,
-      "version": "1.4.8",
+      "version": "1.4.9",
       "pluginCount": 1,
       "tags": [
         "arabic"
@@ -168,7 +168,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.10",
+      "version": "1.0.11",
       "pluginCount": 1,
       "tags": [
         "arabic",
@@ -180,10 +180,10 @@
       "kind": "iptv",
       "name": "ForjaHQ IPTV VOD",
       "description": "IPTV portal movie and series details with optional TMDB enrich.",
-      "accent": "flame",
+      "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "pluginCount": 2,
       "tags": [
         "iptv"
@@ -197,7 +197,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "pluginCount": 1,
       "tags": [
         "arabic",
@@ -212,7 +212,7 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.11",
+      "version": "1.0.13",
       "pluginCount": 1,
       "tags": [
         "live",
@@ -227,10 +227,25 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "pluginCount": 2,
       "tags": [
         "lists"
+      ]
+    },
+    {
+      "id": "shahid",
+      "kind": "hubs",
+      "name": "ForjaHQ Shahid",
+      "description": "Shahid movies and series.",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.0",
+      "pluginCount": 1,
+      "tags": [
+        "arabic",
+        "shahid"
       ]
     }
   ]

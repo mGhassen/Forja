@@ -228,6 +228,8 @@ class ExoPlayerBridge {
     int maxVideoHeight = 0,
     /// Soft bitrate companion when [maxVideoHeight] is set. `0` = none.
     int maxVideoBitrate = 0,
+    /// Widevine / ClearKey license (Android Exo — RFC-101).
+    Map<String, dynamic>? drm,
   }) async {
     await _channel.invokeMethod<void>('open', {
       'viewId': viewId,
@@ -238,6 +240,7 @@ class ExoPlayerBridge {
       'live': live,
       'maxVideoHeight': maxVideoHeight,
       'maxVideoBitrate': maxVideoBitrate,
+      'drm': ?drm,
     });
   }
 

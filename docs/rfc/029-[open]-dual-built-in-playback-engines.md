@@ -61,6 +61,7 @@
 | HLS manual quality picker | Exo auto variant only |
 | PiP, separate `audioUrl` | media_kit |
 | IPTV live edge | media_kit — RFC-027 |
+| Widevine license URL (VOD) | Exo Android — [RFC-101](101-[open]-shahid-hub-provider-exo-widevine.md) |
 
 When ExoPlayer cannot handle a stream, show toast: *Switch to MediaKit in Settings → Built-in engine*.
 

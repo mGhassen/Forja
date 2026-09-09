@@ -46,6 +46,13 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
+/** Widevine / ClearKey license request from Dart (RFC-101). */
+data class ExoDrmOptions(
+    val scheme: String = "widevine",
+    val licenseUrl: String = "",
+    val licenseHeaders: Map<String, String> = emptyMap(),
+)
+
 /** Playback hints from Dart (IPTV live vs Home VOD). */
 data class ExoOpenOptions(
     val live: Boolean = false,
@@ -53,6 +60,7 @@ data class ExoOpenOptions(
     val maxVideoHeight: Int = 0,
     /** Soft bitrate companion when [maxVideoHeight] is set. 0 = none. */
     val maxVideoBitrate: Int = 0,
+    val drm: ExoDrmOptions? = null,
 )
 
 private const val TAG = "ForjaExo"
@@ -399,7 +407,9 @@ class ExoPlayerHost(
         videoAuto = true
         liveSpeedDisabledForUhd = null
         frameRateApplied = false
-        val cached = !options.live && ForjaExoMediaCache.isCacheable(url)
+        val hasDrm = options.drm?.licenseUrl?.isNotBlank() == true
+        // Never cache encrypted DRM segments in the clear VOD disk cache.
+        val cached = !options.live && !hasDrm && ForjaExoMediaCache.isCacheable(url)
         val existing = player
         // Soft reopen: reuse the ExoPlayer when the pipeline shape matches.
         // Full release+recreate on every IPTV reload / recovery ANRs ATV — goldfish
@@ -408,6 +418,7 @@ class ExoPlayerHost(
             lastOptions.live == options.live &&
             lastOptions.maxVideoHeight == options.maxVideoHeight &&
             lastOptions.maxVideoBitrate == options.maxVideoBitrate &&
+            lastOptions.drm == options.drm &&
             lastHeaders == headers &&
             lastCached == cached
         lastUrl = url
@@ -588,11 +599,23 @@ class ExoPlayerHost(
         options: ExoOpenOptions,
     ): MediaItem.Builder {
         val builder = MediaItem.Builder().setUri(Uri.parse(url))
-        // Force HLS/DASH when the URI path has no .m3u8/.mpd (e.g. local
+        // Force HLS/DASH/SS when the URI path has no extension (e.g. local
         // `/hls-proxy?url=…`). Without this, DefaultMediaSourceFactory picks
         // ProgressiveMediaSource and fails with UnrecognizedInputFormatException
         // on the playlist body — Live Sports Streamed handoff black screen.
         mimeForAdaptiveUrl(url)?.let { builder.setMimeType(it) }
+        options.drm?.takeIf { it.licenseUrl.isNotBlank() }?.let { drm ->
+            val uuid = when (drm.scheme.lowercase()) {
+                "clearkey", "clear_key" -> C.CLEARKEY_UUID
+                else -> C.WIDEVINE_UUID
+            }
+            val drmBuilder = MediaItem.DrmConfiguration.Builder(uuid)
+                .setLicenseUri(drm.licenseUrl)
+            if (drm.licenseHeaders.isNotEmpty()) {
+                drmBuilder.setLicenseRequestHeaders(drm.licenseHeaders)
+            }
+            builder.setDrmConfiguration(drmBuilder.build())
+        }
         if (subtitles.isNotEmpty()) {
             val configs = subtitles.mapNotNull { sub ->
                 subtitleConfiguration(sub)
@@ -682,6 +705,11 @@ class ExoPlayerHost(
         val haystack = "$lower $nested"
         return when {
             haystack.contains(".mpd") -> MimeTypes.APPLICATION_MPD
+            // SmoothStreaming (Shahid DRM / Azure Media) — Manifest without .ismss.
+            haystack.contains(".ism") ||
+                (haystack.contains("/manifest") &&
+                    (haystack.contains("ism") || haystack.contains("smooth"))) ->
+                MimeTypes.APPLICATION_SS
             haystack.contains(".m3u8") ||
                 haystack.contains("/hls-proxy") ||
                 haystack.contains("strmd.st") ||
@@ -1248,10 +1276,25 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 val startMs = call.argument<Number>("startMs")?.toLong() ?: 0L
                 @Suppress("UNCHECKED_CAST")
                 val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
+                @Suppress("UNCHECKED_CAST")
+                val drmRaw = call.argument<Map<String, Any?>>("drm")
+                val drm = drmRaw?.let { raw ->
+                    val licenseUrl = (raw["licenseUrl"] as? String)?.trim().orEmpty()
+                    if (licenseUrl.isEmpty()) return@let null
+                    @Suppress("UNCHECKED_CAST")
+                    val licHeaders = (raw["licenseHeaders"] as? Map<String, String>)
+                        ?: emptyMap()
+                    ExoDrmOptions(
+                        scheme = (raw["scheme"] as? String)?.trim().orEmpty().ifEmpty { "widevine" },
+                        licenseUrl = licenseUrl,
+                        licenseHeaders = licHeaders,
+                    )
+                }
                 val options = ExoOpenOptions(
                     live = call.argument<Boolean>("live") == true,
                     maxVideoHeight = call.argument<Number>("maxVideoHeight")?.toInt() ?: 0,
                     maxVideoBitrate = call.argument<Number>("maxVideoBitrate")?.toInt() ?: 0,
+                    drm = drm,
                 )
                 hostFor(viewId).open(url, headers, startMs, subtitles, options)
                 result.success(null)

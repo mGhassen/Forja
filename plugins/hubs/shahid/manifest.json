@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "forjahq-shahid",
+  "name": "ForjaHQ Shahid",
+  "description": "Shahid movies and series.",
+  "author": "ForjaHQ",
+  "version": "1.0.0",
+  "tags": [
+    "arabic",
+    "shahid"
+  ],
+  "plugins": [
+    {
+      "id": "shahid-hub",
+      "name": "Shahid",
+      "description": "Shahid movies and series",
+      "entry": "shahid.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "shahid"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "feed",
+        "search",
+        "filters",
+        "details",
+        "settings"
+      ],
+      "nav": {
+        "tabId": "shahid",
+        "label": "Shahid",
+        "order": 44,
+        "accent": "#E31C25",
+        "icon": "icons/nav.png"
+      },
+      "settings": {
+        "group": "Account",
+        "order": 10,
+        "extractPluginIds": [
+          "shahid"
+        ],
+        "fields": [
+          {
+            "id": "email",
+            "type": "text",
+            "label": "Email",
+            "subtitle": "Shahid account email"
+          },
+          {
+            "id": "password",
+            "type": "password",
+            "label": "Password",
+            "subtitle": "Stored in Keychain"
+          }
+        ]
+      },
+      "config": {
+        "language": "ar"
+      },
+      "prelude": "_kit.js"
+    }
+  ],
+  "bundle": [
+    "shahid.js",
+    "_kit.js",
+    "icons/nav.png"
+  ]
+}

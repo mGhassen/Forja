@@ -83,6 +83,37 @@ void main() {
       expect(packs.single.sourceUrl, officialManifestUrlForSlot('live_sports_cards'));
     });
 
+    test('keeps local ForjaHQ checkout when cloud has official URL', () async {
+      const local =
+          '/Users/dev/Workspace/Forja/plugins/hubs/shahid/manifest.json';
+      final official = officialManifestUrlForSlot('shahid')!;
+      await _seedPacks([
+        {
+          'sourceUrl': local,
+          'packId': 'shahid',
+          'name': 'ForjaHQ Shahid',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'shahid-hub',
+              'name': 'Shahid',
+              'entry': 'shahid.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls([
+        {'manifestUrl': official, 'name': 'ForjaHQ Shahid'},
+      ]);
+      expect(result.added, isEmpty);
+      expect(result.removed, isEmpty);
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.single.sourceUrl, local);
+      expect(packs.single.plugins, isNotEmpty);
+    });
+
     test('skips non-ForjaHQ local paths from cloud lean', () async {
       await _seedPacks(const []);
       final result = await PluginRegistry.instance.applyLeanManifestUrls([
@@ -425,6 +456,69 @@ void main() {
       final payload = await SyncDomainBridge.instance.exportForja();
       final packs = payload['packs'] as List? ?? const [];
       expect(packs, isEmpty);
+    });
+
+    test('skips unpublished local ForjaHQ rewrite when GitHub 404', () async {
+      const local =
+          '/Users/dev/Workspace/Forja/plugins/hubs/shahid/manifest.json';
+      final official = officialManifestUrlForSlot('shahid')!;
+      await _seedPacks([
+        {
+          'sourceUrl': local,
+          'packId': 'shahid',
+          'name': 'ForjaHQ Shahid',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'shahid-hub',
+              'name': 'Shahid',
+              'entry': 'shahid.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        expect(req.url.toString(), official);
+        return http.Response('not found', 404);
+      });
+      final payload = await SyncDomainBridge.instance.exportForja();
+      final packs = payload['packs'] as List? ?? const [];
+      expect(packs, isEmpty);
+    });
+
+    test('exports published local ForjaHQ as official URL', () async {
+      const local =
+          '/Users/dev/Workspace/Forja/plugins/hubs/live_sports/manifest.json';
+      final official = officialManifestUrlForSlot('live_sports')!;
+      await _seedPacks([
+        {
+          'sourceUrl': local,
+          'packId': 'live_sports',
+          'name': 'ForjaHQ Live Sports',
+          'version': '1.2.0',
+          'plugins': [
+            {
+              'id': 'live-sports-hub',
+              'name': 'Live Sports',
+              'entry': 'live_sports.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        expect(req.url.toString(), official);
+        return http.Response(
+          jsonEncode({'version': '9.9.9', 'name': 'ForjaHQ Live Sports'}),
+          200,
+        );
+      });
+      final payload = await SyncDomainBridge.instance.exportForja();
+      final packs = (payload['packs'] as List).cast<Map>();
+      expect(packs, hasLength(1));
+      expect(packs.single['manifestUrl'], official);
+      expect(packs.single['version'], '1.2.0');
     });
   });
 }

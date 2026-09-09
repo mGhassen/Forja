@@ -14,7 +14,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 
 - Player engine, audio, subtitles, auto next/skip, content warnings, background play — see rows under **Settings → Addons → Playback**
 - **Play sources** moved: **Direct torrent**, **Stremio**, and **Nuvio** toggles + P2P disclaimer → **Settings → Addons**; pack install → **Settings → Forja Packs** (Forja providers always on)
-- On **Android**, choose **Movies & series engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Sports** defaults to **ExoPlayer** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps)
+- On **Android**, choose **Movies & series engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Sports** defaults to **ExoPlayer** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps). Streams with a Widevine license (e.g. Shahid) always use ExoPlayer on Android.
 - Set **Preferred audio language**
 - Set **Preferred subtitle language** (default **English**). In-stream mux subs are tried first, then online tracks. Pick **None** to start with subs off
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)

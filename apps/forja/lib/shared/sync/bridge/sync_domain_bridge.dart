@@ -998,9 +998,25 @@ class SyncDomainBridge {
       final rawUrl = pack.sourceUrl.trim();
       if (rawUrl.isEmpty) continue;
       if (PluginRegistry.isLegacyAssetPack(rawUrl)) continue;
-      // Never push Mac/Windows checkout paths to other devices.
+      // Never push Mac/Windows checkout paths to other devices — rewrite
+      // ForjaHQ locals to the official GitHub URL when that remote exists.
       final manifestUrl = PluginRegistry.cloudSafeManifestUrl(rawUrl);
       if (PluginRegistry.isLocalManifestUrl(manifestUrl)) continue;
+      // Unpublished checkout (local → official rewrite, GitHub 404): keep
+      // device-local only. Pushing the dead URL poisons soft-pull / other
+      // devices and used to purge the working local install.
+      if (PluginRegistry.isLocalManifestUrl(rawUrl) &&
+          manifestUrl != rawUrl) {
+        final remoteOk =
+            await PluginRegistry.instance.peekRemoteVersion(manifestUrl);
+        if (remoteOk == null) {
+          debugPrint(
+            '[Sync] export skip unpublished local ForjaHQ pack '
+            '$rawUrl → $manifestUrl (remote missing)',
+          );
+          continue;
+        }
+      }
       if (pendingPurge.contains(rawUrl) || pendingPurge.contains(manifestUrl)) {
         continue;
       }

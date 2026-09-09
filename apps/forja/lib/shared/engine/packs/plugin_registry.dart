@@ -186,6 +186,7 @@ class PluginRegistry {
       'kids': 'kids',
       'cartoon': 'cartoon',
       'aflem': 'aflem',
+      'shahid': 'shahid',
       'live_sports': 'live_sports',
       'live_sports_cards': 'live_sports_cards',
       // Folder is my_list; Features key stayed `mylist`.
@@ -1634,6 +1635,11 @@ class PluginRegistry {
   ///
   /// When [purgeRemovedImmediately] is false (mid-session), packs missing from
   /// cloud stay on disk until the uninstall prompt / pending purge / next boot.
+  ///
+  /// A local ForjaHQ checkout path counts as the same membership as its
+  /// [cloudSafeManifestUrl] GitHub row — so soft-pull does not purge a Mac
+  /// `plugins/hubs/…` install just because cloud listed the official URL
+  /// (and then fail auto-install with HTTP 404 before the pack is pushed).
   Future<LeanApplyResult> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
@@ -1664,13 +1670,16 @@ class PluginRegistry {
     final added = <LeanPackDelta>[];
     final removed = <LeanPackDelta>[];
     var changed = false;
+    // Official GitHub URLs already satisfied by a kept local checkout pack.
+    final satisfiedRemote = <String>{};
 
     for (final pack in all) {
       if (isLegacyAssetPack(pack.sourceUrl)) {
         next.add(pack);
         continue;
       }
-      if (removeMissingUserPacks && !remote.containsKey(pack.sourceUrl)) {
+      final remoteKey = _leanRemoteKeyForPack(remote, pack.sourceUrl);
+      if (removeMissingUserPacks && remoteKey == null) {
         final stub = pack.plugins.isEmpty;
         if (stub || purgeRemovedImmediately) {
           victims.add(pack);
@@ -1689,7 +1698,13 @@ class PluginRegistry {
         }
         continue;
       }
-      final lean = remote[pack.sourceUrl];
+      if (remoteKey != null) {
+        satisfiedRemote.add(remoteKey);
+        satisfiedRemote.add(pack.sourceUrl);
+        final safe = cloudSafeManifestUrl(pack.sourceUrl);
+        if (safe.isNotEmpty) satisfiedRemote.add(safe);
+      }
+      final lean = remoteKey != null ? remote[remoteKey] : null;
       final leanName = lean?.name;
       if (leanName != null && pack.plugins.isEmpty && pack.name != leanName) {
         next.add(
@@ -1710,7 +1725,7 @@ class PluginRegistry {
 
     final present = next.map((p) => p.sourceUrl).toSet();
     for (final entry in remote.entries) {
-      if (present.contains(entry.key)) {
+      if (present.contains(entry.key) || satisfiedRemote.contains(entry.key)) {
         await PendingRemotePurgeStore.clear(entry.key);
         continue;
       }
@@ -1740,6 +1755,17 @@ class PluginRegistry {
     }
 
     return LeanApplyResult(added: added, removed: removed);
+  }
+
+  /// Cloud lean row key for [sourceUrl], or null if the pack is not in [remote].
+  static String? _leanRemoteKeyForPack(
+    Map<String, ({String? name, String? version})> remote,
+    String sourceUrl,
+  ) {
+    if (remote.containsKey(sourceUrl)) return sourceUrl;
+    final safe = cloudSafeManifestUrl(sourceUrl);
+    if (safe != sourceUrl && remote.containsKey(safe)) return safe;
+    return null;
   }
 
   Future<void> _purgeRetiredOfficialPacks() async {

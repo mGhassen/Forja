@@ -25,12 +25,14 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 - Playback uses the **Larozaa** provider under **Forja Packs** — direct streams, not embed pages
 - Continue Watching / list rows with `brstej:` or `dimatoon:` ids belong on **[Aflem](aflem.md)** / **[كرتون](cartoon.md)** — Arabic will not open them
 - For Brstej series, use **[Aflem](aflem.md)**
+- For Shahid titles, use **[Shahid](shahid.md)**
 - For Arabic cartoons, use **[كرتون](cartoon.md)**
 - For Arabic kids titles on Dimakids, use **[Kids](kids.md)**
 
 ## Related
 
 - [Aflem](aflem.md)
+- [Shahid](shahid.md)
 - [كرتون](cartoon.md)
 - [Kids](kids.md)
 - [Hub details](hub-details.md)

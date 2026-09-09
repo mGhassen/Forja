@@ -13,6 +13,7 @@ import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/runtime.dart';
+import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
@@ -440,6 +441,11 @@ class EngineService {
     final config = <String, dynamic>{
       ...mergeEngineConfig(plugin.config, overlay),
     };
+    final packSettings = await PackAddonSettingsSpec.fromPlugin(plugin)
+        ?.loadConfigOverlay();
+    if (packSettings != null && packSettings.isNotEmpty) {
+      config.addAll(packSettings);
+    }
     // Catalog hubs may call ctx.host.tmdb.match / hubTmdbMatch — inject the
     // same compile-time key Home uses (R70-A14 / R70-A28). Prefer Flutter
     // `--dart-define=TMDB_API_KEY`; fall back to the Rust-baked key so release
@@ -880,6 +886,17 @@ class EngineService {
       extractCtx,
       mergeEngineConfig(active.config, overlay),
     );
+    final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
+      extractPluginId: active.id,
+      plugins: [
+        for (final pack in packs)
+          if (pack.enabled)
+            for (final p in pack.plugins) p,
+      ],
+    );
+    if (packSettings.isNotEmpty) {
+      config = mergeEngineConfig(config, packSettings);
+    }
     final audio = normalizeEngineAudioCategory(audioCategory);
     if (audio != null) {
       config = {...config, 'category': audio};
@@ -1494,6 +1511,17 @@ class EngineService {
       extractCtx,
       mergeEngineConfig(plugin.config, overlay),
     );
+    final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
+      extractPluginId: plugin.id,
+      plugins: [
+        for (final pack in packs)
+          if (pack.enabled)
+            for (final p in pack.plugins) p,
+      ],
+    );
+    if (packSettings.isNotEmpty) {
+      config = mergeEngineConfig(config, packSettings);
+    }
     final audio = normalizeEngineAudioCategory(audioCategory);
     if (audio != null) {
       config = {...config, 'category': audio};

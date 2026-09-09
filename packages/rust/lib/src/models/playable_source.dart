@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:rust/src/engine.dart';
+import 'package:rust/src/models/stream_drm.dart';
 import 'package:rust/src/models/stream_source.dart';
 
 export 'package:rust/src/models/stream_source.dart' show StreamSource;
+export 'package:rust/src/models/stream_drm.dart' show StreamDrmConfig;
 
 /// Canonical playable stream — provider metadata stripped before player open.
 class PlayableSource {
@@ -25,6 +27,7 @@ class PlayableSource {
   final int? effectiveRank;
   final double? qualityScore;
   final double? providerBonus;
+  final StreamDrmConfig? drm;
 
   const PlayableSource({
     required this.url,
@@ -45,9 +48,12 @@ class PlayableSource {
     this.effectiveRank,
     this.qualityScore,
     this.providerBonus,
+    this.drm,
   });
 
   bool get isArabicEmbed => embedKind == 'arabic_embed';
+
+  bool get hasDrm => drm != null && drm!.licenseUrl.isNotEmpty;
 
   factory PlayableSource.fromJson(Map<String, dynamic> json) {
     VideoTrack? video;
@@ -101,6 +107,7 @@ class PlayableSource {
       effectiveRank: (json['effective_rank'] as num?)?.toInt(),
       qualityScore: (json['quality_score'] as num?)?.toDouble(),
       providerBonus: (json['provider_bonus'] as num?)?.toDouble(),
+      drm: StreamDrmConfig.tryParse(json['drm']),
     );
   }
 
@@ -124,6 +131,7 @@ class PlayableSource {
     if (effectiveRank != null) 'effective_rank': effectiveRank,
     if (qualityScore != null) 'quality_score': qualityScore,
     if (providerBonus != null) 'provider_bonus': providerBonus,
+    if (drm != null) 'drm': drm!.toJson(),
   };
 
   StreamSource toStreamSource() => StreamSource(
@@ -134,6 +142,7 @@ class PlayableSource {
         : _containerToLegacyType(container),
     headers: headers.isEmpty ? null : headers,
     providerId: providerId.isEmpty ? null : providerId,
+    drm: drm,
   );
 
   static String _containerToLegacyType(String container) {

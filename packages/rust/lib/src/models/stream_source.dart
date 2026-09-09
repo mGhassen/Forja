@@ -1,3 +1,7 @@
+import 'package:rust/src/models/stream_drm.dart';
+
+export 'package:rust/src/models/stream_drm.dart' show StreamDrmConfig;
+
 class StreamSource {
   final String url;
   final String title;
@@ -11,6 +15,9 @@ class StreamSource {
   /// Pre-proxy catalog URL when [url] is a local `/hls-proxy` play endpoint.
   final String? catalogUrl;
 
+  /// Widevine / ClearKey license config (Android Exo only — RFC-101).
+  final StreamDrmConfig? drm;
+
   StreamSource({
     required this.url,
     required this.title,
@@ -18,7 +25,10 @@ class StreamSource {
     this.headers,
     this.providerId,
     this.catalogUrl,
+    this.drm,
   });
+
+  bool get hasDrm => drm != null && drm!.licenseUrl.isNotEmpty;
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
     Map<String, String>? headers;
@@ -35,17 +45,19 @@ class StreamSource {
       headers: headers,
       providerId: (pid != null && pid.isNotEmpty) ? pid : null,
       catalogUrl: (catalog != null && catalog.isNotEmpty) ? catalog : null,
+      drm: StreamDrmConfig.tryParse(json['drm']),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'url': url,
-    'title': title,
-    'type': type,
-    if (headers != null) 'headers': headers,
-    if (providerId != null && providerId!.isNotEmpty) 'providerId': providerId,
-    if (catalogUrl != null && catalogUrl!.isNotEmpty) 'catalogUrl': catalogUrl,
-  };
+        'url': url,
+        'title': title,
+        'type': type,
+        if (headers != null) 'headers': headers,
+        if (providerId != null && providerId!.isNotEmpty) 'providerId': providerId,
+        if (catalogUrl != null && catalogUrl!.isNotEmpty) 'catalogUrl': catalogUrl,
+        if (drm != null) 'drm': drm!.toJson(),
+      };
 
   StreamSource copyWith({
     String? url,
@@ -54,7 +66,9 @@ class StreamSource {
     Map<String, String>? headers,
     String? providerId,
     String? catalogUrl,
+    StreamDrmConfig? drm,
     bool clearHeaders = false,
+    bool clearDrm = false,
   }) {
     return StreamSource(
       url: url ?? this.url,
@@ -63,6 +77,7 @@ class StreamSource {
       headers: clearHeaders ? null : (headers ?? this.headers),
       providerId: providerId ?? this.providerId,
       catalogUrl: catalogUrl ?? this.catalogUrl,
+      drm: clearDrm ? null : (drm ?? this.drm),
     );
   }
 }

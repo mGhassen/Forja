@@ -364,6 +364,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
             url: s.url,
             title: s.title,
             headers: s.headers ?? widget.headers,
+            drm: s.drm?.toJson(),
           ),
         )
         .toList();
@@ -432,6 +433,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         subtitles: subs,
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
+        drm: source.drm,
       );
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {
@@ -535,6 +537,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         subtitles: subs,
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
+        drm: source.drm,
       );
       if (_fallbackAborted(openGen)) return;
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
@@ -915,6 +918,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         subtitles: subs,
         maxVideoHeight: caps.maxVideoHeight,
         maxVideoBitrate: caps.maxVideoBitrate,
+        drm: source.drm,
       );
       if (_fallbackAborted(remountGen)) return false;
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
@@ -2632,9 +2636,11 @@ class _ExoSource {
     required this.url,
     required this.title,
     this.headers,
+    this.drm,
   });
 
   final String url;
   final String title;
   final Map<String, String>? headers;
+  final Map<String, dynamic>? drm;
 }

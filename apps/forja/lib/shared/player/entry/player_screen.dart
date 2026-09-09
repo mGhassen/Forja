@@ -166,9 +166,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _checkPlayerSettings() async {
-    final engine = await SettingsService().getBuiltInPlayerEngine(
+    var engine = await SettingsService().getBuiltInPlayerEngine(
       context: BuiltInPlayerContext.vod,
     );
+    // DRM streams need Android Exo Widevine — force Exo when any session source
+    // (or the primary URL row) carries a license config (RFC-101).
+    if (Platform.isAndroid && _sessionNeedsWidevine()) {
+      engine = BuiltInPlayerEngine.exoPlayer;
+    }
 
     if (!mounted) return;
 
@@ -177,6 +182,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _builtInEngine = engine;
       _checkingPlayer = false;
     });
+  }
+
+  bool _sessionNeedsWidevine() {
+    final sources = _sessionSources;
+    if (sources != null) {
+      for (final s in sources) {
+        if (s.hasDrm) return true;
+      }
+    }
+    return false;
   }
 
   @override
