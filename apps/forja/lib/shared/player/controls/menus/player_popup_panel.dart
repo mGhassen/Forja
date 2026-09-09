@@ -435,11 +435,12 @@ class PlayerPopupCloseFocus extends InheritedWidget {
 }
 
 /// Floating-menu surface tokens - translucent dark chrome + brand-green accent.
-/// Selected / hover is always a green *tint* ([accentFill]), never solid [accent].
+/// Select cards: idle [cardBg], selected/hover/focus = green *tint* ([accentFill]),
+/// never solid [accent] fill.
 abstract final class PlayerPopupTokens {
   /// Same α as player side panels ([ForjaFrostedPanel] without blur).
   static const Color shellBg = Color(0xD1141414); // menuSurface @ ~0.82
-  static const Color cardBg = Color(0xFF161616);
+  static const Color cardBg = Color(0xFF1A1A1A);
   static const Color border = Color(0xFF2A2A2A);
   static const Color accent = ForjaShellColors.brandGreen;
   static const Color accentFill = Color(0x291CE783); // green @ ~0.16
@@ -449,9 +450,40 @@ abstract final class PlayerPopupTokens {
   static const Color selectedFg = Colors.white;
   static const Color muted = Color(0xFF9CA3AF);
   static const double shellRadius = 16;
-  static const double cardRadius = 10;
+  static const double cardRadius = 12;
   static const double chipRadius = 8;
-  static const double badgeRadius = 4;
+  static const double badgeRadius = 6;
+  static const EdgeInsets selectCardPadding =
+      EdgeInsets.symmetric(horizontal: 12, vertical: 11);
+  static const EdgeInsets selectCardGap = EdgeInsets.only(bottom: 8);
+}
+
+/// Shared idle / selected / hover-focus chrome for player select cards.
+({Color bg, Color border, double borderWidth, Color labelFg})
+playerPopupSelectChrome({
+  required bool selected,
+  required bool highlight,
+  bool failed = false,
+}) {
+  if (failed) {
+    return (
+      bg: const Color(0xFFEF4444).withValues(alpha: 0.08),
+      border: highlight ? PlayerPopupTokens.accent : PlayerPopupTokens.border,
+      borderWidth: highlight ? 1.5 : 1,
+      labelFg: Colors.white.withValues(alpha: 0.45),
+    );
+  }
+  final active = highlight || selected;
+  return (
+    bg: active ? PlayerPopupTokens.accentFill : PlayerPopupTokens.cardBg,
+    border: highlight
+        ? PlayerPopupTokens.accent
+        : selected
+            ? PlayerPopupTokens.accentBorder
+            : PlayerPopupTokens.border,
+    borderWidth: highlight ? 1.5 : 1,
+    labelFg: Colors.white,
+  );
 }
 
 class _PanelShell extends StatefulWidget {
@@ -654,19 +686,19 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
     final highlight = _hovered || _focused;
+    // Match select-card close: green X + border idle; brighter on hover/focus.
     final borderColor = highlight
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
-    final iconColor = highlight
         ? PlayerPopupTokens.accent
-        : PlayerPopupTokens.muted;
+        : PlayerPopupTokens.accentBorder;
+    final iconColor = PlayerPopupTokens.accent;
     final face = Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
+        color: highlight ? PlayerPopupTokens.accentFill : Colors.transparent,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: borderColor, width: highlight ? 1.5 : 1),
       ),
       child: Icon(widget.icon, size: 14, color: iconColor),
     );
@@ -789,16 +821,12 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
     final highlight = _focused || _hovered;
-    final bg = highlight || widget.selected
-        ? PlayerPopupTokens.accentFill
-        : Colors.transparent;
-    final border = highlight
-        ? PlayerPopupTokens.accent
-        : widget.selected
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
+    final chrome = playerPopupSelectChrome(
+      selected: widget.selected,
+      highlight: highlight,
+    );
     final row = Material(
-      color: bg,
+      color: chrome.bg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -808,12 +836,12 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: PlayerPopupTokens.selectCardPadding,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
             border: Border.all(
-              color: border,
-              width: highlight ? 1.5 : 1,
+              color: chrome.border,
+              width: chrome.borderWidth,
             ),
           ),
           child: Row(
@@ -821,7 +849,7 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
               if (widget.icon != null) ...[
                 PlayerPopupIconBox(
                   icon: widget.icon!,
-                  accent: widget.selected,
+                  accent: widget.selected || highlight,
                 ),
                 const SizedBox(width: 10),
               ],
@@ -831,8 +859,8 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
                   children: [
                     Text(
                       widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: chrome.labelFg,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -842,8 +870,11 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
                           widget.subtitle!,
-                          style: const TextStyle(
-                            color: PlayerPopupTokens.muted,
+                          style: TextStyle(
+                            color: highlight || widget.selected
+                                ? PlayerPopupTokens.accent
+                                    .withValues(alpha: 0.85)
+                                : PlayerPopupTokens.muted,
                             fontSize: 11,
                             height: 1.2,
                           ),
@@ -853,13 +884,18 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
                 ),
               ),
               if (widget.value != null) ...[
-                PlayerPopupValueBadge(widget.value!, accent: _valueActive),
+                PlayerPopupValueBadge(
+                  widget.value!,
+                  accent: _valueActive || highlight,
+                ),
                 const SizedBox(width: 6),
               ],
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: PlayerPopupTokens.muted,
+                color: highlight || widget.selected
+                    ? PlayerPopupTokens.accent
+                    : PlayerPopupTokens.muted,
               ),
             ],
           ),
@@ -925,8 +961,7 @@ class PlayerPopupValueBadge extends StatelessWidget {
   }
 }
 
-/// Option row — same chrome as [PlayerPopupListTile]: idle uncolored,
-/// selected = green tint + check, hover/focus = green tint (never solid fill).
+/// Option select card — same chrome as [PlayerPopupListTile] / [PlayerPopupNavRow].
 class PlayerPopupOptionChip extends StatefulWidget {
   const PlayerPopupOptionChip({
     super.key,
@@ -963,26 +998,25 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
     final chromeDuration = input.instantChrome
         ? Duration.zero
         : const Duration(milliseconds: 120);
-    final rowColor = highlight || selected
-        ? PlayerPopupTokens.accentFill
-        : Colors.transparent;
-    final borderColor = highlight
-        ? PlayerPopupTokens.accent
-        : selected
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
-    final fg = highlight || selected
-        ? Colors.white
-        : PlayerPopupTokens.muted;
+    final chrome = playerPopupSelectChrome(
+      selected: selected,
+      highlight: highlight,
+    );
+    final radius = widget.grouped
+        ? PlayerPopupTokens.chipRadius
+        : PlayerPopupTokens.cardRadius;
+    final padding = widget.grouped
+        ? const EdgeInsets.symmetric(horizontal: 11, vertical: 8)
+        : PlayerPopupTokens.selectCardPadding;
 
     final chip = Material(
-      color: rowColor,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+      color: chrome.bg,
+      borderRadius: BorderRadius.circular(radius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : widget.onTap,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(radius),
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: AnimatedContainer(
@@ -990,13 +1024,13 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
           curve: Curves.easeOut,
           width: widget.expanded ? double.infinity : null,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: borderColor,
-              width: highlight ? 1.5 : 1,
+              color: chrome.border,
+              width: chrome.borderWidth,
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          padding: padding,
           child: Row(
             mainAxisSize:
                 widget.expanded ? MainAxisSize.max : MainAxisSize.min,
@@ -1008,7 +1042,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: fg,
+                      color: chrome.labelFg,
                       fontSize: 13,
                       fontWeight: highlight || selected
                           ? FontWeight.w600
@@ -1020,7 +1054,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
                 Text(
                   widget.label,
                   style: TextStyle(
-                    color: fg,
+                    color: chrome.labelFg,
                     fontSize: 13,
                     fontWeight: highlight || selected
                         ? FontWeight.w600
@@ -1051,17 +1085,17 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
             );
       return widget.grouped
           ? body
-          : Padding(padding: const EdgeInsets.only(bottom: 5), child: body);
+          : Padding(padding: PlayerPopupTokens.selectCardGap, child: body);
     }
     return Padding(
       padding: widget.grouped
           ? EdgeInsets.zero
-          : const EdgeInsets.only(bottom: 5),
+          : PlayerPopupTokens.selectCardGap,
       child: FocusableControl(
         autoFocus:
             selected && PlayerPopupListFocusScope.claimAutofocus(context),
         onTap: widget.onTap,
-        borderRadius: PlayerPopupTokens.chipRadius,
+        borderRadius: radius,
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
@@ -1111,31 +1145,23 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
     final mouseHover = input.mouseHover;
     final selected = widget.selected;
     final highlight = _hovered || _focused;
-    // Green chrome is reserved for the active choice (Off / File selected).
-    // Hover / TV focus uses neutral white tint so it is not confused with selected.
-    final bg = selected
-        ? PlayerPopupTokens.accentFill
-        : highlight
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.transparent;
-    final border = selected
-        ? (highlight ? PlayerPopupTokens.accent : PlayerPopupTokens.accentBorder)
-        : highlight
-        ? Colors.white.withValues(alpha: 0.28)
-        : PlayerPopupTokens.border;
-    final fg = selected
-        ? PlayerPopupTokens.accent
-        : highlight
-        ? Colors.white.withValues(alpha: 0.85)
+    // Select-card chrome: selected = green tint; hover/focus on idle uses
+    // the same accent recipe so header chips match list cards.
+    final chrome = playerPopupSelectChrome(
+      selected: selected,
+      highlight: highlight,
+    );
+    final fg = selected || highlight
+        ? (selected ? PlayerPopupTokens.accent : Colors.white)
         : PlayerPopupTokens.muted;
     final face = Container(
       height: 28,
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: bg,
+        color: chrome.bg,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(color: border, width: highlight ? 1.5 : 1),
+        border: Border.all(color: chrome.border, width: chrome.borderWidth),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1315,24 +1341,12 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     final chromeDuration = input.instantChrome
         ? Duration.zero
         : const Duration(milliseconds: 120);
-    // TV / hover: brand-green chrome. Selected/active keep accent fill underneath.
-    final rowColor = highlight
-        ? PlayerPopupTokens.accentFill
-        : selected || active
-        ? PlayerPopupTokens.accentFill
-        : failed
-        ? const Color(0xFFEF4444).withValues(alpha: 0.08)
-        : Colors.transparent;
-    final borderColor = highlight
-        ? PlayerPopupTokens.accent
-        : selected || active
-        ? PlayerPopupTokens.accentBorder
-        : PlayerPopupTokens.border;
-    final fg = failed
-        ? Colors.white.withValues(alpha: 0.45)
-        : highlight || selected || active
-        ? Colors.white
-        : Colors.white.withValues(alpha: 0.92);
+    final chrome = playerPopupSelectChrome(
+      selected: selected || active,
+      highlight: highlight,
+      failed: failed,
+    );
+    final fg = chrome.labelFg;
     final subFg = highlight || selected || active
         ? PlayerPopupTokens.accent.withValues(alpha: 0.85)
         : PlayerPopupTokens.muted;
@@ -1349,8 +1363,8 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
               ? solid
               : highlight || selected || active
               ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
-              : PlayerPopupTokens.cardBg,
-          borderRadius: BorderRadius.circular(5),
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.badgeRadius),
           border: useSolid
               ? null
               : Border.all(
@@ -1376,26 +1390,26 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     }
 
     final tile = Material(
-      color: rowColor,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+      color: chrome.bg,
+      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
         onTap: tvFocus ? null : widget.onTap,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: AnimatedContainer(
           duration: chromeDuration,
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
             border: Border.all(
-              color: borderColor,
-              width: highlight ? 1.5 : 1,
+              color: chrome.border,
+              width: chrome.borderWidth,
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          padding: PlayerPopupTokens.selectCardPadding,
           child: Row(
             children: [
               if (widget.leading != null) ...[
@@ -1493,11 +1507,11 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
           child: tile,
         );
       }
-      return Padding(padding: const EdgeInsets.only(bottom: 5), child: body);
+      return Padding(padding: PlayerPopupTokens.selectCardGap, child: body);
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: PlayerPopupTokens.selectCardGap,
       child: FocusableControl(
         // Prefer the current value; else first row claims via fallback nextFocus.
         autoFocus: widget.autofocusIfSelected &&
@@ -1505,7 +1519,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
             PlayerPopupListFocusScope.claimAutofocus(context),
         focusNode: widget.focusNode,
         onTap: widget.onTap,
-        borderRadius: PlayerPopupTokens.chipRadius,
+        borderRadius: PlayerPopupTokens.cardRadius,
         scaleOnFocus: 1.0,
         // Tile paints brand-green focus itself — skip gray/white overlay.
         showFocusBorder: false,

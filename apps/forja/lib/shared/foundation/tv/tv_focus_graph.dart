@@ -80,6 +80,7 @@ abstract final class TvHeroActions {
     VoidCallback? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
+    bool preferCustomRestoreFromNav = false,
   }) {
     ShellTvFocusCoordinator.registerTabDefaults(
       tabId,
@@ -88,6 +89,7 @@ abstract final class TvHeroActions {
       enterFromNavFocus: enterFromNavFocus,
       restoreFocus: restoreFocus,
       pageBack: pageBack,
+      preferCustomRestoreFromNav: preferCustomRestoreFromNav,
     );
   }
 

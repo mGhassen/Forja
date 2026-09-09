@@ -91,6 +91,10 @@ abstract final class ShellTvFocusCoordinator {
   /// channels → category). Return true when Back was consumed.
   static final Map<String, bool Function()> _tabPageBack = {};
 
+  /// When set, nav RIGHT skips leave-memory and runs [restoreFocus] (e.g. IPTV
+  /// → selected category, not a skimmed group / last channel tile).
+  static final Set<String> _tabPreferCustomNavRestore = {};
+
   /// Details overlay Back control - first remote Back focuses it, second pops.
   static FocusNode? _detailBackFocus;
   static bool _detailBackExitArmed = false;
@@ -103,12 +107,18 @@ abstract final class ShellTvFocusCoordinator {
     VoidCallback? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
+    bool preferCustomRestoreFromNav = false,
   }) {
     if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
     if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
     if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
     if (restoreFocus != null) _tabRestoreFocus[tabId] = restoreFocus;
     if (pageBack != null) _tabPageBack[tabId] = pageBack;
+    if (preferCustomRestoreFromNav) {
+      _tabPreferCustomNavRestore.add(tabId);
+    } else {
+      _tabPreferCustomNavRestore.remove(tabId);
+    }
   }
 
   static void unregisterTabDefaults(String tabId) {
@@ -117,6 +127,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
     _tabPageBack.remove(tabId);
+    _tabPreferCustomNavRestore.remove(tabId);
   }
 
   /// Register the media-details Back chevron for TV remote Back.
@@ -765,6 +776,33 @@ abstract final class ShellTvFocusCoordinator {
   /// for the rail so a mid-transfer Play focus cannot win on RIGHT.
   static void restoreTabFocusAfterNav(String tabId) {
     if (tabId.isEmpty) return;
+
+    // IPTV (and similar): ignore leave-memory — custom restore owns the land
+    // (selected category, not skimmed group / last channel).
+    if (_tabPreferCustomNavRestore.contains(tabId) &&
+        _tabRestoreFocus.containsKey(tabId)) {
+      bool customLanded() => _pageHasFocus();
+      void tryCustom({required int remaining}) {
+        if (restoreTabFocus(tabId) && customLanded()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        FocusManager.instance.applyFocusChangesIfNeeded();
+        if (customLanded()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        if (remaining > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            tryCustom(remaining: remaining - 1);
+          });
+        }
+      }
+
+      tryCustom(remaining: 4);
+      return;
+    }
+
     final leaveSnap =
         (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
     final snapshot = leaveSnap ?? _tabMemory[tabId];

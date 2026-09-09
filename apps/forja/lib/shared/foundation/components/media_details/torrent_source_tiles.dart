@@ -161,6 +161,8 @@ class SourcesPanelChannelTile extends StatelessWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
+    this.selected = false,
+    this.autofocus = false,
   });
 
   final String title;
@@ -179,6 +181,9 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final VoidCallback? onLeftEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
+  /// Playing / current row — same green tint as hover.
+  final bool selected;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +202,8 @@ class SourcesPanelChannelTile extends StatelessWidget {
       onHoverProbe: onHoverProbe,
       probeHealthCache: probeHealthCache,
       viewerCount: viewerCount,
+      highlightStart: selected,
+      autofocus: autofocus,
       badges: [
         for (final label in badges)
           if (label.trim().isNotEmpty)
@@ -486,6 +493,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
+    this.autofocus = false,
   });
 
   final VoidCallback onTap;
@@ -494,6 +502,7 @@ class _SourceBadgeCard extends StatefulWidget {
   final double progress;
   final bool isResumable;
   final bool highlightStart;
+  final bool autofocus;
   final Widget? leading;
   final Widget? footer;
   final Color? accentBorder;
@@ -882,6 +891,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       showFocusBorder: false,
       showFocusFill: false,
       suppressInkHover: true,
+      autoFocus: widget.autofocus,
       listIndex: tv ? widget.tvItemIndex : null,
       tvTabId: tv ? tabId : null,
       tvRowId: tv ? rowId : null,

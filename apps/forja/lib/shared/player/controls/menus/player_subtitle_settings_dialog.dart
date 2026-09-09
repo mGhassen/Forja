@@ -9,6 +9,7 @@ import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dar
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
@@ -211,7 +212,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                           ),
                         ),
                       ),
-                      ForjaCloseButton.compact(onTap: _close),
+                      _PopupSettingsCloseButton(onTap: _close),
                     ],
                   ),
                 ),
@@ -521,66 +522,25 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
     required int index,
   }) {
     final selected = _values.font == font;
-    final chip = Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: selected
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: selected ? ForjaShellColors.brandGreen : Colors.white12,
-        ),
-      ),
-      child: Text(
-        font,
-        style: TextStyle(
-          color: selected ? ForjaShellColors.brandGreen : Colors.white54,
-          fontSize: 12,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-      ),
-    );
-    void select() {
-      _apply(() {
-        _values = PlayerSubtitleSettingsValues(
-          size: _values.size,
-          delay: _values.delay,
-          color: _values.color,
-          bgOpacity: _values.bgOpacity,
-          bottomPadding: _values.bottomPadding,
-          bold: _values.bold,
-          font: font,
-        );
-        SettingsService().setSubFont(font);
-      });
-    }
-
-    if (!tv) {
-      return GestureDetector(
-        key: ValueKey('sub-font-$font'),
-        onTap: select,
-        child: chip,
-      );
-    }
-    return KeyedSubtree(
-      key: ValueKey('sub-font-$font'),
-      child: shellFocusableTap(
-        context: context,
-        onTap: select,
-        borderRadius: 8,
-        scaleOnFocus: 1.0,
-        showFocusBorder: true,
-        listIndex: index,
-        tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
-        tvRowId: PlayerSubtitleSettingsDialog.fontRowId,
-        tvItemIndex: index,
-        tvZone: ShellTvZone.chipStrip,
-        child: chip,
-      ),
+    return _SelectFontChip(
+      font: font,
+      selected: selected,
+      tv: tv,
+      index: index,
+      onSelect: () {
+        _apply(() {
+          _values = PlayerSubtitleSettingsValues(
+            size: _values.size,
+            delay: _values.delay,
+            color: _values.color,
+            bgOpacity: _values.bgOpacity,
+            bottomPadding: _values.bottomPadding,
+            bold: _values.bold,
+            font: font,
+          );
+          SettingsService().setSubFont(font);
+        });
+      },
     );
   }
 }
@@ -1014,6 +974,165 @@ class _BoldRow extends StatelessWidget {
       tvItemIndex: 0,
       tvZone: ShellTvZone.row,
       child: row,
+    );
+  }
+}
+
+/// Green-border close — same recipe as [PlayerPopupPanel] chrome.
+class _PopupSettingsCloseButton extends StatefulWidget {
+  const _PopupSettingsCloseButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_PopupSettingsCloseButton> createState() =>
+      _PopupSettingsCloseButtonState();
+}
+
+class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    final mouseHover = policy.scaleOnHover;
+    final highlight = _hovered || _focused;
+    final face = Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: highlight ? PlayerPopupTokens.accentFill : Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        border: Border.all(
+          color: highlight
+              ? PlayerPopupTokens.accent
+              : PlayerPopupTokens.accentBorder,
+          width: highlight ? 1.5 : 1,
+        ),
+      ),
+      child: const Icon(
+        Icons.close_rounded,
+        size: 14,
+        color: PlayerPopupTokens.accent,
+      ),
+    );
+    if (!tvFocus) {
+      return MouseRegion(
+        onEnter: (_) {
+          if (mouseHover) setState(() => _hovered = true);
+        },
+        onExit: (_) {
+          if (mouseHover) setState(() => _hovered = false);
+        },
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            hoverColor: PlayerPopupTokens.accentFill,
+            child: face,
+          ),
+        ),
+      );
+    }
+    return FocusableControl(
+      onTap: widget.onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
+      child: face,
+    );
+  }
+}
+
+/// Font pickers as select cards (same chrome as player menus).
+class _SelectFontChip extends StatefulWidget {
+  const _SelectFontChip({
+    required this.font,
+    required this.selected,
+    required this.tv,
+    required this.index,
+    required this.onSelect,
+  });
+
+  final String font;
+  final bool selected;
+  final bool tv;
+  final int index;
+  final VoidCallback onSelect;
+
+  @override
+  State<_SelectFontChip> createState() => _SelectFontChipState();
+}
+
+class _SelectFontChipState extends State<_SelectFontChip> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final mouseHover =
+        ShellScope.inputPolicyOf(context).scaleOnHover;
+    final highlight = _hovered || _focused;
+    final chrome = playerPopupSelectChrome(
+      selected: widget.selected,
+      highlight: highlight,
+    );
+    final face = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: chrome.bg,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+        border: Border.all(color: chrome.border, width: chrome.borderWidth),
+      ),
+      child: Text(
+        widget.font,
+        style: TextStyle(
+          color: chrome.labelFg,
+          fontSize: 12,
+          fontWeight:
+              widget.selected || highlight ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
+    );
+
+    if (!widget.tv) {
+      return MouseRegion(
+        key: ValueKey('sub-font-${widget.font}'),
+        onEnter: (_) {
+          if (mouseHover) setState(() => _hovered = true);
+        },
+        onExit: (_) {
+          if (mouseHover) setState(() => _hovered = false);
+        },
+        child: GestureDetector(onTap: widget.onSelect, child: face),
+      );
+    }
+    return KeyedSubtree(
+      key: ValueKey('sub-font-${widget.font}'),
+      child: shellFocusableTap(
+        context: context,
+        onTap: widget.onSelect,
+        borderRadius: PlayerPopupTokens.cardRadius,
+        scaleOnFocus: 1.0,
+        showFocusBorder: false,
+        showFocusFill: false,
+        listIndex: widget.index,
+        tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
+        tvRowId: PlayerSubtitleSettingsDialog.fontRowId,
+        tvItemIndex: widget.index,
+        tvZone: ShellTvZone.chipStrip,
+        onFocusChange: (f) => setState(() => _focused = f),
+        child: face,
+      ),
     );
   }
 }

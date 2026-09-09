@@ -59,7 +59,7 @@ abstract final class IptvResolveStreamsAdapter {
       badges: [
         if (source.liveStreamHd) 'HD',
       ],
-      viewerCount: source.liveViewerCount,
+      viewerCount: source.liveViewerCount > 0 ? source.liveViewerCount : null,
       payload: _PlayPayload(sources: all, picked: source),
       probeHealthCache: healthProbe?.healthFor(probeKey),
       onHoverProbe: healthProbe == null || !iptvLiveSourceCanHoverProbe(source)

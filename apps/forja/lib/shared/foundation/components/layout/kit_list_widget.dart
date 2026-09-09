@@ -515,6 +515,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }) {
     final leading = ShellTokens.compactChromeLeadingInset(context);
     final panelActive = widget.sidePanel != null || _autoPanel;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final list = ListView.separated(
       controller: _scroll,
       padding: EdgeInsets.fromLTRB(
@@ -571,7 +572,11 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           _focusRowLast(widget.statusTabId) ||
           _focusRow(widget.statusTabId, 0) ||
           _focusRow(widget.kindMenuId, 0),
-      child: list,
+      child: _kitListScrollbar(
+        context,
+        interactive: !tv,
+        child: list,
+      ),
     );
   }
 
@@ -580,6 +585,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     KitListSource source,
     List<KitListEntry> entries,
   ) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     return LayoutBuilder(
       builder: (context, constraints) {
         final grid = _liveCardsGrid(
@@ -596,51 +602,77 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           onFocusUp: () =>
               _focusRowLast(widget.kindMenuId) ||
               _focusRow(widget.kindMenuId, 0),
-          child: CustomScrollView(
-            controller: _scroll,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  grid.leading,
-                  grid.topPad,
-                  grid.rightPad,
-                  shellTvKitScrollBottomGap(context),
-                ),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: grid.columns,
-                    mainAxisSpacing: grid.gap,
-                    crossAxisSpacing: grid.gap,
-                    mainAxisExtent: grid.cardH,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final entry = entries[index];
-                    final match = MatchEvent.fromLegacyRow(entry.legacyRow);
-                    return KitEventCard(
-                      match: match,
-                      width: grid.cardW,
-                      height: grid.cardH,
-                      gridIndex: index,
-                      gridColumns: grid.columns,
-                      tvTabId: widget.tabId,
-                      tvRowId: widget.gridRowId,
-                      onUpEdge: index < grid.columns
-                          ? () =>
-                              _focusRowLast(widget.kindMenuId) ||
-                              _focusRow(widget.kindMenuId, 0)
-                          : null,
-                      onTap: () => _openEntry(context, source, entry),
-                    );
-                  }, childCount: entries.length),
-                ),
+          child: _kitListScrollbar(
+            context,
+            interactive: !tv,
+            child: CustomScrollView(
+              controller: _scroll,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-            ],
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    grid.leading,
+                    grid.topPad,
+                    grid.rightPad,
+                    shellTvKitScrollBottomGap(context),
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: grid.columns,
+                      mainAxisSpacing: grid.gap,
+                      crossAxisSpacing: grid.gap,
+                      mainAxisExtent: grid.cardH,
+                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final entry = entries[index];
+                      final match = MatchEvent.fromLegacyRow(entry.legacyRow);
+                      return KitEventCard(
+                        match: match,
+                        width: grid.cardW,
+                        height: grid.cardH,
+                        gridIndex: index,
+                        gridColumns: grid.columns,
+                        tvTabId: widget.tabId,
+                        tvRowId: widget.gridRowId,
+                        onUpEdge: index < grid.columns
+                            ? () =>
+                                _focusRowLast(widget.kindMenuId) ||
+                                _focusRow(widget.kindMenuId, 0)
+                            : null,
+                        onTap: () => _openEntry(context, source, entry),
+                      );
+                    }, childCount: entries.length),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  /// Always-visible thumb so long Live Sports schedules show scroll position.
+  Widget _kitListScrollbar(
+    BuildContext context, {
+    required bool interactive,
+    required Widget child,
+  }) {
+    return RawScrollbar(
+      controller: _scroll,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: interactive,
+      thickness: 4,
+      radius: const Radius.circular(2),
+      mainAxisMargin: 6,
+      crossAxisMargin: 2,
+      thumbColor: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
+      trackColor: Colors.white.withValues(alpha: 0.08),
+      trackBorderColor: Colors.transparent,
+      child: child,
     );
   }
 

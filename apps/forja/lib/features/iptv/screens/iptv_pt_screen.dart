@@ -107,6 +107,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       // Keep a fallback until the catalog shell mounts.
       TvHeroActions.bind(
         'iptv',
+        preferCustomRestoreFromNav: true,
         restoreFocus: () => iptvRestoreCatalogFocus(ctrl),
         enterFromNavFocus: () => iptvEnterFromNav(ctrl),
         pageBack: () => iptvHandleCatalogPageBack(ctrl),

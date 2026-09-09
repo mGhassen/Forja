@@ -322,18 +322,12 @@ VoidCallback iptvStreamUpEdge(
   };
 }
 
-/// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
-/// Prefers last focused channel/group, else the selected category (Favorites /
-/// Already watched included) — never first portal group only.
+/// Restore IPTV catalog focus when returning from the nav rail (RIGHT).
+/// Lands on the selected category (Favorites / Already watched included).
 bool iptvRestoreCatalogFocus(IptvController ctrl, {int? portalIndex}) {
-  final mem = ShellTvFocusCoordinator.memoryFor('iptv');
-  if (mem != null &&
-      mem.zone == ShellTvZone.row &&
-      mem.rowId != null &&
-      mem.rowId != 'portals') {
-    if (iptvFocusRowItem(mem.rowId!, mem.itemIndex)) return true;
+  if (ctrl.activePortal == null) {
+    return iptvFocusRowItem('iptv-open-portal', 0);
   }
-  if (iptvFocusRowItem('browser-streams')) return true;
   if (iptvFocusBrowserCategories(ctrl)) return true;
   if (iptvFocusFirstPortalGroup(ctrl)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;

@@ -2611,20 +2611,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
-  String _sourceHost(String url) {
-    final host = Uri.tryParse(url)?.host ?? '';
-    return host.isEmpty ? url : host;
-  }
-
-  /// Category / group only for sports-style sources; host alone otherwise.
-  String? _sourceSubtitle(IptvPlaySource src) {
-    return iptvSourcePickerSubtitle(
-      src,
-      liveSourceKind: _s.widget.liveSourceKind,
-      hostFallback: _sourceHost,
-    );
-  }
-
   PlayerPopupListTile _sourcePickerTile({
     required IptvPlaySource src,
     required bool selected,
@@ -2707,9 +2693,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             ? _IptvSportsSourcePickerList(
                 sources: _s._sources,
                 selectedIndex: _s._sourceIdx,
-                liveSourceKind: _s.widget.liveSourceKind,
-                sourceLogo: _sourceLogo,
-                sourceSubtitle: _sourceSubtitle,
                 onPick: (i) {
                   PlayerPopupPanel.dismiss();
                   _s._switchSource(i);
@@ -2742,17 +2725,11 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
   const _IptvSportsSourcePickerList({
     required this.sources,
     required this.selectedIndex,
-    required this.liveSourceKind,
-    required this.sourceLogo,
-    required this.sourceSubtitle,
     required this.onPick,
   });
 
   final List<IptvPlaySource> sources;
   final int selectedIndex;
-  final IptvLiveSourceKind? liveSourceKind;
-  final Widget Function(IptvPlaySource src) sourceLogo;
-  final String? Function(IptvPlaySource src) sourceSubtitle;
   final ValueChanged<int> onPick;
 
   @override
@@ -2761,13 +2738,8 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
 }
 
 class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList> {
-  static const _hoverProbeDelay = Duration(milliseconds: 400);
-
   final _healthProbe = IptvLazyUrlHealthProbe();
   final _rowKeys = <int, GlobalKey>{};
-  final _checkingKeys = <String>{};
-  final _hoverTimers = <String, Timer>{};
-  final _probeGens = <String, int>{};
 
   @override
   void initState() {
@@ -2777,10 +2749,6 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
 
   @override
   void dispose() {
-    for (final t in _hoverTimers.values) {
-      t.cancel();
-    }
-    _hoverTimers.clear();
     _healthProbe.dispose();
     super.dispose();
   }
@@ -2797,62 +2765,6 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
     );
   }
 
-  PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
-    if (index == widget.selectedIndex) return PlayerSourceStatus.active;
-    if (!iptvLiveSourceCanHoverProbe(src)) return null;
-    final key = iptvLiveSourceProbeKey(src);
-    if (_checkingKeys.contains(key)) return PlayerSourceStatus.checking;
-    final health = _healthProbe.healthFor(key);
-    if (health == true) return PlayerSourceStatus.ready;
-    if (health == false) return PlayerSourceStatus.failed;
-    // Gray status slot so rows match other PlayerPopupListTile menus.
-    return PlayerSourceStatus.unchecked;
-  }
-
-  void _syncProbe(int index, IptvPlaySource src, bool active) {
-    if (!iptvLiveSourceCanHoverProbe(src)) return;
-    // Playing row already shows active — skip redundant probe work.
-    if (index == widget.selectedIndex) return;
-    final key = iptvLiveSourceProbeKey(src);
-    _hoverTimers.remove(key)?.cancel();
-
-    if (!active) {
-      _probeGens[key] = (_probeGens[key] ?? 0) + 1;
-      if (_checkingKeys.remove(key) && mounted) setState(() {});
-      return;
-    }
-
-    if (_healthProbe.healthFor(key) != null) return;
-
-    _hoverTimers[key] = Timer(_hoverProbeDelay, () {
-      _hoverTimers.remove(key);
-      if (!mounted) return;
-      unawaited(_runProbe(src));
-    });
-  }
-
-  Future<void> _runProbe(IptvPlaySource src) async {
-    final key = iptvLiveSourceProbeKey(src);
-    if (_healthProbe.healthFor(key) != null) return;
-    // Skipped rows (portal Live TV, signed HLS) remember green instantly —
-    // no Checking… flash. Real URLs show the spinner while checkNow runs.
-    if (iptvLiveSourceProbeUrl(src) == null) {
-      await iptvLiveSourceRunHoverProbe(src, healthProbe: _healthProbe);
-      return;
-    }
-    final gen = (_probeGens[key] ?? 0) + 1;
-    _probeGens[key] = gen;
-    if (!mounted) return;
-    setState(() => _checkingKeys.add(key));
-    try {
-      await iptvLiveSourceRunHoverProbe(src, healthProbe: _healthProbe);
-    } finally {
-      if (mounted && (_probeGens[key] ?? 0) == gen) {
-        setState(() => _checkingKeys.remove(key));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -2866,21 +2778,51 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
               Builder(
                 builder: (context) {
                   final src = widget.sources[i];
+                  final selected = i == widget.selectedIndex;
                   final rowKey = _rowKeys.putIfAbsent(
                     i,
                     () => GlobalKey(debugLabel: 'iptv-source-$i'),
                   );
-                  return KeyedSubtree(
+                  final provider = iptvSportsSourceProviderLabel(src);
+                  final host = iptvSportsSourceEmbedHost(src);
+                  return Padding(
                     key: rowKey,
-                    child: buildIptvSourcePickerTile(
-                      src: src,
-                      liveSourceKind: widget.liveSourceKind,
-                      sourceLogo: widget.sourceLogo,
-                      selected: i == widget.selectedIndex,
-                      status: _statusFor(i, src),
-                      onInteractiveChange: (active) =>
-                          _syncProbe(i, src, active),
-                      onTap: () => widget.onPick(i),
+                    padding: EdgeInsets.only(
+                      bottom: i == widget.sources.length - 1 ? 0 : 6,
+                    ),
+                    child: SourcesPanelChannelTile(
+                      title: src.pickerTitle,
+                      provider: provider,
+                      badges: [
+                        if (src.liveStreamHd) 'HD',
+                      ],
+                      viewerCount: src.liveViewerCount > 0
+                          ? src.liveViewerCount
+                          : null,
+                      footer: host == null
+                          ? null
+                          : Text(
+                              host,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: ForjaShellColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                      selected: selected,
+                      autofocus: selected &&
+                          PlayerPopupListFocusScope.claimAutofocus(context),
+                      probeHealthCache:
+                          _healthProbe.healthFor(iptvLiveSourceProbeKey(src)),
+                      onHoverProbe:
+                          !iptvLiveSourceCanHoverProbe(src) || selected
+                              ? null
+                              : () => iptvLiveSourceRunHoverProbe(
+                                    src,
+                                    healthProbe: _healthProbe,
+                                  ),
+                      onPlay: () => widget.onPick(i),
                     ),
                   );
                 },
@@ -2902,6 +2844,26 @@ bool iptvLiveMatchSourcePicker(
 ) {
   return sessionKind == IptvLiveSourceKind.liveEngine ||
       (src.liveProviderBadge ?? '').trim().isNotEmpty;
+}
+
+/// Provider chip label — same as Cards / kit Providers rows.
+String? iptvSportsSourceProviderLabel(IptvPlaySource source) {
+  final badge = (source.liveProviderBadge ?? '').trim();
+  if (badge.isNotEmpty) return badge;
+  final sub = (source.pickerSubtitle ?? '').trim();
+  return sub.isEmpty ? null : sub;
+}
+
+/// Embed / play host footer — same as Cards / kit Providers rows.
+String? iptvSportsSourceEmbedHost(IptvPlaySource source) {
+  final embed = (source.liveEngineEmbedUrl ?? '').trim();
+  final url = source.url.trim();
+  final probe = embed.isNotEmpty
+      ? embed
+      : (url.startsWith('http') ? url : '');
+  if (probe.isEmpty) return null;
+  final host = Uri.tryParse(probe)?.host.trim() ?? '';
+  return host.isEmpty ? null : host;
 }
 
 String? iptvSourcePickerSubtitle(

@@ -78,8 +78,10 @@ class _BrowserViewState extends State<_BrowserView> {
         'iptv',
         pageBack: _handleCatalogPageBack,
         enterFromNavFocus: _enterFromNav,
+        // RIGHT from nav → selected category (not skimmed group / channel).
+        preferCustomRestoreFromNav: true,
         restoreFocus: () {
-          _landRestoredCatalog();
+          _landRestoredCatalog(preferCategoryFocus: true);
           return true;
         },
       );
