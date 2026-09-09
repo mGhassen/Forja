@@ -157,51 +157,48 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             metaParts: _metaParts,
             overview: '',
             height: viewport.height,
-            actionRow: Align(
-              alignment: Alignment.centerLeft,
-              child: DetailsHeroTvActionScope(
-                tabId: MediaDetailsTv.tabId,
-                itemCount: 2,
-                onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
-                onFocusDown: tvFocus ? () {} : null,
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: HeroPillSegmentedChoice<String>(
-                        segments: const [
-                          HeroPillSegment(
-                            value: _providers,
-                            label: 'Providers',
-                            icon: Icons.dns_rounded,
-                          ),
-                          HeroPillSegment(
-                            value: _liveTv,
-                            label: 'Live TV',
-                            icon: Icons.live_tv_rounded,
-                          ),
-                        ],
-                        selected: _tabId,
-                        onSelected: _selectTab,
-                        onUpEdge:
-                            tvFocus ? () => _backFocus.requestFocus() : null,
-                        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                        tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                        tvItemIndexStart: 0,
+            actionRow: DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: 2,
+              onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
+              onFocusDown: tvFocus ? () {} : null,
+              // No Flexible/Expanded here — hero wraps actionRow in FittedBox.
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HeroPillSegmentedChoice<String>(
+                    segments: const [
+                      HeroPillSegment(
+                        value: _providers,
+                        label: 'Providers',
+                        icon: Icons.dns_rounded,
                       ),
-                    ),
-                    if (showLiveTvSearch) ...[
-                      const SizedBox(width: 10),
-                      KitSourcesExpandingSearch(
-                        query: _liveTvChannelQuery,
-                        onQueryChanged: (q) {
-                          if (q == _liveTvChannelQuery) return;
-                          setState(() => _liveTvChannelQuery = q);
-                        },
-                        debugLabel: 'live-match-details-live-tv-search',
+                      HeroPillSegment(
+                        value: _liveTv,
+                        label: 'Live TV',
+                        icon: Icons.live_tv_rounded,
                       ),
                     ],
+                    selected: _tabId,
+                    onSelected: _selectTab,
+                    onUpEdge:
+                        tvFocus ? () => _backFocus.requestFocus() : null,
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                    tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                    tvItemIndexStart: 0,
+                  ),
+                  if (showLiveTvSearch) ...[
+                    const SizedBox(width: 10),
+                    KitSourcesExpandingSearch(
+                      query: _liveTvChannelQuery,
+                      onQueryChanged: (q) {
+                        if (q == _liveTvChannelQuery) return;
+                        setState(() => _liveTvChannelQuery = q);
+                      },
+                      debugLabel: 'live-match-details-live-tv-search',
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
             belowActionRowFullWidth: true,
