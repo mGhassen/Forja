@@ -10,11 +10,16 @@ import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Off-screen WebView host for embed.st GOAT unlock when Node is unavailable
-/// (Android / Android TV / iOS). Same crack as `goat/unlock.mjs`, Chrome WASM.
+/// (Android / Android TV / iOS / Windows / macOS). Same crack as
+/// `goat/unlock.mjs`, Chrome/WebView2 WASM.
 ///
 /// Document [baseUrl] is `https://embed.st/` so lock.wasm sees the real embed
 /// origin (Node happy-dom does the same). Scripts/wasm load from loopback with
 /// mixed-content allowed.
+///
+/// Desktop still prefers Node when present; this path is the fallback so
+/// Windows release boxes without `node` can unlock Streamed (same toast
+/// "No playable stream" otherwise).
 class LiveGoatWebviewUnlock {
   LiveGoatWebviewUnlock._();
   static final LiveGoatWebviewUnlock instance = LiveGoatWebviewUnlock._();
@@ -34,16 +39,26 @@ class LiveGoatWebviewUnlock {
   Future<String?> _unlockChain = Future<String?>.value(null);
   int? _port;
 
+  static bool get _platformSupported =>
+      !kIsWeb &&
+      (Platform.isAndroid ||
+          Platform.isIOS ||
+          Platform.isWindows ||
+          Platform.isMacOS);
+
+  /// Windows/macOS WebView2/WKWebView block mixed content
+  /// (`https://embed.st` page + `http://127.0.0.1` scripts). Load the crack
+  /// document from loopback instead; [embedOrigin] is still passed into crack.
+  static bool get _useLoopbackDocument =>
+      Platform.isWindows || Platform.isMacOS;
+
   Future<String?> unlock({
     required Map<String, dynamic> slot,
     required String goat,
     required String bodyHex,
     required String embedOrigin,
   }) {
-    if (kIsWeb) return Future<String?>.value(null);
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      return Future<String?>.value(null);
-    }
+    if (!_platformSupported) return Future<String?>.value(null);
 
     final done = Completer<String?>();
     _unlockChain = _unlockChain.then((_) async {
@@ -143,13 +158,7 @@ class LiveGoatWebviewUnlock {
     try {
       await _syncCrackAsset();
       _pageLoad = Completer<void>();
-      final html = _bootstrapHtml(port);
-      await c.loadData(
-        data: html,
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-        baseUrl: WebUri('$_embedOrigin/'),
-      );
+      await _loadBootstrapInto(c, port);
       await _pageLoad!.future.timeout(const Duration(seconds: 20));
       for (var i = 0; i < 50; i++) {
         final ready = await c.evaluateJavascript(
@@ -168,6 +177,27 @@ class LiveGoatWebviewUnlock {
       await dispose();
     }
   }
+
+  Future<void> _loadBootstrapInto(
+    InAppWebViewController c,
+    int port,
+  ) async {
+    if (_useLoopbackDocument) {
+      await c.loadUrl(
+        urlRequest: URLRequest(url: WebUri(_loopbackUnlockUrl(port))),
+      );
+      return;
+    }
+    await c.loadData(
+      data: _bootstrapHtml(port),
+      mimeType: 'text/html',
+      encoding: 'utf-8',
+      baseUrl: WebUri('$_embedOrigin/'),
+    );
+  }
+
+  String _loopbackUnlockUrl(int port) =>
+      'http://127.0.0.1:$port/unlock.html?t=${DateTime.now().millisecondsSinceEpoch}';
 
   /// Re-copy crack.js from the pack (hot restart / fix iterations).
   Future<void> _syncCrackAsset() async {
@@ -200,8 +230,11 @@ class LiveGoatWebviewUnlock {
     }
   }
 
+  /// Mobile: document origin is embed.st (mixed-content allowed) so lock.wasm
+  /// sees the real host; scripts/wasm come from loopback.
   String _bootstrapHtml(int port) {
     final base = 'http://127.0.0.1:$port';
+    final bust = DateTime.now().millisecondsSinceEpoch;
     return '''
 <!doctype html>
 <html>
@@ -224,7 +257,37 @@ class LiveGoatWebviewUnlock {
       };
     })();
   </script>
-  <script type="module" src="$base/crack.js?t=${DateTime.now().millisecondsSinceEpoch}"></script>
+  <script type="module" src="$base/crack.js?t=$bust"></script>
+</body>
+</html>
+''';
+  }
+
+  /// Desktop: same-origin loopback document (no mixed content).
+  String _bootstrapLoopbackHtml(int port) {
+    final bust = DateTime.now().millisecondsSinceEpoch;
+    return '''
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Forja GOAT unlock</title>
+</head>
+<body>
+  <div id="player"></div>
+  <script>window.__GOAT_ASSET_BASE = location.origin;</script>
+  <script src="/vendor/big-integer.min.js"></script>
+  <script>
+    (function () {
+      var bi = typeof bigInt !== 'undefined' ? bigInt : window.bigInt;
+      window.bigInt = bi;
+      globalThis.require = function (name) {
+        if (name === 'big-integer') return bi;
+        return {};
+      };
+    })();
+  </script>
+  <script type="module" src="/crack.js?t=$bust"></script>
 </body>
 </html>
 ''';
@@ -241,41 +304,64 @@ class LiveGoatWebviewUnlock {
       _server ??= await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       _port = _server!.port;
       unawaited(_serve(dir));
+      // Let the serve loop subscribe before the first unlock.html GET.
+      await Future<void>.delayed(Duration.zero);
 
       _pageLoad = Completer<void>();
-      final html = _bootstrapHtml(_port!);
-      _hw = ForjaHeadlessInAppWebView(
-        initialData: InAppWebViewInitialData(
-          data: html,
-          mimeType: 'text/html',
-          encoding: 'utf-8',
-          baseUrl: WebUri('$_embedOrigin/'),
-        ),
-        initialSize: const Size(64, 64),
-        initialSettings: InAppWebViewSettings(
-          javaScriptEnabled: true,
-          isInspectable: kDebugMode,
-          transparentBackground: true,
-          supportZoom: false,
-          disableHorizontalScroll: true,
-          disableVerticalScroll: true,
-          mediaPlaybackRequiresUserGesture: false,
-          mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-          allowUniversalAccessFromFileURLs: true,
-          allowFileAccessFromFileURLs: true,
-        ),
-        onLoadStop: (c, _) {
-          _controller = c;
-          final page = _pageLoad;
-          if (page != null && !page.isCompleted) page.complete();
-        },
-        onConsoleMessage: (_, msg) => _onConsole(msg.message),
-        onReceivedError: (_, req, err) {
-          debugPrint(
-            '[LiveGoatWebview] load error ${req.url} ${err.description}',
-          );
-        },
+      final settings = InAppWebViewSettings(
+        javaScriptEnabled: true,
+        isInspectable: kDebugMode,
+        transparentBackground: true,
+        supportZoom: false,
+        disableHorizontalScroll: true,
+        disableVerticalScroll: true,
+        mediaPlaybackRequiresUserGesture: false,
+        mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+        allowUniversalAccessFromFileURLs: true,
+        allowFileAccessFromFileURLs: true,
       );
+      if (_useLoopbackDocument) {
+        _hw = ForjaHeadlessInAppWebView(
+          initialUrlRequest: URLRequest(
+            url: WebUri(_loopbackUnlockUrl(_port!)),
+          ),
+          initialSize: const Size(64, 64),
+          initialSettings: settings,
+          onLoadStop: (c, _) {
+            _controller = c;
+            final page = _pageLoad;
+            if (page != null && !page.isCompleted) page.complete();
+          },
+          onConsoleMessage: (_, msg) => _onConsole(msg.message),
+          onReceivedError: (_, req, err) {
+            debugPrint(
+              '[LiveGoatWebview] load error ${req.url} ${err.description}',
+            );
+          },
+        );
+      } else {
+        _hw = ForjaHeadlessInAppWebView(
+          initialData: InAppWebViewInitialData(
+            data: _bootstrapHtml(_port!),
+            mimeType: 'text/html',
+            encoding: 'utf-8',
+            baseUrl: WebUri('$_embedOrigin/'),
+          ),
+          initialSize: const Size(64, 64),
+          initialSettings: settings,
+          onLoadStop: (c, _) {
+            _controller = c;
+            final page = _pageLoad;
+            if (page != null && !page.isCompleted) page.complete();
+          },
+          onConsoleMessage: (_, msg) => _onConsole(msg.message),
+          onReceivedError: (_, req, err) {
+            debugPrint(
+              '[LiveGoatWebview] load error ${req.url} ${err.description}',
+            );
+          },
+        );
+      }
       await _hw!.run();
       await _pageLoad!.future.timeout(const Duration(seconds: 20));
 
@@ -292,7 +378,10 @@ class LiveGoatWebviewUnlock {
       if (ready != true && ready != 'true' && ready != 1) {
         throw StateError('goat crack not ready (mixed-content / module?)');
       }
-      debugPrint('[LiveGoatWebview] runtime ready :$_port base=$_embedOrigin');
+      debugPrint(
+        '[LiveGoatWebview] runtime ready :$_port '
+        'doc=${_useLoopbackDocument ? 'loopback' : _embedOrigin}',
+      );
       _ready!.complete(true);
       return true;
     } catch (e, st) {
@@ -310,11 +399,21 @@ class LiveGoatWebviewUnlock {
       try {
         final path = Uri.decodeComponent(req.uri.path);
         final rel = path.startsWith('/') ? path.substring(1) : path;
-        final file = File(
-          rel.isEmpty || rel == 'unlock.html'
-              ? '${dir.path}/unlock.html'
-              : '${dir.path}/$rel',
-        );
+        if (rel.isEmpty || rel == 'unlock.html') {
+          final html = _bootstrapLoopbackHtml(_port ?? 0);
+          req.response.headers.contentType = ContentType.parse(
+            'text/html; charset=utf-8',
+          );
+          req.response.headers.set('Access-Control-Allow-Origin', '*');
+          req.response.headers.set(
+            'Cache-Control',
+            'no-store, no-cache, must-revalidate',
+          );
+          req.response.write(html);
+          await req.response.close();
+          continue;
+        }
+        final file = File('${dir.path}/$rel');
         if (!await file.exists()) {
           req.response.statusCode = 404;
           await req.response.close();
