@@ -1662,6 +1662,27 @@ class SettingsService {
     return 0;
   }
 
+  /// Like [initialShellTabIndex], but if the preferred tab has no builder yet
+  /// (hub pack mid-refresh), pick another **feature** tab — never fall through
+  /// to Settings. Keeping the preferred index when nothing else is buildable
+  /// paints a placeholder until builders land (issue 253).
+  static int resolveBuildableShellTabIndex(
+    List<String> visibleIds, {
+    String? defaultTabId,
+    required bool Function(String id) hasBuilder,
+  }) {
+    final preferred = initialShellTabIndex(
+      visibleIds,
+      defaultTabId: defaultTabId,
+    );
+    if (preferred >= visibleIds.length) return preferred;
+    if (hasBuilder(visibleIds[preferred])) return preferred;
+    final buildable = visibleIds.indexWhere(
+      (id) => id != 'settings' && hasBuilder(id),
+    );
+    return buildable >= 0 ? buildable : preferred;
+  }
+
   Future<String> getDefaultNavTab() async =>
       await kvGetString(_defaultNavTabKey) ?? 'home';
 

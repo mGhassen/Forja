@@ -16,6 +16,7 @@ import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/foundation/components/update/update_dialog.dart';
+import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum DesktopStartupDestination { account, splash }
@@ -181,10 +182,17 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
     try {
       await SyncService.instance.activeProfile();
+      // Restored sessions skip ProfileSwitchSplash, so MainScreen may have
+      // already locked onto Settings (empty/guest rail). Force the starred
+      // default once profile scope + cloud nav land (issue 253).
+      ShellBus.selectDefaultTabOnNextNavLoad = true;
       // Restored session skips Who's watching / ProfileSwitchSplash, so this
       // is the cold-start pull of nav, Stremio, IPTV, playback prefs into
       // local cache. Soft-fail keeps local (incl. IPTV connection resets).
       await ref.read(profileSettingsSyncProvider.notifier).pullAndMergeAll();
+      if (ShellBus.selectDefaultTabOnNextNavLoad) {
+        SettingsService.navbarChangeNotifier.value++;
+      }
     } on SyncProfileFetchException catch (e) {
       debugPrint('[DesktopStartupGate] activeProfile: $e');
     } catch (e) {

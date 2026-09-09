@@ -256,6 +256,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [250-[fixed]-…](fixed/250-[fixed]-home-tmdb-api-key-missing-in-release.md) | Home TMDB API key missing in release (AUTH_REQUIRED toast) | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [251-[fixed]-…](fixed/251-[fixed]-live-sports-streamed-empty-nested-skip.md) | Live Sports empty while Streamed logs streams=N | P0 | High | fixed | Complete · 3/3 · A 0/1 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
 | [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
+| [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 3/3 · A 1/2 | — |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

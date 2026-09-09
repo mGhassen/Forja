@@ -451,7 +451,15 @@ class _MainScreenState extends ConsumerState<MainScreen>
         _emptyFeaturesBodyDismissed = false;
       }
       _visibleIds = nextIds;
-      if (!_initialNavResolved || applyDefaultTab) {
+      // Cold start can paint Settings-only (guest scope / empty cache / hub
+      // builders not ready) before the real Features rail lands. When feature
+      // tabs appear while still on Settings, apply the starred default once
+      // (same as profile switch) — issue 253.
+      final promoteFromSettingsOnly = !hadFeatureTabs &&
+          visible.isNotEmpty &&
+          currentId == 'settings' &&
+          defaultTab != 'settings';
+      if (!_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly) {
         if (applyDefaultTab) {
           // Fresh tab trees for the incoming profile's settings/portals.
           _tabCache.clear();
@@ -462,16 +470,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
           _tabKeys.clear();
         }
         _initialNavResolved = true;
-        _selectedIndex = SettingsService.initialShellTabIndex(
+        _selectedIndex = SettingsService.resolveBuildableShellTabIndex(
           _visibleIds,
           defaultTabId: defaultTab,
+          hasBuilder: navTabBuilders.containsKey,
         );
-        // Prefer a buildable tab when default points at a ghost hub id.
-        if (_selectedIndex < _visibleIds.length &&
-            !navTabBuilders.containsKey(_visibleIds[_selectedIndex])) {
-          final buildable = _visibleIds.indexWhere(navTabBuilders.containsKey);
-          if (buildable >= 0) _selectedIndex = buildable;
-        }
         if (_selectedIndex < _visibleIds.length) {
           final tabId = _visibleIds[_selectedIndex];
           _mountedTabIds.add(tabId);
