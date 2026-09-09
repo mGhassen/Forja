@@ -636,6 +636,46 @@ class PluginRegistry {
     return mu.replace(path: path).toString();
   }
 
+  static bool _isPackRelativeAssetPath(String? ref) {
+    final s = ref?.trim() ?? '';
+    if (s.isEmpty) return false;
+    if (s.startsWith('http://') || s.startsWith('https://')) return false;
+    if (s.startsWith('file://')) return false;
+    if (s.startsWith('assets/') || s.startsWith('forja://')) return false;
+    if (s.contains('..')) return false;
+    return true;
+  }
+
+  /// Fetch a pack-relative file into [PluginScriptDiskStore] when missing.
+  ///
+  /// Used for hub `nav.icon` bitmaps so the rail paints from disk offline.
+  Future<void> ensureRemotePackRelativeFile({
+    required String sourceUrl,
+    required String relative,
+  }) async {
+    final url = sourceUrl.trim();
+    final rel = relative.trim();
+    if (url.isEmpty || !_isPackRelativeAssetPath(rel)) return;
+    if (isLegacyAssetPack(url) || isLocalManifestUrl(url)) return;
+    if (await PluginScriptDiskStore.hasPackRelativeFile(
+      sourceUrl: url,
+      relative: rel,
+    )) {
+      return;
+    }
+    try {
+      final bytes = await _fetchBytes(resolveScriptUrl(url, rel));
+      if (bytes.isEmpty) return;
+      await PluginScriptDiskStore.savePackRelativeFile(
+        sourceUrl: url,
+        relative: rel,
+        bytes: bytes,
+      );
+    } catch (e) {
+      debugPrint('[engine] pack asset fetch failed ($rel @ $url): $e');
+    }
+  }
+
   /// Disable (not remove) packs that share a conventional slot but are not in
   /// [keepUrls]. Never touches [EnginePack.enabled] on keep URLs.
   @visibleForTesting
@@ -927,12 +967,22 @@ class PluginRegistry {
     ];
 
     // Manifest `bundle` lists pack files to fetch. Empty → derive from entries.
+    // Always pull pack-relative `nav.icon` bitmaps so the shell rail can paint
+    // from disk after install (CDN Image.network fails stick after offline).
+    final navIcons = <String>{
+      for (final p in pack.plugins)
+        if (_isPackRelativeAssetPath(p.nav?['icon']?.toString()))
+          p.nav!['icon'].toString().trim(),
+    };
     final filesToFetch = <String>[
-      if (pack.bundle.isNotEmpty)
-        ...pack.bundle
-      else ...{
-        ...preludesNeeded,
-        for (final p in scriptsNeeded) p.entry,
+      ...{
+        if (pack.bundle.isNotEmpty)
+          ...pack.bundle
+        else ...{
+          ...preludesNeeded,
+          for (final p in scriptsNeeded) p.entry,
+        },
+        ...navIcons,
       },
     ];
     final fetchTotal = 1 + filesToFetch.length;

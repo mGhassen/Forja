@@ -21,7 +21,7 @@ class NavDestination {
   final String? iconAsset;
 }
 
-class NavDestinationIcon extends StatelessWidget {
+class NavDestinationIcon extends StatefulWidget {
   const NavDestinationIcon({
     super.key,
     required this.destination,
@@ -36,7 +36,42 @@ class NavDestinationIcon extends StatelessWidget {
   final double size;
 
   @override
+  State<NavDestinationIcon> createState() => _NavDestinationIconState();
+}
+
+class _NavDestinationIconState extends State<NavDestinationIcon>
+    with WidgetsBindingObserver {
+  /// Remount network glyphs after resume so a failed CDN load retries.
+  int _networkEpoch = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final asset = widget.destination.iconAsset?.trim() ?? '';
+    if (!asset.startsWith('http://') && !asset.startsWith('https://')) {
+      return;
+    }
+    setState(() => _networkEpoch++);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final destination = widget.destination;
+    final selected = widget.selected;
+    final color = widget.color;
+    final size = widget.size;
     final asset = destination.iconAsset?.trim();
     if (asset == null || asset.isEmpty) return _materialIcon();
 
@@ -69,6 +104,7 @@ class NavDestinationIcon extends StatelessWidget {
     } else if (asset.startsWith('http://') || asset.startsWith('https://')) {
       image = Image.network(
         asset,
+        key: ValueKey('nav-net-$asset-$_networkEpoch'),
         width: size,
         height: size,
         cacheWidth: cachePx,
@@ -99,10 +135,11 @@ class NavDestinationIcon extends StatelessWidget {
   }
 
   Widget _materialIcon() {
+    final destination = widget.destination;
     return Icon(
-      selected ? destination.activeIcon : destination.icon,
-      color: color,
-      size: size,
+      widget.selected ? destination.activeIcon : destination.icon,
+      color: widget.color,
+      size: widget.size,
     );
   }
 }

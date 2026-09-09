@@ -7,6 +7,7 @@ import 'package:forja/shared/foundation/foundation.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
@@ -763,7 +764,7 @@ void main() {
       );
     });
 
-    test('nav icons are pack-relative — never assets/ or forja://asset', () {
+    test('nav icons are pack-relative — never assets/ or forja://asset', () async {
       final byRail = <String, MetaNavSpec>{};
       for (final dir in [
         'home',
@@ -845,26 +846,53 @@ void main() {
       final cartoonIcon =
           File('../../plugins/hubs/cartoon/icons/nav.png').resolveSymbolicLinksSync();
       expect(
-        PackAssets.resolveNavIconDisplay(
+        await PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'icons/nav.png',
         ),
         cartoonIcon,
       );
       expect(
-        PackAssets.resolveNavIconDisplay(
+        await PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'forja://asset/nav/home',
         ),
         isNull,
       );
       expect(
-        PackAssets.resolveNavIconDisplay(
+        await PackAssets.resolveNavIconDisplay(
           packSourceUrl: Uri.file(cartoonManifest).toString(),
           icon: 'assets/images/nav/home.png',
         ),
         isNull,
       );
+    });
+
+    test('resolveNavIconDisplay prefers installed pack disk over CDN URL', () async {
+      final root = Directory.systemTemp.createTempSync('forja-nav-icon-');
+      addTearDown(() {
+        PluginScriptDiskStore.resetForTest();
+        try {
+          root.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      PluginScriptDiskStore.debugRoot = root;
+      const sourceUrl =
+          'https://cdn.example/plugins/hubs/cartoon/manifest.json';
+      final bytes =
+          File('../../plugins/hubs/cartoon/icons/nav.png').readAsBytesSync();
+      await PluginScriptDiskStore.savePackRelativeFile(
+        sourceUrl: sourceUrl,
+        relative: 'icons/nav.png',
+        bytes: bytes,
+      );
+      final resolved = await PackAssets.resolveNavIconDisplay(
+        packSourceUrl: sourceUrl,
+        icon: 'icons/nav.png',
+      );
+      expect(resolved, isNotNull);
+      expect(resolved!.startsWith('http'), isFalse);
+      expect(File(resolved).existsSync(), isTrue);
     });
 
     test('forjaHqSlot extracts arbitrary hub path segment from manifest url', () {

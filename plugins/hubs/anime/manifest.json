@@ -4,7 +4,7 @@
   "name": "ForjaHQ Anime",
   "description": "AniList-powered anime hub with search and details.",
   "author": "ForjaHQ",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "tags": [
     "anime"
   ],
@@ -67,6 +67,7 @@
   "bundle": [
     "anilist.js",
     "_kit.js",
-    "enrich_tmdb.js"
+    "enrich_tmdb.js",
+    "icons/nav.png"
   ]
 }

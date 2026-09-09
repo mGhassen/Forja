@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports Hub",
   "description": "Live sports list with a streams panel.",
   "author": "ForjaHQ",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "tags": [
     "sports",
     "live"
@@ -65,6 +65,7 @@
   ],
   "bundle": [
     "live_sports.js",
-    "_kit.js"
+    "_kit.js",
+    "icons/nav.png"
   ]
 }

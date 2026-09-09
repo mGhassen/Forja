@@ -3,7 +3,7 @@
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
   "description": "Larozaa Arabic movies and TV hub.",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "tags": [
     "arabic"
   ],
@@ -48,6 +48,7 @@
   ],
   "bundle": [
     "arabic.js",
-    "_kit.js"
+    "_kit.js",
+    "icons/nav.png"
   ]
 }

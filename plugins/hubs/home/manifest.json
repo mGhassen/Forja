@@ -4,7 +4,7 @@
   "name": "ForjaHQ Home",
   "description": "TMDB movie and TV catalog for the Home tab.",
   "author": "ForjaHQ",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "tags": [
     "home",
     "movies",
@@ -48,6 +48,7 @@
   ],
   "bundle": [
     "tmdb.js",
-    "_kit.js"
+    "_kit.js",
+    "icons/nav.png"
   ]
 }

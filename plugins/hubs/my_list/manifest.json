@@ -4,7 +4,7 @@
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "tags": [
     "lists"
   ],
@@ -12,7 +12,7 @@
     {
       "id": "my-list-hub",
       "name": "My List",
-      "description": "Personal watchlists — local bookmarks and Simkl sync",
+      "description": "Personal watchlists \u2014 local bookmarks and Simkl sync",
       "entry": "my_list.js",
       "kind": "catalog",
       "protocol": 1,
@@ -50,6 +50,7 @@
   "bundle": [
     "my_list.js",
     "_kit.js",
-    "enrich_tmdb.js"
+    "enrich_tmdb.js",
+    "icons/nav.png"
   ]
 }
