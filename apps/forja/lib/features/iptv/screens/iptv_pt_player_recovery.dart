@@ -5,10 +5,11 @@ part of 'iptv_pt_player_screen.dart';
 
 mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
   Future<void> _openCurrent({bool hardRecreate = false});
-  Future<void> _engineOpenSource(
+  Future<bool> _engineOpenSource(
     IptvPlaySource src, {
     bool forceLiveRefresh = false,
   });
+  int get _retriesBeforeSourceRotate;
   Future<void> _probeStreamCapabilities();
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
@@ -131,7 +132,8 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     debugPrint(
       '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
       '${userInitiated ? ', user' : ''}): $reason '
-      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
+      'rotateAfter=$_retriesBeforeSourceRotate)',
     );
 
     try {
@@ -156,7 +158,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         return;
       }
 
-      if (_s._retryAttempt >= _IptvPtPlayerScreenState._maxRetries) {
+      if (_s._retryAttempt >= _retriesBeforeSourceRotate) {
         // Rotate to the next source if we have one.
         if (_s._sourceIdx < _s._sources.length - 1) {
           _s._sourceIdx++;
@@ -229,7 +231,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       if (mounted) {
         setState(
           () => _s._statusBanner =
-              'Reconnecting\u2026 (attempt ${_s._retryAttempt}/${_IptvPtPlayerScreenState._maxRetries})',
+              'Reconnecting\u2026 (attempt ${_s._retryAttempt}/$_retriesBeforeSourceRotate)',
         );
       }
 

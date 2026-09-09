@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/live/live_feed_merge.dart';
 import 'package:forja/shared/engine/live/live_merge_matching_gate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
+import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 
 /// Query for [aggregateLiveFeed] — catalog filter + schedule window.
@@ -94,12 +95,22 @@ void _rememberRawFeed(String catalogFilter, List<Map<String, dynamic>> rows) {
 }
 
 /// Warm/read the unscoped schedule pool used when resolving Providers.
+///
+/// Always the **unmerged** scrape (per-catalog rows) so soft-match siblings keep
+/// their own viewer counts — never the collapsed Catalog=All card.
 List<Map<String, dynamic>>? rememberedLiveFeedAllCatalogPool() {
   final at = _rememberedAllCatalogPoolAt;
   final pool = _rememberedAllCatalogPool;
-  if (pool == null || at == null) return null;
-  if (DateTime.now().difference(at) > _allCatalogPoolTtl) return null;
-  return pool;
+  if (pool != null &&
+      at != null &&
+      DateTime.now().difference(at) <= _allCatalogPoolTtl) {
+    return pool;
+  }
+  // Session raw for Catalog=All — same unmerged rows, longer TTL.
+  final hit = _rawFeedByCatalog[_rawFeedCacheKey('all')];
+  if (hit == null) return null;
+  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
+  return hit.rows;
 }
 
 void rememberLiveFeedAllCatalogPool(List<Map<String, dynamic>> rows) {
@@ -394,9 +405,7 @@ MetaItem liveMetaFromFeedRow(Map<String, dynamic> row) {
   final starts = (row['startsAt'] ?? row['starts_at'] ?? row['date'] ?? '')
       .toString()
       .trim();
-  final viewersRaw = row['viewers'];
-  final viewers =
-      viewersRaw is num ? viewersRaw.toInt() : int.tryParse('$viewersRaw');
+  final viewers = parseLiveViewerCount(row['viewers']);
   final sourcesRaw = row['sources'];
   final sources = <Map<String, dynamic>>[];
   if (sourcesRaw is List) {

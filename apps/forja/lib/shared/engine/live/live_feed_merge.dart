@@ -1,5 +1,6 @@
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
+import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 
 /// Collapse same-fixture schedule rows across catalogs (Catalog = All).
 ///
@@ -131,11 +132,8 @@ Map<String, dynamic> _pickBetterFeedRow(
 String _posterOf(Map<String, dynamic> row) =>
     (row['poster'] ?? row['thumbnail'] ?? '').toString().trim();
 
-int _viewersOf(Map<String, dynamic> row) {
-  final v = row['viewers'];
-  if (v is num) return v.toInt();
-  return int.tryParse('$v') ?? 0;
-}
+int _viewersOf(Map<String, dynamic> row) =>
+    parseLiveViewerCount(row['viewers']);
 
 /// Prefer league names over bare sport labels (`football`).
 int _categorySpecificity(String raw) {

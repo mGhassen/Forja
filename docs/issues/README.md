@@ -267,6 +267,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [261-[fixed]-…](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) | Windows IPTV portal unreachable (DNS64 AAAA) | P1 | High | fixed | Complete · 3/3 · A 0/1 | [252](fixed/252-[fixed]-iptv-status-checks-false-red.md) |
 | [262-[fixed]-…](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) | ATV Forja Packs last pack clipped / unreachable | P1 | High | fixed | Complete · 3/3 · A 0/1 | [127](127-[open]-android-tv-settings-detail-dpad.md) |
 | [263-[fixed]-…](fixed/263-[fixed]-live-sports-schedule-merge-soft-match.md) | Live Sports schedule merge dead / soft-match too weak | P1 | High | fixed | Complete · 5/5 · A 0/1 | [240](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) |
+| [264-[fixed]-…](fixed/264-[fixed]-live-sports-player-no-auto-failover.md) | Live Sports player does not auto-play next stream | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

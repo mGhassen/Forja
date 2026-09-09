@@ -189,6 +189,9 @@ abstract final class LiveResolveStreams {
   /// Only catalogs that link to a live resolve pack (`providerId`). Broadcast
   /// guides and scoreboard enrich rows stay out of Providers. Catalog rows
   /// never contribute embeds — live packs discover streams on demand.
+  ///
+  /// Uses the **unmerged** schedule pool so each sibling keeps its own viewer
+  /// count (merged Catalog=All cards must not own every source ref).
   static Future<List<MatchEvent>> _forjaProviderResolveMatches(
     MatchEvent anchor,
   ) async {
@@ -207,16 +210,16 @@ abstract final class LiveResolveStreams {
       out.add(m);
     }
 
-    add(anchor);
-
     List<Map<String, dynamic>> pool =
         rememberedLiveFeedAllCatalogPool() ?? const [];
     if (pool.isEmpty) {
       try {
-        pool = await aggregateLiveFeed(const LiveFeedQuery());
+        // Force a scrape into the unmerged remember-pool; discard the merged
+        // return value — Providers must soft-match per-catalog rows.
+        await aggregateLiveFeed(const LiveFeedQuery());
+        pool = rememberedLiveFeedAllCatalogPool() ?? const [];
       } catch (e) {
         debugPrint('[LiveResolveStreams] Forja sibling pool error: $e');
-        return out;
       }
     }
 
@@ -225,6 +228,8 @@ abstract final class LiveResolveStreams {
       if (!_liveCatalogEventMatch(anchor, m)) continue;
       add(m);
     }
+    // Solo / cache-miss: still resolve the opened card's opaque sources.
+    if (out.isEmpty) add(anchor);
     return out;
   }
 
@@ -281,7 +286,7 @@ abstract final class LiveResolveStreams {
             hd: s.hd,
             embedUrl: s.embedUrl,
             source: s.source.trim().isNotEmpty ? s.source : pluginSource,
-            viewers: s.viewers > 0 ? s.viewers : match.viewers,
+            viewers: s.viewers,
             directPlayback: false,
           ),
       ];
@@ -439,7 +444,7 @@ abstract final class LiveResolveStreams {
     final metaViewers = meta?.viewers ?? 0;
     final viewers = rowViewers > 0
         ? rowViewers
-        : (metaViewers > 0 ? metaViewers : match.viewers);
+        : metaViewers;
     final url = (row['url'] ?? '').toString().trim();
     final sourceToken = meta?.source.trim().isNotEmpty == true
         ? meta!.source
@@ -485,7 +490,7 @@ abstract final class LiveResolveStreams {
       headers: directPlayback ? (stream.resolvedHeaders ?? const {}) : const {},
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _serverLabelFor(match),
-      liveViewerCount: effectiveMatchStreamViewers(stream, match),
+      liveViewerCount: stream.viewers,
       liveStreamHd: stream.hd,
       liveEngineEmbedUrl: directPlayback || pending
           ? null
@@ -1220,7 +1225,7 @@ abstract final class LiveResolveStreams {
       headers: headers,
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _serverLabelFor(match),
-      liveViewerCount: effectiveMatchStreamViewers(stream, match),
+      liveViewerCount: stream.viewers,
       liveStreamHd: stream.hd,
       liveEngineEmbedUrl: resolved
           ? null

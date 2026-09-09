@@ -72,6 +72,16 @@ void main() {
   });
 
   group('MetaItem live fields', () {
+    test('parses string viewers (PPV-style wire)', () {
+      final item = MetaItem.fromJson({
+        'id': 'test-a:2',
+        'type': 'live_match',
+        'name': 'A vs B',
+        'viewers': '2846',
+      });
+      expect(item.viewers, 2846);
+    });
+
     test('parses airing, starts_at, viewers, sources', () {
       final item = MetaItem.fromJson({
         'id': 'test-a:1',

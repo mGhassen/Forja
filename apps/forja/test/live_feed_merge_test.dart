@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/live/live_feed_merge.dart';
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
+import 'package:forja/shared/foundation/lib/match_event.dart';
+import 'package:forja/shared/foundation/protocol/protocol.dart';
 
 void main() {
   group('liveCatalogEventsSoftMatch', () {
@@ -152,6 +154,16 @@ void main() {
         (merged.first['category'] as String).toLowerCase(),
         contains('champions'),
       );
+
+      // List / cards paint MetaItem + MatchEvent from the merged row.
+      final shaped = Map<String, dynamic>.from(merged.first);
+      shaped['name'] = shaped['title'];
+      shaped['type'] = 'live_match';
+      expect(MetaItem.fromJson(shaped).viewers, 11904 + 2846);
+      expect(
+        MatchEvent.fromLegacyRow(merged.first).viewers,
+        11904 + 2846,
+      );
     });
 
     test('coarse bucket still keeps City vs United separate', () {
@@ -193,3 +205,5 @@ void main() {
     });
   });
 }
+
+  // appended for local check - will remove

@@ -42,8 +42,11 @@ abstract final class SourcesPanelTv {
     return true;
   }
 
-  static bool _tryRow(String rowId, int index) =>
-      _tryFocus(ShellTvFocusCoordinator.itemNode(tabId, rowId, index));
+  static bool _tryRow(String rowId, int index, {String? forTabId}) {
+    final tid = forTabId ?? tabId;
+    if (ShellTvFocusCoordinator.focusRowItem(tid, rowId, index)) return true;
+    return _tryFocus(ShellTvFocusCoordinator.itemNode(tid, rowId, index));
+  }
 
   static bool Function()? _dismissFilters;
 
@@ -74,11 +77,17 @@ abstract final class SourcesPanelTv {
     FocusNode? close,
     int maxTries = 20,
     bool listOnly = false,
+    String? forTabId,
   }) {
     var tries = 0;
     void attempt() {
-      if (listIndex != null && _tryRow(listRowId, listIndex)) return;
-      if (listIndex != null && listIndex != 0 && _tryRow(listRowId, 0)) {
+      if (listIndex != null &&
+          _tryRow(listRowId, listIndex, forTabId: forTabId)) {
+        return;
+      }
+      if (listIndex != null &&
+          listIndex != 0 &&
+          _tryRow(listRowId, 0, forTabId: forTabId)) {
         return;
       }
       final waitingForList = listIndex != null && tries < maxTries;
@@ -89,8 +98,8 @@ abstract final class SourcesPanelTv {
       }
       if (listOnly) return;
       // Prefer kind tabs on open; providers / search are ↓ from there.
-      if (_tryRow(kindRowId, 0)) return;
-      if (_tryRow(providersRowId, 0)) return;
+      if (_tryRow(kindRowId, 0, forTabId: forTabId)) return;
+      if (_tryRow(providersRowId, 0, forTabId: forTabId)) return;
       if (_tryFocus(search)) return;
       if (_tryFocus(filters)) return;
       if (_tryFocus(close)) return;
@@ -103,15 +112,25 @@ abstract final class SourcesPanelTv {
   }
 
   /// Sync try — used by search ↓ before scheduling [focusListItem] retries.
-  static bool tryFocusListItem({int index = 0}) => _tryRow(listRowId, index);
+  static bool tryFocusListItem({int index = 0, String? forTabId}) =>
+      _tryRow(listRowId, index, forTabId: forTabId);
 
   /// Claim a registered list tile (retries until [ListView] builds the node).
+  ///
+  /// Pass [forTabId] when the list lives under another graph (e.g. match
+  /// details [MediaDetailsTv.tabId] instead of [SourcesPanelTv.tabId]).
   static void focusListItem({
     int index = 0,
     int maxTries = 20,
     bool listOnly = false,
+    String? forTabId,
   }) {
-    claimFocus(listIndex: index, maxTries: maxTries, listOnly: listOnly);
+    claimFocus(
+      listIndex: index,
+      maxTries: maxTries,
+      listOnly: listOnly,
+      forTabId: forTabId,
+    );
   }
 
   static void focusKindItem({int index = 0, int maxTries = 12}) {

@@ -309,6 +309,29 @@ Map<String, dynamic> normalizeMatchLegacyRow(Map<String, dynamic> row) {
 int effectiveMatchStreamViewers(MatchStream stream, MatchEvent match) =>
     stream.viewers > 0 ? stream.viewers : match.viewers;
 
+/// Providers / details header total.
+///
+/// Sums each row's own viewer count. When a row has no per-stream count, counts
+/// that catalog's match-level audience at most once (avoids N× merged total).
+int sumListedLiveStreamViewers({
+  required Iterable<({int streamViewers, String catalogKey, int catalogViewers})>
+      rows,
+}) {
+  var total = 0;
+  final countedCatalogFallback = <String>{};
+  for (final row in rows) {
+    if (row.streamViewers > 0) {
+      total += row.streamViewers;
+      continue;
+    }
+    if (row.catalogViewers <= 0) continue;
+    final key = row.catalogKey.trim();
+    if (key.isEmpty || !countedCatalogFallback.add(key)) continue;
+    total += row.catalogViewers;
+  }
+  return total;
+}
+
 String matchTextKey(String raw) {
   var value = foldLiveMatchLatin(raw.toLowerCase());
   const aliases = {

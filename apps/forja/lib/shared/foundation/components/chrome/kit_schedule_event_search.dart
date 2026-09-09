@@ -69,20 +69,56 @@ class _KitScheduleEventSearchState
       curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInCubic,
     );
+    _anim.addStatusListener(_onExpandStatus);
     if (ref.read(kitScheduleEventSearchOpenProvider)) {
       _anim.value = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncTvFieldRegistration(open: true);
+      });
     }
     ShellBus.registerFindShortcutHandler(_handleFindShortcut);
+  }
+
+  void _onExpandStatus(AnimationStatus status) {
+    if (!mounted) return;
+    // Collapsed tool unmounts at the end of expand — reclaim the chrome slot.
+    if (status == AnimationStatus.completed &&
+        ref.read(kitScheduleEventSearchOpenProvider)) {
+      _syncTvFieldRegistration(open: true);
+    }
   }
 
   @override
   void dispose() {
     ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
+    _anim.removeStatusListener(_onExpandStatus);
+    _syncTvFieldRegistration(open: false);
     _anim.dispose();
     _ctrl.dispose();
     _fieldFocus.dispose();
     _closeFocus.dispose();
     super.dispose();
+  }
+
+  /// When expanded, the collapsed Search tool unmounts — register [_fieldFocus]
+  /// at the same chrome slot so D-pad (← from Portals, → from Refresh, ↑ restore)
+  /// can land on the open field again (IPTV `_syncSearchChromeRow` parity).
+  void _syncTvFieldRegistration({required bool open}) {
+    if (open) {
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: widget.tabId,
+        rowId: widget.rowId,
+        index: widget.itemIndex,
+        node: _fieldFocus,
+      );
+      return;
+    }
+    ShellTvFocusCoordinator.unregisterItemNode(
+      tabId: widget.tabId,
+      rowId: widget.rowId,
+      index: widget.itemIndex,
+      node: _fieldFocus,
+    );
   }
 
   bool _handleFindShortcut() {
@@ -97,6 +133,7 @@ class _KitScheduleEventSearchState
 
   void _setOpen(bool open) {
     ref.read(kitScheduleEventSearchOpenProvider.notifier).state = open;
+    _syncTvFieldRegistration(open: open);
   }
 
   void _openSearch({required bool compact}) {
@@ -111,7 +148,10 @@ class _KitScheduleEventSearchState
     _setOpen(true);
     _anim.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusField(edit: _tv);
+      if (!mounted) return;
+      // Collapsed tool may still be registered mid-anim — re-claim the slot.
+      _syncTvFieldRegistration(open: true);
+      _focusField(edit: _tv);
     });
   }
 
@@ -167,7 +207,15 @@ class _KitScheduleEventSearchState
 
   void _focusField({bool edit = false}) {
     if (!_fieldFocus.canRequestFocus) return;
+    _syncTvFieldRegistration(open: true);
     _fieldFocus.requestFocus();
+    ShellTvFocusCoordinator.onRowItemFocused(
+      tabId: widget.tabId,
+      rowId: widget.rowId,
+      index: widget.itemIndex,
+      node: _fieldFocus,
+      zone: ShellTvZone.topBar,
+    );
     if (!edit) {
       _fieldKey.currentState?.endEditing(keepFocus: true);
       return;
@@ -206,6 +254,17 @@ class _KitScheduleEventSearchState
   Widget build(BuildContext context) {
     final open = ref.watch(kitScheduleEventSearchOpenProvider);
     final query = ref.watch(kitScheduleEventQueryProvider);
+    ref.listen<bool>(kitScheduleEventSearchOpenProvider, (prev, next) {
+      if (prev == next) return;
+      _syncTvFieldRegistration(open: next);
+      if (next) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && ref.read(kitScheduleEventSearchOpenProvider)) {
+            _syncTvFieldRegistration(open: true);
+          }
+        });
+      }
+    });
     if (_ctrl.text != query && !_fieldFocus.hasFocus) {
       _ctrl.value = TextEditingValue(
         text: query,
@@ -372,6 +431,7 @@ class _KitScheduleEventSearchState
           shellFocusableTap(
             context: context,
             onTap: _closeSearch,
+            focusNode: _closeFocus,
             borderRadius: 16,
             scaleOnFocus: 1.0,
             suppressInkHover: true,

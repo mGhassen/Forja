@@ -377,117 +377,149 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-  Future<void> _engineOpenSource(
+  /// Opens [src] (or the next Providers row after an unlock miss).
+  /// Returns false when every remaining source failed unlock / open setup.
+  Future<bool> _engineOpenSource(
     IptvPlaySource src, {
     bool forceLiveRefresh = false,
   }) async {
-    final resolved = await _maybeResolveLiveEngineSource(
-      src,
-      forceRefresh: forceLiveRefresh,
-    );
-    if (resolved == null) return;
-    src = resolved;
-    src = await _refreshStalkerPlayUrl(src);
-    _s._applyLiveRecoveryModeForCurrentSource(src: src);
-    final headers = <String, String>{
-      'User-Agent': _IptvPtPlayerScreenState._ua,
-      ...src.headers,
-    };
-    final kind = _liveSourceKindFor(src);
-    final useProxy = _livePlaybackProfile && kind.useContinuityProxy;
-    var playUrl = src.url;
-    if (useProxy) {
-      final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
-        onUpstreamReconnected: _onProxyUpstreamReconnected,
+    var candidate = src;
+    var force = forceLiveRefresh;
+    // Bound skips so a pathological list cannot spin forever.
+    for (var skip = 0; skip < _s._sources.length; skip++) {
+      final resolved = await _maybeResolveLiveEngineSource(
+        candidate,
+        forceRefresh: force,
+        announceFailure: false,
       );
-      final local = await proxy.start(
-        upstreamUrl: src.url,
-        headers: headers,
-        maxQueueBytes: _continuityProxyMaxQueueBytes(),
-      );
-      playUrl = local.toString();
-      debugPrint(
-        '[IPTV Player] continuity proxy ($kind, '
-        '${_s._exoBackend ? 'exo' : 'lavf=off'}, '
-        'live=${_s._exoBackend ? iptvExoUrlLooksLive(src.url) : 'n/a'}, '
-        'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
-      );
-    } else {
-      await _s._liveContinuityProxy?.stop();
-    }
-
-    if (_s._exoBackend) {
-      // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
-      _s._exoCueTexts.value = const [];
-      _s._cacheAheadSecs = 0;
-      _s._lastProxyReconnectAt = null;
-      _s._cacheAheadAtProxyReconnect = 0;
-      final live = iptvExoUrlLooksLive(src.url);
-      // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
-      var maxHeight = 0;
-      var maxBitrate = 0;
-      if (live) {
-        maxHeight = await SettingsService().getIptvLiveMaxHeight();
-        if (maxHeight > 0) {
-          maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
+      if (resolved == null) {
+        if (_s._sourceIdx >= _s._sources.length - 1) {
+          LivePluginEngine.engineResolveFailed();
+          return false;
         }
-      }
-      // Loopback proxy already has CDN headers — do not forward them to Exo.
-      await ExoPlayerBridge.open(
-        viewId: _s._exoViewId!,
-        url: playUrl,
-        headers: useProxy ? const <String, String>{} : headers,
-        live: live,
-        maxVideoHeight: maxHeight,
-        maxVideoBitrate: maxBitrate,
-      );
-    } else {
-      final player = _s._player;
-      if (player == null) return;
-      // Do NOT stop() before first open — virgin mpv stop hangs the UI isolate
-      // on ATV (ANR). Live reload uses [_reloadCurrent] (live-edge snap).
-      // New open may have a different container fps — allow one mode switch.
-      _s._displayFrameRateApplied = false;
-      _s._liveCacheTierApplied = false;
-      _s._voFreezeSnapAttempted = false;
-      _s._livePaintMissStreak = 0;
-      _s._stallFrameDropBaseline = -1;
-      _s._stallPaintWatchSince = null;
-      await resetPlayerAudioForNewOpen(player);
-      // Live MediaKit: Xtream TS uses the localhost continuity relay; Stremio /
-      // engine plugins open directly with their own headers + lavf reconnect.
-      if (useProxy) {
-        await player.open(Media(playUrl));
-        final np = player.platform;
-        if (np is NativePlayer) {
-          await _applyStreamLavfReconnect(np, continuityProxy: true);
-        }
-      } else {
-        debugPrint('[IPTV Player] direct open ($kind)');
-        final np = player.platform;
-        if (np is NativePlayer) {
-          await applyMediaHttpHeaders(
-            player,
-            headers,
-            streamUrl: playUrl,
+        _s._sourceIdx++;
+        _s._retryAttempt = 0;
+        _s._syncTitleToActiveSource();
+        if (mounted) {
+          setState(
+            () => _s._statusBanner =
+                'Switching to ${_s._sources[_s._sourceIdx].pickerTitle}…',
           );
         }
-        await player.open(Media(playUrl, httpHeaders: headers));
-        if (np is NativePlayer && _livePlaybackProfile) {
-          await _applyStreamLavfReconnect(np, continuityProxy: false);
+        debugPrint(
+          '[IPTV] live unlock miss — skip to '
+          '${_s._sourceIdx + 1}/${_s._sources.length}',
+        );
+        candidate = _s._sources[_s._sourceIdx];
+        force = false;
+        continue;
+      }
+      candidate = resolved;
+      candidate = await _refreshStalkerPlayUrl(candidate);
+      _s._applyLiveRecoveryModeForCurrentSource(src: candidate);
+      final headers = <String, String>{
+        'User-Agent': _IptvPtPlayerScreenState._ua,
+        ...candidate.headers,
+      };
+      final kind = _liveSourceKindFor(candidate);
+      final useProxy = _livePlaybackProfile && kind.useContinuityProxy;
+      var playUrl = candidate.url;
+      if (useProxy) {
+        final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
+          onUpstreamReconnected: _onProxyUpstreamReconnected,
+        );
+        final local = await proxy.start(
+          upstreamUrl: candidate.url,
+          headers: headers,
+          maxQueueBytes: _continuityProxyMaxQueueBytes(),
+        );
+        playUrl = local.toString();
+        debugPrint(
+          '[IPTV Player] continuity proxy ($kind, '
+          '${_s._exoBackend ? 'exo' : 'lavf=off'}, '
+          'live=${_s._exoBackend ? iptvExoUrlLooksLive(candidate.url) : 'n/a'}, '
+          'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
+        );
+      } else {
+        await _s._liveContinuityProxy?.stop();
+      }
+
+      if (_s._exoBackend) {
+        // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
+        _s._exoCueTexts.value = const [];
+        _s._cacheAheadSecs = 0;
+        _s._lastProxyReconnectAt = null;
+        _s._cacheAheadAtProxyReconnect = 0;
+        final live = iptvExoUrlLooksLive(candidate.url);
+        // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
+        var maxHeight = 0;
+        var maxBitrate = 0;
+        if (live) {
+          maxHeight = await SettingsService().getIptvLiveMaxHeight();
+          if (maxHeight > 0) {
+            maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
+          }
+        }
+        // Loopback proxy already has CDN headers — do not forward them to Exo.
+        await ExoPlayerBridge.open(
+          viewId: _s._exoViewId!,
+          url: playUrl,
+          headers: useProxy ? const <String, String>{} : headers,
+          live: live,
+          maxVideoHeight: maxHeight,
+          maxVideoBitrate: maxBitrate,
+        );
+      } else {
+        final player = _s._player;
+        if (player == null) return false;
+        // Do NOT stop() before first open — virgin mpv stop hangs the UI isolate
+        // on ATV (ANR). Live reload uses [_reloadCurrent] (live-edge snap).
+        // New open may have a different container fps — allow one mode switch.
+        _s._displayFrameRateApplied = false;
+        _s._liveCacheTierApplied = false;
+        _s._voFreezeSnapAttempted = false;
+        _s._livePaintMissStreak = 0;
+        _s._stallFrameDropBaseline = -1;
+        _s._stallPaintWatchSince = null;
+        await resetPlayerAudioForNewOpen(player);
+        // Live MediaKit: Xtream TS uses the localhost continuity relay; Stremio /
+        // engine plugins open directly with their own headers + lavf reconnect.
+        if (useProxy) {
+          await player.open(Media(playUrl));
+          final np = player.platform;
+          if (np is NativePlayer) {
+            await _applyStreamLavfReconnect(np, continuityProxy: true);
+          }
+        } else {
+          debugPrint('[IPTV Player] direct open ($kind)');
+          final np = player.platform;
+          if (np is NativePlayer) {
+            await applyMediaHttpHeaders(
+              player,
+              headers,
+              streamUrl: playUrl,
+            );
+          }
+          await player.open(Media(playUrl, httpHeaders: headers));
+          if (np is NativePlayer && _livePlaybackProfile) {
+            await _applyStreamLavfReconnect(np, continuityProxy: false);
+          }
+        }
+        await player.play();
+        if (_s._atvMediaKit) {
+          unawaited(_tuneAtvMediaKitAfterOpen());
+        } else if (!kIsWeb &&
+            (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+          unawaited(_tuneDesktopMediaKitAfterOpen());
         }
       }
-      await player.play();
-      if (_s._atvMediaKit) {
-        unawaited(_tuneAtvMediaKitAfterOpen());
-      } else if (!kIsWeb &&
-          (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-        unawaited(_tuneDesktopMediaKitAfterOpen());
-      }
+      // Re-apply after every open/recreate - media_kit resets to 100, and
+      // mute is volume=0 in Dart state only.
+      _engineSetVolume(_s._volume);
+      return true;
     }
-    // Re-apply after every open/recreate - media_kit resets to 100, and
-    // mute is volume=0 in Dart state only.
-    _engineSetVolume(_s._volume);
+    LivePluginEngine.engineResolveFailed();
+    return false;
   }
 
   /// Stalker create_link URLs are one-shot / short-lived. Mint a fresh link
@@ -495,6 +527,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<IptvPlaySource?> _maybeResolveLiveEngineSource(
     IptvPlaySource src, {
     bool forceRefresh = false,
+    bool announceFailure = true,
   }) async {
     if (_liveSourceKindFor(src) != IptvLiveSourceKind.liveEngine) return src;
     final refresh =
@@ -505,7 +538,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     if (refresh && !iptvLiveEngineCanForceRefresh(src)) return src;
     final resolve = widget.liveEngineResolveSource;
     if (resolve == null) {
-      LivePluginEngine.engineResolveFailed();
+      if (announceFailure) LivePluginEngine.engineResolveFailed();
       return null;
     }
     final idx = _s._sourceIdx;
@@ -522,7 +555,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         forceRefresh: refresh,
       );
       if (resolved == null || !iptvLiveEnginePlayUrlReady(resolved.url)) {
-        LivePluginEngine.engineResolveFailed();
+        if (announceFailure) LivePluginEngine.engineResolveFailed();
         return null;
       }
       if (idx >= 0 && idx < _s._sources.length) {
@@ -911,6 +944,20 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   bool get _atvHardReseatStreams =>
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
 
+  /// Soft reconnects on the same URL before hopping to the next Sources row.
+  /// Live Sports Providers / Stremio: hop after 2 when siblings exist.
+  int get _retriesBeforeSourceRotate {
+    if (_s._sources.length <= 1) {
+      return _IptvPtPlayerScreenState._maxRetries;
+    }
+    final kind = _liveSourceKindFor(_s._sources[_s._sourceIdx]);
+    if (kind == IptvLiveSourceKind.liveEngine ||
+        kind == IptvLiveSourceKind.stremio) {
+      return _IptvPtPlayerScreenState._maxRetriesLiveMultiSource;
+    }
+    return _IptvPtPlayerScreenState._maxRetries;
+  }
+
   Future<void> _openCurrent({
     bool hardRecreate = false,
     String? switchingLabel,
@@ -940,8 +987,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       // Soft path: silent connect (buffering chrome only). Hard ATV reseat
       // already set "Switching to …" on the loading scaffold.
       try {
-        await _engineOpenSource(src);
+        final opened = await _engineOpenSource(src);
         if (_s._disposed || epoch != _openEpoch) return;
+        if (!opened) return;
         _s._userPlayWhenReady = true;
         _s._pausedAt = null;
         _s._lastPos = Duration.zero;

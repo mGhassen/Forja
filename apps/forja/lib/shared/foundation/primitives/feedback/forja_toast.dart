@@ -391,13 +391,16 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
     super.dispose();
   }
 
+  /// D-pad / Back off the action: dismiss (close is not in the TV focus graph)
+  /// and land on the control that owned focus before the toast stole it.
   void _leaveToastFocus() {
+    final id = widget.entry.id;
     final back = _returnFocus;
-    if (back == null || !back.canRequestFocus) {
-      _actionFocus?.unfocus();
-      return;
-    }
-    back.requestFocus();
+    ForjaToast.controller.dismiss(id);
+    if (back == null || !back.canRequestFocus) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (back.canRequestFocus) back.requestFocus();
+    });
   }
 
   void _runActionSafe(VoidCallback? action, {required bool dismiss}) {
@@ -447,7 +450,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
         focusNode: _actionFocus,
         borderRadius: 6,
         showFocusBorder: true,
-        // Any D-pad leave → prior control (do not trap in toast chrome).
+        // D-pad leave / Back → dismiss + prior control (close is not focusable).
         onLeftEdge: _leaveToastFocus,
         onRightEdge: _leaveToastFocus,
         onUpEdge: _leaveToastFocus,

@@ -6,6 +6,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
@@ -551,7 +552,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       sortOrder: SourcesPanelTv.listSort,
       itemCount: rows.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () => SourcesPanelTv.focusKindItem(),
+      onFocusUp: _listFocusUp(tvTabId),
       child: list,
     );
   }
@@ -563,7 +564,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     bool hideCategorySubtitle = false,
   }) {
     const gap = 10.0;
-    return LayoutBuilder(
+    final tvTabId = _effectiveTvTabId(context);
+    final grid = LayoutBuilder(
       builder: (context, constraints) {
         final metrics = ShellScope.metricsOf(context);
         final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
@@ -623,6 +625,30 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         );
       },
     );
+    if (tvTabId == null || rows.isEmpty) return grid;
+    return TvKitRow(
+      tabId: tvTabId,
+      rowId: widget.listRowId,
+      sortOrder: SourcesPanelTv.listSort,
+      itemCount: rows.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: _listFocusUp(tvTabId),
+      child: grid,
+    );
+  }
+
+  VoidCallback _listFocusUp(String tvTabId) {
+    // Embedded match details: ↑ from streams lands on Providers / Live TV.
+    if (widget.embedded || tvTabId == MediaDetailsTv.tabId) {
+      return () {
+        ShellTvFocusCoordinator.focusRowItem(
+          tvTabId,
+          MediaDetailsTv.heroRowId,
+          0,
+        );
+      };
+    }
+    return () => SourcesPanelTv.focusKindItem();
   }
 
   Widget _tile(
@@ -645,9 +671,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       tvItemIndex: index,
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
-      onUpEdge: index == 0 && tvTabId != null
-          ? () => SourcesPanelTv.focusKindItem()
-          : null,
+      onUpEdge: index == 0 && tvTabId != null ? _listFocusUp(tvTabId) : null,
       onLeftEdge: widget.onTabsLeftEdge,
       onPlay: () => unawaited(widget.onPlayRow(row)),
     );

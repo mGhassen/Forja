@@ -8,6 +8,7 @@ import 'package:forja/shared/foundation/components/cards/kit_event_dense_tile.da
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_entry_details.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
+import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/components/layout/kit_top_menu_registry.dart';
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
@@ -543,7 +544,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             genres: meta.genres,
           ),
           airing: airing,
-          viewers: meta.viewers ?? 0,
+          viewers: () {
+            final fromRow =
+                parseLiveViewerCount(entry.legacyRow['viewers']);
+            final fromMeta = meta.viewers ?? 0;
+            return fromRow > fromMeta ? fromRow : fromMeta;
+          }(),
           selected: selected,
           index: index,
           playable: true,

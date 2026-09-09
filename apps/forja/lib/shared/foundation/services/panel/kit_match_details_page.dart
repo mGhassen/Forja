@@ -13,6 +13,7 @@ import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_hero.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
+import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 
 /// Full-bleed live match details — [KitDetailsHero] + Providers / Live TV.
 class KitMatchDetailsPage extends StatefulWidget {
@@ -63,6 +64,9 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
 
   MatchEvent get _match => MatchEvent.fromLegacyRow(widget.entry.legacyRow);
 
+  /// Catalog merge sum, or Providers sheet total once streams load.
+  int? _providersViewerTotal;
+
   List<String> get _metaParts {
     final m = _match;
     final parts = <String>[];
@@ -72,8 +76,31 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
       final t = kitEventTimeLabel(m);
       if (t.isNotEmpty) parts.add(t);
     }
-    if (m.viewers > 0) parts.add('${m.viewers} viewers');
+    final viewers = _providersViewerTotal ?? m.viewers;
+    if (viewers > 0) parts.add('$viewers viewers');
     return parts;
+  }
+
+  Future<List<KitSourcesRow>> _loadTab(String tabId) async {
+    final rows = await KitResolvePanelHost.loadTab(
+      widget.entry.legacyRow,
+      tabId,
+      healthProbe: _healthProbe,
+    );
+    if (tabId == _providers && mounted) {
+      final catalog = _match.viewers;
+      final streamSum = rows.fold<int>(
+        0,
+        (n, r) => n + (r.viewerCount ?? 0),
+      );
+      // Catalog merge sum on the card; header prefers listed stream totals when
+      // mirrors report their own counts.
+      final next = streamSum > catalog ? streamSum : catalog;
+      if (next != (_providersViewerTotal ?? catalog)) {
+        setState(() => _providersViewerTotal = next > 0 ? next : null);
+      }
+    }
+    return rows;
   }
 
   void _selectTab(String id) {
@@ -124,11 +151,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             showInlineSearch: false,
             channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
             browseCategoryTabIds: const {_liveTv},
-            loadTab: (tabId) => KitResolvePanelHost.loadTab(
-              widget.entry.legacyRow,
-              tabId,
-              healthProbe: probe,
-            ),
+            loadTab: _loadTab,
             onPlayRow: (row) => KitResolvePanelHost.playRow(
               context,
               row,
@@ -161,7 +184,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
               tabId: MediaDetailsTv.tabId,
               itemCount: 2,
               onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
-              onFocusDown: tvFocus ? () {} : null,
+              onFocusDown: tvFocus
+                  ? () => SourcesPanelTv.focusListItem(
+                        index: 0,
+                        listOnly: true,
+                        forTabId: MediaDetailsTv.tabId,
+                      )
+                  : null,
               // No Flexible/Expanded here — hero wraps actionRow in FittedBox.
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -183,6 +212,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                     onSelected: _selectTab,
                     onUpEdge:
                         tvFocus ? () => _backFocus.requestFocus() : null,
+                    onDownEdge: tvFocus
+                        ? () => SourcesPanelTv.focusListItem(
+                              index: 0,
+                              listOnly: true,
+                              forTabId: MediaDetailsTv.tabId,
+                            )
+                        : null,
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                     tvItemIndexStart: 0,

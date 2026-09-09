@@ -1,6 +1,8 @@
 /// Catalog hub protocol v1 — envelope, errors, meta, filter AST, layout. RFC-070.
 library;
 
+import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
+
 const int hostKitVersion = 1;
 const int hostProtocolVersion = 1;
 
@@ -560,7 +562,10 @@ class MetaItem {
         final s = (j['starts_at'] ?? j['startsAt'] ?? '').toString().trim();
         return s.isEmpty ? null : s;
       }(),
-      viewers: (j['viewers'] as num?)?.toInt(),
+      viewers: () {
+        if (!j.containsKey('viewers') || j['viewers'] == null) return null;
+        return parseLiveViewerCount(j['viewers']);
+      }(),
       mode: () {
         final s = (j['mode'] ?? '').toString().trim();
         return s.isEmpty ? null : s;

@@ -306,7 +306,8 @@ class PluginInstallCoordinator {
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
-  /// Sticky until Update / close. Waits for intro splash so it is not over the logo.
+  /// Sticky until Update / close (TV: D-pad leave / Back also dismisses).
+  /// Waits for intro splash so it is not over the logo.
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
