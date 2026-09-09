@@ -82,6 +82,12 @@ private const val LIVE_UHD_MIN_WIDTH = 3840
 /** After each rebuffer, sit further from the edge (default Media3 is 500ms). */
 private const val LIVE_TARGET_OFFSET_INCREMENT_ON_REBUFFER_MS = 2_000L
 
+/** IPTV continuity proxy / local progressive — not a real HLS live edge. */
+private fun isLoopbackProgressiveLive(url: String): Boolean {
+    val lower = url.lowercase()
+    return lower.contains("127.0.0.1") || lower.contains("localhost")
+}
+
 // Home VOD. Media3 stock gives no back buffer at all, so every backward seek
 // re-fetched from the CDN (issue 151). The byte allocator still caps the real
 // depth, so the generous max only pays off on low-bitrate streams.
@@ -212,6 +218,7 @@ class ExoPlayerHost(
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             applyLiveSpeedForVideoSize(videoSize)
             applyContentFrameRate()
+            refreshContentFrameLayout()
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -227,6 +234,7 @@ class ExoPlayerHost(
             // Physical ATV SurfaceView bind health — Dart falls back to
             // TextureView when READY/playing never emits this (audio-only).
             emit(mapOf("type" to "renderedFirstFrame"))
+            refreshContentFrameLayout()
         }
 
         override fun onCues(cueGroup: CueGroup) {
@@ -316,6 +324,9 @@ class ExoPlayerHost(
         // Cue paint is Flutter-side (issue 230) — keep native SubtitleView off.
         view.subtitleView?.visibility = View.GONE
         player?.let { view.player = it }
+        // After MediaKit→Exo, TextureView can keep a bad scale until layout
+        // remeasures (issue 129). Force a content-frame pass once attached.
+        refreshContentFrameLayout()
     }
 
     fun detachView(view: PlayerView) {
@@ -539,7 +550,11 @@ class ExoPlayerHost(
         // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
         // Phone keeps speed catch-up; ATV locks 1.0 (issue 233); UHD also via
         // [liveSpeedControl].
-        if (options.live) {
+        // Continuity-proxy loopback is progressive MPEG-TS — LiveConfiguration
+        // makes Exo seek/reopen to hold target offset, which kills the proxy
+        // producer and gray-screens (issue 199 T18 follow-up). Deep LoadControl
+        // still applies via options.live; skip live-edge offsets on loopback.
+        if (options.live && !isLoopbackProgressiveLive(url)) {
             val atv = isTelevisionContext(context)
             val speedMin = if (atv) 1.0f else LIVE_SPEED_MIN
             val speedMax = if (atv) 1.0f else LIVE_SPEED_MAX
@@ -558,6 +573,8 @@ class ExoPlayerHost(
                     .setMaxPlaybackSpeed(speedMax)
                     .build(),
             )
+        } else if (options.live && isLoopbackProgressiveLive(url)) {
+            Log.i(TAG, "skip LiveConfiguration on continuity-proxy loopback")
         }
         return builder
     }
@@ -715,6 +732,18 @@ class ExoPlayerHost(
             else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
         playerView?.resizeMode = resizeMode
+        refreshContentFrameLayout()
+    }
+
+    /** Re-assert FIT/user mode + requestLayout after surface races (issue 129). */
+    private fun refreshContentFrameLayout() {
+        val view = playerView ?: return
+        view.post {
+            if (playerView !== view) return@post
+            view.resizeMode = resizeMode
+            view.requestLayout()
+            view.invalidate()
+        }
     }
 
     fun getTracks(): Map<String, Any?> {
@@ -835,9 +864,15 @@ class ExoPlayerHost(
                     else -> {
                         val lang = format.language
                         val label = format.label
+                        val mime = format.sampleMimeType.orEmpty()
                         when {
                             !label.isNullOrBlank() -> label
                             !lang.isNullOrBlank() -> lang
+                            // Anonymous CEA often paints nothing on VOD HLS —
+                            // label clearly so Dart auto-select can skip it.
+                            mime.contains("cea-608", ignoreCase = true) ||
+                                mime.contains("cea-708", ignoreCase = true) ->
+                                "CC ${out.size + 1}"
                             else -> "Track ${out.size + 1}"
                         }
                     }
@@ -856,6 +891,7 @@ class ExoPlayerHost(
                         "selected" to selected,
                         "height" to format.height,
                         "bitrate" to format.bitrate,
+                        "mimeType" to (format.sampleMimeType ?: ""),
                     ),
                 )
             }

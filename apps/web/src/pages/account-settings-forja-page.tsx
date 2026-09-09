@@ -27,9 +27,8 @@ import {
   readPluginInstallIntent,
 } from '@/lib/forja-plugin-install'
 import {
-  fetchPluginCatalog,
-  hydratePluginCatalog,
   isOfficialPluginPack,
+  loadLivePluginCatalog,
   pluginKindLabel,
   type ForjaPluginPackLive,
 } from '@/lib/forja-plugin-catalog'
@@ -144,9 +143,9 @@ export function AccountSettingsForjaPage() {
     let cancelled = false
     void (async () => {
       try {
-        const raw = await fetchPluginCatalog()
+        const live = await loadLivePluginCatalog()
         if (cancelled) return
-        setCatalog(hydratePluginCatalog(raw))
+        setCatalog(live)
       } catch {
         if (!cancelled) setCatalog([])
       }

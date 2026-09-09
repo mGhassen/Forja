@@ -198,6 +198,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   double _volume = 100;
   double _rate = 1.0;
   String _resizeMode = 'fit';
+  /// Bumps [ExoPlayerView] key so TextureView remounts after MediaKit→Exo
+  /// (issue 129 zoomed crop when MediaCodec was still detaching).
+  int _platformMountGen = 0;
+  bool _fitRemountAfterMediaKit = false;
+  bool _fitRemountDone = false;
   ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
   bool _preferredSubtitleApplied = false;
   /// True after Media3 STATE_READY. Selecting text tracks (or soft-reloading
@@ -368,7 +373,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     // Wait for any MediaKit teardown from a Player-menu engine swap so Exo
     // does not attach over a half-dead mediacodec_embed surface (issue 129).
     // Cap on Android — full stop+dispose can exceed the ATV ANR window (128).
-    await MpvExclusiveSession.instance.prepareForVideoPlayer(
+    // When MediaKit was disposing, remount TextureView after first paint —
+    // the 1.2s cap still leaves zoomed frames (user switch-away/back fixes it).
+    _fitRemountAfterMediaKit =
+        await MpvExclusiveSession.instance.prepareForVideoPlayer(
       timeout: Platform.isAndroid
           ? const Duration(milliseconds: 1200)
           : const Duration(seconds: 5),
@@ -434,6 +442,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     } catch (e) {
       debugPrint('[ExoPlayer] surface fallback reopen failed: $e');
     }
+  }
+
+  /// MediaKit→Exo with ANR-capped prepare: first TextureView paint can be
+  /// zoomed (bigger than screen). Remount once — same as switching away and
+  /// back to Exo, which already fixed it for users (issue 129).
+  void _maybeRemountFitAfterMediaKit() {
+    if (!_fitRemountAfterMediaKit || _fitRemountDone || _disposed) return;
+    _fitRemountDone = true;
+    _fitRemountAfterMediaKit = false;
+    MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _disposed) return;
+      debugPrint('[ExoPlayer] remount TextureView after MediaKit surface race');
+      setState(() => _platformMountGen++);
+      unawaited(ExoPlayerBridge.setResizeMode(_viewId, _resizeMode));
+    });
   }
 
   Future<void> _openCurrentSource() async {
@@ -695,6 +719,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         }
         break;
       case 'renderedFirstFrame':
+        _maybeRemountFitAfterMediaKit();
         break;
       case 'cues':
         // Avoid setState — ValueListenableBuilder only (issue 151 / 230).
@@ -1039,7 +1064,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _focusSeekFromTransport() {
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
+      return;
     }
+    _claimBackFocus();
   }
 
   void _revealChrome() {
@@ -1487,6 +1514,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     ExoTrackInfo? preferredMatch;
     ExoTrackInfo? englishMatch;
     for (final t in _tracks.text) {
+      // Anonymous CEA-608/708 ("CC 1") often decodes empty on VOD HLS — never
+      // auto-pick it; fall through to Wyzie/Levrx like MediaKit (issue 230).
+      if (t.isAnonymousClosedCaption) continue;
       if (matchesPreferredLanguage(
         preferred,
         language: t.language,
@@ -1502,8 +1532,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         englishMatch ??= t;
       }
     }
-    // Prefer any in-stream / Media3 text track over scraped sideloads.
-    final match = preferredMatch ?? englishMatch ?? _tracks.text.firstOrNull;
+    // Language match only — same contract as pickEmbeddedSubtitleWithFallback.
+    // Do not fall back to first text track (that was empty CEA "Track 1").
+    final match = preferredMatch ?? englishMatch;
     if (match == null) {
       await _maybeAutoPickExternalSubtitle();
       return;
@@ -2027,7 +2058,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 _retryFocus.requestFocus();
                               }
                             }
-                          : null,
+                          : () => _backFocus.requestFocus(),
+                      playerOnDownEdge: _focusDownFromTopBar,
                       onPlayer: widget.onSwitchPlayer != null
                           ? (anchorContext) =>
                               unawaited(_showPlayerMenu(anchorContext))
@@ -2454,7 +2486,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               Positioned.fill(
                 child: ExcludeFocus(
                   child: ExoPlayerView(
-                    key: ValueKey<int>(_viewId),
+                    key: ValueKey<String>('exo-$_viewId-$_platformMountGen'),
                     viewId: _viewId,
                   ),
                 ),

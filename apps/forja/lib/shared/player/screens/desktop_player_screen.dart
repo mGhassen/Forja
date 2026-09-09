@@ -659,7 +659,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       _playerReady = false;
       MpvExclusiveSession.instance.untrackPlayer(_player);
       final disposeFuture = _teardownMediaKitPlayer(_player);
-      MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+      MpvExclusiveSession.instance.trackVideoDispose(
+        disposeFuture,
+        markExoFitRemount: true,
+      );
       unawaited(disposeFuture);
     }
 

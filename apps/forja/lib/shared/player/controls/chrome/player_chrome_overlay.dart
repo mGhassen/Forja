@@ -966,6 +966,7 @@ class PlayerTopBarActions extends StatelessWidget {
     this.tvFocusable = false,
     this.playerFocusNode,
     this.playerOnLeftEdge,
+    this.playerOnDownEdge,
   });
 
   final VoidCallback? onCast;
@@ -980,6 +981,8 @@ class PlayerTopBarActions extends StatelessWidget {
   final bool tvFocusable;
   final FocusNode? playerFocusNode;
   final VoidCallback? playerOnLeftEdge;
+  /// TV: D-pad ↓ from Player (seek / transport — spatial fails across title gap).
+  final VoidCallback? playerOnDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -995,6 +998,7 @@ class PlayerTopBarActions extends StatelessWidget {
             tvFocusable: tvFocusable,
             focusNode: playerFocusNode,
             onLeftEdge: playerOnLeftEdge,
+            onDownEdge: playerOnDownEdge,
           ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(

@@ -409,7 +409,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                 _s._retryFocus.requestFocus();
                               }
                             }
-                          : null,
+                          : () => _s._backFocus.requestFocus(),
+                      playerOnDownEdge: _s._focusDownFromTopBar,
                       onPlayer: widget.onSwitchPlayer != null
                           ? (anchorContext) =>
                               unawaited(_s._showPlayerMenu(anchorContext))
@@ -895,6 +896,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
       onUpFromTransport: () {
         if (_s._seekbarFocus.canRequestFocus) {
           _s._seekbarFocus.requestFocus();
+          return;
+        }
+        if (_s._backFocus.canRequestFocus) {
+          _s._backFocus.requestFocus();
         }
       },
       onFocusFirstRightTransport: _s._focusFirstRightTransport,

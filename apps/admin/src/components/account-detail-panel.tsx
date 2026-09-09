@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, Trash2, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   IptvPortalPeopleDialog,
@@ -37,7 +37,9 @@ import {
   addPackToProfile,
   listAccountProfiles,
   fetchProfilePacks,
+  packVersionStatus,
   removePackFromProfile,
+  resolveLatestPackVersions,
 } from '@/lib/account-packs'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
@@ -475,6 +477,18 @@ function AccountPluginsPanel({
     enabled: Boolean(profileId),
   })
 
+  const packUrls = useMemo(
+    () => (packs.data?.packs ?? []).map((p) => p.manifestUrl.trim()),
+    [packs.data?.packs],
+  )
+
+  const latestVersions = useQuery({
+    queryKey: ['admin', 'pack_latest_versions', packUrls],
+    queryFn: () => resolveLatestPackVersions(packUrls),
+    enabled: packUrls.length > 0,
+    staleTime: 60_000,
+  })
+
   const add = useMutation({
     mutationFn: () =>
       addPackToProfile({
@@ -599,47 +613,74 @@ function AccountPluginsPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {(packs.data?.packs ?? []).map((p) => (
-                    <tr
-                      key={p.manifestUrl}
-                      className="border-t border-forja-border/80"
-                    >
-                      <td className={tdClassName}>
-                        <span className="font-medium">
-                          {p.name?.trim() || 'Pack'}
-                        </span>
-                      </td>
-                      <td
-                        className={cn(
-                          tdClassName,
-                          'font-mono text-xs tabular-nums text-forja-muted',
-                        )}
+                  {(packs.data?.packs ?? []).map((p) => {
+                    const installed = p.version?.trim() || ''
+                    const latest =
+                      latestVersions.data?.[p.manifestUrl.trim()]?.trim() || ''
+                    const status = packVersionStatus(installed, latest)
+                    const versionClass =
+                      status === 'current'
+                        ? 'text-forja-green'
+                        : status === 'outdated'
+                          ? 'text-amber-300'
+                          : 'text-forja-muted'
+                    const versionTitle =
+                      status === 'outdated' && latest
+                        ? `Installed ${installed} · latest ${latest}`
+                        : status === 'current' && latest
+                          ? `Up to date (${installed})`
+                          : latest
+                            ? `Latest known ${latest}`
+                            : undefined
+                    return (
+                      <tr
+                        key={p.manifestUrl}
+                        className="border-t border-forja-border/80"
                       >
-                        {p.version?.trim() || '—'}
-                      </td>
-                      <td className={tdClassName}>
-                        <span
-                          className="block max-w-55 truncate font-mono text-[11px] text-forja-muted"
-                          title={p.manifestUrl}
+                        <td className={tdClassName}>
+                          <span className="font-medium">
+                            {p.name?.trim() || 'Pack'}
+                          </span>
+                        </td>
+                        <td
+                          className={cn(
+                            tdClassName,
+                            'font-mono text-xs tabular-nums',
+                            versionClass,
+                          )}
+                          title={versionTitle}
                         >
-                          {p.manifestUrl}
-                        </span>
-                      </td>
-                      <td className={tdClassName}>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="size-7 p-0 text-red-300 hover:text-red-200"
-                          aria-label={`Remove ${p.name ?? p.manifestUrl}`}
-                          disabled={remove.isPending}
-                          onClick={() => setRemoveUrl(p.manifestUrl)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                          {installed || '—'}
+                          {status === 'outdated' && latest ? (
+                            <span className="mt-0.5 block text-[10px] text-forja-muted">
+                              → {latest}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className={tdClassName}>
+                          <span
+                            className="block max-w-55 truncate font-mono text-[11px] text-forja-muted"
+                            title={p.manifestUrl}
+                          >
+                            {p.manifestUrl}
+                          </span>
+                        </td>
+                        <td className={tdClassName}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="size-7 p-0 text-red-300 hover:text-red-200"
+                            aria-label={`Remove ${p.name ?? p.manifestUrl}`}
+                            disabled={remove.isPending}
+                            onClick={() => setRemoveUrl(p.manifestUrl)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -699,82 +740,91 @@ export function AccountDetailPanel({
   }, [onClose])
 
   return (
-    <aside
-      className="sticky top-0 flex h-[calc(100dvh-8rem)] w-[min(50vw,40rem)] shrink-0 flex-col border-l border-forja-border bg-forja-bg sm:h-dvh sm:w-[50vw]"
-      aria-label="Account detail"
-    >
-      <div className="flex shrink-0 items-start gap-2 border-b border-forja-border/80 px-3 py-2.5">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-            Account
-          </p>
-          <p
-            className="mt-0.5 truncate text-sm font-medium text-forja-text"
-            title={account.email ?? account.id}
-          >
-            {account.email ?? account.id.slice(0, 8)}
-          </p>
-          <p className="mt-0.5 font-mono text-[11px] tabular-nums text-forja-muted">
-            #{account.member_number}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="size-7 shrink-0 p-0"
-          onClick={onClose}
-          aria-label="Close account panel"
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
-
-      <div
-        className="flex shrink-0 gap-1 border-b border-forja-border/80 px-2 py-1.5"
-        role="tablist"
-        aria-label="Account sections"
+    <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50"
+        aria-label="Close account panel"
+        onClick={onClose}
+      />
+      <aside
+        className="relative z-10 flex h-dvh w-full max-w-full flex-col border-l border-forja-border bg-forja-bg shadow-2xl sm:w-1/2"
+        aria-label="Account detail"
+        onClick={(e) => e.stopPropagation()}
       >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
+        <div className="flex shrink-0 items-start gap-2 border-b border-forja-border/80 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+              Account
+            </p>
+            <p
+              className="mt-0.5 truncate text-sm font-medium text-forja-text"
+              title={account.email ?? account.id}
+            >
+              {account.email ?? account.id.slice(0, 8)}
+            </p>
+            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-forja-muted">
+              #{account.member_number}
+            </p>
+          </div>
+          <Button
             type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={cn(
-              'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-              tab === t.id
-                ? 'bg-forja-green/15 text-forja-green'
-                : 'text-forja-muted hover:bg-white/5 hover:text-forja-text',
-            )}
-            onClick={() => setTab(t.id)}
+            variant="ghost"
+            size="sm"
+            className="size-7 shrink-0 p-0"
+            onClick={onClose}
+            aria-label="Close account panel"
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            <X className="size-4" />
+          </Button>
+        </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {tab === 'overview' ? (
-          <AccountOverviewPanel
-            account={account}
-            runtime={runtime}
-            runtimeLoading={runtimeLoading}
-            creditsBusy={creditsBusy}
-            onAdjustCredits={onAdjustCredits}
-            onEditFeatures={onEditFeatures}
-          />
-        ) : null}
-        {tab === 'portals' ? (
-          <AccountPortalsPanel
-            accountId={account.id}
-            onAssign={onAssignPortal}
-          />
-        ) : null}
-        {tab === 'plugins' ? (
-          <AccountPluginsPanel accountId={account.id} />
-        ) : null}
-      </div>
-    </aside>
+        <div
+          className="flex shrink-0 gap-1 border-b border-forja-border/80 px-2 py-1.5"
+          role="tablist"
+          aria-label="Account sections"
+        >
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={cn(
+                'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                tab === t.id
+                  ? 'bg-forja-green/15 text-forja-green'
+                  : 'text-forja-muted hover:bg-white/5 hover:text-forja-text',
+              )}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          {tab === 'overview' ? (
+            <AccountOverviewPanel
+              account={account}
+              runtime={runtime}
+              runtimeLoading={runtimeLoading}
+              creditsBusy={creditsBusy}
+              onAdjustCredits={onAdjustCredits}
+              onEditFeatures={onEditFeatures}
+            />
+          ) : null}
+          {tab === 'portals' ? (
+            <AccountPortalsPanel
+              accountId={account.id}
+              onAssign={onAssignPortal}
+            />
+          ) : null}
+          {tab === 'plugins' ? (
+            <AccountPluginsPanel accountId={account.id} />
+          ) : null}
+        </div>
+      </aside>
+    </div>
   )
 }

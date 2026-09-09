@@ -624,6 +624,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   VideoController? _controller;
   bool _playerReady = false;
   int _videoEpoch = 0;
+  /// MediaKit→Exo: remount Exo TextureView once after first paint (issue 129).
+  bool _exoFitRemountAfterMediaKit = false;
+  bool _exoFitRemountDone = false;
   bool _softwareDecodeForced = false;
 
   /// Phone MediaKit: software decode (some MediaCodec paths flake).
@@ -1349,17 +1352,25 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
     if (wantExo) {
       // Exo does not share the mpv handle, but ATV MediaCodec is shared: Exo
-      // mounting over a live mediacodec_embed surface plays audio with a black
-      // picture (issue 129 / 133). Capped at 1.2s like the VOD switch so the
-      // wait cannot cross the ATV input-ANR window (issue 128).
+      // mounting over a live mediacodec_embed surface plays zoomed / cropped
+      // (issue 129) or audio-only black (133). Capped at 1.2s so the wait
+      // cannot cross the ATV input-ANR window (issue 128).
+      var racedMediaKit = false;
       try {
-        await MpvExclusiveSession.instance
+        racedMediaKit = await MpvExclusiveSession.instance
             .prepareForVideoPlayer(
               timeout: const Duration(milliseconds: 1200),
             )
             .timeout(const Duration(milliseconds: 1500));
-      } catch (_) {}
+      } catch (_) {
+        racedMediaKit = MpvExclusiveSession.instance.hasPendingVideoDispose;
+      }
       if (_disposed || !mounted) return;
+      // Wall-clock cool-down — do not await FFI (ANR).
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      if (_disposed || !mounted) return;
+      _exoFitRemountAfterMediaKit = racedMediaKit;
+      _exoFitRemountDone = false;
     } else {
       // Cap MediaKit mount too — uncapped wait froze VOD on `[LAN] release`
       // when prior dispose FFI stuck (issue 128 follow-up).

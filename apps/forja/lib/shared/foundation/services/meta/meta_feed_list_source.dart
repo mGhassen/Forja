@@ -72,11 +72,19 @@ class MetaFeedCatalogNotifier
     final hubId =
         await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
     if (forceRefresh) {
+      clearLiveFeedSessionCache();
       ref.read(metaFeedForceRefreshProvider.notifier).state = false;
     }
     if (hubId == null || hubId.isEmpty) {
       return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
     }
+
+    final query = LiveFeedQuery(
+      catalogFilter: filters.catalogFilter,
+      sportFilter: filters.sportFilter,
+      scheduleStatus: filters.scheduleStatus,
+      scheduleHorizon: filters.scheduleHorizon,
+    );
 
     final feedParams = <String, dynamic>{
       'catalogFilter': filters.catalogFilter,
@@ -90,13 +98,33 @@ class MetaFeedCatalogNotifier
       params: feedParams,
     );
 
+    MetaFeedCatalogPage pageFromRows(List<Map<String, dynamic>> rows) {
+      final page = _pageFromRows(rows, loadingRemote: false);
+      MetaCache.instance.put(
+        key: cacheKey,
+        pluginId: hubId,
+        data: {
+          'items': [
+            for (final e in page.entries) e.legacyRow,
+          ],
+        },
+        hints: const MetaCacheHints(
+          maxAge: Duration(seconds: 60),
+          swr: Duration(seconds: 300),
+        ),
+      );
+      return page;
+    }
+
     if (!forceRefresh) {
       final cached = MetaCache.instance.get(cacheKey);
       if (cached != null && cached.isFresh) {
-        final page = _pageFromCacheData(cached.data, loadingRemote: false);
-        // Soft reopen — still revalidate in background when past maxAge window
-        // is not needed while fresh.
-        return page;
+        return _pageFromCacheData(cached.data, loadingRemote: false);
+      }
+      // Schedule / sport chip change — refilter warm scrape, no network.
+      final fromSession = tryLiveFeedFromSession(query);
+      if (fromSession != null) {
+        return pageFromRows(fromSession);
       }
       if (cached != null && cached.isRevalidatable) {
         // Show stale rows immediately, scrape in background.
@@ -122,17 +150,11 @@ class MetaFeedCatalogNotifier
       );
     }
 
-    final query = LiveFeedQuery(
-      catalogFilter: filters.catalogFilter,
-      sportFilter: filters.sportFilter,
-      scheduleStatus: filters.scheduleStatus,
-      scheduleHorizon: filters.scheduleHorizon,
-    );
-
     List<Map<String, dynamic>> rows = const [];
     try {
       rows = await aggregateLiveFeed(
         query,
+        forceRefresh: forceRefresh,
         onPartial: (partial) {
           if (gen != _gen) return;
           final page = _pageFromRows(
@@ -156,21 +178,7 @@ class MetaFeedCatalogNotifier
           const MetaFeedCatalogPage(entries: [], loadingRemote: false);
     }
 
-    final page = _pageFromRows(rows, loadingRemote: false);
-    MetaCache.instance.put(
-      key: cacheKey,
-      pluginId: hubId,
-      data: {
-        'items': [
-          for (final e in page.entries) e.legacyRow,
-        ],
-      },
-      hints: const MetaCacheHints(
-        maxAge: Duration(seconds: 60),
-        swr: Duration(seconds: 300),
-      ),
-    );
-    return page;
+    return pageFromRows(rows);
   }
 }
 
@@ -342,7 +350,7 @@ final class MetaFeedListSource extends KitListSource {
     }
     // Schedule Status×Horizon is owned by [kitScheduleFiltersProvider] (sheet /
     // hydrate). Do not push layout `horizon` back into the provider — that raced
-    // the sheet and reset picks to the pack default `both|24h`.
+    // the sheet and reset picks to the pack default `airing|1h`.
   }
 
   @override
@@ -355,6 +363,7 @@ final class MetaFeedListSource extends KitListSource {
   @override
   void invalidateOnRefresh(WidgetRef ref) {
     EngineService.instance.cancelLiveCatalog();
+    clearLiveFeedSessionCache();
     LivePluginEngine.warmPluginMeta();
     ref.read(metaFeedForceRefreshProvider.notifier).state = true;
     ref.invalidate(metaFeedCatalogProvider);

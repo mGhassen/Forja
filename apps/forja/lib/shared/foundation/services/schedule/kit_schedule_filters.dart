@@ -10,8 +10,8 @@ class KitScheduleFilters {
   const KitScheduleFilters({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleStatus = KitScheduleStatus.both,
-    this.scheduleHorizon = KitScheduleHorizon.h24,
+    this.scheduleStatus = KitScheduleStatus.airing,
+    this.scheduleHorizon = KitScheduleHorizon.h1,
   });
 
   final String catalogFilter;
@@ -79,11 +79,8 @@ class KitScheduleFiltersNotifier extends Notifier<KitScheduleFilters> {
       KitSchedulePrefs.scheduleKey,
     ))
         ?.trim();
-    final window = kitScheduleWindowFromPref(scheduleRaw) ??
-        (
-          status: KitScheduleStatus.both,
-          horizon: KitScheduleHorizon.h24,
-        );
+    final window =
+        kitScheduleWindowFromPref(scheduleRaw) ?? kKitScheduleDefaultWindow;
     final next = KitScheduleFilters(
       catalogFilter: catalog.isEmpty ? 'all' : catalog,
       scheduleStatus: window.status,
@@ -118,7 +115,7 @@ class KitScheduleFiltersNotifier extends Notifier<KitScheduleFilters> {
     await prefs.setString(KitSchedulePrefs.scheduleKey, next.schedulePref);
   }
 
-  /// Kit layout / legacy single-token write (`both|24h`, `live`, `3h`, …).
+  /// Kit layout / legacy single-token write (`airing|1h`, `both|24h`, `live`, …).
   Future<void> setScheduleFromPrefToken(String value) async {
     final window = kitScheduleWindowFromPref(value);
     if (window == null) return;

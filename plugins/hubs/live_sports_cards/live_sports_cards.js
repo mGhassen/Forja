@@ -16,9 +16,9 @@ function liveSportsCatalogActions() {
       id: 'horizon',
       label: 'Schedule',
       icon: 'schedule',
-      default: 'both|24h',
+      default: 'airing|1h',
       items: [
-        { id: 'both|24h', label: '24h' },
+        { id: 'airing|1h', label: 'Airing' },
       ],
     },
     {
@@ -102,8 +102,8 @@ function liveSportsLoadFeed(ctx, params) {
     liveFeed.load({
       catalogFilter: (params && params.catalogFilter) || 'all',
       sportFilter: (params && params.sportFilter) || 'all',
-      scheduleStatus: (params && params.scheduleStatus) || 'both',
-      scheduleHorizon: (params && params.scheduleHorizon) || 'h24',
+      scheduleStatus: (params && params.scheduleStatus) || 'airing',
+      scheduleHorizon: (params && params.scheduleHorizon) || 'h1',
     }),
   ).then(function (rows) {
     if (!Array.isArray(rows)) return [];

@@ -16,8 +16,8 @@ import { Route as OpsIndexRouteImport } from './routes/_ops/index'
 import { Route as OpsAccountsRouteImport } from './routes/_ops/accounts'
 import { Route as OpsDeepRefsRouteImport } from './routes/_ops/deep-refs'
 import { Route as OpsDownloadsRouteImport } from './routes/_ops/downloads'
+import { Route as OpsPluginsRouteImport } from './routes/_ops/plugins'
 import { Route as OpsPoolRouteImport } from './routes/_ops/pool'
-import { Route as OpsProvidersRouteImport } from './routes/_ops/providers'
 import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
 import { Route as ApiInngestRouteImport } from './routes/api.inngest'
 import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
@@ -64,14 +64,14 @@ const OpsDownloadsRoute = OpsDownloadsRouteImport.update({
   path: '/downloads',
   getParentRoute: () => OpsRoute,
 } as any)
+const OpsPluginsRoute = OpsPluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => OpsRoute,
+} as any)
 const OpsPoolRoute = OpsPoolRouteImport.update({
   id: '/pool',
   path: '/pool',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsProvidersRoute = OpsProvidersRouteImport.update({
-  id: '/providers',
-  path: '/providers',
   getParentRoute: () => OpsRoute,
 } as any)
 const OpsScrapeRoute = OpsScrapeRouteImport.update({
@@ -142,8 +142,8 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof OpsAccountsRoute
   '/deep-refs': typeof OpsDeepRefsRoute
   '/downloads': typeof OpsDownloadsRoute
+  '/plugins': typeof OpsPluginsRoute
   '/pool': typeof OpsPoolRoute
-  '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
@@ -163,8 +163,8 @@ export interface FileRoutesByTo {
   '/accounts': typeof OpsAccountsRoute
   '/deep-refs': typeof OpsDeepRefsRoute
   '/downloads': typeof OpsDownloadsRoute
+  '/plugins': typeof OpsPluginsRoute
   '/pool': typeof OpsPoolRoute
-  '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
@@ -186,8 +186,8 @@ export interface FileRoutesById {
   '/_ops/accounts': typeof OpsAccountsRoute
   '/_ops/deep-refs': typeof OpsDeepRefsRoute
   '/_ops/downloads': typeof OpsDownloadsRoute
+  '/_ops/plugins': typeof OpsPluginsRoute
   '/_ops/pool': typeof OpsPoolRoute
-  '/_ops/providers': typeof OpsProvidersRoute
   '/_ops/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
@@ -210,8 +210,8 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/deep-refs'
     | '/downloads'
+    | '/plugins'
     | '/pool'
-    | '/providers'
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
@@ -231,8 +231,8 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/deep-refs'
     | '/downloads'
+    | '/plugins'
     | '/pool'
-    | '/providers'
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
@@ -253,8 +253,8 @@ export interface FileRouteTypes {
     | '/_ops/accounts'
     | '/_ops/deep-refs'
     | '/_ops/downloads'
+    | '/_ops/plugins'
     | '/_ops/pool'
-    | '/_ops/providers'
     | '/_ops/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
@@ -336,18 +336,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsDownloadsRouteImport
       parentRoute: typeof OpsRoute
     }
+    '/_ops/plugins': {
+      id: '/_ops/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof OpsPluginsRouteImport
+      parentRoute: typeof OpsRoute
+    }
     '/_ops/pool': {
       id: '/_ops/pool'
       path: '/pool'
       fullPath: '/pool'
       preLoaderRoute: typeof OpsPoolRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/_ops/providers': {
-      id: '/_ops/providers'
-      path: '/providers'
-      fullPath: '/providers'
-      preLoaderRoute: typeof OpsProvidersRouteImport
       parentRoute: typeof OpsRoute
     }
     '/_ops/scrape': {
@@ -463,8 +463,8 @@ interface OpsRouteChildren {
   OpsAccountsRoute: typeof OpsAccountsRoute
   OpsDeepRefsRoute: typeof OpsDeepRefsRoute
   OpsDownloadsRoute: typeof OpsDownloadsRoute
+  OpsPluginsRoute: typeof OpsPluginsRoute
   OpsPoolRoute: typeof OpsPoolRoute
-  OpsProvidersRoute: typeof OpsProvidersRoute
   OpsScrapeRoute: typeof OpsScrapeRoute
   OpsIndexRoute: typeof OpsIndexRoute
 }
@@ -473,8 +473,8 @@ const OpsRouteChildren: OpsRouteChildren = {
   OpsAccountsRoute: OpsAccountsRoute,
   OpsDeepRefsRoute: OpsDeepRefsRoute,
   OpsDownloadsRoute: OpsDownloadsRoute,
+  OpsPluginsRoute: OpsPluginsRoute,
   OpsPoolRoute: OpsPoolRoute,
-  OpsProvidersRoute: OpsProvidersRoute,
   OpsScrapeRoute: OpsScrapeRoute,
   OpsIndexRoute: OpsIndexRoute,
 }
@@ -498,3 +498,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

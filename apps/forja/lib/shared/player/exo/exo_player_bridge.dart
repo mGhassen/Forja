@@ -13,6 +13,7 @@ class ExoTrackInfo {
     this.selected = false,
     this.height = 0,
     this.bitrate = 0,
+    this.mimeType = '',
   });
 
   final String id;
@@ -22,6 +23,20 @@ class ExoTrackInfo {
   final int height;
   final int bitrate;
 
+  /// Media3 `Format.sampleMimeType` (e.g. `application/cea-608`, `text/vtt`).
+  final String mimeType;
+
+  /// CEA-608/708 without a language tag — often empty on VOD HLS (issue 230).
+  bool get isAnonymousClosedCaption {
+    final mime = mimeType.toLowerCase();
+    final isCea = mime.contains('cea-608') ||
+        mime.contains('cea-708') ||
+        mime.contains('cea608') ||
+        mime.contains('cea708');
+    if (!isCea) return false;
+    return language.trim().isEmpty;
+  }
+
   factory ExoTrackInfo.fromMap(Map<dynamic, dynamic> map) {
     return ExoTrackInfo(
       id: map['id']?.toString() ?? '',
@@ -30,6 +45,7 @@ class ExoTrackInfo {
       selected: map['selected'] == true,
       height: (map['height'] as num?)?.toInt() ?? 0,
       bitrate: (map['bitrate'] as num?)?.toInt() ?? 0,
+      mimeType: map['mimeType']?.toString() ?? '',
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Dynamic catalog options from [KitTopBarHostHooks.loadCatalogOptions].
@@ -290,7 +291,7 @@ class KitTopBarActions extends ConsumerWidget {
     if (opener == null) return;
     await opener(
       context,
-      currentPref: horizonPref ?? 'both|24h',
+      currentPref: horizonPref ?? kKitScheduleDefaultPref,
       onChanged: (pref) {
         if (!context.mounted) return;
         scope.onSelect('horizon', pref, toggle: false);

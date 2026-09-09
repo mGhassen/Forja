@@ -88,24 +88,18 @@ abstract final class KitLiveBoot {
       );
     };
     KitTopBarHostHooks.scheduleChipLabel = (pref) {
-      final window = kitScheduleWindowFromPref(pref) ??
-          (
-            status: KitScheduleStatus.both,
-            horizon: KitScheduleHorizon.h24,
-          );
+      final window =
+          kitScheduleWindowFromPref(pref) ?? kKitScheduleDefaultWindow;
       return kitScheduleChipLabel(
         status: window.status,
         horizon: window.horizon,
       );
     };
     KitTopBarHostHooks.scheduleChipSelected = (pref) {
-      final window = kitScheduleWindowFromPref(pref) ??
-          (
-            status: KitScheduleStatus.both,
-            horizon: KitScheduleHorizon.h24,
-          );
-      return window.status != KitScheduleStatus.both ||
-          window.horizon != KitScheduleHorizon.h24;
+      final window =
+          kitScheduleWindowFromPref(pref) ?? kKitScheduleDefaultWindow;
+      // Default is Airing — horizon is hidden for that status.
+      return window.status != KitScheduleStatus.airing;
     };
     KitTopBarHostHooks.readFeedBusy = (ref) {
       final async = ref.watch(metaFeedCatalogProvider);

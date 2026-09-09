@@ -347,6 +347,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
             .prepareForVideoPlayer(timeout: prepareTimeout)
             .timeout(prepareTimeout + const Duration(milliseconds: 300));
       } catch (_) {}
+      // Wall-clock only — do not await MediaKit FFI (ANR, issue 128). Gives
+      // MediaCodec time to detach before Exo TextureView binds (issue 129).
+      if (builtInEngine == BuiltInPlayerEngine.exoPlayer &&
+          Platform.isAndroid) {
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      }
       if (builtInEngine == BuiltInPlayerEngine.mediaKit &&
           !Platform.isAndroid) {
         await Future<void>.delayed(const Duration(milliseconds: 250));

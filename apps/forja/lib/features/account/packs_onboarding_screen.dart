@@ -126,7 +126,10 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
       _status = 'Loading official packs…';
     });
     try {
-      final candidates = await loadMissingOfficialPackCandidates();
+      final bundle = await resolveRecommendedBundle();
+      final candidates = bundle != null
+          ? await loadMissingBundlePackCandidates(bundle)
+          : await loadMissingOfficialPackCandidates();
       if (!mounted) return;
       if (candidates.isEmpty) {
         setState(() {

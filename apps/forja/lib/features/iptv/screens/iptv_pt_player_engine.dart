@@ -276,6 +276,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         break;
       case 'renderedFirstFrame':
         _noteVideoFrame(reason: 'exo first frame');
+        _maybeRemountExoFitAfterMediaKit();
         break;
       case 'cues':
         final raw = event['texts'];
@@ -308,6 +309,28 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       _resetStalkerHardFails();
     }
     _syncPlaybackBannerVisibility();
+  }
+
+  /// Same as VOD issue 129: MediaKit→Exo TextureView can paint zoomed until
+  /// remount. Bump [_videoEpoch] once after first frame.
+  void _maybeRemountExoFitAfterMediaKit() {
+    if (!_s._exoFitRemountAfterMediaKit ||
+        _s._exoFitRemountDone ||
+        _s._disposed) {
+      return;
+    }
+    _s._exoFitRemountDone = true;
+    _s._exoFitRemountAfterMediaKit = false;
+    MpvExclusiveSession.instance.acknowledgeExoFitRemount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _s._disposed || !_s._exoBackend) return;
+      debugPrint('[IPTV] remount Exo TextureView after MediaKit surface race');
+      setState(() => _s._videoEpoch++);
+      final id = _s._exoViewId;
+      if (id != null) {
+        unawaited(ExoPlayerBridge.setResizeMode(id, 'fit'));
+      }
+    });
   }
 
   /// Live skips setState on every position tick — rebuild when banner visibility
@@ -396,6 +419,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
       _s._exoCueTexts.value = const [];
+      _s._cacheAheadSecs = 0;
+      _s._lastProxyReconnectAt = null;
+      _s._cacheAheadAtProxyReconnect = 0;
       final live = iptvExoUrlLooksLive(src.url);
       // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
       var maxHeight = 0;

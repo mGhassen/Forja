@@ -10,6 +10,7 @@ export 'models/models.dart';
 export 'packs/official_forjahq_install.dart';
 export 'packs/official_forjahq_packs.dart';
 export 'packs/pack_device_state.dart';
+export 'packs/plugin_catalog_remote.dart';
 export 'packs/plugin_contract.dart';
 export 'packs/plugin_install_coordinator.dart';
 export 'packs/plugin_install_prompt.dart';

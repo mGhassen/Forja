@@ -488,7 +488,10 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     // Kill audio immediately; full stop+dispose continues tracked in background.
     await silenceMediaKitPlayer(player);
     final disposeFuture = teardownMediaKitPlayer(player);
-    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    MpvExclusiveSession.instance.trackVideoDispose(
+      disposeFuture,
+      markExoFitRemount: true,
+    );
   }
 
   Future<void> _disposePlayer() async {
@@ -524,7 +527,10 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     // zombie that breaks the next MediaKit open.
     final fast = _s._exitInProgress && !kIsWeb && Platform.isAndroid;
     final disposeFuture = teardownMediaKitPlayer(player, fast: fast);
-    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    MpvExclusiveSession.instance.trackVideoDispose(
+      disposeFuture,
+      markExoFitRemount: true,
+    );
     await disposeFuture;
     _s._player = null;
     _s._controller = null;

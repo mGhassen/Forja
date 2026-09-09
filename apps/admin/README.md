@@ -41,7 +41,7 @@ Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Inngest t
 | `/pool` | Catalog candidates |
 | `/scrape` | Scrape run history |
 | `/api/inngest` | Inngest serve (server) |
-| `/providers` | Provider runtime JSON (RFC-039) |
+| `/plugins` | Plugin catalog + product bundles (RFC-100) |
 
 ## Worker
 

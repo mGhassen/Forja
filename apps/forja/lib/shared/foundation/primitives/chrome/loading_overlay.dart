@@ -268,6 +268,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       FocusNode(debugLabel: 'loading-providers');
   final FocusNode _cancelFocus = FocusNode(debugLabel: 'loading-cancel');
   final List<FocusNode> _providerRowFocus = [];
+  final ScrollController _providerListScroll = ScrollController();
   String? _fetchedLogoUrl;
 
   double get _logoBottomReserve =>
@@ -356,12 +357,43 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     _syncProviderRowFocusNodes();
     for (var i = 0; i < _probes.length; i++) {
       if (!_canManualCheck(_probes[i])) continue;
-      final node = _providerRowFocus[i];
+      _claimProviderRow(i);
+      return;
+    }
+  }
+
+  /// Enter the server list from Cancel / servers (below the panel).
+  void _focusLastProviderRow() {
+    _syncProviderRowFocusNodes();
+    for (var i = _probes.length - 1; i >= 0; i--) {
+      if (!_canManualCheck(_probes[i])) continue;
+      _claimProviderRow(i);
+      return;
+    }
+  }
+
+  /// Focus a provider row, scrolling the lazy list so the node is attached.
+  void _claimProviderRow(int index) {
+    if (index < 0 || index >= _providerRowFocus.length) return;
+    final node = _providerRowFocus[index];
+    if (node.canRequestFocus) {
+      node.requestFocus();
+      return;
+    }
+    if (!_providerListScroll.hasClients) return;
+    // Row padding 10*2 + ~20 text + 1 separator ≈ 49.
+    const rowExtent = 49.0;
+    final target = (index * rowExtent).clamp(
+      0.0,
+      _providerListScroll.position.maxScrollExtent,
+    );
+    _providerListScroll.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (node.canRequestFocus) {
         node.requestFocus();
-        return;
       }
-    }
+    });
   }
 
   void _toggleProviderList() {
@@ -376,11 +408,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   void _focusNextProviderRow(int index) {
     for (var i = index + 1; i < _probes.length; i++) {
       if (!_canManualCheck(_probes[i])) continue;
-      final next = _providerRowFocus[i];
-      if (next.canRequestFocus) {
-        next.requestFocus();
-        return;
-      }
+      _claimProviderRow(i);
+      return;
     }
     // Last provider → back to providers button.
     if (_providersButtonFocus.canRequestFocus) {
@@ -391,11 +420,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   void _focusPrevProviderRow(int index) {
     for (var i = index - 1; i >= 0; i--) {
       if (!_canManualCheck(_probes[i])) continue;
-      final prev = _providerRowFocus[i];
-      if (prev.canRequestFocus) {
-        prev.requestFocus();
-        return;
-      }
+      _claimProviderRow(i);
+      return;
     }
     // First provider → back to servers / cancel row.
     if (_providersButtonFocus.canRequestFocus) {
@@ -513,6 +539,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     for (final n in _providerRowFocus) {
       n.dispose();
     }
+    _providerListScroll.dispose();
     _providersButtonFocus.dispose();
     _cancelFocus.dispose();
     _pulseController.dispose();
@@ -666,7 +693,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
         child: ListView.separated(
+          controller: _providerListScroll,
           shrinkWrap: true,
+          // Keep off-screen rows attached so D-pad Up/Down does not skip
+          // unbuilt FocusNodes and jump straight to Cancel / servers.
+          cacheExtent: 4000,
           padding: const EdgeInsets.symmetric(vertical: 6),
           itemCount: _probes.length,
           separatorBuilder: (_, _) => Divider(
@@ -798,7 +829,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     }
                   }
                 : null,
-            onUpEdge: _providerListOpen ? _focusFirstProviderRow : null,
+            onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
             child: _cancelChipFace(),
           )
         : TextButton(
@@ -842,7 +873,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 _cancelFocus.requestFocus();
               }
             },
-            onUpEdge: _providerListOpen ? _focusFirstProviderRow : null,
+            onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
             child: _serversChipFace(open: _providerListOpen),
           )
         : IconButton(

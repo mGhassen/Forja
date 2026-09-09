@@ -124,19 +124,11 @@ export function AdminAccountsPage() {
       : (list.data?.find((a) => a.id === selectedId) ?? null)
 
   return (
-    <div
-      className={cn(
-        'flex',
-        selected
-          ? '-ml-4 mr-[calc(50%-50vw)] sm:-ml-6'
-          : '-mx-4 sm:-mx-6',
-      )}
-    >
-      <div className="min-w-0 flex-1 space-y-6 px-4 sm:px-6">
-        <PageHeader
-          title="Accounts"
-          description="Credits, feature flags, client runtime from PostHog, portal assignments, and cloud packs."
-        />
+    <div className="space-y-6">
+      <PageHeader
+        title="Accounts"
+        description="Credits, feature flags, client runtime from PostHog, portal assignments, and cloud packs."
+      />
 
         <div className="relative max-w-md">
           <Search
@@ -382,22 +374,21 @@ export function AdminAccountsPage() {
           />
         ) : null}
 
-        {featuresFor ? (
-          <AccountFeaturesDialog
-            accountId={featuresFor.id}
-            accountEmail={featuresFor.email}
-            features={
-              (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
-                .features
-            }
-            isAdmin={
-              (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
-                .is_admin === true
-            }
-            onClose={() => setFeaturesFor(null)}
-          />
-        ) : null}
-      </div>
+      {featuresFor ? (
+        <AccountFeaturesDialog
+          accountId={featuresFor.id}
+          accountEmail={featuresFor.email}
+          features={
+            (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
+              .features
+          }
+          isAdmin={
+            (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
+              .is_admin === true
+          }
+          onClose={() => setFeaturesFor(null)}
+        />
+      ) : null}
 
       {selected ? (
         <AccountDetailPanel

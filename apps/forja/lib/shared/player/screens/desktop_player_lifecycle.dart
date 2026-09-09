@@ -198,7 +198,10 @@ mixin _DesktopPlayerLifecycle
     if (!mounted || _s._disposed) {
       MpvExclusiveSession.instance.untrackPlayer(_s._player);
       final disposeFuture = _s._player.dispose();
-      MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+      MpvExclusiveSession.instance.trackVideoDispose(
+        disposeFuture,
+        markExoFitRemount: true,
+      );
       await disposeFuture;
       return;
     }

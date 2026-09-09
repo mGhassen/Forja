@@ -6,8 +6,8 @@ import {
   FileCode2,
   LayoutDashboard,
   LogOut,
+  Package,
   Radar,
-  Server,
   Users,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
@@ -22,7 +22,7 @@ const NAV = [
   { to: '/pool' as const, label: 'Pool', icon: Boxes, end: false },
   { to: '/scrape' as const, label: 'Scrape', icon: Radar, end: false },
   { to: '/deep-refs' as const, label: 'Deep refs', icon: FileCode2, end: false },
-  { to: '/providers' as const, label: 'Providers', icon: Server, end: false },
+  { to: '/plugins' as const, label: 'Plugins', icon: Package, end: false },
   { to: '/downloads' as const, label: 'Downloads', icon: Download, end: false },
 ]
 

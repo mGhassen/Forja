@@ -164,56 +164,64 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
+    final leanback = policy.leanbackOnly;
 
     final panel = Material(
       type: MaterialType.transparency,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth:
-              (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 420.0),
-          maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+          maxWidth: leanback
+              ? 280
+              : (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 420.0),
+          maxHeight: leanback
+              ? MediaQuery.sizeOf(context).height * 0.55
+              : MediaQuery.sizeOf(context).height * 0.8,
         ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xFF141414),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: PlayerPopupTokens.border),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.tune_rounded,
-                      color: Color(0xFF7C3AED),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Subtitle Settings',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: PlayerPopupTokens.shellBg,
+              borderRadius:
+                  BorderRadius.circular(PlayerPopupTokens.shellRadius),
+              border: Border.all(color: PlayerPopupTokens.border),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.tune_rounded,
+                        color: Color(0xFF7C3AED),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Subtitle Settings',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    ForjaCloseButton.compact(onTap: _close),
-                  ],
+                      ForjaCloseButton.compact(onTap: _close),
+                    ],
+                  ),
                 ),
-              ),
-              const Divider(color: Colors.white10, height: 1),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                const Divider(color: Colors.white10, height: 1),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       _tvRow(
                         tv: tv,
                         rowId: PlayerSubtitleSettingsDialog.sizeRowId,
@@ -437,6 +445,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
             ],
           ),
         ),
+        ),
       ),
     );
 
@@ -447,15 +456,27 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
           child: GestureDetector(
             onTap: _close,
             behavior: HitTestBehavior.opaque,
-            child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
+            child: ColoredBox(
+              color: leanback
+                  ? const Color(0x01000000)
+                  : Colors.black.withValues(alpha: 0.62),
+            ),
           ),
         ),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: panel,
-          ),
-        ),
+        leanback
+            ? Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 72),
+                  child: panel,
+                ),
+              )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: panel,
+                ),
+              ),
       ],
     );
 

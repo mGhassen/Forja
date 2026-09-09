@@ -1,29 +1,21 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/supabase/forja_supabase.dart';
-import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:rust/rust.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// Remote overlay for provider hosts / paths / CDN Referer rules (RFC-039).
+/// Host builtins for provider hosts / paths / CDN Referer rules (RFC-039 legacy).
 ///
-/// Built-ins always win when remote is missing or invalid. Extract logic stays
-/// in Rust/Dart - this only retargets URLs and playback headers.
+/// Remote Supabase overlay retired in RFC-100. Dart builtins remain until
+/// issue 255 migrates them into packs. Extract logic stays in Rust/Dart —
+/// this only retargets URLs and playback headers from builtins.
 class ProviderRuntimeConfig {
   ProviderRuntimeConfig._();
   static final ProviderRuntimeConfig instance = ProviderRuntimeConfig._();
 
-  static const _cacheKey = 'forja_provider_runtime_config_v1';
-  static const _cacheAtKey = 'forja_provider_runtime_config_v1_at';
   static const supportedSchema = 1;
-  static const ttl = Duration(hours: 6);
 
   ProviderRuntimeSnapshot _snap = ProviderRuntimeSnapshot.builtins();
-  DateTime? _fetchedAt;
-  Future<void>? _refresh;
 
   ProviderRuntimeSnapshot get snapshot => _snap;
 
@@ -244,83 +236,16 @@ class ProviderRuntimeConfig {
     return v;
   }
 
-  /// Load disk cache (if any), then refresh from Supabase when configured.
+  /// Load builtins only. Remote `provider_runtime_config` overlay retired (RFC-100).
+  /// Remaining Dart builtins tracked in issue 255.
   Future<void> ensureLoaded() async {
-    await _loadDiskCache();
+    _snap = ProviderRuntimeSnapshot.builtins();
     _pushRustOverlay();
-    unawaited(refresh());
   }
 
   Future<void> refresh({bool force = false}) {
-    if (!force && _refresh != null) return _refresh!;
-    if (!force &&
-        _fetchedAt != null &&
-        DateTime.now().difference(_fetchedAt!) < ttl) {
-      return Future.value();
-    }
-    final fut = _refreshRemote();
-    _refresh = fut.whenComplete(() {
-      if (identical(_refresh, fut)) _refresh = null;
-    });
-    return _refresh!;
-  }
-
-  Future<void> _loadDiskCache() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_cacheKey);
-      if (raw == null || raw.isEmpty) return;
-      final parsed = ProviderRuntimeSnapshot.tryParse(jsonDecode(raw));
-      if (parsed == null) return;
-      _snap = ProviderRuntimeSnapshot.builtins().merged(parsed);
-      final atMs = p.getInt(_cacheAtKey);
-      if (atMs != null) {
-        _fetchedAt = DateTime.fromMillisecondsSinceEpoch(atMs);
-      }
-      if (kDebugMode) {
-        debugPrint('[ProviderRuntime] disk cache loaded schema=${_snap.schema}');
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('[ProviderRuntime] disk cache skip: $e');
-    }
-  }
-
-  Future<void> _refreshRemote() async {
-    try {
-      await ForjaSupabase.ensureInitialized();
-      final client = ForjaSupabase.clientOrNull;
-      if (client == null) return;
-      final row = await SyncService.retryAfterJwtIatSkew(
-        () => client
-            .from('provider_runtime_config')
-            .select('schema_version, config')
-            .eq('id', 1)
-            .maybeSingle(),
-      );
-      if (row == null) return;
-      final config = row['config'];
-      if (config is! Map) return;
-      final parsed = ProviderRuntimeSnapshot.tryParse(
-        Map<String, dynamic>.from(config),
-      );
-      if (parsed == null) {
-        if (kDebugMode) {
-          debugPrint('[ProviderRuntime] remote schema unsupported - builtins');
-        }
-        return;
-      }
-      _snap = ProviderRuntimeSnapshot.builtins().merged(parsed);
-      _fetchedAt = DateTime.now();
-      final p = await SharedPreferences.getInstance();
-      await p.setString(_cacheKey, jsonEncode(_snap.toJson()));
-      await p.setInt(_cacheAtKey, _fetchedAt!.millisecondsSinceEpoch);
-      _pushRustOverlay();
-      if (kDebugMode) {
-        debugPrint('[ProviderRuntime] remote applied schema=${_snap.schema}');
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('[ProviderRuntime] refresh failed: $e');
-    }
+    // Remote overlay retired — no-op (builtins stay until issue 255).
+    return Future.value();
   }
 
   /// Push current snapshot into the Rust process (call after [Engine.init]).
@@ -350,7 +275,6 @@ class ProviderRuntimeConfig {
   @visibleForTesting
   void debugReset() {
     _snap = ProviderRuntimeSnapshot.builtins();
-    _fetchedAt = null;
   }
 }
 

@@ -766,7 +766,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     final disposeFuture = android
         ? Future<void>.delayed(const Duration(milliseconds: 50), run)
         : run();
-    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    MpvExclusiveSession.instance.trackVideoDispose(
+      disposeFuture,
+      markExoFitRemount: true,
+    );
     if (!android) await disposeFuture;
   }
 }

@@ -20,6 +20,13 @@ class MpvExclusiveSession {
   final Set<Player> _trackedPlayers = <Player>{};
   Future<void>? _pendingVideoDispose;
 
+  /// Sticky: MediaKit surface was torn down; next Exo mount should remount
+  /// TextureView after first paint (issue 129). Cleared by [acknowledgeExoFitRemount].
+  bool _pendingExoFitRemount = false;
+
+  /// True while a tracked video dispose has not completed (or was timed out).
+  bool get hasPendingVideoDispose => _pendingVideoDispose != null;
+
   /// Register a live [Player] so app shutdown can stop mpv before Dart teardown.
   Player trackPlayer(Player player) {
     _trackedPlayers.add(player);
@@ -40,20 +47,38 @@ class MpvExclusiveSession {
   /// [timeout] caps how long we block the UI isolate. Full MediaKit stop+dispose
   /// can exceed the ATV 5s ANR window — Exo mounts after MediaKit use a short
   /// cap (issue 128); MediaKit mounts keep the default so zombies finish.
-  Future<void> prepareForVideoPlayer({
+  ///
+  /// Returns `true` when Exo should remount its PlatformView after first paint
+  /// (MediaKit dispose raced the ANR-capped wait — issue 129 zoomed crop).
+  Future<bool> prepareForVideoPlayer({
     Duration timeout = const Duration(seconds: 5),
   }) async {
+    final needExoFitRemount =
+        _pendingExoFitRemount || _pendingVideoDispose != null;
     try {
       // Android MediaKit stop+dispose can take ~2s each; 2s was too short and
       // let Exo mount over a live mediacodec_embed surface (issue 129 crop).
       await _pendingVideoDispose?.timeout(timeout);
     } catch (_) {}
-    if (!required) return;
+    if (!required) return needExoFitRemount;
     await MusicPlayerService().releaseMpvForVideo();
     await AudiobookPlayerService().releaseMpvForVideo();
+    return needExoFitRemount;
   }
 
-  void trackVideoDispose(Future<void> disposeFuture) {
+  /// Clear the sticky MediaKit→Exo fit-remount flag after Exo schedules remount.
+  void acknowledgeExoFitRemount() {
+    _pendingExoFitRemount = false;
+  }
+
+  /// [markExoFitRemount]: set when disposing MediaKit (`mediacodec_embed`) so
+  /// the next Exo mount remounts TextureView even if prepare's 1.2s cap
+  /// already finished and cleared [_pendingVideoDispose] (issue 129).
+  void trackVideoDispose(
+    Future<void> disposeFuture, {
+    bool markExoFitRemount = false,
+  }) {
+    if (markExoFitRemount) _pendingExoFitRemount = true;
     _pendingVideoDispose = disposeFuture;
     unawaited(disposeFuture.whenComplete(() {
       if (identical(_pendingVideoDispose, disposeFuture)) {

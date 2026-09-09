@@ -61,7 +61,15 @@ extension KitScheduleHorizonX on KitScheduleHorizon {
       };
 }
 
-/// Pref / kit selection: `status|horizon` (e.g. `both|24h`).
+/// Fresh-install / missing-pref default — Airing only (horizon unused in UI).
+const kKitScheduleDefaultPref = 'airing|1h';
+
+const kKitScheduleDefaultWindow = (
+  status: KitScheduleStatus.airing,
+  horizon: KitScheduleHorizon.h1,
+);
+
+/// Pref / kit selection: `status|horizon` (e.g. `airing|1h`, `both|24h`).
 String kitScheduleWindowPref({
   required KitScheduleStatus status,
   required KitScheduleHorizon horizon,

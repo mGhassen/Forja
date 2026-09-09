@@ -149,8 +149,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 10/10 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -218,7 +218,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
 | [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 9/9 · A 0/2 | — |
 | [198-[fixed]-…](fixed/198-[fixed]-mediakit-resume-and-server-switch-starts-at-zero.md) | MediaKit resume / server switch starts at 0 | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
-| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 18/18 fix · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 19/19 fix · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [200-[fixed]-…](fixed/200-[fixed]-android-tv-home-hero-focus-disposed.md) | ATV Home hero loses focus (FocusNode disposed) | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [201-[open]-…](201-[open]-android-tv-exo-screensaver-during-playback.md) | ATV Exo screensaver / Ambient during playback | P1 | High | open | 3/3 · A 0/2 | — |
 | [202-[fixed]-…](fixed/202-[fixed]-android-tv-forja-live-opens-forja-sports-iptv.md) | ATV Forja Live opens Forja Sports IPTV panel | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
@@ -248,7 +248,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [227-[open]-…](227-[open]-uninstall-hub-pack-leaves-navbar-ghost.md) | Uninstall hub pack leaves navbar ghost tab | P1 | High | open | 4/4 · A 0/2 | — |
 | [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Cloud packs auto-install (no install confirm) | P0 | Critical | open | 4/4 · A 0/3 | — |
 | [229-[fixed]-…](fixed/229-[fixed]-iptv-add-wiped-by-panel-cloud-pull.md) | IPTV add wiped by portal-panel cloud pull | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
-| [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 3/3 · A 0/1 | — |
+| [230-[open]-…](230-[open]-android-tv-exo-subtitles-invisible.md) | ATV Exo subtitles selected but invisible (Xiaomi / PlatformView) | P1 | High | open | 5/5 · A 0/1 | — |
 | [245-[open]-…](245-[open]-forja-extract-ships-all-hops.md) | Forja extract ships every hop into every plugin job | P1 | High | open | 3/4 · A 1/3 | — |
 | [247-[open]-…](247-[open]-exo-vod-chrome-dialogs-match-mediakit.md) | Exo VOD chrome / dialogs match MediaKit | P1 | High | open | 5/5 · A 1/5 | [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md) |
 | [248-[open]-…](248-[open]-android-tv-player-episodes-search-dpad.md) | ATV player Episodes Search D-pad stuck | P1 | High | open | 2/2 · A 0/2 | [161](161-[open]-android-tv-sources-panel-dpad.md) |
@@ -258,6 +258,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
 | [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 3/3 · A 1/2 | — |
 | [254-[open]-…](254-[open]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | open | 6/6 · A 0/1 | — |
+| [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 0/5 · A 0/2 | [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

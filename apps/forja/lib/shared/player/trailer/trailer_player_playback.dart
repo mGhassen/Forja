@@ -119,7 +119,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     if (player == null) return;
     MpvExclusiveSession.instance.untrackPlayer(player);
     final disposeFuture = teardownMediaKitPlayer(player);
-    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    MpvExclusiveSession.instance.trackVideoDispose(
+    disposeFuture,
+    markExoFitRemount: true,
+  );
     await disposeFuture;
   }
 

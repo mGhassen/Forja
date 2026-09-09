@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 18** fix · **0 / 7** acceptance |
-| **Current slice** | Skip wall-clock + min-skip (no skipped=0 abort) — device smoke outstanding |
+| **Progress** | **19 / 19** fix · **0 / 7** acceptance |
+| **Current slice** | Loopback Exo: no live-edge seek + durable CDN producer — needs full APK restart |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,7 @@
 | 16 | I199-T16 | Watchdog: 8s grace after proxy reconnect — Buffering + refill, no soft-reopen mid-skip | ✅ |
 | 17 | I199-T17 | Smoke logs: proxy skip/abort/gap, MediaKit cache/avsync/fps at reconnect +2s/+5s, Exo STATE_BUFFERING enter/exit | ✅ |
 | 18 | I199-T18 | Exo ATV smoke: never early-abort at skipped=0; wall-clock skip cap ≤1.2s; min overlap before queue abort; single producer epoch (soft-reopen dual GET); grace hold only when cushion climbing | ✅ |
+| 19 | I199-T19 | Exo continuity-proxy: no LiveConfiguration on loopback progressive (keep deep LoadControl); CDN producer survives Exo client reattach; shorter skip when queue empty | ✅ |
 
 ---
 

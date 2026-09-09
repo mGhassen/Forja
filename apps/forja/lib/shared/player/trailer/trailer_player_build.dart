@@ -224,6 +224,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     tvFocusable: true,
                     focusNode: _s._backFocus,
                     onRightEdge: () => _s._playerMenuFocus.requestFocus(),
+                    onDownEdge: _s._focusDownFromBack,
                     onPressed: () => unawaited(_s._exitTrailer()),
                   ),
                 )
@@ -244,6 +245,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     showPlayer: true,
                     playerFocusNode: _s._playerMenuFocus,
                     playerOnLeftEdge: () => _s._backFocus.requestFocus(),
+                    playerOnDownEdge: _s._focusDownFromBack,
                     onPlayer: (anchorContext) =>
                         unawaited(_s._showPlayerMenu(anchorContext)),
                   ),
@@ -325,6 +327,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     showPlayer: true,
                     playerFocusNode: _s._playerMenuFocus,
                     playerOnLeftEdge: () => _s._backFocus.requestFocus(),
+                    playerOnDownEdge: _s._focusDownFromBack,
                     onPlayer: (anchorContext) =>
                         unawaited(_s._showPlayerMenu(anchorContext)),
                   ),

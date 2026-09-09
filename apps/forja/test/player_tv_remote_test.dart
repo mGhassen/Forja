@@ -625,6 +625,74 @@ void main() {
   );
 
   testWidgets(
+    'PlayerTopBarActions ↓ from Player reaches seek/transport (title gap)',
+    (tester) async {
+      // Exo/MediaKit top-right Player sits across a wide title gap from the
+      // seek bar — spatial focusInDirection fails; onDownEdge must be wired.
+      final player = FocusNode(debugLabel: 'exo-player-menu');
+      final seek = FocusNode(debugLabel: 'exo-player-seek');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: Scaffold(
+                body: FocusScope(
+                  debugLabel: 'exo-player-chrome',
+                  child: SizedBox.expand(
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 8,
+                          right: 16,
+                          child: PlayerTopBarActions(
+                            tvFocusable: true,
+                            showPlayer: true,
+                            playerFocusNode: player,
+                            playerOnDownEdge: () => seek.requestFocus(),
+                            onPlayer: (_) {},
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 48,
+                          left: 16,
+                          right: 16,
+                          child: FocusableControl(
+                            focusNode: seek,
+                            scaleOnFocus: 1.0,
+                            onTap: () {},
+                            child: const SizedBox(height: 24),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      player.requestFocus();
+      await tester.pump();
+      expect(player.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(seek.hasFocus, isTrue,
+          reason: '↓ from top Player must reach bottom chrome');
+      expect(player.hasFocus, isFalse);
+
+      player.dispose();
+      seek.dispose();
+    },
+  );
+
+  testWidgets(
     'PlayerTvKeyScope does not steal focus when popup is open and chrome hides',
     (tester) async {
       final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');

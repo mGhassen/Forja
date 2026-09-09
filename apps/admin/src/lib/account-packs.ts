@@ -24,6 +24,81 @@ type ManifestMeta = {
   version?: string
 }
 
+/** Semver-ish compare: negative if a < b, 0 if equal, positive if a > b. */
+export function compareSemver(a: string, b: string): number {
+  const pa = a
+    .replace(/^v/i, '')
+    .split('.')
+    .map((x) => Number.parseInt(x, 10) || 0)
+  const pb = b
+    .replace(/^v/i, '')
+    .split('.')
+    .map((x) => Number.parseInt(x, 10) || 0)
+  const n = Math.max(pa.length, pb.length, 3)
+  for (let i = 0; i < n; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d !== 0) return d
+  }
+  return 0
+}
+
+export type PackVersionStatus = 'current' | 'outdated' | 'unknown'
+
+export function packVersionStatus(
+  installed: string | undefined,
+  latest: string | undefined,
+): PackVersionStatus {
+  const local = installed?.trim()
+  const remote = latest?.trim()
+  if (!local || !remote) return 'unknown'
+  return compareSemver(local, remote) >= 0 ? 'current' : 'outdated'
+}
+
+/** Latest known pack versions keyed by trimmed manifest URL (catalog cache). */
+export async function fetchCatalogPackVersions(): Promise<
+  Record<string, string>
+> {
+  const { data, error } = await adminDb
+    .from('plugin_packs')
+    .select('manifest_url, cached_version')
+  if (error) throw error
+  const out: Record<string, string> = {}
+  for (const row of (data ?? []) as Array<{
+    manifest_url: string | null
+    cached_version: string | null
+  }>) {
+    const url = row.manifest_url?.trim()
+    const ver = row.cached_version?.trim()
+    if (url && ver) out[url] = ver
+  }
+  return out
+}
+
+/**
+ * Resolve latest version per pack URL: catalog `cached_version` first,
+ * then live manifest fetch for misses.
+ */
+export async function resolveLatestPackVersions(
+  manifestUrls: string[],
+): Promise<Record<string, string>> {
+  const catalog = await fetchCatalogPackVersions()
+  const out: Record<string, string> = { ...catalog }
+  const missing = [
+    ...new Set(manifestUrls.map((u) => u.trim()).filter(Boolean)),
+  ].filter((u) => !out[u])
+  await Promise.all(
+    missing.map(async (url) => {
+      try {
+        const meta = await fetchManifestMeta(url)
+        if (meta.version) out[url] = meta.version
+      } catch {
+        // leave unknown
+      }
+    }),
+  )
+  return out
+}
+
 function errMessage(e: unknown, fallback: string): string {
   if (e && typeof e === 'object' && 'message' in e) {
     const m = (e as { message?: string }).message

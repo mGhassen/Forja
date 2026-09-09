@@ -13,11 +13,10 @@ import 'package:forja/features/iptv/iptv_proxy_reconnect_skip.dart';
 /// few seconds *behind* the previous socket end — piping that raw would look
 /// like a replay. We:
 /// 1. Keep a multi-second read-ahead queue so the player rarely underruns mid-reconnect
-/// 2. Skip ~[iptvProxyReconnectSkipBytes] of each reconnect (bitrate-adaptive)
-///    — abort early if the loopback queue would starve (prefer short overlap
-///    over underrun freeze on Android TV)
-/// 3. Notify [onUpstreamReconnected] so MediaKit / watchdog can grace refill
-///    (Exo plays through LoadControl cushion — no drop-buffers)
+/// 2. Skip ~[iptvProxyReconnectSkipBytes] of each CDN reconnect (bitrate-adaptive)
+/// 3. Keep **one CDN producer** per [start]; Exo soft-reopen only replaces the
+///    loopback writer (do not tear upstream / clear the cushion)
+/// 4. Notify [onUpstreamReconnected] so MediaKit / watchdog can grace refill
 class IptvLiveContinuityProxy {
   IptvLiveContinuityProxy({this.onUpstreamReconnected});
 
@@ -43,9 +42,12 @@ class IptvLiveContinuityProxy {
   DateTime? _rateSampleStarted;
   DateTime? _lastUpstreamEofAt;
 
-  /// Only one loopback client producer at a time (Exo soft-reopen opens a
-  /// second GET while the old socket is still draining).
+  /// CDN producer lifetime (bumped only on [stop] / new [start] generation).
   int _producerEpoch = 0;
+  int _producerGen = -1;
+
+  /// Loopback HTTP writer lifetime (bumped on every Exo/MediaKit GET).
+  int _clientEpoch = 0;
 
   Uri? get localUri {
     final p = _server?.port;
@@ -72,6 +74,7 @@ class IptvLiveContinuityProxy {
     _rateSampleBytes = 0;
     _rateSampleStarted = null;
     _lastUpstreamEofAt = null;
+    _producerGen = -1;
     _client = HttpClient()
       // macOS/Linux env proxies return 407 for IPTV CDNs — mpv/libmpv is direct.
       ..findProxy = ((_) => 'DIRECT')
@@ -92,6 +95,8 @@ class IptvLiveContinuityProxy {
     _closed = true;
     _generation++;
     _producerEpoch++;
+    _clientEpoch++;
+    _producerGen = -1;
     _clearQueue();
     _wakeWaiters();
     final server = _server;
@@ -153,21 +158,36 @@ class IptvLiveContinuityProxy {
 
   Future<void> _onRequest(HttpRequest request) async {
     final gen = _generation;
-    final producerEpoch = ++_producerEpoch;
+    final clientEpoch = ++_clientEpoch;
     final res = request.response;
-    _clearQueue();
-    unawaited(_runProducer(gen, producerEpoch));
+
+    // One CDN producer per [start] generation. Exo soft-reopen / Range retry
+    // only replaces the loopback writer — keep upstream + cushion.
+    if (_producerGen != gen) {
+      _producerGen = gen;
+      final pEpoch = ++_producerEpoch;
+      _clearQueue();
+      unawaited(_runProducer(gen, pEpoch));
+      debugPrint('[IPTV Proxy] CDN producer start (gen=$gen epoch=$pEpoch)');
+    } else {
+      debugPrint(
+        '[IPTV Proxy] loopback client attach '
+        '(keep CDN producer, queue=${(_queuedBytes / 1024).toStringAsFixed(0)}KiB)',
+      );
+    }
+
     try {
       res.statusCode = HttpStatus.ok;
       res.headers.clear();
       res.headers.set(HttpHeaders.contentTypeHeader, 'video/mp2t');
       res.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
+      res.headers.set(HttpHeaders.acceptRangesHeader, 'none');
       res.bufferOutput = false;
 
       var pending = 0;
       while (!_closed &&
           gen == _generation &&
-          producerEpoch == _producerEpoch) {
+          clientEpoch == _clientEpoch) {
         final chunk = _dequeue();
         if (chunk == null) {
           await _waitForData().timeout(
@@ -176,7 +196,7 @@ class IptvLiveContinuityProxy {
           );
           if (_closed ||
               gen != _generation ||
-              producerEpoch != _producerEpoch) {
+              clientEpoch != _clientEpoch) {
             break;
           }
           continue;
@@ -197,8 +217,6 @@ class IptvLiveContinuityProxy {
       debugPrint('[IPTV Proxy] client gone: $e');
     } finally {
       // Do NOT set [_closed] here — that flag is only for [stop].
-      // mpv disconnect / soft reopen races a new [start] generation; marking
-      // closed kills the fresh producer → empty loopback → format fail → crash.
       _wakeWaiters();
       try {
         await res.close();
@@ -251,6 +269,15 @@ class IptvLiveContinuityProxy {
           minSkip = iptvProxyMinSkipBytes(
             estimatedBytesPerSec: _estimatedBytesPerSec,
           );
+          // Empty loopback cushion: shorter skip — prefer brief overlap over
+          // starving Exo (skipped=0 replay was worse; full min on empty also bad).
+          if (_queuedBytes < 256 * 1024) {
+            skipPlanned = (skipPlanned / 2).round().clamp(
+              512 * 1024,
+              2 * 1024 * 1024,
+            );
+            minSkip = (minSkip / 2).round().clamp(256 * 1024, skipPlanned);
+          }
           if (minSkip > skipPlanned) minSkip = skipPlanned;
           skipLeft = skipPlanned;
           final sinceEof = _lastUpstreamEofAt == null
@@ -343,6 +370,7 @@ class IptvLiveContinuityProxy {
       if (!_producerAlive(gen, producerEpoch)) break;
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
+    debugPrint('[IPTV Proxy] CDN producer exit (gen=$gen epoch=$producerEpoch)');
   }
 
   Future<HttpClientResponse> _openUpstream() async {

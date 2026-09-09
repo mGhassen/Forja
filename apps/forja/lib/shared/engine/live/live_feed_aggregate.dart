@@ -8,8 +8,8 @@ class LiveFeedQuery {
   const LiveFeedQuery({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleStatus = KitScheduleStatus.both,
-    this.scheduleHorizon = KitScheduleHorizon.h24,
+    this.scheduleStatus = KitScheduleStatus.airing,
+    this.scheduleHorizon = KitScheduleHorizon.h1,
   });
 
   final String catalogFilter;
@@ -28,9 +28,9 @@ class LiveFeedQuery {
       catalogFilter: (p['catalogFilter'] ?? 'all').toString(),
       sportFilter: (p['sportFilter'] ?? 'all').toString(),
       scheduleStatus:
-          status.isEmpty ? KitScheduleStatus.both : status.first,
+          status.isEmpty ? KitScheduleStatus.airing : status.first,
       scheduleHorizon:
-          horizon.isEmpty ? KitScheduleHorizon.h24 : horizon.first,
+          horizon.isEmpty ? KitScheduleHorizon.h1 : horizon.first,
     );
   }
 }
@@ -39,6 +39,40 @@ class LiveFeedQuery {
 List<Map<String, dynamic>>? _rememberedAllCatalogPool;
 DateTime? _rememberedAllCatalogPoolAt;
 const _allCatalogPoolTtl = Duration(minutes: 3);
+
+/// Unfiltered scrape rows keyed by catalog chip (`all` / plugin id / stremio:…).
+/// Status × Horizon (and sport) are applied client-side — schedule chip must
+/// not re-run every live catalog plugin.
+final Map<String, ({List<Map<String, dynamic>> rows, DateTime at})>
+    _rawFeedByCatalog = {};
+const _rawFeedTtl = Duration(minutes: 5);
+
+String _rawFeedCacheKey(String catalogFilter) {
+  final f = catalogFilter.trim();
+  return f.isEmpty ? 'all' : f;
+}
+
+/// Drop session scrape cache (Refresh / pack reload).
+void clearLiveFeedSessionCache() {
+  _rawFeedByCatalog.clear();
+  _rememberedAllCatalogPool = null;
+  _rememberedAllCatalogPoolAt = null;
+}
+
+/// Re-filter a warm scrape for a new Status × Horizon without network.
+List<Map<String, dynamic>>? tryLiveFeedFromSession(LiveFeedQuery query) {
+  final hit = _rawFeedByCatalog[_rawFeedCacheKey(query.catalogFilter)];
+  if (hit == null) return null;
+  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
+  return _filterLiveFeedRows(hit.rows, query);
+}
+
+void _rememberRawFeed(String catalogFilter, List<Map<String, dynamic>> rows) {
+  _rawFeedByCatalog[_rawFeedCacheKey(catalogFilter)] = (
+    rows: [for (final r in rows) Map<String, dynamic>.from(r)],
+    at: DateTime.now(),
+  );
+}
 
 /// Warm/read the unscoped schedule pool used when resolving Providers.
 List<Map<String, dynamic>>? rememberedLiveFeedAllCatalogPool() {
@@ -88,13 +122,33 @@ typedef LiveFeedPartialCallback = void Function(LiveFeedPartial partial);
 /// Called from `ctx.host.liveFeed.load` (hub feed owns composition) — not from
 /// a Dart schedule list god path.
 ///
+/// Scrapes once per catalog chip, then applies Status × Horizon / sport in
+/// memory. [forceRefresh] drops the session scrape cache (Refresh).
+///
 /// [onPartial] fires after each catalog (and once at the end) so the list can
 /// paint before slower sites finish — same progressive UX as pre-kit Live Sports.
 Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   LiveFeedQuery query, {
   LiveFeedPartialCallback? onPartial,
+  bool forceRefresh = false,
 }) async {
   final filter = query.catalogFilter.trim();
+  if (forceRefresh) {
+    _rawFeedByCatalog.remove(_rawFeedCacheKey(filter));
+  } else {
+    final session = tryLiveFeedFromSession(query);
+    if (session != null) {
+      onPartial?.call(
+        LiveFeedPartial(
+          rows: session,
+          done: true,
+          completed: 1,
+          total: 1,
+        ),
+      );
+      return session;
+    }
+  }
 
   // Stremio live addon chip — one addon schedule (RFC-050), not merged into All.
   if (isLiveStremioCatalogFilter(filter)) {
@@ -120,6 +174,7 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
       ),
     );
     final raw = await loadLiveStremioCatalogFeed(baseUrl: base);
+    _rememberRawFeed(filter, raw);
     final filtered = _filterLiveFeedRows(raw, query);
     onPartial?.call(
       LiveFeedPartial(
@@ -168,7 +223,7 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     return const [];
   }
 
-  final out = <Map<String, dynamic>>[];
+  final raw = <Map<String, dynamic>>[];
   final seen = <String>{};
   final total = wanted.length;
   for (var i = 0; i < wanted.length; i++) {
@@ -177,7 +232,7 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
         plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
     onPartial?.call(
       LiveFeedPartial(
-        rows: List<Map<String, dynamic>>.from(out),
+        rows: _filterLiveFeedRows(raw, query),
         done: false,
         completed: i,
         total: total,
@@ -194,15 +249,14 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
         map.putIfAbsent('livePluginId', () => plugin.id);
         final item = liveMetaFromFeedRow(map);
         if (item.id.isEmpty || !seen.add(item.id)) continue;
-        if (!_rowPassesSportAndWindow(map, item, query)) continue;
-        out.add(map);
+        raw.add(map);
       }
     } catch (_) {
       // Skip failed catalogs — hub UI shows per-plugin errors separately.
     }
     onPartial?.call(
       LiveFeedPartial(
-        rows: List<Map<String, dynamic>>.from(out),
+        rows: _filterLiveFeedRows(raw, query),
         done: false,
         completed: i + 1,
         total: total,
@@ -210,9 +264,11 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
       ),
     );
   }
+  _rememberRawFeed(filter, raw);
   if (filter.isEmpty || filter == 'all') {
-    rememberLiveFeedAllCatalogPool(out);
+    rememberLiveFeedAllCatalogPool(raw);
   }
+  final out = _filterLiveFeedRows(raw, query);
   onPartial?.call(
     LiveFeedPartial(
       rows: List<Map<String, dynamic>>.from(out),

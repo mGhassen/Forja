@@ -1,4 +1,5 @@
 import { PLUGIN_PACK_SOURCES } from '@/lib/generated/plugin-pack-sources'
+import { supabase, supabaseConfigured } from '@/lib/supabase'
 
 export type ForjaPluginCatalogEntry = {
   id: string
@@ -74,6 +75,45 @@ export function packAuthorLabel(pack: ForjaPluginPackLive): string | undefined {
   return author || undefined
 }
 
+/** Published packs from Supabase (RFC-100). Empty when unconfigured / empty table. */
+export async function fetchPublishedPluginPacksFromSupabase(): Promise<
+  ForjaPluginPackLive[]
+> {
+  if (!supabaseConfigured) return []
+  const { data, error } = await supabase
+    .from('plugin_packs')
+    .select(
+      'id, kind, name, description, accent, official, recommended, author, cached_version, plugin_count, tags, manifest_url, sort_order',
+    )
+    .eq('published', true)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
+  if (error || !data?.length) return []
+  const packs: ForjaPluginPackLive[] = []
+  for (const row of data) {
+    const id = row.id?.trim()
+    const manifestUrl = row.manifest_url?.trim()
+    const name = row.name?.trim()
+    if (!id || !manifestUrl || !name) continue
+    const accent = row.accent === 'flame' ? 'flame' : 'brand'
+    packs.push({
+      id,
+      kind: row.kind?.trim() || 'providers',
+      name,
+      description: row.description ?? '',
+      accent,
+      official: row.official === true,
+      recommended: row.recommended === true,
+      author: row.author ?? undefined,
+      version: row.cached_version ?? undefined,
+      pluginCount: row.plugin_count ?? undefined,
+      tags: row.tags ?? [],
+      manifestUrl,
+    })
+  }
+  return packs
+}
+
 export async function fetchPluginCatalog(): Promise<ForjaPluginCatalog> {
   const res = await fetch('/plugins/catalog.json', { cache: 'no-store' })
   if (!res.ok) {
@@ -97,6 +137,21 @@ export function hydratePluginCatalog(
     packs.push({ ...entry, manifestUrl })
   }
   return packs
+}
+
+/**
+ * Live catalog for Community Packs UI.
+ * Prefer Supabase published packs; fall back to static catalog.json + generated URLs.
+ */
+export async function loadLivePluginCatalog(): Promise<ForjaPluginPackLive[]> {
+  try {
+    const remote = await fetchPublishedPluginPacksFromSupabase()
+    if (remote.length > 0) return remote
+  } catch {
+    // fall through
+  }
+  const catalog = await fetchPluginCatalog()
+  return hydratePluginCatalog(catalog)
 }
 
 export function groupPluginPacksByKind(

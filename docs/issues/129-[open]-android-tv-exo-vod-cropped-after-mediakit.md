@@ -10,7 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 2** acceptance |
+| **Current slice** | ANR-capped prepare + sticky MediaKit race remount |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +28,9 @@
 | 5 | I129-T05 | VOD Player menu engine switch: unmount → `endOfFrame` → await MediaKit dispose → then mount Exo (IPTV parity) | ✅ |
 | 6 | I129-T06 | Mobile/TV MediaKit: `trackPlayer` + `trackVideoDispose` so hot-swap can await teardown | ✅ |
 | 7 | I129-T07 | `ExoPlayerScreen._boot` awaits `prepareForVideoPlayer` before open | ✅ |
+| 8 | I129-T08 | Sticky `markExoFitRemount` on MediaKit dispose + 1.5s wall-clock cool-down when mounting Exo (no FFI await) | ✅ |
+| 9 | I129-T09 | VOD + IPTV: one-shot Exo TextureView remount after first paint when MediaKit raced | ✅ |
+| 10 | I129-T10 | Native Exo: `refreshContentFrameLayout` on attach / video size / first frame / setResizeMode | ✅ |
 
 ---
 
@@ -41,7 +45,7 @@
 
 ## Summary
 
-On Android TV, switching the built-in engine from **MediaKit** to **ExoPlayer** in anime / movies / Asian Drama left the video **zoomed** — only part of the frame visible (bottom half / huge burned-in subs), chrome correct.
+On Android TV, switching the built-in engine from **MediaKit** to **ExoPlayer** in anime / movies / Asian Drama left the video **zoomed** — only part of the frame visible (bottom half / huge burned-in subs), chrome correct. Switching away and back to Exo remounted TextureView and fixed it.
 
 **Root cause (verified after T01–T04 alone failed):**
 
@@ -52,6 +56,8 @@ VOD `PlayerScreen._switchPlayer` did an **instant** `setState` engine swap. Medi
 **Root fix (T05–T07):** IPTV-style switch gate + tracked MediaKit teardown + Exo boot waits on pending dispose.
 
 **ANR trade-off (issue 128 T07):** Awaiting full MediaKit stop+dispose on physical ATV during Player-menu MediaKit→Exo exceeded the 5s input ANR window and killed the process. Android Exo-side `prepareForVideoPlayer` is now capped at **1.2s** (switch + Exo boot). Prefer no force-close; if a slow MediaCodec detach still crops once, re-check I129-A01 after the ANR fix.
+
+**Follow-up (T08–T10, 2026-09-09):** The 1.2s cap still left zoomed frames when MediaCodec outlived prepare. Double prepare (switch + Exo boot) could clear `_pendingVideoDispose` before boot, so the crop looked “random.” Sticky `markExoFitRemount` on MediaKit dispose, wall-clock cool-down (no FFI), and one-shot TextureView remount after first paint match the user workaround (switch away → back to Exo). Native content-frame refresh on attach/size/frame is belt-and-suspenders.
 
 ## Related
 

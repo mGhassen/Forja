@@ -415,11 +415,11 @@ class _SettingsForjaPacksSectionState
     if (_engineInstalling || _engineReloading) return;
     setState(() => _engineInstalling = true);
     try {
-      final outcome = await promptOfficialForjaHqPackInstall();
+      final outcome = await promptRecommendedBundleInstall();
       if (!mounted) return;
       switch (outcome) {
         case OfficialPackPromptOutcome.alreadyInstalled:
-          ForjaToast.success('All official packs already installed');
+          ForjaToast.success('Recommended packs already installed');
         case OfficialPackPromptOutcome.busy:
           ForjaToast.info('Finish the current pack prompt first');
         case OfficialPackPromptOutcome.prompted:

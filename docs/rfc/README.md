@@ -121,6 +121,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [097-[fixed]-…](fixed/097-[fixed]-my-list-explode-host-to-packs.md) | Explode My List host → packs MetaRuntime feed | v1.4 | fixed | **Complete** · **4 / 4** · **10 / 10** | — |
 | [098-[fixed]-…](fixed/098-[fixed]-live-sports-event-search.md) | Live Sports event search (top-bar) | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [099-[open]-…](099-[open]-live-unlock-pack-modules.md) | Live unlock modules in packs (GOAT/GASM host runtime) | v1.4 | open | **4 / 4** · **8 / 9** · smoke ⬜ | — |
+| [100-[open]-…](100-[open]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | open | **5 / 5** · **8 / 8** admin · **6 / 6** app · **3 / 3** web · **3 / 3** retire | — |
 
 ## Related
 

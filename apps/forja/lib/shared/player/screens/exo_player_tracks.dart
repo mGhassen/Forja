@@ -268,9 +268,23 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       }
     }
 
-    // In-stream / Media3 text tracks win — do not auto-sideload scraped over them.
-    // Selection stays in `_maybeApplyPreferredSubtitle` (do not lock the flag).
-    if (_s._tracks.text.isNotEmpty) return;
+    // Language-tagged in-stream tracks win — `_maybeApplyPreferredSubtitle`
+    // owns selection. Anonymous CEA-608 ("CC 1" / "Track 1") must not block
+    // Wyzie/Levrx — those often emit empty cues on VOD HLS (issue 230).
+    final hasUsableMux = _s._tracks.text.any((t) {
+      if (t.isAnonymousClosedCaption) return false;
+      return matchesPreferredLanguage(
+            preferred,
+            language: t.language,
+            title: t.label,
+          ) ||
+          matchesPreferredLanguage(
+            'English',
+            language: t.language,
+            title: t.label,
+          );
+    });
+    if (hasUsableMux) return;
 
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(

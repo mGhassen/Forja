@@ -18,7 +18,8 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Adjust sync delay if dialogue is early/late (MediaKit). On **desktop**, click **−** / **+** for 0.1s steps. On **Android TV**, focus **−** / **+**, tap **OK** for 0.1s steps, or **hold OK** to accelerate the longer you press
 - Use advanced ASS/SSA rendering for styled subs (MediaKit)
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference. Set the default under **Settings → Playback → Preferred subtitle language**
-- **Auto-select prefers in-stream** — when the stream already has subtitle tracks that match your preferred language, those are chosen first; online / scraped subs auto-load only when nothing muxed matches (you can still pick them manually)
+- **Auto-select prefers in-stream** — when the stream already has subtitle tracks that match your preferred language, those are chosen first; online / scraped subs auto-load only when nothing muxed matches (you can still pick them manually). Empty CEA-608 captions without a language (often labeled CC / Track 1) do not count as a match on ExoPlayer
+
 
 ## Tips
 

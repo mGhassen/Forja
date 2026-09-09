@@ -277,6 +277,135 @@ export type Database = {
           },
         ]
       }
+      plugin_bundle_items: {
+        Row: {
+          bundle_id: string
+          pack_id: string
+          sort_order: number
+        }
+        Insert: {
+          bundle_id: string
+          pack_id: string
+          sort_order?: number
+        }
+        Update: {
+          bundle_id?: string
+          pack_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "plugin_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plugin_bundle_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "plugin_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plugin_bundles: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          published: boolean
+          recommended: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id: string
+          name: string
+          published?: boolean
+          recommended?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          published?: boolean
+          recommended?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plugin_packs: {
+        Row: {
+          accent: string
+          author: string | null
+          cached_version: string | null
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          last_validated_at: string | null
+          last_validation: Json | null
+          manifest_url: string
+          name: string
+          official: boolean
+          plugin_count: number | null
+          published: boolean
+          recommended: boolean
+          sort_order: number
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          accent?: string
+          author?: string | null
+          cached_version?: string | null
+          created_at?: string
+          description?: string
+          id: string
+          kind?: string
+          last_validated_at?: string | null
+          last_validation?: Json | null
+          manifest_url: string
+          name: string
+          official?: boolean
+          plugin_count?: number | null
+          published?: boolean
+          recommended?: boolean
+          sort_order?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          accent?: string
+          author?: string | null
+          cached_version?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          last_validated_at?: string | null
+          last_validation?: Json | null
+          manifest_url?: string
+          name?: string
+          official?: boolean
+          plugin_count?: number | null
+          published?: boolean
+          recommended?: boolean
+          sort_order?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provider_runtime_config: {
         Row: {
           config: Json

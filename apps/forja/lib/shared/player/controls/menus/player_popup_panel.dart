@@ -58,7 +58,12 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
 /// Uses [OverlayEntry] - never touches the shell route stack.
 class PlayerPopupPanel {
   static const _bottomControlsZoneHeight = 120.0;
-  static const _progressBarClearance = 72.0;
+  /// Gap between panel bottom and the transport button when the seek bar sits
+  /// between them — keep tight so menus read next to the chrome, not mid-frame.
+  static const _progressBarClearance = 36.0;
+  static const _tvMaxWidth = 280.0;
+  static const _tvMaxHeight = 340.0;
+  static const _tvFallbackMargin = EdgeInsets.only(left: 16, bottom: 72);
 
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
@@ -148,10 +153,19 @@ class PlayerPopupPanel {
       capturedConfig = shellPlatformConfigFor(capturedProfile);
     }
 
-    // ATV matches desktop: keep caller width / anchor / margin. Do not enlarge
-    // or center floating menus for leanback — D-pad still works via TvOverlayScope.
+    // ATV: same anchored chrome as desktop, but smaller + tighter to the
+    // seekbar — never enlarge or center. D-pad still works via TvOverlayScope.
     // Capture opener before dismiss clears the anchor.
     playerMenuCaptureReturnFocus(context);
+
+    final leanback = capturedConfig.inputPolicy.leanbackOnly;
+    final effectiveWidth = leanback ? width.clamp(0.0, _tvMaxWidth) : width;
+    final effectiveMaxHeight =
+        leanback ? maxHeight.clamp(0.0, _tvMaxHeight) : maxHeight;
+    final effectiveMargin = leanback &&
+            margin == const EdgeInsets.only(left: 16, bottom: 88)
+        ? _tvFallbackMargin
+        : margin;
 
     final overlay = Overlay.of(context);
     dismiss();
@@ -204,15 +218,15 @@ class PlayerPopupPanel {
                 type: MaterialType.transparency,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: width,
+                    maxWidth: effectiveWidth,
                     maxHeight: anchorRect == null
-                        ? maxHeight
+                        ? effectiveMaxHeight
                         : _anchoredMaxHeight(
                             overlaySize: overlaySize,
                             anchorRect: anchorRect,
                             anchorGap: anchorGap,
                             screenPadding: screenPadding,
-                            maxHeight: maxHeight,
+                            maxHeight: effectiveMaxHeight,
                             reserveAbove: reserveAbove,
                           ),
                   ),
@@ -232,9 +246,9 @@ class PlayerPopupPanel {
 
               final Widget panelLayer;
               if (anchorRect != null) {
-                final left = (anchorRect.center.dx - width / 2).clamp(
+                final left = (anchorRect.center.dx - effectiveWidth / 2).clamp(
                   screenPadding.left,
-                  overlaySize.width - width - screenPadding.right,
+                  overlaySize.width - effectiveWidth - screenPadding.right,
                 );
 
                 final spaceAbove =
@@ -257,13 +271,13 @@ class PlayerPopupPanel {
                             anchorRect.top +
                             anchorGap +
                             reserveAbove,
-                        width: width,
+                        width: effectiveWidth,
                         child: panel,
                       )
                     : Positioned(
                         left: left,
                         top: anchorRect.bottom + anchorGap,
-                        width: width,
+                        width: effectiveWidth,
                         child: panel,
                       );
               } else if (centered) {
@@ -273,7 +287,7 @@ class PlayerPopupPanel {
               } else {
                 panelLayer = Align(
                   alignment: alignment,
-                  child: Padding(padding: margin, child: panel),
+                  child: Padding(padding: effectiveMargin, child: panel),
                 );
               }
 
@@ -420,10 +434,11 @@ class PlayerPopupCloseFocus extends InheritedWidget {
       focusNode != oldWidget.focusNode;
 }
 
-/// Floating-menu surface tokens - flat dark chrome + brand-green accent.
+/// Floating-menu surface tokens - translucent dark chrome + brand-green accent.
 /// Selected / hover is always a green *tint* ([accentFill]), never solid [accent].
 abstract final class PlayerPopupTokens {
-  static const Color shellBg = Color(0xFF0E0E0E);
+  /// Same α as player side panels ([ForjaFrostedPanel] without blur).
+  static const Color shellBg = Color(0xD1141414); // menuSurface @ ~0.82
   static const Color cardBg = Color(0xFF161616);
   static const Color border = Color(0xFF2A2A2A);
   static const Color accent = ForjaShellColors.brandGreen;
@@ -433,9 +448,9 @@ abstract final class PlayerPopupTokens {
   static const Color selectedFill = accentFill;
   static const Color selectedFg = Colors.white;
   static const Color muted = Color(0xFF9CA3AF);
-  static const double shellRadius = 12;
-  static const double cardRadius = 8;
-  static const double chipRadius = 6;
+  static const double shellRadius = 16;
+  static const double cardRadius = 10;
+  static const double chipRadius = 8;
   static const double badgeRadius = 4;
 }
 
@@ -499,101 +514,108 @@ class _PanelShellState extends State<_PanelShell> {
             final closeAutoFocus = tvFocus &&
                 widget.autofocusClose &&
                 PlayerPopupListFocusScope.claimAutofocus(context);
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: widget.shellBg ?? PlayerPopupTokens.shellBg,
-                borderRadius:
-                    BorderRadius.circular(PlayerPopupTokens.shellRadius),
-                border: Border.all(color: PlayerPopupTokens.border),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  const headerBlockHeight = 52.0;
-                  final headerHeight =
-                      widget.showHeader ? headerBlockHeight : 0.0;
-                  final scrollMax = constraints.maxHeight.isFinite
-                      ? (constraints.maxHeight - headerHeight)
-                          .clamp(0.0, double.infinity)
-                      : double.infinity;
-                  final body = scrollMax.isFinite && scrollMax > 0
-                      ? ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: scrollMax),
-                          child: widget.child,
-                        )
-                      : widget.child;
-                  final shell = Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.showHeader) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
-                          child: Row(
-                            children: [
-                              if (widget.onBack != null)
-                                ShellBackIconButton(
-                                  icon: Icons.arrow_back_rounded,
-                                  size: 18,
-                                  tooltip: 'Back',
-                                  onTap: widget.onBack,
-                                )
-                              else if (widget.leadingIcon != null)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(left: 4, right: 6),
-                                  child: Icon(
-                                    widget.leadingIcon,
-                                    color: PlayerPopupTokens.muted,
-                                    size: 16,
-                                  ),
-                                )
-                              else
-                                const SizedBox(width: 4),
-                              if (widget.title.isNotEmpty)
-                                Expanded(
-                                  child: Text(
-                                    widget.title,
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.15,
+            final radius =
+                BorderRadius.circular(PlayerPopupTokens.shellRadius);
+            return ClipRRect(
+              borderRadius: radius,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: widget.shellBg ?? PlayerPopupTokens.shellBg,
+                  borderRadius: radius,
+                  border: Border.all(color: PlayerPopupTokens.border),
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const headerBlockHeight = 52.0;
+                    final headerHeight =
+                        widget.showHeader ? headerBlockHeight : 0.0;
+                    final scrollMax = constraints.maxHeight.isFinite
+                        ? (constraints.maxHeight - headerHeight)
+                            .clamp(0.0, double.infinity)
+                        : double.infinity;
+                    final body = scrollMax.isFinite && scrollMax > 0
+                        ? ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: scrollMax),
+                            child: widget.child,
+                          )
+                        : widget.child;
+                    final shell = Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.showHeader) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+                            child: Row(
+                              children: [
+                                if (widget.onBack != null)
+                                  ShellBackIconButton(
+                                    icon: Icons.arrow_back_rounded,
+                                    size: 18,
+                                    tooltip: 'Back',
+                                    onTap: widget.onBack,
+                                  )
+                                else if (widget.leadingIcon != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 4,
+                                      right: 6,
                                     ),
-                                  ),
-                                )
-                              else
-                                const Spacer(),
-                              if (widget.trailing != null) ...[
-                                widget.trailing!,
-                                const SizedBox(width: 4),
+                                    child: Icon(
+                                      widget.leadingIcon,
+                                      color: PlayerPopupTokens.muted,
+                                      size: 16,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 4),
+                                if (widget.title.isNotEmpty)
+                                  Expanded(
+                                    child: Text(
+                                      widget.title,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.15,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Spacer(),
+                                if (widget.trailing != null) ...[
+                                  widget.trailing!,
+                                  const SizedBox(width: 4),
+                                ],
+                                _PopupChromeButton(
+                                  icon: Icons.close_rounded,
+                                  tooltip: 'Close',
+                                  onTap: widget.onClose,
+                                  focusNode: _closeFocus,
+                                  autoFocus: closeAutoFocus,
+                                ),
                               ],
-                              _PopupChromeButton(
-                                icon: Icons.close_rounded,
-                                tooltip: 'Close',
-                                onTap: widget.onClose,
-                                focusNode: _closeFocus,
-                                autoFocus: closeAutoFocus,
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Divider(
-                            height: 1,
-                            thickness: 0.5,
-                            color: PlayerPopupTokens.border,
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 10),
+                            child: Divider(
+                              height: 1,
+                              thickness: 0.5,
+                              color: PlayerPopupTokens.border,
+                            ),
                           ),
-                        ),
+                        ],
+                        body,
                       ],
-                      body,
-                    ],
-                  );
-                  if (!tvFocus) return shell;
-                  return FocusTraversalGroup(child: shell);
-                },
+                    );
+                    if (!tvFocus) return shell;
+                    return FocusTraversalGroup(child: shell);
+                  },
+                ),
               ),
             );
           },
