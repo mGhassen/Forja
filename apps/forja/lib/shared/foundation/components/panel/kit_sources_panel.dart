@@ -396,17 +396,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       provider: row.subtitle,
       badges: row.badges,
       viewerCount: row.viewerCount,
-      footer: footer.isEmpty
-          ? null
-          : Text(
-              footer,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 11,
-              ),
-            ),
+      footerLabel: footer.isEmpty ? null : footer,
       tvTabId: tvTabId,
       tvRowId: widget.listRowId,
       tvItemIndex: index,

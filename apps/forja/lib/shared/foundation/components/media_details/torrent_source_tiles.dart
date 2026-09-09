@@ -151,6 +151,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
     this.provider,
     this.leading,
     this.footer,
+    this.footerLabel,
     this.badges = const [],
     this.tvItemIndex,
     this.tvTabId,
@@ -170,6 +171,8 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final String? provider;
   final Widget? leading;
   final Widget? footer;
+  /// Host / embed line — painted by the card so selected can tint green.
+  final String? footerLabel;
   final List<String> badges;
   final int? viewerCount;
   final int? tvItemIndex;
@@ -181,7 +184,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final VoidCallback? onLeftEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
-  /// Playing / current row — same green tint as hover.
+  /// Playing / current row — brand-green text + Playing status.
   final bool selected;
   final bool autofocus;
 
@@ -193,6 +196,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
       provider: provider,
       leading: leading,
       footer: footer,
+      footerLabel: footerLabel,
       tvItemIndex: tvItemIndex,
       tvTabId: tvTabId,
       tvRowId: tvRowId,
@@ -202,7 +206,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
       onHoverProbe: onHoverProbe,
       probeHealthCache: probeHealthCache,
       viewerCount: viewerCount,
-      highlightStart: selected,
+      selected: selected,
       autofocus: autofocus,
       badges: [
         for (final label in badges)
@@ -476,8 +480,10 @@ class _SourceBadgeCard extends StatefulWidget {
     this.progress = 0,
     this.isResumable = false,
     this.highlightStart = false,
+    this.selected = false,
     this.leading,
     this.footer,
+    this.footerLabel,
     this.accentBorder,
     this.accentFill,
     this.provider,
@@ -502,9 +508,12 @@ class _SourceBadgeCard extends StatefulWidget {
   final double progress;
   final bool isResumable;
   final bool highlightStart;
+  /// Playing row in player Source menu — brand-green chrome + Playing.
+  final bool selected;
   final bool autofocus;
   final Widget? leading;
   final Widget? footer;
+  final String? footerLabel;
   final Color? accentBorder;
   final Color? accentFill;
   final String? provider;
@@ -607,6 +616,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _backgroundColor() {
+    if (widget.selected) {
+      return ForjaShellColors.brandGreen.withValues(alpha: 0.16);
+    }
     if (_hover) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
     if (widget.highlightStart) {
@@ -616,6 +628,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _borderColor() {
+    if (widget.selected) {
+      return _hover
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.brandGreen.withValues(alpha: 0.40);
+    }
     if (_hover) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.highlightStart) {
@@ -624,7 +641,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     return Colors.white.withValues(alpha: 0.07);
   }
 
+  double _borderWidth() {
+    if (widget.selected || _hover) return 1.5;
+    return 1;
+  }
+
   Color _probeLeftBarColor() {
+    if (widget.selected) return ForjaShellColors.brandGreen;
     if (widget.onHoverProbe == null) return Colors.transparent;
     if (_probeChecking || (_probeHoverActive && _probeHealth == null)) {
       return Colors.white.withValues(alpha: 0.35);
@@ -642,6 +665,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     const padV = 10.0;
     const titleSize = 13.0;
     final cinematic = ForjaShellColors.cinematic;
+    final selected = widget.selected;
+    final accentFg = ForjaShellColors.brandGreen;
+    final accentMeta = accentFg.withValues(alpha: 0.85);
+    final titleColor = selected ? accentFg : cinematic.textPrimary;
+    final metaColor = selected ? accentMeta : cinematic.textSecondary;
     final hasProvider =
         widget.provider != null && widget.provider!.trim().isNotEmpty;
     final hasViewers = (widget.viewerCount ?? 0) > 0;
@@ -660,6 +688,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
         : const <String>[];
+    final footerLabel = (widget.footerLabel ?? '').trim();
+    final hasFooterLabel = footerLabel.isNotEmpty;
     final leftBarColor = _probeLeftBarColor();
     // Fill parent when a grid row stretches siblings to equal height.
     final face = AnimatedContainer(
@@ -670,7 +700,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         color: _backgroundColor(),
         // Full rectangle — probe strip is an *inner* accent, not a missing
         // left edge (transparent strip used to leave a gap on hover).
-        border: Border.all(color: _borderColor()),
+        border: Border.all(color: _borderColor(), width: _borderWidth()),
       ),
       child: Stack(
         fit: StackFit.passthrough,
@@ -719,10 +749,12 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: cinematic.textPrimary,
+                                        color: titleColor,
                                         fontSize: titleSize,
                                         height: 1.25,
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: selected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -744,14 +776,37 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                   ],
                                 ),
                               ],
-                              if (widget.footer != null) ...[
+                              if (hasFooterLabel) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  footerLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: metaColor,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ] else if (widget.footer != null) ...[
                                 const SizedBox(height: 4),
                                 widget.footer!,
+                              ],
+                              if (selected) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Playing',
+                                  style: TextStyle(
+                                    color: accentFg,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
                             ],
                           ),
                         ),
-                        if (hasProvider ||
+                        if (selected ||
+                            hasProvider ||
                             hasViewers ||
                             hasSeeders ||
                             showCopyMagnet) ...[
@@ -761,11 +816,19 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
+                                if (selected)
+                                  const Icon(
+                                    Icons.check_rounded,
+                                    color: ForjaShellColors.brandGreen,
+                                    size: 18,
+                                  ),
                                 if (hasProvider)
                                   ...providerLines.asMap().entries.map((entry) {
                                     return Padding(
                                       padding: EdgeInsets.only(
-                                        top: entry.key == 0 ? 0 : 2,
+                                        top: entry.key == 0 && !selected
+                                            ? 0
+                                            : 2,
                                       ),
                                       child: Text(
                                         entry.value,
@@ -773,7 +836,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.right,
                                         style: TextStyle(
-                                          color: cinematic.textSecondary,
+                                          color: metaColor,
                                           fontSize:
                                               metrics.torrentPanelMetaFontSize,
                                           fontWeight: FontWeight.w500,
@@ -783,21 +846,23 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                     );
                                   }),
                                 if (hasViewers) ...[
-                                  if (hasProvider) const SizedBox(height: 2),
+                                  if (hasProvider || selected)
+                                    const SizedBox(height: 2),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
                                         Icons.visibility_outlined,
                                         size: metrics.torrentPanelMetaFontSize,
-                                        color: cinematic.textSecondary
-                                            .withValues(alpha: 0.75),
+                                        color: metaColor.withValues(
+                                          alpha: selected ? 0.85 : 0.75,
+                                        ),
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
                                         '${widget.viewerCount}',
                                         style: TextStyle(
-                                          color: cinematic.textSecondary,
+                                          color: metaColor,
                                           fontSize:
                                               metrics.torrentPanelMetaFontSize,
                                           fontWeight: FontWeight.w500,

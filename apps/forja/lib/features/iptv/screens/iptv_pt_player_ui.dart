@@ -2799,17 +2799,7 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
                       viewerCount: src.liveViewerCount > 0
                           ? src.liveViewerCount
                           : null,
-                      footer: host == null
-                          ? null
-                          : Text(
-                              host,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: ForjaShellColors.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
+                      footerLabel: host,
                       selected: selected,
                       autofocus: selected &&
                           PlayerPopupListFocusScope.claimAutofocus(context),
