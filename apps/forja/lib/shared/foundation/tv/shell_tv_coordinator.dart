@@ -244,6 +244,26 @@ abstract final class ShellTvFocusCoordinator {
     return ShellTvFocus.focusCurrentNavTab();
   }
 
+  /// First rail tab in [navOrder] that can take focus (cold-start / overlay fallback).
+  static bool focusFirstNavTab() {
+    for (final id in _navOrder) {
+      if (ShellTvFocus.focusNavTab(id)) return true;
+    }
+    return false;
+  }
+
+  /// Retry [focusFirstNavTab] across frames (after ExcludeFocus / overlay tear-down).
+  static void scheduleFocusFirstNavTab({int maxAttempts = 6}) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusFirstNavTab()) return;
+        if (n < maxAttempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
+  }
+
   /// Remember the page control under focus before the rail takes D-pad.
   ///
   /// Details Play / hub hero often steal focus for a frame while leaving the

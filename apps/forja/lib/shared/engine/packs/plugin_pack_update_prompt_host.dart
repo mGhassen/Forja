@@ -3,6 +3,8 @@ import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_pack_update_dialog.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Listens for [PluginInstallCoordinator.pendingUpdatePrompt] and shows confirm.
@@ -23,6 +25,9 @@ class PluginPackUpdatePromptHost extends StatefulWidget {
 class _PluginPackUpdatePromptHostState extends State<PluginPackUpdatePromptHost> {
   List<EnginePackUpdateInfo>? _updates;
   bool _busy = false;
+
+  /// Focus before Settings / overlay — restored after Update or Cancel.
+  FocusNode? _returnFocus;
 
   @override
   void initState() {
@@ -54,6 +59,8 @@ class _PluginPackUpdatePromptHostState extends State<PluginPackUpdatePromptHost>
 
     _busy = true;
     try {
+      // Snapshot before openSettings / ExcludeFocus so Cancel lands back here.
+      _returnFocus = FocusManager.instance.primaryFocus;
       ShellBus.openSettings(
         categoryId: SettingsCategoryId.forjaPacks,
         enterDetail: true,
@@ -71,7 +78,35 @@ class _PluginPackUpdatePromptHostState extends State<PluginPackUpdatePromptHost>
 
   void _dismiss() {
     if (_updates == null) return;
+    final back = _returnFocus;
+    _returnFocus = null;
     setState(() => _updates = null);
+    if (!_tvFocusActive()) return;
+    _scheduleRestoreFocus(back);
+  }
+
+  bool _tvFocusActive() {
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    return policy?.useFocusableMoodChips ??
+        resolveShellProfile(context) == ShellProfile.tv;
+  }
+
+  void _scheduleRestoreFocus(FocusNode? back) {
+    var attempts = 0;
+    void attempt() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (back != null && back.canRequestFocus) {
+          back.requestFocus();
+          if (back.hasFocus) return;
+        }
+        if (ShellTvFocusCoordinator.focusFirstNavTab()) return;
+        attempts += 1;
+        if (attempts < 6) attempt();
+      });
+    }
+
+    attempt();
   }
 
   @override
