@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 3** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I259-T01 | Soft-pull `applyCloudLeanDiff` must not download/activate while `!splashDismissed` (Who's watching / profile splash owns hydrate via `ensureAllInstalled`) | ✅ |
 | 2 | I259-T02 | Batch hub Features activate: one navbar write + one sync push after multi-pack install (no N cloud upserts freezing the shell) | ✅ |
 | 3 | I259-T03 | Sign-out / profile reset keep disk scripts; lean soft-pull rehydrates from per-profile `pack.json` instead of re-downloading | ✅ |
+| 4 | I259-T04 | Features push exports raw `visibleIds` (no lean-stub strip); hub filter skips while hydration pending so cloud Features stop reverting on logout | ✅ |
 
 ---
 
@@ -32,6 +33,7 @@
 | 1 | I259-A01 | Sign in → Who's watching: no `[PluginInstall] cloud auto-install` until after profile splash / shell open; profile splash still hydrates packs | ⬜ |
 | 2 | I259-A02 | After profile lands, rail/Settings taps work; no navbar write/sync storm (`[]→[home]→…` with per-tab upsert) from pack activate | ⬜ |
 | 3 | I259-A03 | Logout → login → same profile: splash shows `0 silent install job(s)` (or rehydrate log) when scripts already on disk; no full pack re-download | ⬜ |
+| 4 | I259-A04 | Features: toggle tabs / reorder / star → logout → login → same Features state (not an older cloud set) | ⬜ |
 
 ---
 
@@ -44,8 +46,9 @@
 1. Soft-pull `importForja` → `applyCloudLeanDiff` downloaded and `PackHubFeatures.activate`d packs whenever `!bootWarm`, including **before** profile splash set `bootWarm` and before the shell was open (`splashDismissed == false`). Pack hydrate belongs to profile splash / logo intro `ensureAllInstalled(awaitCloudLean: true)`.
 2. `refreshAndActivateInstalled` called `activate` per pack; each `activate` awaited an immediate navigation cloud upsert → N sequential network round-trips + navbar notify storm.
 3. Sign-out / profile reset wipe the **prefs pack index** with `purgeDisk: false` (disk kept), then soft-pull re-adds lean stubs (`plugins: []`). `packNeedsDiskInstall` treated empty plugins as always-install → profile splash re-downloaded every pack even when JS was already under `accounts/{user}/profiles/{id}/`.
+4. First `pack.json` meta never landed (splash timed out mid-CDN install) so disk-rehydrate had nothing to restore — `scripts missing` + `11 silent install job(s)` kept firing despite 100+ `.js` files on disk.
 
-**After:** Soft-pull only updates lean membership until splash dismissed. Profile splash still downloads under `bootWarm`. Mid-session soft pull (shell open) still auto-installs. Hub activate batches tabs into one write + one push. Installs write `pack.json` next to scripts; lean apply / `ensureAllInstalled` rehydrate from disk when scripts are complete.
+**After:** Soft-pull only updates lean membership until splash dismissed. Profile splash still downloads under `bootWarm`. Mid-session soft pull (shell open) still auto-installs. Hub activate batches tabs into one write + one push. Installs write `pack.json` next to scripts; lean apply / `ensureAllInstalled` rehydrate from disk when scripts are complete. **Install prefers existing per-profile disk JS** (manifest-only when scripts already present) so the first post-fix splash finishes fast and writes `pack.json`.
 
 **Related:** [225](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) · [224](224-[open]-android-tv-addons-iptv-live-toggle-dead.md)
 

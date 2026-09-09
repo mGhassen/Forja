@@ -27,6 +27,7 @@
       ],
       "enrich": "my-list-enrich-tmdb",
       "nav": {
+        "tabId": "mylist",
         "label": "My List",
         "icon": "icons/nav.png",
         "accent": "#FBBF24"

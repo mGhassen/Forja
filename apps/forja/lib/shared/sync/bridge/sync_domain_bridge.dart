@@ -1028,14 +1028,10 @@ class SyncDomainBridge {
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
-    final raw = await _settings.getNavbarConfig();
-    final ids =
-        await PluginNavRegistry.filterOutUninstalledHubNavIds(raw);
-    if (ids.length != raw.length) {
-      debugPrint(
-        '[Sync] export nav drop uninstalled hubs $raw → $ids',
-      );
-    }
+    // Features visibleIds are source of truth for push. Do not strip hubs that
+    // are lean/pending — that wrote a thinner list to cloud and logout/login
+    // restored the old Features set (issue 259).
+    final ids = await _settings.getNavbarConfig();
     final tabOrder = await _settings.getNavbarTabOrder();
     final defaultTab = await _settings.getDefaultNavTab();
     final out = <String, dynamic>{

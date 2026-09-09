@@ -1,0 +1,64 @@
+---
+description: Plugins are community-owned — host/foundation must not hardcode pack inventory or plugin ids
+alwaysApply: true
+---
+
+# Plugins are community-owned — Forja does not know plugins
+
+Index: [external plugins vs host](./forja-external-plugins-host.mdc) · [catalog hubs](./catalog-hub-host-generic.mdc) · [host tests](./forja-host-tests-no-pack-contracts.mdc)
+
+## Model
+
+| Tree | Role |
+|------|------|
+| `apps/forja/`, `packages/rust/` | **Host / foundation** — generic runtime, kit, player, engine contracts |
+| `plugins/` | **Community packs** — temporary in this repo for development; wiped from the release product later |
+
+The root app ships **infrastructure to install, run, and render plugins**. It does **not** ship knowledge of which packs exist.
+
+`plugins/` today is convenience for local/dev. Treat every pack as **replaceable, renameable, and absent**. A user may install zero official hubs and only community packs.
+
+---
+
+## Forbidden in host (including `shared/engine`, `shared/foundation`, shell, settings)
+
+| Do not | Why |
+|--------|-----|
+| Hardcode hub slot / tab inventories (`home`, `anime`, `asian_drama`, `arabic`, `live_sports`, `my_list`→`mylist`, …) | Pack folder names are community inventory |
+| Map official slot → Features id tables in Dart | Packs declare `nav.tabId` / host uses opaque URL slot only |
+| Branch host behavior on plugin ids (`kisskh`, `tmdb`, `anilist`, `forjahq-*`) | Pack ids are not host API |
+| Seed nav / Features / PlatformDefaults with shipped hub lists | Empty host; packs register via `nav` on install |
+| Assert shipped pack trees in host tests | See [host tests](./forja-host-tests-no-pack-contracts.mdc) |
+
+```
+❌ PluginRegistry.officialHubNavIdForSlot = { home, anime, asian_drama, … }
+❌ switch (slot) { case 'live_sports': … }
+❌ PlatformDefaults / seedBuiltIns listing hub tab ids
+✅ hostNavId: authorTabId if set, else opaque forjaHqSlot(url), else p_<hash>
+✅ Pack manifest nav.tabId when prefs need a stable id different from folder name
+```
+
+---
+
+## Allowed in host (generic only)
+
+- Parse **opaque** manifest fields, `nav`, `open.surface`, kit layout
+- Path mechanics: `forjaHqSlot(url)` → last path segment (any string)
+- Pack **kind** buckets from URL tree shape (`plugins/providers`, `plugins/hubs`, …) as install UI grouping — not a hub name allowlist
+- Host **route surfaces** (`open.surface`) as kit destinations — not permission to list which packs exist
+
+---
+
+## Where pack knowledge lives
+
+| May know scrapers / pack ids / hub folders | Must not |
+|-------------------------------------------|----------|
+| `plugins/**` only | `apps/forja/**`, `packages/rust/**` (except opaque passthrough) |
+
+When adding a hub or provider: change the pack. Do not teach the host a new name.
+
+---
+
+## Foundation / design system
+
+Do not “fix” product gaps by hardcoding pack lists into foundation or engine registries. That messes with foundation: shared code stays **generic kits**, not a ForjaHQ catalog index.

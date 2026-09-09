@@ -5,30 +5,32 @@ alwaysApply: true
 
 # External plugins and the Flutter host
 
-Index: [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc) · [host tests — no pack contracts](./forja-host-tests-no-pack-contracts.mdc)
+Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc) · [host tests — no pack contracts](./forja-host-tests-no-pack-contracts.mdc)
 
 ## What “external plugins” means
 
-Forja ships **JavaScript packs** under repo-root `plugins/` — **not** compiled into the
-Flutter binary. The app **installs, caches, and runs** them at runtime via
+**Forja does not know plugins.** See [forja-plugins-community-owned.mdc](./forja-plugins-community-owned.mdc).
+
+Repo-root `plugins/` holds **community packs** for local/dev — **not** compiled into
+the Flutter binary, and **not** a host inventory. They will leave the release tree later.
+The app **installs, caches, and runs** whatever packs the user has via
 `PluginRegistry` + `EngineService`.
 
-| Pack tree | Role | Host entry |
-|-----------|------|------------|
-| `plugins/hubs/**` | Browse catalogs (home, anime, drama, …) | `MetaRuntime.run(pluginId, action, …)` |
-| `plugins/providers/**` | Stream extractors (VidLink, Megaplay, …) | `EngineService.runPlugin(…)` |
+| Pack tree (dev layout only) | Role | Host entry |
+|-----------------------------|------|------------|
+| `plugins/hubs/**` | Browse catalogs (any hub the user installs) | `MetaRuntime.run(pluginId, action, …)` |
+| `plugins/providers/**` | Stream extractors | `EngineService.runPlugin(…)` |
 | `plugins/live/**` | Live matches / schedules | Engine live APIs |
 | `plugins/catalog/**` | Stremio-style catalog addons | Engine catalog |
 
-Each pack has `manifest.json` → one or more **plugin ids** (`anilist`, `kisskh-hub`,
-`tmdb`, …), `engine.json` **types** (`anime`, `drama`, `movie`, …), optional `nav`
-(tabId, icon), and JS handlers.
+Each pack has `manifest.json` → plugin ids, `engine.json` **types**, optional `nav`
+(tabId, icon), and JS handlers. Those ids are **pack-owned**, never Dart allowlists.
 
 **Pack knowledge** (AniList, KissKh, Larozaa, TMDB match, scraper URLs, episode id
-formats) lives **only in `plugins/**` JS** (and optional enrich companions).
+formats, hub folder names) lives **only in `plugins/**` JS** (and optional enrich companions).
 
 The Flutter app (`apps/forja/`) is the **host**: shell, generic catalog kit, player,
-engine runtime. It must stay replaceable when packs or upstream APIs change.
+engine runtime. Foundation stays generic kits — not a ForjaHQ plugin index.
 
 ---
 

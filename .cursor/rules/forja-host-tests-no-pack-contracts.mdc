@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Host tests — no pack-name contracts
 
-Index: [external plugins vs host](./forja-external-plugins-host.mdc)
+Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [external plugins vs host](./forja-external-plugins-host.mdc)
 
 ## Plugins are external
 

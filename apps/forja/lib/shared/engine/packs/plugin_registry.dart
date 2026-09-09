@@ -155,9 +155,11 @@ class PluginRegistry {
 
   /// Features / rail id for a hub `nav` contribution (RFC-094).
   ///
-  /// Host owns chrome ids. Packs may omit `nav.tabId`.
-  /// - Official `plugins/hubs/<slot>/…` → stable Features id from URL slot
+  /// Host owns chrome ids as **opaque strings**. Packs may omit `nav.tabId`.
+  /// - Hub tree URL → `nav.tabId` if set, else opaque `forjaHqSlot` path segment
   /// - Community / arbitrary URL → `p_<urlHash>` (+ optional local label)
+  /// Never map slot names in Dart — packs that need a stable id ≠ folder declare
+  /// `nav.tabId` (e.g. My List folder `my_list` → `"tabId": "mylist"`).
   static String hostNavId({
     required String sourceUrl,
     required String authorTabId,
@@ -165,34 +167,13 @@ class PluginRegistry {
     final slot = forjaHqSlot(sourceUrl);
     final local = authorTabId.trim();
     if (slot != null) {
-      // Legacy manifests may still declare tabId — prefer it for prefs continuity.
       if (local.isNotEmpty) return local;
-      return officialHubNavIdForSlot(slot) ?? slot;
+      return slot;
     }
     final hash = EnginePack.urlHash(sourceUrl);
     final sanitized = local.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
     if (sanitized.isEmpty) return 'p_$hash';
     return 'p_${hash}_$sanitized';
-  }
-
-  /// Stable Features/rail id for an official hub folder under `plugins/hubs/`.
-  @visibleForTesting
-  static String? officialHubNavIdForSlot(String slot) {
-    const map = {
-      'home': 'home',
-      'anime': 'anime',
-      'asian_drama': 'asian_drama',
-      'arabic': 'arabic',
-      'kids': 'kids',
-      'cartoon': 'cartoon',
-      'aflem': 'aflem',
-      'shahid': 'shahid',
-      'live_sports': 'live_sports',
-      'live_sports_cards': 'live_sports_cards',
-      // Folder is my_list; Features key stayed `mylist`.
-      'my_list': 'mylist',
-    };
-    return map[slot];
   }
 
   /// IPTV VOD details pack — catalog protocol, not a shell hub tab.
@@ -1060,8 +1041,76 @@ class PluginRegistry {
 
     final byPath = <String, String>{};
     final byPathBytes = <String, List<int>>{};
-    await Future.wait([
+
+    // Sign-out keeps JS under the profile scope but clears prefs. Prefer disk
+    // before CDN so splash does not re-download every pack (issue 259).
+    if (!localCheckout) {
+      var reused = 0;
+      for (final plugin in scriptsNeeded) {
+        final body = await PluginScriptDiskStore.loadEngineScript(
+          sourceUrl: manifestUrl,
+          pluginId: plugin.id,
+        );
+        if (body == null || body.isEmpty) continue;
+        byPath[plugin.entry] = body;
+        byPathBytes[plugin.entry] = utf8.encode(body);
+        reused++;
+      }
+      for (final prelude in preludesNeeded) {
+        if (byPathBytes.containsKey(prelude)) continue;
+        final body = await PluginScriptDiskStore.loadEnginePrelude(
+          sourceUrl: manifestUrl,
+          preludeEntry: prelude,
+        );
+        if (body == null || body.isEmpty) continue;
+        byPath[prelude] = body;
+        byPathBytes[prelude] = utf8.encode(body);
+        reused++;
+      }
+      for (final path in filesToFetch) {
+        if (byPathBytes.containsKey(path)) continue;
+        final bytes = await PluginScriptDiskStore.loadPackRelativeFileBytes(
+          sourceUrl: manifestUrl,
+          relative: path,
+        );
+        if (bytes == null || bytes.isEmpty) continue;
+        byPathBytes[path] = bytes;
+        final lower = path.toLowerCase();
+        if (!lower.endsWith('.wasm')) {
+          try {
+            final text = utf8.decode(bytes);
+            if (text.isNotEmpty) byPath[path] = text;
+          } catch (_) {}
+        }
+        reused++;
+      }
+      if (reused > 0) {
+        // Count disk hits as completed steps so the splash bar moves.
+        fetchDone = 1 + [
+          for (final path in filesToFetch)
+            if (byPathBytes.containsKey(path)) path,
+        ].length;
+        onFetchProgress?.call(
+          PluginScriptFetchProgress(
+            completed: fetchDone,
+            total: fetchTotal,
+            label: 'Reused disk for ${pack.name}',
+            sourceUrl: manifestUrl,
+          ),
+        );
+        debugPrint(
+          '[PluginInstall] reuse disk for ${pack.name} '
+          '($reused file(s), skip CDN)',
+        );
+      }
+    }
+
+    final toFetch = [
       for (final path in filesToFetch)
+        if (!byPathBytes.containsKey(path)) path,
+    ];
+    await Future.wait([
+      for (final path in toFetch)
         () async {
           final url = resolveScriptUrl(manifestUrl, path);
           try {

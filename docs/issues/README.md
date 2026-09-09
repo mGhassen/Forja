@@ -262,7 +262,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [256-[fixed]-…](fixed/256-[fixed]-android-tv-plugin-pack-update-focus.md) | ATV plugin pack update dialog focus stays on shell | P1 | High | fixed | Complete · 2/2 · A 1/2 | [173](173-[open]-android-tv-update-dialog-focus-leak.md) |
 | [257-[open]-…](257-[open]-android-tv-guest-settings-only-dpad.md) | ATV guest / Settings-only D-pad stuck on Settings rail | P0 | High | open | 4/4 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) |
 | [258-[open]-…](258-[open]-shahid-android-drm-manual-qa.md) | Shahid Android DRM manual QA | P1 | Medium | open | 0/5 | [RFC-101](../rfc/101-[open]-shahid-hub-provider-exo-widevine.md) |
-| [259-[open]-…](259-[open]-cloud-pack-auto-install-before-profile-splash.md) | Cloud pack auto-install before profile splash | P0 | Critical | open | 3/3 · A 0/3 | [225](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) |
+| [259-[open]-…](259-[open]-cloud-pack-auto-install-before-profile-splash.md) | Cloud pack auto-install before profile splash | P0 | Critical | open | 4/4 · A 0/4 | [225](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) |
+| [260-[draft]-…](260-[draft]-host-hardcodes-specific-plugins.md) | Host still hardcodes specific plugins (community-owned audit) | P0 | Critical | draft | 0/6 · A 0/4 | [255](255-[open]-provider-runtime-config-builtins-debt.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

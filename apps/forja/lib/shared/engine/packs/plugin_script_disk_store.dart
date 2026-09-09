@@ -269,6 +269,23 @@ abstract final class PluginScriptDiskStore {
     }
   }
 
+  static Future<List<int>?> loadPackRelativeFileBytes({
+    required String sourceUrl,
+    required String relative,
+  }) async {
+    try {
+      final file = await _enginePackRelativeFile(sourceUrl, relative);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      return bytes.isEmpty ? null : bytes;
+    } catch (e) {
+      debugPrint(
+        '[PluginScriptDiskStore] loadPackRelativeFileBytes failed: $e',
+      );
+      return null;
+    }
+  }
+
   static Future<void> savePackRelativeFile({
     required String sourceUrl,
     required String relative,

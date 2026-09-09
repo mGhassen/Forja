@@ -82,14 +82,32 @@ abstract final class PluginNavRegistry {
   /// cloud Soft-pull cannot wipe Home before packs hydrate. Once at least one
   /// hub is scannable, ghost ids (leftover pack tab without its hub)
   /// pack are removed (issue 227 + sync re-import fight).
+  ///
+  /// While lean stubs / disk hydrate are in flight, **never** strip — a partial
+  /// hub scan would drop Features tabs that are still pending install and
+  /// Features soft-push would poison cloud with the stripped list (259).
   static Future<List<String>> filterOutUninstalledHubNavIds(
     List<String> ids,
   ) async {
+    if (await _hubNavHydrationPending()) {
+      return List<String>.from(ids);
+    }
     final hubs = await listNavHubs(requireEnabled: false);
     final installedHubIds = {
       for (final h in hubs)
         hostNavId(sourceUrl: h.$1.sourceUrl, authorTabId: h.$3.tabId),
     };
+    // Lean / not-yet-scannable ForjaHQ packs still own a host tab via URL slot.
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    for (final pack in packs) {
+      if (EnginePack.forjaHqSlot(pack.sourceUrl) == null) continue;
+      installedHubIds.add(
+        PluginRegistry.hostNavId(
+          sourceUrl: pack.sourceUrl,
+          authorTabId: '',
+        ),
+      );
+    }
     if (installedHubIds.isEmpty) return List<String>.from(ids);
     return [
       for (final id in ids)
