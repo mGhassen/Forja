@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Panel, PanelLabel } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -295,20 +296,22 @@ export function IptvAssignDialog({
 
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="inline-flex items-center gap-2 text-forja-text">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={bumpDealt}
-              onChange={(e) => setBumpDealt(e.target.checked)}
-              className="accent-forja-green"
+              onCheckedChange={setBumpDealt}
+              aria-label="Bump dealt_count"
             />
             Bump dealt_count
           </label>
           <label className="inline-flex items-center gap-2 text-forja-text">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={burnCredit}
-              onChange={(e) => setBurnCredit(e.target.checked)}
-              className="accent-forja-green"
+              onCheckedChange={setBurnCredit}
+              aria-label={
+                targetPortalCount > 1
+                  ? `Burn 1 credit each (${targetPortalCount})`
+                  : 'Burn 1 credit'
+              }
             />
             {targetPortalCount > 1
               ? `Burn 1 credit each (${targetPortalCount})`

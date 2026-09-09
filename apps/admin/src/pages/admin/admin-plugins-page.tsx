@@ -17,6 +17,7 @@ import {
   thClassName,
 } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -532,16 +533,20 @@ export function AdminPluginsPage() {
               <thead>
                 <tr>
                   <th className={thClassName}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      aria-label="Select all on page"
                       checked={
                         pageRows.length > 0 &&
                         pageRows.every((r) => selected.has(r.id))
                       }
-                      onChange={(e) => {
+                      indeterminate={
+                        pageRows.some((r) => selected.has(r.id)) &&
+                        !pageRows.every((r) => selected.has(r.id))
+                      }
+                      onCheckedChange={(checked) => {
                         setSelected((prev) => {
                           const next = new Set(prev)
-                          if (e.target.checked) {
+                          if (checked) {
                             for (const r of pageRows) next.add(r.id)
                           } else {
                             for (const r of pageRows) next.delete(r.id)
@@ -641,13 +646,13 @@ export function AdminPluginsPage() {
                     return (
                       <tr key={pack.id} className="border-t border-forja-border/60">
                         <td className={tdClassName}>
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            aria-label={`Select ${pack.id}`}
                             checked={selected.has(pack.id)}
-                            onChange={(e) => {
+                            onCheckedChange={(checked) => {
                               setSelected((prev) => {
                                 const next = new Set(prev)
-                                if (e.target.checked) next.add(pack.id)
+                                if (checked) next.add(pack.id)
                                 else next.delete(pack.id)
                                 return next
                               })
@@ -1226,26 +1231,26 @@ function EditPackDialog({
           </Select>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={official}
-            onChange={(e) => setOfficial(e.target.checked)}
+            onCheckedChange={setOfficial}
+            aria-label="Official"
           />
           Official
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={recommended}
-            onChange={(e) => setRecommended(e.target.checked)}
+            onCheckedChange={setRecommended}
+            aria-label="Recommended"
           />
           Recommended
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
+            onCheckedChange={setPublished}
+            aria-label="Published"
           />
           Published
         </label>
@@ -1367,18 +1372,18 @@ function BundleDialog({
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={recommended}
-            onChange={(e) => setRecommended(e.target.checked)}
+            onCheckedChange={setRecommended}
+            aria-label="Recommended"
           />
           Recommended
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
+            onCheckedChange={setPublished}
+            aria-label="Published"
           />
           Published
         </label>
@@ -1393,10 +1398,10 @@ function BundleDialog({
                   key={p.id}
                   className="flex items-center gap-2 text-sm"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={on}
-                    onChange={() => togglePack(p.id)}
+                    onCheckedChange={() => togglePack(p.id)}
+                    aria-label={`Include ${p.id}`}
                   />
                   <span className="min-w-0 flex-1 truncate">
                     {p.name}{' '}
