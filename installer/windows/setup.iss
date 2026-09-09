@@ -7,7 +7,7 @@
 ; (per-user) cannot install the system VC++ redistributable without elevation.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.5.21"
+  #define MyAppVersion "1.5.24"
 #endif
 #ifndef MyOutputBaseFilename
   #define MyOutputBaseFilename "Forja-Windows-Setup"

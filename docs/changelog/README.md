@@ -21,12 +21,13 @@ Changelogs track **releases** (git tags), not individual commits. The draft file
 
 | File | Codename | Since tag | Status |
 |------|----------|-----------|--------|
-| [1.5.x-[draft].md](1.5.x-[draft].md) | Berka | v1.5.21 | drafting |
+| [1.5.x-[draft].md](1.5.x-[draft].md) | Berka | v1.5.24 | drafting |
 
 ## Released
 
 | Version | Codename | File |
 |---------|----------|------|
+| 1.5.24 | Berka | [done/1.5.24-[released].md](done/1.5.24-[released].md) |
 | 1.5.21 | Berka | [done/1.5.21-[released].md](done/1.5.21-[released].md) |
 | 1.5.0 | Berka | — |
 | 1.4.232 | Atarin | [done/1.4.232-[released].md](done/1.4.232-[released].md) |
