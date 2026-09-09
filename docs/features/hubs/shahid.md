@@ -1,10 +1,10 @@
 # Shahid
 
-> Browse and watch Shahid movies and series with your Shahid account.
+> Browse Shahid movies and series. Sign in under Connected services. Desktop can browse the catalog; DRM titles do not open the player until desktop DRM play ships.
 
 ## What it is
 
-The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s top and related titles (series and movies). Playback uses the **Shahid** stream provider. Premium titles play on **Android** with the built-in ExoPlayer and Widevine using your Shahid login. Clear / free streams can play on other engines when available.
+The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s top and related titles (series and movies). Playback uses the **Shahid** stream provider. Almost all titles are DRM-protected; on desktop those rows stay out of Sources and Play shows a clear message instead of opening a broken player.
 
 ## How to open it
 
@@ -17,19 +17,17 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 - Browse top series / movies and related rails
 - Search Shahid titles
-- Open details and play episodes / movies
-- Sign in under Connected services so premium playout can request a license on Android
+- Open details
+- Sign in under Connected services for premium playout / license
 
 ## Setup
 
 - Shahid account via **Settings → Addons → Connected services → Shahid** (Login opens Shahid web; Logout)
-- Android device for Widevine / DRM titles (phone or Android TV)
 
 ## Tips
 
-- Almost all Shahid titles are Widevine DRM (DASH). Playback needs **Android ExoPlayer** plus Shahid login under Connected services
-- Desktop and iOS hide DRM sources — Sources looks empty there even when resolve works on Android
-- VIP titles return nothing until you sign in; some free episodes still need a DRM license on Android
+- DRM titles need a license after resolve. Until desktop DRM play ships, Play / Sources on Mac will not open MediaKit for those titles.
+- VIP titles return nothing until you sign in.
 
 ## Related
 

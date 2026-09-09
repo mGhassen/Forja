@@ -5,9 +5,10 @@
  * Latest:     {RELEASE_CDN_URL}/latest/{filename}
  * Changelog:  {RELEASE_CDN_URL}/changelog/index.json + changelog/{version}.md
  *
- * The portal loads notes via `/api/changelog` and the latest installer list via
- * `/api/latest-release` (server fetches R2) because the CDN custom domain does
- * not send CORS for browser origins.
+ * The portal loads notes via `/api/changelog`, the latest installer list via
+ * `/api/latest-release`, and older installers via `/api/release-archive`
+ * (server fetches R2) because the CDN custom domain does not send CORS for
+ * browser origins.
  */
 
 export function releaseCdnPublicUrl(

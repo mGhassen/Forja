@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
@@ -180,12 +181,70 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     final error = _errorByTab[_tabId];
     final rows = _rowsByTab[_tabId] ?? const [];
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!widget.embedded) _header(context),
         if (widget.showTabs && widget.tabs.length > 1) _tabs(context),
         Expanded(child: _body(context, loading: loading, error: error, rows: rows)),
+      ],
+    );
+    // Cards / hero details: soft-edge dark scrim behind streams (old live details).
+    if (widget.embedded) return _embeddedScrim(column);
+    return column;
+  }
+
+  /// Soft-edge blurred dark panel behind hero-embedded stream lists.
+  Widget _embeddedScrim(Widget child) {
+    Shader fadeMask(Rect bounds, Alignment begin, Alignment end) {
+      return LinearGradient(
+        begin: begin,
+        end: end,
+        colors: const [
+          Color(0x00FFFFFF),
+          Color(0xFFFFFFFF),
+          Color(0xFFFFFFFF),
+          Color(0x00FFFFFF),
+        ],
+        stops: const [0.0, 0.06, 0.88, 1.0],
+      ).createShader(bounds);
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          left: 0,
+          right: 0,
+          top: -28,
+          bottom: 0,
+          child: IgnorePointer(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) =>
+                  fadeMask(bounds, Alignment.topCenter, Alignment.bottomCenter),
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => fadeMask(
+                  bounds,
+                  Alignment.centerLeft,
+                  Alignment.centerRight,
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.38),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
+          child: child,
+        ),
       ],
     );
   }
@@ -312,8 +371,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         ),
       );
     }
-    // Hero details (embedded): 2-col stream grid on wide — matches old live
-    // match details. Side panel stays single-column ListView.
+    // Hero details (embedded): column-major 2-col grid + soft dark scrim.
+    // Side panel stays single-column ListView (no scrim).
     if (widget.embedded) {
       return _embeddedSourcesGrid(context, rows);
     }
@@ -326,7 +385,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       itemCount: rows.length,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (context, i) => _tile(context, rows[i], i),
+      itemBuilder: (context, i) => _tile(
+        context,
+        rows[i],
+        i,
+        upToTabs: i == 0,
+      ),
     );
     if (tvTabId == null) return list;
     return TvKitRow(
@@ -340,42 +404,62 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     );
   }
 
-  /// Pre-kit live details: 2 columns when wide, 1 when narrow / TV compact.
+  /// Hero details: 2 columns when wide, 1 when narrow / TV compact.
+  ///
+  /// Wide layout is **column-major** — fill the left column top→bottom first,
+  /// then the right column (same priority order as a single list).
   Widget _embeddedSourcesGrid(BuildContext context, List<KitSourcesRow> rows) {
     const gap = 10.0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final metrics = ShellScope.metricsOf(context);
         final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
-        final crossCount = wide ? 2 : 1;
 
-        if (crossCount == 1) {
+        if (!wide) {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: gap),
-            itemBuilder: (context, i) => _tile(context, rows[i], i),
+            itemBuilder: (context, i) => _tile(
+              context,
+              rows[i],
+              i,
+              upToTabs: i == 0,
+            ),
           );
         }
 
-        final rowCount = (rows.length + 1) ~/ 2;
+        // Column-major: left = first half, right = remainder.
+        final leftCount = (rows.length + 1) ~/ 2;
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-          itemCount: rowCount,
+          itemCount: leftCount,
           itemBuilder: (context, row) {
-            final left = row * 2;
-            final right = left + 1;
+            final left = row;
+            final right = leftCount + row;
             return Padding(
               padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: _tile(context, rows[left], left)),
+                    Expanded(
+                      child: _tile(
+                        context,
+                        rows[left],
+                        left,
+                        upToTabs: row == 0,
+                      ),
+                    ),
                     const SizedBox(width: gap),
                     Expanded(
                       child: right < rows.length
-                          ? _tile(context, rows[right], right)
+                          ? _tile(
+                              context,
+                              rows[right],
+                              right,
+                              upToTabs: row == 0,
+                            )
                           : const SizedBox.shrink(),
                     ),
                   ],
@@ -388,7 +472,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     );
   }
 
-  Widget _tile(BuildContext context, KitSourcesRow row, int index) {
+  Widget _tile(
+    BuildContext context,
+    KitSourcesRow row,
+    int index, {
+    bool upToTabs = false,
+  }) {
     final footer = (row.footer ?? '').trim();
     final tvTabId = _effectiveTvTabId(context);
     return SourcesPanelChannelTile(
@@ -402,7 +491,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       tvItemIndex: index,
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
-      onUpEdge: index == 0 && tvTabId != null
+      onUpEdge: upToTabs && tvTabId != null
           ? () => SourcesPanelTv.focusKindItem()
           : null,
       onLeftEdge: widget.onTabsLeftEdge,

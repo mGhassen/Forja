@@ -427,6 +427,7 @@ class MetaItem {
     required this.name,
     this.poster = '',
     this.background = '',
+    this.logo = '',
     this.description = '',
     this.rating,
     this.releaseInfo = '',
@@ -453,6 +454,8 @@ class MetaItem {
   final String name;
   final String poster;
   final String background;
+  /// Clear title treatment / wordmark for hero chrome (pack absolute URL).
+  final String logo;
   final String description;
   final double? rating;
   final String releaseInfo;
@@ -517,9 +520,10 @@ class MetaItem {
     return MetaItem(
       id: (j['id'] ?? '').toString(),
       type: (j['type'] ?? 'movie').toString(),
-      name: (j['name'] ?? '').toString(),
+      name: (j['name'] ?? j['title'] ?? '').toString(),
       poster: (j['poster'] ?? '').toString(),
       background: (j['background'] ?? '').toString(),
+      logo: (j['logo'] ?? '').toString(),
       description: (j['description'] ?? '').toString(),
       rating: (j['rating'] as num?)?.toDouble(),
       releaseInfo: (j['releaseInfo'] ?? '').toString(),
@@ -576,6 +580,7 @@ class MetaItem {
         'name': name,
         if (poster.isNotEmpty) 'poster': poster,
         if (background.isNotEmpty) 'background': background,
+        if (logo.isNotEmpty) 'logo': logo,
         if (description.isNotEmpty) 'description': description,
         if (rating != null) 'rating': rating,
         if (releaseInfo.isNotEmpty) 'releaseInfo': releaseInfo,
@@ -614,6 +619,7 @@ class MetaItem {
     String? name,
     String? poster,
     String? background,
+    String? logo,
     String? description,
     List<MetaVideo>? videos,
     bool? airing,
@@ -628,6 +634,7 @@ class MetaItem {
         name: name ?? this.name,
         poster: poster ?? this.poster,
         background: background ?? this.background,
+        logo: logo ?? this.logo,
         description: description ?? this.description,
         rating: rating,
         releaseInfo: releaseInfo,

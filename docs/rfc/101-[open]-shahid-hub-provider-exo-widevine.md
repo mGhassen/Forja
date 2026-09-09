@@ -102,8 +102,11 @@ Generic host pieces (stream `drm` field, pack secrets) stay pack-agnostic so oth
 - Arabic/Larozaa changes
 - Portal `db push` (admin publishes catalog separately)
 
+**Desktop play:** product target is FairPlay on macOS — [RFC-103](103-[planned]-shahid-desktop-fairplay.md). Do not treat Android Exo as the desktop UX.
+
 ## Related
 
+- [RFC-103](103-[planned]-shahid-desktop-fairplay.md) — macOS FairPlay (desktop product path)
 - [RFC-029](029-[open]-dual-built-in-playback-engines.md)
 - [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md)
 - [plugin.video.shahid](https://github.com/chamchenko/plugin.video.shahid)

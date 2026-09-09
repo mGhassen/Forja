@@ -43,6 +43,7 @@ class HubHeroSlide {
     this.genres = const [],
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
+    this.logoUrl,
     this.tmdbId,
     this.tmdbMediaType = 'tv',
     this.matchTitle,
@@ -66,6 +67,8 @@ class HubHeroSlide {
   final List<String> genres;
   final BoxFit imageFit;
   final Alignment imageAlignment;
+  /// Pack-supplied clear title logo (absolute URL). Prefer over TMDB enrich.
+  final String? logoUrl;
   final int? tmdbId;
   final String tmdbMediaType;
   /// TMDB search title (e.g. AniList english) — display stays [title].
@@ -358,6 +361,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           context,
           pageBottomBleed: widget.pageBottomChild != null,
         );
+      }
+      for (final slide in slides) {
+        final packLogo = (slide.logoUrl ?? '').trim();
+        if (packLogo.isNotEmpty) {
+          _heroLogos.putIfAbsent(slide.id, () => packLogo);
+        }
       }
       final items = slides.map(_HeroItem.fromSlide).toList();
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -691,7 +700,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       if (!validTmdb) {
         if (!mounted) return;
         setState(() {
-          if (needsLogo) _heroLogos[id] = '';
+          if (needsLogo) {
+            final packLogo = (slide.logoUrl ?? '').trim();
+            _heroLogos[id] = packLogo;
+          }
           if (needsOverview) _heroOverviews[id] = '';
           if (needsPrimaryBackdrop) _heroBackdropUrls[id] = const [];
         });
@@ -714,12 +726,15 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
 
         if (needsLogo) {
-          String logoUrl = '';
-          try {
-            final logoPath =
-                await _api.getLogoPath(tmdbId, mediaType: mediaType);
-            logoUrl = logoPath.isNotEmpty ? TmdbApi.getImageUrl(logoPath) : '';
-          } catch (_) {}
+          String logoUrl = (slide.logoUrl ?? '').trim();
+          if (logoUrl.isEmpty) {
+            try {
+              final logoPath =
+                  await _api.getLogoPath(tmdbId, mediaType: mediaType);
+              logoUrl =
+                  logoPath.isNotEmpty ? TmdbApi.getImageUrl(logoPath) : '';
+            } catch (_) {}
+          }
           if (!mounted) return;
           setState(() => _heroLogos[id] = logoUrl);
         }
@@ -1583,11 +1598,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }) {
     final movie = heroItem.movie;
     final tmdbId = heroItem.tmdbId;
-    if (movie != null || (tmdbId != null && tmdbId > 0)) {
+    final logo = (_heroLogos[heroItem.id] ?? '').trim();
+    if (movie != null ||
+        (tmdbId != null && tmdbId > 0) ||
+        logo.isNotEmpty) {
       return HeroTitle(
         key: ValueKey(heroItem.id),
         movie: movie ?? _heroItemAsMovie(heroItem),
-        logoUrl: _heroLogos[heroItem.id],
+        logoUrl: logo.isEmpty ? null : logo,
         style: HeroTitleStyle.home,
         isLandscape: isLandscape,
         desktop: desktop,

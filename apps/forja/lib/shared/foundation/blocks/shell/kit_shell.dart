@@ -1065,6 +1065,7 @@ class _KitShellState extends State<KitShell>
       genres: item.genres,
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
+      logoUrl: item.logo.trim().isEmpty ? null : item.logo.trim(),
       tmdbId: tmdbFromIds ?? (hubNative ? null : (open?.idInt ?? movie?.id)),
       tmdbMediaType: tmdbMediaType,
       movie: movie,

@@ -342,4 +342,7 @@ String? hubTmdbLogoUrl(RichMediaDetails? rich) {
   return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
 }
 
-String? hubMetaLogoUrl(MetaItem meta) => null;
+String? hubMetaLogoUrl(MetaItem meta) {
+  final u = resolveCoverUrl(meta.logo.trim());
+  return u.isEmpty ? null : u;
+}

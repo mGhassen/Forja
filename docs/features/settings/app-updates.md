@@ -47,7 +47,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater and CDN manifest track each ABI’s own latest version. On the [web download page](https://forjahq.xyz/download), each APK has its own download button.
 - macOS releases publish `Forja-{version}-macos-arm64.dmg` and `Forja-{version}-macos-x86_64.dmg`; the updater offers only the host-arch version (split-arch latest can leave Intel behind arm64). The [web download page](https://forjahq.xyz/download) shows a button per architecture.
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
-- Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached
+- Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached (use **Other versions** there for a recent prior build still on the CDN)
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats
 
 ## Related

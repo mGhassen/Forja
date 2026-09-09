@@ -6,6 +6,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/foundation/blocks/play/kit_episodes.dart';
 import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
 import 'package:forja/shared/foundation/blocks/play/play_session.dart';
@@ -17,6 +18,7 @@ import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
@@ -239,6 +241,7 @@ Future<void> runEngineAutoPlay({
   final inFlight = <String>{};
   var streams = <Map<String, dynamic>>[];
   var fetchedIds = <String>{};
+  var sawPlatformBlockedDrmOnly = false;
 
   void abortPool() {
     fetchGen++;
@@ -402,10 +405,14 @@ Future<void> runEngineAutoPlay({
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
     if (cached != null) {
       final wantAudio = audioCategory ?? activeSession.audioCategory;
-      streams = filterStreamsByAudioCategory(
+      final rawCached = filterStreamsByAudioCategory(
         List<Map<String, dynamic>>.from(cached.streams),
         wantAudio,
       );
+      if (streamsArePlatformBlockedDrmOnly(rawCached)) {
+        sawPlatformBlockedDrmOnly = true;
+      }
+      streams = omitPlatformBlockedDrmStreams(rawCached);
       fetchedIds = Set<String>.from(cached.fetchedPluginIds);
       // Empty fetches are terminal for Sources reopen — not for green Play.
       // Drop them so pack updates / flaky upstreams get a fresh extract race.
@@ -596,13 +603,18 @@ Future<void> runEngineAutoPlay({
       fetchedIds.add(pluginId);
       inFlight.remove(pluginId);
       streams.removeWhere((s) => engineStreamBelongsToPlugin(s, pluginId));
-      if (batch != null && batch.streams.isNotEmpty) {
-        streams.addAll(batch.streams);
+      final raw = batch?.streams ?? const <Map<String, dynamic>>[];
+      if (streamsArePlatformBlockedDrmOnly(raw)) {
+        sawPlatformBlockedDrmOnly = true;
+      }
+      final playable = omitPlatformBlockedDrmStreams(raw);
+      if (playable.isNotEmpty) {
+        streams.addAll(playable);
       }
       publishCache();
       await onPluginDone(
         pluginId,
-        List<Map<String, dynamic>>.from(batch?.streams ?? const []),
+        playable,
       );
     }
 
@@ -827,6 +839,14 @@ Future<void> runEngineAutoPlay({
         loadingSession: loadingSession,
         isAborted: playAborted,
       );
+      return;
+    }
+
+    if (sawPlatformBlockedDrmOnly && streams.isEmpty) {
+      dismissLoading();
+      if (context.mounted) {
+        ForjaToast.info(kStreamDrmAndroidOnlyMessage);
+      }
       return;
     }
 

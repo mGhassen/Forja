@@ -384,6 +384,15 @@ function authLogout() {
 function formatImg(url, kind) {
   url = String(url || '');
   if (!url) return '';
+  // Title logos: CDN default JPEG bakes a black matte; forced 3:1 crops
+  // clip calligraphy. Original canvas + type=png keeps alpha.
+  if (kind === 'logo') {
+    var base = url.split('?')[0];
+    if (base.indexOf('/mediaObject') < 0) {
+      base = base.replace('mediaObject', '/mediaObject');
+    }
+    return base + '?type=png';
+  }
   var h = 450;
   var w = 300;
   if (kind === 'fanart' || kind === 'background') {
@@ -428,18 +437,22 @@ function productToMeta(item) {
   ).toUpperCase();
   var isMovie = productType === 'MOVIE';
   var img = item.image || {};
+  var title = item.title || '';
   var poster = formatImg(img.posterImage || img.thumbnailImage || '', 'poster');
   var bg = formatImg(
-    img.thumbnailImage || img.posterImage || '',
+    img.thumbnailImage || img.posterImage || item.mainImage || '',
     'background',
   );
+  var logo = formatImg(item.logoTitleImage || '', 'logo');
   return {
     id: 'shahid:' + id,
     type: isMovie ? 'movie' : 'series',
-    title: item.title || '',
+    name: title,
+    title: title,
     description: item.description || '',
     poster: poster,
     background: bg,
+    logo: logo,
     open: metaOpen(id, isMovie ? 'MOVIE' : 'SHOW'),
   };
 }
@@ -719,12 +732,21 @@ function details(ctx) {
         var meta = {
           id: 'shahid:' + id,
           type: playlist.id ? 'series' : 'movie',
+          name: title,
           title: title,
           description: description,
           poster: formatImg(img.posterImage || '', 'poster'),
           background: formatImg(
-            img.thumbnailImage || img.posterImage || '',
+            img.thumbnailImage ||
+              img.posterImage ||
+              show.mainImage ||
+              model.mainImage ||
+              '',
             'background',
+          ),
+          logo: formatImg(
+            show.logoTitleImage || model.logoTitleImage || '',
+            'logo',
           ),
           open: metaOpen(id, playlist.id ? 'SHOW' : 'MOVIE'),
           videos: [],

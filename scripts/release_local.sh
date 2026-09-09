@@ -33,8 +33,9 @@ set -euo pipefail
 #                                    same IDs as release_ci.sh / Actions (one arch per flag).
 #                                    Legacy: macos → macos_arm64; android_tv → both TV ABIs.
 #                                    Interactive pick if unset; default: macos_arm64 (+windows if VM)
-#   FORJA_SYNC_REPO=forjahq/forja    org mirror; force-push after origin (branch + release tag)
-#   FORJA_SYNC_SKIP=1                skip org mirror push / pull
+#   FORJA_SYNC_REPO=forjahq/forja    org mirror for the separate `sync` / `sync-from` commands
+#   FORJA_SYNC_SKIP=1                skip org mirror when running `sync` / `sync-from`
+#                                    (publish / tag / bump never sync)
 #   NONINTERACTIVE=1                 skip confirm / platform prompts
 #   FORJA_SKIP_ENGINE_BUMP=1         skip Rust engine bump during app bump / New version
 #   FORJA_HQ_MANIFEST_SOURCE=github|local
@@ -1617,12 +1618,7 @@ cmd_publish() {
   confirm "Upload dist assets for $ver to GitHub + R2?" || die "aborted"
   publish_github "$ver" assets
   publish_r2 "$ver"
-  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
-    sync_to_forjahq "$tag"
-  else
-    warn "Skipped mirror sync (${SYNC_REPO})"
-  fi
-  ok "Done: $tag"
+  ok "Done: $tag (mirror sync is separate: ./scripts/release_local.sh sync $tag)"
 }
 
 # Selective publish used by the interactive tools wizard.
@@ -1823,12 +1819,7 @@ cmd_tag() {
   build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
-  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
-    sync_to_forjahq "$tag"
-  else
-    warn "Skipped mirror sync (${SYNC_REPO})"
-  fi
-  ok "Done: $tag"
+  ok "Done: $tag (mirror sync is separate: ./scripts/release_local.sh sync $tag)"
 }
 
 # Bump Rust engine semver (independent of app). Writes:
@@ -1994,16 +1985,11 @@ cmd_bump() {
   git tag -a "v${ver}" -m "Forja ${ver}"
   git push origin HEAD
   git push origin "v${ver}"
-  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
-    sync_to_forjahq "v${ver}"
-  else
-    warn "Skipped mirror sync (${SYNC_REPO})"
-  fi
 
   build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
-  ok "Done: v${ver}${engine_ver:+ · engine ${engine_ver}}"
+  ok "Done: v${ver}${engine_ver:+ · engine ${engine_ver}} (mirror sync is separate: ./scripts/release_local.sh sync v${ver})"
 }
 
 wizard_release_tag() {
@@ -2040,18 +2026,15 @@ wizard_release_tag() {
     detail="Tag:       ${tag}
 Platforms: $(platforms)
 Action:    build + publish → GitHub + R2
-Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
+Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes (separate sync after) → ${SYNC_REPO}" || echo no)
 Note:      Android TV → Downloader codes prompted after R2 upload"
     if ui_confirm_screen 4 6 "Confirm release" "$detail" 1; then
       ui_raw_off
       ui_clear
-      if ((do_sync)); then
-        FORJA_SYNC_SKIP=0
-      else
-        FORJA_SYNC_SKIP=1
-      fi
-      export FORJA_SYNC_SKIP
       NONINTERACTIVE=1 cmd_tag "$tag"
+      if ((do_sync)); then
+        NONINTERACTIVE=1 cmd_sync "$tag"
+      fi
       return 0
     else
       rc=$?
@@ -2124,7 +2107,7 @@ Skip if this release has no engine change (FORJA_SKIP_ENGINE_BUMP)." 1; then
 Engine:    $([[ "${FORJA_SKIP_ENGINE_BUMP:-}" == "1" ]] && echo skip || echo "same bump → crates + packages/rust")
 Platforms: $(platforms)
 Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
-Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
+Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes (separate sync after) → ${SYNC_REPO}" || echo no)
 Action:    freeze changelog → commit → tag → push → build + publish
 Note:      Android TV selected → Downloader codes prompted after R2 upload"
     if ui_confirm_screen 6 8 "Confirm new version" "$detail" 1; then
@@ -2151,13 +2134,10 @@ Note:      Android TV selected → Downloader codes prompted after R2 upload"
       fetch_tags
       ok "backfill done — arc tip: $(default_release_tag)"
     fi
-    if ((do_sync)); then
-      FORJA_SYNC_SKIP=0
-    else
-      FORJA_SYNC_SKIP=1
-    fi
-    export FORJA_SYNC_SKIP
     NONINTERACTIVE=1 cmd_bump "$bump"
+    if ((do_sync)); then
+      NONINTERACTIVE=1 cmd_sync "v$(grep '^version:' "$APP_DIR/pubspec.yaml" | sed 's/version: *//' | cut -d+ -f1)"
+    fi
     return 0
   done
 }
@@ -2494,13 +2474,10 @@ interactive_menu() {
       1)
         pick_platforms
         tag="$(pick_tag_interactive)"
-        if confirm_yes "Also sync branch + tag to ${SYNC_REPO}?"; then
-          FORJA_SYNC_SKIP=0
-        else
-          FORJA_SYNC_SKIP=1
-        fi
-        export FORJA_SYNC_SKIP
         cmd_tag "$tag"
+        if confirm_yes "Also sync branch + tag to ${SYNC_REPO}?"; then
+          cmd_sync "$tag"
+        fi
         ;;
       2)
         pick_platforms
@@ -2513,13 +2490,14 @@ interactive_menu() {
           cmd_backfill
           fetch_tags
         fi
-        if confirm_yes "Also sync branch + tag to ${SYNC_REPO}?"; then
-          FORJA_SYNC_SKIP=0
-        else
-          FORJA_SYNC_SKIP=1
+        do_sync=0
+        if confirm_yes "Also sync branch + tag to ${SYNC_REPO} after publish?"; then
+          do_sync=1
         fi
-        export FORJA_SYNC_SKIP
         cmd_bump "$bump"
+        if ((do_sync)); then
+          cmd_sync "v$(grep '^version:' "$APP_DIR/pubspec.yaml" | sed 's/version: *//' | cut -d+ -f1)"
+        fi
         ;;
       3)
         if confirm "Dry-run only (no push)?"; then

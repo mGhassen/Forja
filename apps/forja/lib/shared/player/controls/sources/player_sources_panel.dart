@@ -18,6 +18,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/resolvers/episode_torrent_resolver.dart';
 import 'package:forja/shared/playback/probe/sources_panel_stream_probe.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
@@ -328,6 +329,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int _nuvioPoolLimit = kNuvioScraperBatchDesktop;
 
   List<Map<String, dynamic>> _engineStreams = [];
+  /// Plugin returned DRM rows that cannot play on this platform (Sources omit).
+  bool _engineHadPlatformBlockedDrm = false;
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   bool _engineAllMode = false;
@@ -573,7 +576,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       case 'engine':
         final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
         if (cached != null) {
-          _engineStreams = cached.streams;
+          _applyEngineStreams(cached.streams, replace: true);
           _engineFetchedPluginIds = cached.fetchedPluginIds;
         }
       case 'nuvio':
@@ -1492,7 +1495,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (cached != null) {
         if (!mounted) return;
         setState(() {
-          _engineStreams = cached.streams;
+          _applyEngineStreams(cached.streams, replace: true);
           _engineFetchedPluginIds = cached.fetchedPluginIds;
           _error = null;
         });
@@ -1917,9 +1920,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<Map<String, dynamic>> get _filteredEngine {
-    return _engineStreams
+    return omitPlatformBlockedDrmStreams(_engineStreams)
         .where((s) => _engineStreamSelected(s) && _matchesStreamFilters(s))
         .toList();
+  }
+
+  void _applyEngineStreams(
+    Iterable<Map<String, dynamic>> rows, {
+    required bool replace,
+  }) {
+    final playable = omitPlatformBlockedDrmStreams(rows);
+    if (streamsArePlatformBlockedDrmOnly(rows)) {
+      _engineHadPlatformBlockedDrm = true;
+    }
+    if (replace) {
+      _engineStreams = playable;
+    } else {
+      _engineStreams.addAll(playable);
+    }
   }
 
   int _compare(TorrentResult a, TorrentResult b) {
@@ -2880,7 +2898,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         (s) => engineStreamBelongsToPlugin(s, pluginId),
       );
       if (batch != null && batch.streams.isNotEmpty) {
-        _engineStreams.addAll(batch.streams);
+        _applyEngineStreams(batch.streams, replace: false);
       }
     });
     CatalogSourcesSessionCache.writeEngine(
@@ -2981,6 +2999,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     setState(() {
       if (reset) {
         _engineStreams = [];
+        _engineHadPlatformBlockedDrm = false;
         _engineFetchedPluginIds = {};
         _engineInFlightPluginIds.clear();
       } else if (refresh) {
@@ -2997,7 +3016,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineFetching = stillPending;
       if (!stillPending) _engineInFlightPluginIds.clear();
       if (!stillPending && _engineStreams.isEmpty) {
-        _error = 'No streams found from selected Forja plugins';
+        _error = _engineHadPlatformBlockedDrm
+            ? kStreamDrmAndroidOnlyMessage
+            : 'No streams found from selected Forja plugins';
       }
     });
   }
@@ -3419,7 +3440,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         key: _catalogCacheKey,
         currentStreams: _engineStreams,
         apply: (streams, fetched) {
-          _engineStreams = streams;
+          _applyEngineStreams(streams, replace: true);
           _engineFetchedPluginIds = fetched;
         },
       );
