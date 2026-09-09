@@ -41,7 +41,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "pluginCount": 1,
       "tags": [
         "home",
@@ -90,7 +90,7 @@
       "official": true,
       "recommended": true,
       "author": "ForjaHQ",
-      "version": "1.9.9",
+      "version": "1.10.0",
       "pluginCount": 7,
       "tags": [
         "live",

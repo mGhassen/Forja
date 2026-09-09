@@ -46,3 +46,5 @@
 **Still open (broader):** [190](../190-[open]-forja-engine-parallel-jsc-crash.md) / RFC-064 — remaining flutter_js Engine paths off main-thread JSC; EngineJS liveFeed bridge would remove hub feed flutter_js entirely.
 
 Manual macOS Live Sports smoke (`I237-A01`) still unverified in this turn.
+
+**Follow-up (2026-09-09):** I237-T02’s `_flutterJsDepth > 0` skip was too broad — sibling `metaFeedCatalogProvider` scrapes returned empty while hub layout held flutter_js (log still showed `[Streamed] streams=N`). Narrowed in [251](251-[fixed]-live-sports-streamed-empty-nested-skip.md).

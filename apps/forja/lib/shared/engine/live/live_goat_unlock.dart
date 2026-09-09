@@ -4,17 +4,20 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/engine/live/live_goat_webview_unlock.dart';
 import 'package:forja/shared/engine/live/live_gasm_webview_unlock.dart';
+import 'package:forja/shared/engine/live/live_unlock_modules.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 /// Host bridge for `ctx.live.goatUnlock` / `ctx.live.gasmUnlock` —
 /// desktop Node WASM decrypt, Android/iOS off-screen WebView fallback.
+///
+/// Crack scripts + wasm come from the live pack ([LiveUnlockModules]); this
+/// class owns Node/WebView runtime only (RFC-099).
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
@@ -37,9 +40,6 @@ class LiveGoatUnlock {
     return done.future;
   }
 
-  static const _assetRoot = 'assets/plugins/live/goat';
-  static const _gasmAssetRoot = 'assets/plugins/live/gasm';
-  static const _sportsEmbedAssetRoot = 'assets/plugins/live/sportsembed';
   static const _embedOrigin = 'https://embed.st';
   static const _embedIndiaOrigin = 'https://embedindia.st';
   static const _watchfootyReferer = 'https://watchfooty.st/';
@@ -1264,16 +1264,22 @@ class LiveGoatUnlock {
   }
 
   static Future<void> _refreshGoatAssets(String dir) async {
-    await _writeAsset('$_assetRoot/unlock.mjs', File('$dir/unlock.mjs'));
-    await _writeAsset(
-      '$_assetRoot/vendor/lock.wasm',
+    await _writeModule(
+      LiveUnlockModules.goat,
+      'unlock.mjs',
+      File('$dir/unlock.mjs'),
+    );
+    await _writeModule(
+      LiveUnlockModules.goat,
+      'vendor/lock.wasm',
       File('$dir/vendor/lock.wasm'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/lock-esm.mjs',
+    await _writeModule(
+      LiveUnlockModules.goat,
+      'vendor/lock-esm.mjs',
       File('$dir/vendor/lock-esm.mjs'),
     );
-    debugPrint('[LiveGoatUnlock] refreshed goat assets → $dir');
+    debugPrint('[LiveGoatUnlock] refreshed goat modules → $dir');
   }
 
   static Future<void> _prepareGoatDir(String node) async {
@@ -1293,8 +1299,9 @@ class LiveGoatUnlock {
     await dir.create(recursive: true);
 
     await _refreshGoatAssets(dir.path);
-    await _writeAsset(
-      '$_assetRoot/package.json',
+    await _writeModule(
+      LiveUnlockModules.goat,
+      'package.json',
       File('${dir.path}/package.json'),
     );
 
@@ -1345,30 +1352,36 @@ class LiveGoatUnlock {
   }
 
   static Future<void> _refreshGasmAssets(String dir) async {
-    await _writeAsset(
-      '$_gasmAssetRoot/unlock.mjs',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'unlock.mjs',
       File('$dir/unlock.mjs'),
     );
-    await _writeAsset(
-      '$_gasmAssetRoot/sniff.mjs',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'sniff.mjs',
       File('$dir/sniff.mjs'),
     );
     // Ref pair (ppv-hls-stream-resolver) — offsets in unlock.mjs match this wasm.
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm.wasm',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'vendor/gasm.wasm',
       File('$dir/vendor/gasm.wasm'),
     );
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm.js',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'vendor/gasm.js',
       File('$dir/vendor/gasm.js'),
     );
     // Live embedindia pair (fallback).
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm-live.wasm',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'vendor/gasm-live.wasm',
       File('$dir/vendor/gasm-live.wasm'),
     );
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm-esm.mjs',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'vendor/gasm-esm.mjs',
       File('$dir/vendor/gasm-esm.mjs'),
     );
     _gasmAssetsWritten = true;
@@ -1380,10 +1393,11 @@ class LiveGoatUnlock {
     final dir = Directory('${support.path}/live-gasm-v3');
     await dir.create(recursive: true);
 
-    // Always overwrite unlock/wasm from the app bundle (script changes often).
+    // Always overwrite unlock/wasm from the pack (script changes often).
     await _refreshGasmAssets(dir.path);
-    await _writeAsset(
-      '$_gasmAssetRoot/package.json',
+    await _writeModule(
+      LiveUnlockModules.gasm,
+      'package.json',
       File('${dir.path}/package.json'),
     );
 
@@ -1450,11 +1464,16 @@ class LiveGoatUnlock {
     return null;
   }
 
-  static Future<void> _writeAsset(String assetPath, File out) async {
-    await out.parent.create(recursive: true);
-    final data = await rootBundle.load(assetPath);
-    await out.writeAsBytes(data.buffer.asUint8List(), flush: true);
-  }
+  static Future<void> _writeModule(
+    String module,
+    String relative,
+    File out,
+  ) =>
+      LiveUnlockModules.writeTo(
+        module: module,
+        relative: relative,
+        dest: out,
+      );
 
   static Future<String> _ensureSportsEmbedDir() async {
     if (_cachedSportsEmbedDir != null) {
@@ -1476,12 +1495,14 @@ class LiveGoatUnlock {
   }
 
   static Future<void> _refreshSportsEmbedAssets(String dir) async {
-    await _writeAsset(
-      '$_sportsEmbedAssetRoot/unlock.mjs',
+    await _writeModule(
+      LiveUnlockModules.sportsembed,
+      'unlock.mjs',
       File('$dir/unlock.mjs'),
     );
-    await _writeAsset(
-      '$_sportsEmbedAssetRoot/vendor/stream-lock.wasm',
+    await _writeModule(
+      LiveUnlockModules.sportsembed,
+      'vendor/stream-lock.wasm',
       File('$dir/vendor/stream-lock.wasm'),
     );
   }

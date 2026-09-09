@@ -101,11 +101,30 @@ fn xtream_auth_field(info: &Value, key: &str) -> String {
         .unwrap_or_default()
 }
 
-/// Xtream login is OK only when auth=1 or status=Active — not merely when user_info exists.
+/// Xtream login is OK when auth/status says active — not merely when user_info exists.
+/// Some Mag forks omit `auth`/`status` but still return a full account blob
+/// (`exp_date` / `max_connections`); accept those. Explicit Banned/Expired/auth=0 stay dead.
 fn xtream_user_auth_ok(info: &Value) -> bool {
-    let auth = xtream_auth_field(info, "auth");
+    let auth = xtream_auth_field(info, "auth").to_ascii_lowercase();
     let status = xtream_auth_field(info, "status").to_ascii_lowercase();
-    auth == "1" || status == "active"
+    if matches!(auth.as_str(), "1" | "true" | "yes") {
+        return true;
+    }
+    if matches!(status.as_str(), "active" | "enabled" | "ok") {
+        return true;
+    }
+    if matches!(auth.as_str(), "0" | "false" | "no") {
+        return false;
+    }
+    if matches!(
+        status.as_str(),
+        "banned" | "expired" | "disabled" | "inactive" | "dead"
+    ) {
+        return false;
+    }
+    auth.is_empty()
+        && status.is_empty()
+        && (info.get("exp_date").is_some() || info.get("max_connections").is_some())
 }
 
 /// Catalog endpoints sometimes return `{"user_info":{"auth":0}}` instead of arrays.
@@ -376,6 +395,34 @@ mod tests {
     #[test]
     fn expired_status_is_not_ok() {
         let info: Value = json!({ "auth": 0, "status": "Expired" });
+        assert!(!xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn auth_bool_true_is_ok() {
+        let info: Value = json!({ "auth": true, "status": "" });
+        assert!(xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn status_enabled_is_ok() {
+        let info: Value = json!({ "auth": 0, "status": "Enabled" });
+        assert!(xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn account_blob_without_auth_field_is_ok() {
+        let info: Value = json!({
+            "username": "u",
+            "exp_date": "1893456000",
+            "max_connections": "1",
+        });
+        assert!(xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn empty_user_info_without_account_fields_is_not_ok() {
+        let info: Value = json!({ "username": "u" });
         assert!(!xtream_user_auth_ok(&info));
     }
 }

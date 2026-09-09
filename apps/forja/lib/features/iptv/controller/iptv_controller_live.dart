@@ -9,6 +9,8 @@ mixin _IptvControllerLive on ChangeNotifier {
     if (p == null || section != IptvSection.live) return;
     // Stalker create_link is per-stream and expires — no bulk URL probe.
     if (p.platform == IptvPortalPlatform.stalker) return;
+    // Playing already holds a seat — bulk probes paint false reds.
+    if (ShellBus.playerSurfaceActive.value) return;
     if (_c.isVerifyingAlive) return;
     if (!force && _c.aliveCheckedAt != null) return;
 

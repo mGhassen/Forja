@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
 import 'package:forja/shared/engine/lists/my_list_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
@@ -1458,7 +1459,11 @@ class EngineRuntime {
     if (gen != _fetchGeneration) return;
     List<Map<String, dynamic>> rows = const [];
     try {
-      rows = await aggregateLiveFeed(LiveFeedQuery.fromHostParams(query));
+      // Nest flag: runLiveFeed must EngineJS-only under this bridge (issue 237).
+      // metaFeed sibling scrapes are outside this wrapper and may queue flutter_js.
+      rows = await withHubLiveFeedBridge(
+        () => aggregateLiveFeed(LiveFeedQuery.fromHostParams(query)),
+      );
     } catch (e, st) {
       _forjaRuntimeLog('liveFeed.load failed: $e\n$st');
     }

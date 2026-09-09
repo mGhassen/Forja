@@ -117,21 +117,26 @@ class PluginRegistry {
   }
 
   Future<String> _fetchText(String url) async {
+    final bytes = await _fetchBytes(url);
+    return utf8.decode(bytes, allowMalformed: false);
+  }
+
+  Future<List<int>> _fetchBytes(String url) async {
     final file = _asLocalFile(url);
     if (file != null) {
       if (!await file.exists()) {
         throw Exception('file not found: ${file.path}');
       }
-      return file.readAsString();
+      return file.readAsBytes();
     }
     final resp = await _httpGet(Uri.parse(url)).timeout(
-      const Duration(seconds: 20),
+      const Duration(seconds: 45),
       onTimeout: () => throw TimeoutException('plugin fetch $url'),
     );
     if (resp.statusCode != 200) {
       throw Exception('HTTP ${resp.statusCode}');
     }
-    return resp.body;
+    return resp.bodyBytes;
   }
 
   /// Path-pattern helper for Settings grouping — not pack inventory.
@@ -947,17 +952,28 @@ class PluginRegistry {
     tick('Fetched ${pack.name} manifest');
 
     final byPath = <String, String>{};
+    final byPathBytes = <String, List<int>>{};
     await Future.wait([
       for (final path in filesToFetch)
         () async {
           final url = resolveScriptUrl(manifestUrl, path);
           try {
-            final text = await _fetchText(url);
-            if (text.isEmpty) {
+            final bytes = await _fetchBytes(url);
+            if (bytes.isEmpty) {
               missing.add(path);
               return;
             }
-            byPath[path] = text;
+            byPathBytes[path] = bytes;
+            // JS entry/prelude need UTF-8 text; binary (.wasm) stays bytes-only.
+            final lower = path.toLowerCase();
+            if (!lower.endsWith('.wasm')) {
+              try {
+                final text = utf8.decode(bytes);
+                if (text.isNotEmpty) byPath[path] = text;
+              } catch (_) {
+                // Non-text asset listed in bundle — bytes-only is fine.
+              }
+            }
             tick('Downloaded $path');
           } catch (_) {
             missing.add(path);
@@ -992,6 +1008,10 @@ class PluginRegistry {
       );
     }
 
+    final scriptPaths = <String>{
+      ...preludesNeeded,
+      for (final p in scriptsNeeded) p.entry,
+    };
     try {
       PluginInstallValidator.validateBeforeCommit(
         manifestUrl: manifestUrl,
@@ -999,6 +1019,10 @@ class PluginRegistry {
         pack: pack,
         scripts: scripts,
         preludes: preludes,
+        packFiles: {
+          for (final e in byPathBytes.entries)
+            if (!scriptPaths.contains(e.key)) e.key: e.value,
+        },
       );
     } on FormatException catch (e) {
       throw Exception('install validation failed: ${e.message}');
@@ -1038,6 +1062,14 @@ class PluginRegistry {
           sourceUrl: manifestUrl,
           pluginId: e.key,
           body: e.value,
+        );
+      }
+      for (final e in byPathBytes.entries) {
+        if (scriptPaths.contains(e.key)) continue;
+        await PluginScriptDiskStore.savePackRelativeFile(
+          sourceUrl: manifestUrl,
+          relative: e.key,
+          bytes: e.value,
         );
       }
     }

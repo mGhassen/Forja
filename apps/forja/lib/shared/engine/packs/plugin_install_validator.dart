@@ -16,21 +16,49 @@ abstract final class PluginInstallValidator {
   /// Sum of all fetched JS bodies in one pack install.
   static const maxPackScriptBytes = 8 * 1024 * 1024;
 
+  /// Per pack-relative asset (wasm, unlock glue, …) — not JS entry/prelude.
+  static const maxPackFileBytes = 4 * 1024 * 1024;
+
+  /// Sum of non-script pack files in one install.
+  static const maxPackFilesTotalBytes = 16 * 1024 * 1024;
+
   static void validateBeforeCommit({
     required String manifestUrl,
     required Map<String, dynamic> manifest,
     required EnginePack pack,
     required Map<String, String> scripts,
     required Map<String, String> preludes,
+    Map<String, List<int>> packFiles = const {},
   }) {
     _validateScriptRefs(manifestUrl: manifestUrl, pack: pack);
     _validateCatalogVersions(pack);
     _validateSizes(scripts: scripts, preludes: preludes);
+    _validatePackFileSizes(packFiles);
     _validateIntegrity(
       manifest: manifest,
       scripts: scripts,
       preludes: preludes,
     );
+  }
+
+  static void _validatePackFileSizes(Map<String, List<int>> packFiles) {
+    var total = 0;
+    for (final e in packFiles.entries) {
+      final n = e.value.length;
+      if (n > maxPackFileBytes) {
+        throw FormatException(
+          'pack file ${e.key} exceeds ${maxPackFileBytes ~/ 1024} KiB '
+          '($n bytes)',
+        );
+      }
+      total += n;
+    }
+    if (total > maxPackFilesTotalBytes) {
+      throw FormatException(
+        'pack files exceed ${maxPackFilesTotalBytes ~/ (1024 * 1024)} MiB total '
+        '($total bytes)',
+      );
+    }
   }
 
   static void _validateScriptRefs({

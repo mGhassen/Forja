@@ -14,7 +14,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 ## What you can do
 
-- Paste a pack **manifest.json** URL and **Install** (downloads the files listed in the pack’s `bundle`, or each plugin entry if `bundle` is omitted)
+- Paste a pack **manifest.json** URL and **Install** (downloads the files listed in the pack’s `bundle`, or each plugin entry if `bundle` is omitted). Live packs may include unlock modules (`.wasm` + crack scripts) alongside JS entries.
 - **Official packs** — opens a checkable list of missing ForjaHQ packs in the Settings detail pane (right side on desktop/TV). Core packs (Home, Anime, Asian Drama, Providers, Live, Catalog, Torrent, Live Sports) show a flame **Recommended** badge next to Official; those rows sort first. Rows start unchecked — pick packs or use **Select all**. Each row also shows tags and a short description (not the manifest URL). Download only after you confirm (same picker as batch profile / Community Packs).
 - **Download** (icon on the right) on pending pack rows — or **Download all** when several packs still need scripts. Pending rows also have **Remove** (trash → Yes / No) so a bad or unreachable stub can be deleted without installing
 - **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts

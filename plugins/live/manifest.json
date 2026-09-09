@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports Streams",
   "description": "Live Sports per-site stream resolve (Forja Live).",
   "author": "ForjaHQ",
-  "version": "1.9.9",
+  "version": "1.10.0",
   "tags": [
     "live",
     "sports"
@@ -154,6 +154,26 @@
     "timstreams.js",
     "watchfooty.js",
     "streamic.js",
-    "mobikora.js"
+    "mobikora.js",
+    "goat/unlock.mjs",
+    "goat/package.json",
+    "goat/vendor/lock.wasm",
+    "goat/vendor/lock-esm.mjs",
+    "goat/vendor/big-integer.min.js",
+    "goat/webview/crack.js",
+    "goat/webview/unlock.html",
+    "goat/webview/proxy_fetch.js",
+    "gasm/unlock.mjs",
+    "gasm/sniff.mjs",
+    "gasm/package.json",
+    "gasm/vendor/gasm.wasm",
+    "gasm/vendor/gasm.js",
+    "gasm/vendor/gasm-live.wasm",
+    "gasm/vendor/gasm-live.js",
+    "gasm/vendor/gasm-esm.mjs",
+    "gasm/webview/crack.js",
+    "gasm/webview/unlock.html",
+    "sportsembed/unlock.mjs",
+    "sportsembed/vendor/stream-lock.wasm"
   ]
 }

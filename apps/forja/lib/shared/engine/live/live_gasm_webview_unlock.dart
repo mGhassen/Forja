@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/engine/live/live_unlock_modules.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -18,8 +18,6 @@ class LiveGasmWebviewUnlock {
   LiveGasmWebviewUnlock._();
   static final LiveGasmWebviewUnlock instance = LiveGasmWebviewUnlock._();
 
-  static const _assetRoot = 'assets/plugins/live/gasm';
-  static const _goatVendor = 'assets/plugins/live/goat/vendor';
   static const _embedOrigin = 'https://embedindia.st';
   static const _timeout = Duration(seconds: 45);
 
@@ -169,9 +167,10 @@ class LiveGasmWebviewUnlock {
   Future<void> _syncCrackAsset() async {
     final dir = _dir;
     if (dir == null) return;
-    await _writeAsset(
-      '$_assetRoot/webview/crack.js',
-      File('${dir.path}/crack.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.gasm,
+      relative: 'webview/crack.js',
+      dest: File('${dir.path}/crack.js'),
     );
   }
 
@@ -348,31 +347,37 @@ class LiveGasmWebviewUnlock {
     await dir.create(recursive: true);
     await Directory('${dir.path}/vendor').create(recursive: true);
 
-    await _writeAsset(
-      '$_assetRoot/webview/crack.js',
-      File('${dir.path}/crack.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.gasm,
+      relative: 'webview/crack.js',
+      dest: File('${dir.path}/crack.js'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/gasm.wasm',
-      File('${dir.path}/vendor/gasm.wasm'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.gasm,
+      relative: 'vendor/gasm.wasm',
+      dest: File('${dir.path}/vendor/gasm.wasm'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/gasm.js',
-      File('${dir.path}/vendor/gasm.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.gasm,
+      relative: 'vendor/gasm.js',
+      dest: File('${dir.path}/vendor/gasm.js'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/gasm-live.wasm',
-      File('${dir.path}/vendor/gasm-live.wasm'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.gasm,
+      relative: 'vendor/gasm-live.wasm',
+      dest: File('${dir.path}/vendor/gasm-live.wasm'),
     );
-    await _writeAsset(
-      '$_goatVendor/big-integer.min.js',
-      File('${dir.path}/vendor/big-integer.min.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.goat,
+      relative: 'vendor/big-integer.min.js',
+      dest: File('${dir.path}/vendor/big-integer.min.js'),
     );
 
-    final gasmEsm = await rootBundle.loadString(
-      '$_assetRoot/vendor/gasm-esm.mjs',
+    final gasmEsmBytes = await LiveUnlockModules.loadBytes(
+      module: LiveUnlockModules.gasm,
+      relative: 'vendor/gasm-esm.mjs',
     );
-    final browser = _stripNodePreamble(gasmEsm);
+    final browser = _stripNodePreamble(utf8.decode(gasmEsmBytes));
     await File('${dir.path}/vendor/gasm-browser.mjs').writeAsString(browser);
 
     _dir = dir;
@@ -397,12 +402,6 @@ class LiveGasmWebviewUnlock {
       break;
     }
     return lines.sublist(i).join('\n');
-  }
-
-  static Future<void> _writeAsset(String assetPath, File out) async {
-    await out.parent.create(recursive: true);
-    final data = await rootBundle.load(assetPath);
-    await out.writeAsBytes(data.buffer.asUint8List(), flush: true);
   }
 
   Future<void> dispose() async {

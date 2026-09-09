@@ -189,4 +189,48 @@ void main() {
       'profile-one',
     );
   });
+
+  test('pack-relative binary file round-trip', () async {
+    const url = 'https://example.com/plugins/live/manifest.json';
+    final bytes = List<int>.generate(32, (i) => i);
+    await PluginScriptDiskStore.savePackRelativeFile(
+      sourceUrl: url,
+      relative: 'goat/vendor/lock.wasm',
+      bytes: bytes,
+    );
+    expect(
+      await PluginScriptDiskStore.hasPackRelativeFile(
+        sourceUrl: url,
+        relative: 'goat/vendor/lock.wasm',
+      ),
+      isTrue,
+    );
+    final file = await PluginScriptDiskStore.packRelativeFile(
+      sourceUrl: url,
+      relative: 'goat/vendor/lock.wasm',
+    );
+    expect(file, isNotNull);
+    expect(await file!.readAsBytes(), bytes);
+
+    await PluginScriptDiskStore.removeEnginePack(url);
+    expect(
+      await PluginScriptDiskStore.hasPackRelativeFile(
+        sourceUrl: url,
+        relative: 'goat/vendor/lock.wasm',
+      ),
+      isFalse,
+    );
+  });
+
+  test('rejects unsafe pack-relative paths', () async {
+    const url = 'https://example.com/plugins/live/manifest.json';
+    expect(
+      () => PluginScriptDiskStore.savePackRelativeFile(
+        sourceUrl: url,
+        relative: '../escape.wasm',
+        bytes: [1],
+      ),
+      throwsArgumentError,
+    );
+  });
 }

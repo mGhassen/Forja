@@ -6,6 +6,7 @@ import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
+import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
@@ -1172,9 +1173,13 @@ class EngineService {
     if (viaRust != null) return _postProcessLivePluginRows(viaRust);
     if (gen != _liveCatalogGeneration) return [];
 
-    // Nested under hub feed's flutter_js (liveFeed.load → aggregate): waiting
-    // on [_withFlutterJsFork] deadlocks; forking a second JSC crashes macOS.
-    if (_flutterJsDepth > 0) {
+    // True nest only: hub JS `liveFeed.load` → aggregate → runLiveFeed while
+    // the outer flutter_js fork is held. Waiting on [_withFlutterJsFork]
+    // deadlocks; a second JSC heap crashes macOS (issue 237).
+    // Sibling scrapes (metaFeedCatalogProvider during hub layout) must queue —
+    // `_flutterJsDepth > 0` alone was emptying Streamed/etc. while logs still
+    // showed streams=310 from a later top-level run that never painted.
+    if (isUnderHubLiveFeedBridge && _flutterJsDepth > 0) {
       debugPrint(
         '[engine] ${catalogPlugin.id} skip flutter_js nested under liveFeed',
       );

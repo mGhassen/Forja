@@ -3,6 +3,7 @@ use std::time::Duration;
 
 const MIN_BYTES: usize = 16 * 1024;
 const MAX_BYTES: usize = 64 * 1024;
+const EARLY_TS_BYTES: usize = 188 * 3;
 const UA: &str = "VLC/3.0.20 LibVLC/3.0.20";
 
 #[derive(Debug, Serialize)]
@@ -17,97 +18,129 @@ pub fn probe_stream_alive_json(url: &str, timeout_secs: u64) -> String {
     }
 }
 
+pub async fn probe_stream_alive_json_async(url: &str, timeout_secs: u64) -> String {
+    match probe_stream_alive_async(url, timeout_secs).await {
+        Ok(alive) => serde_json::to_string(&ProbeResult { alive }).unwrap_or_else(|_| "{}".into()),
+        Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}
+
+/// Sync entry for tests / blocking FFI. Prefers the current runtime.
 pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> {
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        return handle.block_on(probe_stream_alive_async(url, timeout_secs));
+    }
+    match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt.block_on(probe_stream_alive_async(url, timeout_secs)),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+pub async fn probe_stream_alive_async(url: &str, timeout_secs: u64) -> Result<bool, String> {
     let url = url.trim();
     if url.is_empty() || !url.starts_with("http") {
         return Err("Invalid URL".into());
     }
     let timeout = Duration::from_secs(timeout_secs.clamp(1, 120));
-    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
-    rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(timeout)
-            .redirect(reqwest::redirect::Policy::limited(8))
-            .build()
-            .map_err(|e| e.to_string())?;
-        // No Range — live / Stalker CDNs often reject Range (403/416/empty)
-        // while a normal GET plays fine in the player.
-        let resp = client
-            .get(url)
-            .header("User-Agent", UA)
-            .header("Accept", "*/*")
-            .header("Connection", "keep-alive")
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
+    let client = reqwest::Client::builder()
+        .timeout(timeout)
+        .redirect(reqwest::redirect::Policy::limited(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+    // No Range — live / Stalker CDNs often reject Range (403/416/empty)
+    // while a normal GET plays fine in the player.
+    let resp = client
+        .get(url)
+        .header("User-Agent", UA)
+        .header("Accept", "*/*")
+        .header("Connection", "keep-alive")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
 
-        let code = resp.status().as_u16();
-        if !(200..300).contains(&code) {
-            return Ok(false);
-        }
+    let code = resp.status().as_u16();
+    if !(200..300).contains(&code) {
+        return Ok(false);
+    }
 
-        let ct = resp
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        let cl = resp
-            .headers()
-            .get(reqwest::header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(-1);
+    let ct = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let cl = resp
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(-1);
 
-        let mut buf = Vec::new();
-        let mut stream = resp.bytes_stream();
-        use futures_util::StreamExt;
-        let mut ended = true;
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| e.to_string())?;
-            buf.extend_from_slice(&chunk);
-            if buf.len() >= MAX_BYTES {
-                ended = false;
-                break;
-            }
-            if buf.len() >= MIN_BYTES {
-                ended = false;
-                break;
-            }
-        }
+    let mut buf = Vec::new();
+    let mut stream = resp.bytes_stream();
+    use futures_util::StreamExt;
+    let mut ended = true;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        buf.extend_from_slice(&chunk);
 
-        // HLS: CT, URL suffix, or body — many Stalker links omit `.m3u8` and
-        // serve `text/plain` / `application/octet-stream`.
-        if looks_like_playlist(&ct, url, &buf) {
-            return Ok(playlist_has_extm3u(&buf));
-        }
-
-        if is_error_page_content_type(&ct) {
-            return Ok(false);
-        }
-
-        if ts_packets_ok(&buf) {
+        // Live MPEG-TS often dribbles — accept sync as soon as we have
+        // three packets instead of waiting for MIN_BYTES (false timeout reds).
+        if buf.len() >= EARLY_TS_BYTES && ts_packets_ok(&buf) {
             return Ok(true);
         }
-        if buf.len() >= 8 && &buf[4..8] == b"ftyp" {
+        if playlist_has_extm3u(&buf) {
             return Ok(true);
         }
-        if has_video_signature(&buf) {
-            return Ok(true);
-        }
-        if buf.len() >= 32 * 1024 {
+        if has_video_signature(&buf) && buf.len() >= 512 {
             return Ok(true);
         }
 
-        // Finite small body with no media signature → stub / error file.
-        if ended && (1..=5_000_000).contains(&cl) {
-            return Ok(false);
+        if buf.len() >= MAX_BYTES {
+            ended = false;
+            break;
         }
-        if ended && buf.len() < MIN_BYTES {
-            return Ok(false);
+        if buf.len() >= MIN_BYTES {
+            ended = false;
+            break;
         }
-        Ok(false)
-    })
+    }
+
+    // HLS: CT, URL suffix, or body — many Stalker links omit `.m3u8` and
+    // serve `text/plain` / `application/octet-stream`.
+    if looks_like_playlist(&ct, url, &buf) {
+        return Ok(playlist_has_extm3u(&buf));
+    }
+
+    if is_error_page_content_type(&ct) {
+        return Ok(false);
+    }
+
+    if ts_packets_ok(&buf) {
+        return Ok(true);
+    }
+    if buf.len() >= 8 && &buf[4..8] == b"ftyp" {
+        return Ok(true);
+    }
+    if has_video_signature(&buf) {
+        return Ok(true);
+    }
+    // video/* with real bytes — panels often omit signatures we know.
+    if is_video_content_type(&ct) && buf.len() >= EARLY_TS_BYTES {
+        return Ok(true);
+    }
+    if buf.len() >= 32 * 1024 {
+        return Ok(true);
+    }
+
+    // Finite small body with no media signature → stub / error file.
+    if ended && (1..=5_000_000).contains(&cl) {
+        return Ok(false);
+    }
+    if ended && buf.len() < MIN_BYTES {
+        return Ok(false);
+    }
+    Ok(false)
 }
 
 fn looks_like_playlist(ct: &str, url: &str, buf: &[u8]) -> bool {
@@ -126,6 +159,13 @@ fn playlist_has_extm3u(buf: &[u8]) -> bool {
 /// HTML / JSON / XML error pages. Not `text/plain` — playlists often use that.
 fn is_error_page_content_type(ct: &str) -> bool {
     ct.contains("text/html") || ct.contains("application/json") || ct.contains("text/xml")
+}
+
+fn is_video_content_type(ct: &str) -> bool {
+    ct.starts_with("video/")
+        || ct.contains("mpegurl")
+        || ct.contains("mp2t")
+        || ct.contains("octet-stream")
 }
 
 fn ts_packets_ok(buf: &[u8]) -> bool {
@@ -213,5 +253,12 @@ mod tests {
         let buf = vec![0x47; 600];
         assert!(has_video_signature(&buf));
         assert!(ts_packets_ok(&buf));
+    }
+
+    #[test]
+    fn video_content_types() {
+        assert!(is_video_content_type("video/mp2t"));
+        assert!(is_video_content_type("application/octet-stream"));
+        assert!(!is_video_content_type("text/html"));
     }
 }

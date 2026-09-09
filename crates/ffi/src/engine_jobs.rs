@@ -201,16 +201,16 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
         }
         k if k == JobKind::IptvProbeStream as u32 => {
             let req: ProbeReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
-            let token = utils::engine_cancel::cancellation_token();
-            tokio::task::spawn_blocking(move || {
-                utils::engine_cancel::attach_job_token(token);
-                Ok(iptv::stream_probe::probe_stream_alive_json(
+            // Async on the engine runtime — avoid spawn_blocking + Runtime::new()
+            // per probe (bulk recheck used to spawn dozens of runtimes → all red).
+            utils::engine_cancel::with_cancel(async {
+                Ok(iptv::stream_probe::probe_stream_alive_json_async(
                     &req.url,
                     req.timeout_secs,
-                ))
+                )
+                .await)
             })
             .await
-            .map_err(|e| e.to_string())?
         }
         k if k == JobKind::TorrentStream as u32 => {
             let req: TorrentStreamReq =

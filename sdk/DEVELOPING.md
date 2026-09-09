@@ -310,7 +310,9 @@ ctx.live.sportsEmbedUnlock(embedUrl)
 ctx.live.sniffEmbed(url, referer)   // desktop/mobile only — skipped on Android TV
 ```
 
-Reference: [`live/streamed.js`](live/streamed.js), [`live/manifest.json`](live/manifest.json).
+The host runs these as a **WASM unlock runtime** (desktop Node + happy-dom, or mobile/ATV off-screen WebView). Crack scripts and `.wasm` files ship in the **live pack** under `goat/`, `gasm/`, and `sportsembed/` (listed in `bundle`) — update the pack to refresh unlock glue without an app rebuild. Flutter assets remain a fallback if the pack module is missing.
+
+Reference: [`live/streamed.js`](live/streamed.js), [`live/manifest.json`](live/manifest.json), [`live/goat/`](live/goat/).
 
 ---
 

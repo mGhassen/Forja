@@ -1,12 +1,12 @@
 // TMDB movie / TV hub — layout / rail / search / details (protocol 1).
 //
-// Needs a v3 key. Host injects `TMDB_API_KEY` (Flutter dart-define and/or
-// Rust-baked key in EngineJS extract). Pack config stays empty.
+// Needs a v3 key on `config.apiKey` (pack config and/or host inject).
+// Pack may ship a key temporarily; host still injects when empty.
 
 var TMDB_DEFAULTS = {
   base: 'https://api.themoviedb.org/3',
   imageBase: 'https://image.tmdb.org/t/p',
-  apiKey: '',
+  apiKey: 'b3556f3b206e16f82df4d1f6fd4545e6',
   language: 'en-US',
   region: '',
 };

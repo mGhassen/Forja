@@ -817,9 +817,13 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     if (!_portalHealthInFlight.add(key)) return;
     notifyListeners();
     try {
+      // Platform defaults (Xtream/Stalker 15s, M3U 90s) — hardcoded 5s
+      // false-red'd slow Mag panels while catalog/play still worked.
       final probe = await IptvClient.probePortal(
         v.portal,
-        timeout: const Duration(seconds: 5),
+        timeout: v.portal.platform == IptvPortalPlatform.m3u
+            ? const Duration(seconds: 90)
+            : const Duration(seconds: 15),
       );
       if (probe.alive) {
         await _mergePortalAccountInfo(v, VerifiedPortal.fromProbe(v.portal, probe));

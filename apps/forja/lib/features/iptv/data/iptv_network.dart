@@ -209,7 +209,7 @@ class IptvClient {
     final effective = timeout ??
         (p.platform == IptvPortalPlatform.m3u
             ? const Duration(seconds: 90)
-            : const Duration(seconds: 6));
+            : const Duration(seconds: 15));
     final root = await _xtreamRequest(_portalBody(
       p,
       action: 'login',
@@ -236,7 +236,7 @@ class IptvClient {
     final effective = timeout ??
         (p.platform == IptvPortalPlatform.m3u
             ? const Duration(seconds: 90)
-            : const Duration(seconds: 6));
+            : const Duration(seconds: 15));
     final root = await _xtreamRequestRaw(_portalBody(
       p,
       action: 'login',
@@ -988,7 +988,8 @@ class AliveProgress {
 
 class IptvAliveChecker {
   static const Duration _timeout = Duration(seconds: 8);
-  static const int _concurrency = 24;
+  /// Keep low — Mag panels with 1–2 seats reject parallel GETs as dead HTML.
+  static const int _concurrency = 3;
 
   /// Run alive checks. Caller controls cancellation via [isCancelled].
   /// Returns when all complete or cancelled.

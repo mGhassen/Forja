@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/engine/live/live_unlock_modules.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -19,7 +19,6 @@ class LiveGoatWebviewUnlock {
   LiveGoatWebviewUnlock._();
   static final LiveGoatWebviewUnlock instance = LiveGoatWebviewUnlock._();
 
-  static const _assetRoot = 'assets/plugins/live/goat';
   static const _embedOrigin = 'https://embed.st';
   static const _timeout = Duration(seconds: 45);
 
@@ -170,13 +169,14 @@ class LiveGoatWebviewUnlock {
     }
   }
 
-  /// Re-copy crack.js from the asset bundle (hot restart / fix iterations).
+  /// Re-copy crack.js from the pack (hot restart / fix iterations).
   Future<void> _syncCrackAsset() async {
     final dir = _dir;
     if (dir == null) return;
-    await _writeAsset(
-      '$_assetRoot/webview/crack.js',
-      File('${dir.path}/crack.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.goat,
+      relative: 'webview/crack.js',
+      dest: File('${dir.path}/crack.js'),
     );
   }
 
@@ -353,22 +353,27 @@ class LiveGoatWebviewUnlock {
     await dir.create(recursive: true);
     await Directory('${dir.path}/vendor').create(recursive: true);
 
-    await _writeAsset(
-      '$_assetRoot/webview/crack.js',
-      File('${dir.path}/crack.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.goat,
+      relative: 'webview/crack.js',
+      dest: File('${dir.path}/crack.js'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/lock.wasm',
-      File('${dir.path}/vendor/lock.wasm'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.goat,
+      relative: 'vendor/lock.wasm',
+      dest: File('${dir.path}/vendor/lock.wasm'),
     );
-    await _writeAsset(
-      '$_assetRoot/vendor/big-integer.min.js',
-      File('${dir.path}/vendor/big-integer.min.js'),
+    await LiveUnlockModules.writeTo(
+      module: LiveUnlockModules.goat,
+      relative: 'vendor/big-integer.min.js',
+      dest: File('${dir.path}/vendor/big-integer.min.js'),
     );
 
-    final lockEsm = await rootBundle.loadString(
-      '$_assetRoot/vendor/lock-esm.mjs',
+    final lockEsmBytes = await LiveUnlockModules.loadBytes(
+      module: LiveUnlockModules.goat,
+      relative: 'vendor/lock-esm.mjs',
     );
+    final lockEsm = utf8.decode(lockEsmBytes);
     final browser = _stripNodePreamble(lockEsm);
     await File('${dir.path}/vendor/lock-browser.mjs').writeAsString(browser);
 
@@ -393,12 +398,6 @@ class LiveGoatWebviewUnlock {
       break;
     }
     return lines.sublist(i).join('\n');
-  }
-
-  static Future<void> _writeAsset(String assetPath, File out) async {
-    await out.parent.create(recursive: true);
-    final data = await rootBundle.load(assetPath);
-    await out.writeAsBytes(data.buffer.asUint8List(), flush: true);
   }
 
   Future<void> dispose() async {

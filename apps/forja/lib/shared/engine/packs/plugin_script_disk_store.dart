@@ -158,8 +158,33 @@ abstract final class PluginScriptDiskStore {
     return File(p.join(r.path, 'nuvio', '${digest(scraperId)}.js'));
   }
 
+  /// Pack-relative asset under `engine/<hash>/files/<relative>` (wasm, unlock JS, …).
+  static Future<File> _enginePackRelativeFile(
+    String sourceUrl,
+    String relative,
+  ) async {
+    final pack = await _enginePackDir(sourceUrl);
+    final safe = _assertSafeRelative(relative);
+    return File(p.join(pack.path, 'files', safe));
+  }
+
+  static String _assertSafeRelative(String relative) {
+    final trimmed = relative.trim().replaceAll('\\', '/');
+    if (trimmed.isEmpty ||
+        trimmed.startsWith('/') ||
+        trimmed.contains('\u0000') ||
+        trimmed.split('/').any((s) => s == '..' || s.isEmpty)) {
+      throw ArgumentError('unsafe pack-relative path: $relative');
+    }
+    return trimmed;
+  }
+
   /// Atomic write: temp in parent → rename to [target].
   static Future<void> _atomicWrite(File target, String body) async {
+    await _atomicWriteBytes(target, utf8.encode(body));
+  }
+
+  static Future<void> _atomicWriteBytes(File target, List<int> bytes) async {
     final parent = target.parent;
     if (!await parent.exists()) {
       await parent.create(recursive: true);
@@ -171,7 +196,7 @@ abstract final class PluginScriptDiskStore {
       ),
     );
     try {
-      await tmp.writeAsString(body, flush: true);
+      await tmp.writeAsBytes(bytes, flush: true);
       if (await target.exists()) {
         await target.delete();
       }
@@ -183,6 +208,55 @@ abstract final class PluginScriptDiskStore {
         } catch (_) {}
       }
       rethrow;
+    }
+  }
+
+  static Future<bool> hasPackRelativeFile({
+    required String sourceUrl,
+    required String relative,
+  }) async {
+    try {
+      return await (await _enginePackRelativeFile(sourceUrl, relative)).exists();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Absolute [File] for an installed pack-relative path, or null if missing.
+  static Future<File?> packRelativeFile({
+    required String sourceUrl,
+    required String relative,
+  }) async {
+    try {
+      final file = await _enginePackRelativeFile(sourceUrl, relative);
+      if (!await file.exists()) return null;
+      return file;
+    } catch (e) {
+      debugPrint('[PluginScriptDiskStore] packRelativeFile failed: $e');
+      return null;
+    }
+  }
+
+  static Future<void> savePackRelativeFile({
+    required String sourceUrl,
+    required String relative,
+    required List<int> bytes,
+  }) async {
+    await _atomicWriteBytes(
+      await _enginePackRelativeFile(sourceUrl, relative),
+      bytes,
+    );
+  }
+
+  static Future<void> removePackRelativeFile({
+    required String sourceUrl,
+    required String relative,
+  }) async {
+    try {
+      final file = await _enginePackRelativeFile(sourceUrl, relative);
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('[PluginScriptDiskStore] removePackRelativeFile failed: $e');
     }
   }
 

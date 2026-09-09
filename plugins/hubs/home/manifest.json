@@ -4,7 +4,7 @@
   "name": "ForjaHQ Home",
   "description": "TMDB movie and TV catalog for the Home tab.",
   "author": "ForjaHQ",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "tags": [
     "home",
     "movies",
@@ -40,7 +40,7 @@
       "config": {
         "base": "https://api.themoviedb.org/3",
         "imageBase": "https://image.tmdb.org/t/p",
-        "apiKey": "",
+        "apiKey": "4fb767c9a1650e6baf1bf083ee87ab76",
         "pageSize": 20
       },
       "prelude": "_kit.js"

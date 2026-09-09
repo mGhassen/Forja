@@ -384,7 +384,8 @@ async fn verify_portal(
             Value::Number(n) => n.to_string(),
             _ => v.to_string().trim_matches('"').to_string(),
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .to_ascii_lowercase();
     let status = info
         .get("status")
         .map(|v| match v {
@@ -393,8 +394,17 @@ async fn verify_portal(
         })
         .unwrap_or_default()
         .to_lowercase();
-    // Match Forja / Rust xtream_client: user_info alone is not alive.
-    let alive = auth == "1" || status == "active";
+    // Match Forja / Rust xtream_user_auth_ok.
+    let alive = matches!(auth.as_str(), "1" | "true" | "yes")
+        || matches!(status.as_str(), "active" | "enabled" | "ok")
+        || (!matches!(auth.as_str(), "0" | "false" | "no")
+            && !matches!(
+                status.as_str(),
+                "banned" | "expired" | "disabled" | "inactive" | "dead"
+            )
+            && auth.is_empty()
+            && status.is_empty()
+            && (info.get("exp_date").is_some() || info.get("max_connections").is_some()));
 
     let mut category_names = Vec::new();
     if alive {

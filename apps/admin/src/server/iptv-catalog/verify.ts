@@ -30,6 +30,29 @@ function dead(status: string, error?: string): PortalStatus {
   }
 }
 
+/** Match Rust `xtream_user_auth_ok` — auth/status markers or account-shaped blob. */
+function xtreamUserAuthOk(info: Record<string, unknown>): boolean {
+  const auth = String(info.auth ?? '').toLowerCase()
+  const status = String(info.status ?? '').toLowerCase()
+  if (auth === '1' || auth === 'true' || auth === 'yes') return true
+  if (status === 'active' || status === 'enabled' || status === 'ok') return true
+  if (auth === '0' || auth === 'false' || auth === 'no') return false
+  if (
+    status === 'banned' ||
+    status === 'expired' ||
+    status === 'disabled' ||
+    status === 'inactive' ||
+    status === 'dead'
+  ) {
+    return false
+  }
+  return (
+    auth === '' &&
+    status === '' &&
+    (info.exp_date != null || info.max_connections != null)
+  )
+}
+
 function isMacUsername(raw: string): boolean {
   return /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(raw.trim())
 }
@@ -320,10 +343,8 @@ async function verifyXtreamPortal(
       (root.user_info as Record<string, unknown> | undefined) ?? root
     const server =
       (root.server_info as Record<string, unknown> | undefined) ?? {}
-    const auth = String(info.auth ?? '')
+    const alive = xtreamUserAuthOk(info)
     const status = String(info.status ?? '').toLowerCase()
-    // Match Forja / Rust: user_info alone is not alive (Banned/Expired often still return it).
-    const alive = auth === '1' || status === 'active'
 
     const categoryNames: string[] = []
     if (alive) {
