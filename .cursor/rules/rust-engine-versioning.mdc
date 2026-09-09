@@ -10,7 +10,7 @@ Index: [changelog](./changelog.mdc) (app releases) · [rust-migration](./rust-mi
 
 The Rust engine has its **own** semver. It is **not** the app version (`apps/forja` / `kReleaseCodename` / `vX.Y.Z` tags).
 
-**Current engine version:** `1.2.67`
+**Current engine version:** `1.2.68`
 
 ---
 
