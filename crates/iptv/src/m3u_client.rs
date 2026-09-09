@@ -204,11 +204,7 @@ async fn download_playlist(url: &str, ua: &str, timeout: Duration) -> Result<Str
     } else {
         ua.trim()
     };
-    let client = reqwest::Client::builder()
-        .timeout(timeout)
-        .redirect(reqwest::redirect::Policy::limited(8))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = crate::http::client(timeout)?;
     let resp = client
         .get(url)
         .header("User-Agent", agent)

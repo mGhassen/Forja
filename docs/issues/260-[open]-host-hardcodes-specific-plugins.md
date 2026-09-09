@@ -1,6 +1,6 @@
 # Issue 260: Host still hardcodes specific plugins
 
-**Status:** draft  
+**Status:** open  
 **Priority:** P0  
 **Severity:** Critical  
 **Area:** foundation / engine / packs  
@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **1 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -20,7 +20,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I260-T01 | Live unlock: remove host streamed / ppv / watchfooty / GOAT API branches — opaque pack modules only | ⬜ |
+| 1 | I260-T01 | Live unlock: remove host streamed / ppv / watchfooty / GOAT API branches — opaque pack modules only | ✅ |
 | 2 | I260-T02 | Delete official hub inventories (`official_forjahq_packs`, `officialPackIdForSlot` maps) — remote catalog / pack `id` only | ⬜ |
 | 3 | I260-T03 | My List / follow: drop first-class `anilistId` / `kisskhId` / `my-list-hub` — opaque `open` + id bag | ⬜ |
 | 4 | I260-T04 | Playback headers / ProviderRuntimeConfig: no Dart `if (kisskh|videasy|dimatoon)` — packs own knobs ([255](255-[open]-provider-runtime-config-builtins-debt.md)) | ⬜ |
@@ -50,7 +50,7 @@ Audit (2026-09-09): root app still points at specific plugins. Direction is inve
 
 | Area | Worst files |
 |------|-------------|
-| Live unlock kinds | `live_plugin_engine.dart`, `live_resolve_streams.dart`, `live_goat_unlock.dart` — `streamed` / `ppv` / `watchfooty` + hostnames |
+| Live unlock kinds | ~~Dart `resolveStreamed`/`resolvePpv`/`watchfooty` switch~~ **I260-T01 ✅** — pack JS + opaque `ctx.live.*` only. Residual: `withWftyPlaybackReferer` + `nativeUnlock` as resolveSource token |
 | VOD provider branches | `provider_runtime_config.dart`, `player/screens/utils.dart`, `playback_stream_guards.dart` — kisskh / videasy / dimatoon / hianime |
 | My List / open ids | `my_list_*.dart`, `legacy_list_item.dart`, `sources_request_context.dart`, rust `my_list_service.dart` — `anilistId` / `kisskhId` / `my-list-hub` |
 | Host TMDB enrich | `kit_details_sections.dart`, `kit_details_screen.dart` |

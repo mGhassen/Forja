@@ -265,11 +265,7 @@ async fn http_get(url: &str, timeout: Duration) -> Result<String, String> {
     if utils::engine_cancel::is_requested() {
         return Err(utils::engine_cancel::cancelled_message().into());
     }
-    let client = reqwest::Client::builder()
-        .timeout(timeout)
-        .redirect(reqwest::redirect::Policy::limited(8))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = crate::http::client(timeout)?;
     let resp = client
         .get(url)
         .header("User-Agent", UA)

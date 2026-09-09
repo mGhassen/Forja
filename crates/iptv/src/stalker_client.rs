@@ -187,12 +187,7 @@ impl Session {
         } else {
             serial.trim().to_string()
         };
-        let client = reqwest::Client::builder()
-            .timeout(timeout)
-            .redirect(reqwest::redirect::Policy::limited(8))
-            .cookie_store(true)
-            .build()
-            .map_err(|e| e.to_string())?;
+        let client = crate::http::client_with_cookies(timeout)?;
         let cache_key = format!("{origin}|{mac}|{}", device_timezone());
         let session = Self {
             referer: format!("{origin}/c/"),

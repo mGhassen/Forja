@@ -286,6 +286,19 @@ async function resolveGolf(ctx, slot, cfg) {
   return JSON.parse('[' + m3u8M[1] + ']').join('');
 }
 
+async function probePlayableM3u8(ctx, url, headers) {
+  var target = String(url || '').trim();
+  if (!target) return false;
+  try {
+    var res = await ctx.fetch(target, { headers: headers || {} });
+    if (!res.ok) return false;
+    var text = String(await res.text() || '').replace(/^\s+/, '');
+    return text.indexOf('#EXTM3U') === 0;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function resolveGoatEmbed(ctx, embedUrl, cfg) {
   var slot = parseEmbedUrl(embedUrl, cfg);
   if (!slot) return null;
@@ -308,10 +321,16 @@ async function resolveGoatEmbed(ctx, embedUrl, cfg) {
     m3u8 = await ctx.live.goatUnlock(fetched.bodyHex, fetched.goat, slot);
   }
   if (!m3u8) return null;
+  var headers = playbackHeadersForSlot(slot, cfg);
+  // Dead/gated slots still crack to a signed CDN URL that 403s on open.
+  var src = String(slot.source || '').toLowerCase();
+  if (src === 'echo' || src === 'streamed') {
+    if (!(await probePlayableM3u8(ctx, m3u8, headers))) return null;
+  }
   return [
     {
       url: m3u8,
-      headers: playbackHeadersForSlot(slot, cfg),
+      headers: headers,
       directPlayback: preferDirectPlayback(m3u8),
     },
   ];

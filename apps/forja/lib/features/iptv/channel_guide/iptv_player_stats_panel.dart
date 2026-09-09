@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -52,19 +53,17 @@ class IptvPlayerStatsPanel {
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
-      // Read-only rows — land TV focus on Close so Select dismisses.
+      // Close first (Select dismisses); ↓ moves into the scrollable rows.
       autofocusClose: true,
-      child: ExcludeFocus(
-        child: player != null
-            ? _IptvMediaKitStatsBody(
-                player: player,
-                snapshot: snapshot,
-              )
-            : _IptvExoStatsBody(
-                viewId: exoViewId!,
-                snapshot: snapshot,
-              ),
-      ),
+      child: player != null
+          ? _IptvMediaKitStatsBody(
+              player: player,
+              snapshot: snapshot,
+            )
+          : _IptvExoStatsBody(
+              viewId: exoViewId!,
+              snapshot: snapshot,
+            ),
     );
   }
 }
@@ -402,49 +401,93 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
   }
 }
 
-class _StatsList extends StatelessWidget {
+class _StatsList extends StatefulWidget {
   const _StatsList({required this.rows});
 
   final List<_StatRow> rows;
 
   @override
+  State<_StatsList> createState() => _StatsListState();
+}
+
+class _StatsListState extends State<_StatsList> {
+  static const _arrowScrollStep = 48.0;
+
+  final _scroll = ScrollController();
+  final _focus = FocusNode(debugLabel: 'iptv-stream-stats-scroll');
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (!_scroll.hasClients) return KeyEventResult.ignored;
+    final down = event.logicalKey == LogicalKeyboardKey.arrowDown;
+    final up = event.logicalKey == LogicalKeyboardKey.arrowUp;
+    if (!down && !up) return KeyEventResult.ignored;
+
+    final pos = _scroll.position;
+    final delta = down ? _arrowScrollStep : -_arrowScrollStep;
+    final next = (pos.pixels + delta).clamp(0.0, pos.maxScrollExtent);
+    if (next == pos.pixels) return KeyEventResult.ignored;
+    _scroll.jumpTo(next);
+    return KeyEventResult.handled;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      shrinkWrap: true,
-      children: rows
-          .map(
-            (r) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 108,
-                    child: Text(
-                      r.label,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+    // Fill the popup body viewport (same as Audio menu) so overflow scrolls
+    // instead of clipping under the panel maxHeight.
+    return Focus(
+      focusNode: _focus,
+      onKeyEvent: _onKey,
+      child: Scrollbar(
+        controller: _scroll,
+        thumbVisibility: true,
+        child: ListView(
+          controller: _scroll,
+          primary: false,
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          children: [
+            for (final r in widget.rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 108,
+                      child: Text(
+                        r.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      r.value,
-                      style: GoogleFonts.spaceMono(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    Expanded(
+                      child: Text(
+                        r.value,
+                        style: GoogleFonts.spaceMono(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          )
-          .toList(),
+          ],
+        ),
+      ),
     );
   }
 }

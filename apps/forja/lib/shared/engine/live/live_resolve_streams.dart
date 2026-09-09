@@ -304,40 +304,8 @@ abstract final class LiveResolveStreams {
     final mid = source.id.trim();
     if (mid.isEmpty) return const [];
 
-    final unlockKind = await LivePluginEngine.pluginNativeUnlock(pluginId);
-
-    // WatchFooty: list site stream links (same as Stream links N). Unlock on play.
-    if (unlockKind == 'watchfooty') {
-      final raw = await LiveGoatUnlock.listWatchfootyMatchStreams(mid);
-      final out = <MatchStream>[];
-      final seen = <String>{};
-      for (var i = 0; i < raw.length; i++) {
-        final row = raw[i];
-        final embed = (row['url'] ?? '').toString().trim();
-        if (embed.isEmpty || !seen.add(embed)) continue;
-        final src = (row['source'] ?? '').toString().trim();
-        final quality = (row['quality'] ?? '').toString().trim();
-        final language = [
-          if (src.isNotEmpty) src,
-          if (quality.isNotEmpty) quality,
-        ].join(' ');
-        out.add(
-          MatchStream(
-            id: mid,
-            streamNo: out.length + 1,
-            language: language,
-            hd: quality.toLowerCase().contains('hd'),
-            embedUrl: embed,
-            source: src.isNotEmpty ? src : pluginSource,
-            viewers: match.viewers,
-            directPlayback: iptvLiveEnginePlayUrlReady(embed),
-          ),
-        );
-      }
-      return out;
-    }
-
-    // Other live packs: resolve returns only real unlockable / playable rows.
+    // Live packs: resolve returns real mirrors (embeds or unlocked URLs).
+    // Unlock-on-play when the row is still an embed page.
     List<Map<String, dynamic>> rows = const [];
     try {
       rows = await EngineService.instance.runLivePlugin(

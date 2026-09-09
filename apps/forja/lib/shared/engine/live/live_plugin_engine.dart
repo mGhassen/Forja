@@ -497,25 +497,9 @@ class LivePluginEngine {
     Map<String, dynamic> params = const {},
   }) async {
     final label = await pluginDisplayName(pluginId);
-    // Packs that declare nativeUnlock (streamed / ppv / watchfooty) unlock in
-    // Dart — EngineJS has no goatUnlock bridge, and flutter_js /fetch+crack is
-    // the path that was dying on set_stream_jw for admin/PPV slots.
-    final unlockKind = await pluginNativeUnlock(pluginId);
-    final native = await _resolveNativeUnlock(
-      pluginId: pluginId,
-      params: params,
-      label: label,
-    );
-    if (native != null) return native;
-
-    // Streamed native path already cracked + CDN-probed. A miss means the
-    // slot is dead/gated (website has no player). Do not flutter_js-unlock
-    // the same signed URL without a probe — that reopens a failing player.
-    // Golf has no native unlock; JS resolveGolf still owns that source.
-    if (unlockKind == 'streamed' && !_paramsAreGolfEmbed(params)) {
-      return null;
-    }
-
+    // Pack JS owns /fetch + crack via ctx.live.goatUnlock / gasmUnlock /
+    // sportsEmbedUnlock. Host only runs those opaque bridges — never
+    // switch(nativeUnlock) on streamed/ppv/watchfooty in Dart.
     final raw = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',
@@ -540,81 +524,12 @@ class LivePluginEngine {
     if (h is Map) {
       h.forEach((k, v) => headers[k.toString()] = v.toString());
     }
+    final pluginDirect = first['directPlayback'] == true;
     return LiveEngineResolveResult.playable(
       url: url,
       headers: headers,
       label: (first['name'] ?? first['title'] ?? label).toString(),
-      directPlayback: first['directPlayback'] == true,
-    );
-  }
-
-  static bool _paramsAreGolfEmbed(Map<String, dynamic> params) {
-    final source = (params['source'] ?? '').toString().trim().toLowerCase();
-    if (source == 'golf') return true;
-    final embed = (params['embedUrl'] ?? params['iframe'] ?? params['url'] ?? '')
-        .toString()
-        .toLowerCase();
-    return embed.contains('/embed/golf/') ||
-        RegExp(r'/golf/[^/]+/\d+').hasMatch(embed);
-  }
-
-  static Future<LiveEngineResolveResult?> _resolveNativeUnlock({
-    required String pluginId,
-    required Map<String, dynamic> params,
-    required String label,
-  }) async {
-    final kind = await pluginNativeUnlock(pluginId);
-    if (kind.isEmpty) return null;
-
-    final embed = (params['embedUrl'] ?? params['iframe'] ?? params['url'] ?? '')
-        .toString()
-        .trim();
-    final source = (params['source'] ?? '').toString().trim();
-    final matchId = (params['matchId'] ?? '').toString().trim();
-    final stream = (params['stream'] ?? '1').toString().trim();
-    if (embed.isEmpty && (source.isEmpty || matchId.isEmpty)) return null;
-
-    ({String url, Map<String, String> headers})? unlocked;
-    try {
-      switch (kind) {
-        case 'streamed':
-          unlocked = await LiveGoatUnlock.resolveStreamed(
-            embedUrl: embed,
-            source: source,
-            matchId: matchId,
-            stream: stream.isEmpty ? '1' : stream,
-          );
-        case 'ppv':
-          if (embed.isEmpty) return null;
-          unlocked = await LiveGoatUnlock.resolvePpv(embedUrl: embed);
-        case 'watchfooty':
-          if (embed.isNotEmpty) {
-            unlocked = await LiveGoatUnlock.resolveWatchfootyEmbed(
-              embedUrl: embed,
-            );
-          } else if (matchId.isNotEmpty) {
-            final rows = await LiveGoatUnlock.resolveWatchfootyMatch(
-              matchId: matchId,
-            );
-            if (rows.isNotEmpty) {
-              unlocked = (url: rows.first.url, headers: rows.first.headers);
-            }
-          }
-        default:
-          return null;
-      }
-    } catch (e, st) {
-      debugPrint('[LivePluginEngine] nativeUnlock=$kind failed: $e\n$st');
-      return null;
-    }
-    if (unlocked == null) return null;
-    final url = unlocked.url.trim();
-    if (url.isEmpty || !EngineService.liveResolveUrlPlayable(url)) return null;
-    return LiveEngineResolveResult.playable(
-      url: url,
-      headers: unlocked.headers,
-      label: label,
-      directPlayback: liveEnginePreferDirectPlayback(url),
+      directPlayback: liveEngineOpenDirect(url, pluginDirect: pluginDirect),
     );
   }
 
@@ -672,16 +587,16 @@ class LiveEngineResolveResult {
 }
 
 bool liveEnginePreferDirectPlayback(String m3u8Url) {
-  return LiveGoatUnlock.preferDirectEnginePlayback(m3u8Url);
+  // Pack sets `directPlayback` on resolve rows. Host only knows MediaKit
+  // transport limits (path-signed / S3), not which pack CDN is which.
+  return false;
 }
 
-/// Plugin `directPlayback` must not force a MediaKit open of `wfty.st` —
-/// that CDN needs `/hls-proxy` so child playlists keep sportsembed Referer.
-/// Amazon S3 (Foorja etc.): same — mbedtls often RST / bogus regions NXDOMAIN
-/// on direct open; hls-proxy uses host TLS.
+/// Trust pack `directPlayback`. Force `/hls-proxy` for CDNs that need host
+/// TLS + Referer rewrite on child playlists (MediaKit constraint).
 bool liveEngineOpenDirect(String m3u8Url, {bool pluginDirect = false}) {
   final host = Uri.tryParse(m3u8Url.trim())?.host.toLowerCase() ?? '';
   if (host.contains('wfty.st')) return false;
   if (host.contains('amazonaws.com')) return false;
-  return pluginDirect || liveEnginePreferDirectPlayback(m3u8Url);
+  return pluginDirect;
 }

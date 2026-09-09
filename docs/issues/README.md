@@ -39,21 +39,21 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [015-[fixed]-…](fixed/015-[fixed]-rust-blocking-http-engine-debt.md) | Rust blocking HTTP debt | P2 | Medium | fixed | 6/6 | [0.4.4](../backlog/done/0.4.4-[done].md) |
 | [016-[fixed]-…](fixed/016-[fixed]-async-job-ffi-hard-cancel.md) | Async job FFI cancel | P2 | Medium | fixed | Complete | [0.4.0](../backlog/done/0.4.0-[done].md) |
 | [017-[fixed]-…](fixed/017-[fixed]-webstreamr-stream-choice-button-missing.md) | WebStreamr stream-choice button | P2 | Medium | fixed | 4/4 | [0.4.5](../backlog/done/0.4.5-[done].md) |
-| [018-[draft]-…](018-[draft]-migration-playback-parity-unverified.md) | Playback parity unverified | P1 | High | draft | 3/13 | [1.0.1](../backlog/1.0.1-[draft].md) |
-| [019-[draft]-…](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr E2E test gap | P2 | Medium | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [020-[draft]-…](020-[draft]-cancel-gen-token-discard-unverified.md) | Cancel gen-token unverified | P2 | Medium | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [018-[draft]-…](018-[draft]-migration-playback-parity-unverified.md) | Playback parity unverified | P1 | High | open | 3/13 | [1.0.1](../backlog/1.0.1-[draft].md) |
+| [019-[draft]-…](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr E2E test gap | P2 | Medium | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [020-[draft]-…](020-[draft]-cancel-gen-token-discard-unverified.md) | Cancel gen-token unverified | P2 | Medium | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | packages/api delete | P2 | Medium | fixed | 4/4 | [0.3.2](../backlog/done/0.3.2-[done].md) |
 | [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 12/13 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [025-[open]-…](025-[open]-android-tv-leanback-smoke-unverified.md) | Android TV leanback smoke unverified | P1 | High | open | 6/14 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [026-[open]-…](026-[open]-lan-stream-playback-bearer-token.md) | LAN stream ticket auth (smoke open) | P1 | High | open | 1/2 · 0/2 | [1.0.9](../backlog/1.0.9-[draft].md) |
-| [027-[draft]-…](027-[draft]-lan-server-client-manual-qa.md) | RFC-022 LAN manual QA matrix | P2 | Medium | draft | 0/10 | — |
-| [028-[draft]-…](028-[draft]-desktop-lan-client-not-implemented.md) | Desktop LAN client not implemented | P2 | Medium | draft | 0/3 · 0/2 | — |
-| [029-[draft]-…](029-[draft]-lan-range-seek-unverified.md) | LAN range seek unverified | P3 | Low | draft | 0/2 | — |
-| [030-[draft]-…](030-[draft]-lan-hdr-passthrough-unverified.md) | LAN HDR passthrough unverified | P3 | Low | draft | 0/1 | — |
+| [027-[draft]-…](027-[draft]-lan-server-client-manual-qa.md) | RFC-022 LAN manual QA matrix | P2 | Medium | open | 0/10 | — |
+| [028-[draft]-…](028-[draft]-desktop-lan-client-not-implemented.md) | Desktop LAN client not implemented | P2 | Medium | open | 0/3 · 0/2 | — |
+| [029-[draft]-…](029-[draft]-lan-range-seek-unverified.md) | LAN range seek unverified | P3 | Low | open | 0/2 | — |
+| [030-[draft]-…](030-[draft]-lan-hdr-passthrough-unverified.md) | LAN HDR passthrough unverified | P3 | Low | open | 0/1 | — |
 | [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 7/13 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | open | 7/13 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [033-[open]-…](033-[open]-vod-decoder-recovery.md) | VOD player decoder recovery | P2 | Medium | open | 4/5 | — |
 | [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 3/4 · A 0/1 | — |
 | [035-[fixed]-…](fixed/035-[fixed]-nuvio-torrent-scraper-in-direct-streaming.md) | Nuvio torrent scraper (Torrentio) in Direct Streaming | P1 | High | fixed | Complete · 7/7 | — |
@@ -207,7 +207,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [185-[open]-…](185-[open]-streamcrypto-dart-webview.md) | STREAMCRYPTO Dart + WebView (shared enc=2) | P1 | High | open | 5/5 · A 2/4 | — |
 | [186-[open]-…](186-[open]-paused-playback-history-scrobble-heartbeat.md) | Paused play still heartbeats history/Simkl | P2 | Medium | open | 4/4 · A 0/1 | — |
 | [187-[open]-…](187-[open]-android-tv-mediakit-vod-cache-empty.md) | ATV movies MediaKit cache never fills | P1 | High | open | 2/2 · A 0/2 | — |
-| [188-[draft]-…](188-[draft]-forja-engine-play-manual-qa.md) | Forja engine tab manual play QA | P2 | Medium | draft | 0/2 | — |
+| [188-[draft]-…](188-[draft]-forja-engine-play-manual-qa.md) | Forja engine tab manual play QA | P2 | Medium | open | 0/2 | — |
 | [189-[fixed]-…](fixed/189-[fixed]-engine-jsc-use-after-dispose-on-cancel.md) | Engine Forja tab JSC SIGSEGV on cancel | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
 | [190-[open]-…](190-[open]-forja-engine-parallel-jsc-crash.md) | Forja Engine parallel JSC crash / UI starvation | P1 | High | open | 10/10 · A 3/4 | [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) |
 | [191-[fixed]-…](fixed/191-[fixed]-hub-sources-panel-stuck-after-nav.md) | Hub Sources panel stuck after nav tab switch | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
@@ -263,7 +263,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [257-[open]-…](257-[open]-android-tv-guest-settings-only-dpad.md) | ATV guest / Settings-only D-pad stuck on Settings rail | P0 | High | open | 4/4 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) |
 | [258-[open]-…](258-[open]-shahid-android-drm-manual-qa.md) | Shahid Android DRM manual QA | P1 | Medium | open | 0/5 | [RFC-101](../rfc/101-[open]-shahid-hub-provider-exo-widevine.md) |
 | [259-[open]-…](259-[open]-cloud-pack-auto-install-before-profile-splash.md) | Cloud pack auto-install before profile splash | P0 | Critical | open | 6/6 · A 0/5 | [225](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) |
-| [260-[draft]-…](260-[draft]-host-hardcodes-specific-plugins.md) | Host still hardcodes specific plugins (community-owned audit) | P0 | Critical | draft | 0/6 · A 0/4 | [255](255-[open]-provider-runtime-config-builtins-debt.md) |
+| [260-[open]-…](260-[open]-host-hardcodes-specific-plugins.md) | Host still hardcodes specific plugins (community-owned audit) | P0 | Critical | open | 1/6 · A 0/4 | [255](255-[open]-provider-runtime-config-builtins-debt.md) |
+| [261-[fixed]-…](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) | Windows IPTV portal unreachable (DNS64 AAAA) | P1 | High | fixed | Complete · 3/3 · A 0/1 | [252](fixed/252-[fixed]-iptv-status-checks-false-red.md) |
+| [262-[fixed]-…](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) | ATV Forja Packs last pack clipped / unreachable | P1 | High | fixed | Complete · 3/3 · A 0/1 | [127](127-[open]-android-tv-settings-detail-dpad.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

@@ -303,6 +303,11 @@ abstract final class ShellTokens {
   /// Catalog row D-pad focus: keep this fraction of viewport below the row.
   static const double tvKitRowFocusBottomInsetFraction = 0.10;
 
+  /// Settings / vertical menus: keep this fraction of viewport below the
+  /// focused control so the next row peeks and ATV overscan does not clip
+  /// the last item (flush keepVisibleAtEnd hid the final pack).
+  static const double tvSettingsFocusBottomInsetFraction = 0.28;
+
   /// Media-details body rows (Cast / Trailers / …): keep this fraction of
   /// viewport above the focused row so ↑ does not pin flush to the top edge.
   static const double tvDetailsRowFocusTopInsetFraction = 0.25;

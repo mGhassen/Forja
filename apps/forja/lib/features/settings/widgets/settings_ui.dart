@@ -887,8 +887,11 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
     // TV: title lives inside the scroller so snap-to-top reveals it with the
     // section labels above the first control (sticky chrome was getting clipped).
     final titleTop = tv ? 28.0 : 8.0;
+    // Match [ShellTokens.tvSettingsFocusBottomInsetFraction] so ensureVisible
+    // can lift the last row without running out of maxScrollExtent.
     final tvBottomSlack = tv && widget.scrollable
-        ? MediaQuery.sizeOf(context).height * 0.22
+        ? MediaQuery.sizeOf(context).height *
+            ShellTokens.tvSettingsFocusBottomInsetFraction
         : 0.0;
     return SafeArea(
       child: widget.scrollable

@@ -3,25 +3,41 @@ import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 
 void main() {
   group('liveEnginePreferDirectPlayback', () {
-    test('delta and echo media playlists open direct', () {
+    test('always false — packs own directPlayback flag', () {
       expect(
         liveEnginePreferDirectPlayback(
           'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         liveEnginePreferDirectPlayback(
-          'https://lb1.strmd.st/secure/tok/echo/stream/bar/1/playlist.m3u8',
+          'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
+        ),
+        isFalse,
+      );
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://streamfree.top/live/match1080p/index.m3u8?_e=1&_n=x&_t=y',
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('liveEngineOpenDirect', () {
+    test('trusts pluginDirect except wfty / amazonaws', () {
+      expect(
+        liveEngineOpenDirect(
+          'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
+          pluginDirect: true,
         ),
         isTrue,
       );
-    });
-
-    test('watchfooty wfty.st playlists use hls-proxy', () {
       expect(
-        liveEnginePreferDirectPlayback(
-          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
+        liveEngineOpenDirect(
+          'https://lb1.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
+          pluginDirect: false,
         ),
         isFalse,
       );
@@ -32,9 +48,6 @@ void main() {
         ),
         isFalse,
       );
-    });
-
-    test('amazon s3 foorja playlists use hls-proxy even when pluginDirect', () {
       expect(
         liveEngineOpenDirect(
           'https://foorja1.s3.eu-north-1.amazonaws.com/live/master.m3u8',
@@ -44,45 +57,15 @@ void main() {
       );
     });
 
-    test('ppv indianservers playlists open direct', () {
+    test('CDN path alone is not enough without pluginDirect', () {
       expect(
-        liveEnginePreferDirectPlayback(
-          'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
-        ),
-        isTrue,
-      );
-    });
-
-    test('streamfree strmd and streamfree.top live open direct', () {
-      expect(
-        liveEnginePreferDirectPlayback(
+        liveEngineOpenDirect(
           'https://lb14.strmd.st/secure/tok/streamfree/stream/foo/1/playlist.m3u8',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
-        liveEnginePreferDirectPlayback(
-          'https://streamfree.top/live/match1080p/index.m3u8?_e=1&_n=x&_t=y',
-        ),
-        isTrue,
-      );
-      expect(
-        liveEnginePreferDirectPlayback(
-          'https://streamfree.top/live-cdn/match1080p3/index.m3u8?_t=a&_e=1&_n=x',
-        ),
-        isTrue,
-      );
-      expect(
-        liveEnginePreferDirectPlayback(
-          'https://streamfree.top/live-origin/match720p2/index.m3u8?_t=a&_e=1&_n=x',
-        ),
-        isTrue,
-      );
-    });
-
-    test('admin rtmp master stays on hls-proxy', () {
-      expect(
-        liveEnginePreferDirectPlayback(
+        liveEngineOpenDirect(
           'https://lb1.strmd.st/secure/tok/rtmp/stream/id/1/playlist.m3u8',
         ),
         isFalse,

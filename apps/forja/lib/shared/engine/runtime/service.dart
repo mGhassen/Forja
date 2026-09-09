@@ -1367,11 +1367,8 @@ class EngineService {
         }
         final headerStr = <String, String>{};
         headers.forEach((k, v) => headerStr[k] = v.toString());
-        final source = (slot['source'] ?? '').toString().toLowerCase();
-        if (source == 'echo' || source == 'streamed') {
-          if (!await LiveGoatUnlock.probePlayableM3u8(url, headerStr)) {
-            continue;
-          }
+        if (!await LiveGoatUnlock.probePlayableM3u8(url, headerStr)) {
+          continue;
         }
         out.add({'url': url, 'headers': headers});
         continue;

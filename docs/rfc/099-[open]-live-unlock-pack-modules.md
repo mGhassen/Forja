@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **4 / 4** components · **8 / 9** acceptance |
-| **Current slice** | Host runtime + pack modules shipped; Flutter assets remain fallback; manual smoke ⬜ |
+| **Current slice** | Pack JS owns resolve; host is opaque crack runtime only ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T01) · smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -44,7 +44,9 @@
 
 ## Summary
 
-GOAT / GASM / sportsembed **crack algorithms and WASM** move into the **ForjaHQ live pack** (`plugins/live/goat|gasm|sportsembed`). The Flutter host keeps the permanent unlock **runtime** (Node + happy-dom, off-screen WebView, serialize cracks, native play headers) and exposes typed bridges (`ctx.live.goatUnlock` / `gasmUnlock` / `sportsEmbedUnlock`).
+GOAT / GASM / sportsembed **crack algorithms and WASM** live in the **live pack** (`plugins/live/goat|gasm|sportsembed`). Pack JS owns `/fetch` + resolve (`streamed.js` / `ppv.js` / `watchfooty.js` + `embed-st.js`). The Flutter host keeps only the opaque unlock **runtime** (Node + happy-dom, off-screen WebView, serialize cracks) and bridges (`ctx.live.goatUnlock` / `gasmUnlock` / `sportsEmbedUnlock`).
+
+Do **not** put streamed/ppv/watchfooty resolve switches back in Dart ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T01).
 
 Pack update can ship a new `lock.wasm` / `unlock.mjs` without an app release. App release only when the host runner contract changes.
 
@@ -52,9 +54,9 @@ Pack update can ship a new `lock.wasm` / `unlock.mjs` without an app release. Ap
 
 | Layer | Owns |
 |-------|------|
-| Host | Node/WebView runner, npm once, WebView crack protocol, playback headers helpers |
-| Pack | `goat/`, `gasm/`, `sportsembed/` trees listed in `bundle` |
-| Plugin JS | `/fetch`, slot parse, call `ctx.live.*` |
+| Host | Node/WebView runner, npm once, WebView crack protocol, opaque `ctx.live.*` bridges |
+| Pack | `goat/`, `gasm/`, `sportsembed/` trees listed in `bundle`; `/fetch` + resolve JS |
+| Plugin JS | Slot parse, CDN probe, headers, `directPlayback`, call `ctx.live.*` |
 
 ### Related
 

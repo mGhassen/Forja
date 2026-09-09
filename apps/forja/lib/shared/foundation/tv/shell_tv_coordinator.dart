@@ -1836,12 +1836,13 @@ ScrollableState? _nearestVerticalScrollable(BuildContext context) {
 ///
 /// When the control sits near the **start** of the scroll content, jump to
 /// [ScrollPosition.minScrollExtent] so page titles / group labels above the
-/// first focusable stay visible — and **do not** run keepVisible (AtEnd on a
-/// tall first control scrolls down and clips everything above it). Mid-list
-/// rows use keepVisible only.
+/// first focusable stay visible. Mid/end rows leave a **bottom inset** so the
+/// next item peeks and the last row is not pinned under ATV overscan (flush
+/// [ScrollPositionAlignmentPolicy.keepVisibleAtEnd] caused that).
 void shellTvEnsureVisibleItem(
   BuildContext context, {
   double topRevealSlackPx = kShellTvListTopRevealSlackPx,
+  double bottomInsetFraction = ShellTokens.tvSettingsFocusBottomInsetFraction,
 }) {
   final scrollable = _nearestVerticalScrollable(context);
   if (scrollable == null) return;
@@ -1864,18 +1865,26 @@ void shellTvEnsureVisibleItem(
     return;
   }
 
-  const zero = Duration.zero;
-  Scrollable.ensureVisible(
-    context,
-    alignment: 0.0,
-    duration: zero,
-    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-  );
-  Scrollable.ensureVisible(
-    context,
-    alignment: 1.0,
-    duration: zero,
-    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+  final viewportH = position.viewportDimension;
+  final cardTop = topInViewport;
+  final cardBottom = topInViewport + box.size.height;
+  final maxBottom = viewportH * (1.0 - bottomInsetFraction);
+
+  var delta = 0.0;
+  if (cardBottom > maxBottom) {
+    delta = cardBottom - maxBottom;
+  }
+  // Prefer keeping the top on-screen when the control is taller than the band.
+  if (cardTop - delta < 0) {
+    delta = cardTop;
+  }
+  if (delta.abs() < 0.5) return;
+
+  position.jumpTo(
+    (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    ),
   );
 }
 

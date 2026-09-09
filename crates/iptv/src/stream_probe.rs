@@ -42,11 +42,7 @@ pub async fn probe_stream_alive_async(url: &str, timeout_secs: u64) -> Result<bo
         return Err("Invalid URL".into());
     }
     let timeout = Duration::from_secs(timeout_secs.clamp(1, 120));
-    let client = reqwest::Client::builder()
-        .timeout(timeout)
-        .redirect(reqwest::redirect::Policy::limited(8))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = crate::http::client(timeout)?;
     // No Range — live / Stalker CDNs often reject Range (403/416/empty)
     // while a normal GET plays fine in the player.
     let resp = client

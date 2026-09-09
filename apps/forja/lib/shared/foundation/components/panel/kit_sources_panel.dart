@@ -250,7 +250,71 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   }
 
   Widget _header(BuildContext context) {
-    return Padding(
+    final tvTabId = _effectiveTvTabId(context);
+    final tv = tvTabId != null;
+    final hasClose = widget.onClosed != null;
+    final muted = ForjaShellColors.textSecondary;
+
+    Widget reloadBtn;
+    if (tv) {
+      reloadBtn = shellFocusableTap(
+        context: context,
+        onTap: () => unawaited(_ensureLoaded(_tabId, force: true)),
+        borderRadius: 18,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        listIndex: 0,
+        tvTabId: tvTabId,
+        tvRowId: SourcesPanelTv.headerRowId,
+        tvItemIndex: 0,
+        tvZone: ShellTvZone.chipStrip,
+        onLeftEdge: widget.onTabsLeftEdge,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(Icons.refresh_rounded, size: 20, color: muted),
+        ),
+      );
+    } else {
+      reloadBtn = ForjaPlainIcon(
+        icon: Icons.refresh_rounded,
+        tooltip: 'Reload',
+        color: muted,
+        size: 20,
+        hitSize: 36,
+        onTap: () => unawaited(_ensureLoaded(_tabId, force: true)),
+      );
+    }
+
+    Widget? closeBtn;
+    if (hasClose) {
+      if (tv) {
+        closeBtn = shellFocusableTap(
+          context: context,
+          onTap: widget.onClosed,
+          borderRadius: 18,
+          scaleOnFocus: 1.0,
+          showFocusBorder: true,
+          listIndex: 1,
+          tvTabId: tvTabId,
+          tvRowId: SourcesPanelTv.headerRowId,
+          tvItemIndex: 1,
+          tvZone: ShellTvZone.chipStrip,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(Icons.close_rounded, size: 20, color: muted),
+          ),
+        );
+      } else {
+        closeBtn = ForjaCloseButton(
+          color: muted,
+          onTap: widget.onClosed,
+        );
+      }
+    }
+
+    Widget header = Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
       child: Row(
         children: [
@@ -283,21 +347,29 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Reload',
-            onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            color: ForjaShellColors.textSecondary,
-          ),
-          if (widget.onClosed != null)
-            IconButton(
-              tooltip: 'Close',
-              onPressed: widget.onClosed,
-              icon: const Icon(Icons.close_rounded, size: 20),
-              color: ForjaShellColors.textSecondary,
-            ),
+          reloadBtn,
+          if (closeBtn != null) ...[
+            const SizedBox(width: 2),
+            closeBtn,
+          ],
         ],
       ),
+    );
+
+    if (!tv) return header;
+    return TvKitRow(
+      tabId: tvTabId,
+      rowId: SourcesPanelTv.headerRowId,
+      sortOrder: SourcesPanelTv.headerSort,
+      itemCount: hasClose ? 2 : 1,
+      onFocusDown: () {
+        if (widget.showTabs && widget.tabs.length > 1) {
+          SourcesPanelTv.focusKindItem();
+        } else {
+          SourcesPanelTv.focusListItem(index: 0);
+        }
+      },
+      child: header,
     );
   }
 
@@ -312,6 +384,9 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         tvRowId: widget.tabsRowId,
         tvItemIndexStart: 0,
         onLeftEdge: widget.onTabsLeftEdge,
+        onUpEdge: tvTabId != null && !widget.embedded
+            ? () => SourcesPanelTv.focusHeaderItem()
+            : null,
         onDownEdge: tvTabId != null
             ? () => SourcesPanelTv.focusListItem(index: 0)
             : null,
@@ -335,6 +410,9 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       rowId: widget.tabsRowId,
       sortOrder: SourcesPanelTv.kindSort,
       itemCount: widget.tabs.length,
+      onFocusUp: widget.embedded
+          ? null
+          : () => SourcesPanelTv.focusHeaderItem(),
       onFocusDown: () => SourcesPanelTv.focusListItem(index: 0),
       child: padded,
     );
@@ -399,7 +477,15 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       sortOrder: SourcesPanelTv.listSort,
       itemCount: rows.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () => SourcesPanelTv.focusKindItem(),
+      onFocusUp: () {
+        if (widget.showTabs && widget.tabs.length > 1) {
+          SourcesPanelTv.focusKindItem();
+        } else if (!widget.embedded) {
+          SourcesPanelTv.focusHeaderItem();
+        } else {
+          SourcesPanelTv.focusKindItem();
+        }
+      },
       child: list,
     );
   }
@@ -492,7 +578,15 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
       onUpEdge: upToTabs && tvTabId != null
-          ? () => SourcesPanelTv.focusKindItem()
+          ? () {
+              if (widget.showTabs && widget.tabs.length > 1) {
+                SourcesPanelTv.focusKindItem();
+              } else if (!widget.embedded) {
+                SourcesPanelTv.focusHeaderItem();
+              } else {
+                SourcesPanelTv.focusKindItem();
+              }
+            }
           : null,
       onLeftEdge: widget.onTabsLeftEdge,
       onPlay: () => unawaited(widget.onPlayRow(row)),

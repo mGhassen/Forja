@@ -329,8 +329,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int _nuvioPoolLimit = kNuvioScraperBatchDesktop;
 
   List<Map<String, dynamic>> _engineStreams = [];
-  /// Plugin returned DRM rows that cannot play on this platform (Sources omit).
-  bool _engineHadPlatformBlockedDrm = false;
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   bool _engineAllMode = false;
@@ -576,7 +574,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       case 'engine':
         final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
         if (cached != null) {
-          _applyEngineStreams(cached.streams, replace: true);
+          _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;
         }
       case 'nuvio':
@@ -1495,7 +1493,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (cached != null) {
         if (!mounted) return;
         setState(() {
-          _applyEngineStreams(cached.streams, replace: true);
+          _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;
           _error = null;
         });
@@ -1920,24 +1918,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<Map<String, dynamic>> get _filteredEngine {
-    return omitPlatformBlockedDrmStreams(_engineStreams)
+    return _engineStreams
         .where((s) => _engineStreamSelected(s) && _matchesStreamFilters(s))
         .toList();
-  }
-
-  void _applyEngineStreams(
-    Iterable<Map<String, dynamic>> rows, {
-    required bool replace,
-  }) {
-    final playable = omitPlatformBlockedDrmStreams(rows);
-    if (streamsArePlatformBlockedDrmOnly(rows)) {
-      _engineHadPlatformBlockedDrm = true;
-    }
-    if (replace) {
-      _engineStreams = playable;
-    } else {
-      _engineStreams.addAll(playable);
-    }
   }
 
   int _compare(TorrentResult a, TorrentResult b) {
@@ -2898,7 +2881,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         (s) => engineStreamBelongsToPlugin(s, pluginId),
       );
       if (batch != null && batch.streams.isNotEmpty) {
-        _applyEngineStreams(batch.streams, replace: false);
+        _engineStreams.addAll(batch.streams);
       }
     });
     CatalogSourcesSessionCache.writeEngine(
@@ -2999,7 +2982,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     setState(() {
       if (reset) {
         _engineStreams = [];
-        _engineHadPlatformBlockedDrm = false;
         _engineFetchedPluginIds = {};
         _engineInFlightPluginIds.clear();
       } else if (refresh) {
@@ -3016,9 +2998,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineFetching = stillPending;
       if (!stillPending) _engineInFlightPluginIds.clear();
       if (!stillPending && _engineStreams.isEmpty) {
-        _error = _engineHadPlatformBlockedDrm
-            ? kStreamDrmAndroidOnlyMessage
-            : 'No streams found from selected Forja plugins';
+        _error = 'No streams found from selected Forja plugins';
       }
     });
   }
@@ -3440,7 +3420,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         key: _catalogCacheKey,
         currentStreams: _engineStreams,
         apply: (streams, fetched) {
-          _applyEngineStreams(streams, replace: true);
+          _engineStreams = streams;
           _engineFetchedPluginIds = fetched;
         },
       );
@@ -3630,6 +3610,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_sourcePickInFlight) return;
     if (widget.playbackConfirmed && _isCurrentStremio(stream)) {
       widget.onClose();
+      return;
+    }
+    // Keep Sources open; never push MediaKit for Widevine off Android.
+    if (streamDrmBlockedOffAndroid(stream['drm'])) {
+      ForjaToast.info(kStreamDrmAndroidOnlyMessage);
       return;
     }
     setState(() => _sourcePickInFlight = true);

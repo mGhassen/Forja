@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -13,11 +12,12 @@ import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// Host bridge for `ctx.live.goatUnlock` / `ctx.live.gasmUnlock` —
-/// desktop Node WASM decrypt, Android/iOS off-screen WebView fallback.
+/// Opaque host crack runtime for live packs (`ctx.live.goatUnlock` /
+/// `gasmUnlock` / `sportsEmbedUnlock` / sniff).
 ///
-/// Crack scripts + wasm come from the live pack ([LiveUnlockModules]); this
-/// class owns Node/WebView runtime only (RFC-099).
+/// Packs own `/fetch` + resolve orchestration. This class runs Node/WebView
+/// WASM decrypt (and sportsembed unlock) only — crack scripts come from the
+/// live pack ([LiveUnlockModules]).
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
@@ -40,30 +40,9 @@ class LiveGoatUnlock {
     return done.future;
   }
 
-  static const _embedOrigin = 'https://embed.st';
   static const _embedIndiaOrigin = 'https://embedindia.st';
-  static const _watchfootyReferer = 'https://watchfooty.st/';
   static const _sportsEmbedOrigin = 'https://sportsembed.su';
   static const _sportsEmbedHosts = ['sportsembed.su', 'spiderembed.top'];
-  static const _goatSlotSources = {
-    'admin',
-    'delta',
-    'echo',
-    'golf',
-    'ppv',
-    'bravo',
-  };
-  /// Prefer delta (GOAT-compatible) then denser sportsembed qualities.
-  static const _watchfootySourcePriority = [
-    'delta',
-    'echo',
-    'sigma',
-    'pro',
-    'platinum',
-    'deluxe',
-    'hd',
-    'regular',
-  ];
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -89,88 +68,10 @@ class LiveGoatUnlock {
     return host == 'epiembeds.online' || host.endsWith('.epiembeds.online');
   }
 
-  static bool isGasmJwEmbedUrl(String url) =>
-      isEmbedIndiaUrl(url) || isEpiEmbedsUrl(url);
-
   static bool isEmbedIndiaUrl(String url) {
     final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
     if (host.isEmpty) return false;
     return host == 'embedindia.st' || host.endsWith('.embedindia.st');
-  }
-
-  /// sportsembed.su mirrors embed.st — `/embed/{event}/{slug}/{source}/{n}`.
-  static String? embedStUrlFromSportsEmbed(String raw) {
-    final uri = Uri.tryParse(raw.trim());
-    if (uri == null || !isSportsEmbedUrl(raw)) return null;
-    final segs = uri.pathSegments;
-    if (segs.length < 5 || segs.first != 'embed') return null;
-    final slug = segs[2];
-    final source = segs[3].toLowerCase();
-    final stream = segs[4];
-    if (!_goatSlotSources.contains(source)) return null;
-    return '$_embedOrigin/embed/$source/$slug/$stream';
-  }
-
-  /// hd / platinum rows on sportsembed map to admin `ppv-…` slots on embed.st.
-  static Iterable<String> embedStAdminCandidatesFromSportsEmbed(String raw) {
-    final uri = Uri.tryParse(raw.trim());
-    if (uri == null || !isSportsEmbedUrl(raw)) return const [];
-    final segs = uri.pathSegments;
-    if (segs.length < 5 || segs.first != 'embed') return const [];
-    final slug = segs[2];
-    final quality = segs[3].toLowerCase();
-    final stream = segs[4];
-    if (quality != 'hd' && quality != 'platinum') return const [];
-
-    final parts = slug.split('-').where((p) => p.isNotEmpty).toList();
-    if (parts.length < 2) return const [];
-
-    final ids = <String>{'ppv-$slug'};
-    for (var i = 1; i < parts.length; i++) {
-      final home = parts.sublist(0, i).join('-');
-      final away = parts.sublist(i).join('-');
-      ids.add('ppv-$home-vs-$away');
-    }
-    return ids.map((id) => '$_embedOrigin/embed/admin/$id/$stream');
-  }
-
-  @visibleForTesting
-  static Map<String, dynamic>? parseEmbedIndiaSlot(String raw) =>
-      _parseEmbedIndiaSlot(raw);
-
-  /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
-  ///
-  /// GOAT-compatible sportsembed rows (delta/echo/admin) map onto embed.st.
-  /// sigma/pro/hd/… stay on sportsembed.wasm → `wfty.st` (no HTML embed).
-  static Future<({String url, Map<String, String> headers})?>
-  resolveWatchfootyEmbed({required String embedUrl}) async {
-    final embed = embedUrl.trim();
-    if (embed.isEmpty) return null;
-    if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      return (
-        url: embed,
-        headers: withWftyPlaybackReferer(embed, {
-          'Referer': _watchfootyReferer,
-          'User-Agent': _ua,
-        }),
-      );
-    }
-    if (!isSportsEmbedUrl(embed)) return null;
-
-    final mapped = embedStUrlFromSportsEmbed(embed);
-    if (mapped != null) {
-      final unlocked = await resolveStreamed(embedUrl: mapped);
-      if (unlocked != null) return unlocked;
-    }
-
-    for (final candidate in embedStAdminCandidatesFromSportsEmbed(embed)) {
-      final unlocked = await resolveStreamed(embedUrl: candidate);
-      if (unlocked != null) return unlocked;
-    }
-
-    // Non-GOAT qualities (e.g. sigma) — stream-lock.wasm → `wfty.st`
-    // (playback via /hls-proxy + sportsembed Referer; do not Dart-probe).
-    return resolveSportsEmbed(embedUrl: embed);
   }
 
   /// sportsembed.su client handshake → plaintext HLS URL.
@@ -213,11 +114,9 @@ class LiveGoatUnlock {
         playbackHeadersForSportsEmbed(slot),
       );
       // WatchFooty `lb*.wfty.st` is path-signed — Dart GET often 403s even when
-      // MediaKit + sportsembed Referer (via /hls-proxy) can play. Never probe it
-      // away: preferDirect is false for wfty so playback stays on the proxy path.
+      // MediaKit + sportsembed Referer (via /hls-proxy) can play.
       final host = Uri.tryParse(result)?.host.toLowerCase() ?? '';
-      final skipProbe = host.contains('wfty.st') ||
-          preferDirectEnginePlayback(result);
+      final skipProbe = host.contains('wfty.st');
       if (!skipProbe && !await _probePlayableM3u8(result, headers)) {
         debugPrint(
           '[LiveSportsEmbed] CDN m3u8 not playable '
@@ -230,129 +129,6 @@ class LiveGoatUnlock {
       debugPrint('[LiveSportsEmbed] unlock failed: $e');
       return null;
     }
-  }
-
-  /// Fetch WatchFooty match streams and unlock playable HLS rows (delta first).
-  static Future<List<({String url, String name, Map<String, String> headers})>>
-  resolveWatchfootyMatch({required String matchId}) async {
-    final mid = matchId.trim().replaceFirst(RegExp(r'^wf_'), '');
-    if (mid.isEmpty) return const [];
-
-    try {
-      final streams = await _watchfootyMatchStreams(mid);
-      if (streams.isEmpty) return const [];
-
-      final ordered = List<Map<String, dynamic>>.from(streams);
-      ordered.sort((a, b) {
-        final sa = (a['source'] ?? '').toString().toLowerCase();
-        final sb = (b['source'] ?? '').toString().toLowerCase();
-        final ia = _watchfootySourcePriority.indexOf(sa);
-        final ib = _watchfootySourcePriority.indexOf(sb);
-        final pa = ia < 0 ? 99 : ia;
-        final pb = ib < 0 ? 99 : ib;
-        if (pa != pb) return pa.compareTo(pb);
-        return (a['url'] ?? '')
-            .toString()
-            .compareTo((b['url'] ?? '').toString());
-      });
-
-      final pending = <({String embed, String source, String quality})>[];
-      final seenEmbeds = <String>{};
-      for (final s in ordered) {
-        final embed = (s['url'] ?? '').toString().trim();
-        if (embed.isEmpty || !seenEmbeds.add(embed)) continue;
-        pending.add((
-          embed: embed,
-          source: (s['source'] ?? '').toString().trim(),
-          quality: (s['quality'] ?? '').toString().trim(),
-        ));
-      }
-
-      // Unlock unique embeds one at a time — parallel GOAT cracks + sportsembed
-      // probes starved the native unlock chain and hit the 45s plugin timeout.
-      final out = <({String url, String name, Map<String, String> headers})>[];
-      for (final row in pending) {
-        final label = [
-          'WatchFooty',
-          if (row.source.isNotEmpty) row.source,
-          if (row.quality.isNotEmpty) row.quality,
-        ].join(' ');
-        final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
-        if (u == null) continue;
-        out.add((url: u.url, name: label, headers: u.headers));
-      }
-      return out;
-    } catch (e) {
-      debugPrint('[WatchFooty] match resolve failed: $e');
-      return const [];
-    }
-  }
-
-  /// Upstream WatchFooty stream mirrors for [matchId] (embeds / direct URLs).
-  /// Empty when the site has no links yet — Providers must not invent a row.
-  static Future<List<Map<String, dynamic>>> listWatchfootyMatchStreams(
-    String matchId,
-  ) async {
-    final mid = matchId.trim().replaceFirst(RegExp(r'^wf_'), '');
-    if (mid.isEmpty) return const [];
-    return _watchfootyMatchStreams(mid);
-  }
-
-  /// Prefer `/matches/live` (fast, often already has `streams`) over the slow
-  /// `/match/{id}` detail (~15–20s+).
-  static Future<List<Map<String, dynamic>>> _watchfootyMatchStreams(
-    String mid,
-  ) async {
-    try {
-      final liveResp = await http
-          .get(
-            Uri.parse('https://api.watchfooty.st/api/v1/matches/live'),
-            headers: {'User-Agent': _ua, 'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 12));
-      if (liveResp.statusCode >= 200 && liveResp.statusCode < 300) {
-        final decoded = jsonDecode(liveResp.body);
-        if (decoded is List) {
-          for (final row in decoded) {
-            if (row is! Map) continue;
-            final id = (row['matchId'] ?? '').toString();
-            if (id != mid) continue;
-            final streams = row['streams'];
-            if (streams is List && streams.isNotEmpty) {
-              return [
-                for (final s in streams)
-                  if (s is Map) Map<String, dynamic>.from(s),
-              ];
-            }
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[WatchFooty] live list lookup failed: $e');
-    }
-
-    final resp = await http
-        .get(
-          Uri.parse('https://api.watchfooty.st/api/v1/match/$mid'),
-          headers: {'User-Agent': _ua, 'Accept': 'application/json'},
-        )
-        .timeout(const Duration(seconds: 45));
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      debugPrint('[WatchFooty] match HTTP ${resp.statusCode}');
-      return const [];
-    }
-    final decoded = jsonDecode(resp.body);
-    final match = decoded is List
-        ? (decoded.isNotEmpty ? decoded.first : null)
-        : decoded;
-    if (match is! Map) return const [];
-    final streams = match['streams'];
-    if (streams is! List || streams.isEmpty) return const [];
-    return [
-      for (final s in streams)
-        if (s is Map) Map<String, dynamic>.from(s),
-    ];
   }
 
   @visibleForTesting
@@ -376,289 +152,6 @@ class LiveGoatUnlock {
       'stream': stream,
       'path': '$matchId/$slug/$category/$stream',
     };
-  }
-
-  /// Native Streamed resolve — bypasses flutter_js (no TextEncoder / fetch bridge).
-  static Future<({String url, Map<String, String> headers})?> resolveStreamed({
-    String embedUrl = '',
-    String embedOrigin = _embedOrigin,
-    String source = '',
-    String matchId = '',
-    String stream = '1',
-  }) async {
-    var embed = embedUrl.trim();
-    if (embed.isEmpty && source.isNotEmpty && matchId.isNotEmpty) {
-      final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
-      embed = '$origin/embed/$source/$matchId/$stream';
-    }
-    final slot = _parseEmbedSlot(embed, embedOrigin: embedOrigin);
-    if (slot == null) return null;
-
-    final slotSource = (slot['source'] ?? '').toString();
-    if (slotSource == 'golf') {
-      debugPrint(
-        '[LiveGoatUnlock] golf embed has no native unlock — use Sniff mode',
-      );
-      return null;
-    }
-
-    final origin = (slot['origin'] ?? embedOrigin).toString().replaceAll(
-      RegExp(r'/+$'),
-      '',
-    );
-    final path = (slot['path'] ?? '').toString();
-    if (path.isEmpty) return null;
-
-    try {
-      // One retry: embed.st sometimes returns goat+body that WASM rejects
-      // (offline/gated slot) while a second /fetch yields a crackable pair.
-      for (var attempt = 0; attempt < 2; attempt++) {
-        final body = _encodeFetchBody(
-          slotSource,
-          (slot['id'] ?? '').toString(),
-          (slot['stream'] ?? '1').toString(),
-        );
-        final referer = '$origin/embed/$path';
-        final resp = await http
-            .post(
-              Uri.parse('$origin/fetch'),
-              headers: {
-                'Content-Type': 'application/octet-stream',
-                'Origin': origin,
-                'Referer': referer,
-                'User-Agent': _ua,
-              },
-              body: body,
-            )
-            .timeout(const Duration(seconds: 20));
-        if (resp.statusCode < 200 || resp.statusCode >= 300) {
-          debugPrint(
-            '[LiveGoatUnlock] /fetch HTTP ${resp.statusCode} '
-            'attempt=${attempt + 1}',
-          );
-          continue;
-        }
-        final goat = resp.headers['goat'] ?? '';
-        if (goat.isEmpty) {
-          debugPrint(
-            '[LiveGoatUnlock] /fetch missing goat header attempt=${attempt + 1}',
-          );
-          continue;
-        }
-        final bodyHex = resp.bodyBytes
-            .map((b) => b.toRadixString(16).padLeft(2, '0'))
-            .join();
-        final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
-        if (m3u8 == null || m3u8.isEmpty) {
-          debugPrint(
-            '[LiveGoatUnlock] unlock miss attempt=${attempt + 1} '
-            'path=$path body=${resp.bodyBytes.length}B',
-          );
-          continue;
-        }
-
-        final headers = playbackHeadersForSlot(slot);
-        // Dead/gated slots still crack to a signed `*.strmd.st` URL that 403s
-        // on open (website shows no player). Probe before handing to MediaKit —
-        // same gate as echo; streamed was unlocking empty Boca/etc. fixtures.
-        if (slotSource == 'echo' || slotSource == 'streamed') {
-          if (!await _probePlayableM3u8(m3u8, headers)) {
-            debugPrint(
-              '[LiveGoatUnlock] $slotSource GOAT m3u8 not native-playable '
-              '(CDN probe) attempt=${attempt + 1}',
-            );
-            continue;
-          }
-        }
-        return (url: m3u8, headers: headers);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('[LiveGoatUnlock] native resolve failed: $e');
-      return null;
-    }
-  }
-
-  static Future<({String url, Map<String, String> headers})?> resolveEmbedIndia({
-    required String embedUrl,
-  }) async {
-    final embed = embedUrl.trim();
-    if (embed.isEmpty) return null;
-    if (isEpiEmbedsUrl(embed)) {
-      final sniffed = await sniffEmbed(embedUrl: embed);
-      if (sniffed != null && sniffed.isNotEmpty) {
-        final origin = Uri.tryParse(embed)?.origin ?? '';
-        return (
-          url: sniffed,
-          headers: {
-            'Referer': embed,
-            if (origin.isNotEmpty) 'Origin': origin,
-            'User-Agent': _ua,
-          },
-        );
-      }
-      return null;
-    }
-    final slot = _parseEmbedIndiaSlot(embed);
-    if (slot == null) {
-      debugPrint('[LiveGasmUnlock] unparseable embedindia url: $embed');
-      return null;
-    }
-
-    final origin = (slot['origin'] ?? _embedIndiaOrigin).toString().replaceAll(
-      RegExp(r'/+$'),
-      '',
-    );
-    final path = (slot['path'] ?? '').toString();
-    if (path.isEmpty) return null;
-
-    try {
-      final fetched = await _postEmbedIndiaFetch(
-        origin: origin,
-        path: path,
-        gid: (slot['gid'] ?? '').toString(),
-      ).timeout(const Duration(seconds: 20));
-      if (fetched == null) return null;
-      final m3u8 = await unlockGasm(
-        slot: slot,
-        island: fetched.island,
-        bodyHex: fetched.bodyHex,
-      );
-      var playUrl = m3u8 ?? '';
-      if (playUrl.isEmpty) {
-        debugPrint(
-          '[LiveGasmUnlock] wasm unlock empty — trying jw sniff path=$path',
-        );
-        playUrl = await _sniffJwEmbedPlaylist(embedUrl: embed) ?? '';
-      }
-      if (playUrl.isEmpty) {
-        debugPrint('[LiveGasmUnlock] unlock returned empty path=$path');
-        return null;
-      }
-      final headers = playbackHeadersForEmbedIndia(slot, embedUrl: embed);
-      if (fetched.cookie != null && fetched.cookie!.isNotEmpty) {
-        headers['Cookie'] = fetched.cookie!;
-      }
-      return (url: playUrl, headers: headers);
-    } catch (e) {
-      debugPrint('[LiveGasmUnlock] native resolve failed: $e');
-      return null;
-    }
-  }
-
-  /// Embed page warm-up + `/fetch` on one [HttpClient] jar — CDN tokens
-  /// without WebView cookie harvest.
-  static Future<({String island, String bodyHex, String? cookie})?>
-  _postEmbedIndiaFetch({
-    required String origin,
-    required String path,
-    required String gid,
-  }) async {
-    final referer = gid.isNotEmpty
-        ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
-        : '$origin/embed/$path';
-    final client = HttpClient();
-    client.userAgent = _ua;
-    try {
-      final embedUri = Uri.parse(referer);
-      final embedReq = await client.getUrl(embedUri);
-      embedReq.headers.set('Accept', 'text/html,application/xhtml+xml,*/*');
-      final embedResp = await embedReq.close();
-      if (embedResp.statusCode >= 400) {
-        debugPrint(
-          '[LiveGasmUnlock] embed warm HTTP ${embedResp.statusCode} path=$path',
-        );
-      }
-      await consolidateHttpClientResponseBytes(embedResp);
-      var cookies = _mergeSetCookieHeaders(null, embedResp.headers);
-
-      final fetchUri = Uri.parse('$origin/fetch');
-      final fetchReq = await client.postUrl(fetchUri);
-      fetchReq.headers.set('Content-Type', 'application/octet-stream');
-      fetchReq.headers.set('Origin', origin);
-      fetchReq.headers.set('Referer', referer);
-      fetchReq.headers.set('Accept', '*/*');
-      if (cookies != null && cookies.isNotEmpty) {
-        fetchReq.headers.set('Cookie', cookies);
-      }
-      fetchReq.add(_encodeEmbedIndiaFetchBody(path));
-      final fetchResp = await fetchReq.close();
-      if (fetchResp.statusCode < 200 || fetchResp.statusCode >= 300) {
-        debugPrint(
-          '[LiveGasmUnlock] /fetch HTTP ${fetchResp.statusCode} path=$path',
-        );
-        return null;
-      }
-      cookies = _mergeSetCookieHeaders(cookies, fetchResp.headers);
-      final island = fetchResp.headers.value('island') ?? '';
-      if (island.isEmpty) {
-        debugPrint('[LiveGasmUnlock] /fetch missing island header path=$path');
-        return null;
-      }
-      final bodyBytes = await consolidateHttpClientResponseBytes(fetchResp);
-      final bodyHex = bodyBytes
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
-      return (island: island, bodyHex: bodyHex, cookie: cookies);
-    } on TimeoutException {
-      debugPrint('[LiveGasmUnlock] /fetch timeout path=$path');
-      return null;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  static String? _mergeSetCookieHeaders(
-    String? existing,
-    HttpHeaders headers,
-  ) {
-    final jar = <String, String>{};
-    if (existing != null && existing.isNotEmpty) {
-      for (final part in existing.split(';')) {
-        final trimmed = part.trim();
-        if (trimmed.isEmpty) continue;
-        final eq = trimmed.indexOf('=');
-        if (eq <= 0) continue;
-        jar[trimmed.substring(0, eq).trim()] = trimmed.substring(eq + 1).trim();
-      }
-    }
-    headers.forEach((name, values) {
-      if (name.toLowerCase() != 'set-cookie') return;
-      for (final raw in values) {
-        final first = raw.split(';').first.trim();
-        final eq = first.indexOf('=');
-        if (eq <= 0) continue;
-        jar[first.substring(0, eq).trim()] = first.substring(eq + 1).trim();
-      }
-    });
-    if (jar.isEmpty) return existing;
-    return jar.entries.map((e) => '${e.key}=${e.value}').join('; ');
-  }
-
-  /// PPV Engine: embed.st GOAT or embedindia.st GASM native unlock.
-  /// epiembeds.online sniff is Forja Live mirrors only — not PPV.
-  static Future<({String url, Map<String, String> headers})?> resolvePpv({
-    required String embedUrl,
-  }) async {
-    final embed = embedUrl.trim();
-    if (embed.isEmpty) {
-      debugPrint('[LiveGasmUnlock] resolvePpv empty embed');
-      return null;
-    }
-    // PPV: embedindia GASM only — never epiembeds sniff (TimStreams/LiveSoccerTV).
-    if (isEmbedIndiaUrl(embed)) {
-      return resolveEmbedIndia(embedUrl: embed);
-    }
-    if (embed.contains('embed.st')) {
-      return resolveStreamed(embedUrl: embed);
-    }
-    debugPrint('[LiveGasmUnlock] resolvePpv unsupported host: $embed');
-    return null;
-  }
-
-  static Map<String, String> _embedHeaders(String? origin) {
-    final o = (origin ?? _embedOrigin).replaceAll(RegExp(r'/+$'), '');
-    return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
   }
 
   static Map<String, String> playbackHeadersForSportsEmbed(
@@ -727,105 +220,6 @@ class LiveGoatUnlock {
     return out;
   }
 
-  /// CDN Referer/Origin for GOAT-unlocked `strmd.st` playback.
-  ///
-  /// Each streamed.pk [source] validates differently — admin (`rtmp/stream`
-  /// master playlists) must keep embed origin root; delta/echo media playlists
-  /// use the embed page referer (streamed.pk Referer 403s on `strmd.st`).
-  static Map<String, String> playbackHeadersForSlot(Map<String, dynamic> slot) {
-    final origin = (slot['origin'] ?? _embedOrigin).toString().replaceAll(
-      RegExp(r'/+$'),
-      '',
-    );
-    final source = (slot['source'] ?? '').toString().toLowerCase();
-    final path = (slot['path'] ?? '').toString();
-    switch (source) {
-      case 'admin':
-        return _embedHeaders(origin);
-      case 'delta':
-      case 'echo':
-        if (path.isNotEmpty) {
-          return {
-            'Referer': '$origin/embed/$path',
-            'Origin': origin,
-            'User-Agent': _ua,
-          };
-        }
-        return _embedHeaders(origin);
-      default:
-        if (path.isNotEmpty) {
-          return {
-            'Referer': '$origin/embed/$path',
-            'Origin': origin,
-            'User-Agent': _ua,
-          };
-        }
-        return _embedHeaders(origin);
-    }
-  }
-
-  /// CDN Referer for unlocked `*.indianservers.st` playlists.
-  ///
-  /// Use the embed **path** only — `?gid=` on Referer makes nginx 403 the
-  /// master m3u8. Unlock `/fetch` still sends gid; playback must not.
-  static Map<String, String> playbackHeadersForEmbedIndia(
-    Map<String, dynamic> slot, {
-    String? embedUrl,
-  }) {
-    final origin = (slot['origin'] ?? _embedIndiaOrigin).toString().replaceAll(
-      RegExp(r'/+$'),
-      '',
-    );
-    final path = (slot['path'] ?? '').toString();
-    final fromEmbed = (embedUrl ?? '').trim();
-    String referer;
-    if (fromEmbed.isNotEmpty) {
-      final u = Uri.tryParse(fromEmbed);
-      referer = (u != null && u.hasScheme && u.path.isNotEmpty)
-          ? '$origin${u.path}'
-          : (path.isNotEmpty ? '$origin/embed/$path' : '$origin/');
-    } else if (path.isNotEmpty) {
-      referer = '$origin/embed/$path';
-    } else {
-      referer = '$origin/';
-    }
-    return {'Referer': referer, 'Origin': origin, 'User-Agent': _ua};
-  }
-
-  /// Media playlists (`/delta/stream/`, `/echo/stream/`) ship `/m/…` segments
-  /// with long signed query strings — open the catalog URL directly with
-  /// [httpHeaders] instead of `/hls-proxy` rewrite. Admin master (`/rtmp/stream/`)
-  /// stays on the proxy path.
-  static bool preferDirectEnginePlayback(String m3u8Url) {
-    final uri = Uri.tryParse(m3u8Url.trim());
-    if (uri == null) return false;
-    final path = uri.path.toLowerCase();
-    final host = uri.host.toLowerCase();
-    // PPV embedindia CDN — signed `/secure/…/index.m3u8` segments 403 when
-    // hls-proxy rewrites query strings; open direct with Referer/Cookie.
-    // `wfty.st` is path-signed (no query) — keep `/hls-proxy` so ffmpeg child
-    // playlist/segment GETs still send sportsembed Referer (direct open does not).
-    if (host.contains('indianservers.st')) return true;
-    // Brightcove Live (MobiKora / AlbaPlayer) — demuxed fMP4 masters; open
-    // direct with headers (hls-proxy not required; CDN is CORS *).
-    if (host.contains('brightcove.com')) return true;
-    // Foorja / public S3 — prefer hls-proxy (MediaKit mbedtls RST on long sessions).
-    if (host.contains('amazonaws.com')) return false;
-    if (host.contains('streamfree.top') &&
-        (path.contains('/live/') ||
-            path.contains('/live-cdn/') ||
-            path.contains('/live-origin/'))) {
-      return true;
-    }
-    // streamfree CDN slots on strmd — not admin `/rtmp/stream/` masters.
-    if (host.contains('strmd.st') && path.contains('/streamfree/stream/')) {
-      return true;
-    }
-    return path.contains('/delta/stream/') ||
-        path.contains('/echo/stream/') ||
-        path.contains('/streamed/stream/');
-  }
-
   /// GET the playlist; true only when the body looks like HLS (`#EXTM3U`).
   /// Used to drop dead GOAT slots that still crack to a signed CDN URL.
   static Future<bool> probePlayableM3u8(
@@ -856,101 +250,6 @@ class LiveGoatUnlock {
       debugPrint('[LiveGoatUnlock] m3u8 probe failed: $e');
       return false;
     }
-  }
-
-  static Map<String, dynamic>? _parseEmbedSlot(
-    String raw, {
-    String embedOrigin = _embedOrigin,
-  }) {
-    final u = Uri.tryParse(raw.trim());
-    if (u == null) return null;
-    final em = RegExp(r'^/embed/([^/]+)/([^/]+)/(\d+)/?$').firstMatch(u.path);
-    if (em != null) {
-      final source = em.group(1)!;
-      final id = em.group(2)!;
-      final stream = em.group(3)!;
-      return {
-        'origin': u.origin,
-        'source': source,
-        'id': id,
-        'stream': stream,
-        'path': '$source/$id/$stream',
-      };
-    }
-    final api = RegExp(r'^/api/stream/([^/]+)/([^/]+)/?$').firstMatch(u.path);
-    if (api != null) {
-      final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
-      final source = api.group(1)!;
-      final id = api.group(2)!;
-      final stream = u.queryParameters['stream'] ?? '1';
-      return {
-        'origin': origin,
-        'source': source,
-        'id': id,
-        'stream': stream,
-        'path': '$source/$id/$stream',
-      };
-    }
-    return null;
-  }
-
-  static Map<String, dynamic>? _parseEmbedIndiaSlot(String raw) {
-    final trimmed = raw.trim();
-    if (!isEmbedIndiaUrl(trimmed)) return null;
-    final u = Uri.tryParse(trimmed);
-    if (u == null) return null;
-    // Sports: /embed/{league}/{date}/{slug}
-    // Events (UFC etc.): /embed/{slug} or /embed/{slug}/{variant}
-    final em = RegExp(r'^/embed/(.+?)/?$').firstMatch(u.path);
-    if (em == null) return null;
-    final path = em.group(1)!.replaceAll(RegExp(r'/+$'), '');
-    if (path.isEmpty || path.contains('..')) return null;
-    final parts = path.split('/').where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return null;
-    final gid = u.queryParameters['gid'] ?? '';
-    return {
-      'origin': u.origin,
-      'league': parts.length >= 3 ? parts[0] : '',
-      'date': parts.length >= 3 ? parts[1] : '',
-      'slug': parts.length >= 3 ? parts[2] : parts.last,
-      'gid': gid,
-      'path': path,
-    };
-  }
-
-  static Uint8List _encodeFetchBody(String source, String id, String stream) {
-    final out = BytesBuilder();
-    void fieldStr(int field, String value) {
-      final body = utf8.encode(value);
-      out.addByte((field << 3) | 2);
-      out.add(_varint(body.length));
-      out.add(body);
-    }
-
-    fieldStr(1, source);
-    fieldStr(2, id);
-    fieldStr(3, stream);
-    return out.toBytes();
-  }
-
-  static Uint8List _encodeEmbedIndiaFetchBody(String path) {
-    final out = BytesBuilder();
-    final body = utf8.encode(path);
-    out.addByte((1 << 3) | 2);
-    out.add(_varint(body.length));
-    out.add(body);
-    return out.toBytes();
-  }
-
-  static Uint8List _varint(int n) {
-    final out = BytesBuilder();
-    var v = n;
-    while (v > 0x7f) {
-      out.addByte((v & 0x7f) | 0x80);
-      v >>= 7;
-    }
-    out.addByte(v);
-    return out.toBytes();
   }
 
   static Future<String?> unlock({

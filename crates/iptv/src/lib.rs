@@ -1,3 +1,4 @@
+pub mod http;
 pub mod m3u;
 pub mod m3u_client;
 pub mod pastesh;

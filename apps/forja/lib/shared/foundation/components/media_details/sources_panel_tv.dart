@@ -7,9 +7,12 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 /// Isolated TV focus graph for details + in-player Sources (and torrent files).
 abstract final class SourcesPanelTv {
   static const tabId = 'sources-panel';
+  static const headerRowId = 'sources-header';
   static const kindRowId = 'sources-kind';
   static const providersRowId = 'sources-providers';
   static const listRowId = 'sources-list';
+  /// Above kind tabs so ↑ from Providers lands on reload/close.
+  static const headerSort = -1;
   static const kindSort = 0;
   static const providersSort = 1;
   static const listSort = 2;
@@ -120,6 +123,20 @@ abstract final class SourcesPanelTv {
         return;
       }
       _tryRow(providersRowId, 0);
+    }
+
+    attempt();
+  }
+
+  static void focusHeaderItem({int index = 0, int maxTries = 12}) {
+    var tries = 0;
+    void attempt() {
+      if (_tryRow(headerRowId, index)) return;
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      focusKindItem();
     }
 
     attempt();

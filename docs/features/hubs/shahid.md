@@ -1,10 +1,10 @@
 # Shahid
 
-> Browse Shahid movies and series. Sign in under Connected services. Desktop can browse the catalog; DRM titles do not open the player until desktop DRM play ships.
+> Browse Shahid movies and series. Sign in under Connected services. Desktop can browse and see Shahid in Sources; DRM play does not start on desktop yet.
 
 ## What it is
 
-The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s top and related titles (series and movies). Playback uses the **Shahid** stream provider. Almost all titles are DRM-protected; on desktop those rows stay out of Sources and Play shows a clear message instead of opening a broken player.
+The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Shahid’s top and related titles (series and movies). Playback uses the **Shahid** stream provider. Almost all titles are DRM-protected. On desktop, Sources can still list Shahid; tapping Play opens a clear message instead of a broken player.
 
 ## How to open it
 
@@ -26,7 +26,7 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## Tips
 
-- DRM titles need a license after resolve. Until desktop DRM play ships, Play / Sources on Mac will not open MediaKit for those titles.
+- DRM titles need a license after resolve. Until desktop DRM play ships, Play / Sources on Mac will not open MediaKit for those titles (toast instead of a green/gray screen).
 - VIP titles return nothing until you sign in.
 
 ## Related

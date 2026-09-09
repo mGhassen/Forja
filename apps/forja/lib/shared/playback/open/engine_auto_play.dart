@@ -405,14 +405,13 @@ Future<void> runEngineAutoPlay({
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
     if (cached != null) {
       final wantAudio = audioCategory ?? activeSession.audioCategory;
-      final rawCached = filterStreamsByAudioCategory(
+      streams = filterStreamsByAudioCategory(
         List<Map<String, dynamic>>.from(cached.streams),
         wantAudio,
       );
-      if (streamsArePlatformBlockedDrmOnly(rawCached)) {
+      if (streamsArePlatformBlockedDrmOnly(streams)) {
         sawPlatformBlockedDrmOnly = true;
       }
-      streams = omitPlatformBlockedDrmStreams(rawCached);
       fetchedIds = Set<String>.from(cached.fetchedPluginIds);
       // Empty fetches are terminal for Sources reopen — not for green Play.
       // Drop them so pack updates / flaky upstreams get a fresh extract race.
@@ -607,14 +606,14 @@ Future<void> runEngineAutoPlay({
       if (streamsArePlatformBlockedDrmOnly(raw)) {
         sawPlatformBlockedDrmOnly = true;
       }
-      final playable = omitPlatformBlockedDrmStreams(raw);
-      if (playable.isNotEmpty) {
-        streams.addAll(playable);
+      // Keep DRM rows in cache/Sources; only probe non-DRM for auto-play.
+      if (raw.isNotEmpty) {
+        streams.addAll(raw);
       }
       publishCache();
       await onPluginDone(
         pluginId,
-        playable,
+        omitPlatformBlockedDrmStreams(raw),
       );
     }
 
@@ -842,7 +841,8 @@ Future<void> runEngineAutoPlay({
       return;
     }
 
-    if (sawPlatformBlockedDrmOnly && streams.isEmpty) {
+    if (sawPlatformBlockedDrmOnly &&
+        omitPlatformBlockedDrmStreams(streams).isEmpty) {
       dismissLoading();
       if (context.mounted) {
         ForjaToast.info(kStreamDrmAndroidOnlyMessage);

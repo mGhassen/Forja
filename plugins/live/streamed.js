@@ -39,10 +39,17 @@ async function resolveStream(ctx, cfg) {
     m3u8 = await ctx.live.goatUnlock(fetched.bodyHex, fetched.goat, slot);
   }
   if (!m3u8) throw new Error('goat unlock failed');
+  var headers = playbackHeadersForSlot(slot, cfg);
+  var src = String(slot.source || '').toLowerCase();
+  if (src === 'echo' || src === 'streamed') {
+    if (!(await probePlayableM3u8(ctx, m3u8, headers))) {
+      throw new Error('goat m3u8 not playable');
+    }
+  }
   return [
     {
       url: m3u8,
-      headers: playbackHeadersForSlot(slot, cfg),
+      headers: headers,
       directPlayback: preferDirectPlayback(m3u8),
     },
   ];

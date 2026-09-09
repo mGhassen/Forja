@@ -84,6 +84,7 @@ void main() {
           'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
       label: 'WatchFooty delta',
       liveSourceKind: IptvLiveSourceKind.liveEngine,
+      headers: {'Referer': 'https://sportsembed.su/'},
       liveEngineEmbedUrl:
           'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
     );
