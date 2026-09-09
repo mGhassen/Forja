@@ -89,7 +89,8 @@ class SettingsPackPromptDrill {
   }
 }
 
-/// Flat checkbox list for batch install/uninstall — fills the Settings detail pane.
+/// Flat checkbox list for batch install/uninstall — fills the Settings detail
+/// pane with a pinned Install footer (list scrolls; same shape as Update Forja).
 class SettingsPackPromptPane extends StatefulWidget {
   const SettingsPackPromptPane({
     super.key,
@@ -334,7 +335,9 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     final actionable = _actionable.toList();
     final allSelected = actionable.isNotEmpty &&
         actionable.every((c) => _selected.contains(_key(c)));
+    final candidates = widget.prompt.candidates;
 
+    // Header + list + footer pinned — only the pack rows scroll (Update Forja).
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -368,28 +371,35 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           ],
         ),
         const SizedBox(height: 4),
-        for (var i = 0; i < widget.prompt.candidates.length; i++) ...[
-          if (i > 0)
-            const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-          _PackPromptRow(
-            candidate: widget.prompt.candidates[i],
-            checked: widget.prompt.candidates[i].alreadyInstalled ||
-                _selected.contains(_key(widget.prompt.candidates[i])),
-            enabled:
-                !widget.prompt.candidates[i].alreadyInstalled && !_busy,
-            onChanged: (value) {
-              final key = _key(widget.prompt.candidates[i]);
-              setState(() {
-                if (value) {
-                  _selected.add(key);
-                } else {
-                  _selected.remove(key);
-                }
-              });
+        Expanded(
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: candidates.length,
+            separatorBuilder: (_, _) => const Divider(
+              height: 1,
+              color: ForjaShellColors.borderSubtle,
+            ),
+            itemBuilder: (context, i) {
+              final c = candidates[i];
+              return _PackPromptRow(
+                candidate: c,
+                checked: c.alreadyInstalled || _selected.contains(_key(c)),
+                enabled: !c.alreadyInstalled && !_busy,
+                onChanged: (value) {
+                  final key = _key(c);
+                  setState(() {
+                    if (value) {
+                      _selected.add(key);
+                    } else {
+                      _selected.remove(key);
+                    }
+                  });
+                },
+              );
             },
           ),
-        ],
-        const SizedBox(height: 20),
+        ),
+        const SizedBox(height: 16),
         SettingsFilledButton(
           label: _primaryLabel,
           icon: Icons.download_rounded,

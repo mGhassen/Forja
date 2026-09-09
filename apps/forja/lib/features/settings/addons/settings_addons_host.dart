@@ -102,7 +102,9 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
                   : addon != null
                       ? SettingsAddonDrill.close
                       : () => Navigator.of(context).maybePop(),
-              scrollable: scrollable,
+              // Pack picker: fill pane so the list scrolls and Install stays pinned
+              // (same shape as Update Forja — header + scroll + footer).
+              scrollable: packOpen ? false : scrollable,
               child: child,
             );
           },

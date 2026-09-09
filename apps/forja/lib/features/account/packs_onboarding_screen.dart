@@ -229,8 +229,97 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
     }
   }
 
+  Widget _header({required bool picking}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          'assets/icon/logo-dark.png',
+          width: _isTv ? 96 : 88,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+        const SizedBox(height: 28),
+        Text(
+          picking ? 'Choose official packs' : 'Unlock the best experience',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            textStyle: _onboardText(
+              color: const Color(0xFFBFEFD0),
+              size: _isTv ? 30 : 26,
+              weight: FontWeight.w700,
+              height: 1.15,
+              letterSpacing: -0.4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          picking
+              ? 'Recommended packs are checked. Add or remove any, then Install.'
+              : 'Packs add catalogs, stream sources, live sports, and more. '
+                  'Pick official ForjaHQ packs, or browse Community Packs '
+                  'and choose on the web.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            textStyle: _onboardText(
+              color: ForjaShellColors.textSecondary,
+              size: 15,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _officialPickerBody() {
+    return _OfficialPicker(
+      candidates: _candidates,
+      selected: _selected,
+      selectedCount: _selectedCount,
+      confirmFocus: _confirmFocus,
+      backFocus: _backFocus,
+      onToggle: (c, value) {
+        final key = _key(c);
+        setState(() {
+          if (value) {
+            _selected.add(key);
+          } else {
+            _selected.remove(key);
+          }
+        });
+      },
+      onSelectRecommended: () {
+        setState(() {
+          _selected = {
+            for (final c in _candidates)
+              if (c.recommended && !c.alreadyInstalled) _key(c),
+          };
+        });
+      },
+      onSelectAll: () {
+        setState(() {
+          _selected = {
+            for (final c in _candidates)
+              if (!c.alreadyInstalled) _key(c),
+          };
+        });
+      },
+      onClear: () {
+        setState(() => _selected = {});
+      },
+      onInstall: () => unawaited(_installSelected()),
+      onBack: _backToChoice,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final padH = _isTv ? 56.0 : 40.0;
+    // Fill the viewport while picking so Install stays pinned (Update Forja).
+    final fillPicker = _picking && !_busy && !_loadingPicker;
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: Stack(
@@ -240,192 +329,149 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
             child: FractalGlassGradient(params: FractalGlassParams.forTv),
           ),
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  _isTv ? 56 : 40,
-                  28,
-                  _isTv ? 56 : 40,
-                  36,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: _picking ? 640 : 560,
-                  ),
-                  child: _ContentShadow(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/icon/logo-dark.png',
-                          width: _isTv ? 96 : 88,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          _picking
-                              ? 'Choose official packs'
-                              : 'Unlock the best experience',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            textStyle: _onboardText(
-                              color: const Color(0xFFBFEFD0),
-                              size: _isTv ? 30 : 26,
-                              weight: FontWeight.w700,
-                              height: 1.15,
-                              letterSpacing: -0.4,
+            child: fillPicker
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: (constraints.maxWidth - padH * 2)
+                              .clamp(0.0, 640.0),
+                          height: constraints.maxHeight,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 28, 0, 36),
+                            child: _ContentShadow(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _header(picking: true),
+                                  const SizedBox(height: 24),
+                                  Expanded(child: _officialPickerBody()),
+                                  if (_error != null) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _error!,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        textStyle: _onboardText(
+                                          color:
+                                              ForjaShellColors.textSecondary,
+                                          size: 13,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        Text(
-                          _picking
-                              ? 'Recommended packs are checked. Add or remove any, then Install.'
-                              : 'Packs add catalogs, stream sources, live sports, and more. '
-                                  'Pick official ForjaHQ packs, or browse Community Packs '
-                                  'and choose on the web.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                            textStyle: _onboardText(
-                              color: ForjaShellColors.textSecondary,
-                              size: 15,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        if (_busy) ...[
-                          if (_total > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: (_done / _total).clamp(0.0, 1.0),
-                                  minHeight: 4,
-                                  backgroundColor:
-                                      ForjaShellColors.borderSubtle,
-                                  color: ForjaShellColors.brandGreen,
+                      );
+                    },
+                  )
+                : Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(padH, 28, padH, 36),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: _ContentShadow(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _header(picking: false),
+                              const SizedBox(height: 32),
+                              if (_busy) ...[
+                                if (_total > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value:
+                                            (_done / _total).clamp(0.0, 1.0),
+                                        minHeight: 4,
+                                        backgroundColor:
+                                            ForjaShellColors.borderSubtle,
+                                        color: ForjaShellColors.brandGreen,
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  _status ?? 'Working…',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    textStyle: _onboardText(
+                                      color: ForjaShellColors.textSecondary,
+                                      size: 14,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          Text(
-                            _status ?? 'Working…',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              textStyle: _onboardText(
-                                color: ForjaShellColors.textSecondary,
-                                size: 14,
-                              ),
-                            ),
+                              ] else if (_loadingPicker) ...[
+                                Text(
+                                  _status ?? 'Loading…',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    textStyle: _onboardText(
+                                      color: ForjaShellColors.textSecondary,
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                ForjaPackChoiceCards(
+                                  installFocusNode: _installFocus,
+                                  browseFocusNode: _browseFocus,
+                                  autofocusInstall: true,
+                                  communitySubtitle: _isTv
+                                      ? 'Choose packs on your phone\n$kCommunityPacksUrl'
+                                      : null,
+                                  onInstallOfficial: () =>
+                                      unawaited(_openOfficialPicker()),
+                                  onBrowseCommunity: _browseCommunityPacks,
+                                ),
+                                const SizedBox(height: 20),
+                                _SkipAction(
+                                  focusNode: _skipFocus,
+                                  onTap: _skip,
+                                ),
+                              ],
+                              if (_error != null) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    textStyle: _onboardText(
+                                      color: ForjaShellColors.textSecondary,
+                                      size: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (_status != null &&
+                                  !_busy &&
+                                  !_loadingPicker) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _status!,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    textStyle: _onboardText(
+                                      color: ForjaShellColors.textSecondary,
+                                      size: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ] else if (_loadingPicker) ...[
-                          Text(
-                            _status ?? 'Loading…',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              textStyle: _onboardText(
-                                color: ForjaShellColors.textSecondary,
-                                size: 14,
-                              ),
-                            ),
-                          ),
-                        ] else if (_picking) ...[
-                          _OfficialPicker(
-                            candidates: _candidates,
-                            selected: _selected,
-                            selectedCount: _selectedCount,
-                            confirmFocus: _confirmFocus,
-                            backFocus: _backFocus,
-                            onToggle: (c, value) {
-                              final key = _key(c);
-                              setState(() {
-                                if (value) {
-                                  _selected.add(key);
-                                } else {
-                                  _selected.remove(key);
-                                }
-                              });
-                            },
-                            onSelectRecommended: () {
-                              setState(() {
-                                _selected = {
-                                  for (final c in _candidates)
-                                    if (c.recommended && !c.alreadyInstalled)
-                                      _key(c),
-                                };
-                              });
-                            },
-                            onSelectAll: () {
-                              setState(() {
-                                _selected = {
-                                  for (final c in _candidates)
-                                    if (!c.alreadyInstalled) _key(c),
-                                };
-                              });
-                            },
-                            onClear: () {
-                              setState(() => _selected = {});
-                            },
-                            onInstall: () => unawaited(_installSelected()),
-                            onBack: _backToChoice,
-                          ),
-                        ] else ...[
-                          ForjaPackChoiceCards(
-                            installFocusNode: _installFocus,
-                            browseFocusNode: _browseFocus,
-                            autofocusInstall: true,
-                            communitySubtitle: _isTv
-                                ? 'Choose packs on your phone\n$kCommunityPacksUrl'
-                                : null,
-                            onInstallOfficial: () =>
-                                unawaited(_openOfficialPicker()),
-                            onBrowseCommunity: _browseCommunityPacks,
-                          ),
-                          const SizedBox(height: 20),
-                          _SkipAction(
-                            focusNode: _skipFocus,
-                            onTap: _skip,
-                          ),
-                        ],
-                        if (_error != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              textStyle: _onboardText(
-                                color: ForjaShellColors.textSecondary,
-                                size: 13,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (_status != null &&
-                            !_busy &&
-                            !_loadingPicker &&
-                            !_picking) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _status!,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              textStyle: _onboardText(
-                                color: ForjaShellColors.textSecondary,
-                                size: 13,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
           ),
         ],
       ),
@@ -501,18 +547,26 @@ class _OfficialPicker extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        for (var i = 0; i < candidates.length; i++) ...[
-          if (i > 0)
-            const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-          _OnboardPackRow(
-            candidate: candidates[i],
-            checked: candidates[i].alreadyInstalled ||
-                selected.contains(_key(candidates[i])),
-            enabled: !candidates[i].alreadyInstalled,
-            onChanged: (value) => onToggle(candidates[i], value),
+        Expanded(
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: candidates.length,
+            separatorBuilder: (_, _) => const Divider(
+              height: 1,
+              color: ForjaShellColors.borderSubtle,
+            ),
+            itemBuilder: (context, i) {
+              final c = candidates[i];
+              return _OnboardPackRow(
+                candidate: c,
+                checked: c.alreadyInstalled || selected.contains(_key(c)),
+                enabled: !c.alreadyInstalled,
+                onChanged: (value) => onToggle(c, value),
+              );
+            },
           ),
-        ],
-        const SizedBox(height: 20),
+        ),
+        const SizedBox(height: 16),
         ForjaButton(
           label: selectedCount == 1
               ? 'Install 1 pack'
