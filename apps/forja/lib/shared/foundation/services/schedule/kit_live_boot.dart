@@ -57,6 +57,28 @@ abstract final class KitLiveBoot {
       return out;
     };
     KitTopBarHostHooks.openCatalogSheet = showKitCatalogFilterSheet;
+    KitTopBarHostHooks.readCatalogPref = (ref) {
+      return ref.watch(kitScheduleFiltersProvider).catalogFilter;
+    };
+    KitTopBarHostHooks.catalogChipLabel = (filter, options) {
+      final id = (filter ?? 'all').trim();
+      if (id.isEmpty || id == 'all') return 'All';
+      for (final o in options) {
+        if (o.id == id) return o.label;
+      }
+      // Pref may be a raw plugin id before options finish loading.
+      return id;
+    };
+    KitTopBarHostHooks.catalogChipSelected = (filter) {
+      final id = (filter ?? 'all').trim();
+      return id.isNotEmpty && id != 'all';
+    };
+    KitTopBarHostHooks.writeCatalogFilter = (context, filter) async {
+      final container = ProviderScope.containerOf(context);
+      await container
+          .read(kitScheduleFiltersProvider.notifier)
+          .setCatalogFilter(filter);
+    };
     KitTopBarHostHooks.readSchedulePref = (ref) {
       return ref.watch(kitScheduleFiltersProvider).schedulePref;
     };

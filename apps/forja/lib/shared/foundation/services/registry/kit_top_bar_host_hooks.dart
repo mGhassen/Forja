@@ -27,6 +27,22 @@ typedef KitTopBarScheduleChipSelected = bool Function(String? selectedPref);
 /// Optional live schedule pref from host state (overrides layout selection).
 typedef KitTopBarSchedulePrefReader = String? Function(WidgetRef ref);
 
+/// Optional catalog chip filter from host state (overrides layout selection).
+typedef KitTopBarCatalogPrefReader = String? Function(WidgetRef ref);
+
+typedef KitTopBarCatalogChipLabel = String Function(
+  String? filter,
+  List<({String id, String label})> options,
+);
+
+typedef KitTopBarCatalogChipSelected = bool Function(String? filter);
+
+/// Persist catalog chip pick (mirrors schedule sheet → prefs).
+typedef KitTopBarCatalogFilterWriter = Future<void> Function(
+  BuildContext context,
+  String filter,
+);
+
 /// Optional trailing chrome after the top-bar [Spacer] (e.g. IPTV Portals).
 typedef KitTopBarTrailingBuilder = Widget? Function(
   BuildContext context,
@@ -71,6 +87,10 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarScheduleChipLabel? scheduleChipLabel;
   static KitTopBarScheduleChipSelected? scheduleChipSelected;
   static KitTopBarSchedulePrefReader? readSchedulePref;
+  static KitTopBarCatalogPrefReader? readCatalogPref;
+  static KitTopBarCatalogChipLabel? catalogChipLabel;
+  static KitTopBarCatalogChipSelected? catalogChipSelected;
+  static KitTopBarCatalogFilterWriter? writeCatalogFilter;
   static KitTopBarTrailingBuilder? buildTrailing;
   static KitTopBarTrailingClusterBuilder? buildTrailingCluster;
   static KitListBodyWrapper? wrapListBody;
@@ -83,6 +103,10 @@ abstract final class KitTopBarHostHooks {
     scheduleChipLabel = null;
     scheduleChipSelected = null;
     readSchedulePref = null;
+    readCatalogPref = null;
+    catalogChipLabel = null;
+    catalogChipSelected = null;
+    writeCatalogFilter = null;
     buildTrailing = null;
     buildTrailingCluster = null;
     wrapListBody = null;

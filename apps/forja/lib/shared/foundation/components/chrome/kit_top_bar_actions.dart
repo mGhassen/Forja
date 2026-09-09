@@ -54,11 +54,15 @@ class KitTopBarActions extends ConsumerWidget {
     final scope = KitLayoutScope.of(context);
     final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
     final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
+    final catalogOptions = catalogsAsync.asData?.value ?? const [];
     final layoutHorizon = scope.selectedId('horizon') ??
         scope.selectedId('schedule') ??
         scope.selectedId('time');
     final horizonPref =
         KitTopBarHostHooks.readSchedulePref?.call(ref) ?? layoutHorizon;
+    final layoutCatalog = scope.selectedId('catalog');
+    final catalogPref =
+        KitTopBarHostHooks.readCatalogPref?.call(ref) ?? layoutCatalog;
     final trailingIndex = actions.length;
     final trailingCluster = KitTopBarHostHooks.buildTrailingCluster?.call(
           context,
@@ -114,7 +118,8 @@ class KitTopBarActions extends ConsumerWidget {
                 actions[i],
                 index: i,
                 focusDown: focusDown,
-                catalogOptions: catalogsAsync.asData?.value ?? const [],
+                catalogOptions: catalogOptions,
+                catalogPref: catalogPref,
                 horizonPref: horizonPref,
               ),
             ],
@@ -137,15 +142,19 @@ class KitTopBarActions extends ConsumerWidget {
     required int index,
     required VoidCallback? focusDown,
     required List<({String id, String label})> catalogOptions,
+    required String? catalogPref,
     required String? horizonPref,
   }) {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString();
     final isRefresh = verb == 'refresh' || id == 'refresh';
     final isSchedule = id == 'horizon' || id == 'schedule' || id == 'time';
+    final isCatalog = id == 'catalog' || action['dynamicCatalogs'] == true;
     final icon = _iconFor(action);
     final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
     final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
+    final catalogLabel = KitTopBarHostHooks.catalogChipLabel;
+    final catalogSelected = KitTopBarHostHooks.catalogChipSelected;
 
     if (isRefresh) {
       final feedBusy = KitTopBarHostHooks.readFeedBusy?.call(ref);
@@ -169,14 +178,23 @@ class KitTopBarActions extends ConsumerWidget {
       );
     }
 
+    final String label;
+    final bool selected;
+    if (isSchedule && scheduleLabel != null) {
+      label = scheduleLabel(horizonPref);
+      selected = scheduleSelected?.call(horizonPref) ?? false;
+    } else if (isCatalog && catalogLabel != null) {
+      label = catalogLabel(catalogPref, catalogOptions);
+      selected = catalogSelected?.call(catalogPref) ?? false;
+    } else {
+      label = _chipLabel(scope, action, catalogOptions: catalogOptions);
+      selected = _isSelected(scope, action);
+    }
+
     return ForjaActionChip(
-      label: isSchedule && scheduleLabel != null
-          ? scheduleLabel(horizonPref)
-          : _chipLabel(scope, action, catalogOptions: catalogOptions),
+      label: label,
       icon: icon,
-      selected: isSchedule && scheduleSelected != null
-          ? scheduleSelected(horizonPref)
-          : _isSelected(scope, action),
+      selected: selected,
       tvTabId: tabId,
       tvRowId: _widgetId,
       tvItemIndex: index,
@@ -186,8 +204,13 @@ class KitTopBarActions extends ConsumerWidget {
       onTap: () => unawaited(
         isSchedule
             ? _onSchedule(context, scope, horizonPref: horizonPref)
-            : id == 'catalog'
-                ? _onCatalog(context, scope, catalogOptions: catalogOptions)
+            : isCatalog
+                ? _onCatalog(
+                    context,
+                    scope,
+                    catalogOptions: catalogOptions,
+                    catalogPref: catalogPref,
+                  )
                 : _onAction(
                     context,
                     scope,
@@ -258,28 +281,34 @@ class KitTopBarActions extends ConsumerWidget {
     BuildContext context,
     KitLayoutScope scope, {
     required List<({String id, String label})> catalogOptions,
+    required String? catalogPref,
   }) async {
     final items = _itemsFor(
       const {'id': 'catalog', 'dynamicCatalogs': true},
       catalogOptions: catalogOptions,
     );
     if (items.isEmpty) return;
+    final current = (catalogPref ?? scope.selectedId('catalog') ?? 'all').trim();
     final opener = KitTopBarHostHooks.openCatalogSheet;
     final picked = opener != null
         ? await opener(
             context,
-            current: scope.selectedId('catalog') ?? 'all',
+            current: current.isEmpty ? 'all' : current,
             options: items,
           )
         : await _genericPicker(
             context,
             title: 'Catalog',
             sheetId: 'catalog',
-            current: scope.selectedId('catalog') ?? 'all',
+            current: current.isEmpty ? 'all' : current,
             items: items,
           );
     if (picked == null || !context.mounted) return;
     scope.onSelect('catalog', picked, toggle: false);
+    final writer = KitTopBarHostHooks.writeCatalogFilter;
+    if (writer != null) {
+      await writer(context, picked);
+    }
   }
 
   Future<void> _onSchedule(
