@@ -677,7 +677,11 @@ function details(ctx) {
               if (!p || !p.id) continue;
               videos.push({
                 id: 'shahid:' + p.id,
-                title: p.title || 'Episode ' + (i + 1),
+                title:
+                  p.title ||
+                  p.episodeTitle ||
+                  'Episode ' +
+                    (Number(p.number || p.episodeNumber) || i + 1),
                 season: Number(p.seasonNumber) || 1,
                 episode: Number(p.number || p.episodeNumber) || i + 1,
                 thumbnail: formatImg(

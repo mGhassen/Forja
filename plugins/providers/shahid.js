@@ -6,16 +6,32 @@ var SHAHID_UA =
 var SHAHID_BASE = 'https://shahid.mbc.net';
 var SHAHID_PROXY = 'https://api2.shahid.net/proxy';
 var SHAHID_AES_KEY = 'gx8KSZyPdfJhXes7';
+// Web client HMAC key (CryptoJS HmacSHA256 → Hex). See shahid.mbc.net _app chunk.
+var SHAHID_SIGN_KEY = 'z3qQSk17nbajIYUF0dU5f4+O/CxjFizcsEJr9ejOYFw=';
+var SHAHID_GUEST_PROFILE = JSON.stringify({
+  id: '00000000-0000-0000-0000-000000000000',
+  ageRestriction: false,
+  master: true,
+});
+var SHAHID_PROFILE_KEY = JSON.stringify({
+  isAdult: true,
+  ageRestriction: false,
+});
 
 var _shahidSessionId = '';
 var _shahidJwt = '';
+var _shahidCountry = '';
 
 function shahidHeaders(sessionId, jwt) {
   var h = {
     'User-Agent': SHAHID_UA,
     'Shahid-Agent': SHAHID_UA,
     UUID: 'ios',
-    language: 'ar',
+    language: 'AR',
+    Accept: 'application/json',
+    shahid_os: 'WEB',
+    profile: SHAHID_GUEST_PROFILE,
+    'profile-key': SHAHID_PROFILE_KEY,
   };
   if (jwt) h['S-Session'] = jwt;
   if (sessionId) h.Token = sessionId;
@@ -37,6 +53,19 @@ function encryptPassword(ctx, password) {
   return C.enc.Base64.stringify(encrypted.ciphertext);
 }
 
+function signParams(ctx, obj) {
+  var C = ctx.crypto || globalThis.CryptoJS;
+  if (!C || !C.HmacSHA256 || !C.enc || !C.enc.Hex) return '';
+  var keys = Object.keys(obj).sort();
+  var parts = [];
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    parts.push(k + '=' + obj[k]);
+  }
+  var digest = C.HmacSHA256(parts.join(';'), SHAHID_SIGN_KEY);
+  return C.enc.Hex.stringify(digest);
+}
+
 function getJwt(ctx) {
   if (_shahidJwt) return Promise.resolve(_shahidJwt);
   return ctx
@@ -50,6 +79,7 @@ function getJwt(ctx) {
     })
     .then(function (j) {
       _shahidJwt = (j && j.jwt) || '';
+      if (j && j.country) _shahidCountry = String(j.country);
       return _shahidJwt;
     })
     .catch(function () {
@@ -100,17 +130,42 @@ function parseVideoId(raw) {
   return m ? m[1] : '';
 }
 
-function buildDrmRow(ctx, streamId, videoUrl, licenceUrl) {
+function cleanPlayUrl(raw) {
+  var url = String(raw || '').trim();
+  if (!url) return '';
+  // API sometimes concatenates two manifests with `&`.
+  var amp = url.indexOf('.mpd&');
+  if (amp > 0) url = url.substring(0, amp + 4);
+  amp = url.indexOf('.m3u8&');
+  if (amp > 0) url = url.substring(0, amp + 5);
+  return url.replace(/aws\.manifestfilter=[\w:;,-]+&?/g, '');
+}
+
+function drmSchemaForUrl(url) {
+  var u = String(url || '').toLowerCase();
+  if (u.indexOf('.mpd') >= 0 || u.indexOf('dash') >= 0) return 'WIDEVINE_DASH';
+  if (u.indexOf('.ism') >= 0 || u.indexOf('smooth') >= 0) return 'WIDEVINE';
+  return 'WIDEVINE';
+}
+
+function buildDrmRow(videoUrl, licenceUrl) {
   var headers = {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    Referer: SHAHID_BASE + '/',
+    Origin: SHAHID_BASE,
   };
+  var authority = '';
+  try {
+    var m = String(licenceUrl).match(/^https?:\/\/([^/]+)/i);
+    if (m) authority = m[1];
+  } catch (e) {}
   var licenseHeaders = {
-    authority: 'shahiddotnet.keydelivery.westeurope.media.azure.net',
     origin: SHAHID_BASE,
     'User-Agent': headers['User-Agent'],
     referer: SHAHID_BASE + '/',
   };
+  if (authority) licenseHeaders.authority = authority;
   return {
     url: videoUrl,
     title: 'Shahid',
@@ -124,25 +179,54 @@ function buildDrmRow(ctx, streamId, videoUrl, licenceUrl) {
   };
 }
 
-function fetchLicenseUrl(ctx, streamId, jwt) {
-  var filter =
+function fetchLicenseUrl(ctx, streamId, auth, mediaUrl) {
+  var country = _shahidCountry || 'SA';
+  var ts = Date.now();
+  var assetId = Number(streamId) || streamId;
+  var requestObj = { assetId: assetId };
+  var requestStr = JSON.stringify(requestObj);
+  var authSig = signParams(ctx, {
+    country: country,
+    request: requestStr,
+    ts: ts,
+  });
+  if (!authSig) {
+    if (ctx && ctx.log) ctx.log('shahid drm: hmac unavailable');
+    return Promise.resolve('');
+  }
+  var schema = drmSchemaForUrl(mediaUrl);
+  var qs =
     'request=' +
-    encodeURIComponent(JSON.stringify({ assetId: String(streamId) }));
+    encodeURIComponent(requestStr) +
+    '&ts=' +
+    encodeURIComponent(String(ts)) +
+    '&country=' +
+    encodeURIComponent(country);
   return ctx
-    .fetch(SHAHID_PROXY + '/v2/playout/new/drm?' + filter, {
-      headers: Object.assign(shahidHeaders('', jwt), {
+    .fetch(SHAHID_PROXY + '/v2.1/playout/new/drm?' + qs, {
+      headers: Object.assign(shahidHeaders(auth.sessionId, auth.jwt), {
+        Authorization: authSig,
+        DRMSCHEMA: schema,
         BROWSER_NAME: 'CHROME',
-        SHAHID_OS: 'LINUX',
-        BROWSER_VERSION: '79.0',
+        SHAHID_OS: 'WEB',
+        BROWSER_VERSION: '120.0',
       }),
     })
     .then(function (res) {
-      return res.json();
+      if (!res.ok) {
+        if (ctx && ctx.log) {
+          ctx.log('shahid drm: HTTP ' + res.status + ' schema=' + schema);
+        }
+        return '';
+      }
+      return res.json().then(function (j) {
+        return (j && j.signature) || '';
+      });
     })
-    .then(function (j) {
-      return (j && j.signature) || '';
-    })
-    .catch(function () {
+    .catch(function (e) {
+      if (ctx && ctx.log) {
+        ctx.log('shahid drm: ' + ((e && e.message) || String(e)));
+      }
       return '';
     });
 }
@@ -150,7 +234,10 @@ function fetchLicenseUrl(ctx, streamId, jwt) {
 function extract(ctx) {
   var cfg = Object.assign({}, ctx.config || {});
   var videoId = parseVideoId(cfg.videoId || '');
-  if (!videoId) return Promise.resolve([]);
+  if (!videoId) {
+    if (ctx && ctx.log) ctx.log('shahid extract: missing videoId');
+    return Promise.resolve([]);
+  }
 
   var email = String(cfg.email || '').trim();
   var password = String(cfg.password || '').trim();
@@ -169,14 +256,28 @@ function extract(ctx) {
       });
     })
     .then(function (auth) {
+      var country = _shahidCountry || 'SA';
       return ctx
-        .fetch(SHAHID_PROXY + '/v2.1/playout/new/url/' + videoId, {
-          headers: shahidHeaders(auth.sessionId, auth.jwt),
-        })
+        .fetch(
+          SHAHID_PROXY +
+            '/v2.1/playout/new/url/' +
+            videoId +
+            '?country=' +
+            encodeURIComponent(country),
+          { headers: shahidHeaders(auth.sessionId, auth.jwt) },
+        )
         .then(function (res) {
           if (!res.ok) {
-            if (res.status === 422) return [];
-            throw new Error('HTTP ' + res.status);
+            if (ctx && ctx.log) {
+              ctx.log(
+                'shahid playout: HTTP ' +
+                  res.status +
+                  (res.status === 422 ? ' (VIP/login required)' : '') +
+                  ' id=' +
+                  videoId,
+              );
+            }
+            return [];
           }
           return res.json().then(function (j) {
             return { playout: (j && j.playout) || {}, auth: auth };
@@ -184,15 +285,22 @@ function extract(ctx) {
         });
     })
     .then(function (pack) {
+      if (!pack || !pack.playout) return [];
       var playout = pack.playout || {};
-      var videoUrl = String(playout.url || '').trim();
-      if (!videoUrl) return [];
+      var videoUrl = cleanPlayUrl(playout.url || '');
+      if (!videoUrl) {
+        if (ctx && ctx.log) ctx.log('shahid playout: empty url');
+        return [];
+      }
       var drmFlag = playout.drm === true || playout.drm === 'true';
-      var isHls = /\.m3u8(\?|$)/i.test(videoUrl) || videoUrl.indexOf('m3u8') >= 0;
-      if (!drmFlag || isHls) {
+      var isHls =
+        /\.m3u8(\?|$)/i.test(videoUrl) || videoUrl.toLowerCase().indexOf('m3u8') >= 0;
+
+      // Clear HLS only when Shahid says no DRM.
+      if (!drmFlag && isHls) {
         return [
           {
-            url: videoUrl.replace(/aws\.manifestfilter=[\w:;,-]+&?/g, ''),
+            url: videoUrl,
             title: 'Shahid',
             name: 'Shahid',
             headers: {
@@ -202,14 +310,37 @@ function extract(ctx) {
           },
         ];
       }
-      return fetchLicenseUrl(ctx, videoId, pack.auth.jwt).then(function (lic) {
-        if (!lic) return [];
-        return [buildDrmRow(ctx, videoId, videoUrl, lic)];
-      });
+      if (!drmFlag) {
+        return [
+          {
+            url: videoUrl,
+            title: 'Shahid',
+            name: 'Shahid',
+            headers: {
+              'User-Agent': SHAHID_UA,
+              Referer: SHAHID_BASE + '/',
+            },
+          },
+        ];
+      }
+
+      // DRM DASH/ISM/HLS — need license URL for Android Exo Widevine.
+      return fetchLicenseUrl(ctx, videoId, pack.auth, videoUrl).then(
+        function (lic) {
+          if (!lic) {
+            if (ctx && ctx.log) {
+              ctx.log(
+                'shahid extract: drm license miss (Android Exo + Connected Services login required)',
+              );
+            }
+            return [];
+          }
+          return [buildDrmRow(videoUrl, lic)];
+        },
+      );
     })
     .catch(function (e) {
       if (ctx && ctx.log) ctx.log('shahid extract: ' + (e && e.message));
       return [];
     });
 }
-

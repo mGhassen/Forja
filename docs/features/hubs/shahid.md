@@ -27,9 +27,9 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## Tips
 
-- DRM titles need Android ExoPlayer — the app forces Exo for those streams even if MediaKit is preferred for other VOD
-- Desktop and iOS skip DRM rows; clear HLS still plays when Shahid returns it
-- Without login, free / promo content may still appear; premium resolve stays empty
+- Almost all Shahid titles are Widevine DRM (DASH). Playback needs **Android ExoPlayer** plus Shahid login under Connected services
+- Desktop and iOS hide DRM sources — Sources looks empty there even when resolve works on Android
+- VIP titles return nothing until you sign in; some free episodes still need a DRM license on Android
 
 ## Related
 
