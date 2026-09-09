@@ -30,6 +30,16 @@ function shahidHeaders(sessionId, jwt) {
     language: 'AR',
     Accept: 'application/json',
     shahid_os: 'WEB',
+    SHAHID_OS: 'WEB',
+    BROWSER_NAME: 'CHROME',
+    BROWSER_VERSION: '120.0',
+    OS_VERSION: '10',
+    'Shd-Platform': 'WEB',
+    'Shd-App-Name': 'WEB',
+    'Shd-OS': 'WINDOWS',
+    'Shd-OS-Version': '10',
+    'Shd-Browser': 'CHROME',
+    'Shd-Browser-Version': '120.0',
     profile: SHAHID_GUEST_PROFILE,
     'profile-key': SHAHID_PROFILE_KEY,
   };
@@ -141,13 +151,6 @@ function cleanPlayUrl(raw) {
   return url.replace(/aws\.manifestfilter=[\w:;,-]+&?/g, '');
 }
 
-function drmSchemaForUrl(url) {
-  var u = String(url || '').toLowerCase();
-  if (u.indexOf('.mpd') >= 0 || u.indexOf('dash') >= 0) return 'WIDEVINE_DASH';
-  if (u.indexOf('.ism') >= 0 || u.indexOf('smooth') >= 0) return 'WIDEVINE';
-  return 'WIDEVINE';
-}
-
 function buildDrmRow(videoUrl, licenceUrl) {
   var headers = {
     'User-Agent':
@@ -179,12 +182,11 @@ function buildDrmRow(videoUrl, licenceUrl) {
   };
 }
 
-function fetchLicenseUrl(ctx, streamId, auth, mediaUrl) {
+function fetchLicenseUrl(ctx, streamId, auth) {
   var country = _shahidCountry || 'SA';
   var ts = Date.now();
   var assetId = Number(streamId) || streamId;
-  var requestObj = { assetId: assetId };
-  var requestStr = JSON.stringify(requestObj);
+  var requestStr = JSON.stringify({ assetId: assetId });
   var authSig = signParams(ctx, {
     country: country,
     request: requestStr,
@@ -194,29 +196,24 @@ function fetchLicenseUrl(ctx, streamId, auth, mediaUrl) {
     if (ctx && ctx.log) ctx.log('shahid drm: hmac unavailable');
     return Promise.resolve('');
   }
-  var schema = drmSchemaForUrl(mediaUrl);
+  // Web serializer: request=encodeURIComponent(JSON), ts + country raw.
+  // Do NOT send DRMSCHEMA — it 500s; Shd-* headers are required.
   var qs =
     'request=' +
     encodeURIComponent(requestStr) +
     '&ts=' +
-    encodeURIComponent(String(ts)) +
+    String(ts) +
     '&country=' +
     encodeURIComponent(country);
   return ctx
     .fetch(SHAHID_PROXY + '/v2.1/playout/new/drm?' + qs, {
       headers: Object.assign(shahidHeaders(auth.sessionId, auth.jwt), {
         Authorization: authSig,
-        DRMSCHEMA: schema,
-        BROWSER_NAME: 'CHROME',
-        SHAHID_OS: 'WEB',
-        BROWSER_VERSION: '120.0',
       }),
     })
     .then(function (res) {
       if (!res.ok) {
-        if (ctx && ctx.log) {
-          ctx.log('shahid drm: HTTP ' + res.status + ' schema=' + schema);
-        }
+        if (ctx && ctx.log) ctx.log('shahid drm: HTTP ' + res.status);
         return '';
       }
       return res.json().then(function (j) {
@@ -325,19 +322,17 @@ function extract(ctx) {
       }
 
       // DRM DASH/ISM/HLS — need license URL for Android Exo Widevine.
-      return fetchLicenseUrl(ctx, videoId, pack.auth, videoUrl).then(
-        function (lic) {
-          if (!lic) {
-            if (ctx && ctx.log) {
-              ctx.log(
-                'shahid extract: drm license miss (Android Exo + Connected Services login required)',
-              );
-            }
-            return [];
+      return fetchLicenseUrl(ctx, videoId, pack.auth).then(function (lic) {
+        if (!lic) {
+          if (ctx && ctx.log) {
+            ctx.log(
+              'shahid extract: drm license miss (Android Exo + Connected Services login required)',
+            );
           }
-          return [buildDrmRow(videoUrl, lic)];
-        },
-      );
+          return [];
+        }
+        return [buildDrmRow(videoUrl, lic)];
+      });
     })
     .catch(function (e) {
       if (ctx && ctx.log) ctx.log('shahid extract: ' + (e && e.message));
