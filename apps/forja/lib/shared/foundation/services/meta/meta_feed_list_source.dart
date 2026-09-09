@@ -122,7 +122,7 @@ class MetaFeedCatalogNotifier
         return _pageFromCacheData(cached.data, loadingRemote: false);
       }
       // Schedule / sport chip change — refilter warm scrape, no network.
-      final fromSession = tryLiveFeedFromSession(query);
+      final fromSession = await tryLiveFeedFromSession(query);
       if (fromSession != null) {
         return pageFromRows(fromSession);
       }

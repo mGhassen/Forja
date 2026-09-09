@@ -199,10 +199,15 @@ class PluginInstallCoordinator {
   Future<EnginePack> _fetchPackWithProgress({
     required String manifestUrl,
     required bool isUpdate,
+    String? displayName,
   }) async {
+    final name = displayName?.trim() ?? '';
+    final startLabel = name.isNotEmpty
+        ? (isUpdate ? 'Updating $name…' : 'Installing $name…')
+        : (isUpdate ? 'Updating…' : 'Fetching manifest…');
     _setProgress(
       PluginInstallProgress(
-        label: 'Fetching manifest…',
+        label: startLabel,
         manifestUrl: manifestUrl,
         sourceUrl: manifestUrl,
         completedSteps: 0,
@@ -467,6 +472,7 @@ class PluginInstallCoordinator {
         await _fetchPackWithProgress(
           manifestUrl: url,
           isUpdate: job.isUpdate,
+          displayName: pack.name,
         );
         installedNames.add(pack.name);
       } catch (e) {

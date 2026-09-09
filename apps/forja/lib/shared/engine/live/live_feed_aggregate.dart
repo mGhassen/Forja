@@ -1,4 +1,6 @@
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/live_feed_merge.dart';
+import 'package:forja/shared/engine/live/live_merge_matching_gate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
@@ -60,11 +62,28 @@ void clearLiveFeedSessionCache() {
 }
 
 /// Re-filter a warm scrape for a new Status × Horizon without network.
-List<Map<String, dynamic>>? tryLiveFeedFromSession(LiveFeedQuery query) {
+Future<List<Map<String, dynamic>>?> tryLiveFeedFromSession(
+  LiveFeedQuery query,
+) async {
   final hit = _rawFeedByCatalog[_rawFeedCacheKey(query.catalogFilter)];
   if (hit == null) return null;
   if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
-  return _filterLiveFeedRows(hit.rows, query);
+  return filterLiveFeedRowsAsync(hit.rows, query);
+}
+
+/// Status × Horizon (+ optional same-fixture merge for Catalog = All).
+Future<List<Map<String, dynamic>>> filterLiveFeedRowsAsync(
+  List<Map<String, dynamic>> rows,
+  LiveFeedQuery query,
+) async {
+  final mergeMatching = await _shouldMergeMatching(query);
+  return _filterLiveFeedRows(rows, query, mergeMatching: mergeMatching);
+}
+
+Future<bool> _shouldMergeMatching(LiveFeedQuery query) async {
+  final filter = query.catalogFilter.trim();
+  if (filter.isNotEmpty && filter != 'all') return false;
+  return LiveMergeMatchingGate.isEnabled();
 }
 
 void _rememberRawFeed(String catalogFilter, List<Map<String, dynamic>> rows) {
@@ -133,11 +152,18 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   bool forceRefresh = false,
 }) async {
   final filter = query.catalogFilter.trim();
+  final mergeMatching = await _shouldMergeMatching(query);
   if (forceRefresh) {
     _rawFeedByCatalog.remove(_rawFeedCacheKey(filter));
   } else {
-    final session = tryLiveFeedFromSession(query);
-    if (session != null) {
+    final hit = _rawFeedByCatalog[_rawFeedCacheKey(filter)];
+    if (hit != null &&
+        DateTime.now().difference(hit.at) <= _rawFeedTtl) {
+      final session = _filterLiveFeedRows(
+        hit.rows,
+        query,
+        mergeMatching: mergeMatching,
+      );
       onPartial?.call(
         LiveFeedPartial(
           rows: session,
@@ -175,7 +201,8 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     );
     final raw = await loadLiveStremioCatalogFeed(baseUrl: base);
     _rememberRawFeed(filter, raw);
-    final filtered = _filterLiveFeedRows(raw, query);
+    final filtered =
+        _filterLiveFeedRows(raw, query, mergeMatching: false);
     onPartial?.call(
       LiveFeedPartial(
         rows: filtered,
@@ -232,7 +259,11 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
         plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
     onPartial?.call(
       LiveFeedPartial(
-        rows: _filterLiveFeedRows(raw, query),
+        rows: _filterLiveFeedRows(
+          raw,
+          query,
+          mergeMatching: mergeMatching,
+        ),
         done: false,
         completed: i,
         total: total,
@@ -256,7 +287,11 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     }
     onPartial?.call(
       LiveFeedPartial(
-        rows: _filterLiveFeedRows(raw, query),
+        rows: _filterLiveFeedRows(
+          raw,
+          query,
+          mergeMatching: mergeMatching,
+        ),
         done: false,
         completed: i + 1,
         total: total,
@@ -266,9 +301,14 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   }
   _rememberRawFeed(filter, raw);
   if (filter.isEmpty || filter == 'all') {
+    // Unmerged pool — Providers soft-matches siblings from every catalog.
     rememberLiveFeedAllCatalogPool(raw);
   }
-  final out = _filterLiveFeedRows(raw, query);
+  final out = _filterLiveFeedRows(
+    raw,
+    query,
+    mergeMatching: mergeMatching,
+  );
   onPartial?.call(
     LiveFeedPartial(
       rows: List<Map<String, dynamic>>.from(out),
@@ -282,8 +322,9 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
 
 List<Map<String, dynamic>> _filterLiveFeedRows(
   List<Map<String, dynamic>> rows,
-  LiveFeedQuery query,
-) {
+  LiveFeedQuery query, {
+  required bool mergeMatching,
+}) {
   final out = <Map<String, dynamic>>[];
   final seen = <String>{};
   for (final row in rows) {
@@ -293,7 +334,8 @@ List<Map<String, dynamic>> _filterLiveFeedRows(
     if (!_rowPassesSportAndWindow(map, item, query)) continue;
     out.add(map);
   }
-  return out;
+  if (!mergeMatching) return out;
+  return mergeLiveFeedMatchingRows(out);
 }
 
 bool _rowPassesSportAndWindow(

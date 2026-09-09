@@ -10,6 +10,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
@@ -649,24 +650,20 @@ abstract final class LiveResolveStreams {
   }
 
   static bool _stremioCatalogEventMatch(MatchEvent engine, MatchEvent stremio) {
-    final teamsA = matchTeamPairKeyFromCatalog(
-      homeTeam: engine.homeTeam,
-      awayTeam: engine.awayTeam,
-      title: engine.title,
+    return liveCatalogEventsSoftMatch(
+      idA: engine.id,
+      titleA: engine.title,
+      homeTeamA: engine.homeTeam,
+      awayTeamA: engine.awayTeam,
+      dateMsA: engine.dateMs,
+      idB: stremio.id,
+      titleB: stremio.title,
+      homeTeamB: stremio.homeTeam,
+      awayTeamB: stremio.awayTeam,
+      dateMsB: stremio.dateMs,
+      alwaysOnA: engine.isAlwaysOn,
+      alwaysOnB: stremio.isAlwaysOn,
     );
-    final teamsB = matchTeamPairKeyFromCatalog(
-      homeTeam: stremio.homeTeam,
-      awayTeam: stremio.awayTeam,
-      title: stremio.title,
-    );
-    if (teamsA != null && teamsB != null && teamsA == teamsB) {
-      if (engine.dateMs <= 0 || stremio.dateMs <= 0) return true;
-      return (engine.dateMs - stremio.dateMs).abs() <=
-          const Duration(hours: 6).inMilliseconds;
-    }
-    final titleA = matchTextKey(engine.title);
-    final titleB = matchTextKey(stremio.title);
-    return titleA.isNotEmpty && titleA == titleB;
   }
 
   static Future<void> _playIptvSports(

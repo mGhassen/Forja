@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
@@ -180,71 +179,51 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     final loading = _loadingByTab[_tabId] == true;
     final error = _errorByTab[_tabId];
     final rows = _rowsByTab[_tabId] ?? const [];
+    final body = _body(context, loading: loading, error: error, rows: rows);
 
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!widget.embedded) _header(context),
-        if (widget.showTabs && widget.tabs.length > 1) _tabs(context),
-        Expanded(child: _body(context, loading: loading, error: error, rows: rows)),
-      ],
-    );
-    // Cards / hero details: soft-edge dark scrim behind streams (old live details).
-    if (widget.embedded) return _embeddedScrim(column);
-    return column;
-  }
-
-  /// Soft-edge blurred dark panel behind hero-embedded stream lists.
-  Widget _embeddedScrim(Widget child) {
-    Shader fadeMask(Rect bounds, Alignment begin, Alignment end) {
-      return LinearGradient(
-        begin: begin,
-        end: end,
-        colors: const [
-          Color(0x00FFFFFF),
-          Color(0xFFFFFFFF),
-          Color(0xFFFFFFFF),
-          Color(0x00FFFFFF),
-        ],
-        stops: const [0.0, 0.06, 0.88, 1.0],
-      ).createShader(bounds);
-    }
-
-    return Stack(
-      clipBehavior: Clip.none,
-      fit: StackFit.expand,
-      children: [
-        Positioned(
-          left: 0,
-          right: 0,
-          top: -28,
-          bottom: 0,
-          child: IgnorePointer(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) =>
-                  fadeMask(bounds, Alignment.topCenter, Alignment.bottomCenter),
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => fadeMask(
-                  bounds,
-                  Alignment.centerLeft,
-                  Alignment.centerRight,
+    if (widget.embedded) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: constraints.maxHeight),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.black.withValues(alpha: 0.55),
+                  border: Border.all(
+                    color: ForjaShellColors.cinematic.borderSubtle
+                        .withValues(alpha: 0.5),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.38),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                    child: body,
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-          child: child,
-        ),
+          );
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(context),
+        if (widget.showTabs && widget.tabs.length > 1) _tabs(context),
+        Expanded(child: body),
       ],
     );
   }
@@ -425,9 +404,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     required List<KitSourcesRow> rows,
   }) {
     if (loading && rows.isEmpty) {
-      return const Center(
+      final spinner = const Center(
         child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
+      return widget.embedded
+          ? SizedBox(height: 96, child: spinner)
+          : spinner;
     }
     if (error != null && rows.isEmpty) {
       return Center(
@@ -442,15 +424,19 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       );
     }
     if (rows.isEmpty) {
-      return Center(
-        child: Text(
-          'No sources',
-          style: TextStyle(color: ForjaShellColors.textSecondary),
+      final empty = Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: widget.embedded ? 16 : 0),
+          child: Text(
+            'No sources',
+            style: TextStyle(color: ForjaShellColors.textSecondary),
+          ),
         ),
       );
+      return empty;
     }
-    // Hero details (embedded): column-major 2-col grid + soft dark scrim.
-    // Side panel stays single-column ListView (no scrim).
+    // Hero details (embedded): column-major 2-col grid; panel chrome in build().
+    // Side panel stays single-column ListView (no panel).
     if (widget.embedded) {
       return _embeddedSourcesGrid(context, rows);
     }
@@ -490,7 +476,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     );
   }
 
-  /// Hero details: 2 columns when wide, 1 when narrow / TV compact.
+  /// Hero details: 2 columns when wide (and >1 row), 1 when narrow / single.
   ///
   /// Wide layout is **column-major** — fill the left column top→bottom first,
   /// then the right column (same priority order as a single list).
@@ -499,11 +485,16 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final metrics = ShellScope.metricsOf(context);
-        final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
+        // Panel inset already pads; keep list flush with title/pills.
+        const listPad = EdgeInsets.only(bottom: 4);
+        final wide = !metrics.usesTvDensity &&
+            constraints.maxWidth >= 720 &&
+            rows.length > 1;
 
         if (!wide) {
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+            shrinkWrap: true,
+            padding: listPad,
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: gap),
             itemBuilder: (context, i) => _tile(
@@ -518,7 +509,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         // Column-major: left = first half, right = remainder.
         final leftCount = (rows.length + 1) ~/ 2;
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+          shrinkWrap: true,
+          padding: listPad,
           itemCount: leftCount,
           itemBuilder: (context, row) {
             final left = row;

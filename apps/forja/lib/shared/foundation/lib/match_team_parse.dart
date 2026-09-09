@@ -101,7 +101,33 @@ String _peelEventPrefixFromSide(String side) {
     return (left, right);
   }
 
+  // `Barcelona - Feyenoord` (catalog dash). Skip session titles
+  // (`Italian Grand Prix - Practice 2`).
+  final dash = RegExp(r'\s+[-–—]\s+').firstMatch(title);
+  if (dash != null) {
+    final left = _peelEventPrefixFromSide(title.substring(0, dash.start));
+    final right = _peelEventPrefixFromSide(
+      title
+          .substring(dash.end)
+          .split(RegExp(r'\s+[/|]\s+'))
+          .first
+          .trim(),
+    );
+    if (_looksLikeTeamFixtureSide(left) && _looksLikeTeamFixtureSide(right)) {
+      return (left, right);
+    }
+  }
+
   return ('', '');
+}
+
+bool _looksLikeTeamFixtureSide(String side) {
+  if (side.trim().isEmpty) return false;
+  if (liveEventSessionKey(side) != null) return false;
+  final tokens = liveTeamMatchTokens(side);
+  if (tokens.isEmpty || tokens.length > 5) return false;
+  if (tokens.every(_liveEventSessionNoise.contains)) return false;
+  return true;
 }
 
 /// Prefer structured teams; fill gaps from [title] (`at` / `vs` aware).

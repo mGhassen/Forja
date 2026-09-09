@@ -16,9 +16,9 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 ## What you can do
 
-- **Setup** (hub pack settings) — enable **Forja Live** and/or **Forja Sports**, turn on **Merge matching events** (off by default; same-game collapse + ESPN enrich)
+- **Setup** (hub pack settings) — enable **Forja Live** and/or **Forja Sports**, and **Merge matching events** (on by default; same-game collapse across catalogs)
 - **Catalogs & providers** — **Catalog** / **Provider** tabs; one toggle per site (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN, MobiKora). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Sports **All**, **Forja Live**, and **Forja Sports**.
-- Browse the same catalog schedule as Forja Live. With **Merge matching events** on (and **Catalog → ESPN**), rows enrich from ESPN (clean home/away; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
+- Browse the same catalog schedule as Forja Live. With **Merge matching events** on, matching fixtures across catalogs collapse to one card. Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
 - In-player **programme guide** — with **Settings → Addons → IPTV → IPTV programme guide (EPG)** on, the native player shows the same floating card as IPTV Live (LIVE / NEXT / LATER, progress bar, description) for the active channel (Xtream `player_api` or Stalker MAG EPG)
@@ -27,11 +27,11 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 1. Add an Xtream or Stalker portal under IPTV (if you don’t have one)
 2. Live Sports → top-right **Portals** if needed (Forja Sports must be enabled under hub Setup)
-3. Optional: Settings → Addons → Live Sports (or Forja Packs → hub expand) to turn on **Merge matching events**, or tune live plugins
+3. Optional: Settings → Addons → Live Sports (or Forja Packs → hub expand) to tune **Merge matching events** or live plugins
 
 ## Tips
 
-- Catalog = same enabled schedule feeds as Forja Live / All. With **Merge matching events** on (and ESPN catalog enabled), ESPN can enrich team names for portal match; the catalog grid drives the cards
+- Catalog = same enabled schedule feeds as Forja Live / All. **Merge matching events** collapses the same fixture into one card; the catalog grid drives the cards
 - Portal is only in Live Sports / IPTV Portals (not Settings)
 - Matching tokenizes the event title, teams, and sport chip, then scores **channel name**, **folder/genre name**, and **short EPG** (no hardcoded venue/sport alias lists). For team sports, name hits are preferred for EPG lookups; if few/none mention the teams, Forja still short-EPGs up to **120** channels in your mapped folders so programme titles on ESPN / beIN / etc. can match
 - Channel match results are remembered for **30 minutes** per match and portal when channels were found (app restart clears them); **no channels** is retried on the next open

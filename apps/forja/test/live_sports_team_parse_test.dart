@@ -77,6 +77,33 @@ void main() {
       expect(parseLiveMatchTeamsFromTitle('NFL Network'), ('', ''));
     });
 
+    test('parses dash titles as vs', () {
+      final (home, away) = parseLiveMatchTeamsFromTitle(
+        'Barcelona - Feyenoord',
+      );
+      expect(home, 'Barcelona');
+      expect(away, 'Feyenoord');
+    });
+
+    test('dash does not invent teams for session titles', () {
+      expect(
+        parseLiveMatchTeamsFromTitle('Italian Grand Prix - Practice 2'),
+        ('', ''),
+      );
+    });
+
+    test('Feyenoord short and long soft-match as same pair', () {
+      final a = parseLiveMatchTeamsFromTitle(
+        'Feyenoord Rotterdam at Barcelona',
+      );
+      final b = parseLiveMatchTeamsFromTitle('Barcelona vs Feyenoord');
+      final c = parseLiveMatchTeamsFromTitle('FC Barcelona vs Feyenoord');
+      final d = parseLiveMatchTeamsFromTitle('Barcelona - Feyenoord');
+      expect(liveTeamPairSoftEqual(a.$1, a.$2, b.$1, b.$2), isTrue);
+      expect(liveTeamPairSoftEqual(b.$1, b.$2, c.$1, c.$2), isTrue);
+      expect(liveTeamPairSoftEqual(b.$1, b.$2, d.$1, d.$2), isTrue);
+    });
+
     test('at and vs reverse to the same home/away', () {
       final at = parseLiveMatchTeamsFromTitle(
         'Houston Texans at Carolina Panthers',

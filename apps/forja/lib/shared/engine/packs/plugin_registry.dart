@@ -1066,7 +1066,9 @@ class PluginRegistry {
       );
     }
 
-    tick('Fetched ${pack.name} manifest');
+    // Splash / banner: pack name only — never enumerate every file path.
+    final packLabel = 'Installing ${pack.name}…';
+    tick(packLabel);
 
     final byPath = <String, String>{};
     final byPathBytes = <String, List<int>>{};
@@ -1123,7 +1125,7 @@ class PluginRegistry {
           PluginScriptFetchProgress(
             completed: fetchDone,
             total: fetchTotal,
-            label: 'Reused disk for ${pack.name}',
+            label: packLabel,
             sourceUrl: manifestUrl,
           ),
         );
@@ -1159,7 +1161,7 @@ class PluginRegistry {
                 // Non-text asset listed in bundle — bytes-only is fine.
               }
             }
-            tick('Downloaded $path');
+            tick(packLabel);
           } catch (_) {
             missing.add(path);
           }
