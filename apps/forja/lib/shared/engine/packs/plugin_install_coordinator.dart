@@ -300,7 +300,7 @@ class PluginInstallCoordinator {
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
-  /// Waits for intro splash so the toast is not painted over the logo.
+  /// Sticky until Update / close. Waits for intro splash so it is not over the logo.
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
@@ -317,7 +317,8 @@ class PluginInstallCoordinator {
         count == 1
             ? '$sample update available'
             : '$count plugin updates available',
-        duration: const Duration(seconds: 8),
+        // Sticky until Update or close — once-per-session toast.
+        duration: Duration.zero,
         actionLabel: 'Update',
         onAction: () {
           pendingUpdatePrompt.value = list;

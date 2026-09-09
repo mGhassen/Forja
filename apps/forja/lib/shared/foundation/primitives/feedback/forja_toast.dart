@@ -45,6 +45,9 @@ class _QueuedToast {
 }
 
 /// Top-right floating status toasts. Mount [ForjaToastHost] once at app root.
+///
+/// Pass [duration] `Duration.zero` to keep the toast until the user closes it
+/// or taps its action (sticky — no auto-dismiss timer).
 abstract final class ForjaToast {
   static final ForjaToastController controller = ForjaToastController();
 
@@ -212,11 +215,16 @@ class ForjaToastController extends ChangeNotifier {
       onAction: item.onAction,
     );
     _entries.add(entry);
-    if (_entries.length > 4) {
-      dismiss(_entries.first.id);
+    while (_entries.length > 4) {
+      // Prefer dropping timed toasts so sticky (duration zero) stay put.
+      final timedIdx = _entries.indexWhere((e) => e.duration > Duration.zero);
+      dismiss(_entries[timedIdx >= 0 ? timedIdx : 0].id);
     }
     notifyListeners();
-    _timers[id] = Timer(item.duration, () => dismiss(id));
+    // Duration.zero = sticky until close / action (Timer(0) would dismiss now).
+    if (item.duration > Duration.zero) {
+      _timers[id] = Timer(item.duration, () => dismiss(id));
+    }
   }
 
   @override
