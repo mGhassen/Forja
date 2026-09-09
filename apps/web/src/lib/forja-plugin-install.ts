@@ -3,6 +3,57 @@ import type { ForjaPackRow } from '@/lib/sync-domains'
 const INSTALL_INTENT_KEY = 'forja.plugin_install_intent'
 const BATCH_INSTALL_INTENT_KEY = 'forja.plugin_batch_install_intent'
 
+export type ManifestMeta = {
+  name?: string
+  version?: string
+}
+
+/** Fetch pack manifest JSON for name/version (cloud pack rows). */
+export async function fetchManifestMeta(
+  manifestUrl: string,
+): Promise<ManifestMeta> {
+  const url = manifestUrl.trim()
+  if (!url) return {}
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) {
+    throw new Error(`Could not fetch manifest (${res.status})`)
+  }
+  const data = (await res.json()) as { name?: unknown; version?: unknown }
+  const name = typeof data.name === 'string' ? data.name.trim() : ''
+  const version = typeof data.version === 'string' ? data.version.trim() : ''
+  const out: ManifestMeta = {}
+  if (name) out.name = name
+  if (version) out.version = version
+  return out
+}
+
+/** Ensure each pack row has `version` (catalog or remote manifest). */
+export async function ensurePackVersions(
+  packs: ForjaPackRow[],
+): Promise<ForjaPackRow[]> {
+  return Promise.all(
+    packs.map(async (pack) => {
+      const existing = pack.version?.trim()
+      if (existing) return pack
+      try {
+        const meta = await fetchManifestMeta(pack.manifestUrl)
+        if (!meta.version) return pack
+        const next: ForjaPackRow = {
+          ...pack,
+          version: meta.version,
+        }
+        const name = pack.name?.trim()
+        if ((!name || name === pack.manifestUrl) && meta.name) {
+          next.name = meta.name
+        }
+        return next
+      } catch {
+        return pack
+      }
+    }),
+  )
+}
+
 export type PluginInstallIntent = {
   manifestUrl: string
   name?: string

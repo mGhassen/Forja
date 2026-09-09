@@ -81,7 +81,8 @@ abstract final class PlatformChannel {
     await SettingsService().getPlayInBackground();
   }
 
-  /// Android TV only - software WebView warm-up before first real WebView use.
+  /// Android TV only — one-shot Chromium warm-up. Prefer [TvWebViewWarm.ensure]
+  /// so boot does not pay this cost.
   static Future<void> prepareWebViewForTv() async {
     if (!Platform.isAndroid) return;
     try {

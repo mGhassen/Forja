@@ -57,7 +57,7 @@ void main() {
     expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
   });
 
-  test('ensurePackScriptsReady refuses remote lean without user confirm', () async {
+  test('ensurePackScriptsReady refuses remote lean without downloading', () async {
     const url = 'https://hydrate.example/manifest.json';
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2': jsonEncode([

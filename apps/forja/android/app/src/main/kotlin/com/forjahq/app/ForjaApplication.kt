@@ -33,7 +33,8 @@ class ForjaApplication : Application() {
                 Log.w(TAG, "Failed to set Impeller OpenGLES on Android TV", e)
             }
         }
-        WebViewTvWorkaround.applyIfNeeded(this)
+        // WebView warm-up is deferred to first ForjaInAppWebView /
+        // ForjaHeadlessInAppWebView use (TvWebViewWarm → prepareWebViewForTv).
     }
 
     companion object {

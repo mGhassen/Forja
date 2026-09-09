@@ -11,7 +11,10 @@ import { Button } from '@/components/ui/button'
 import { SettingsSection } from '@/components/settings-section'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useForjaSetting } from '@/hooks/use-user-setting'
-import { isPackInstalled } from '@/lib/forja-plugin-install'
+import {
+  ensurePackVersions,
+  isPackInstalled,
+} from '@/lib/forja-plugin-install'
 import {
   fetchPluginCatalog,
   hydratePluginCatalog,
@@ -150,17 +153,35 @@ export function AccountSettingsAddonPackKindPage({
       return
     }
     try {
+      const additions: ForjaPackRow[] = selected.map((item) => ({
+        manifestUrl: item.manifestUrl,
+        name: item.name,
+        version: item.version,
+      }))
+      const versioned = await ensurePackVersions([
+        ...draft.packs,
+        ...additions,
+      ])
+      const addUrls = new Set(
+        additions.map((a) => a.manifestUrl.trim()).filter(Boolean),
+      )
       await commit((prev) => {
-        const next = [...prev.packs]
-        for (const item of selected) {
-          if (isPackInstalled(next, item.manifestUrl)) continue
-          next.push({
-            manifestUrl: item.manifestUrl,
-            name: item.name,
-            version: item.version,
-          })
+        const byUrl = new Map(
+          versioned.map((p) => [p.manifestUrl.trim(), p] as const),
+        )
+        const packs = prev.packs.map((p) => {
+          const hit = byUrl.get(p.manifestUrl.trim())
+          if (hit?.version && !p.version?.trim()) {
+            return { ...p, version: hit.version }
+          }
+          return p
+        })
+        for (const url of addUrls) {
+          if (isPackInstalled(packs, url)) continue
+          const add = byUrl.get(url)
+          if (add) packs.push(add)
         }
-        return { ...prev, packs: next }
+        return { ...prev, packs }
       })
       setOfficialOpen(false)
     } catch {

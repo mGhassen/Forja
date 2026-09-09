@@ -13,7 +13,7 @@ class NuvioBootstrap {
 
   static Future<void> ensureInstalled({String? manifestUrl}) async {
     debugPrint(
-      '[NuvioBootstrap] skip auto-install/refresh — user confirm required',
+      '[NuvioBootstrap] skip auto-install/refresh — Settings install only',
     );
     // Keep signature; [NuvioService.ensureBundledInstalled] is also a no-op.
     await NuvioService.instance.ensureBundledInstalled();

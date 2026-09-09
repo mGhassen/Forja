@@ -603,8 +603,9 @@ class PluginRegistry {
     return keep;
   }
 
-  /// Never auto-downloads. Missing remote scripts wait for
-  /// [PluginInstallCoordinator.promptPendingPackInstalls] / Settings Install.
+  /// Log-only marker for remote packs still missing disk JS.
+  /// Downloads belong to [PluginInstallCoordinator.ensureAllInstalled] (boot)
+  /// / mid-session cloud auto-install — this never prompts or fetches.
   Future<void> repairMissingScripts(List<EnginePack> packs) async {
     for (final pack in packs) {
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
@@ -613,7 +614,8 @@ class PluginRegistry {
       if (!await packNeedsDiskInstall(pack)) continue;
       _scriptRepairAttempted.add(pack.sourceUrl);
       debugPrint(
-        '[engine] scripts missing for ${pack.name} — waiting for user confirm',
+        '[engine] scripts missing for ${pack.name} — '
+        'awaiting splash/cloud hydrate',
       );
     }
   }
@@ -1142,15 +1144,16 @@ class PluginRegistry {
     unawaited(PlayerStreamExtractCache.clearAll());
   }
 
-  /// Local checkout only — remote packs never download here (ask first).
-  /// Prefer [PluginInstallCoordinator.ensurePluginReady] to prompt the user.
+  /// Local checkout only — remote packs never download here.
+  /// Boot/cloud hydrate: [PluginInstallCoordinator.ensureAllInstalled].
   Future<bool> ensurePackScriptsReady(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return true;
     if (!await packNeedsDiskInstall(pack)) return true;
-    // Remote lean / missing disk JS: never silent install.
+    // Remote lean / missing disk JS: coordinator owns silent download.
     if (!isLocalManifestUrl(pack.sourceUrl)) {
       debugPrint(
-        '[engine] scripts missing for ${pack.name} — waiting for user confirm',
+        '[engine] scripts missing for ${pack.name} — '
+        'awaiting splash/cloud hydrate',
       );
       return false;
     }
@@ -1693,9 +1696,8 @@ class PluginRegistry {
     await listPacksRaw();
   }
 
-  /// Formerly auto-downloaded lean stubs from profile sync. That skipped the
-  /// install confirm dialog — now a no-op. Pending packs install only after
-  /// [PluginInstallCoordinator.promptPendingPackInstalls] / Settings Install.
+  /// No-op. Membership JS downloads via
+  /// [PluginInstallCoordinator.ensureAllInstalled] / mid-session cloud auto-install.
   Future<void> hydrateLeanInstalled() {
     return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
       () {
@@ -1710,7 +1712,7 @@ class PluginRegistry {
     if (_leanHydrateSkipLogged) return;
     _leanHydrateSkipLogged = true;
     debugPrint(
-      '[engine] lean hydrate skipped — packs need user confirm before download',
+      '[engine] lean hydrate no-op — coordinator owns membership download',
     );
   }
 }

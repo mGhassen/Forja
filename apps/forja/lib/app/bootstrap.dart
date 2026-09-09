@@ -161,23 +161,18 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   }
   ShellTvBackHandler.install();
 
-  // TV profile must be set before any WebView warm-up (native workaround in
-  // ForjaApplication.onCreate; Dart patch uses PlatformInfo).
+  // TV profile before any WebView (lazy warm-up uses PlatformInfo).
   await PlatformChannel.initialize();
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
 
-  // Configure InAppWebView (Android only - not supported on iOS)
-  if (Platform.isAndroid) {
+  // Phone: WebView debug. TV Chromium warm-up waits for first real WebView
+  // (ForjaInAppWebView / ForjaHeadlessInAppWebView → TvWebViewWarm).
+  if (Platform.isAndroid && !PlatformInfo.isAndroidTv) {
     try {
-      if (PlatformInfo.isAndroidTv) {
-        await PlatformChannel.prepareWebViewForTv();
-        debugPrint('[Boot] TV WebView software warm-up OK');
-      } else {
-        debugPrint('[Boot] Setting up InAppWebView...');
-        await InAppWebViewController.setWebContentsDebuggingEnabled(true);
-        debugPrint('[Boot] InAppWebView OK');
-      }
+      debugPrint('[Boot] Setting up InAppWebView...');
+      await InAppWebViewController.setWebContentsDebuggingEnabled(true);
+      debugPrint('[Boot] InAppWebView OK');
     } catch (e) {
       debugPrint('[Boot] InAppWebView setup failed (non-fatal): $e');
     }

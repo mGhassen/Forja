@@ -7,16 +7,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import io.flutter.embedding.android.FlutterView
+import java.util.concurrent.atomic.AtomicBoolean
 
 object WebViewTvWorkaround {
     private const val TAG = "WebViewTvWorkaround"
+    private val warmed = AtomicBoolean(false)
 
-    fun applyIfNeeded(context: Context) {
-        if (!PlatformUtils.isAndroidTv(context)) return
-        warmUpSoftwareWebView(context)
-    }
-
+    /**
+     * One-shot Chromium warm-up for leanback. Called from Flutter on first
+     * real WebView use — not [Application.onCreate].
+     */
     fun warmUpSoftwareWebView(context: Context) {
+        if (!PlatformUtils.isAndroidTv(context)) return
+        if (!warmed.compareAndSet(false, true)) return
+
         try {
             WebView.enableSlowWholeDocumentDraw()
             Log.i(TAG, "TV WebView slow whole-document draw enabled")
@@ -31,6 +35,7 @@ object WebViewTvWorkaround {
             Log.i(TAG, "Software WebView warm-up completed")
         } catch (e: Exception) {
             Log.w(TAG, "Software WebView warm-up failed", e)
+            warmed.set(false)
         }
     }
 

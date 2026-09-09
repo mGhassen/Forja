@@ -457,7 +457,7 @@ class NuvioService {
     if (_leanHydrateSkipLogged) return;
     _leanHydrateSkipLogged = true;
     debugPrint(
-      '[NuvioService] lean hydrate skipped — addons need user confirm',
+      '[NuvioService] lean hydrate no-op — Settings install only',
     );
   }
 

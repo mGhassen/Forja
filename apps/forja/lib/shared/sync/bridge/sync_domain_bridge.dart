@@ -1008,8 +1008,17 @@ class SyncDomainBridge {
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
       if (name.isNotEmpty) row['name'] = name;
-      final version = pack.version.trim();
-      if (version.isNotEmpty) row['version'] = version;
+      // Prefer installed EnginePack.version; peek remote when empty so cloud
+      // rows backfill (legacy lean rows omitted version). Skip lean stub 0.0.0.
+      var version = pack.version.trim();
+      if (version.isEmpty) {
+        final peeked =
+            await PluginRegistry.instance.peekRemoteVersion(manifestUrl);
+        if (peeked != null && peeked.isNotEmpty) version = peeked;
+      }
+      if (version.isNotEmpty && version != '0.0.0') {
+        row['version'] = version;
+      }
       lean.add(row);
     }
     final out = <String, dynamic>{};

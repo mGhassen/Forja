@@ -459,14 +459,17 @@ class EngineService {
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
       debugPrint(
-        '[catalog] ${plugin.id} missing script — prompting install',
+        '[catalog] ${plugin.id} missing script — ensurePluginReady',
       );
       final ok = await PluginInstallCoordinator.instance.ensurePluginReady(
         plugin.id,
       );
       if (gen != _catalogGeneration) return null;
       if (!ok) {
-        debugPrint('[catalog] ${plugin.id} waiting for user confirm');
+        debugPrint(
+          '[catalog] ${plugin.id} scripts not on disk yet '
+          '(await splash/cloud hydrate)',
+        );
         return null;
       }
       code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);

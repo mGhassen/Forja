@@ -20,6 +20,8 @@ import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useForjaSetting } from '@/hooks/use-user-setting'
 import {
   clearPluginInstallIntent,
+  ensurePackVersions,
+  fetchManifestMeta,
   isPackInstalled,
   isSafeManifestUrl,
   readPluginInstallIntent,
@@ -226,30 +228,84 @@ export function AccountSettingsForjaPage() {
       }
       return
     }
-    const row = packRowFromInstallPayload(installPrompt)
+    let row = packRowFromInstallPayload(installPrompt)
     if (draft.packs.some((p) => p.manifestUrl === row.manifestUrl)) {
       closeInstallDialog()
       return
     }
+    if (!row.version?.trim()) {
+      try {
+        const meta = await fetchManifestMeta(row.manifestUrl)
+        if (meta.version) row = { ...row, version: meta.version }
+        if ((!row.name || row.name === row.manifestUrl) && meta.name) {
+          row = { ...row, name: meta.name }
+        }
+      } catch {
+        // keep row without version if fetch fails
+      }
+    }
     try {
-      await commit((prev) => ({ ...prev, packs: [...prev.packs, row] }))
+      const versioned = await ensurePackVersions([...draft.packs, row])
+      const addUrl = row.manifestUrl
+      await commit((prev) => {
+        if (isPackInstalled(prev.packs, addUrl)) return prev
+        const byUrl = new Map(
+          versioned.map((p) => [p.manifestUrl.trim(), p] as const),
+        )
+        const packs = prev.packs.map((p) => {
+          const hit = byUrl.get(p.manifestUrl.trim())
+          if (hit?.version && !p.version?.trim()) {
+            return { ...p, version: hit.version }
+          }
+          return p
+        })
+        const add = byUrl.get(addUrl.trim()) ?? row
+        return { ...prev, packs: [...packs, add] }
+      })
       closeInstallDialog()
     } catch {
       // saveError surfaced in footer
     }
   }
 
-  const addPack = () => {
+  const addPack = async () => {
     const manifestUrl = url.trim()
     if (!manifestUrl) return
     if (draft.packs.some((a) => a.manifestUrl === manifestUrl)) return
     const catalogHit = catalogByUrl.get(manifestUrl)
-    const row: ForjaPackRow = {
+    let row: ForjaPackRow = {
       manifestUrl,
       name: catalogHit?.name ?? manifestUrl,
       version: catalogHit?.version,
     }
-    void commit((prev) => ({ ...prev, packs: [...prev.packs, row] }))
+    if (!row.version?.trim()) {
+      try {
+        const meta = await fetchManifestMeta(manifestUrl)
+        if (meta.version) row = { ...row, version: meta.version }
+        if ((!row.name || row.name === manifestUrl) && meta.name) {
+          row = { ...row, name: meta.name }
+        }
+      } catch {
+        // save without version if fetch fails
+      }
+    }
+    const versioned = await ensurePackVersions([...draft.packs, row])
+    const addUrl = manifestUrl
+    await commit((prev) => {
+      if (isPackInstalled(prev.packs, addUrl)) return prev
+      const byUrl = new Map(
+        versioned.map((p) => [p.manifestUrl.trim(), p] as const),
+      )
+      const packs = prev.packs.map((p) => {
+        const hit = byUrl.get(p.manifestUrl.trim())
+        if (hit?.version && !p.version?.trim()) {
+          return { ...p, version: hit.version }
+        }
+        return p
+      })
+      const add = byUrl.get(addUrl.trim()) ?? row
+      return { ...prev, packs: [...packs, add] }
+    })
     setUrl('')
   }
 
@@ -269,17 +325,35 @@ export function AccountSettingsForjaPage() {
       return
     }
     try {
+      const additions: ForjaPackRow[] = selected.map((item) => ({
+        manifestUrl: item.manifestUrl,
+        name: item.name,
+        version: item.version,
+      }))
+      const versioned = await ensurePackVersions([
+        ...draft.packs,
+        ...additions,
+      ])
+      const addUrls = new Set(
+        additions.map((a) => a.manifestUrl.trim()).filter(Boolean),
+      )
       await commit((prev) => {
-        const next = [...prev.packs]
-        for (const item of selected) {
-          if (isPackInstalled(next, item.manifestUrl)) continue
-          next.push({
-            manifestUrl: item.manifestUrl,
-            name: item.name,
-            version: item.version,
-          })
+        const byUrl = new Map(
+          versioned.map((p) => [p.manifestUrl.trim(), p] as const),
+        )
+        const packs = prev.packs.map((p) => {
+          const hit = byUrl.get(p.manifestUrl.trim())
+          if (hit?.version && !p.version?.trim()) {
+            return { ...p, version: hit.version }
+          }
+          return p
+        })
+        for (const url of addUrls) {
+          if (isPackInstalled(packs, url)) continue
+          const add = byUrl.get(url)
+          if (add) packs.push(add)
         }
-        return { ...prev, packs: next }
+        return { ...prev, packs }
       })
       setOfficialOpen(false)
     } catch {
@@ -412,7 +486,7 @@ export function AccountSettingsForjaPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  addPack()
+                  void addPack()
                 }
               }}
             />
@@ -421,7 +495,7 @@ export function AccountSettingsForjaPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={addPack}
+              onClick={() => void addPack()}
               disabled={controlsLocked || !url.trim()}
             >
               Add to profile

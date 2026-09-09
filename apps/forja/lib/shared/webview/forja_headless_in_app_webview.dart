@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/tv_webview_warm.dart';
 
 /// HeadlessInAppWebView with Android TV software-compositing patch applied.
 class ForjaHeadlessInAppWebView {
@@ -61,7 +62,10 @@ class ForjaHeadlessInAppWebView {
 
   InAppWebViewController? get webViewController => _delegate.webViewController;
 
-  Future<void> run() => _delegate.run();
+  Future<void> run() async {
+    await TvWebViewWarm.ensure();
+    await _delegate.run();
+  }
 
   Future<void> dispose() => _delegate.dispose();
 }

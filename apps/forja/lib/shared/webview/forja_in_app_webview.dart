@@ -3,9 +3,10 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
+import 'package:forja/shared/webview/tv_webview_warm.dart';
 
 /// InAppWebView with Android TV software-compositing patch applied automatically.
-class ForjaInAppWebView extends StatelessWidget {
+class ForjaInAppWebView extends StatefulWidget {
   const ForjaInAppWebView({
     super.key,
     this.initialData,
@@ -77,30 +78,45 @@ class ForjaInAppWebView extends StatelessWidget {
   )? onConsoleMessage;
 
   @override
+  State<ForjaInAppWebView> createState() => _ForjaInAppWebViewState();
+}
+
+class _ForjaInAppWebViewState extends State<ForjaInAppWebView> {
+  late final Future<void> _warm = TvWebViewWarm.ensure();
+
+  @override
   Widget build(BuildContext context) {
     // Do not forward [key] onto InAppWebView - that would register the same
-    // GlobalKey on two widgets (this StatelessWidget + the child).
-    return InAppWebView(
-      initialData: initialData,
-      initialUrlRequest: initialUrlRequest,
-      initialUserScripts: initialUserScripts,
-      initialSettings: forjaWebViewSettings(
-        initialSettings ?? InAppWebViewSettings(),
-      ),
-      onWebViewCreated: onWebViewCreated,
-      onLoadStart: onLoadStart,
-      onLoadStop: onLoadStop,
-      onEnterFullscreen: onEnterFullscreen,
-      onExitFullscreen: onExitFullscreen,
-      shouldOverrideUrlLoading: shouldOverrideUrlLoading,
-      onCreateWindow: onCreateWindow,
-      onLoadResource: onLoadResource,
-      shouldInterceptRequest: shouldInterceptRequest,
-      shouldInterceptAjaxRequest: shouldInterceptAjaxRequest,
-      shouldInterceptFetchRequest: shouldInterceptFetchRequest,
-      onReceivedError: onReceivedError,
-      onReceivedHttpError: onReceivedHttpError,
-      onConsoleMessage: onConsoleMessage,
+    // GlobalKey on two widgets (this StatefulWidget + the child).
+    return FutureBuilder<void>(
+      future: _warm,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const SizedBox.expand();
+        }
+        return InAppWebView(
+          initialData: widget.initialData,
+          initialUrlRequest: widget.initialUrlRequest,
+          initialUserScripts: widget.initialUserScripts,
+          initialSettings: forjaWebViewSettings(
+            widget.initialSettings ?? InAppWebViewSettings(),
+          ),
+          onWebViewCreated: widget.onWebViewCreated,
+          onLoadStart: widget.onLoadStart,
+          onLoadStop: widget.onLoadStop,
+          onEnterFullscreen: widget.onEnterFullscreen,
+          onExitFullscreen: widget.onExitFullscreen,
+          shouldOverrideUrlLoading: widget.shouldOverrideUrlLoading,
+          onCreateWindow: widget.onCreateWindow,
+          onLoadResource: widget.onLoadResource,
+          shouldInterceptRequest: widget.shouldInterceptRequest,
+          shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
+          shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
+          onReceivedError: widget.onReceivedError,
+          onReceivedHttpError: widget.onReceivedHttpError,
+          onConsoleMessage: widget.onConsoleMessage,
+        );
+      },
     );
   }
 }
