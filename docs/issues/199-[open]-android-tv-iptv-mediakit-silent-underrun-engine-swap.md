@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 17** fix · **0 / 7** acceptance |
-| **Current slice** | Adaptive proxy skip + watchdog reconnect grace — device smoke outstanding |
+| **Progress** | **18 / 18** fix · **0 / 7** acceptance |
+| **Current slice** | Skip wall-clock + min-skip (no skipped=0 abort) — device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,6 +38,7 @@
 | 15 | I199-T15 | ATV proxy queue covers one skip + play (HD 12 / FHD 16 / UHD 20 MiB) | ✅ |
 | 16 | I199-T16 | Watchdog: 8s grace after proxy reconnect — Buffering + refill, no soft-reopen mid-skip | ✅ |
 | 17 | I199-T17 | Smoke logs: proxy skip/abort/gap, MediaKit cache/avsync/fps at reconnect +2s/+5s, Exo STATE_BUFFERING enter/exit | ✅ |
+| 18 | I199-T18 | Exo ATV smoke: never early-abort at skipped=0; wall-clock skip cap ≤1.2s; min overlap before queue abort; single producer epoch (soft-reopen dual GET); grace hold only when cushion climbing | ✅ |
 
 ---
 
@@ -77,6 +78,8 @@
 **Engine organization (T13):** Move-only split — `_IptvPtPlayerEngineCore` + `iptv_pt_player_mk_tunables.dart` / `live_proxy` / `watchdog` / `recovery` / orchestration `engine`. Shared fields on Core; cross-calls via abstract stubs on sibling mixins. No behavior change.
 
 **Adaptive skip slice (T14–T17):** Toshiba A7 / Xiaomi A11 reanalysis — fixed 3 MiB skip ≈ 3–12 s by bitrate and starved thin ATV cushions every CDN reopen. Skip is now ~5 s of measured upstream rate (1–8 MiB), aborts early if the loopback queue would underrun, queue sized 12–20 MiB, and watchdog holds soft-reopen for 8 s while the cushion refills. Tree already had Exo on the same proxy + deep ATV LoadControl ([233](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md)).
+
+**Exo ATV smoke (T18):** Emulator logs showed `early-abort skipped=0.00MiB` (empty queue) → literal ~5 s CDN replay + PesReader/audio discontinuity + gray frame; and a full 4.7 MiB skip while Exo ahead drained 3.9→0.9 s because LoadControl kept the proxy queue fat. T18: never abort before min overlap, wall-clock skip ≤1.2 s, target ~2.5 s / max 4 MiB, single producer epoch on soft-reopen, grace hold only when cushion climbs.
 
 **Device smoke (acceptance A01–A07, I150-A01–A04, I128 regression):** Not run in CI — mark acceptance ✅ only after Android TV box verification.
 

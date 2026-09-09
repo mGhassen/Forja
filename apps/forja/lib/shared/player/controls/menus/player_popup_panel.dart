@@ -148,20 +148,10 @@ class PlayerPopupPanel {
       capturedConfig = shellPlatformConfigFor(capturedProfile);
     }
 
-    // Layout: leanback centered only on real TV profile. Desktop may use TV
-    // input policy for D-pad without forcing centered menus.
-    final centerForTv = capturedProfile == ShellProfile.tv;
-    // Capture opener before dismiss / TV centering clears the anchor.
+    // ATV matches desktop: keep caller width / anchor / margin. Do not enlarge
+    // or center floating menus for leanback — D-pad still works via TvOverlayScope.
+    // Capture opener before dismiss clears the anchor.
     playerMenuCaptureReturnFocus(context);
-    if (centerForTv) {
-      centered = true;
-      anchorContext = null;
-      final overlaySize = MediaQuery.sizeOf(context);
-      width = (overlaySize.width * 0.72).clamp(420.0, 640.0);
-      maxHeight = overlaySize.height * 0.82;
-      margin = EdgeInsets.zero;
-      screenPadding = const EdgeInsets.all(24);
-    }
 
     final overlay = Overlay.of(context);
     dismiss();
@@ -290,6 +280,7 @@ class PlayerPopupPanel {
               return tvFocusableOverlay(
                 overlayContext: scopedContext,
                 onDismiss: popOrClose,
+                autofocusFirst: !autofocusClose,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -356,12 +347,15 @@ class PlayerPopupPanel {
     required BuildContext overlayContext,
     required VoidCallback onDismiss,
     required Widget child,
+    bool autofocusFirst = true,
   }) {
     return TvOverlayScope(
       enabled: ShellScope.maybeOf(overlayContext)
               ?.inputPolicy
               .useFocusableMoodChips ??
           false,
+      // When Close claims open focus, skip nextFocus (would land on Off).
+      autofocusFirst: autofocusFirst,
       onDismiss: onDismiss,
       child: child,
     );
@@ -400,6 +394,32 @@ class _PlayerPopupListFocusScopeState extends State<PlayerPopupListFocusScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// Close [FocusNode] for trailing chips (Off / tune → right → X).
+class PlayerPopupCloseFocus extends InheritedWidget {
+  const PlayerPopupCloseFocus({
+    super.key,
+    required this.focusNode,
+    required super.child,
+  });
+
+  final FocusNode focusNode;
+
+  static FocusNode? of(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<PlayerPopupCloseFocus>()
+        ?.focusNode;
+  }
+
+  static void request(BuildContext context) {
+    final node = of(context);
+    if (node != null && node.canRequestFocus) node.requestFocus();
+  }
+
+  @override
+  bool updateShouldNotify(PlayerPopupCloseFocus oldWidget) =>
+      focusNode != oldWidget.focusNode;
+}
+
 /// Floating-menu surface tokens - flat dark chrome + brand-green accent.
 /// Selected / hover is always a green *tint* ([accentFill]), never solid [accent].
 abstract final class PlayerPopupTokens {
@@ -419,7 +439,7 @@ abstract final class PlayerPopupTokens {
   static const double badgeRadius = 4;
 }
 
-class _PanelShell extends StatelessWidget {
+class _PanelShell extends StatefulWidget {
   const _PanelShell({
     required this.title,
     required this.child,
@@ -443,101 +463,143 @@ class _PanelShell extends StatelessWidget {
   final bool autofocusClose;
 
   @override
+  State<_PanelShell> createState() => _PanelShellState();
+}
+
+class _PanelShellState extends State<_PanelShell> {
+  late final FocusNode _closeFocus =
+      FocusNode(debugLabel: 'player-popup-close');
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autofocusClose) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _closeFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final shell = DecoratedBox(
-      decoration: BoxDecoration(
-        color: shellBg ?? PlayerPopupTokens.shellBg,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
-        border: Border.all(color: PlayerPopupTokens.border),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const headerBlockHeight = 52.0;
-          final headerHeight = showHeader ? headerBlockHeight : 0.0;
-          final scrollMax = constraints.maxHeight.isFinite
-              ? (constraints.maxHeight - headerHeight).clamp(0.0, double.infinity)
-              : double.infinity;
-          final body = scrollMax.isFinite && scrollMax > 0
-              ? ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: scrollMax),
-                  child: PlayerPopupListFocusScope(child: child),
-                )
-              : PlayerPopupListFocusScope(child: child);
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showHeader) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
-                  child: Row(
+    // One claim scope for header + list so Close can win over selected rows.
+    return PlayerPopupListFocusScope(
+      child: PlayerPopupCloseFocus(
+        focusNode: _closeFocus,
+        child: Builder(
+          builder: (context) {
+            final closeAutoFocus = tvFocus &&
+                widget.autofocusClose &&
+                PlayerPopupListFocusScope.claimAutofocus(context);
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: widget.shellBg ?? PlayerPopupTokens.shellBg,
+                borderRadius:
+                    BorderRadius.circular(PlayerPopupTokens.shellRadius),
+                border: Border.all(color: PlayerPopupTokens.border),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const headerBlockHeight = 52.0;
+                  final headerHeight =
+                      widget.showHeader ? headerBlockHeight : 0.0;
+                  final scrollMax = constraints.maxHeight.isFinite
+                      ? (constraints.maxHeight - headerHeight)
+                          .clamp(0.0, double.infinity)
+                      : double.infinity;
+                  final body = scrollMax.isFinite && scrollMax > 0
+                      ? ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: scrollMax),
+                          child: widget.child,
+                        )
+                      : widget.child;
+                  final shell = Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (onBack != null)
-                        ShellBackIconButton(
-                          icon: Icons.arrow_back_rounded,
-                          size: 18,
-                          tooltip: 'Back',
-                          onTap: onBack,
-                        )
-                      else if (leadingIcon != null)
+                      if (widget.showHeader) ...[
                         Padding(
-                          padding: const EdgeInsets.only(left: 4, right: 6),
-                          child: Icon(
-                            leadingIcon,
-                            color: PlayerPopupTokens.muted,
-                            size: 16,
+                          padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+                          child: Row(
+                            children: [
+                              if (widget.onBack != null)
+                                ShellBackIconButton(
+                                  icon: Icons.arrow_back_rounded,
+                                  size: 18,
+                                  tooltip: 'Back',
+                                  onTap: widget.onBack,
+                                )
+                              else if (widget.leadingIcon != null)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(left: 4, right: 6),
+                                  child: Icon(
+                                    widget.leadingIcon,
+                                    color: PlayerPopupTokens.muted,
+                                    size: 16,
+                                  ),
+                                )
+                              else
+                                const SizedBox(width: 4),
+                              if (widget.title.isNotEmpty)
+                                Expanded(
+                                  child: Text(
+                                    widget.title,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.15,
+                                    ),
+                                  ),
+                                )
+                              else
+                                const Spacer(),
+                              if (widget.trailing != null) ...[
+                                widget.trailing!,
+                                const SizedBox(width: 4),
+                              ],
+                              _PopupChromeButton(
+                                icon: Icons.close_rounded,
+                                tooltip: 'Close',
+                                onTap: widget.onClose,
+                                focusNode: _closeFocus,
+                                autoFocus: closeAutoFocus,
+                              ),
+                            ],
                           ),
-                        )
-                      else
-                        const SizedBox(width: 4),
-                      if (title.isNotEmpty)
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            softWrap: false,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.15,
-                            ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Divider(
+                            height: 1,
+                            thickness: 0.5,
+                            color: PlayerPopupTokens.border,
                           ),
-                        )
-                      else
-                        const Spacer(),
-                      if (trailing != null) ...[
-                        trailing!,
-                        const SizedBox(width: 4),
+                        ),
                       ],
-                      _PopupChromeButton(
-                        icon: Icons.close_rounded,
-                        tooltip: 'Close',
-                        onTap: onClose,
-                        autoFocus: tvFocus && autofocusClose,
-                      ),
+                      body,
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Divider(
-                    height: 1,
-                    thickness: 0.5,
-                    color: PlayerPopupTokens.border,
-                  ),
-                ),
-              ],
-              body,
-            ],
-          );
-        },
+                  );
+                  if (!tvFocus) return shell;
+                  return FocusTraversalGroup(child: shell);
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
-
-    if (!tvFocus) return shell;
-    return FocusTraversalGroup(child: shell);
   }
 }
 
@@ -547,12 +609,14 @@ class _PopupChromeButton extends StatefulWidget {
     required this.onTap,
     this.tooltip,
     this.autoFocus = false,
+    this.focusNode,
   });
 
   final IconData icon;
   final VoidCallback? onTap;
   final String? tooltip;
   final bool autoFocus;
+  final FocusNode? focusNode;
 
   @override
   State<_PopupChromeButton> createState() => _PopupChromeButtonState();
@@ -597,6 +661,7 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
         clipBehavior: Clip.antiAlias,
         child: tvFocus
             ? FocusableControl(
+                focusNode: widget.focusNode,
                 autoFocus: widget.autoFocus,
                 onTap: widget.onTap,
                 borderRadius: PlayerPopupTokens.chipRadius,

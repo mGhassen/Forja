@@ -131,6 +131,7 @@ abstract final class LiveResolveStreams {
 
     await _playLiveEngine(
       context,
+      sources: sources,
       picked: picked,
       title: title,
       subtitle: subtitle ?? picked.pickerSubtitle ?? '',
@@ -186,6 +187,9 @@ abstract final class LiveResolveStreams {
   }
 
   /// Same fixture across Forja Live catalogs — resolve every sibling plugin.
+  ///
+  /// Only catalogs that link to a live resolve pack (`providerId`). Broadcast
+  /// guides and scoreboard enrich rows stay out of Providers.
   static Future<List<MatchEvent>> _forjaProviderResolveMatches(
     MatchEvent anchor,
   ) async {
@@ -194,7 +198,7 @@ abstract final class LiveResolveStreams {
 
     void add(MatchEvent raw) {
       if (raw.livePluginId.isNotEmpty &&
-          LivePluginEngine.cachedIsScheduleEnrich(raw.livePluginId)) {
+          !LivePluginEngine.cachedIsProviderStreamFeed(raw.livePluginId)) {
         return;
       }
       final m = _ensureProviderResolveMatch(raw);
@@ -232,6 +236,7 @@ abstract final class LiveResolveStreams {
     }
     final pluginId = match.livePluginId.trim();
     if (pluginId.isEmpty || match.id.isEmpty) return match;
+    if (!LivePluginEngine.cachedIsProviderStreamFeed(pluginId)) return match;
     final source = LivePluginEngine.cachedResolveSourceToken(pluginId);
     final refId = LivePluginEngine.cachedResolveRefId(match.id, pluginId);
     if (source.isEmpty || refId.isEmpty) return match;
@@ -249,6 +254,9 @@ abstract final class LiveResolveStreams {
     MatchEvent match,
     MatchSourceRef source,
   ) async {
+    if (!LivePluginEngine.cachedIsProviderStreamFeed(match.livePluginId)) {
+      return const [];
+    }
     final pluginId = LivePluginEngine.cachedProviderResolvePluginId(
       match.livePluginId,
     );
@@ -773,40 +781,82 @@ abstract final class LiveResolveStreams {
     return out;
   }
 
+  /// Active row first, then the rest of the Providers list (in-player Source).
+  static List<IptvPlaySource> _orderedLiveEngineSources({
+    required List<IptvPlaySource> sources,
+    required IptvPlaySource active,
+    IptvPlaySource? picked,
+  }) {
+    final skip = picked ?? active;
+    return [
+      active,
+      for (final s in sources)
+        if (!_sameLiveCatalogRow(s, skip) && !_sameLiveCatalogRow(s, active)) s,
+    ];
+  }
+
+  static bool _sameLiveCatalogRow(IptvPlaySource a, IptvPlaySource b) {
+    if (identical(a, b)) return true;
+    final pa = a.liveEngineResolveParams;
+    final pb = b.liveEngineResolveParams;
+    if (pa != null && pb != null && pa.isNotEmpty && pb.isNotEmpty) {
+      final ma =
+          '${pa['livePluginId']}|${pa['eventId']}|${pa['matchId']}|${pa['streamNo']}|${pa['source']}';
+      final mb =
+          '${pb['livePluginId']}|${pb['eventId']}|${pb['matchId']}|${pb['streamNo']}|${pb['source']}';
+      if (ma != '||||' && ma == mb) return true;
+    }
+    final ka = iptvLiveSourceProbeKey(a);
+    final kb = iptvLiveSourceProbeKey(b);
+    if (ka.isNotEmpty && ka == kb) return true;
+    final ua = a.url.trim();
+    final ub = b.url.trim();
+    return ua.isNotEmpty && ua == ub;
+  }
+
   static Future<void> _playLiveEngine(
     BuildContext context, {
+    required List<IptvPlaySource> sources,
     required IptvPlaySource picked,
     required String title,
     required String subtitle,
   }) async {
     final url = picked.url.trim();
-    if (picked.liveSourceKind == IptvLiveSourceKind.stremio &&
-        iptvLiveEnginePlayUrlReady(url)) {
-      final open = KitIptvPlayHooks.openLiveNativePlayer;
-      if (open == null) return;
+    final open = KitIptvPlayHooks.openLiveNativePlayer;
+    if (open == null) return;
+
+    Future<void> handOff({
+      required IptvPlaySource active,
+      required IptvLiveSourceKind kind,
+    }) async {
+      if (!context.mounted) return;
       await open(
         context,
-        sources: <dynamic>[picked],
+        sources: List<dynamic>.from(
+          _orderedLiveEngineSources(
+            sources: sources,
+            active: active,
+            picked: picked,
+          ),
+        ),
         title: title,
         subtitle: subtitle,
         engineContext: BuiltInPlayerContext.live,
-        liveSourceKind: IptvLiveSourceKind.stremio,
+        liveSourceKind: kind,
+        liveEngineResolveSource: kind == IptvLiveSourceKind.liveEngine
+            ? resolveLiveEngineSource
+            : null,
       );
+    }
+
+    if (picked.liveSourceKind == IptvLiveSourceKind.stremio &&
+        iptvLiveEnginePlayUrlReady(url)) {
+      await handOff(active: picked, kind: IptvLiveSourceKind.stremio);
       return;
     }
 
     if (iptvLiveEnginePlayUrlReady(url)) {
-      final open = KitIptvPlayHooks.openLiveNativePlayer;
-      if (open == null) return;
-      await open(
-        context,
-        sources: <dynamic>[picked],
-        title: title,
-        subtitle: subtitle,
-        engineContext: BuiltInPlayerContext.live,
-        liveSourceKind: IptvLiveSourceKind.liveEngine,
-        liveEngineResolveSource: resolveLiveEngineSource,
-      );
+      await handOff(active: picked, kind: IptvLiveSourceKind.liveEngine);
       return;
     }
 
@@ -829,17 +879,7 @@ abstract final class LiveResolveStreams {
       LivePluginEngine.engineResolveFailed();
       return;
     }
-    final open = KitIptvPlayHooks.openLiveNativePlayer;
-    if (open == null) return;
-    await open(
-      context,
-      sources: <dynamic>[handoff],
-      title: title,
-      subtitle: subtitle,
-      engineContext: BuiltInPlayerContext.live,
-      liveSourceKind: IptvLiveSourceKind.liveEngine,
-      liveEngineResolveSource: resolveLiveEngineSource,
-    );
+    await handOff(active: handoff, kind: IptvLiveSourceKind.liveEngine);
   }
 
   /// Unlock a Providers catalog row → native play URL (no embed fallback).

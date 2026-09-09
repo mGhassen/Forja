@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -20,13 +19,11 @@ export 'player_seek_scrub_cancel.dart';
 
 /// True when two-column player dialogs (Subtitles) stay centered on TV.
 ///
-/// Sources / Episodes / Source always use the right-side panel on every
-/// profile. Keys off [ShellProfile.tv] only — desktop can share TV *input*
-/// policy without forcing this layout.
+/// Always false — ATV floating menus / Subtitles match desktop (anchored or
+/// side panel). Sources / Episodes / Source always use the right-side panel.
+/// Kept for call sites and tests; do not revive leanback-centered menus.
 bool playerTvUsesCenteredDialogs(BuildContext context) {
-  final profile =
-      ShellScope.maybeOf(context)?.profile ?? resolveShellProfile(context);
-  return profile == ShellProfile.tv;
+  return false;
 }
 
 /// Right-side panel shell for player Sources / Episodes / Source / torrent files

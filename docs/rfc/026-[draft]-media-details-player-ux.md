@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 19** components · **28 / 34** acceptance · handoff/smoke (C08, A01–A03, A06–A07, A34) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + no background stream probe while playing + Stremio/Nuvio Sources + macOS PiP all-Spaces + content-warnings overlay; next: play-flow handoff + issue 018 gate |
+| **Progress** | **18 / 19** components · **30 / 36** acceptance · handoff/smoke (C08, A01–A03, A06–A07, A34) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + loading overlay server prioritize + no background stream probe while playing + Stremio/Nuvio Sources + macOS PiP all-Spaces + content-warnings overlay; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -80,6 +80,15 @@
 | 19 | R26-A26 | Player Sources panel — Nuvio kind chip + scraper toggles (parity with media-details) | ✅ |
 | 20 | R26-A27 | Once a stream is playing, do not auto-probe sibling streams or keep scanning other providers in the background | ✅ |
 | 21 | R26-A28 | macOS desktop PiP — `canJoinAllSpaces` + `fullScreenAuxiliary` so the compact window follows Spaces / fullscreen apps | ✅ |
+
+---
+
+## Acceptance (loading overlay server list)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R26-A35 | Loading overlay server rows — brand-green tint on mouse hover and D-pad focus | ✅ |
+| 2 | R26-A36 | Tap a server mid-race — prioritize that provider first; if it misses, continue checking the rest | ✅ |
 
 ---
 

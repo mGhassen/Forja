@@ -40,9 +40,10 @@ class NavDestinationIcon extends StatelessWidget {
     final asset = destination.iconAsset?.trim();
     if (asset == null || asset.isEmpty) return _materialIcon();
 
-    // Decode at device pixels + nearest-neighbor. Avoid FilterQuality.medium
-    // (LANCZOS rings hard-edged pack PNGs into a 1px ghost square) and avoid
-    // Image.color (Impeller often paints a hairline bounds rect with srcIn).
+    // Decode at device pixels. FilterQuality.low (bilinear) — none looks
+    // 8-bit under rail focus scale; medium LANCZOS rings hard-edged pack
+    // PNGs into a 1px ghost square. Avoid Image.color (Impeller often paints
+    // a hairline bounds rect with srcIn).
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final cachePx = (size * dpr).round().clamp(1, 512);
 
@@ -62,7 +63,7 @@ class NavDestinationIcon extends StatelessWidget {
         cacheWidth: cachePx,
         cacheHeight: cachePx,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.none,
+        filterQuality: FilterQuality.low,
         errorBuilder: fallback,
       );
     } else if (asset.startsWith('http://') || asset.startsWith('https://')) {
@@ -73,7 +74,7 @@ class NavDestinationIcon extends StatelessWidget {
         cacheWidth: cachePx,
         cacheHeight: cachePx,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.none,
+        filterQuality: FilterQuality.low,
         errorBuilder: fallback,
       );
     } else {
@@ -86,7 +87,7 @@ class NavDestinationIcon extends StatelessWidget {
         cacheWidth: cachePx,
         cacheHeight: cachePx,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.none,
+        filterQuality: FilterQuality.low,
         errorBuilder: fallback,
       );
     }

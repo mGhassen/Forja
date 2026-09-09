@@ -9,10 +9,11 @@ import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 /// App-root [DirectionalFocusAction] (Android TV shell) otherwise consumes
 /// arrows with no effect when focus is not on a shell catalog item.
 ///
-/// While chrome is hidden, a [HardwareKeyboard] handler owns ←/→ seek so keys
-/// still work even if focus claim races with [ExcludeFocus]. While chrome is
-/// visible, ←/→ never seek from this scope — only chrome focus traversal or
-/// the focused progress bar moves position.
+/// While chrome is hidden, a [HardwareKeyboard] handler owns D-pad so keys
+/// still work even if focus claim races with [ExcludeFocus]. ←/→ show chrome
+/// and focus Play (never seek). While chrome is visible, ←/→ never seek from
+/// this scope — only chrome focus traversal or an armed progress bar moves
+/// position.
 class PlayerTvKeyScope extends StatefulWidget {
   const PlayerTvKeyScope({
     super.key,
@@ -118,7 +119,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   /// Chrome visible + empty / video-key focus → Play (reclaim only — do not
   /// go through [onFocusPlay], which restarts idle hide). Chrome hidden +
-  /// empty → video key node (seek / OK still work after idle hide).
+  /// empty → video key node (←/→ reveal chrome; OK still works after idle hide).
   void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
     // Menus own D-pad — never steal Play; if a refresh dropped focus out of
@@ -200,8 +201,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
     // When chrome is hidden, only this node may hold focus. Otherwise an
-    // invisible Play / Sources control can keep primary focus and FocusableControl
-    // eats ←/→ as traversal instead of seeking.
+    // invisible Play / Sources control can keep primary focus and
+    // FocusableControl eats ←/→ as traversal instead of revealing chrome.
     // No autofocus while a menu is open — a player rebuild must not re-steal
     // D-pad from the dialog (Focus.deactivate resets the one-shot autofocus).
     return Focus(
@@ -232,7 +233,7 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   return false;
 }
 
-/// After auto-hide, park focus on the video key scope so ←/→ seek still works.
+/// After auto-hide, park focus on the video key scope so ←/→ can reveal chrome.
 void playerTvClaimVideoKeyFocusAfterHide(
   FocusNode playerKeyNode, {
   required bool Function() mounted,

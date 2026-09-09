@@ -152,7 +152,6 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       title: 'Player',
       leadingIcon: Icons.smart_display_outlined,
       anchorContext: anchorContext,
-      centered: _s._tvFocus,
       maxHeight: 280,
       child: ListView(
         shrinkWrap: true,

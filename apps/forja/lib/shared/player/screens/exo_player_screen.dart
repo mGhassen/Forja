@@ -1662,7 +1662,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,
-      centered: _isTv,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {

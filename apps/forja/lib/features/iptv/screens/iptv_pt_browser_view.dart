@@ -804,6 +804,16 @@ class _BrowserViewState extends State<_BrowserView> {
     final cats = _filteredCategories;
     if (cats.isEmpty) return;
     final clamped = index.clamp(0, cats.length - 1);
+    // Prefer focus-before-jump when the tile is already built — jump-then-focus
+    // left the previous row focused (and green) while the viewport sat ahead.
+    if (ShellTvFocusCoordinator.focusRowItemExact(
+      'iptv',
+      'browser-categories',
+      clamped,
+    )) {
+      _jumpCategoryListToIndex(clamped);
+      return;
+    }
     _jumpCategoryListToIndex(clamped);
     if (ShellTvFocusCoordinator.focusRowItemExact(
       'iptv',

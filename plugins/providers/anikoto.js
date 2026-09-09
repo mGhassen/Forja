@@ -237,6 +237,37 @@ function extract(ctx) {
       .replace('megacloud.bloggy.click', 'megaplay.buzz');
   }
 
+  // MegaPlay getSources: plaintext sources.file OR AES-CBC `enc` (newclient.min.js).
+  // Prefer s=tcdn — default CDN (imgnex) 403s outside their player; tcdn → akirax works.
+  var MEGAPLAY_AES_KEY = 'i?LMTAx0Q6,:}50U';
+  var MEGAPLAY_AES_IV = "W0;27ToaUpl_P%'c";
+
+  function fileFromGetSources(json) {
+    var file = json && json.sources && json.sources.file;
+    if (typeof file === 'string' && file) return file;
+    var enc = json && json.enc;
+    if (!enc || typeof enc !== 'string') return '';
+    try {
+      var C = ctx.crypto || globalThis.CryptoJS;
+      if (!C || !C.AES) return '';
+      var keyHex = C.enc.Utf8.parse(MEGAPLAY_AES_KEY).toString(C.enc.Hex);
+      while (keyHex.length < 64) keyHex += '00';
+      var key = C.enc.Hex.parse(keyHex.substring(0, 64));
+      var iv = C.enc.Utf8.parse(MEGAPLAY_AES_IV);
+      var pt = C.AES.decrypt(
+        { ciphertext: C.enc.Base64.parse(enc) },
+        key,
+        { iv: iv, mode: C.mode.CBC, padding: C.pad.Pkcs7 },
+      );
+      var text = C.enc.Utf8.stringify(pt);
+      if (!text) return '';
+      var parsed = JSON.parse(text);
+      return (parsed && parsed.file) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function extractEmbedSource(embedUrl) {
     var normalized = normalizeMegaplayUrl(embedUrl);
     return fetchText(normalized, { Referer: spoofRef, 'Accept-Language': 'en-US,en;q=0.9' })
@@ -245,12 +276,21 @@ function extract(ctx) {
         if (!m || !m[1]) return null;
         var fileId = m[1];
         var origin = (normalized.match(/^https?:\/\/[^/]+/) || [''])[0];
-        return fetchJson(origin + '/stream/getSources?id=' + fileId + (fileId.indexOf('&') >= 0 ? '' : '&id=' + fileId), {
-          Referer: origin + '/',
-          'X-Requested-With': 'XMLHttpRequest',
-        }).then(function (data) {
-          if (data && data.sources && data.sources.file) {
-            data.sources.file = rewriteMewstream(data.sources.file, data.tracks);
+        return fetchJson(
+          origin +
+            '/stream/getSources?id=' +
+            fileId +
+            (fileId.indexOf('&') >= 0 ? '' : '&id=' + fileId) +
+            '&s=tcdn',
+          {
+            Referer: origin + '/',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        ).then(function (data) {
+          var file = fileFromGetSources(data);
+          if (file) {
+            if (!data.sources) data.sources = {};
+            data.sources.file = rewriteMewstream(file, data.tracks);
           }
           return { fileId: fileId, data: data, origin: origin };
         });

@@ -43,6 +43,10 @@ class IptvLiveContinuityProxy {
   DateTime? _rateSampleStarted;
   DateTime? _lastUpstreamEofAt;
 
+  /// Only one loopback client producer at a time (Exo soft-reopen opens a
+  /// second GET while the old socket is still draining).
+  int _producerEpoch = 0;
+
   Uri? get localUri {
     final p = _server?.port;
     if (p == null || p <= 0) return null;
@@ -87,6 +91,7 @@ class IptvLiveContinuityProxy {
   Future<void> stop() async {
     _closed = true;
     _generation++;
+    _producerEpoch++;
     _clearQueue();
     _wakeWaiters();
     final server = _server;
@@ -148,9 +153,10 @@ class IptvLiveContinuityProxy {
 
   Future<void> _onRequest(HttpRequest request) async {
     final gen = _generation;
+    final producerEpoch = ++_producerEpoch;
     final res = request.response;
     _clearQueue();
-    unawaited(_runProducer(gen));
+    unawaited(_runProducer(gen, producerEpoch));
     try {
       res.statusCode = HttpStatus.ok;
       res.headers.clear();
@@ -159,14 +165,20 @@ class IptvLiveContinuityProxy {
       res.bufferOutput = false;
 
       var pending = 0;
-      while (!_closed && gen == _generation) {
+      while (!_closed &&
+          gen == _generation &&
+          producerEpoch == _producerEpoch) {
         final chunk = _dequeue();
         if (chunk == null) {
           await _waitForData().timeout(
             const Duration(seconds: 30),
             onTimeout: () {},
           );
-          if (_closed || gen != _generation) break;
+          if (_closed ||
+              gen != _generation ||
+              producerEpoch != _producerEpoch) {
+            break;
+          }
           continue;
         }
         res.add(chunk);
@@ -196,14 +208,17 @@ class IptvLiveContinuityProxy {
 
   static const _fatalUpstreamCodes = {401, 403, 407};
 
-  Future<void> _runProducer(int gen) async {
+  bool _producerAlive(int gen, int producerEpoch) =>
+      !_closed && gen == _generation && producerEpoch == _producerEpoch;
+
+  Future<void> _runProducer(int gen, int producerEpoch) async {
     var firstConnect = true;
     var fatalUpstream = 0;
-    while (!_closed && gen == _generation) {
+    while (_producerAlive(gen, producerEpoch)) {
       HttpClientResponse? up;
       try {
         up = await _openUpstream();
-        if (_closed || gen != _generation) break;
+        if (!_producerAlive(gen, producerEpoch)) break;
         if (up.statusCode < 200 || up.statusCode >= 300) {
           debugPrint('[IPTV Proxy] upstream HTTP ${up.statusCode}');
           await up.drain<void>();
@@ -223,6 +238,7 @@ class IptvLiveContinuityProxy {
 
         var skipLeft = 0;
         var skipPlanned = 0;
+        var minSkip = 0;
         var skipAborted = false;
         final reconnectAt = DateTime.now();
         if (firstConnect) {
@@ -232,6 +248,10 @@ class IptvLiveContinuityProxy {
           skipPlanned = iptvProxyReconnectSkipBytes(
             estimatedBytesPerSec: _estimatedBytesPerSec,
           );
+          minSkip = iptvProxyMinSkipBytes(
+            estimatedBytesPerSec: _estimatedBytesPerSec,
+          );
+          if (minSkip > skipPlanned) minSkip = skipPlanned;
           skipLeft = skipPlanned;
           final sinceEof = _lastUpstreamEofAt == null
               ? null
@@ -242,7 +262,8 @@ class IptvLiveContinuityProxy {
           debugPrint(
             '[IPTV Proxy] upstream reconnected — skip '
             '${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
-            '(bps=$_estimatedBytesPerSec '
+            '(min=${(minSkip / (1024 * 1024)).toStringAsFixed(2)}MiB '
+            'bps=$_estimatedBytesPerSec '
             'queue=${(_queuedBytes / (1024 * 1024)).toStringAsFixed(2)}MiB'
             '${queueSecs > 0 ? ' ~${queueSecs.toStringAsFixed(1)}s' : ''} '
             'gap=${sinceEof?.inMilliseconds ?? -1}ms)',
@@ -258,21 +279,28 @@ class IptvLiveContinuityProxy {
         final skipStarted = DateTime.now();
 
         await for (final raw in up) {
-          if (_closed || gen != _generation) break;
+          if (!_producerAlive(gen, producerEpoch)) break;
           var data = raw is Uint8List ? raw : Uint8List.fromList(raw);
           _noteUpstreamBytes(data.length);
           if (skipLeft > 0) {
-            if (_queuedBytes < abortFloor) {
+            final skipped = skipPlanned - skipLeft;
+            final elapsedMs =
+                DateTime.now().difference(skipStarted).inMilliseconds;
+            if (iptvProxyShouldAbortSkip(
+              skippedBytes: skipped,
+              minSkipBytes: minSkip,
+              queuedBytes: _queuedBytes,
+              abortFloorBytes: abortFloor,
+              elapsedMs: elapsedMs,
+            )) {
               skipAborted = true;
-              final skipped = skipPlanned - skipLeft;
               debugPrint(
                 '[IPTV Proxy] overlap skip early-abort '
                 '(skipped=${(skipped / (1024 * 1024)).toStringAsFixed(2)}MiB '
                 'of ${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
                 'queue=${(_queuedBytes / 1024).toStringAsFixed(0)}KiB '
-                '< floor=${(abortFloor / 1024).toStringAsFixed(0)}KiB '
-                '${DateTime.now().difference(skipStarted).inMilliseconds}ms) '
-                '— feeding live',
+                'floor=${(abortFloor / 1024).toStringAsFixed(0)}KiB '
+                '${elapsedMs}ms) — feeding live',
               );
               skipLeft = 0;
             } else if (data.length <= skipLeft) {
@@ -284,17 +312,15 @@ class IptvLiveContinuityProxy {
               debugPrint(
                 '[IPTV Proxy] overlap skip done '
                 '(${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
-                '${DateTime.now().difference(skipStarted).inMilliseconds}ms) '
-                '— feeding live',
+                '${elapsedMs}ms) — feeding live',
               );
             }
           }
-          while (!_closed &&
-              gen == _generation &&
+          while (_producerAlive(gen, producerEpoch) &&
               _queuedBytes + data.length > _maxQueueBytes) {
             await Future<void>.delayed(const Duration(milliseconds: 15));
           }
-          if (_closed || gen != _generation) break;
+          if (!_producerAlive(gen, producerEpoch)) break;
           _enqueue(data);
         }
         if (skipLeft > 0 && !skipAborted) {
@@ -306,7 +332,7 @@ class IptvLiveContinuityProxy {
         _lastUpstreamEofAt = DateTime.now();
         debugPrint('[IPTV Proxy] upstream EOF — reconnecting');
       } catch (e) {
-        if (_closed || gen != _generation) break;
+        if (!_producerAlive(gen, producerEpoch)) break;
         debugPrint('[IPTV Proxy] upstream error: $e — reconnecting');
         _lastUpstreamEofAt = DateTime.now();
       } finally {
@@ -314,7 +340,7 @@ class IptvLiveContinuityProxy {
           await up?.drain<void>();
         } catch (_) {}
       }
-      if (_closed || gen != _generation) break;
+      if (!_producerAlive(gen, producerEpoch)) break;
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
   }

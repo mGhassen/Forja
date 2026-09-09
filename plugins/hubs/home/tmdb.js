@@ -1082,7 +1082,10 @@ function tmdbBuildTvVideos(ctx, cfg, tvId, showJson) {
             if (!ep || ep.episode_number == null) continue;
             var epNum = Math.round(Number(ep.episode_number));
             if (!epNum) continue;
-            out.push({
+            var airRaw = String(ep.air_date || '').trim();
+            if (airRaw.length >= 10) airRaw = airRaw.substring(0, 10);
+            else airRaw = '';
+            var entry = {
               id: tvId + ':S' + sn + 'E' + epNum,
               season: sn,
               episode: epNum,
@@ -1090,7 +1093,25 @@ function tmdbBuildTvVideos(ctx, cfg, tvId, showJson) {
               thumbnail: ep.still_path
                 ? tmdbImage(cfg, ep.still_path, 'w300')
                 : '',
-            });
+            };
+            if (airRaw) {
+              entry.airDate = airRaw;
+              var parts = airRaw.split('-');
+              var ay = Number(parts[0]);
+              var am = Number(parts[1]);
+              var ad = Number(parts[2]);
+              if (ay > 0 && am >= 1 && am <= 12 && ad >= 1 && ad <= 31) {
+                var airDay = new Date(ay, am - 1, ad);
+                var now = new Date();
+                var today = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                );
+                if (airDay.getTime() > today.getTime()) entry.aired = false;
+              }
+            }
+            out.push(entry);
           }
           return out;
         },

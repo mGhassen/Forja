@@ -212,15 +212,20 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
   }
 
   /// Proxy skip gap in flight: feed advancing or demuxer climbing after reopen.
+  ///
+  /// Do **not** treat a fat proxy byte queue as refill — Exo LoadControl can
+  /// keep the queue high while playhead ahead collapses (gray / replay).
   bool get _proxyReconnectRefilling {
     if (!_inProxyReconnectGrace) return false;
-    if (_networkStillFeeding) return true;
-    if (_s._cacheAheadSecs > _s._cacheAheadAtProxyReconnect + 0.25) {
-      return true;
+    final ahead = _s._cacheAheadSecs;
+    final atReconnect = _s._cacheAheadAtProxyReconnect;
+    // Cushion dying and not feeding ⇒ not refilling.
+    if (ahead + 0.5 < atReconnect && !_networkStillFeeding) {
+      return false;
     }
-    // Queue may still hold bytes the player has not yet demuxed.
-    final q = _s._liveContinuityProxy?.queuedBytes ?? 0;
-    return q > 64 * 1024;
+    if (_networkStillFeeding) return true;
+    if (ahead > atReconnect + 0.25) return true;
+    return false;
   }
 
   /// Stream is working: enough cache to play, or still downloading, or

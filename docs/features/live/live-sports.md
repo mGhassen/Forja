@@ -35,8 +35,8 @@ Schedules come from enabled Forja Live **catalog** plugins (Streamed, PPV, Strea
 
 ## Tips
 
-- Streams are third-party — availability changes with broadcasts and region.
-- **Providers** soft-matches the same fixture across enabled Forja Live catalogs and installed Stremio sport addons, so one tap can list mirrors from Streamed, PPV, StreamFree, and others when they carry that event.
+- Streams are third-party — availability changes with broadcasts and region. If the site shows no stream links yet, Forja skips that mirror (**No playable stream**) instead of opening a dead player.
+- **Providers** soft-matches the same fixture across enabled Forja Live **stream** catalogs (ones that link to a resolve pack) and installed Stremio sport addons — Streamed, PPV, StreamFree, and similar. TV-guide catalogs (broadcast channel lists) feed Live TV name matching only; they are not stream sources.
 - Escape / Back closes the streams panel (or details page), then leaves the player and stops audio.
 - **Merge matching events** is **off** by default — leave it off for large schedules. With merge off, cards stay separate; Providers still pulls sibling catalog streams for the tapped game.
 - Enable or disable individual schedule catalogs under **Settings → Forja Packs** (expand a live pack).

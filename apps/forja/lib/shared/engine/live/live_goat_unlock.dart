@@ -448,14 +448,16 @@ class LiveGoatUnlock {
         }
 
         final headers = playbackHeadersForSlot(slot);
-        // Echo CDN (`/echo/stream/`) often 500s on Dart/mpv re-GET — don't hand
-        // MediaKit a URL that cannot open natively.
-        if (slotSource == 'echo') {
+        // Dead/gated slots still crack to a signed `*.strmd.st` URL that 403s
+        // on open (website shows no player). Probe before handing to MediaKit —
+        // same gate as echo; streamed was unlocking empty Boca/etc. fixtures.
+        if (slotSource == 'echo' || slotSource == 'streamed') {
           if (!await _probePlayableM3u8(m3u8, headers)) {
             debugPrint(
-              '[LiveGoatUnlock] echo GOAT m3u8 not native-playable (CDN probe)',
+              '[LiveGoatUnlock] $slotSource GOAT m3u8 not native-playable '
+              '(CDN probe) attempt=${attempt + 1}',
             );
-            return null;
+            continue;
           }
         }
         return (url: m3u8, headers: headers);
@@ -813,6 +815,14 @@ class LiveGoatUnlock {
         path.contains('/echo/stream/') ||
         path.contains('/streamed/stream/');
   }
+
+  /// GET the playlist; true only when the body looks like HLS (`#EXTM3U`).
+  /// Used to drop dead GOAT slots that still crack to a signed CDN URL.
+  static Future<bool> probePlayableM3u8(
+    String url,
+    Map<String, String> headers,
+  ) =>
+      _probePlayableM3u8(url, headers);
 
   static Future<bool> _probePlayableM3u8(
     String url,

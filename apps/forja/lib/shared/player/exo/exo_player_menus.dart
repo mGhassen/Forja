@@ -7,6 +7,7 @@ import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
 
@@ -120,25 +121,18 @@ abstract final class ExoPlayerMenus {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PlayerPopupHeaderChip(
-            label: 'Off',
-            selected: subtitlesOff,
-            autoFocus: subtitlesOff,
-            onTap: () async {
-              PlayerPopupPanel.dismiss();
-              await onOff();
-            },
-          ),
-          if (!hideLoadFile && onLoadFromFile != null) ...[
-            const SizedBox(width: 6),
-            PlayerPopupHeaderChip(
-              label: 'File',
-              icon: Icons.upload_file_rounded,
-              selected: false,
-              onTap: () async {
+      autofocusClose: hideLoadFile,
+      trailing: _ExoSubtitleHeaderTrailing(
+        tv: hideLoadFile,
+        subtitlesOff: subtitlesOff,
+        onOff: () async {
+          PlayerPopupPanel.dismiss();
+          await onOff();
+        },
+        showFile: !hideLoadFile && onLoadFromFile != null,
+        onFile: onLoadFromFile == null
+            ? null
+            : () async {
                 PlayerPopupPanel.dismiss();
                 final result = await FilePicker.platform.pickFiles(
                   type: FileType.custom,
@@ -151,21 +145,7 @@ abstract final class ExoPlayerMenus {
                 final name = result.files.single.name;
                 await onLoadFromFile(path: path, name: name);
               },
-            ),
-          ],
-          if (onSubtitleSettings != null) ...[
-            const SizedBox(width: 6),
-            ForjaPlainIcon(
-              icon: Icons.tune_rounded,
-              size: 18,
-              color: Colors.white54,
-              onTap: () {
-                PlayerPopupPanel.dismiss();
-                onSubtitleSettings();
-              },
-            ),
-          ],
-        ],
+        onSubtitleSettings: onSubtitleSettings,
       ),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
@@ -261,6 +241,7 @@ abstract final class ExoPlayerMenus {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
+      autofocusClose: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
       onBack: () {
         onRoot();
       },
@@ -592,6 +573,128 @@ abstract final class ExoPlayerMenus {
           await onSelect(track.id);
         }
       },
+    );
+  }
+}
+
+/// Off (+ File) + tune — TV: Off → tune → Close X.
+class _ExoSubtitleHeaderTrailing extends StatefulWidget {
+  const _ExoSubtitleHeaderTrailing({
+    required this.tv,
+    required this.subtitlesOff,
+    required this.onOff,
+    required this.showFile,
+    this.onFile,
+    this.onSubtitleSettings,
+  });
+
+  final bool tv;
+  final bool subtitlesOff;
+  final Future<void> Function() onOff;
+  final bool showFile;
+  final Future<void> Function()? onFile;
+  final VoidCallback? onSubtitleSettings;
+
+  @override
+  State<_ExoSubtitleHeaderTrailing> createState() =>
+      _ExoSubtitleHeaderTrailingState();
+}
+
+class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> {
+  final FocusNode _tuneFocus = FocusNode(debugLabel: 'exo-subtitle-tune');
+
+  @override
+  void dispose() {
+    _tuneFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasTune = widget.onSubtitleSettings != null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PlayerPopupHeaderChip(
+          label: 'Off',
+          selected: widget.subtitlesOff,
+          autoFocus: !widget.tv && widget.subtitlesOff,
+          onTap: () => unawaited(widget.onOff()),
+          onRightEdge: widget.tv
+              ? () {
+                  if (hasTune && _tuneFocus.canRequestFocus) {
+                    _tuneFocus.requestFocus();
+                  } else {
+                    PlayerPopupCloseFocus.request(context);
+                  }
+                }
+              : null,
+        ),
+        if (widget.showFile && widget.onFile != null) ...[
+          const SizedBox(width: 6),
+          PlayerPopupHeaderChip(
+            label: 'File',
+            icon: Icons.upload_file_rounded,
+            selected: false,
+            onTap: () => unawaited(widget.onFile!()),
+          ),
+        ],
+        if (hasTune) ...[
+          const SizedBox(width: 6),
+          _SubtitleTuneChip(
+            tv: widget.tv,
+            focusNode: _tuneFocus,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              widget.onSubtitleSettings!();
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Tune icon — [ForjaPlainIcon] traps D-pad; TV uses [FocusableControl] → Close.
+class _SubtitleTuneChip extends StatelessWidget {
+  const _SubtitleTuneChip({
+    required this.tv,
+    required this.onTap,
+    this.focusNode,
+  });
+
+  final bool tv;
+  final VoidCallback onTap;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!tv) {
+      return ForjaPlainIcon(
+        icon: Icons.tune_rounded,
+        size: 18,
+        color: Colors.white54,
+        onTap: onTap,
+      );
+    }
+    final face = SizedBox(
+      width: 32,
+      height: 32,
+      child: Icon(
+        Icons.tune_rounded,
+        size: 18,
+        color: PlayerPopupTokens.muted,
+      ),
+    );
+    return FocusableControl(
+      focusNode: focusNode,
+      onTap: onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onRightEdge: () => PlayerPopupCloseFocus.request(context),
+      child: face,
     );
   }
 }

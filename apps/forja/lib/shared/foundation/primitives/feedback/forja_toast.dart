@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
@@ -330,26 +331,83 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
   }
 }
 
-class _ForjaToastCard extends StatelessWidget {
+class _ForjaToastCard extends StatefulWidget {
   const _ForjaToastCard({required this.entry, required this.tvFocus});
 
   final ForjaToastEntry entry;
   final bool tvFocus;
 
   @override
-  Widget build(BuildContext context) {
-    final style = forjaToastStyle(entry.kind);
+  State<_ForjaToastCard> createState() => _ForjaToastCardState();
+}
 
-    void runActionSafe(VoidCallback? action, {required bool dismiss}) {
-      final id = entry.id;
-      // Never mutate the overlay tree (dismiss / open dialogs) inside the
-      // button's pointer-up — that trips mouse_tracker on desktop.
+class _ForjaToastCardState extends State<_ForjaToastCard> {
+  FocusNode? _actionFocus;
+  FocusNode? _returnFocus;
+  bool _stoleFocus = false;
+
+  bool get _hasAction =>
+      widget.entry.actionLabel != null && widget.entry.onAction != null;
+
+  bool get _tvActionFocus => widget.tvFocus && _hasAction;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_tvActionFocus) return;
+    // Capture before autofocus steals primary focus on the next frame.
+    _returnFocus = FocusManager.instance.primaryFocus;
+    _actionFocus = FocusNode(debugLabel: 'toast-action-${widget.entry.id}');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = _actionFocus;
+      if (node == null || !node.canRequestFocus) return;
+      node.requestFocus();
+      _stoleFocus = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    final heldFocus = _stoleFocus && (_actionFocus?.hasFocus ?? false);
+    final back = _returnFocus;
+    _returnFocus = null;
+    _actionFocus?.dispose();
+    _actionFocus = null;
+    if (heldFocus && back != null) {
+      // Toast gone while action still focused — land back on prior control.
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (dismiss) ForjaToast.controller.dismiss(id);
-        if (action == null) return;
-        SchedulerBinding.instance.addPostFrameCallback((_) => action());
+        if (back.canRequestFocus) back.requestFocus();
       });
     }
+    super.dispose();
+  }
+
+  void _leaveToastFocus() {
+    final back = _returnFocus;
+    if (back == null || !back.canRequestFocus) {
+      _actionFocus?.unfocus();
+      return;
+    }
+    back.requestFocus();
+  }
+
+  void _runActionSafe(VoidCallback? action, {required bool dismiss}) {
+    final id = widget.entry.id;
+    // Never mutate the overlay tree (dismiss / open dialogs) inside the
+    // button's pointer-up — that trips mouse_tracker on desktop.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (dismiss) ForjaToast.controller.dismiss(id);
+      if (action == null) return;
+      SchedulerBinding.instance.addPostFrameCallback((_) => action());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = widget.entry;
+    final tvFocus = widget.tvFocus;
+    final style = forjaToastStyle(entry.kind);
 
     Widget actionButton() {
       final label = Text(
@@ -360,7 +418,7 @@ class _ForjaToastCard extends StatelessWidget {
           color: style.accent,
         ),
       );
-      void onTap() => runActionSafe(entry.onAction, dismiss: true);
+      void onTap() => _runActionSafe(entry.onAction, dismiss: true);
 
       if (!tvFocus) {
         return TextButton(
@@ -378,8 +436,19 @@ class _ForjaToastCard extends StatelessWidget {
       return shellFocusableTap(
         context: context,
         onTap: onTap,
+        focusNode: _actionFocus,
         borderRadius: 6,
         showFocusBorder: true,
+        // Any D-pad leave → prior control (do not trap in toast chrome).
+        onLeftEdge: _leaveToastFocus,
+        onRightEdge: _leaveToastFocus,
+        onUpEdge: _leaveToastFocus,
+        onDownEdge: _leaveToastFocus,
+        onKeyEvent: (node, event) {
+          if (!_isToastLeaveKey(event)) return KeyEventResult.ignored;
+          _leaveToastFocus();
+          return KeyEventResult.handled;
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: label,
@@ -393,7 +462,7 @@ class _ForjaToastCard extends StatelessWidget {
         size: 16,
         color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
       );
-      void onTap() => runActionSafe(null, dismiss: true);
+      void onTap() => _runActionSafe(null, dismiss: true);
 
       if (!tvFocus) {
         return IconButton(
@@ -402,6 +471,21 @@ class _ForjaToastCard extends StatelessWidget {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           splashRadius: 14,
+        );
+      }
+
+      // Action toast already owns focus; keep close out of the D-pad graph.
+      if (_hasAction) {
+        return GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: ExcludeFocus(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: Center(child: icon),
+            ),
+          ),
         );
       }
 
@@ -435,7 +519,7 @@ class _ForjaToastCard extends StatelessWidget {
               ),
             ),
           ),
-          if (entry.actionLabel != null && entry.onAction != null) ...[
+          if (_hasAction) ...[
             const SizedBox(width: 8),
             actionButton(),
           ],
@@ -444,6 +528,12 @@ class _ForjaToastCard extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _isToastLeaveKey(KeyEvent event) {
+  if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+  final key = event.logicalKey;
+  return key == LogicalKeyboardKey.goBack || key == LogicalKeyboardKey.escape;
 }
 
 /// Shared top-right card chrome — kind drives border / accent / fill.

@@ -79,7 +79,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     return false;
   }
 
-  bool _focused = false;
   bool _hovered = false;
   bool _okHoldFired = false;
   bool _disposed = false;
@@ -98,8 +97,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
 
   bool get _floating => widget.floating;
 
+  /// Paint from [FocusNode.hasFocus] — mirrored bool lagged HoldAccel strides
+  /// (green fill 1–2 rows behind real focus).
   bool get _chromeLit =>
-      _focused || _pinFocus.hasFocus || _floating || _tvPinRevealed;
+      _rowFocus.hasFocus || _pinFocus.hasFocus || _floating || _tvPinRevealed;
 
   bool get _tvFocused => iptvTvFocused(context, focused: _chromeLit);
 
@@ -133,6 +134,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
         }
       });
     _rowFocus = FocusNode(debugLabel: 'iptv-category-row-${widget.listIndex}');
+    _rowFocus.addListener(_onRowFocusNodeChanged);
     _pinFocus = FocusNode(
       debugLabel: 'iptv-category-pin-${widget.listIndex}',
       onKeyEvent: (node, event) {
@@ -145,6 +147,13 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     );
     _pinFocus.addListener(_onPinFocusChanged);
     if (_floating || _pinFocus.hasFocus) _claimChrome();
+  }
+
+  void _onRowFocusNodeChanged() {
+    if (!mounted) return;
+    // Sync with FocusNode — do not wait for FocusableControl.onFocusChange
+    // (HoldAccel jump can land focus before that setState paints).
+    setState(() {});
   }
 
   @override
@@ -180,6 +189,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     final onPinFocusChange = widget.onPinFocusChange;
     _pinFocus.removeListener(_onPinFocusChanged);
     _pinFocus.dispose();
+    _rowFocus.removeListener(_onRowFocusNodeChanged);
     _rowFocus.dispose();
     super.dispose();
     if (clearPinChrome && onPinFocusChange != null) {
@@ -265,7 +275,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   }
 
   void _syncChromeClaim() {
-    if (_pinFocus.hasFocus || _floating || _focused || _tvPinRevealed) {
+    if (_pinFocus.hasFocus ||
+        _floating ||
+        _rowFocus.hasFocus ||
+        _tvPinRevealed) {
       _claimChrome();
     } else {
       _releaseChrome();
@@ -341,16 +354,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     if (focused) {
       // Don't clear hold-fired mid enter-float (OK KeyUp still coming).
       if (!_floating && !_okHoldFired) _cancelOkGestures();
-      setState(() => _focused = true);
       _claimChrome();
       widget.onTvFocusChange?.call(true);
       return;
     }
     _cancelOkGestures();
-    // Sync-clear hover chrome — deferred clear left a ghost row lit for a
-    // frame during ↑/↓ (looked like 2–3 hovers with selected + next focus).
-    // Pin / float still keep chrome via _chromeLit without _focused.
-    if (_focused) setState(() => _focused = false);
+    // Chrome paint listens to [_rowFocus] — parent notify only here.
     widget.onTvFocusChange?.call(false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -665,12 +674,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
       allowNestedFocus: leanback && _canTvPin && _showPin,
-      // Vertical list: keepVisible only — never snap the rail to put the row
-      // at the top (`.item` does that for Settings labels).
-      // Floating / pin chrome: parent freezes scroll — ensureVisible fights it.
-      ensureVisibleMode: (_floating || _pinFocus.hasFocus)
-          ? ShellTvEnsureVisibleMode.off
-          : ShellTvEnsureVisibleMode.row,
+      // Parent `_focusCategoryAt` owns the jump (same as Portals). `.row`
+      // keepVisible fights HoldAccel strides — green fill trails real focus.
+      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
       onKeyEvent: tv ? _onRowKey : null,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,

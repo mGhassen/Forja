@@ -115,12 +115,14 @@ void main() {
       );
     });
 
-    test('arrow left/right seek when chrome is hidden', () {
+    test('arrow left/right focus play when chrome is hidden', () {
       var back = 0;
       var forward = 0;
+      var focusPlay = 0;
       final handler = _handler(
         onSeekBack: () => back++,
         onSeekForward: () => forward++,
+        onFocusPlay: () => focusPlay++,
       );
 
       expect(
@@ -131,16 +133,19 @@ void main() {
         handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: false),
         isTrue,
       );
-      expect(back, 1);
-      expect(forward, 1);
+      expect(back, 0);
+      expect(forward, 0);
+      expect(focusPlay, 2);
     });
 
     test('arrow left/right do not seek when chrome is visible', () {
       var back = 0;
       var forward = 0;
+      var focusPlay = 0;
       final handler = _handler(
         onSeekBack: () => back++,
         onSeekForward: () => forward++,
+        onFocusPlay: () => focusPlay++,
       );
 
       expect(
@@ -153,6 +158,7 @@ void main() {
       );
       expect(back, 0);
       expect(forward, 0);
+      expect(focusPlay, 0);
     });
 
     test('media rewind/fast-forward seek even when chrome is visible', () {
@@ -241,13 +247,14 @@ void main() {
     expect(find.byType(FocusableControl), findsOneWidget);
   });
 
-  testWidgets('PlayerTvKeyScope seeks left/right when chrome is hidden', (
+  testWidgets('PlayerTvKeyScope focuses play on ←/→ when chrome is hidden', (
     tester,
   ) async {
     final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
     final playFocus = FocusNode(debugLabel: 'test-play');
     var seekBack = 0;
     var seekForward = 0;
+    var focusPlay = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -263,7 +270,7 @@ void main() {
             onSeekForward: () => seekForward++,
             onToggleControls: () {},
             onFocusBack: () {},
-            onFocusPlay: () {},
+            onFocusPlay: () => focusPlay++,
             onClaimPlayFocus: () {},
             child: FocusScope(
               debugLabel: 'player-chrome',
@@ -286,8 +293,9 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
 
-    expect(seekBack, 1);
-    expect(seekForward, 1);
+    expect(seekBack, 0);
+    expect(seekForward, 0);
+    expect(focusPlay, 2);
 
     keyFocus.dispose();
     playFocus.dispose();

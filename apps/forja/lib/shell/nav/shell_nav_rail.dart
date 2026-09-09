@@ -1207,6 +1207,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                 scale: _scaleFor(policy),
                                 duration: chromeAnim,
                                 curve: Curves.easeOutCubic,
+                                // Bilinear — Impeller defaults can nearest-neighbor
+                                // the focus grow and make pack PNGs look 8-bit.
+                                filterQuality: FilterQuality.low,
                                 child: SizedBox(
                                   width: renderedIconSize,
                                   height: renderedIconSize,

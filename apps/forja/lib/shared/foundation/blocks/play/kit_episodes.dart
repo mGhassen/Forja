@@ -1,3 +1,4 @@
+import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
 import 'package:forja/shared/foundation/services/meta/details_fetch.dart';
 import 'package:forja/shared/foundation/lib/cover_urls.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
@@ -50,10 +51,13 @@ PlayerKitEpisode _kitEpisodeRow({
   final thumb = thumbRaw.isNotEmpty
       ? resolveEpisodeArtUrl(thumbRaw, still: true)
       : (fallbackCover.isNotEmpty ? fallbackCover : null);
+  final air = hubVideoAirDateInfo(video);
   return PlayerKitEpisode(
     number: epNum,
     title: video.title.isNotEmpty ? video.title : 'Episode $epNum',
     thumbnailUrl: thumb,
+    airDateLabel: air.label,
+    notShippedYet: air.notShippedYet,
   );
 }
 

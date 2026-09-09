@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -1962,6 +1963,8 @@ void main() {
       expect(hianime.contains('getSources'), isTrue);
       expect(hianime.contains('vidtube.site'), isTrue);
       expect(hianime.contains('mewstream.buzz'), isTrue);
+      expect(hianime.contains('s=tcdn'), isTrue);
+      expect(hianime.contains('fileFromGetSources'), isTrue);
 
       final kaa = await loadForjaHqFile('providers/kickassanime.js');
       expect(kaa.contains('/api/fsearch'), isTrue);
@@ -2187,6 +2190,8 @@ void main() {
       expect(anikoto.contains('getSources'), isTrue);
       expect(anikoto.contains('mewstream.buzz'), isTrue);
       expect(anikoto.contains('mapper.mewcdn.online'), isTrue);
+      expect(anikoto.contains('s=tcdn'), isTrue);
+      expect(anikoto.contains('fileFromGetSources'), isTrue);
 
       final animeheaven = await loadForjaHqFile('providers/animeheaven.js');
       expect(animeheaven.contains('gate.php'), isTrue);
@@ -2210,6 +2215,8 @@ void main() {
       final megaplay = await loadForjaHqFile('providers/megaplay.js');
       expect(megaplay.contains('/stream/ani/'), isTrue);
       expect(megaplay.contains('getSources'), isTrue);
+      expect(megaplay.contains('s=tcdn'), isTrue);
+      expect(megaplay.contains('fileFromGetSources'), isTrue);
 
       final vidnest = await loadForjaHqFile('providers/vidnest.js');
       expect(vidnest.contains('/anime/'), isTrue);
@@ -2358,6 +2365,69 @@ void main() {
         expect(
           LiveSportCapabilities.normalizePluginId('catalog-ppv'),
           'ppv',
+        );
+      },
+    );
+
+    test(
+      'Providers stream feed excludes broadcast-only and scoreboard enrich catalogs',
+      () {
+        LivePluginEngine.invalidateDerivedCaches();
+        addTearDown(LivePluginEngine.invalidateDerivedCaches);
+
+        final linked = EnginePlugin.fromJson({
+          'id': 'catalog-test-streams',
+          'name': 'Test Streams',
+          'entry': 'streams.js',
+          'types': ['catalog'],
+          'kind': 'http',
+          'config': {'providerId': 'live-test-streams'},
+        });
+        final broadcastOnly = EnginePlugin.fromJson({
+          'id': 'catalog-test-tvguide',
+          'name': 'Test TV Guide',
+          'entry': 'tvguide.js',
+          'types': ['catalog'],
+          'capabilities': ['broadcast'],
+          'kind': 'http',
+          'config': {'base': 'https://example.test'},
+        });
+        final scoreboard = EnginePlugin.fromJson({
+          'id': 'catalog-test-scoreboard',
+          'name': 'Test Scoreboard',
+          'entry': 'scoreboard.js',
+          'types': ['catalog'],
+          'kind': 'http',
+          'config': {
+            'providerId': 'catalog-test-scoreboard',
+            'scheduleHorizon': 'fullDay',
+            'leagues': ['FOO'],
+          },
+        });
+
+        LivePluginEngine.cachePluginMeta(linked);
+        LivePluginEngine.cachePluginMeta(broadcastOnly);
+        LivePluginEngine.cachePluginMeta(scoreboard);
+
+        expect(LivePluginEngine.isProviderStreamFeed(linked), isTrue);
+        expect(LivePluginEngine.isProviderStreamFeed(broadcastOnly), isFalse);
+        expect(LivePluginEngine.isProviderStreamFeed(scoreboard), isFalse);
+
+        expect(
+          LivePluginEngine.cachedIsProviderStreamFeed(linked.id),
+          isTrue,
+        );
+        expect(
+          LivePluginEngine.cachedIsProviderStreamFeed(broadcastOnly.id),
+          isFalse,
+        );
+        expect(
+          LivePluginEngine.cachedIsProviderStreamFeed(scoreboard.id),
+          isFalse,
+        );
+        expect(
+          LivePluginEngine.cachedLinksProviderResolve(broadcastOnly.id),
+          isFalse,
         );
       },
     );

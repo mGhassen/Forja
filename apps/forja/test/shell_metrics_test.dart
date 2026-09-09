@@ -46,7 +46,7 @@ void main() {
   });
 
   testWidgets(
-    'two-column TV dialogs key off ShellProfile.tv, not focusable chips',
+    'player floating menus never force centered layout on TV',
     (tester) async {
       late bool desktopCentered;
       late bool tvCentered;
@@ -80,11 +80,10 @@ void main() {
         ),
       );
 
-      // Desktop shares TV focus chips — must not force centered Subtitles.
-      // Sources / Episodes / Source use the side panel on every profile.
+      // ATV floating menus match desktop (anchored) — never force centered.
       expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
       expect(desktopCentered, isFalse);
-      expect(tvCentered, isTrue);
+      expect(tvCentered, isFalse);
     },
   );
 

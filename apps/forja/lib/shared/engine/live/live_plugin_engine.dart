@@ -161,6 +161,23 @@ class LivePluginEngine {
     return pluginId.trim();
   }
 
+  /// True when this catalog declares `providerId` (feeds Providers resolve).
+  ///
+  /// Broadcast-only / enrich catalogs (TV guide, scoreboard) have no link and
+  /// must not appear as stream sources.
+  static bool cachedLinksProviderResolve(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    final linked = _providerResolveIdByPluginId[_metaPluginKey(pluginId)];
+    return linked != null && linked.isNotEmpty;
+  }
+
+  /// Cached mirror of [isProviderStreamFeed] for MatchEvent soft-match.
+  static bool cachedIsProviderStreamFeed(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    if (cachedIsScheduleEnrich(pluginId)) return false;
+    return cachedLinksProviderResolve(pluginId);
+  }
+
   /// Resolve param `source` token — pack `resolveSource`, else `nativeUnlock`, else slug.
   static String cachedResolveSourceToken(String pluginId) {
     if (pluginId.isEmpty) return '';
@@ -483,12 +500,21 @@ class LivePluginEngine {
     // Packs that declare nativeUnlock (streamed / ppv / watchfooty) unlock in
     // Dart — EngineJS has no goatUnlock bridge, and flutter_js /fetch+crack is
     // the path that was dying on set_stream_jw for admin/PPV slots.
+    final unlockKind = await pluginNativeUnlock(pluginId);
     final native = await _resolveNativeUnlock(
       pluginId: pluginId,
       params: params,
       label: label,
     );
     if (native != null) return native;
+
+    // Streamed native path already cracked + CDN-probed. A miss means the
+    // slot is dead/gated (website has no player). Do not flutter_js-unlock
+    // the same signed URL without a probe — that reopens a failing player.
+    // Golf has no native unlock; JS resolveGolf still owns that source.
+    if (unlockKind == 'streamed' && !_paramsAreGolfEmbed(params)) {
+      return null;
+    }
 
     final raw = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
@@ -520,6 +546,16 @@ class LivePluginEngine {
       label: (first['name'] ?? first['title'] ?? label).toString(),
       directPlayback: first['directPlayback'] == true,
     );
+  }
+
+  static bool _paramsAreGolfEmbed(Map<String, dynamic> params) {
+    final source = (params['source'] ?? '').toString().trim().toLowerCase();
+    if (source == 'golf') return true;
+    final embed = (params['embedUrl'] ?? params['iframe'] ?? params['url'] ?? '')
+        .toString()
+        .toLowerCase();
+    return embed.contains('/embed/golf/') ||
+        RegExp(r'/golf/[^/]+/\d+').hasMatch(embed);
   }
 
   static Future<LiveEngineResolveResult?> _resolveNativeUnlock({

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -164,54 +165,20 @@ class PlayerSubtitleMenu {
       maxHeight: 420,
       width: 320,
       autofocusClose: hideLoadFile,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PlayerPopupHeaderChip(
-            label: 'Off',
-            selected: subtitlesOff,
-            // TV opens on Close X; Off only autofocuses on non-TV when off.
-            autoFocus: !hideLoadFile && subtitlesOff,
-            onTap: turnOffSubtitles,
-          ),
-          if (!hideLoadFile) ...[
-            const SizedBox(width: 6),
-            PlayerPopupHeaderChip(
-              label: 'File',
-              icon: Icons.upload_file_rounded,
-              selected: false,
-              onTap: () => _pickLocalFile(
-                player: player,
-                updateSubVisibility: updateSubVisibility,
-                onExternalUrlChanged: onExternalUrlChanged,
-                onNativeSubtitleChanged: onNativeSubtitleChanged,
-                onSubtitleSelected: onSubtitleSelected,
-              ),
-            ),
-          ],
-          if (onTitleSearch != null) ...[
-            const SizedBox(width: 6),
-            PlayerPopupHeaderChip(
-              label: 'Search',
-              icon: Icons.search_rounded,
-              selected: false,
-              onTap: () {
-                PlayerPopupPanel.dismiss();
-                onTitleSearch();
-              },
-            ),
-          ],
-          const SizedBox(width: 6),
-          ForjaPlainIcon(
-            icon: Icons.tune_rounded,
-            size: 18,
-            color: Colors.white54,
-            onTap: () {
-              PlayerPopupPanel.dismiss();
-              onSubtitleSettings();
-            },
-          ),
-        ],
+      trailing: _SubtitleHeaderTrailing(
+        tv: hideLoadFile,
+        subtitlesOff: subtitlesOff,
+        onOff: turnOffSubtitles,
+        showFile: !hideLoadFile,
+        onFile: () => _pickLocalFile(
+          player: player,
+          updateSubVisibility: updateSubVisibility,
+          onExternalUrlChanged: onExternalUrlChanged,
+          onNativeSubtitleChanged: onNativeSubtitleChanged,
+          onSubtitleSelected: onSubtitleSelected,
+        ),
+        onTitleSearch: onTitleSearch,
+        onSubtitleSettings: onSubtitleSettings,
       ),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
@@ -335,6 +302,7 @@ class PlayerSubtitleMenu {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
+      autofocusClose: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
       onBack: () {
         onRoot();
       },
@@ -389,6 +357,137 @@ class PlayerSubtitleMenu {
               },
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Off (+ File / Search) + tune — TV: Off → tune → Close X via [PlayerPopupCloseFocus].
+class _SubtitleHeaderTrailing extends StatefulWidget {
+  const _SubtitleHeaderTrailing({
+    required this.tv,
+    required this.subtitlesOff,
+    required this.onOff,
+    required this.showFile,
+    required this.onFile,
+    required this.onSubtitleSettings,
+    this.onTitleSearch,
+  });
+
+  final bool tv;
+  final bool subtitlesOff;
+  final VoidCallback onOff;
+  final bool showFile;
+  final VoidCallback onFile;
+  final VoidCallback onSubtitleSettings;
+  final VoidCallback? onTitleSearch;
+
+  @override
+  State<_SubtitleHeaderTrailing> createState() =>
+      _SubtitleHeaderTrailingState();
+}
+
+class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
+  final FocusNode _tuneFocus = FocusNode(debugLabel: 'subtitle-tune');
+
+  @override
+  void dispose() {
+    _tuneFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PlayerPopupHeaderChip(
+          label: 'Off',
+          selected: widget.subtitlesOff,
+          autoFocus: !widget.tv && widget.subtitlesOff,
+          onTap: widget.onOff,
+          onRightEdge: widget.tv
+              ? () {
+                  if (_tuneFocus.canRequestFocus) {
+                    _tuneFocus.requestFocus();
+                  } else {
+                    PlayerPopupCloseFocus.request(context);
+                  }
+                }
+              : null,
+        ),
+        if (widget.showFile) ...[
+          const SizedBox(width: 6),
+          PlayerPopupHeaderChip(
+            label: 'File',
+            icon: Icons.upload_file_rounded,
+            selected: false,
+            onTap: widget.onFile,
+          ),
+        ],
+        if (widget.onTitleSearch != null) ...[
+          const SizedBox(width: 6),
+          PlayerPopupHeaderChip(
+            label: 'Search',
+            icon: Icons.search_rounded,
+            selected: false,
+            onTap: () {
+              PlayerPopupPanel.dismiss();
+              widget.onTitleSearch!();
+            },
+          ),
+        ],
+        const SizedBox(width: 6),
+        _SubtitleTuneChip(
+          tv: widget.tv,
+          focusNode: _tuneFocus,
+          onTap: () {
+            PlayerPopupPanel.dismiss();
+            widget.onSubtitleSettings();
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SubtitleTuneChip extends StatelessWidget {
+  const _SubtitleTuneChip({
+    required this.tv,
+    required this.onTap,
+    this.focusNode,
+  });
+
+  final bool tv;
+  final VoidCallback onTap;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!tv) {
+      return ForjaPlainIcon(
+        icon: Icons.tune_rounded,
+        size: 18,
+        color: Colors.white54,
+        onTap: onTap,
+      );
+    }
+    return FocusableControl(
+      focusNode: focusNode,
+      onTap: onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onRightEdge: () => PlayerPopupCloseFocus.request(context),
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: Icon(
+          Icons.tune_rounded,
+          size: 18,
+          color: PlayerPopupTokens.muted,
+        ),
       ),
     );
   }

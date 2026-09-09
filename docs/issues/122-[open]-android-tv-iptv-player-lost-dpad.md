@@ -30,7 +30,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I122-A01 | Android TV IPTV live: after open, D-pad lands on Play; ←/→ moves chrome; Select toggles play/pause | ⬜ |
-| 2 | I122-A02 | Android TV IPTV VOD: chrome hidden ←/→ seeks ±10s; ↑ Back · ↓ Play (same as movie player) | ⬜ |
+| 2 | I122-A02 | Android TV IPTV VOD: chrome hidden ←/→ shows chrome + focuses Play; ↑ Back · ↓ Play (same as movie player) | ⬜ |
 
 ---
 

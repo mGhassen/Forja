@@ -221,8 +221,8 @@ class LoadingOverlay extends StatefulWidget {
   final VoidCallback? onReload;
   final VoidCallback? onCancel;
 
-  /// Tap a waiting / down / up server in the list to check it manually
-  /// (cancels Auto order and resolves that provider).
+  /// Tap a waiting / down / checking server in the list to prioritize it.
+  /// Auto checks that provider first; if it misses, the race continues.
   final ValueChanged<String>? onManualCheckProvider;
 
   const LoadingOverlay({
@@ -725,32 +725,14 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               ),
             );
             if (!canTap) return row;
-            final mouseHover = ShellScope.maybeOf(context)
-                    ?.inputPolicy
-                    .scaleOnHover ??
-                true;
-            // Desktop: InkWell hover/click. Leanback: FocusableControl D-pad.
-            if (mouseHover) {
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => widget.onManualCheckProvider!(probe.id),
-                  hoverColor: Colors.white.withValues(alpha: 0.08),
-                  child: row,
-                ),
-              );
-            }
-            return FocusableControl(
+            // Mouse hover + D-pad focus: brand-green tint (same language as
+            // player menus) — never a solid green block.
+            return _LoadingServerRow(
               focusNode: _providerRowFocus[index],
-              borderRadius: 8,
-              scaleOnFocus: 1.02,
               onTap: () => widget.onManualCheckProvider!(probe.id),
               onDownEdge: () => _focusNextProviderRow(index),
               onUpEdge: () => _focusPrevProviderRow(index),
-              child: Material(
-                color: Colors.transparent,
-                child: row,
-              ),
+              child: row,
             );
           },
         ),
@@ -895,7 +877,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           const SizedBox(height: 16),
           if (widget.onManualCheckProvider != null)
             Text(
-              'TAP A SERVER TO CHECK MANUALLY',
+              'TAP A SERVER TO CHECK IT FIRST',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.4),
                 fontSize: 10,
@@ -1061,6 +1043,74 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               debugLabel: 'loading-overlay',
               child: overlay,
             ),
+    );
+  }
+}
+
+/// Server row on the loading overlay — green tint on mouse hover / D-pad focus.
+class _LoadingServerRow extends StatefulWidget {
+  const _LoadingServerRow({
+    required this.focusNode,
+    required this.onTap,
+    required this.child,
+    this.onDownEdge,
+    this.onUpEdge,
+  });
+
+  final FocusNode focusNode;
+  final VoidCallback onTap;
+  final Widget child;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onUpEdge;
+
+  @override
+  State<_LoadingServerRow> createState() => _LoadingServerRowState();
+}
+
+class _LoadingServerRowState extends State<_LoadingServerRow> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  static final Color _greenTint =
+      ForjaShellColors.brandGreen.withValues(alpha: 0.14);
+
+  @override
+  Widget build(BuildContext context) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onTap: widget.onTap,
+      onDownEdge: widget.onDownEdge,
+      onUpEdge: widget.onUpEdge,
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      child: AnimatedContainer(
+        duration: policy.instantFocusChrome
+            ? Duration.zero
+            : const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: active ? _greenTint : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: widget.child,
+      ),
     );
   }
 }

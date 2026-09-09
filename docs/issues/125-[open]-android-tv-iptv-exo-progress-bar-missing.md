@@ -36,7 +36,7 @@
 | 1 | I125-A01 | Android TV IPTV live (Exo): controls show logo + green progress track (EPG fill when guide exists) | ⬜ |
 | 2 | I125-A02 | Android TV IPTV movie/series (Exo): scrubber appears once duration is known (including at 0:00) | ⬜ |
 | 3 | I125-A03 | Android TV IPTV **live** (Exo): bottom progress row is absent; transport controls remain | ⬜ |
-| 4 | I125-A04 | Android TV IPTV **movie/series** (Exo): scrubber visible like MediaKit once duration is known; ←/→ seek still works | ⬜ |
+| 4 | I125-A04 | Android TV IPTV **movie/series** (Exo): scrubber visible like MediaKit once duration is known; OK-armed ←/→ scrub still works | ⬜ |
 
 ---
 

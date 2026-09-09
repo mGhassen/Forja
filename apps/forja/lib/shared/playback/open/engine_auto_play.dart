@@ -248,6 +248,8 @@ Future<void> runEngineAutoPlay({
   }
 
   late final StreamLoadingSession loadingSession;
+  /// Mid-race tap on the overlay server list — set after the race starts.
+  void Function(String pluginId)? liveManualCheck;
   void cancel() {
     cancelled = true;
     playGen++;
@@ -265,6 +267,7 @@ Future<void> runEngineAutoPlay({
     initialMessage: 'Finding Forja servers…',
     subtitle: loadingSubtitle,
     onCancel: cancel,
+    onManualCheckProvider: (id) => liveManualCheck?.call(id),
   );
   final fadeOutNotifier = loadingSession.fadeOutNotifier;
   final messageNotifier = loadingSession.messageNotifier;
@@ -327,7 +330,7 @@ Future<void> runEngineAutoPlay({
           id,
     ];
 
-    final pinPlugin = preferredPluginId?.trim();
+    var pinPlugin = preferredPluginId?.trim();
     final resumeAt = startPosition;
     var pinActive =
         pinPlugin != null &&
@@ -501,6 +504,13 @@ Future<void> runEngineAutoPlay({
         return;
       }
 
+      // Mid-race pin: ignore other plugins' hits until the pin fails.
+      if (pinActive && pluginId != pinPlugin) {
+        statusById[pluginId] = StreamProviderProbeStatus.pending;
+        publishProbes();
+        return;
+      }
+
       probingIds.add(pluginId);
       probingCount++;
       statusById[pluginId] = StreamProviderProbeStatus.trying;
@@ -510,6 +520,7 @@ Future<void> runEngineAutoPlay({
       try {
         for (final row in rows) {
           if (playAborted() || race.isCompleted) break;
+          if (pinActive && pluginId != pinPlugin) break;
           final probed = await buildProbedEngineCatalogSources(
             profile: profile,
             settings: settings,
@@ -518,6 +529,7 @@ Future<void> runEngineAutoPlay({
             preferFirst: row,
           );
           if (probed.isEmpty) continue;
+          if (pinActive && pluginId != pinPlugin) break;
           statusById[pluginId] = StreamProviderProbeStatus.success;
           publishProbes();
           if (!race.isCompleted) {
@@ -598,7 +610,9 @@ Future<void> runEngineAutoPlay({
       if (playAborted() || gen != fetchGen || race.isCompleted) return;
       final slots = poolLimit - inFlight.length;
       if (slots <= 0) return;
-      final raceIds = pinActive ? [pinPlugin!] : pluginIds;
+      final pinId = pinPlugin;
+      final raceIds =
+          pinActive && pinId != null && pinId.isNotEmpty ? [pinId] : pluginIds;
       final next = nextEnginePluginBatch(
         orderedIds: raceIds,
         selectedIds: raceIds.toSet(),
@@ -627,6 +641,63 @@ Future<void> runEngineAutoPlay({
       syncOverlayFromPool();
     }
 
+    void prioritizePlugin(String id) {
+      if (playAborted() || race.isCompleted) return;
+      final trimmed = id.trim();
+      if (trimmed.isEmpty || !pluginIds.contains(trimmed)) return;
+      if (statusById[trimmed] == StreamProviderProbeStatus.skippedOnTv) {
+        return;
+      }
+      // Same pin already racing — no-op.
+      if (pinActive && pinPlugin == trimmed) return;
+
+      pinPlugin = trimmed;
+      pinActive = true;
+      pluginIds = [
+        trimmed,
+        ...pluginIds.where((other) => other != trimmed),
+      ];
+
+      // DOWN / already-fetched empty → retry this server.
+      if (statusById[trimmed] == StreamProviderProbeStatus.failed ||
+          (fetchedIds.contains(trimmed) &&
+              !streams.any((s) => engineStreamBelongsToPlugin(s, trimmed)))) {
+        fetchedIds.remove(trimmed);
+        streams.removeWhere((s) => engineStreamBelongsToPlugin(s, trimmed));
+        statusById[trimmed] = StreamProviderProbeStatus.pending;
+      }
+
+      messageNotifier.value = 'Checking servers…';
+      publishProbes();
+      abortPool();
+
+      final gen = ++fetchGen;
+      if (fetchedIds.contains(trimmed)) {
+        final cachedRows = streams
+            .where((s) => engineStreamBelongsToPlugin(s, trimmed))
+            .map((s) => Map<String, dynamic>.from(s))
+            .toList();
+        unawaited(() async {
+          await onPluginDone(trimmed, cachedRows);
+          if (playAborted() || race.isCompleted || gen != fetchGen) return;
+          if (pinActive && pinPlugin == trimmed) {
+            // Pin had rows but every probe failed — resume the full race.
+            pinActive = false;
+          }
+          if (!race.isCompleted && !playAborted()) {
+            fillPool(fetchGen);
+            syncOverlayFromPool();
+          }
+        }());
+        return;
+      }
+
+      fillPool(gen);
+      syncOverlayFromPool();
+    }
+
+    liveManualCheck = prioritizePlugin;
+
     publishProbes();
 
     final cachedIds = [
@@ -646,13 +717,14 @@ Future<void> runEngineAutoPlay({
     }
 
     if (pinActive && !race.isCompleted && !playAborted() && pinPlugin != null) {
-      if (!fetchedIds.contains(pinPlugin) && !inFlight.contains(pinPlugin)) {
+      final pinId = pinPlugin!;
+      if (!fetchedIds.contains(pinId) && !inFlight.contains(pinId)) {
         final gen = ++fetchGen;
-        inFlight.add(pinPlugin);
+        inFlight.add(pinId);
         try {
-          await runAndApply(pinPlugin, gen);
+          await runAndApply(pinId, gen);
         } finally {
-          inFlight.remove(pinPlugin);
+          inFlight.remove(pinId);
         }
       }
     }
@@ -663,20 +735,19 @@ Future<void> runEngineAutoPlay({
       );
       var gen = ++fetchGen;
       fillPool(gen);
-      while (!playAborted() &&
-          !race.isCompleted &&
-          (workActive() || probingCount > 0)) {
-        await Future<void>.delayed(const Duration(milliseconds: 40));
-      }
-      if (pinActive && !race.isCompleted && !playAborted()) {
-        pinActive = false;
-        gen = ++fetchGen;
-        fillPool(gen);
-        while (!playAborted() &&
-            !race.isCompleted &&
-            (workActive() || probingCount > 0)) {
-          await Future<void>.delayed(const Duration(milliseconds: 40));
+      while (!playAborted() && !race.isCompleted) {
+        // Pin extract/probe finished without a win — resume the full pool.
+        if (pinActive &&
+            pinPlugin != null &&
+            fetchedIds.contains(pinPlugin) &&
+            !inFlight.contains(pinPlugin) &&
+            !probingIds.contains(pinPlugin)) {
+          pinActive = false;
+          gen = ++fetchGen;
+          fillPool(gen);
         }
+        if (!workActive() && probingCount == 0 && !pinActive) break;
+        await Future<void>.delayed(const Duration(milliseconds: 40));
       }
       maybeCompleteEmpty();
     }

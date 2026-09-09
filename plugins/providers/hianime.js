@@ -52,6 +52,41 @@ function extract(ctx) {
     };
   }
 
+  // MegaPlay getSources: plaintext sources.file OR AES-CBC `enc` (newclient.min.js).
+  // Prefer s=tcdn — default CDN (imgnex) 403s outside their player; tcdn → akirax works.
+  var MEGAPLAY_AES_KEY = 'i?LMTAx0Q6,:}50U';
+  var MEGAPLAY_AES_IV = "W0;27ToaUpl_P%'c";
+
+  function fileFromGetSources(json) {
+    var file = json && json.sources && json.sources.file;
+    if (typeof file === 'string' && file) return file;
+    var enc = json && json.enc;
+    if (!enc || typeof enc !== 'string') return '';
+    try {
+      var C = ctx.crypto || globalThis.CryptoJS;
+      if (!C || !C.AES) return '';
+      var keyHex = C.enc.Utf8.parse(MEGAPLAY_AES_KEY).toString(C.enc.Hex);
+      while (keyHex.length < 64) keyHex += '00';
+      var key = C.enc.Hex.parse(keyHex.substring(0, 64));
+      var iv = C.enc.Utf8.parse(MEGAPLAY_AES_IV);
+      var pt = C.AES.decrypt(
+        { ciphertext: C.enc.Base64.parse(enc) },
+        key,
+        { iv: iv, mode: C.mode.CBC, padding: C.pad.Pkcs7 },
+      );
+      var text = C.enc.Utf8.stringify(pt);
+      if (!text) return '';
+      var parsed = JSON.parse(text);
+      return (parsed && parsed.file) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getSourcesUrl(origin, id) {
+    return origin + '/stream/getSources?id=' + id + '&id=' + id + '&s=tcdn';
+  }
+
   function extractSources(apiUrl, referer, origin, name, kind) {
     return getJson(apiUrl, {
       'X-Requested-With': 'XMLHttpRequest',
@@ -59,7 +94,7 @@ function extract(ctx) {
       Origin: origin,
     })
       .then(function (json) {
-        var file = json && json.sources && json.sources.file;
+        var file = fileFromGetSources(json);
         if (!file) return [];
         if (file.indexOf('mewstream.buzz') >= 0) {
           var tracks = json.tracks || [];
@@ -83,6 +118,7 @@ function extract(ctx) {
           {
             url: file,
             name: 'HiAnime [' + name + '] (' + kind.toUpperCase() + ')',
+            language: kind === 'dub' ? 'Dub' : 'Sub',
             headers: { 'User-Agent': ua, Referer: origin + '/', Origin: origin },
           },
         ];
@@ -101,7 +137,7 @@ function extract(ctx) {
         if (ids.id) {
           tasks.push(
             extractSources(
-              megaplay + '/stream/getSources?id=' + ids.id + '&id=' + ids.id,
+              getSourcesUrl(megaplay, ids.id),
               megaUrl,
               megaplay,
               'MegaPlay',
@@ -116,7 +152,7 @@ function extract(ctx) {
               var v = playerId(vidHtml);
               if (!v.id) return [];
               return extractSources(
-                vidwish + '/stream/getSources?id=' + v.id + '&id=' + v.id,
+                getSourcesUrl(vidwish, v.id),
                 vidPage,
                 vidwish,
                 'Vidwish',
@@ -130,7 +166,7 @@ function extract(ctx) {
               var m = playerId(mcHtml);
               if (!m.id) return [];
               return extractSources(
-                megacloud + '/stream/getSources?id=' + m.id + '&id=' + m.id,
+                getSourcesUrl(megacloud, m.id),
                 mcPage,
                 megacloud,
                 'MegaCloud',
@@ -138,14 +174,14 @@ function extract(ctx) {
               );
             }),
           );
-          var vidtube = cfg.vidtube.replace(/\/$/, '');
+          var vidtube = String(cfg.vidtube || '').replace(/\/$/, '');
           var vtPage = vidtube + '/stream/s-2/' + ids.real + '/' + kind;
           tasks.push(
             getText(vtPage, { Referer: megaUrl }).then(function (vtHtml) {
               var v = playerId(vtHtml);
               if (!v.id) return [];
               return extractSources(
-                vidtube + '/stream/getSources?id=' + v.id + '&id=' + v.id,
+                getSourcesUrl(vidtube, v.id),
                 vtPage,
                 vidtube,
                 'VidTube',
