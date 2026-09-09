@@ -257,8 +257,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [251-[fixed]-…](fixed/251-[fixed]-live-sports-streamed-empty-nested-skip.md) | Live Sports empty while Streamed logs streams=N | P0 | High | fixed | Complete · 3/3 · A 0/1 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
 | [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
 | [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 3/3 · A 1/2 | — |
-| [254-[open]-…](254-[open]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | open | 6/6 · A 0/1 | — |
+| [254-[open]-…](254-[open]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | open | 7/7 · A 0/2 | — |
 | [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 0/5 · A 0/2 | [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md) |
+| [256-[fixed]-…](fixed/256-[fixed]-android-tv-plugin-pack-update-focus.md) | ATV plugin pack update dialog focus stays on shell | P1 | High | fixed | Complete · 2/2 · A 1/2 | [173](173-[open]-android-tv-update-dialog-focus-leak.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

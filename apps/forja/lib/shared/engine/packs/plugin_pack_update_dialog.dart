@@ -19,6 +19,8 @@ class PluginPackUpdateOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return TvOverlayScope(
       debugLabel: 'plugin-pack-update',
+      // Body owns Update-all focus with retries (shell reclaim after openSettings).
+      autofocusFirst: false,
       onDismiss: onDismiss,
       child: Material(
         type: MaterialType.transparency,
@@ -68,11 +70,27 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
   @override
   void initState() {
     super.initState();
+    // Stacked over the shell (and after openSettings) — claim Update all so
+    // ATV D-pad cannot stay on the poster underneath (same class as I173).
+    _claimPrimaryFocus();
+  }
+
+  void _claimPrimaryFocus({int attempt = 0}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.metricsOf(context).usesTvDensity) return;
-      if (_confirmFocus.canRequestFocus) _confirmFocus.requestFocus();
+      if (!_tvFocusActive(context)) return;
+      if (_confirmFocus.canRequestFocus) {
+        _confirmFocus.requestFocus();
+        if (_confirmFocus.hasPrimaryFocus) return;
+      }
+      if (attempt < 4) _claimPrimaryFocus(attempt: attempt + 1);
     });
+  }
+
+  static bool _tvFocusActive(BuildContext context) {
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    return policy?.useFocusableMoodChips ??
+        resolveShellProfile(context) == ShellProfile.tv;
   }
 
   @override
@@ -107,7 +125,7 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
     final title = count == 1
         ? 'Update plugin pack?'
         : 'Update $count plugin packs?';
-    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final tv = _tvFocusActive(context);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 440),

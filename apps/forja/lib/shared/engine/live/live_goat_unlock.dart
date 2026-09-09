@@ -288,6 +288,16 @@ class LiveGoatUnlock {
     }
   }
 
+  /// Upstream WatchFooty stream mirrors for [matchId] (embeds / direct URLs).
+  /// Empty when the site has no links yet — Providers must not invent a row.
+  static Future<List<Map<String, dynamic>>> listWatchfootyMatchStreams(
+    String matchId,
+  ) async {
+    final mid = matchId.trim().replaceFirst(RegExp(r'^wf_'), '');
+    if (mid.isEmpty) return const [];
+    return _watchfootyMatchStreams(mid);
+  }
+
   /// Prefer `/matches/live` (fast, often already has `streams`) over the slow
   /// `/match/{id}` detail (~15–20s+).
   static Future<List<Map<String, dynamic>>> _watchfootyMatchStreams(

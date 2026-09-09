@@ -32,8 +32,9 @@ Index: [no-embed-playback](./no-embed-playback.mdc) · [issue 254](../../docs/is
 | Promote catalog `streams[]` or `sources[].iframe` into Providers | Catalog is not a resolver |
 | Soft-match broadcast-only catalogs into stream rows | Guides ≠ streams |
 | Require a catalog iframe before calling live `resolve` | Live packs take `matchId` / `eventId` |
+| Invent `pending:` / preparing Providers rows when upstream has 0 links | Catalog shows the fixture; Providers only lists real discovered mirrors |
 
-**Right:** soft-match `providerId` catalogs → pending / Streamed list → `LivePluginEngine.resolve` on play.
+**Right:** soft-match `providerId` catalogs → live discover (Streamed list / WatchFooty stream list / live resolve). Empty discover → no Providers row. Unlock on play for listed embeds.
 
 ---
 
@@ -42,6 +43,7 @@ Index: [no-embed-playback](./no-embed-playback.mdc) · [issue 254](../../docs/is
 ```
 ❌ catalog row: { streams: [{ embedUrl }], iframe: 'https://embed…' }
 ❌ Providers paints Live Soccer TV as a stream source
-✅ catalog row: { sources: [{ source: 'ppv', id: '123' }] }
-✅ live-ppv resolve(matchId) fetches embeds + unlocks
+❌ Providers invents pending WatchFooty row while site Stream links (0)
+✅ catalog row: { sources: [{ source: 'ppv', id: '123' }] }  // schedule may still show match
+✅ Providers lists only when live discover returns real mirrors; unlock on play
 ```

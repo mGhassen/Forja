@@ -247,7 +247,8 @@ abstract final class LiveResolveStreams {
     return _stremioCatalogEventMatch(a, b);
   }
 
-  /// Providers list only — embed / stream mirrors. Goat unlock happens on play.
+  /// Providers list only — real mirrors from live discover. Unlock on play.
+  /// Catalog stays schedule-complete; never invent `pending:` rows here.
   static Future<List<MatchStream>> _forjaLiveStreamsFromSource(
     MatchEvent match,
     MatchSourceRef source,
@@ -269,38 +270,114 @@ abstract final class LiveResolveStreams {
 
     // Streamed: live/Rust lists mirrors by source+id (never catalog embeds).
     if (_isStreamedPkGoatSource(token)) {
-      final listed = await _fetchStreamedStreams(source, allowFallback: true);
-      if (listed.isNotEmpty) {
-        return [
-          for (final s in listed)
-            MatchStream(
-              id: s.id.isNotEmpty ? s.id : source.id,
-              streamNo: s.streamNo > 0 ? s.streamNo : 1,
-              language: s.language,
-              hd: s.hd,
-              embedUrl: s.embedUrl,
-              source: s.source.trim().isNotEmpty ? s.source : pluginSource,
-              viewers: s.viewers > 0 ? s.viewers : match.viewers,
-              directPlayback: false,
-            ),
-        ];
-      }
+      final listed = await _fetchStreamedStreams(source, allowFallback: false);
+      return [
+        for (final s in listed)
+          MatchStream(
+            id: s.id.isNotEmpty ? s.id : source.id,
+            streamNo: s.streamNo > 0 ? s.streamNo : 1,
+            language: s.language,
+            hd: s.hd,
+            embedUrl: s.embedUrl,
+            source: s.source.trim().isNotEmpty ? s.source : pluginSource,
+            viewers: s.viewers > 0 ? s.viewers : match.viewers,
+            directPlayback: false,
+          ),
+      ];
     }
 
-    // Non-Streamed packs: one pending row — live resolve discovers on play.
-    if (source.id.trim().isEmpty) return const [];
-    return [
-      MatchStream(
-        id: source.id,
-        streamNo: 1,
-        language: '',
-        hd: false,
-        embedUrl: 'pending:${match.id}:${source.id}:1',
-        source: pluginSource.isNotEmpty ? pluginSource : source.source,
-        viewers: match.viewers,
-        directPlayback: false,
-      ),
-    ];
+    return _discoverLivePackStreams(
+      match: match,
+      source: source,
+      pluginId: pluginId,
+      pluginSource: pluginSource,
+    );
+  }
+
+  /// Live pack stream discover for Providers — empty when upstream has no links.
+  static Future<List<MatchStream>> _discoverLivePackStreams({
+    required MatchEvent match,
+    required MatchSourceRef source,
+    required String pluginId,
+    required String pluginSource,
+  }) async {
+    final mid = source.id.trim();
+    if (mid.isEmpty) return const [];
+
+    final unlockKind = await LivePluginEngine.pluginNativeUnlock(pluginId);
+
+    // WatchFooty: list site stream links (same as Stream links N). Unlock on play.
+    if (unlockKind == 'watchfooty') {
+      final raw = await LiveGoatUnlock.listWatchfootyMatchStreams(mid);
+      final out = <MatchStream>[];
+      final seen = <String>{};
+      for (var i = 0; i < raw.length; i++) {
+        final row = raw[i];
+        final embed = (row['url'] ?? '').toString().trim();
+        if (embed.isEmpty || !seen.add(embed)) continue;
+        final src = (row['source'] ?? '').toString().trim();
+        final quality = (row['quality'] ?? '').toString().trim();
+        final language = [
+          if (src.isNotEmpty) src,
+          if (quality.isNotEmpty) quality,
+        ].join(' ');
+        out.add(
+          MatchStream(
+            id: mid,
+            streamNo: out.length + 1,
+            language: language,
+            hd: quality.toLowerCase().contains('hd'),
+            embedUrl: embed,
+            source: src.isNotEmpty ? src : pluginSource,
+            viewers: match.viewers,
+            directPlayback: iptvLiveEnginePlayUrlReady(embed),
+          ),
+        );
+      }
+      return out;
+    }
+
+    // Other live packs: resolve returns only real unlockable / playable rows.
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await EngineService.instance.runLivePlugin(
+        pluginId: pluginId,
+        action: 'resolve',
+        params: {
+          'matchId': mid,
+          'eventId': match.id,
+          'source': pluginSource.isNotEmpty ? pluginSource : source.source,
+          'category': match.category,
+          'title': match.title,
+          'stream': '1',
+          'viewers': match.viewers,
+        },
+      );
+    } catch (e) {
+      debugPrint('[LiveResolveStreams] discover $pluginId/$mid: $e');
+      return const [];
+    }
+
+    final out = <MatchStream>[];
+    final seen = <String>{};
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      if (row['webviewOnly'] == true) continue;
+      final url = (row['url'] ?? '').toString().trim();
+      if (url.isEmpty || !seen.add(url)) continue;
+      // Skip unresolved placeholders — Providers is resolve-only.
+      if (url.startsWith('pending:')) continue;
+      out.add(
+        _streamFromResolveRow(
+          row: row,
+          source: source,
+          match: match,
+          pluginSource: pluginSource,
+          index: out.length,
+        ),
+      );
+    }
+    return out;
   }
 
   static bool _isStreamedPkGoatSource(String source) {

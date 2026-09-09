@@ -77,10 +77,18 @@ class _PluginPackUpdatePromptHostState extends State<PluginPackUpdatePromptHost>
   @override
   Widget build(BuildContext context) {
     final updates = _updates;
+    final open = updates != null;
     return Stack(
       fit: StackFit.expand,
       children: [
-        widget.child,
+        // Shell under the confirm must not keep / reclaim D-pad focus.
+        IgnorePointer(
+          ignoring: open,
+          child: ExcludeFocus(
+            excluding: open,
+            child: widget.child,
+          ),
+        ),
         if (updates != null)
           Positioned.fill(
             child: PluginPackUpdateOverlay(
