@@ -4,7 +4,7 @@
   "name": "ForjaHQ IPTV VOD",
   "description": "IPTV portal movie and series details with optional TMDB enrich.",
   "author": "ForjaHQ",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "tags": [
     "iptv"
   ],
