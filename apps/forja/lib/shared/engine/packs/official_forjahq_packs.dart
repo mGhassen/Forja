@@ -1,7 +1,7 @@
-/// Official ForjaHQ pack install targets for onboarding.
+/// Official ForjaHQ pack install targets for offline / empty-catalog fallback.
 ///
-/// Public Community Packs `catalog.json` does not expose install URLs.
-/// These match `apps/web/src/lib/generated/plugin-pack-sources.ts`.
+/// Live lists prefer admin-published `plugin_packs` (Supabase). Pack files stay
+/// on GitHub raw via [manifestUrl].
 class OfficialForjaHqPack {
   const OfficialForjaHqPack({
     required this.id,
@@ -188,7 +188,6 @@ const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
 ];
 
 const kCommunityPacksUrl = 'https://www.forjahq.xyz/plugins';
-const kPluginCatalogUrl = 'https://www.forjahq.xyz/plugins/catalog.json';
 
 /// Official GitHub raw manifest for a [EnginePack.forjaHqSlot], or null.
 ///

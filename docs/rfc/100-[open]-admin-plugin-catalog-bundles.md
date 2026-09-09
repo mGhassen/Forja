@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **8 / 8** acceptance (admin) · **6 / 6** acceptance (app) · **3 / 3** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
-| **Current slice** | Shipped in code — apply Supabase migration `plugin_catalog_bundles` before prod catalog goes live |
+| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **6 / 6** acceptance (app) · **4 / 4** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
+| **Current slice** | Admin register/validate proxies pack fetch + normalizes GitHub blob URLs |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -39,6 +39,7 @@
 | 6 | R100-A06 | Product bundle CRUD with ordered pack items | ✅ |
 | 7 | R100-A07 | Publish / unpublish bundle | ✅ |
 | 8 | R100-A08 | Seed official packs from current ForjaHQ set | ✅ |
+| 9 | R100-A22 | Register / validate fetch via admin proxy; normalize GitHub blob → raw `manifest.json` | ✅ |
 
 ---
 
@@ -62,6 +63,7 @@
 | 1 | R100-A15 | Community Packs prefer published Supabase packs | ✅ |
 | 2 | R100-A16 | Static `catalog.json` remains fallback | ✅ |
 | 3 | R100-A17 | Public UI still hides install URLs | ✅ |
+| 4 | R100-A21 | Web Community Packs are admin-published only — no static `catalog.json` / generated source map | ✅ |
 
 ---
 
@@ -77,7 +79,7 @@
 
 ## Summary
 
-Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the published catalog; install still downloads from GitHub URLs.
+Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback.
 
 **Bundle** in this RFC = product set of packs. Not RFC-083 `manifest.bundle[]` file lists.
 

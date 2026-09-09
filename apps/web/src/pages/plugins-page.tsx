@@ -237,10 +237,9 @@ export function PluginsPage() {
                     <span className="text-forja-flame">pack catalog.</span>
                   </h2>
                   <p className="mt-4 text-[rgba(237,230,218,0.55)]">
-                    Curated official packs from the Forja repo — the same
-                    manifests anyone can fork, remix, and host. Search, pick a
-                    pack, add it to your profile; the app downloads and installs
-                    the scripts.
+                    Packs published from Forja admin — the same manifests anyone
+                    can fork, remix, and host. Search, pick a pack, add it to
+                    your profile; the app downloads and installs the scripts.
                   </p>
                 </div>
               </Reveal>

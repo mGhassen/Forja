@@ -1,4 +1,3 @@
-import { PLUGIN_PACK_SOURCES } from '@/lib/generated/plugin-pack-sources'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
 export type ForjaPluginCatalogEntry = {
@@ -16,11 +15,6 @@ export type ForjaPluginCatalogEntry = {
   pluginCount?: number
   /** Topic tags for filters (anime, arabic, kids, …). */
   tags?: string[]
-}
-
-export type ForjaPluginCatalog = {
-  schema: number
-  packs: ForjaPluginCatalogEntry[]
 }
 
 export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
@@ -75,11 +69,48 @@ export function packAuthorLabel(pack: ForjaPluginPackLive): string | undefined {
   return author || undefined
 }
 
-/** Published packs from Supabase (RFC-100). Empty when unconfigured / empty table. */
+function rowToLivePack(row: {
+  id: string | null
+  kind: string | null
+  name: string | null
+  description: string | null
+  accent: string | null
+  official: boolean | null
+  recommended: boolean | null
+  author: string | null
+  cached_version: string | null
+  plugin_count: number | null
+  tags: string[] | null
+  manifest_url: string | null
+}): ForjaPluginPackLive | null {
+  const id = row.id?.trim()
+  const manifestUrl = row.manifest_url?.trim()
+  const name = row.name?.trim()
+  if (!id || !manifestUrl || !name) return null
+  const accent = row.accent === 'flame' ? 'flame' : 'brand'
+  return {
+    id,
+    kind: row.kind?.trim() || 'providers',
+    name,
+    description: row.description ?? '',
+    accent,
+    official: row.official === true,
+    recommended: row.recommended === true,
+    author: row.author ?? undefined,
+    version: row.cached_version ?? undefined,
+    pluginCount: row.plugin_count ?? undefined,
+    tags: row.tags ?? [],
+    manifestUrl,
+  }
+}
+
+/** Published packs from admin / Supabase (RFC-100). Empty list when none published. */
 export async function fetchPublishedPluginPacksFromSupabase(): Promise<
   ForjaPluginPackLive[]
 > {
-  if (!supabaseConfigured) return []
+  if (!supabaseConfigured) {
+    throw new Error('Plugin catalog requires Supabase.')
+  }
   const { data, error } = await supabase
     .from('plugin_packs')
     .select(
@@ -88,70 +119,20 @@ export async function fetchPublishedPluginPacksFromSupabase(): Promise<
     .eq('published', true)
     .order('sort_order', { ascending: true })
     .order('id', { ascending: true })
-  if (error || !data?.length) return []
+  if (error) {
+    throw new Error(error.message || 'Could not load published packs.')
+  }
   const packs: ForjaPluginPackLive[] = []
-  for (const row of data) {
-    const id = row.id?.trim()
-    const manifestUrl = row.manifest_url?.trim()
-    const name = row.name?.trim()
-    if (!id || !manifestUrl || !name) continue
-    const accent = row.accent === 'flame' ? 'flame' : 'brand'
-    packs.push({
-      id,
-      kind: row.kind?.trim() || 'providers',
-      name,
-      description: row.description ?? '',
-      accent,
-      official: row.official === true,
-      recommended: row.recommended === true,
-      author: row.author ?? undefined,
-      version: row.cached_version ?? undefined,
-      pluginCount: row.plugin_count ?? undefined,
-      tags: row.tags ?? [],
-      manifestUrl,
-    })
+  for (const row of data ?? []) {
+    const pack = rowToLivePack(row)
+    if (pack) packs.push(pack)
   }
   return packs
 }
 
-export async function fetchPluginCatalog(): Promise<ForjaPluginCatalog> {
-  const res = await fetch('/plugins/catalog.json', { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error('Could not load plugin catalog.')
-  }
-  const data = (await res.json()) as ForjaPluginCatalog
-  if (!Array.isArray(data.packs)) {
-    throw new Error('Plugin catalog is invalid.')
-  }
-  return data
-}
-
-/** Attach install URLs from the generated source map (no remote manifest fetch). */
-export function hydratePluginCatalog(
-  catalog: ForjaPluginCatalog,
-): ForjaPluginPackLive[] {
-  const packs: ForjaPluginPackLive[] = []
-  for (const entry of catalog.packs) {
-    const manifestUrl = PLUGIN_PACK_SOURCES[entry.id]?.trim()
-    if (!manifestUrl) continue
-    packs.push({ ...entry, manifestUrl })
-  }
-  return packs
-}
-
-/**
- * Live catalog for Community Packs UI.
- * Prefer Supabase published packs; fall back to static catalog.json + generated URLs.
- */
+/** Community Packs UI — admin-published packs only. */
 export async function loadLivePluginCatalog(): Promise<ForjaPluginPackLive[]> {
-  try {
-    const remote = await fetchPublishedPluginPacksFromSupabase()
-    if (remote.length > 0) return remote
-  } catch {
-    // fall through
-  }
-  const catalog = await fetchPluginCatalog()
-  return hydratePluginCatalog(catalog)
+  return fetchPublishedPluginPacksFromSupabase()
 }
 
 export function groupPluginPacksByKind(

@@ -1,5 +1,7 @@
 import type { Database, Json } from '@/lib/database.types'
 import { adminDb } from '@/lib/admin-db'
+import { normalizePluginPackUrl } from '@/lib/plugin-pack-url'
+import { supabase } from '@/lib/supabase'
 
 export type PluginPack = Database['public']['Tables']['plugin_packs']['Row']
 export type PluginPackInsert =
@@ -26,6 +28,8 @@ export type PackValidationResult = {
   warnings: string[]
   checkedFiles: string[]
   missingFiles: string[]
+  /** Normalized install URL used for the check (raw GitHub when applicable). */
+  manifestUrl?: string
 }
 
 const SUPPORTED_KINDS = new Set(['http', 'hop', 'catalog', 'host', 'torrent'])
@@ -131,27 +135,57 @@ export function validateManifestJson(
   }
 }
 
-export async function fetchManifest(url: string): Promise<unknown> {
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error(`manifest HTTP ${res.status} for ${url}`)
+export async function resolveAndFetchManifest(
+  url: string,
+): Promise<{ url: string; data: unknown }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('Not signed in')
+
+  const res = await fetch('/api/plugin-pack-fetch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ url: url.trim(), mode: 'json' }),
+  })
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: string
+    url?: string
+    data?: unknown
   }
-  return res.json() as Promise<unknown>
+  if (!res.ok || json.data === undefined) {
+    throw new Error(json.error || `manifest fetch failed (${res.status})`)
+  }
+  return {
+    url: json.url?.trim() || normalizePluginPackUrl(url),
+    data: json.data,
+  }
+}
+
+export async function fetchManifest(url: string): Promise<unknown> {
+  const { data } = await resolveAndFetchManifest(url)
+  return data
 }
 
 async function fileExists(url: string): Promise<boolean> {
   try {
-    const head = await fetch(url, { method: 'HEAD', cache: 'no-store' })
-    if (head.ok) return true
-    if (head.status === 405 || head.status === 403) {
-      const get = await fetch(url, {
-        method: 'GET',
-        cache: 'no-store',
-        headers: { Range: 'bytes=0-0' },
-      })
-      return get.ok || get.status === 206
-    }
-    return false
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) return false
+    const res = await fetch('/api/plugin-pack-fetch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ url, mode: 'exists' }),
+    })
+    const json = (await res.json().catch(() => ({}))) as { exists?: boolean }
+    return res.ok && json.exists === true
   } catch {
     return false
   }
@@ -160,13 +194,13 @@ async function fileExists(url: string): Promise<boolean> {
 export async function validatePackAtUrl(
   manifestUrl: string,
 ): Promise<PackValidationResult> {
-  const raw = await fetchManifest(manifestUrl)
-  const parsed = validateManifestJson(raw)
+  const resolved = await resolveAndFetchManifest(manifestUrl)
+  const parsed = validateManifestJson(resolved.data)
   const checkedFiles: string[] = []
   const missingFiles: string[] = []
 
   for (const rel of parsed.files) {
-    const fileUrl = joinUrl(manifestUrl, rel)
+    const fileUrl = joinUrl(resolved.url, rel)
     checkedFiles.push(rel)
     const ok = await fileExists(fileUrl)
     if (!ok) missingFiles.push(rel)
@@ -187,8 +221,11 @@ export async function validatePackAtUrl(
     warnings: parsed.warnings,
     checkedFiles,
     missingFiles,
+    manifestUrl: resolved.url,
   }
 }
+
+export { normalizePluginPackUrl } from '@/lib/plugin-pack-url'
 
 export async function listPluginPacks(): Promise<PluginPack[]> {
   const { data, error } = await adminDb
@@ -241,6 +278,7 @@ export async function persistValidation(
     last_validated_at: new Date().toISOString(),
     last_validation: result as unknown as Json,
     ...(result.name ? { name: result.name } : {}),
+    ...(result.manifestUrl ? { manifest_url: result.manifestUrl } : {}),
   })
 }
 

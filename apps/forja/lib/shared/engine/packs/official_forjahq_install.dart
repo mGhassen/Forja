@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
@@ -9,9 +7,8 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:http/http.dart' as http;
 
-/// Resolve official ForjaHQ packs (Supabase published → catalog.json → baked).
+/// Resolve official packs (admin-published Supabase → baked offline fallback).
 Future<List<OfficialForjaHqPack>> resolveOfficialForjaHqPacks() async {
   final remote = await PluginCatalogRemote.fetchPublishedPacks();
   if (remote.isNotEmpty) {
@@ -22,70 +19,6 @@ Future<List<OfficialForjaHqPack>> resolveOfficialForjaHqPacks() async {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return out;
-  }
-
-  final byId = {
-    for (final p in kOfficialForjaHqPacks) p.id: p,
-  };
-  try {
-    final res = await http
-        .get(Uri.parse(kPluginCatalogUrl))
-        .timeout(const Duration(seconds: 12));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      return List<OfficialForjaHqPack>.from(kOfficialForjaHqPacks);
-    }
-    final decoded = jsonDecode(res.body);
-    if (decoded is! Map) {
-      return List<OfficialForjaHqPack>.from(kOfficialForjaHqPacks);
-    }
-    final packs = decoded['packs'];
-    if (packs is! List) {
-      return List<OfficialForjaHqPack>.from(kOfficialForjaHqPacks);
-    }
-    final out = <OfficialForjaHqPack>[];
-    for (final raw in packs) {
-      if (raw is! Map) continue;
-      if (raw['official'] != true) continue;
-      final id = (raw['id'] as String?)?.trim() ?? '';
-      if (id.isEmpty) continue;
-      final baked = byId[id];
-      if (baked == null) continue;
-      final name = (raw['name'] as String?)?.trim();
-      final desc = (raw['description'] as String?)?.trim();
-      final kind = (raw['kind'] as String?)?.trim();
-      final tagsRaw = raw['tags'];
-      final tags = <String>[
-        if (tagsRaw is List)
-          for (final t in tagsRaw)
-            if (t is String && t.trim().isNotEmpty) t.trim(),
-      ];
-      final recommended = raw['recommended'] == true ||
-          baked.recommended ||
-          kOfficialRecommendedPackIds.contains(id);
-      out.add(
-        OfficialForjaHqPack(
-          id: baked.id,
-          name: (name != null && name.isNotEmpty) ? name : baked.name,
-          description: (desc != null && desc.isNotEmpty)
-              ? desc
-              : baked.description,
-          kind: (kind != null && kind.isNotEmpty) ? kind : baked.kind,
-          tags: tags.isNotEmpty ? tags : baked.tags,
-          recommended: recommended,
-          manifestUrl: baked.manifestUrl,
-        ),
-      );
-    }
-    if (out.isNotEmpty) {
-      out.sort((a, b) {
-        final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
-        if (byRec != 0) return byRec;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
-      return out;
-    }
-  } catch (e) {
-    debugPrint('[OfficialPacks] catalog fetch failed: $e');
   }
   return List<OfficialForjaHqPack>.from(kOfficialForjaHqPacks);
 }

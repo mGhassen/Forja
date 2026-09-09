@@ -4,9 +4,11 @@ import {
   CheckCircle2,
   ExternalLink,
   Package,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
+  Upload,
   XCircle,
 } from 'lucide-react'
 import {
@@ -20,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RowActionsMenu } from '@/components/ui/row-actions-menu'
 import {
   Select,
   SelectContent,
@@ -32,10 +35,10 @@ import {
   deletePluginBundle,
   deletePluginPack,
   errMessage,
-  fetchManifest,
   listPluginBundles,
   listPluginPacks,
   persistValidation,
+  resolveAndFetchManifest,
   slugifyId,
   updatePluginBundle,
   updatePluginPack,
@@ -716,72 +719,66 @@ export function AdminPluginsPage() {
                         ) : null}
                         {show('actions') ? (
                           <td className={tdClassName}>
-                            <div className="flex flex-wrap gap-1">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                disabled={busyId === pack.id || bulkBusy}
-                                onClick={() => void runValidate(pack)}
-                              >
-                                <RefreshCw
-                                  className={cn(
-                                    'size-3.5',
-                                    busyId === pack.id && 'animate-spin',
-                                  )}
-                                />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditPack(pack)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() =>
-                                  void updatePluginPack(pack.id, {
-                                    published: !pack.published,
-                                  }).then(() =>
-                                    qc.invalidateQueries({
-                                      queryKey: ['admin', 'plugin_packs'],
-                                    }),
-                                  )
-                                }
-                              >
-                                {pack.published ? 'Unpub' : 'Publish'}
-                              </Button>
-                              <a
-                                href={pack.manifest_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center rounded-md px-2 py-1 text-forja-muted hover:text-forja-text"
-                              >
-                                <ExternalLink className="size-3.5" />
-                              </a>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="text-red-400"
-                                onClick={() => {
-                                  if (
-                                    !confirm(
-                                      `Delete pack ${pack.id}? Bundles that include it will block delete.`,
+                            <RowActionsMenu
+                              disabled={busyId === pack.id || bulkBusy}
+                              items={[
+                                {
+                                  label: 'Validate',
+                                  icon: (
+                                    <RefreshCw
+                                      className={cn(
+                                        'size-3.5',
+                                        busyId === pack.id && 'animate-spin',
+                                      )}
+                                    />
+                                  ),
+                                  disabled: busyId === pack.id || bulkBusy,
+                                  onSelect: () => void runValidate(pack),
+                                },
+                                {
+                                  label: 'Edit',
+                                  icon: <Pencil className="size-3.5" />,
+                                  onSelect: () => setEditPack(pack),
+                                },
+                                {
+                                  label: pack.published
+                                    ? 'Unpublish'
+                                    : 'Publish',
+                                  icon: <Upload className="size-3.5" />,
+                                  onSelect: () => {
+                                    void updatePluginPack(pack.id, {
+                                      published: !pack.published,
+                                    }).then(() =>
+                                      qc.invalidateQueries({
+                                        queryKey: ['admin', 'plugin_packs'],
+                                      }),
                                     )
-                                  ) {
-                                    return
-                                  }
-                                  deleteMut.mutate(pack.id)
-                                }}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </div>
+                                  },
+                                },
+                                {
+                                  type: 'link',
+                                  label: 'Open manifest',
+                                  icon: <ExternalLink className="size-3.5" />,
+                                  href: pack.manifest_url,
+                                },
+                                { type: 'separator' },
+                                {
+                                  label: 'Delete',
+                                  icon: <Trash2 className="size-3.5" />,
+                                  destructive: true,
+                                  onSelect: () => {
+                                    if (
+                                      !confirm(
+                                        `Delete pack ${pack.id}? Bundles that include it will block delete.`,
+                                      )
+                                    ) {
+                                      return
+                                    }
+                                    deleteMut.mutate(pack.id)
+                                  },
+                                },
+                              ]}
+                            />
                           </td>
                         ) : null}
                       </tr>
@@ -950,33 +947,27 @@ function BundlesPanel({
                     </span>
                   </td>
                   <td className={tdClassName}>
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onEdit(b)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void onTogglePublish(b)}
-                      >
-                        {b.published ? 'Unpub' : 'Publish'}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-400"
-                        onClick={() => void onDelete(b.id)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
+                    <RowActionsMenu
+                      items={[
+                        {
+                          label: 'Edit',
+                          icon: <Pencil className="size-3.5" />,
+                          onSelect: () => onEdit(b),
+                        },
+                        {
+                          label: b.published ? 'Unpublish' : 'Publish',
+                          icon: <Upload className="size-3.5" />,
+                          onSelect: () => void onTogglePublish(b),
+                        },
+                        { type: 'separator' },
+                        {
+                          label: 'Delete',
+                          icon: <Trash2 className="size-3.5" />,
+                          destructive: true,
+                          onSelect: () => void onDelete(b.id),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))
@@ -1031,11 +1022,25 @@ function RegisterPackDialog({
     setBusy(true)
     setErr(null)
     try {
-      const raw = await fetchManifest(url.trim())
-      const parsed = validateManifestJson(raw)
+      const resolved = await resolveAndFetchManifest(url.trim())
+      setUrl(resolved.url)
+      const parsed = validateManifestJson(resolved.data)
       if (parsed.packId) setId(parsed.packId)
       else if (!id) setId(slugifyId(parsed.name ?? 'pack'))
       if (parsed.name) setName(parsed.name)
+      if (
+        !description.trim() &&
+        typeof resolved.data === 'object' &&
+        resolved.data &&
+        'description' in resolved.data &&
+        typeof (resolved.data as { description?: unknown }).description ===
+          'string'
+      ) {
+        const desc = (
+          resolved.data as { description: string }
+        ).description.trim()
+        if (desc) setDescription(desc)
+      }
       if (!parsed.ok) {
         setErr(parsed.errors.join('; '))
       }
@@ -1053,9 +1058,11 @@ function RegisterPackDialog({
       const packId = slugifyId(id)
       if (!packId) throw new Error('id required')
       if (!url.trim()) throw new Error('manifest URL required')
+      const resolved = await resolveAndFetchManifest(url.trim())
+      setUrl(resolved.url)
       await upsertPluginPack({
         id: packId,
-        manifest_url: url.trim(),
+        manifest_url: resolved.url,
         name: name.trim() || packId,
         kind: kind.trim() || 'providers',
         description: description.trim(),
@@ -1066,7 +1073,7 @@ function RegisterPackDialog({
         tags: [],
         accent: 'brand',
       })
-      const result = await validatePackAtUrl(url.trim())
+      const result = await validatePackAtUrl(resolved.url)
       await persistValidation(packId, result)
       await onSaved()
     } catch (e) {
@@ -1080,12 +1087,16 @@ function RegisterPackDialog({
     <DialogShell title="Register pack" onClose={onClose}>
       <div className="space-y-3">
         <div className="space-y-1">
-          <Label>GitHub manifest URL</Label>
+          <Label>Manifest URL</Label>
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://raw.githubusercontent.com/…/manifest.json"
           />
+          <p className="text-xs text-forja-muted">
+            GitHub blob links are rewritten to raw. Path should end in{' '}
+            <code className="font-mono-ui">manifest.json</code>.
+          </p>
         </div>
         <Button
           type="button"
