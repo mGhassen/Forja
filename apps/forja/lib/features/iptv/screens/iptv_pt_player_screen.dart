@@ -1071,7 +1071,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
           _hideControlsTimer?.cancel();
           setState(() => _controlsVisible = false);
         },
-        setArmed: (v) => _tvBackExitArmed = v,
+        setArmed: (v) {
+          if (_disposed || !mounted) return;
+          if (_tvBackExitArmed == v) return;
+          setState(() => _tvBackExitArmed = v);
+        },
       );
       return stay;
     });

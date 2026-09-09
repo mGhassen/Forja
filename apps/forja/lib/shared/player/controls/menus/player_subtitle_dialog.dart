@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -136,6 +135,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   late final Map<String, List<Map<String, dynamic>>> _byLangOnline;
   late final Map<String, List<ExoTrackInfo>> _byLangEmbedded;
   late final List<_SubGroup> _groups;
+  final FocusNode _settingsFocus =
+      FocusNode(debugLabel: 'subtitle-dialog-settings');
   final FocusNode _closeFocus = FocusNode(debugLabel: 'subtitle-dialog-close');
 
   bool get _textOff {
@@ -151,32 +152,17 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   bool get _tvFocus =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  void _focusSettings() {
+    if (_settingsFocus.canRequestFocus) _settingsFocus.requestFocus();
+  }
+
   void _focusClose() {
     if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
   }
 
-  /// [ForjaPlainIcon] Close only handles OK — arrows need spatial move.
-  KeyEventResult _onCloseKey(FocusNode node, KeyEvent event) {
-    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    TraversalDirection? direction;
-    if (key == LogicalKeyboardKey.arrowLeft) {
-      direction = TraversalDirection.left;
-    } else if (key == LogicalKeyboardKey.arrowRight) {
-      direction = TraversalDirection.right;
-    } else if (key == LogicalKeyboardKey.arrowUp) {
-      direction = TraversalDirection.up;
-    } else if (key == LogicalKeyboardKey.arrowDown) {
-      direction = TraversalDirection.down;
-    }
-    if (direction != null && node.focusInDirection(direction)) {
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   void dispose() {
+    _settingsFocus.dispose();
     _closeFocus.dispose();
     super.dispose();
   }
@@ -291,6 +277,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       );
     }
     return FocusableControl(
+      focusNode: _settingsFocus,
       onTap: () {
         PlayerSubtitleDialog.dismiss();
         onSettings();
@@ -301,6 +288,16 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       showFocusFill: false,
       onRightEdge: _focusClose,
       child: face,
+    );
+  }
+
+  /// Bordered X — same chrome as Off; [ForjaPlainIcon] was not in the D-pad chain.
+  Widget _closeChip({required bool autoFocus}) {
+    return _SubtitleCloseChip(
+      focusNode: _closeFocus,
+      autoFocus: autoFocus,
+      onTap: widget.onClose,
+      onLeftEdge: widget.onSubtitleSettings != null ? _focusSettings : null,
     );
   }
 
@@ -443,6 +440,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     final group = _selectedGroup;
     final tracksTitle =
         group == null ? 'Tracks' : 'Tracks · ${group.label}';
+    final tv = _tvFocus;
+    // Close claims open focus on TV (not Off / selected track).
+    final closeAutoFocus =
+        tv && PlayerPopupListFocusScope.claimAutofocus(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -450,22 +451,25 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
         PlayerSidePanelHeader(
           title: '',
           onClose: widget.onClose,
-          closeFocusNode: _tvFocus ? _closeFocus : null,
-          closeOnKeyEvent: _tvFocus ? _onCloseKey : null,
+          showClose: !tv,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               PlayerPopupHeaderChip(
                 label: 'Off',
                 selected: _textOff,
-                autoFocus: _textOff &&
+                // TV opens on Close X — Off only autofocuses on non-TV.
+                autoFocus: !tv &&
+                    _textOff &&
                     PlayerPopupListFocusScope.claimAutofocus(context),
                 onTap: () {
                   PlayerSubtitleDialog.dismiss();
                   unawaited(widget.onOff());
                 },
-                onRightEdge: _tvFocus && widget.onSubtitleSettings == null
-                    ? _focusClose
+                onRightEdge: tv
+                    ? (widget.onSubtitleSettings != null
+                        ? _focusSettings
+                        : _focusClose)
                     : null,
               ),
               if (!_hideLoadFile) ...[
@@ -480,6 +484,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               if (widget.onSubtitleSettings != null) ...[
                 const SizedBox(width: 6),
                 _settingsChip(),
+              ],
+              if (tv) ...[
+                const SizedBox(width: 6),
+                _closeChip(autoFocus: closeAutoFocus),
               ],
             ],
           ),
@@ -606,6 +614,58 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SubtitleCloseChip extends StatefulWidget {
+  const _SubtitleCloseChip({
+    required this.focusNode,
+    required this.autoFocus,
+    required this.onTap,
+    this.onLeftEdge,
+  });
+
+  final FocusNode focusNode;
+  final bool autoFocus;
+  final VoidCallback onTap;
+  final VoidCallback? onLeftEdge;
+
+  @override
+  State<_SubtitleCloseChip> createState() => _SubtitleCloseChipState();
+}
+
+class _SubtitleCloseChipState extends State<_SubtitleCloseChip> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final border = _focused
+        ? PlayerPopupTokens.accentBorder
+        : PlayerPopupTokens.border;
+    final iconColor =
+        _focused ? PlayerPopupTokens.accent : PlayerPopupTokens.muted;
+    final face = Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        border: Border.all(color: border),
+      ),
+      child: Icon(Icons.close_rounded, size: 14, color: iconColor),
+    );
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      autoFocus: widget.autoFocus,
+      onTap: widget.onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onLeftEdge: widget.onLeftEdge,
+      child: face,
     );
   }
 }

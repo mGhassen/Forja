@@ -157,6 +157,7 @@ class PlayerSidePanelHeader extends StatelessWidget {
     this.badge,
     this.closeFocusNode,
     this.closeOnKeyEvent,
+    this.showClose = true,
   });
 
   final String title;
@@ -169,6 +170,9 @@ class PlayerSidePanelHeader extends StatelessWidget {
   final String? badge;
   final FocusNode? closeFocusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? closeOnKeyEvent;
+
+  /// When false, [trailing] owns the close control (e.g. TV FocusableControl X).
+  final bool showClose;
 
   @override
   Widget build(BuildContext context) {
@@ -227,14 +231,15 @@ class PlayerSidePanelHeader extends StatelessWidget {
                 const Spacer(),
               if (trailing != null) ...[
                 trailing!,
-                const SizedBox(width: 2),
+                if (showClose) const SizedBox(width: 2),
               ],
-              ForjaCloseButton.compact(
-                color: cinematic.textSecondary,
-                onTap: onClose,
-                focusNode: closeFocusNode,
-                onKeyEvent: closeOnKeyEvent,
-              ),
+              if (showClose)
+                ForjaCloseButton.compact(
+                  color: cinematic.textSecondary,
+                  onTap: onClose,
+                  focusNode: closeFocusNode,
+                  onKeyEvent: closeOnKeyEvent,
+                ),
             ],
           ),
         ),

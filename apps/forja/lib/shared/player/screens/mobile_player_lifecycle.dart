@@ -31,7 +31,11 @@ mixin _MobilePlayerLifecycle
           _s._hideTimer?.cancel();
           setState(() => _s._showControls = false);
         },
-        setArmed: (v) => _s._tvBackExitArmed = v,
+        setArmed: (v) {
+          if (!mounted || _s._disposed) return;
+          if (_s._tvBackExitArmed == v) return;
+          setState(() => _s._tvBackExitArmed = v);
+        },
       );
     });
     _s._ownedProviderSourcesCache =

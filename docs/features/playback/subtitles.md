@@ -25,7 +25,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first)
 - Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
 - **KissKh (Asian Drama):** provider Sub API tracks (decrypted in the pack, attached as sideloads) are preferred over HLS mux “In-stream” — those mux tracks can be mistimed vs kisskh.co
-- On **Android TV**, opening Subtitles lands focus on the active language/track (or **Off** when subs are off)
+- On **Android TV**, opening Subtitles lands focus on the header **X** (close) — **←** reaches tune / **Off**; **↓** into the language list
 - **ExoPlayer on Android TV:** subtitle text is drawn by Flutter over the video (not the native Exo caption view) so boxes like Xiaomi keep showing selected SRT/VTT / in-stream tracks
 - **File** in the Subtitles header loads a local subtitle file; it is hidden on Android TV
 - Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie / Levrx use the hub’s enrich TMDB id when present (not the KissKh / AniList open id)

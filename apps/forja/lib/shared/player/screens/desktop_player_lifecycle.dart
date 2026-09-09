@@ -32,8 +32,12 @@ mixin _DesktopPlayerLifecycle
       return PlayerBackExitGate.consumeChromeOrArmExit(
         chromeVisible: _s._showControls,
         armed: _s._escapeExitArmed,
-        hideChrome: () => _s._hideChromeIntentional(armEscape: true),
-        setArmed: (v) => _s._escapeExitArmed = v,
+        hideChrome: () => _s._hideChromeIntentional(),
+        setArmed: (v) {
+          if (!mounted || _s._disposed) return;
+          if (_s._escapeExitArmed == v) return;
+          setState(() => _s._escapeExitArmed = v);
+        },
       );
     });
     PlayerBackExitGate.setForceExitPlayer(_s._forceLeavePlayer);

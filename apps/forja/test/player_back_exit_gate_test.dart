@@ -19,7 +19,7 @@ void main() {
     PlayerBackExitGate.resetForTest();
   });
 
-  test('consumeChromeOrArmExit hides chrome then exits', () {
+  test('consumeChromeOrArmExit hides without arming, then arms, then exits', () {
     var chrome = true;
     var armed = false;
     var hidden = 0;
@@ -38,6 +38,18 @@ void main() {
     );
     expect(hidden, 1);
     expect(chrome, isFalse);
+    expect(armed, isFalse);
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: chrome,
+        armed: armed,
+        hideChrome: () => hidden++,
+        setArmed: (v) => armed = v,
+      ),
+      isTrue,
+    );
+    expect(hidden, 1);
     expect(armed, isTrue);
 
     expect(
@@ -79,7 +91,7 @@ void main() {
     expect(armed, isFalse);
   });
 
-  testWidgets('TV Back hides chrome then exits; twin does not exit', (
+  testWidgets('TV Back: hide → arm → exit; twins do not skip steps', (
     tester,
   ) async {
     var chrome = true;
@@ -123,14 +135,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
 
+    // 1) Hide chrome (not armed).
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
     expect(chrome, isFalse);
-    expect(armed, isTrue);
+    expect(armed, isFalse);
 
-    // HW + didPopRoute twin can land well after 80ms under ATV load — must
-    // not treat hide+arm as confirm-exit on the same physical press.
+    // Twin under load must not arm/exit on the same physical press.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
@@ -138,11 +150,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
     expect(chrome, isFalse);
+    expect(armed, isFalse);
 
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
 
+    // 2) Arm while chrome already hidden.
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
+    expect(armed, isTrue);
+
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
+    expect(armed, isTrue);
+
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+
+    // 3) Confirm exit.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsNothing);

@@ -16,6 +16,7 @@ import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -271,7 +272,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _streamActionFocus =
       FocusNode(debugLabel: 'exo-player-stream-action');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
-  /// First TV Back hid chrome (or armed while hidden) — next Back exits.
+  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
   bool _tvBackExitArmed = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
@@ -294,7 +295,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _hideTimer?.cancel();
           setState(() => _showControls = false);
         },
-        setArmed: (v) => _tvBackExitArmed = v,
+        setArmed: (v) {
+          if (!mounted || _disposed) return;
+          if (_tvBackExitArmed == v) return;
+          setState(() => _tvBackExitArmed = v);
+        },
       );
     });
     _sources = [];
@@ -2488,6 +2493,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
+              if (_tvBackExitArmed) const PlayerEscapeExitHint.tv(),
               if (widget.hasNextEpisode &&
                   widget.onNextEpisode != null &&
                   _nearEndOfEpisode &&

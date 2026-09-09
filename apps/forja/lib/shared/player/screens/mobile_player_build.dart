@@ -171,6 +171,11 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   ),
                 ),
 
+                if (widget.tvRemoteEnabled &&
+                    _s._tvBackExitArmed &&
+                    !_s._isPipMode)
+                  const PlayerEscapeExitHint.tv(),
+
                 // ── 5. Lock button (always visible when locked + controls shown)
                 if (_s._isLocked)
                   Positioned(

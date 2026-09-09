@@ -9,6 +9,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
@@ -93,7 +94,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   final FocusNode _seekbarFocus = FocusNode(debugLabel: 'trailer-seekbar');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
-  /// First TV Back hid chrome (or armed while hidden) — next Back exits.
+  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
   bool _tvBackExitArmed = false;
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
@@ -196,7 +197,11 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
           _hideTimer?.cancel();
           setState(() => _showControls = false);
         },
-        setArmed: (v) => _tvBackExitArmed = v,
+        setArmed: (v) {
+          if (!mounted) return;
+          if (_tvBackExitArmed == v) return;
+          setState(() => _tvBackExitArmed = v);
+        },
       );
     });
     if (!DesktopWindowChrome.isDesktop) {

@@ -455,7 +455,7 @@ abstract final class ShellTvFocusCoordinator {
     }
     _backStepPending = false;
 
-    // TV players: first Back hides chrome (or arms); second exits.
+    // TV players: hide chrome → arm (+ toast) → exit (desktop Escape parity).
     if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
       _backStepPending = true;
       PlayerBackExitGate.exitReady = false;
@@ -509,10 +509,14 @@ abstract final class ShellTvFocusCoordinator {
     }
   }
 
-  /// Remote Exit (Escape on TV) — double-confirm quit from anywhere.
-  /// Distinct from Back; does not navigate.
+  /// Remote Exit (Escape on TV).
+  /// In a player: same leave ladder as Back (hide chrome → arm → leave).
+  /// Elsewhere: double-confirm quit.
   static bool handleShellExitKey() {
     if (!tvBackPolicyEnabled) {
+      return handleShellBackKey();
+    }
+    if (ShellBus.playerSurfaceActive.value) {
       return handleShellBackKey();
     }
     // Same double-delivery problem as Back — minConfirmGap absorbs it.

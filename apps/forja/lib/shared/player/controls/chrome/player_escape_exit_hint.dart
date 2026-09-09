@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Top-right toast while desktop Escape exit is armed (second Esc leaves).
+/// Top-right toast while player exit is armed (second Esc / Back / Exit leaves).
 class PlayerEscapeExitHint extends StatelessWidget {
-  const PlayerEscapeExitHint({super.key});
+  const PlayerEscapeExitHint({
+    super.key,
+    this.message = 'Press Esc again to exit',
+  });
+
+  /// Android TV — Back and Exit share the player leave ladder.
+  const PlayerEscapeExitHint.tv({super.key})
+      : message = 'Press again to exit';
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +33,7 @@ class PlayerEscapeExitHint extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Press Esc again to exit',
+                message,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: 13,

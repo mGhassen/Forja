@@ -146,6 +146,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   ),
                 ),
               ),
+              if (tvFocus && _s._tvBackExitArmed)
+                const PlayerEscapeExitHint.tv(),
             ],
           ),
         ),

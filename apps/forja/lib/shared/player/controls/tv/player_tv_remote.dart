@@ -37,8 +37,9 @@ class PlayerTvRemoteKeyHandler {
       onBack();
       return true;
     }
-    // Escape is remote Exit on ATV — do not steal it as Back. ShellTvBackHandler
-    // maps Escape → handleShellExitKey (double-confirm quit).
+    // Escape is remote Exit on ATV. ShellTvBackHandler maps it to
+    // handleShellExitKey — while a player is open that uses the same leave
+    // ladder as Back (hide → arm → leave); elsewhere double-confirm quit.
 
     if (key == LogicalKeyboardKey.contextMenu ||
         key == LogicalKeyboardKey.f10) {

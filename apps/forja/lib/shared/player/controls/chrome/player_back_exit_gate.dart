@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
-/// TV remote Back while a player surface is active:
+/// TV remote Back / Exit while a player surface is active (desktop Escape parity):
 /// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).
 /// 2. In-player overlays (search ladder, …) via [tryConsumePlayerOverlay].
-/// 3. Chrome visible → hide chrome (stay). Chrome hidden → first Back arms,
-///    second Back exits. The Back icon (OK / tap) still exits immediately.
+/// 3. Chrome visible → hide chrome only (stay, not armed). Chrome already
+///    hidden → first press arms (+ toast); second press exits.
+/// The Back icon (OK / tap) still exits immediately.
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
   static bool Function()? _tryConsumePlayerOverlay;
@@ -162,8 +163,8 @@ abstract final class PlayerBackExitGate {
     return DateTime.now().difference(t) < _escapeHandledPulse;
   }
 
-  /// Chrome up → hide and arm (next intentional Back exits). Chrome down +
-  /// armed → allow exit. Chrome down + not armed → arm only.
+  /// Chrome up → hide only (not armed). Chrome down + not armed → arm.
+  /// Chrome down + armed → allow exit. Matches desktop Escape ladder.
   ///
   /// Return `true` to keep the player open.
   static bool consumeChromeOrArmExit({
@@ -174,7 +175,7 @@ abstract final class PlayerBackExitGate {
   }) {
     if (chromeVisible) {
       hideChrome();
-      setArmed(true);
+      setArmed(false);
       return true;
     }
     if (armed) {

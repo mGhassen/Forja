@@ -163,14 +163,15 @@ class PlayerSubtitleMenu {
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
+      autofocusClose: hideLoadFile,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           PlayerPopupHeaderChip(
             label: 'Off',
             selected: subtitlesOff,
-            // Outside list scope — claim open focus when subs are off.
-            autoFocus: subtitlesOff,
+            // TV opens on Close X; Off only autofocuses on non-TV when off.
+            autoFocus: !hideLoadFile && subtitlesOff,
             onTap: turnOffSubtitles,
           ),
           if (!hideLoadFile) ...[

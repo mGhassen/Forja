@@ -4,7 +4,8 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 /// Android TV / leanback remote Back + Exit (Escape) keys.
 ///
 /// Back → in-app navigation ([ShellTvFocusCoordinator.handleShellBackKey]).
-/// Exit → double-confirm quit ([ShellTvFocusCoordinator.handleShellExitKey]).
+/// Exit → while a player is open, same leave ladder as Back; otherwise
+/// double-confirm quit ([ShellTvFocusCoordinator.handleShellExitKey]).
 abstract final class ShellTvBackHandler {
   static bool _installed = false;
 

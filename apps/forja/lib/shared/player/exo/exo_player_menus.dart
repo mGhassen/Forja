@@ -286,9 +286,9 @@ abstract final class ExoPlayerMenus {
             ),
           for (final s in online)
             PlayerPopupListTile(
-              label: (s['title'] ?? s['name'] ?? s['url'] ?? 'Subtitle')
-                  .toString(),
-              subtitle: 'Online',
+              label: _onlineSubtitleLabel(s, langKey),
+              subtitle: (s['translated'] == true ? 'Translated · ' : '') +
+                  (s['sourceName']?.toString() ?? 'opensubtitles'),
               selected: selectedExternalSubUrl != null &&
                   s['url'] == selectedExternalSubUrl,
               onTap: () async {
@@ -299,6 +299,23 @@ abstract final class ExoPlayerMenus {
         ],
       ),
     );
+  }
+
+  /// Prefer human labels; never show a raw http(s) URL as the row title.
+  static String _onlineSubtitleLabel(
+    Map<String, dynamic> s,
+    String langKey,
+  ) {
+    for (final key in const ['display', 'name', 'title']) {
+      final v = s[key]?.toString().trim() ?? '';
+      if (v.isEmpty) continue;
+      final lower = v.toLowerCase();
+      if (lower.startsWith('http://') || lower.startsWith('https://')) {
+        continue;
+      }
+      return v;
+    }
+    return languageDisplayName(langKey);
   }
 
   static Future<void> showQuality({

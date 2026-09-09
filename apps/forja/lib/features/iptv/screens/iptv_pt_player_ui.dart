@@ -1208,8 +1208,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     ),
                   // Reconnect/switch always; Buffering… only when picture stalled.
                   if (!hideFullChrome && _s._showPlaybackBanner) _buildBanner(),
-                  if (!hideFullChrome && _s._escapeExitArmed)
-                    const PlayerEscapeExitHint(),
+                  if (!hideFullChrome &&
+                      (_s._escapeExitArmed || _s._tvBackExitArmed))
+                    _s._tvBackExitArmed
+                        ? const PlayerEscapeExitHint.tv()
+                        : const PlayerEscapeExitHint(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP / mini is active.
                   if (!hideFullChrome)
