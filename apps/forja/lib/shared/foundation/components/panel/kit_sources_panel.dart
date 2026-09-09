@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
@@ -53,6 +54,9 @@ class KitSourcesRow {
 /// Pack-agnostic sources side panel (tabs + rows + reload/close).
 ///
 /// Features wire load/play via callbacks. Kit never knows pack names.
+///
+/// When the active tab is in [browseCategoryTabIds], the body uses an IPTV-style
+/// Categories rail + optional channel search (Live TV chrome).
 class KitSourcesPanel extends StatefulWidget {
   const KitSourcesPanel({
     super.key,
@@ -69,6 +73,10 @@ class KitSourcesPanel extends StatefulWidget {
     this.embedded = false,
     this.showTabs = true,
     this.onTabsLeftEdge,
+    this.browseCategoryTabIds = const {'live_tv'},
+    this.channelQuery,
+    this.onChannelQueryChanged,
+    this.showInlineSearch = true,
   });
 
   final String title;
@@ -95,6 +103,20 @@ class KitSourcesPanel extends StatefulWidget {
   /// TV: ← from Providers / Live TV (and stream rows) — e.g. back to match list.
   final VoidCallback? onTabsLeftEdge;
 
+  /// Tabs that get Categories rail + channel search filtering.
+  final Set<String> browseCategoryTabIds;
+
+  /// External channel query (e.g. cards hero owns search). When null, panel
+  /// keeps its own query when [showInlineSearch] is true.
+  final String? channelQuery;
+
+  /// Called when the panel's expanding search changes the query.
+  final ValueChanged<String>? onChannelQueryChanged;
+
+  /// Show expanding search next to tabs (side panel) when browse tab active.
+  /// Set false when the parent owns search chrome (cards hero).
+  final bool showInlineSearch;
+
   /// Put D-pad on the first tab (Providers). Retries while nodes mount.
   static void claimProvidersFocus({int maxTries = 24}) {
     SourcesPanelTv.focusKindItem(maxTries: maxTries);
@@ -110,12 +132,22 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   final Map<String, bool> _loadingByTab = {};
   final Map<String, String?> _errorByTab = {};
   int _loadGen = 0;
+  String _internalQuery = '';
+  String _selectedCategoryKey = kKitSourcesCategoryAll;
+
+  bool get _browseActive =>
+      widget.browseCategoryTabIds.contains(_tabId);
+
+  String get _effectiveQuery => widget.channelQuery ?? _internalQuery;
 
   @override
   void initState() {
     super.initState();
     _tabId = widget.initialTabId ??
         (widget.tabs.isNotEmpty ? widget.tabs.first.id : '');
+    if (widget.channelQuery != null) {
+      _internalQuery = widget.channelQuery!;
+    }
     if (_tabId.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_ensureLoaded(_tabId));
@@ -131,6 +163,15 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       _rowsByTab.clear();
       _errorByTab.clear();
       if (_tabId.isNotEmpty) unawaited(_ensureLoaded(_tabId, force: true));
+    }
+    if (widget.initialTabId != null &&
+        widget.initialTabId != oldWidget.initialTabId &&
+        widget.initialTabId != _tabId) {
+      _selectTab(widget.initialTabId!);
+    }
+    if (widget.channelQuery != null &&
+        widget.channelQuery != oldWidget.channelQuery) {
+      _internalQuery = widget.channelQuery!;
     }
   }
 
@@ -151,6 +192,9 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       setState(() {
         _rowsByTab[tabId] = rows;
         _loadingByTab[tabId] = false;
+        if (widget.browseCategoryTabIds.contains(tabId)) {
+          _selectedCategoryKey = kKitSourcesCategoryAll;
+        }
       });
     } catch (e) {
       if (!mounted || gen != _loadGen) return;
@@ -164,8 +208,20 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
 
   void _selectTab(String id) {
     if (id == _tabId) return;
-    setState(() => _tabId = id);
+    setState(() {
+      _tabId = id;
+      if (!widget.browseCategoryTabIds.contains(id)) {
+        _internalQuery = '';
+        _selectedCategoryKey = kKitSourcesCategoryAll;
+      }
+    });
     unawaited(_ensureLoaded(id));
+  }
+
+  void _onQueryChanged(String next) {
+    if (next == _effectiveQuery) return;
+    setState(() => _internalQuery = next);
+    widget.onChannelQueryChanged?.call(next);
   }
 
   String? _effectiveTvTabId(BuildContext context) {
@@ -179,121 +235,21 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     final loading = _loadingByTab[_tabId] == true;
     final error = _errorByTab[_tabId];
     final rows = _rowsByTab[_tabId] ?? const [];
-    final body = _body(context, loading: loading, error: error, rows: rows);
-
-    if (widget.embedded) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: constraints.maxHeight),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.black.withValues(alpha: 0.55),
-                  border: Border.all(
-                    color: ForjaShellColors.cinematic.borderSubtle
-                        .withValues(alpha: 0.5),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                    child: body,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _header(context),
+        if (!widget.embedded) _header(context),
         if (widget.showTabs && widget.tabs.length > 1) _tabs(context),
-        Expanded(child: body),
+        Expanded(
+          child: _body(context, loading: loading, error: error, rows: rows),
+        ),
       ],
     );
   }
 
   Widget _header(BuildContext context) {
-    final tvTabId = _effectiveTvTabId(context);
-    final tv = tvTabId != null;
-    final hasClose = widget.onClosed != null;
-    final muted = ForjaShellColors.textSecondary;
-
-    Widget reloadBtn;
-    if (tv) {
-      reloadBtn = shellFocusableTap(
-        context: context,
-        onTap: () => unawaited(_ensureLoaded(_tabId, force: true)),
-        borderRadius: 18,
-        scaleOnFocus: 1.0,
-        showFocusBorder: true,
-        listIndex: 0,
-        tvTabId: tvTabId,
-        tvRowId: SourcesPanelTv.headerRowId,
-        tvItemIndex: 0,
-        tvZone: ShellTvZone.chipStrip,
-        onLeftEdge: widget.onTabsLeftEdge,
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(Icons.refresh_rounded, size: 20, color: muted),
-        ),
-      );
-    } else {
-      reloadBtn = ForjaPlainIcon(
-        icon: Icons.refresh_rounded,
-        tooltip: 'Reload',
-        color: muted,
-        size: 20,
-        hitSize: 36,
-        onTap: () => unawaited(_ensureLoaded(_tabId, force: true)),
-      );
-    }
-
-    Widget? closeBtn;
-    if (hasClose) {
-      if (tv) {
-        closeBtn = shellFocusableTap(
-          context: context,
-          onTap: widget.onClosed,
-          borderRadius: 18,
-          scaleOnFocus: 1.0,
-          showFocusBorder: true,
-          listIndex: 1,
-          tvTabId: tvTabId,
-          tvRowId: SourcesPanelTv.headerRowId,
-          tvItemIndex: 1,
-          tvZone: ShellTvZone.chipStrip,
-          child: SizedBox(
-            width: 36,
-            height: 36,
-            child: Icon(Icons.close_rounded, size: 20, color: muted),
-          ),
-        );
-      } else {
-        closeBtn = ForjaCloseButton(
-          color: muted,
-          onTap: widget.onClosed,
-        );
-      }
-    }
-
-    Widget header = Padding(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
       child: Row(
         children: [
@@ -326,56 +282,60 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
               ],
             ),
           ),
-          reloadBtn,
-          if (closeBtn != null) ...[
-            const SizedBox(width: 2),
-            closeBtn,
-          ],
+          IconButton(
+            tooltip: 'Reload',
+            onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            color: ForjaShellColors.textSecondary,
+          ),
+          if (widget.onClosed != null)
+            IconButton(
+              tooltip: 'Close',
+              onPressed: widget.onClosed,
+              icon: const Icon(Icons.close_rounded, size: 20),
+              color: ForjaShellColors.textSecondary,
+            ),
         ],
       ),
-    );
-
-    if (!tv) return header;
-    return TvKitRow(
-      tabId: tvTabId,
-      rowId: SourcesPanelTv.headerRowId,
-      sortOrder: SourcesPanelTv.headerSort,
-      itemCount: hasClose ? 2 : 1,
-      onFocusDown: () {
-        if (widget.showTabs && widget.tabs.length > 1) {
-          SourcesPanelTv.focusKindItem();
-        } else {
-          SourcesPanelTv.focusListItem(index: 0);
-        }
-      },
-      child: header,
     );
   }
 
   Widget _tabs(BuildContext context) {
     final tvTabId = _effectiveTvTabId(context);
+    final showSearch =
+        widget.showInlineSearch && _browseActive;
     final choice = Align(
       alignment: Alignment.centerLeft,
-      child: HeroPillSegmentedChoice<String>(
-        selected: _tabId,
-        onSelected: _selectTab,
-        tvTabId: tvTabId,
-        tvRowId: widget.tabsRowId,
-        tvItemIndexStart: 0,
-        onLeftEdge: widget.onTabsLeftEdge,
-        onUpEdge: tvTabId != null && !widget.embedded
-            ? () => SourcesPanelTv.focusHeaderItem()
-            : null,
-        onDownEdge: tvTabId != null
-            ? () => SourcesPanelTv.focusListItem(index: 0)
-            : null,
-        segments: [
-          for (var i = 0; i < widget.tabs.length; i++)
-            HeroPillSegment(
-              value: widget.tabs[i].id,
-              label: widget.tabs[i].label,
-              icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
+      child: Row(
+        children: [
+          Flexible(
+            child: HeroPillSegmentedChoice<String>(
+              selected: _tabId,
+              onSelected: _selectTab,
+              tvTabId: tvTabId,
+              tvRowId: widget.tabsRowId,
+              tvItemIndexStart: 0,
+              onLeftEdge: widget.onTabsLeftEdge,
+              onDownEdge: tvTabId != null
+                  ? () => SourcesPanelTv.focusListItem(index: 0)
+                  : null,
+              segments: [
+                for (var i = 0; i < widget.tabs.length; i++)
+                  HeroPillSegment(
+                    value: widget.tabs[i].id,
+                    label: widget.tabs[i].label,
+                    icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
+                  ),
+              ],
             ),
+          ),
+          if (showSearch) ...[
+            const SizedBox(width: 10),
+            KitSourcesExpandingSearch(
+              query: _effectiveQuery,
+              onQueryChanged: _onQueryChanged,
+            ),
+          ],
         ],
       ),
     );
@@ -389,9 +349,6 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       rowId: widget.tabsRowId,
       sortOrder: SourcesPanelTv.kindSort,
       itemCount: widget.tabs.length,
-      onFocusUp: widget.embedded
-          ? null
-          : () => SourcesPanelTv.focusHeaderItem(),
       onFocusDown: () => SourcesPanelTv.focusListItem(index: 0),
       child: padded,
     );
@@ -404,12 +361,9 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     required List<KitSourcesRow> rows,
   }) {
     if (loading && rows.isEmpty) {
-      final spinner = const Center(
+      return const Center(
         child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
-      return widget.embedded
-          ? SizedBox(height: 96, child: spinner)
-          : spinner;
     }
     if (error != null && rows.isEmpty) {
       return Center(
@@ -424,26 +378,160 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       );
     }
     if (rows.isEmpty) {
-      final empty = Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: widget.embedded ? 16 : 0),
-          child: Text(
-            'No sources',
-            style: TextStyle(color: ForjaShellColors.textSecondary),
-          ),
+      return Center(
+        child: Text(
+          'No sources',
+          style: TextStyle(color: ForjaShellColors.textSecondary),
         ),
       );
-      return empty;
     }
-    // Hero details (embedded): column-major 2-col grid; panel chrome in build().
-    // Side panel stays single-column ListView (no panel).
+    if (_browseActive) {
+      return _categoryBrowse(context, rows);
+    }
+    // Hero details (embedded): 2-col stream grid on wide — matches old live
+    // match details. Side panel stays single-column ListView.
     if (widget.embedded) {
       return _embeddedSourcesGrid(context, rows);
     }
     return _sidePanelList(context, rows);
   }
 
-  Widget _sidePanelList(BuildContext context, List<KitSourcesRow> rows) {
+  String _effectiveCategoryKey(List<KitSourcesCategoryBucket> cats) {
+    if (cats.length == 1) return cats.first.key;
+    if (_selectedCategoryKey == kKitSourcesCategoryAll) {
+      return kKitSourcesCategoryAll;
+    }
+    if (cats.any((c) => c.key == _selectedCategoryKey)) {
+      return _selectedCategoryKey;
+    }
+    return kKitSourcesCategoryAll;
+  }
+
+  Widget _categoryBrowse(BuildContext context, List<KitSourcesRow> allRows) {
+    final queried = kitSourcesFilterByQuery(allRows, _effectiveQuery);
+    final cats = kitSourcesCategoriesFromRows(queried);
+    final selected = _effectiveCategoryKey(cats);
+    final filtered = kitSourcesFilterByCategory(queried, selected);
+    final showAll = cats.length >= 2;
+    final searching = _effectiveQuery.trim().isNotEmpty;
+
+    if (queried.isEmpty && searching) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 40,
+              color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No channels match “${_effectiveQuery.trim()}”',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 520;
+        if (!wide || cats.isEmpty) {
+          return widget.embedded
+              ? _embeddedSourcesGrid(
+                  context,
+                  filtered,
+                  hideCategorySubtitle: true,
+                )
+              : _sidePanelList(
+                  context,
+                  filtered,
+                  hideCategorySubtitle: true,
+                );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: constraints.maxWidth >= 720 ? 200 : 168,
+              child: _categoryRail(
+                context,
+                cats: cats,
+                showAll: showAll,
+                allCount: queried.length,
+                selectedKey: selected,
+              ),
+            ),
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: ForjaShellColors.borderSubtle,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: widget.embedded
+                  ? _embeddedSourcesGrid(
+                      context,
+                      filtered,
+                      hideCategorySubtitle: true,
+                    )
+                  : _sidePanelList(
+                      context,
+                      filtered,
+                      hideCategorySubtitle: true,
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _categoryRail(
+    BuildContext context, {
+    required List<KitSourcesCategoryBucket> cats,
+    required bool showAll,
+    required int allCount,
+    required String selectedKey,
+  }) {
+    final rows = <({String key, String label, int count})>[
+      if (showAll)
+        (key: kKitSourcesCategoryAll, label: 'All', count: allCount),
+      for (final c in cats) (key: c.key, label: c.label, count: c.count),
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      itemCount: rows.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 4),
+      itemBuilder: (context, i) {
+        final row = rows[i];
+        return KitSourcesCategoryRailRow(
+          label: row.label,
+          count: row.count,
+          selected: row.key == selectedKey,
+          listIndex: i,
+          onTap: () {
+            if (_selectedCategoryKey == row.key) return;
+            setState(() => _selectedCategoryKey = row.key);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _sidePanelList(
+    BuildContext context,
+    List<KitSourcesRow> rows, {
+    bool hideCategorySubtitle = false,
+  }) {
     final tvTabId = _effectiveTvTabId(context);
     final list = ListView.separated(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
@@ -453,7 +541,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         context,
         rows[i],
         i,
-        upToTabs: i == 0,
+        hideCategorySubtitle: hideCategorySubtitle,
       ),
     );
     if (tvTabId == null) return list;
@@ -463,58 +551,45 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       sortOrder: SourcesPanelTv.listSort,
       itemCount: rows.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () {
-        if (widget.showTabs && widget.tabs.length > 1) {
-          SourcesPanelTv.focusKindItem();
-        } else if (!widget.embedded) {
-          SourcesPanelTv.focusHeaderItem();
-        } else {
-          SourcesPanelTv.focusKindItem();
-        }
-      },
+      onFocusUp: () => SourcesPanelTv.focusKindItem(),
       child: list,
     );
   }
 
-  /// Hero details: 2 columns when wide (and >1 row), 1 when narrow / single.
-  ///
-  /// Wide layout is **column-major** — fill the left column top→bottom first,
-  /// then the right column (same priority order as a single list).
-  Widget _embeddedSourcesGrid(BuildContext context, List<KitSourcesRow> rows) {
+  /// Pre-kit live details: 2 columns when wide, 1 when narrow / TV compact.
+  Widget _embeddedSourcesGrid(
+    BuildContext context,
+    List<KitSourcesRow> rows, {
+    bool hideCategorySubtitle = false,
+  }) {
     const gap = 10.0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final metrics = ShellScope.metricsOf(context);
-        // Panel inset already pads; keep list flush with title/pills.
-        const listPad = EdgeInsets.only(bottom: 4);
-        final wide = !metrics.usesTvDensity &&
-            constraints.maxWidth >= 720 &&
-            rows.length > 1;
+        final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
+        final crossCount = wide ? 2 : 1;
 
-        if (!wide) {
+        if (crossCount == 1) {
           return ListView.separated(
-            shrinkWrap: true,
-            padding: listPad,
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: gap),
             itemBuilder: (context, i) => _tile(
               context,
               rows[i],
               i,
-              upToTabs: i == 0,
+              hideCategorySubtitle: hideCategorySubtitle,
             ),
           );
         }
 
-        // Column-major: left = first half, right = remainder.
-        final leftCount = (rows.length + 1) ~/ 2;
+        final rowCount = (rows.length + 1) ~/ 2;
         return ListView.builder(
-          shrinkWrap: true,
-          padding: listPad,
-          itemCount: leftCount,
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+          itemCount: rowCount,
           itemBuilder: (context, row) {
-            final left = row;
-            final right = leftCount + row;
+            final left = row * 2;
+            final right = left + 1;
             return Padding(
               padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
               child: IntrinsicHeight(
@@ -526,7 +601,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
                         context,
                         rows[left],
                         left,
-                        upToTabs: row == 0,
+                        hideCategorySubtitle: hideCategorySubtitle,
                       ),
                     ),
                     const SizedBox(width: gap),
@@ -536,7 +611,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
                               context,
                               rows[right],
                               right,
-                              upToTabs: row == 0,
+                              hideCategorySubtitle: hideCategorySubtitle,
                             )
                           : const SizedBox.shrink(),
                     ),
@@ -554,13 +629,14 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     BuildContext context,
     KitSourcesRow row,
     int index, {
-    bool upToTabs = false,
+    bool hideCategorySubtitle = false,
   }) {
     final footer = (row.footer ?? '').trim();
     final tvTabId = _effectiveTvTabId(context);
+    final provider = hideCategorySubtitle ? null : row.subtitle;
     return SourcesPanelChannelTile(
       title: row.title,
-      provider: row.subtitle,
+      provider: provider,
       badges: row.badges,
       viewerCount: row.viewerCount,
       footerLabel: footer.isEmpty ? null : footer,
@@ -569,16 +645,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       tvItemIndex: index,
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
-      onUpEdge: upToTabs && tvTabId != null
-          ? () {
-              if (widget.showTabs && widget.tabs.length > 1) {
-                SourcesPanelTv.focusKindItem();
-              } else if (!widget.embedded) {
-                SourcesPanelTv.focusHeaderItem();
-              } else {
-                SourcesPanelTv.focusKindItem();
-              }
-            }
+      onUpEdge: index == 0 && tvTabId != null
+          ? () => SourcesPanelTv.focusKindItem()
           : null,
       onLeftEdge: widget.onTabsLeftEdge,
       onPlay: () => unawaited(widget.onPlayRow(row)),

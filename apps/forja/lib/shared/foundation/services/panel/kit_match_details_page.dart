@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
@@ -37,6 +38,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   late String _tabId;
   bool _streamsVisible = false;
   bool _heroFocusDone = false;
+  String _liveTvChannelQuery = '';
 
   @override
   void initState() {
@@ -79,6 +81,9 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     setState(() {
       _tabId = id;
       _streamsVisible = true;
+      if (id != _liveTv) {
+        _liveTvChannelQuery = '';
+      }
     });
   }
 
@@ -91,6 +96,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final viewport = MediaQuery.sizeOf(context);
     final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
     final probe = _healthProbe;
+    final showLiveTvSearch = _streamsVisible && _tabId == _liveTv;
 
     if (policy.heroPlayAutoFocus && !_heroFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -115,6 +121,9 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             ],
             initialTabId: _tabId,
             showTabs: false,
+            showInlineSearch: false,
+            channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
+            browseCategoryTabIds: const {_liveTv},
             loadTab: (tabId) => KitResolvePanelHost.loadTab(
               widget.entry.legacyRow,
               tabId,
@@ -155,25 +164,43 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                 itemCount: 2,
                 onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
                 onFocusDown: tvFocus ? () {} : null,
-                child: HeroPillSegmentedChoice<String>(
-                  segments: const [
-                    HeroPillSegment(
-                      value: _providers,
-                      label: 'Providers',
-                      icon: Icons.dns_rounded,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: HeroPillSegmentedChoice<String>(
+                        segments: const [
+                          HeroPillSegment(
+                            value: _providers,
+                            label: 'Providers',
+                            icon: Icons.dns_rounded,
+                          ),
+                          HeroPillSegment(
+                            value: _liveTv,
+                            label: 'Live TV',
+                            icon: Icons.live_tv_rounded,
+                          ),
+                        ],
+                        selected: _tabId,
+                        onSelected: _selectTab,
+                        onUpEdge:
+                            tvFocus ? () => _backFocus.requestFocus() : null,
+                        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                        tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                        tvItemIndexStart: 0,
+                      ),
                     ),
-                    HeroPillSegment(
-                      value: _liveTv,
-                      label: 'Live TV',
-                      icon: Icons.live_tv_rounded,
-                    ),
+                    if (showLiveTvSearch) ...[
+                      const SizedBox(width: 10),
+                      KitSourcesExpandingSearch(
+                        query: _liveTvChannelQuery,
+                        onQueryChanged: (q) {
+                          if (q == _liveTvChannelQuery) return;
+                          setState(() => _liveTvChannelQuery = q);
+                        },
+                        debugLabel: 'live-match-details-live-tv-search',
+                      ),
+                    ],
                   ],
-                  selected: _tabId,
-                  onSelected: _selectTab,
-                  onUpEdge: tvFocus ? () => _backFocus.requestFocus() : null,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                  tvItemIndexStart: 0,
                 ),
               ),
             ),
