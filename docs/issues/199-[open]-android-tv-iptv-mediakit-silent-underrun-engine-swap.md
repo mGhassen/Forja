@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** fix · **0 / 7** acceptance |
-| **Current slice** | ATV perf + engine part split shipped — device smoke outstanding |
+| **Progress** | **17 / 17** fix · **0 / 7** acceptance |
+| **Current slice** | Adaptive proxy skip + watchdog reconnect grace — device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,10 @@
 | 11 | I199-T11 | Paint stall: 2 consecutive `estimated-vf-fps` misses; `frame-drop-count` secondary for false-neg | ✅ |
 | 12 | I199-T12 | Adaptive demuxer/fps `getProperty` rate when healthy; Buffering chrome setState debounce | ✅ |
 | 13 | I199-T13 | Engine split into tunables/proxy/watchdog/recovery `part of` files (move-only) | ✅ |
+| 14 | I199-T14 | Continuity proxy: bitrate-adaptive overlap skip (~5s clamp 1–8 MiB) instead of fixed 3 MiB — early-abort when loopback queue would starve | ✅ |
+| 15 | I199-T15 | ATV proxy queue covers one skip + play (HD 12 / FHD 16 / UHD 20 MiB) | ✅ |
+| 16 | I199-T16 | Watchdog: 8s grace after proxy reconnect — Buffering + refill, no soft-reopen mid-skip | ✅ |
+| 17 | I199-T17 | Smoke logs: proxy skip/abort/gap, MediaKit cache/avsync/fps at reconnect +2s/+5s, Exo STATE_BUFFERING enter/exit | ✅ |
 
 ---
 
@@ -72,6 +76,8 @@
 
 **Engine organization (T13):** Move-only split — `_IptvPtPlayerEngineCore` + `iptv_pt_player_mk_tunables.dart` / `live_proxy` / `watchdog` / `recovery` / orchestration `engine`. Shared fields on Core; cross-calls via abstract stubs on sibling mixins. No behavior change.
 
+**Adaptive skip slice (T14–T17):** Toshiba A7 / Xiaomi A11 reanalysis — fixed 3 MiB skip ≈ 3–12 s by bitrate and starved thin ATV cushions every CDN reopen. Skip is now ~5 s of measured upstream rate (1–8 MiB), aborts early if the loopback queue would underrun, queue sized 12–20 MiB, and watchdog holds soft-reopen for 8 s while the cushion refills. Tree already had Exo on the same proxy + deep ATV LoadControl ([233](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md)).
+
 **Device smoke (acceptance A01–A07, I150-A01–A04, I128 regression):** Not run in CI — mark acceptance ✅ only after Android TV box verification.
 
-**Related:** [issue 148](148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) (Reload ANR watch) · [issue 150](150-[open]-atv-iptv-4k-mediakit-stutter.md) (cache tiers I150-T05)
+**Related:** [issue 148](148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) (Reload ANR watch) · [issue 150](150-[open]-atv-iptv-4k-mediakit-stutter.md) (cache tiers I150-T05) · [issue 233](fixed/233-[fixed]-android-tv-exo-iptv-periodic-buffering.md)

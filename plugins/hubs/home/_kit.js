@@ -174,9 +174,15 @@ function hubTmdbMatchFetch(ctx, query) {
   query = query || {};
   var title = String(query.title || '').trim();
   if (!title) return Promise.resolve(null);
-  var cfg = hubConfig(ctx, {});
+  var cfg = hubConfig(ctx, {
+    base: 'https://db.speedracelight.com/3',
+    apiKey: '',
+  });
+  var base = String(cfg.base || 'https://db.speedracelight.com/3').replace(/\/$/, '');
   var key = String(cfg.apiKey || '').trim();
-  if (!key) return Promise.resolve(null);
+  if (base.indexOf('api.themoviedb.org') >= 0 && !key) {
+    return Promise.resolve(null);
+  }
   var prefer = String(query.type || '').trim().toLowerCase();
   var primary = prefer === 'movie' ? 'movie' : 'tv';
   var secondary = primary === 'movie' ? 'tv' : 'movie';
@@ -184,13 +190,13 @@ function hubTmdbMatchFetch(ctx, query) {
 
   function search(media) {
     var url =
-      'https://api.themoviedb.org/3/search/' +
+      base +
+      '/search/' +
       media +
-      '?api_key=' +
-      encodeURIComponent(key) +
-      '&query=' +
+      '?query=' +
       encodeURIComponent(title) +
       '&include_adult=false';
+    if (key) url += '&api_key=' + encodeURIComponent(key);
     return ctx.fetch(url).then(function (res) {
       if (!res.ok) return null;
       return res.json();

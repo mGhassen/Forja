@@ -175,9 +175,29 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         if (buffering) {
           _s._bufferingClearAt = null;
           _s._bufferingSince ??= DateTime.now();
+          final proxyOn = _s._liveContinuityProxy?.localUri != null;
+          final reconnectAt = _s._lastProxyReconnectAt;
+          final inGrace = reconnectAt != null &&
+              DateTime.now().difference(reconnectAt) <
+                  _IptvPtPlayerScreenState._proxyReconnectRecoveryGrace;
+          debugPrint(
+            '[IPTV Exo] STATE_BUFFERING enter '
+            'ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
+            'proxy=$proxyOn live=$_livePlaybackProfile '
+            'grace=$inGrace',
+          );
         } else {
           // Don't zero the 12s wall on a one-tick false — same as MediaKit.
           _s._bufferingClearAt ??= DateTime.now();
+          final since = _s._bufferingSince;
+          final held = since == null
+              ? 0
+              : DateTime.now().difference(since).inMilliseconds;
+          debugPrint(
+            '[IPTV Exo] STATE_BUFFERING exit '
+            'ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
+            'held=${held}ms',
+          );
         }
         _s._playbackBannerSnapshot = null;
         _syncPlaybackBannerVisibility();
@@ -365,7 +385,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       playUrl = local.toString();
       debugPrint(
         '[IPTV Player] continuity proxy ($kind, '
-        '${_s._exoBackend ? 'exo' : 'lavf=off'})',
+        '${_s._exoBackend ? 'exo' : 'lavf=off'}, '
+        'live=${_s._exoBackend ? iptvExoUrlLooksLive(src.url) : 'n/a'}, '
+        'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
       );
     } else {
       await _s._liveContinuityProxy?.stop();

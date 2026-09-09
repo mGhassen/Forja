@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **23 / 23** fix · **0 / 19** acceptance |
-| **Current slice** | Empty-cache snap + fps-hold underrun gates; device smoke outstanding |
+| **Progress** | **24 / 24** fix · **0 / 19** acceptance |
+| **Current slice** | Adaptive proxy skip (I148-T24) + empty-cache snap gates; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -44,6 +44,7 @@
 | 21 | I148-T21 | Live MediaKit continuity proxy (localhost TS relay) + macOS/Linux live software decode — CDN closes never reach mpv; no VT death spiral every ~15s | ✅ |
 | 22 | I148-T22 | Live-edge snap: never `drop-buffers` when demuxer cache < `_minHealthyCacheSecs` (log `skip drop-buffers`) | ✅ |
 | 23 | I148-T23 | Stable: sustained Buffering + cache < 0.5s (≥5s, past first paint) is not `_streamWorking` — fps/`estimated-vf-fps` pulse must not forever `skip recovery … working`; empty-underrun detector grace = 5s | ✅ |
+| 24 | I148-T24 | Continuity proxy adaptive overlap skip + early-abort + ATV queue cover + 8s watchdog reconnect grace ([I199-T14](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md)–T17) — play-through without soft-reopen thrash mid-skip | ✅ |
 
 ---
 

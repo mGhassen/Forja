@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **Complete · 5 / 5** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,8 @@
 | 1 | I233-T01 | Exo Xtream/M3U live opens via `IptvLiveContinuityProxy` (same loopback as MediaKit) | ✅ |
 | 2 | I233-T02 | ATV Exo live: deeper LoadControl + ~18s target offset; live speed catch-up locked to 1.0 | ✅ |
 | 3 | I233-T03 | Feature doc + changelog — Exo play-through on CDN reconnect | ✅ |
+| 4 | I233-T04 | Shared adaptive proxy skip + early-abort + larger ATV queue ([I199-T14](../199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md)) — reduce Exo Buffering / ~5 s replay when overlap skip starves LoadControl | ✅ |
+| 5 | I233-T05 | Exo smoke logs: `STATE_BUFFERING` enter/exit with ahead + proxy/grace flags | ✅ |
 
 ---
 
@@ -41,6 +43,8 @@
 **Root:** MediaKit Xtream/M3U live uses `IptvLiveContinuityProxy` (loopback + upstream reopen). Exo opened the CDN URL directly, so every portal socket close became a hard underrun. ATV Exo also sat ~8s behind the live edge with 0.97–1.03 catch-up, which drained the cushion and re-triggered `STATE_BUFFERING` in a cycle.
 
 **Fix:** Route Exo through the same continuity proxy for Xtream/M3U live. On Android TV, deepen live LoadControl (~25–70s), target offset ~18s, and lock live playback speed to 1.0 (phone HD/FHD keep catch-up; UHD already locked — issue 138).
+
+**Follow-up (T04–T05):** Fixed 3 MiB overlap skip still starved thin cushions → Buffering / perceived replay. Adaptive ~5 s skip with early-abort when the loopback queue is low, larger ATV proxy queue, and Exo buffering logs. Acceptance A01 still needs Xiaomi device smoke.
 
 **Not in 1.4.238:** that tag only shipped recovery Auto / nav restore — no Exo buffer work.
 

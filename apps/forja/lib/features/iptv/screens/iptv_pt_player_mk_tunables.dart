@@ -304,10 +304,10 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         await p.setProperty('cache-pause-initial', 'no');
       } else {
         // Live: continuity proxy absorbs CDN HTTP closes before mpv (I148-T21).
-        // cache-pause=yes turned every ~5–6s CDN reopen (3MiB overlap skip) into a
-        // hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
-        // Play through demuxer cushion; watchdog still shows Buffering + soft-reopen
-        // when cache is truly empty (I199-T03/T04).
+        // cache-pause=yes turned every CDN reopen (bitrate-adaptive overlap skip)
+        // into a hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
+        // Play through demuxer cushion; watchdog holds soft-reopen during proxy
+        // reconnect grace while the queue refills (I199-T14–T16).
         // Desktop keeps the fat live window. ATV cold-open is FHD-sized until
         // height probe — 150 MB + 4K MediaCodec OOMs on physical boxes (issue 155).
         var coldSecs = 30;

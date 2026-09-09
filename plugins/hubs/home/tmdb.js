@@ -1,15 +1,19 @@
 // TMDB movie / TV hub — layout / rail / search / details (protocol 1).
 //
-// Needs a v3 key on `config.apiKey` (pack config and/or host inject).
-// Pack may ship a key temporarily; host still injects when empty.
+// Default base is a keyless TMDB-compatible proxy. Official
+// api.themoviedb.org still needs config.apiKey (host inject / pack).
 
 var TMDB_DEFAULTS = {
-  base: 'https://api.themoviedb.org/3',
+  base: 'https://db.speedracelight.com/3',
   imageBase: 'https://image.tmdb.org/t/p',
-  apiKey: 'b3556f3b206e16f82df4d1f6fd4545e6',
+  apiKey: '',
   language: 'en-US',
   region: '',
 };
+
+function tmdbNeedsApiKey(cfg) {
+  return String(cfg.base || '').indexOf('api.themoviedb.org') >= 0;
+}
 
 var TMDB_RAILS = {
   spotlight: { path: '/trending/all/day', type: '' },
@@ -698,7 +702,10 @@ function tmdbMeta(cfg, row, forcedType) {
 function tmdbGet(ctx, cfg, path, query) {
   var url = String(cfg.base).replace(/\/$/, '') + path;
   var sep = url.indexOf('?') >= 0 ? '&' : '?';
-  var qs = ['api_key=' + encodeURIComponent(cfg.apiKey)];
+  var qs = [];
+  if (String(cfg.apiKey || '').trim()) {
+    qs.push('api_key=' + encodeURIComponent(String(cfg.apiKey).trim()));
+  }
   if (cfg.language) qs.push('language=' + encodeURIComponent(cfg.language));
   if (cfg.region) qs.push('region=' + encodeURIComponent(cfg.region));
   var extra = query || {};
@@ -708,8 +715,9 @@ function tmdbGet(ctx, cfg, path, query) {
     if (v === null || v === undefined || v === '') continue;
     qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)));
   }
+  var full = qs.length ? url + sep + qs.join('&') : url;
   return ctx
-    .fetch(url + sep + qs.join('&'), {
+    .fetch(full, {
       headers: { Accept: 'application/json' },
     })
     .then(function (res) {
@@ -1794,7 +1802,7 @@ function extract(ctx) {
       genreRows: TMDB_GENRE_ROWS,
     }, { maxAge: 86400 });
   }
-  if (!String(cfg.apiKey || '').trim()) {
+  if (tmdbNeedsApiKey(cfg) && !String(cfg.apiKey || '').trim()) {
     return tmdbAuthFailure(action);
   }
 

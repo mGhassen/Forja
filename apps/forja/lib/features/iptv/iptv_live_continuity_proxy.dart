@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/iptv/iptv_proxy_reconnect_skip.dart';
 
 /// Live HTTP TS continuity: player reads loopback; we reopen the CDN when it
 /// closes the socket without tearing down the player's connection.
@@ -12,9 +13,11 @@ import 'package:flutter/foundation.dart';
 /// few seconds *behind* the previous socket end — piping that raw would look
 /// like a replay. We:
 /// 1. Keep a multi-second read-ahead queue so the player rarely underruns mid-reconnect
-/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap) before feeding the player
-/// 3. Notify [onUpstreamReconnected] so MediaKit can nudge playback (Exo plays
-///    through LoadControl cushion — no drop-buffers)
+/// 2. Skip ~[iptvProxyReconnectSkipBytes] of each reconnect (bitrate-adaptive)
+///    — abort early if the loopback queue would starve (prefer short overlap
+///    over underrun freeze on Android TV)
+/// 3. Notify [onUpstreamReconnected] so MediaKit / watchdog can grace refill
+///    (Exo plays through LoadControl cushion — no drop-buffers)
 class IptvLiveContinuityProxy {
   IptvLiveContinuityProxy({this.onUpstreamReconnected});
 
@@ -32,16 +35,24 @@ class IptvLiveContinuityProxy {
   int _queuedBytes = 0;
   Completer<void>? _waitData;
 
-  /// Fresh GET usually overlaps the last seconds we already sent.
-  static const int _reconnectSkipBytes = 3 * 1024 * 1024;
-
   int _maxQueueBytes = 12 * 1024 * 1024;
+
+  /// Rolling upstream fill rate (bytes/sec) for adaptive overlap skip.
+  int _estimatedBytesPerSec = 0;
+  int _rateSampleBytes = 0;
+  DateTime? _rateSampleStarted;
+  DateTime? _lastUpstreamEofAt;
 
   Uri? get localUri {
     final p = _server?.port;
     if (p == null || p <= 0) return null;
     return Uri.parse('http://127.0.0.1:$p/live.ts');
   }
+
+  /// Current loopback queue size (player has not drained these bytes yet).
+  int get queuedBytes => _queuedBytes;
+
+  int get estimatedBytesPerSec => _estimatedBytesPerSec;
 
   Future<Uri> start({
     required String upstreamUrl,
@@ -53,6 +64,10 @@ class IptvLiveContinuityProxy {
     _maxQueueBytes = maxQueueBytes.clamp(4 * 1024 * 1024, 20 * 1024 * 1024);
     _upstream = upstreamUrl;
     _headers = Map<String, String>.from(headers);
+    _estimatedBytesPerSec = 0;
+    _rateSampleBytes = 0;
+    _rateSampleStarted = null;
+    _lastUpstreamEofAt = null;
     _client = HttpClient()
       // macOS/Linux env proxies return 407 for IPTV CDNs — mpv/libmpv is direct.
       ..findProxy = ((_) => 'DIRECT')
@@ -117,6 +132,18 @@ class IptvLiveContinuityProxy {
     final chunk = _queue.removeFirst();
     _queuedBytes -= chunk.length;
     return chunk;
+  }
+
+  void _noteUpstreamBytes(int n) {
+    if (n <= 0) return;
+    _rateSampleBytes += n;
+    final started = _rateSampleStarted ??= DateTime.now();
+    final elapsedMs = DateTime.now().difference(started).inMilliseconds;
+    if (elapsedMs >= 2000 && _rateSampleBytes > 0) {
+      _estimatedBytesPerSec = (_rateSampleBytes * 1000) ~/ elapsedMs;
+      _rateSampleBytes = 0;
+      _rateSampleStarted = DateTime.now();
+    }
   }
 
   Future<void> _onRequest(HttpRequest request) async {
@@ -195,32 +222,72 @@ class IptvLiveContinuityProxy {
         fatalUpstream = 0;
 
         var skipLeft = 0;
+        var skipPlanned = 0;
+        var skipAborted = false;
+        final reconnectAt = DateTime.now();
         if (firstConnect) {
           debugPrint('[IPTV Proxy] upstream connected (${up.statusCode})');
           firstConnect = false;
         } else {
-          // Overlap from fresh live GET → would replay. Skip at byte layer;
-          // player plays through demuxer cushion when cache is healthy.
-          skipLeft = _reconnectSkipBytes;
+          skipPlanned = iptvProxyReconnectSkipBytes(
+            estimatedBytesPerSec: _estimatedBytesPerSec,
+          );
+          skipLeft = skipPlanned;
+          final sinceEof = _lastUpstreamEofAt == null
+              ? null
+              : reconnectAt.difference(_lastUpstreamEofAt!);
+          final queueSecs = _estimatedBytesPerSec > 0
+              ? _queuedBytes / _estimatedBytesPerSec
+              : 0.0;
           debugPrint(
-            '[IPTV Proxy] upstream reconnected — skip ${skipLeft >> 20}MiB overlap',
+            '[IPTV Proxy] upstream reconnected — skip '
+            '${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
+            '(bps=$_estimatedBytesPerSec '
+            'queue=${(_queuedBytes / (1024 * 1024)).toStringAsFixed(2)}MiB'
+            '${queueSecs > 0 ? ' ~${queueSecs.toStringAsFixed(1)}s' : ''} '
+            'gap=${sinceEof?.inMilliseconds ?? -1}ms)',
           );
           try {
             onUpstreamReconnected?.call();
           } catch (_) {}
         }
 
+        final abortFloor = iptvProxySkipAbortQueueFloorBytes(
+          estimatedBytesPerSec: _estimatedBytesPerSec,
+        );
+        final skipStarted = DateTime.now();
+
         await for (final raw in up) {
           if (_closed || gen != _generation) break;
           var data = raw is Uint8List ? raw : Uint8List.fromList(raw);
+          _noteUpstreamBytes(data.length);
           if (skipLeft > 0) {
-            if (data.length <= skipLeft) {
+            if (_queuedBytes < abortFloor) {
+              skipAborted = true;
+              final skipped = skipPlanned - skipLeft;
+              debugPrint(
+                '[IPTV Proxy] overlap skip early-abort '
+                '(skipped=${(skipped / (1024 * 1024)).toStringAsFixed(2)}MiB '
+                'of ${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
+                'queue=${(_queuedBytes / 1024).toStringAsFixed(0)}KiB '
+                '< floor=${(abortFloor / 1024).toStringAsFixed(0)}KiB '
+                '${DateTime.now().difference(skipStarted).inMilliseconds}ms) '
+                '— feeding live',
+              );
+              skipLeft = 0;
+            } else if (data.length <= skipLeft) {
               skipLeft -= data.length;
               continue;
+            } else {
+              data = data.sublist(skipLeft);
+              skipLeft = 0;
+              debugPrint(
+                '[IPTV Proxy] overlap skip done '
+                '(${(skipPlanned / (1024 * 1024)).toStringAsFixed(2)}MiB '
+                '${DateTime.now().difference(skipStarted).inMilliseconds}ms) '
+                '— feeding live',
+              );
             }
-            data = data.sublist(skipLeft);
-            skipLeft = 0;
-            debugPrint('[IPTV Proxy] overlap skip done — feeding live');
           }
           while (!_closed &&
               gen == _generation &&
@@ -230,10 +297,18 @@ class IptvLiveContinuityProxy {
           if (_closed || gen != _generation) break;
           _enqueue(data);
         }
+        if (skipLeft > 0 && !skipAborted) {
+          debugPrint(
+            '[IPTV Proxy] overlap skip incomplete '
+            '(left=${(skipLeft / 1024).toStringAsFixed(0)}KiB) — EOF',
+          );
+        }
+        _lastUpstreamEofAt = DateTime.now();
         debugPrint('[IPTV Proxy] upstream EOF — reconnecting');
       } catch (e) {
         if (_closed || gen != _generation) break;
         debugPrint('[IPTV Proxy] upstream error: $e — reconnecting');
+        _lastUpstreamEofAt = DateTime.now();
       } finally {
         try {
           await up?.drain<void>();

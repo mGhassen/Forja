@@ -34,6 +34,7 @@ import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/features/iptv/iptv_live_continuity_proxy.dart';
+import 'package:forja/features/iptv/iptv_proxy_reconnect_skip.dart';
 import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
@@ -915,6 +916,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Soft reopen when live stays paused with empty cache this long.
   static const Duration _liveEmptyPauseReopen = Duration(seconds: 5);
+
+  /// After continuity-proxy CDN reopen: prefer Buffering + refill over
+  /// soft-reopen while the skip gap is absorbed (adaptive skip / ATV).
+  static const Duration _proxyReconnectRecoveryGrace = Duration(seconds: 8);
+
+  /// Last continuity-proxy upstream reopen (MediaKit + Exo Xtream).
+  DateTime? _lastProxyReconnectAt;
+
+  /// Demuxer/buffer ahead when [_lastProxyReconnectAt] was set — refill check.
+  double _cacheAheadAtProxyReconnect = 0;
 
   /// Sustained Buffering + near-empty demuxer: fps paint pulse alone is not
   /// "working" (Stalker / direct live SW underrun). Soft-reopen can fire.
