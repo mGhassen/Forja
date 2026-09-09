@@ -1875,9 +1875,13 @@ new = f"{major}.{minor}.{patch}"
 def replace_workspace_version(text: str, new_ver: str) -> str:
     def sub_block(match: re.Match) -> str:
         block = match.group(0)
+
+        def sub_ver(m: re.Match) -> str:
+            return f"{m.group(1)}{new_ver}{m.group(2)}"
+
         return re.sub(
             r'(?m)^(version\s*=\s*")[0-9]+\.[0-9]+\.[0-9]+(")',
-            rf"\g<1>{new_ver}\2",
+            sub_ver,
             block,
             count=1,
         )
@@ -1895,9 +1899,13 @@ def replace_workspace_version(text: str, new_ver: str) -> str:
 cargo.write_text(replace_workspace_version(cargo_text, new), encoding="utf-8")
 
 pub = pubspec.read_text(encoding="utf-8")
+
+def sub_pub(m: re.Match) -> str:
+    return f"{m.group(1)}{new}{m.group(2)}"
+
 pub2, n = re.subn(
     r"(?m)^(version:\s*)[0-9]+\.[0-9]+\.[0-9]+(\s*)$",
-    rf"\g<1>{new}\2",
+    sub_pub,
     pub,
     count=1,
 )
@@ -1907,9 +1915,13 @@ pubspec.write_text(pub2, encoding="utf-8")
 
 if rule.is_file():
     rule_text = rule.read_text(encoding="utf-8")
+
+    def sub_current(m: re.Match) -> str:
+        return f"{m.group(1)}{new}{m.group(2)}"
+
     rule2, n = re.subn(
         r"(?m)^(\*\*Current engine version:\*\*\s*`)[0-9]+\.[0-9]+\.[0-9]+(`)",
-        rf"\g<1>{new}\2",
+        sub_current,
         rule_text,
         count=1,
     )
@@ -1917,13 +1929,6 @@ if rule.is_file():
         raise SystemExit(
             "bump_engine: failed to rewrite Current engine version in rust-engine-versioning.mdc"
         )
-    next_patch = f"{major}.{minor}.{patch + 1}"
-    rule2 = re.sub(
-        r"(?m)^(\|\s*\*\*patch\*\*\s*\(`)[0-9]+\.[0-9]+\.[0-9]+(\s*→\s*`)[0-9]+\.[0-9]+\.[0-9]+(`\))",
-        rf"\g<1>{new}\2{next_patch}\3",
-        rule2,
-        count=1,
-    )
     rule.write_text(rule2, encoding="utf-8")
 
 print(f"bump_engine: {old} → {new} ({bump})", file=sys.stderr)
