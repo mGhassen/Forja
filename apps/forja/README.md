@@ -16,7 +16,7 @@ flutter pub get
 flutter run -d macos
 ```
 
-Boot log should show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`, re-run `build_rust.sh` or set `RUST_LIB` to the release dylib path. Set `RUST_STRICT=1` to fail fast in debug when the library is missing.
+Boot log should show `[Engine] Rust engine v1.2.67` (or current `[workspace.package] version` in `crates/Cargo.toml`). If you see `Rust engine NOT loaded`, re-run `build_rust.sh` or set `RUST_LIB` to the release dylib path. Set `RUST_STRICT=1` to fail fast in debug when the library is missing.
 
 ## Run (mobile)
 

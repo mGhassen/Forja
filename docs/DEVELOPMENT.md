@@ -100,7 +100,7 @@ CI / release: repo secrets `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `WYZIE_API_
 
 **Debug badge:** In debug (`flutter run`), a small runtime **DEV** chip sits under the nav-rail wordmark (`kDebugMode`). macOS also sets a dock badge via `windowManager.setBadgeLabel('DEV')`. No alternate logo assets required.
 
-Boot log must show `[Engine] Rust engine v0.1.0`. If you see `Rust engine NOT loaded`:
+Boot log must show `[Engine] Rust engine v1.2.67` (or current `[workspace.package] version` in `crates/Cargo.toml`). If you see `Rust engine NOT loaded`:
 
 - Re-run `./scripts/build_rust.sh`
 - Or set `RUST_LIB` to the release dylib path
