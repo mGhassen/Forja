@@ -135,6 +135,38 @@ abstract final class PluginScriptDiskStore {
     return Directory(p.join(r.path, 'engine', packHash(sourceUrl)));
   }
 
+  /// Pack index snapshot next to scripts — survives prefs wipe on sign-out /
+  /// profile reset so the same profile can rehydrate without re-download.
+  static Future<File> _enginePackMetaFile(String sourceUrl) async {
+    final pack = await _enginePackDir(sourceUrl);
+    return File(p.join(pack.path, 'pack.json'));
+  }
+
+  static Future<void> saveEnginePackMeta(EnginePack pack) async {
+    if (pack.sourceUrl.trim().isEmpty || pack.plugins.isEmpty) return;
+    await _atomicWrite(
+      await _enginePackMetaFile(pack.sourceUrl),
+      jsonEncode(pack.toJson()),
+    );
+  }
+
+  static Future<EnginePack?> loadEnginePackMeta(String sourceUrl) async {
+    try {
+      final file = await _enginePackMetaFile(sourceUrl);
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.trim().isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final pack = EnginePack.fromStored(Map<String, dynamic>.from(decoded));
+      if (pack.plugins.isEmpty) return null;
+      return pack;
+    } catch (e) {
+      debugPrint('[PluginScriptDiskStore] loadEnginePackMeta failed: $e');
+      return null;
+    }
+  }
+
   static Future<File> _engineScriptFile(
     String sourceUrl,
     String pluginId,

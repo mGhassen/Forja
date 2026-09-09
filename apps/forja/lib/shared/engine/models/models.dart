@@ -577,14 +577,16 @@ class EnginePack {
   }
 
   EnginePack copyWith({
+    String? name,
+    String? version,
     bool? enabled,
     List<EnginePlugin>? plugins,
     List<String>? bundle,
   }) => EnginePack(
     sourceUrl: sourceUrl,
     packId: packId,
-    name: name,
-    version: version,
+    name: name ?? this.name,
+    version: version ?? this.version,
     plugins: plugins ?? this.plugins,
     prelude: prelude,
     bundle: bundle ?? this.bundle,

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **6 / 6** acceptance (A) · **4 / 4** acceptance (B) · **5 / 6** acceptance (C) |
-| **Current slice** | Manual Android DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
+| **Progress** | **4 / 4** components · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D |
+| **Current slice** | Connected Services auth via [RFC-102](102-[open]-pack-connected-services-auth.md); manual DRM QA — [issue 258](../issues/258-[open]-shahid-android-drm-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,6 +22,7 @@
 | 1 | R101-C01 | Generic stream `drm` contract + Android Exo Media3 Widevine / SmoothStreaming | ✅ |
 | 2 | R101-C02 | Pack settings `password`/`secret` → Keychain + inject into `runPlugin` config | ✅ |
 | 3 | R101-C03 | Shahid hub + provider packs + official onboarding | ✅ |
+| 4 | R101-C04 | Shahid login via pack Connected Services auth ([RFC-102](102-[open]-pack-connected-services-auth.md)) | ✅ |
 
 ---
 
@@ -62,6 +63,16 @@
 
 ---
 
+## Acceptance (slice D — Connected Services auth)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R101-A17 | Shahid hub declares `settings.addon: connected_services` + `auth` (no permanent Account fields) | ✅ |
+| 2 | R101-A18 | Login methods (email / phone) via pack `auth_*` actions; session secrets inject into extract | ✅ |
+| 3 | R101-A19 | Feature docs describe Connected services Login (not pack Account fields) | ✅ |
+
+---
+
 ## Summary
 
 Add a **Shahid** hub and stream provider using MBC’s public catalog/playout APIs (same shape as the Kodi add-on and yt-dlp). Premium titles use **Android Exo + Widevine** against Shahid’s license server with the user’s account — not key extraction. Clear HLS plays on all engines when `drm` is absent.
@@ -73,7 +84,7 @@ Generic host pieces (stream `drm` field, pack secrets) stay pack-agnostic so oth
 1. Browse Shahid catalog in Forja (kit hub).
 2. Play free/clear streams on Exo and MediaKit.
 3. Play DRM titles on Android Exo with official license URL.
-4. Store Shahid credentials in Keychain via pack settings.
+4. Store Shahid session in Keychain via pack Connected Services auth ([RFC-102](102-[open]-pack-connected-services-auth.md)).
 
 ## Out of scope
 

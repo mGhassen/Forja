@@ -4,7 +4,7 @@
   "name": "ForjaHQ Shahid",
   "description": "Shahid movies and series.",
   "author": "ForjaHQ",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "tags": [
     "arabic",
     "shahid"
@@ -29,7 +29,8 @@
         "search",
         "filters",
         "details",
-        "settings"
+        "settings",
+        "auth"
       ],
       "nav": {
         "tabId": "shahid",
@@ -39,25 +40,17 @@
         "icon": "icons/nav.png"
       },
       "settings": {
-        "group": "Account",
-        "order": 10,
+        "addon": "connected_services",
+        "group": "Shahid",
+        "order": 20,
         "extractPluginIds": [
           "shahid"
         ],
-        "fields": [
-          {
-            "id": "email",
-            "type": "text",
-            "label": "Email",
-            "subtitle": "Shahid account email"
-          },
-          {
-            "id": "password",
-            "type": "password",
-            "label": "Password",
-            "subtitle": "Stored in Keychain"
-          }
-        ]
+        "auth": {
+          "kind": "session",
+          "label": "Shahid",
+          "subtitle": "Sign in to play premium titles on Android"
+        }
       },
       "config": {
         "language": "ar"

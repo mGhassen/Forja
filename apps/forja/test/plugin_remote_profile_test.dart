@@ -65,7 +65,45 @@ void main() {
       expect(packs.single.plugins, isEmpty);
     });
 
-    test('rewrites ForjaHQ Mac checkout path to official remote', () async {
+    test('rehydrates from disk pack.json instead of lean stub (issue 259)', () async {
+      const url = 'https://cdn.example/cached/manifest.json';
+      final meta = EnginePack(
+        sourceUrl: url,
+        packId: 'cached',
+        name: 'Cached Pack',
+        version: '1.2.0',
+        plugins: [
+          EnginePlugin(
+            id: 'p1',
+            name: 'P1',
+            entry: 'p1.js',
+            kind: 'http',
+          ),
+        ],
+      );
+      await PluginScriptDiskStore.saveEngineScript(
+        sourceUrl: url,
+        pluginId: 'p1',
+        body: 'function extract(ctx) { return []; }',
+      );
+      await PluginScriptDiskStore.saveEnginePackMeta(meta);
+      await _seedPacks(const []);
+
+      final result = await PluginRegistry.instance.applyLeanManifestUrls([
+        {'manifestUrl': url, 'name': 'Cached Pack', 'version': '1.2.0'},
+      ]);
+      expect(result.added, isEmpty);
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.single.plugins, hasLength(1));
+      expect(packs.single.plugins.single.id, 'p1');
+      expect(
+        await PluginRegistry.instance.packNeedsDiskInstall(packs.single),
+        isFalse,
+      );
+    });
+
+    test('does not rewrite unreachable local lean paths to GitHub', () async {
       await _seedPacks(const []);
       final result = await PluginRegistry.instance.applyLeanManifestUrls([
         {
@@ -74,13 +112,8 @@ void main() {
           'name': 'Live Sports Cards',
         },
       ]);
-      expect(result.added, hasLength(1));
-      expect(
-        result.added.first.manifestUrl,
-        officialManifestUrlForSlot('live_sports_cards'),
-      );
-      final packs = await PluginRegistry.instance.listPacksRaw();
-      expect(packs.single.sourceUrl, officialManifestUrlForSlot('live_sports_cards'));
+      expect(result.added, isEmpty);
+      expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
     });
 
     test('keeps local ForjaHQ checkout when cloud has official URL', () async {
@@ -112,6 +145,40 @@ void main() {
       expect(packs, hasLength(1));
       expect(packs.single.sourceUrl, local);
       expect(packs.single.plugins, isNotEmpty);
+    });
+
+    test('keeps readable local checkout when cloud omits it', () async {
+      final dir = await Directory.systemTemp.createTemp('lean_local_keep_');
+      final manifest = File('${dir.path}/manifest.json');
+      await manifest.writeAsString('{"name":"Local","version":"1.0.0"}');
+      final local = manifest.path;
+      addTearDown(() async {
+        if (await dir.exists()) await dir.delete(recursive: true);
+      });
+      await _seedPacks([
+        {
+          'sourceUrl': local,
+          'packId': 'local-keep',
+          'name': 'Local Keep',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls(
+        const [],
+        purgeRemovedImmediately: true,
+      );
+      expect(result.removed, isEmpty);
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.single.sourceUrl, local);
     });
 
     test('skips non-ForjaHQ local paths from cloud lean', () async {
@@ -416,6 +483,27 @@ void main() {
       expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
+    test('defers auto-install until splash dismissed (issue 259)', () async {
+      ShellBus.splashDismissed.value = false;
+      var fetched = false;
+      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
+        fetched = true;
+        return http.Response('nf', 404);
+      });
+      await PluginInstallPromptService.applyCloudLeanDiff(
+        const LeanApplyResult(
+          added: [
+            LeanPackDelta(
+              manifestUrl: 'https://cdn.example/pre-splash/manifest.json',
+              name: 'PreSplash',
+            ),
+          ],
+        ),
+      );
+      expect(fetched, isFalse);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
+    });
+
     test('does not enqueue uninstall confirm for removed packs', () async {
       await _seedPacks(const []);
       await PluginInstallPromptService.applyCloudLeanDiff(
@@ -458,10 +546,9 @@ void main() {
       expect(packs, isEmpty);
     });
 
-    test('skips unpublished local ForjaHQ rewrite when GitHub 404', () async {
+    test('exports installed URL unchanged including local paths', () async {
       const local =
           '/Users/dev/Workspace/Forja/plugins/hubs/shahid/manifest.json';
-      final official = officialManifestUrlForSlot('shahid')!;
       await _seedPacks([
         {
           'sourceUrl': local,
@@ -478,47 +565,11 @@ void main() {
           ],
         },
       ]);
-      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
-        expect(req.url.toString(), official);
-        return http.Response('not found', 404);
-      });
-      final payload = await SyncDomainBridge.instance.exportForja();
-      final packs = payload['packs'] as List? ?? const [];
-      expect(packs, isEmpty);
-    });
-
-    test('exports published local ForjaHQ as official URL', () async {
-      const local =
-          '/Users/dev/Workspace/Forja/plugins/hubs/live_sports/manifest.json';
-      final official = officialManifestUrlForSlot('live_sports')!;
-      await _seedPacks([
-        {
-          'sourceUrl': local,
-          'packId': 'live_sports',
-          'name': 'ForjaHQ Live Sports',
-          'version': '1.2.0',
-          'plugins': [
-            {
-              'id': 'live-sports-hub',
-              'name': 'Live Sports',
-              'entry': 'live_sports.js',
-              'kind': 'http',
-            },
-          ],
-        },
-      ]);
-      PluginRegistry.instance.debugHttpClient = MockClient((req) async {
-        expect(req.url.toString(), official);
-        return http.Response(
-          jsonEncode({'version': '9.9.9', 'name': 'ForjaHQ Live Sports'}),
-          200,
-        );
-      });
       final payload = await SyncDomainBridge.instance.exportForja();
       final packs = (payload['packs'] as List).cast<Map>();
       expect(packs, hasLength(1));
-      expect(packs.single['manifestUrl'], official);
-      expect(packs.single['version'], '1.2.0');
+      expect(packs.single['manifestUrl'], local);
+      expect(packs.single['version'], '1.0.0');
     });
   });
 }

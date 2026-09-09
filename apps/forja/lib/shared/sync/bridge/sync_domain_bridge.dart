@@ -995,31 +995,11 @@ class SyncDomainBridge {
     final lean = <Map<String, dynamic>>[];
     final seen = <String>{};
     for (final pack in packs) {
-      final rawUrl = pack.sourceUrl.trim();
-      if (rawUrl.isEmpty) continue;
-      if (PluginRegistry.isLegacyAssetPack(rawUrl)) continue;
-      // Never push Mac/Windows checkout paths to other devices — rewrite
-      // ForjaHQ locals to the official GitHub URL when that remote exists.
-      final manifestUrl = PluginRegistry.cloudSafeManifestUrl(rawUrl);
-      if (PluginRegistry.isLocalManifestUrl(manifestUrl)) continue;
-      // Unpublished checkout (local → official rewrite, GitHub 404): keep
-      // device-local only. Pushing the dead URL poisons soft-pull / other
-      // devices and used to purge the working local install.
-      if (PluginRegistry.isLocalManifestUrl(rawUrl) &&
-          manifestUrl != rawUrl) {
-        final remoteOk =
-            await PluginRegistry.instance.peekRemoteVersion(manifestUrl);
-        if (remoteOk == null) {
-          debugPrint(
-            '[Sync] export skip unpublished local ForjaHQ pack '
-            '$rawUrl → $manifestUrl (remote missing)',
-          );
-          continue;
-        }
-      }
-      if (pendingPurge.contains(rawUrl) || pendingPurge.contains(manifestUrl)) {
-        continue;
-      }
+      final manifestUrl = pack.sourceUrl.trim();
+      if (manifestUrl.isEmpty) continue;
+      if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
+      // Push the installed URL as-is. Never rewrite local checkouts to GitHub.
+      if (pendingPurge.contains(manifestUrl)) continue;
       if (!seen.add(manifestUrl)) continue;
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
@@ -1027,7 +1007,8 @@ class SyncDomainBridge {
       // Prefer installed EnginePack.version; peek remote when empty so cloud
       // rows backfill (legacy lean rows omitted version). Skip lean stub 0.0.0.
       var version = pack.version.trim();
-      if (version.isEmpty) {
+      if (version.isEmpty &&
+          !PluginRegistry.isLocalManifestUrl(manifestUrl)) {
         final peeked =
             await PluginRegistry.instance.peekRemoteVersion(manifestUrl);
         if (peeked != null && peeked.isNotEmpty) version = peeked;
@@ -1567,9 +1548,11 @@ class SyncDomainBridge {
     return _exportForjaCompact();
   }
 
-  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** for
-  /// the lean apply itself. Always purges removed packs on this device, then
-  /// mid-session auto-downloads adds (boot warm hydrates via coordinator).
+  /// Apply cloud lean rows (`manifestUrl` + optional name). Lean index only —
+  /// **no download here**. [PluginInstallPromptService.applyCloudLeanDiff]
+  /// may hydrate adds when the shell is open; profile splash /
+  /// [PluginInstallCoordinator.ensureAllInstalled] owns pre-shell hydrate
+  /// (issue 259).
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
     await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
@@ -1587,6 +1570,9 @@ class SyncDomainBridge {
         '[Sync] importForja purged ${result.removed.length} pack(s)',
       );
     }
+    // Downloads / hub activate only when splash dismissed (or no-op under
+    // bootWarm). Soft-pull on Who's watching / profile settings merge must
+    // not install for a profile that splash has not finished binding.
     await PluginInstallPromptService.applyCloudLeanDiff(result);
     return result;
   }

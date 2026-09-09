@@ -1,5 +1,5 @@
 // Shahid provider — playout → clear HLS or Widevine license row (RFC-101).
-// Auth: email/password from pack settings (hub extractPluginIds or self).
+// Auth: sessionId/jwt from Connected Services (hub extractPluginIds).
 
 var SHAHID_UA =
   'Shahid/6.8.3.3660 CFNetwork/1220.1 Darwin/20.3.0 (iPhone/6s iOS/14.4) Safari/604.1';
@@ -154,9 +154,16 @@ function extract(ctx) {
 
   var email = String(cfg.email || '').trim();
   var password = String(cfg.password || '').trim();
+  var sessionFromHost = String(cfg.sessionId || '').trim();
+  var jwtFromHost = String(cfg.jwt || '').trim();
+  if (sessionFromHost) _shahidSessionId = sessionFromHost;
+  if (jwtFromHost) _shahidJwt = jwtFromHost;
 
   return getJwt(ctx)
     .then(function (jwt) {
+      if (_shahidSessionId) {
+        return { jwt: jwtFromHost || jwt, sessionId: _shahidSessionId };
+      }
       return login(ctx, email, password).then(function (sessionId) {
         return { jwt: jwt, sessionId: sessionId };
       });

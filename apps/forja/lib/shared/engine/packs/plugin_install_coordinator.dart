@@ -433,6 +433,10 @@ class PluginInstallCoordinator {
     // Old "Install later" rows: cloud membership always auto-hydrates now.
     await DeferredRemoteInstallStore.clearAll();
 
+    // Prefs index may be lean stubs after sign-out; restore from this
+    // profile's disk before deciding what to download.
+    await registry.rehydrateLeanStubsFromDisk();
+
     final packs = await registry.listPacksRaw();
     final jobs = <({EnginePack pack, bool isUpdate})>[];
 

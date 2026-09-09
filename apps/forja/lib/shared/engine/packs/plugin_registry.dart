@@ -106,9 +106,9 @@ class PluginRegistry {
     return url;
   }
 
-  /// Cloud lean / Settings: rewrite unreachable local ForjaHQ paths to the
-  /// official remote URL. Arbitrary local paths that are not ForjaHQ stay as-is
-  /// (caller may skip them).
+  /// Cloud lean / Settings helper: map a local ForjaHQ checkout to its official
+  /// remote URL when a caller needs a fetchable address. Sync push/pull must
+  /// **not** use this — installed `sourceUrl` is exported and applied as-is.
   static String cloudSafeManifestUrl(String url) {
     final t = url.trim();
     if (t.isEmpty || !isLocalManifestUrl(t)) return t;
@@ -309,29 +309,83 @@ class PluginRegistry {
   /// True when a remote pack needs install/repair (lean stub or missing disk JS).
   /// Unreachable local checkout paths (synced Mac paths on TV) also need install
   /// so [_substituteUnreachableLocalManifest] can fetch the official remote.
+  ///
+  /// Lean stubs (`plugins: []`) after sign-out / profile reset still return
+  /// true here — call [rehydrateLeanStubsFromDisk] first so the active profile
+  /// scope can restore metadata from `pack.json` without a network re-fetch.
   Future<bool> packNeedsDiskInstall(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return false;
     if (isLocalManifestUrl(pack.sourceUrl)) {
       return !(await _localManifestExists(pack.sourceUrl));
     }
     if (pack.plugins.isEmpty) return true;
+    return !(await _diskHasAllScripts(pack));
+  }
+
+  Future<bool> _diskHasAllScripts(EnginePack pack) async {
     for (final p in pack.plugins) {
       if (p.entry.isEmpty || !p.needsScript) continue;
       if (!await PluginScriptDiskStore.hasEngineScript(
         sourceUrl: pack.sourceUrl,
         pluginId: p.id,
       )) {
-        return true;
+        return false;
       }
       if (p.prelude.isNotEmpty &&
           !await PluginScriptDiskStore.hasEnginePrelude(
             sourceUrl: pack.sourceUrl,
             preludeEntry: p.prelude,
           )) {
-        return true;
+        return false;
       }
     }
-    return false;
+    return true;
+  }
+
+  /// Restore lean stubs from per-profile disk `pack.json` when scripts are
+  /// already present (sign-out clears prefs index with `purgeDisk: false`).
+  Future<int> rehydrateLeanStubsFromDisk() async {
+    final all = await listPacksRaw();
+    var restored = 0;
+    final next = <EnginePack>[];
+    for (final pack in all) {
+      if (pack.plugins.isNotEmpty ||
+          isLegacyAssetPack(pack.sourceUrl) ||
+          isLocalManifestUrl(pack.sourceUrl)) {
+        next.add(pack);
+        continue;
+      }
+      final meta = await PluginScriptDiskStore.loadEnginePackMeta(
+        pack.sourceUrl,
+      );
+      if (meta == null || meta.plugins.isEmpty) {
+        next.add(pack);
+        continue;
+      }
+      if (!await _diskHasAllScripts(meta)) {
+        next.add(pack);
+        continue;
+      }
+      next.add(
+        meta.copyWith(
+          name: pack.name.trim().isNotEmpty && pack.name != 'Forja pack'
+              ? pack.name
+              : meta.name,
+          version: pack.version != '0.0.0' ? pack.version : meta.version,
+          enabled: pack.enabled,
+        ),
+      );
+      restored++;
+    }
+    if (restored > 0) {
+      await _savePacks(next);
+      debugPrint(
+        '[engine] rehydrated $restored pack(s) from disk '
+        '(skipped re-download)',
+      );
+      notifyChanged();
+    }
+    return restored;
   }
 
   Future<void> _purgePackScriptStorage(
@@ -1169,6 +1223,9 @@ class PluginRegistry {
       await PendingRemotePurgeStore.clear(requestedUrl);
     }
     await _savePacks(all);
+    if (!localCheckout) {
+      await PluginScriptDiskStore.saveEnginePackMeta(pack);
+    }
     final hubSlot = forjaHqSlot(manifestUrl);
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
       MetaCache.instance.syncPackVersion(pack.packId, pack.version);
@@ -1636,10 +1693,12 @@ class PluginRegistry {
   /// When [purgeRemovedImmediately] is false (mid-session), packs missing from
   /// cloud stay on disk until the uninstall prompt / pending purge / next boot.
   ///
-  /// A local ForjaHQ checkout path counts as the same membership as its
-  /// [cloudSafeManifestUrl] GitHub row — so soft-pull does not purge a Mac
-  /// `plugins/hubs/…` install just because cloud listed the official URL
-  /// (and then fail auto-install with HTTP 404 before the pack is pushed).
+  /// Manifest URLs are applied as-is (no GitHub rewrite). Unreachable local
+  /// paths from another machine are not turned into install stubs.
+  ///
+  /// A local ForjaHQ checkout still satisfies a legacy cloud row that used the
+  /// official GitHub URL (pre-fix rewrite poison) so soft-pull does not purge
+  /// a working Mac install.
   Future<LeanApplyResult> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
@@ -1647,14 +1706,15 @@ class PluginRegistry {
   }) async {
     final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
-      final rawUrl = (raw['manifestUrl'] as String?)?.trim() ?? '';
-      if (rawUrl.isEmpty || isLegacyAssetPack(rawUrl)) {
+      final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
+      if (url.isEmpty || isLegacyAssetPack(url)) {
         continue;
       }
-      final url = cloudSafeManifestUrl(rawUrl);
-      // Dev-only absolute paths that are not ForjaHQ must not become lean stubs
-      // on other devices (Android TV cannot read a Mac checkout path).
-      if (isLocalManifestUrl(url)) continue;
+      // Other-device absolute paths: keep for membership if we already have
+      // that exact install; never invent a download stub we cannot fetch.
+      if (isLocalManifestUrl(url) && !(await _localManifestExists(url))) {
+        continue;
+      }
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
@@ -1680,6 +1740,14 @@ class PluginRegistry {
       }
       final remoteKey = _leanRemoteKeyForPack(remote, pack.sourceUrl);
       if (removeMissingUserPacks && remoteKey == null) {
+        // Readable local checkout is device-local membership — soft-pull must
+        // not delete it just because cloud omitted the absolute path.
+        if (isLocalManifestUrl(pack.sourceUrl) &&
+            await _localManifestExists(pack.sourceUrl) &&
+            pack.plugins.isNotEmpty) {
+          next.add(pack);
+          continue;
+        }
         final stub = pack.plugins.isEmpty;
         if (stub || purgeRemovedImmediately) {
           victims.add(pack);
@@ -1726,6 +1794,25 @@ class PluginRegistry {
     final present = next.map((p) => p.sourceUrl).toSet();
     for (final entry in remote.entries) {
       if (present.contains(entry.key) || satisfiedRemote.contains(entry.key)) {
+        await PendingRemotePurgeStore.clear(entry.key);
+        continue;
+      }
+      // Sign-out / profile reset wipe prefs with purgeDisk:false. Prefer the
+      // on-disk pack.json + scripts for this profile scope over a lean stub
+      // that would force a full re-download (issue 259).
+      final diskPack = await PluginScriptDiskStore.loadEnginePackMeta(
+        entry.key,
+      );
+      if (diskPack != null &&
+          diskPack.plugins.isNotEmpty &&
+          await _diskHasAllScripts(diskPack)) {
+        next.add(
+          diskPack.copyWith(
+            name: entry.value.name ?? diskPack.name,
+            version: entry.value.version ?? diskPack.version,
+          ),
+        );
+        changed = true;
         await PendingRemotePurgeStore.clear(entry.key);
         continue;
       }

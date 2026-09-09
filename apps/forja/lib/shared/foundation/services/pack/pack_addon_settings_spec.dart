@@ -1,4 +1,5 @@
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/foundation/services/pack/pack_connected_auth_service.dart';
 import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 
 class PackAddonSettingsOption {
@@ -186,7 +187,8 @@ class PackAddonSettingsSpec {
   }
 
   /// Load overlays for [extractPluginId]: the plugin's own settings plus any
-  /// other enabled plugin that lists it in `settings.extractPluginIds`.
+  /// other enabled plugin that lists it in `settings.extractPluginIds`, plus
+  /// pack Connected Services session secrets (RFC-102).
   static Future<Map<String, dynamic>> loadExtractConfigOverlay({
     required String extractPluginId,
     required Iterable<EnginePlugin> plugins,
@@ -197,12 +199,20 @@ class PackAddonSettingsSpec {
     for (final p in plugins) {
       if (!p.enabled) continue;
       final spec = fromPlugin(p);
-      if (spec == null) continue;
-      final applies =
-          p.id == want || spec.extractPluginIds.contains(want);
-      if (!applies) continue;
-      out.addAll(await spec.loadConfigOverlay());
+      if (spec != null) {
+        final applies =
+            p.id == want || spec.extractPluginIds.contains(want);
+        if (applies) {
+          out.addAll(await spec.loadConfigOverlay());
+        }
+      }
     }
+    out.addAll(
+      await PackConnectedAuthStore.loadExtractConfigOverlay(
+        extractPluginId: want,
+        plugins: plugins,
+      ),
+    );
     return out;
   }
 

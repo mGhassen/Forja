@@ -100,17 +100,25 @@ function getJwt(ctx) {
 }
 
 function ensureAuth(ctx, cfg) {
-  var email = String(cfg.email || '').trim();
-  var password = String(cfg.password || '').trim();
+  var cachedSession = String(cfg.sessionId || _shahidSessionId || '').trim();
+  var cachedJwt = String(cfg.jwt || _shahidJwt || '').trim();
+  if (cachedSession) _shahidSessionId = cachedSession;
+  if (cachedJwt) _shahidJwt = cachedJwt;
+
   return getJwt(ctx).then(function (jwt) {
-    if (!email || !password) return { jwt: jwt, sessionId: _shahidSessionId };
-    if (_shahidSessionId) return { jwt: jwt, sessionId: _shahidSessionId };
+    var useJwt = cachedJwt || jwt || '';
+    if (_shahidSessionId) {
+      return { jwt: useJwt, sessionId: _shahidSessionId };
+    }
+    var email = String(cfg.email || '').trim();
+    var password = String(cfg.password || '').trim();
+    if (!email || !password) return { jwt: useJwt, sessionId: '' };
     var enc = encryptPassword(ctx, password);
-    if (!enc) return { jwt: jwt, sessionId: '' };
+    if (!enc) return { jwt: useJwt, sessionId: '' };
     return ctx
       .fetch(SHAHID_PROXY + '/v2.1/usersservice/validateLogin', {
         method: 'POST',
-        headers: Object.assign(shahidHeaders('', jwt, cfg.language), {
+        headers: Object.assign(shahidHeaders('', useJwt, cfg.language), {
           'Content-Type': 'application/json',
           UUID: 'web',
         }),
@@ -128,12 +136,132 @@ function ensureAuth(ctx, cfg) {
       })
       .then(function (j) {
         _shahidSessionId = ((j && j.user) || {}).sessionId || '';
-        return { jwt: jwt, sessionId: _shahidSessionId };
+        return { jwt: useJwt, sessionId: _shahidSessionId };
       })
       .catch(function () {
-        return { jwt: jwt, sessionId: '' };
+        return { jwt: useJwt, sessionId: '' };
       });
   });
+}
+
+function authStatus(ctx) {
+  var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
+  var sessionId = String(cfg.sessionId || _shahidSessionId || '').trim();
+  var label = String(cfg.email || cfg.label || '').trim();
+  return hubOk('auth_status', {
+    connected: !!sessionId,
+    label: label || undefined,
+  });
+}
+
+function authBegin() {
+  return hubOk('auth_begin', {
+    flow: 'form',
+    methods: [
+      {
+        id: 'email',
+        label: 'Email',
+        fields: [
+          { id: 'email', type: 'text', label: 'Email' },
+          { id: 'password', type: 'password', label: 'Password' },
+        ],
+      },
+      {
+        id: 'phone',
+        label: 'Phone',
+        fields: [
+          { id: 'phone', type: 'phone', label: 'Phone' },
+          { id: 'password', type: 'password', label: 'Password' },
+        ],
+      },
+    ],
+  });
+}
+
+function authLogin(ctx) {
+  var cfg = hubConfig(ctx, SHAHID_DEFAULTS);
+  var params = hubParams(ctx);
+  var fields = params.fields || {};
+  var method = String(params.method || 'email');
+  var email = String(fields.email || '').trim();
+  var phone = String(fields.phone || '').trim();
+  var password = String(fields.password || '').trim();
+  var loginId = method === 'phone' ? phone : email;
+  if (!loginId || !password) {
+    return Promise.resolve(
+      hubFail('auth_login', 'AUTH_REQUIRED', 'email/phone and password required'),
+    );
+  }
+  return getJwt(ctx).then(function (jwt) {
+    var enc = encryptPassword(ctx, password);
+    if (!enc) {
+      return hubFail('auth_login', 'UPSTREAM', 'crypto unavailable');
+    }
+    var body = {
+      password: enc,
+      deviceType: 'Mobile',
+      physicalDeviceType: 'IOS',
+      isNewUser: false,
+      captchaToken: 'c2hhaGlkLWF1dGgta2V5LXRva2Vu',
+    };
+    if (method === 'phone') body.phoneNumber = phone;
+    else body.email = email;
+    return ctx
+      .fetch(SHAHID_PROXY + '/v2.1/usersservice/validateLogin', {
+        method: 'POST',
+        headers: Object.assign(shahidHeaders('', jwt, cfg.language), {
+          'Content-Type': 'application/json',
+          UUID: 'web',
+        }),
+        body: JSON.stringify(body),
+      })
+      .then(function (res) {
+        return res.json().then(function (j) {
+          if (!res.ok) {
+            var msg =
+              (j && j.message) ||
+              (j && j.faults && j.faults[0] && j.faults[0].userMessage) ||
+              'Login failed';
+            throw new Error(String(msg));
+          }
+          return j;
+        });
+      })
+      .then(function (j) {
+        var user = (j && j.user) || {};
+        var sessionId = String(user.sessionId || '').trim();
+        if (!sessionId) {
+          return hubFail('auth_login', 'AUTH_REQUIRED', 'no session returned');
+        }
+        _shahidSessionId = sessionId;
+        _shahidJwt = jwt || '';
+        var label =
+          String(user.email || user.userName || email || phone || '').trim();
+        return hubOk('auth_login', {
+          connected: true,
+          label: label,
+          secrets: {
+            sessionId: sessionId,
+            jwt: jwt || '',
+            email: email || '',
+            phone: phone || '',
+          },
+        });
+      })
+      .catch(function (e) {
+        return hubFail(
+          'auth_login',
+          'AUTH_REQUIRED',
+          (e && e.message) || String(e),
+        );
+      });
+  });
+}
+
+function authLogout() {
+  _shahidSessionId = '';
+  _shahidJwt = '';
+  return hubOk('auth_logout', { connected: false });
 }
 
 function formatImg(url, kind) {
@@ -235,21 +363,41 @@ function fetchProducts(ctx, cfg, opts) {
 }
 
 function layout() {
-  var rails = [];
+  var widgets = [
+    {
+      type: 'hero',
+      id: 'spotlight',
+      title: 'Shahid',
+      rail: 'series_drama',
+      bleed: 'series_comedy',
+    },
+  ];
   for (var i = 0; i < SHAHID_FEED_RAILS.length; i++) {
     var id = SHAHID_FEED_RAILS[i];
     var def = SHAHID_RAILS[id];
     if (!def) continue;
-    rails.push({
+    widgets.push({
+      type: 'rail',
       id: id,
       title: def.label,
-      kind: 'poster',
+      rail: id,
+      hideWhenBleed: id === 'series_drama',
     });
   }
-  return hubOk('layout', {
-    hero: { kind: 'none' },
-    rails: rails,
-  });
+  return hubOk(
+    'layout',
+    {
+      pages: {
+        shahid: {
+          feed: true,
+          feedRails: SHAHID_FEED_RAILS.slice(),
+          pageSize: 20,
+          widgets: widgets,
+        },
+      },
+    },
+    { maxAge: 3600, swr: 86400 },
+  );
 }
 
 function feed(ctx) {
@@ -474,6 +622,10 @@ function handle(ctx) {
   if (action === 'search') return search(ctx);
   if (action === 'filters') return Promise.resolve(filters());
   if (action === 'details') return details(ctx);
+  if (action === 'auth_status') return Promise.resolve(authStatus(ctx));
+  if (action === 'auth_begin') return Promise.resolve(authBegin());
+  if (action === 'auth_login') return authLogin(ctx);
+  if (action === 'auth_logout') return Promise.resolve(authLogout());
   return Promise.resolve(
     hubFail(action, 'UNSUPPORTED', 'unsupported action'),
   );

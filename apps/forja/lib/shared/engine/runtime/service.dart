@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/runtime.dart';
 import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
+import 'package:forja/shared/foundation/services/pack/pack_connected_auth_service.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
@@ -445,6 +446,10 @@ class EngineService {
         ?.loadConfigOverlay();
     if (packSettings != null && packSettings.isNotEmpty) {
       config.addAll(packSettings);
+    }
+    final authOverlay = await PackConnectedAuthStore.configOverlay(plugin.id);
+    if (authOverlay.isNotEmpty) {
+      config.addAll(authOverlay);
     }
     // Catalog hubs may call ctx.host.tmdb.match / hubTmdbMatch — inject the
     // same compile-time key Home uses (R70-A14 / R70-A28). Prefer Flutter

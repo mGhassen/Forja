@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack_addon_settings_section.dart';
+import 'package:forja/features/settings/addons/pack_connected_auth_section.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/lan_settings_section.dart';
@@ -62,6 +63,7 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const PackConnectedAuthSection(),
           const SettingsGroup(
             label: 'Simkl',
             children: [SettingsSimklPanel()],

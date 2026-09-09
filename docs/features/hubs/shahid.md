@@ -10,19 +10,19 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 1. Enable **ForjaHQ Shahid** under **Settings → Forja Packs → Hubs**.
 2. Turn **Shahid** on in **Settings → Features** if needed.
-3. Open the **Shahid** tab.
-4. Under the pack settings (Account), enter your Shahid **email** and **password** (stored in Keychain).
+3. Open **Settings → Addons → Connected services** and tap **Login with Shahid** (email or phone).
+4. Open the **Shahid** tab.
 
 ## What you can do
 
 - Browse genre rails (drama, comedy, action movies, Ramadan, …)
 - Search Shahid titles
 - Open details and play episodes / movies
-- Sign in so premium playout can request a license on Android
+- Sign in under Connected services so premium playout can request a license on Android
 
 ## Setup
 
-- Shahid account email + password in the hub pack **Account** settings
+- Shahid account via **Settings → Addons → Connected services → Shahid** (Login / Logout)
 - Android device for Widevine / DRM titles (phone or Android TV)
 
 ## Tips
