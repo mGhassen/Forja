@@ -6,7 +6,6 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -207,7 +206,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
           });
         },
       );
-      await PluginNavRegistry.refresh();
+      // refresh + hub Features activate run inside installSelectedOfficialPacks
       if (!mounted) return;
       if (failures.isNotEmpty) {
         setState(() {

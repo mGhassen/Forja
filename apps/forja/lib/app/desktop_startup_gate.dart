@@ -260,6 +260,9 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   /// without a second logo intro splash.
   void _enterShellAfterProfileSplash() {
     ShellBus.splashDismissed.value = true;
+    // Packs-skip / gate dismiss can race ahead of ProfileSwitchSplash arming.
+    // MainScreen consumes this on the next navbar load (issue 253).
+    ShellBus.selectDefaultTabOnNextNavLoad = true;
     _splashProfile = null;
     setState(() => _stage = _StartupStage.splash);
   }

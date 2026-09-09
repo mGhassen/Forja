@@ -240,6 +240,9 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static bool focusActiveNavTab() {
+    // Guest / Settings-only rail: parking on the lone Settings icon traps
+    // D-pad (RIGHT used to restore dead empty-shell memory). Stay on page.
+    if (_navOrder.length <= 1) return false;
     _captureFocusBeforeNav();
     return ShellTvFocus.focusCurrentNavTab();
   }
@@ -526,6 +529,11 @@ abstract final class ShellTvFocusCoordinator {
         final pageBack = _tabPageBack[tabId];
         if (pageBack != null && pageBack()) {
           _backStepPending = true;
+          return true;
+        }
+        // Settings-only / empty guest: skip the useless lone nav icon.
+        if (_navOrder.length <= 1) {
+          ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
           return true;
         }
         _focusActiveNavFromPage();
@@ -826,10 +834,11 @@ abstract final class ShellTvFocusCoordinator {
     final leaveSnap =
         (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
     final snapshot = leaveSnap ?? _tabMemory[tabId];
-    final hasMemory = snapshot != null && snapshot.zone != ShellTvZone.nav;
+    var trackingMemory =
+        snapshot != null && snapshot.zone != ShellTvZone.nav;
 
     bool landed() {
-      if (!hasMemory) return _pageHasFocus();
+      if (!trackingMemory || snapshot == null) return _pageHasFocus();
       if (_memoryHasFocus(tabId, snapshot)) return true;
       // Lazy ListView may have focused a mounted neighbor in the same row.
       if (snapshot.zone == ShellTvZone.row && snapshot.rowId != null) {
@@ -845,19 +854,38 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     void attempt({required bool allowDefault}) {
-      if (hasMemory) {
-        // Re-apply in case a mid-frame autofocus polluted live memory.
-        saveFocus(tabId, snapshot);
-        if (_restoreOverlayMemory(tabId, snapshot) && landed()) return;
-        if (_tryRestoreLiveNode(snapshot) && landed()) return;
-        if (!allowDefault) return;
-        // Last resort for catalog / details row memory: never [_restoreDefault]
-        // (hero Play + scroll-to-top). Keep retrying the remembered control.
-        if (snapshot.zone == ShellTvZone.row ||
-            snapshot.zone == ShellTvZone.grid ||
-            snapshot.zone == ShellTvZone.chipStrip) {
-          return;
+      final snap = snapshot;
+      if (trackingMemory && snap != null) {
+        // Dead row/grid/chip memory (empty-shell after Settings mounts): clear
+        // immediately — do not burn retries that only re-saveFocus the ghost.
+        if (snap.zone == ShellTvZone.row ||
+            snap.zone == ShellTvZone.grid ||
+            snap.zone == ShellTvZone.chipStrip) {
+          final rowId = snap.rowId;
+          final rowAlive =
+              rowId != null && _rowHandle(tabId, rowId) != null;
+          if (!rowAlive) {
+            _tabMemory.remove(tabId);
+            if (_navLeaveTabId == tabId) {
+              _navLeaveTabId = '';
+              _navLeaveSnapshot = null;
+            }
+            trackingMemory = false;
+            unfocusShellNav();
+            if (!restoreTabFocus(tabId)) {
+              _restoreDefault(tabId);
+            }
+            return;
+          }
         }
+        // Re-apply in case a mid-frame autofocus polluted live memory.
+        saveFocus(tabId, snap);
+        if (_restoreOverlayMemory(tabId, snap) && landed()) return;
+        if (_tryRestoreLiveNode(snap) && landed()) return;
+        if (!allowDefault) return;
+        // Live row still registered but item not focusable yet — keep
+        // retrying; never [_restoreDefault] (hero Play + scroll-to-top).
+        return;
       }
       if (!restoreTabFocus(tabId)) {
         _restoreDefault(tabId);
@@ -957,7 +985,9 @@ abstract final class ShellTvFocusCoordinator {
     if (tabId.isEmpty) return false;
     final custom = _tabRestoreFocus[tabId];
     if (custom != null && custom()) {
-      return _pageHasFocus();
+      if (_pageHasFocus()) return true;
+      // requestFocus is async — do not treat a failed land as done (blocks
+      // defaultFocus fallthrough for dead leave memory).
     }
     final memory = _tabMemory[tabId];
     if (memory != null && memory.zone != ShellTvZone.nav) {
@@ -1437,10 +1467,27 @@ abstract final class ShellTvFocusCoordinator {
 
   static void clearTab(String tabId) {
     _tabMemory.remove(tabId);
+    if (_navLeaveTabId == tabId) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+    }
     _rowsByTab.remove(tabId);
     _itemNodes.removeWhere((key, _) => key.startsWith('$tabId:'));
     _rowOwners.removeWhere((key, _) => key.startsWith('$tabId:'));
     unregisterTabDefaults(tabId);
+  }
+
+  /// Drop leave/live memory for [tabId] without unregistering rows or defaults.
+  ///
+  /// Used when Settings hub replaces the empty get-started cards so nav RIGHT
+  /// does not restore a disposed `empty-shell-cards` row.
+  static void discardTabMemory(String tabId) {
+    if (tabId.isEmpty) return;
+    _tabMemory.remove(tabId);
+    if (_navLeaveTabId == tabId) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+    }
   }
 
   // --- Per-item focus nodes (key = "tabId:rowId:index") ---

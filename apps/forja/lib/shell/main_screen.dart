@@ -433,9 +433,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
       debugPrint('[MainScreen] navbar visible=$visible');
     }
     final applyDefaultTab = ShellBus.selectDefaultTabOnNextNavLoad;
-    if (applyDefaultTab) {
-      ShellBus.selectDefaultTabOnNextNavLoad = false;
-    }
     setState(() {
       final currentId = _selectedIndex < _visibleIds.length
           ? _visibleIds[_selectedIndex]
@@ -485,6 +482,18 @@ class _MainScreenState extends ConsumerState<MainScreen>
             if (!mounted || _currentTabId != tabId) return;
             _notifyTabShown(tabId);
           });
+          // Keep the arm until we land on the starred tab (or the star is
+          // Settings). Empty-rail / late cloud default used to clear the flag
+          // while still on Settings, then preserve Settings forever.
+          if (applyDefaultTab) {
+            final matched = tabId == defaultTab;
+            final starMissing = defaultTab != 'settings' &&
+                !visible.contains(defaultTab) &&
+                tabId != 'settings';
+            if (matched || defaultTab == 'settings' || starMissing) {
+              ShellBus.selectDefaultTabOnNextNavLoad = false;
+            }
+          }
         }
       } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);

@@ -217,7 +217,8 @@ double shellNavRailLabelFontSize(BuildContext context) =>
 /// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
 double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {
   final base = baseFontSize ?? ShellTokens.navRailLabelFontSize;
-  return MediaQuery.textScalerOf(context).scale(base);
+  return MediaQuery.textScalerOf(context).scale(base) *
+      ShellTokens.navRailLabelLineHeight;
 }
 
 double shellNavRailProfileAvatarScale(BuildContext context) =>

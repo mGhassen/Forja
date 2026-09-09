@@ -74,8 +74,13 @@ abstract final class ShellTokens {
   static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
-  static const double navRailIconLabelGap = 3;
+  /// Gap between selection underline and label (TV focus / desktop hover).
+  static const double navRailIconLabelGap = 6;
+
   static const double navRailLabelFontSize = 11;
+
+  /// Line-height multiplier for rail labels — slot must match or glyphs clip.
+  static const double navRailLabelLineHeight = 1.2;
   static const double navRailItemSpacing = 28;
   static const Duration navRailLabelRevealDelay = Duration(milliseconds: 300);
   static const Duration navRailIconScaleAnimation = Duration(milliseconds: 520);

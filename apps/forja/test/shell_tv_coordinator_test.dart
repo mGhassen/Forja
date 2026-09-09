@@ -906,7 +906,7 @@ void main() {
     },
   );
 
-  test('restoreTabFocus ignores stale nav-only memory', () {
+  testWidgets('restoreTabFocus ignores stale nav-only memory', (tester) async {
     final pageNode = FocusNode(debugLabel: 'page-item');
     ShellTvFocusCoordinator.saveFocus(
       'home',
@@ -917,9 +917,20 @@ void main() {
       defaultFocus: () => pageNode,
     );
 
+    await tester.pumpWidget(
+      _wrapTv(
+        Focus(focusNode: pageNode, child: const SizedBox(width: 40, height: 40)),
+      ),
+    );
+    await tester.pump();
+
     expect(ShellTvFocusCoordinator.restoreTabFocus('home'), isTrue);
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    await tester.pump();
+    expect(pageNode.hasFocus, isTrue);
 
     pageNode.dispose();
+    ShellTvFocusCoordinator.clearTab('home');
   });
 
   testWidgets('handleShellBackKey focuses active nav from page content', (
@@ -1408,6 +1419,219 @@ void main() {
       play.dispose();
       pin.dispose();
       ShellTvFocusCoordinator.clearTab(tab);
+    },
+  );
+
+  testWidgets(
+    'restoreTabFocusAfterNav falls back when row memory is dead',
+    (tester) async {
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final category = FocusNode(debugLabel: 'settings-category');
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['settings']);
+
+      // Stale empty-shell memory — row was never registered (gate dismissed).
+      ShellTvFocusCoordinator.saveFocus(
+        'settings',
+        const ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: 'empty-shell-cards',
+          itemIndex: 0,
+        ),
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        defaultFocus: () => category,
+        restoreFocus: () {
+          if (!category.canRequestFocus) return false;
+          category.requestFocus();
+          return true;
+        },
+        preferCustomRestoreFromNav: true,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: category,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      settingsNav.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.restoreTabFocusAfterNav('settings');
+      FocusManager.instance.applyFocusChangesIfNeeded();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(category.hasFocus, isTrue);
+      expect(settingsNav.hasFocus, isFalse);
+
+      settingsNav.dispose();
+      category.dispose();
+      ShellTvFocusCoordinator.clearTab('settings');
+    },
+  );
+
+  testWidgets(
+    'restoreTabFocusAfterNav drops dead row memory without custom prefer',
+    (tester) async {
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final category = FocusNode(debugLabel: 'settings-category');
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['home', 'settings']);
+
+      ShellTvFocusCoordinator.saveFocus(
+        'settings',
+        const ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: 'empty-shell-cards',
+          itemIndex: 0,
+        ),
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        defaultFocus: () => category,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: category,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      settingsNav.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.restoreTabFocusAfterNav('settings');
+      FocusManager.instance.applyFocusChangesIfNeeded();
+      await tester.pump();
+      await tester.pump();
+
+      expect(category.hasFocus, isTrue);
+      expect(settingsNav.hasFocus, isFalse);
+
+      settingsNav.dispose();
+      category.dispose();
+      ShellTvFocusCoordinator.clearTab('settings');
+    },
+  );
+
+  testWidgets(
+    'focusActiveNavTab no-ops when Settings is the only nav tab',
+    (tester) async {
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final page = FocusNode(debugLabel: 'page-item');
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['settings']);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: page,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      page.requestFocus();
+      await tester.pump();
+
+      expect(ShellTvFocusCoordinator.focusActiveNavTab(), isFalse);
+      await tester.pump();
+      expect(page.hasFocus, isTrue);
+      expect(settingsNav.hasFocus, isFalse);
+
+      settingsNav.dispose();
+      page.dispose();
+    },
+  );
+
+  testWidgets(
+    'handleShellBackKey on Settings-only page arms exit (skips nav)',
+    (tester) async {
+      ShellTvFocusCoordinator.resetBackDebounceForTest();
+      ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+      var exited = 0;
+      ShellTvAppExit.debugExitOverride = () async {
+        exited++;
+      };
+      addTearDown(() {
+        ShellTvAppExit.debugExitOverride = null;
+        ShellTvFocusCoordinator.resetBackDebounceForTest();
+      });
+
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final page = FocusNode(debugLabel: 'page-item');
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['settings']);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: page,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      page.requestFocus();
+      await tester.pump();
+
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pump();
+      expect(settingsNav.hasFocus, isFalse);
+      expect(page.hasFocus, isTrue);
+      expect(ShellTvAppExit.isArmed, isTrue);
+      expect(exited, 0);
+
+      settingsNav.dispose();
+      page.dispose();
     },
   );
 }

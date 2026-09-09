@@ -5,6 +5,7 @@ import 'package:forja/features/settings/providers/settings_visibility_provider.d
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Shown when every shell feature tab is hidden — guides users to Plugins,
@@ -32,7 +33,32 @@ class _ShellEmptyFeaturesScreenState
   var _focusScheduled = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Same tab id as Settings hub — register enter/restore so nav RIGHT and
+    // OK on the Settings rail land on Plugins/Addons cards (hub is unmounted).
+    TvHeroActions.bind(
+      'settings',
+      defaultFocus: () => _cardFocus.isNotEmpty ? _cardFocus.first : null,
+      enterFromNavFocus: _focusFirstCard,
+      restoreFocus: () {
+        _focusFirstCard();
+        return _cardFocus.isNotEmpty &&
+            (_cardFocus.first.hasPrimaryFocus || _cardFocus.first.hasFocus);
+      },
+      preferCustomRestoreFromNav: true,
+    );
+  }
+
+  void _focusFirstCard() {
+    if (_cardFocus.isEmpty) return;
+    final n = _cardFocus.first;
+    if (n.canRequestFocus) n.requestFocus();
+  }
+
+  @override
   void dispose() {
+    TvHeroActions.unbind('settings');
     for (final n in _cardFocus) {
       n.dispose();
     }

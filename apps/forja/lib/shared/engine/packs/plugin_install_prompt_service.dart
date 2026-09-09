@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
@@ -28,6 +29,7 @@ abstract final class PluginInstallPromptService {
     }
 
     final installedNames = <String>[];
+    final installedPacks = <EnginePack>[];
     for (final row in diff.added) {
       final url = row.manifestUrl.trim();
       if (url.isEmpty) continue;
@@ -47,6 +49,7 @@ abstract final class PluginInstallPromptService {
       try {
         debugPrint('[PluginInstall] cloud auto-install $url');
         final pack = await coordinator.installManifest(url);
+        installedPacks.add(pack);
         installedNames.add(
           label?.isNotEmpty == true ? label! : pack.name,
         );
@@ -55,6 +58,9 @@ abstract final class PluginInstallPromptService {
       }
     }
 
+    if (installedPacks.isNotEmpty) {
+      await PackHubFeatures.refreshAndActivateInstalled(installedPacks);
+    }
     if (installedNames.isNotEmpty) {
       await coordinator.notifyCloudPacksInstalled(installedNames);
     }

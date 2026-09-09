@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
@@ -278,6 +280,7 @@ Future<List<String>> installSelectedOfficialPacks(
   }
 
   final failures = <String>[];
+  final installed = <EnginePack>[];
   for (var i = 0; i < todo.length; i++) {
     final pack = todo[i];
     final label = pack.displayName?.trim().isNotEmpty == true
@@ -289,12 +292,22 @@ Future<List<String>> installSelectedOfficialPacks(
       status: 'Installing $label (${i + 1}/${todo.length})…',
     );
     try {
-      await PluginInstallCoordinator.instance
+      final enginePack = await PluginInstallCoordinator.instance
           .installManifest(pack.manifestUrl.trim());
+      installed.add(enginePack);
     } catch (e) {
       debugPrint('[OfficialPacks] install $label failed: $e');
       failures.add(label);
     }
+  }
+  // Destinations first, then RFC-086 default-on Features/rail (same as pack ON).
+  if (installed.isNotEmpty) {
+    onProgress?.call(
+      done: todo.length,
+      total: todo.length,
+      status: 'Activating Features…',
+    );
+    await PackHubFeatures.refreshAndActivateInstalled(installed);
   }
   onProgress?.call(
     done: todo.length,

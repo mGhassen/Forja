@@ -11,6 +11,7 @@ import 'package:forja/features/settings/widgets/settings_plugin_install_progress
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/packs/pack_hub_features.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -18,7 +19,6 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
-import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
@@ -493,20 +493,24 @@ class _SettingsForjaPacksSectionState
     if (packs.isEmpty || _engineInstalling || _engineReloading) return;
     setState(() => _engineInstalling = true);
     var ok = 0;
+    final installed = <EnginePack>[];
     try {
       for (final pack in packs) {
         try {
-          await PluginInstallCoordinator.instance.installManifest(
+          final fresh = await PluginInstallCoordinator.instance.installManifest(
             pack.sourceUrl,
           );
           await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+          installed.add(fresh);
           ok++;
         } catch (e) {
           if (!mounted) return;
           ForjaToast.error('${pack.name} download failed: $e');
         }
       }
-      await PluginNavRegistry.refresh();
+      if (installed.isNotEmpty) {
+        await PackHubFeatures.refreshAndActivateInstalled(installed);
+      }
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);
@@ -560,11 +564,12 @@ class _SettingsForjaPacksSectionState
     EnginePack pack, {
     required bool enabled,
   }) async {
+    var working = pack;
     if (enabled &&
         await PluginRegistry.instance.packNeedsDiskInstall(pack)) {
       setState(() => _engineInstalling = true);
       try {
-        await PluginInstallCoordinator.instance.installManifest(
+        working = await PluginInstallCoordinator.instance.installManifest(
           pack.sourceUrl,
         );
         await DeferredRemoteInstallStore.clear(pack.sourceUrl);
@@ -581,69 +586,13 @@ class _SettingsForjaPacksSectionState
     );
     await PluginNavRegistry.refresh();
     if (enabled) {
-      await _activatePackHubFeatures(pack);
+      await PackHubFeatures.activate(working);
     } else {
-      await _deactivatePackHubFeatures(pack);
+      await PackHubFeatures.deactivate(working);
     }
     if (!mounted) return;
     scheduleForjaSyncPush();
     ref.invalidate(enginePacksProvider);
-  }
-
-  /// Pack ON → related hub Features on the rail by default (RFC-086).
-  Future<void> _activatePackHubFeatures(EnginePack pack) async {
-    final settings = SettingsService();
-    final tabs = <String>[];
-    for (final pl in pack.plugins) {
-      if (!pl.isKitPlugin || !pl.enabled) continue;
-      final spec = MetaNavSpec.fromPluginNav(
-        pl.nav,
-        pluginId: pl.id,
-        fallbackLabel: pl.name,
-      );
-      if (spec == null || !spec.isValid) continue;
-      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(
-        PluginNavRegistry.hostNavId(
-          sourceUrl: pack.sourceUrl,
-          authorTabId: spec.tabId,
-        ),
-      );
-    }
-    if (tabs.isEmpty) return;
-    noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, true, orderAtEnd: true);
-    }
-    await scheduleNavigationSyncPush();
-  }
-
-  /// Pack OFF → drop that pack's hub tabs from Features / rail.
-  Future<void> _deactivatePackHubFeatures(EnginePack pack) async {
-    final settings = SettingsService();
-    final tabs = <String>[];
-    for (final pl in pack.plugins) {
-      if (!pl.isKitPlugin) continue;
-      final spec = MetaNavSpec.fromPluginNav(
-        pl.nav,
-        pluginId: pl.id,
-        fallbackLabel: pl.name,
-      );
-      if (spec == null || !spec.isValid) continue;
-      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(
-        PluginNavRegistry.hostNavId(
-          sourceUrl: pack.sourceUrl,
-          authorTabId: spec.tabId,
-        ),
-      );
-    }
-    if (tabs.isEmpty) return;
-    noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, false);
-    }
-    await scheduleNavigationSyncPush();
   }
 
   Future<void> _installNamedPack(String sourceUrl) async {
@@ -653,8 +602,7 @@ class _SettingsForjaPacksSectionState
         sourceUrl,
       );
       await DeferredRemoteInstallStore.clear(sourceUrl);
-      await PluginNavRegistry.refresh();
-      await _activatePackHubFeatures(pack);
+      await PackHubFeatures.refreshAndActivateInstalled([pack]);
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);
@@ -671,7 +619,7 @@ class _SettingsForjaPacksSectionState
 
   Future<void> _purgePackNow(EnginePack pack) async {
     try {
-      await _deactivatePackHubFeatures(pack);
+      await PackHubFeatures.deactivate(pack);
       await EngineService.instance.removePack(pack.sourceUrl);
       await PendingRemotePurgeStore.clear(pack.sourceUrl);
       await PluginNavRegistry.refresh();
@@ -691,7 +639,7 @@ class _SettingsForjaPacksSectionState
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(url);
-      await PluginNavRegistry.refresh();
+      await PackHubFeatures.refreshAndActivateInstalled([pack]);
       if (!mounted) return;
       _engineController.clear();
       scheduleForjaSyncPush();
@@ -709,7 +657,7 @@ class _SettingsForjaPacksSectionState
 
   Future<void> _removeEnginePack(EnginePack pack) async {
     try {
-      await _deactivatePackHubFeatures(pack);
+      await PackHubFeatures.deactivate(pack);
       await EngineService.instance.removePack(pack.sourceUrl);
       await PendingRemotePurgeStore.clear(pack.sourceUrl);
       await DeferredRemoteInstallStore.clear(pack.sourceUrl);

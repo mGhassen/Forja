@@ -13,7 +13,7 @@ Customize which sections appear in the bottom nav (mobile) or side rail (desktop
 
 Turn IPTV / Live Sports off in Addons and they leave Features and the rail. Disable a hub pack and that hub leaves Features and the rail.
 
-On a fresh install, only **Settings** is on the rail. Enable IPTV / Live Sports under **Addons** (tabs appear on the rail). Enable hub packs under **Forja Packs** (hub tabs appear on the rail). Use Features to hide or reorder.
+On a fresh install, only **Settings** is on the rail. Enable IPTV / Live Sports under **Addons** (tabs appear on the rail). **Install** or enable hub packs under **Forja Packs** (hub tabs appear on the rail). Use Features to hide or reorder.
 
 ## How to open it
 

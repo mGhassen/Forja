@@ -30,6 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    // Empty get-started cards share tab id `settings` — drop their memory so
+    // nav RIGHT restores the hub category, not a disposed row.
+    ShellTvFocusCoordinator.discardTabMemory('settings');
     final pending = ShellBus.requestSettingsCategory.value;
     if (pending != null) {
       ShellBus.settingsHubCategoryId.value = pending;
@@ -53,6 +56,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         return false;
       },
+      // Ignore stale empty-shell / disposed-row leave memory on nav RIGHT.
+      preferCustomRestoreFromNav: true,
     );
   }
 

@@ -102,13 +102,14 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     super.dispose();
   }
 
-  /// Mid-session switch: leave the previous screen and open this profile's
-  /// saved default tab once navbar config reloads.
-  void _prepareShellForIncomingProfile() {
+  /// After profile settings land: shell must open on the starred default tab.
+  /// Mid-session also pops overlays and forces a navbar reload.
+  void _armDefaultTabForIncomingProfile({required bool prepareShell}) {
+    ShellBus.selectDefaultTabOnNextNavLoad = true;
+    if (!prepareShell) return;
     popShellOverlayUntilRoot();
     ShellBus.clearHideGlobalNav();
     ShellBus.settingsHubCategoryId.value = 'profile';
-    ShellBus.selectDefaultTabOnNextNavLoad = true;
     // Merge may no-op when navigation payloads match; force a shell reload.
     SettingsService.navbarChangeNotifier.value++;
   }
@@ -133,9 +134,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
       // Same as intro splash: engines under the floor; play sources after dismiss.
       final bootFuture = _warmLikeIntro(needs);
-      if (widget.prepareCurrent) {
-        _prepareShellForIncomingProfile();
-      }
+      // Gate path uses prepareCurrent:false — still arm the starred tab or
+      // MainScreen keeps Settings from the empty-rail paint (issue 253).
+      _armDefaultTabForIncomingProfile(prepareShell: widget.prepareCurrent);
       await _dismissWhenReady(bootFuture, needs);
     } catch (_) {
       if (!mounted || _finished) return;

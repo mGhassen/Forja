@@ -243,7 +243,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [221-[open]-…](221-[open]-features-home-toggle-reverts-after-cloud-sync.md) | Features Home toggle reverts after cloud sync | P0 | Critical | open | 8/8 · A 0/2 | — |
 | [222-[open]-…](222-[open]-android-tv-features-empty-after-pack-install.md) | ATV Features empty after hub pack install | P0 | Critical | open | 7/7 · A 0/2 | — |
 | [224-[open]-…](224-[open]-android-tv-addons-iptv-live-toggle-dead.md) | ATV Addons IPTV / Live Sports toggle does not stick | P0 | Critical | open | 44/44 · A 0/4 | — |
-| [225-[open]-…](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) | Official pack install aborts batch / skips hub nav refresh | P0 | Critical | open | 4/4 · A 0/2 | — |
+| [225-[open]-…](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) | Official pack install aborts batch / skips hub nav refresh | P0 | Critical | open | 6/6 · A 0/3 | — |
 | [226-[fixed]-…](fixed/226-[fixed]-live-sports-stuck-loading-after-pack-update.md) | Live Sports stuck Loading catalogs after pack update | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [227-[open]-…](227-[open]-uninstall-hub-pack-leaves-navbar-ghost.md) | Uninstall hub pack leaves navbar ghost tab | P1 | High | open | 4/4 · A 0/2 | — |
 | [228-[open]-…](228-[open]-boot-skips-pack-install-prompt-lean-hubs.md) | Cloud packs auto-install (no install confirm) | P0 | Critical | open | 4/4 · A 0/3 | — |
@@ -256,10 +256,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [250-[fixed]-…](fixed/250-[fixed]-home-tmdb-api-key-missing-in-release.md) | Home TMDB API key missing in release (AUTH_REQUIRED toast) | P0 | Critical | fixed | Complete · 4/4 · A 0/1 | — |
 | [251-[fixed]-…](fixed/251-[fixed]-live-sports-streamed-empty-nested-skip.md) | Live Sports empty while Streamed logs streams=N | P0 | High | fixed | Complete · 3/3 · A 0/1 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
 | [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
-| [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 3/3 · A 1/2 | — |
+| [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 5/5 · A 1/3 | — |
 | [254-[open]-…](254-[open]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | open | 7/7 · A 0/2 | — |
 | [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 0/5 · A 0/2 | [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md) |
 | [256-[fixed]-…](fixed/256-[fixed]-android-tv-plugin-pack-update-focus.md) | ATV plugin pack update dialog focus stays on shell | P1 | High | fixed | Complete · 2/2 · A 1/2 | [173](173-[open]-android-tv-update-dialog-focus-leak.md) |
+| [257-[open]-…](257-[open]-android-tv-guest-settings-only-dpad.md) | ATV guest / Settings-only D-pad stuck on Settings rail | P0 | High | open | 4/4 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

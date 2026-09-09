@@ -45,7 +45,6 @@ double _navRailItemContentHeight({
   required double maxHeight,
   required double preferredIconSize,
   required double preferredLabelSlotHeight,
-  required double minLabelSlotHeight,
   required double preferredSpacing,
 }) {
   if (itemCount <= 0) {
@@ -57,7 +56,7 @@ double _navRailItemContentHeight({
   }
 
   var iconSize = preferredIconSize;
-  var labelSlotHeight = preferredLabelSlotHeight;
+  final labelSlotHeight = preferredLabelSlotHeight;
   double contentHeight() => _navRailItemContentHeight(
     iconSize: iconSize,
     labelSlotHeight: labelSlotHeight,
@@ -90,11 +89,6 @@ double _navRailItemContentHeight({
       (perItemBudget - fixedChrome - preferredLabelSlotHeight - minSpacing) /
       ShellTokens.navRailIconHoverScale;
   iconSize = iconBudget.clamp(minIcon, preferredIconSize);
-  labelSlotHeight =
-      (preferredLabelSlotHeight * (iconSize / preferredIconSize)).clamp(
-        minLabelSlotHeight,
-        preferredLabelSlotHeight,
-      );
   spacing = _navRailItemSpacingForHeight(
     itemCount: itemCount,
     maxHeight: maxHeight,
@@ -281,6 +275,12 @@ class _ShellNavRailState extends State<ShellNavRail> {
     // Wait until the async navbar has real tabs — otherwise we burn attempts
     // on an empty rail and never focus after load.
     if (widget.visibleIds.isEmpty) return;
+    // Guest / Settings-only: empty get-started (or Settings hub) owns first
+    // focus — cold-start rail steal left RIGHT/Back stuck on the Settings icon.
+    if (widget.visibleIds.length == 1 && widget.visibleIds.first == 'settings') {
+      _coldStartNavFocusDone = true;
+      return;
+    }
     _coldStartNavFocusScheduled = true;
     var attempts = 0;
     void attempt() {
@@ -317,7 +317,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
       context,
       preferredLabelFont,
     );
-    final minLabelSlot = shellNavRailLabelSlotHeight(context, 9.0);
     final profileAvatarScale = shellNavRailProfileAvatarScale(context);
 
     Widget buildNavColumn({
@@ -409,7 +408,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         maxHeight: navMaxHeight,
                         preferredIconSize: preferredIconSize,
                         preferredLabelSlotHeight: preferredLabelSlot,
-                        minLabelSlotHeight: minLabelSlot,
                         preferredSpacing: metrics.navRailItemSpacing,
                       );
 
@@ -1068,7 +1066,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       color: labelColor,
       fontSize: labelFontSize,
       fontWeight: FontWeight.w500,
-      height: 1,
+      height: ShellTokens.navRailLabelLineHeight,
     );
     final label = widget.label ?? widget.destination.label;
     final chromeAnim = _chromeAnim(policy);

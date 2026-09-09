@@ -2,17 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
-import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 
 /// Open pack install/uninstall picker inside Settings → Forja Packs (right pane).
 ///
@@ -173,6 +172,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     var installed = 0;
     var removed = 0;
     final failures = <String>[];
+    final installedPacks = <EnginePack>[];
     try {
       final coordinator = PluginInstallCoordinator.instance;
       final registry = PluginRegistry.instance;
@@ -199,7 +199,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
               }
             }
             if (victim != null) {
-              await _deactivatePackHubFeatures(victim);
+              await PackHubFeatures.deactivate(victim);
             }
             await registry.removePack(url);
             await PendingRemotePurgeStore.clear(url);
@@ -209,16 +209,20 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
             final pack = await coordinator.installManifest(url);
             await DeferredRemoteInstallStore.clear(url);
             installed++;
+            installedPacks.add(pack);
             debugPrint('[PackPrompt] install ok $label');
-            await _activatePackHubFeatures(pack);
           }
         } catch (e) {
           debugPrint('[PackPrompt] failed $label: $e');
           failures.add(label);
         }
       }
-      // Always refresh hub nav even if the pane was torn down (Back / remount).
-      await PluginNavRegistry.refresh();
+      // Refresh destinations first, then RFC-086 default-on (even if unmounted).
+      if (installedPacks.isNotEmpty) {
+        await PackHubFeatures.refreshAndActivateInstalled(installedPacks);
+      } else if (removed > 0) {
+        await PluginNavRegistry.refresh();
+      }
       scheduleForjaSyncPush();
       if (!mounted) return;
       if (failures.isEmpty) {
@@ -242,60 +246,6 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       SettingsPackPromptDrill.applying.value = false;
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  Future<void> _activatePackHubFeatures(EnginePack pack) async {
-    final settings = SettingsService();
-    final tabs = <String>[];
-    for (final pl in pack.plugins) {
-      if (!pl.isKitPlugin || !pl.enabled) continue;
-      final spec = MetaNavSpec.fromPluginNav(
-        pl.nav,
-        pluginId: pl.id,
-        fallbackLabel: pl.name,
-      );
-      if (spec == null || !spec.isValid) continue;
-      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(
-        PluginNavRegistry.hostNavId(
-          sourceUrl: pack.sourceUrl,
-          authorTabId: spec.tabId,
-        ),
-      );
-    }
-    if (tabs.isEmpty) return;
-    noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, true, orderAtEnd: true);
-    }
-    await scheduleNavigationSyncPush();
-  }
-
-  Future<void> _deactivatePackHubFeatures(EnginePack pack) async {
-    final settings = SettingsService();
-    final tabs = <String>[];
-    for (final pl in pack.plugins) {
-      if (!pl.isKitPlugin) continue;
-      final spec = MetaNavSpec.fromPluginNav(
-        pl.nav,
-        pluginId: pl.id,
-        fallbackLabel: pl.name,
-      );
-      if (spec == null || !spec.isValid) continue;
-      if (SettingsService.addonGatedNavIds.contains(spec.tabId)) continue;
-      tabs.add(
-        PluginNavRegistry.hostNavId(
-          sourceUrl: pack.sourceUrl,
-          authorTabId: spec.tabId,
-        ),
-      );
-    }
-    if (tabs.isEmpty) return;
-    noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, false);
-    }
-    await scheduleNavigationSyncPush();
   }
 
   Future<void> _notNow() async {
