@@ -41,21 +41,23 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
   focus zone). Detail rows use the **same green left bar + tint** on hover /
-  D-pad focus (not a bordered box). **↑/↓** (and **←/→** as the same prev/next) walk the detail
-  controls in a **vertical list** — not sideways between neighbors; long lists
-  (e.g. Playback) scroll so the focused row stays visible; focusing the **first**
-  control (or any control near the top of the page) snaps the detail scroll
-  back to the top so the category title and section labels stay on screen;
-  holding **↑/↓** speeds up the further you hold; D-pad stays in the
-  right pane. **Back** steps nested pages first (e.g. **Addons → Stremio**
-  returns to the Addons list), then the selected category on the left rail,
-  then the nav rail — selection stays on that category (no hop to the first
-  item). **←** on the first category
+  D-pad focus (not a bordered box). **↑/↓** (and **→** as next where the page
+  is a vertical list) walk controls **inside that page only** — they never jump
+  to the category rail. Long lists (e.g. Playback) scroll so the focused row
+  stays visible; focusing the **first** control (or any control near the top of
+  the page) snaps the detail scroll back to the top so the category title and
+  section labels stay on screen; holding **↑/↓** speeds up the further you hold.
+  **←** or **Back** leaves the page: nested drills first (e.g. **Addons →
+  Stremio** returns to the Addons list), then the selected category on the left
+  rail, then the nav rail — selection stays on that category (no hop to the
+  first item). **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
   Nested switches on ordinary toggle rows do not steal focus (**OK** flips the
   row). **Addons** and **Forja Packs**: **OK** on the row activates; **→** then
-  **OK** on the chevron opens details / expands plugins. **Features**: **↓**
+  **OK** on the chevron opens details / expands plugins. **Addons** list: **↑/↓**
+  moves between addon rows (e.g. IPTV → Playback) with normal green focus.
+  **Features**: **↓**
   moves to the next feature (or the same action on the next row when focus is
   on star / reorder). Text fields
   (API keys, URLs, etc.) take **focus** with the D-pad without opening the

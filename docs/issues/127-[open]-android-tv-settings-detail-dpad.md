@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) |
+| **Progress** | **7 / 7** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,8 @@
 | 3 | I127-T03 | `ForjaButton` / text fields / remove rows / scoring chips stay in linear detail traversal | ✅ |
 | 4 | I127-T04 | Feature docs + changelog: OK/→ enter detail; D-pad stays right; Back exits left | ✅ |
 | 5 | I127-T05 | OK/→ from category rail lands focus on first detail control (`SettingsDetailEnter` + scaffold land) | ✅ |
+| 6 | I127-T06 | Addons list: isolate `TvKitRow` from `settings-categories` (`sortOrder` 100+, explicit ↑/↓) so ↑ from IPTV lands on Playback | ✅ |
+| 7 | I127-T07 | Detail ← exit: first linear control + row column-0 call `pageBack` (same ladder as Back) | ✅ |
 
 ---
 
@@ -34,15 +36,19 @@
 | 1 | I127-A01 | Android TV Settings: OK/→ from a category enters the right pane; ↑/↓/←/→ move only among detail controls | ⬜ |
 | 2 | I127-A02 | Back from detail returns to the selected category; further Back steps to first category then nav rail | ⬜ |
 | 3 | I127-A03 | Back: nested drill → detail list → selected category → nav (no hop to first category); Addons→Stremio restores list focus | ✅ |
+| 4 | I127-A04 | Addons: ↑ from IPTV lands on Playback with green focus chrome (not category rail / invisible) | ⬜ |
+| 5 | I127-A05 | Detail: ↑/↓/→ stay in the right page; ← or Back returns to the selected category (or closes nested drill first) | ⬜ |
 
 ---
 
 ## Summary
 
-On **Android TV**, Settings uses a left category rail and a right detail pane. **OK** / **→** should enter the detail; D-pad should stay in the right pane; only **Back** should return to the left rail. Several detail controls wired `navLeftAlways` / `listIndex: 0` / linear `onBackwardEdge`, so **←** jumped to the category rail or shell nav mid-pane.
+On **Android TV**, Settings uses a left category rail and a right detail pane. **OK** / **→** should enter the detail; **↑/↓/→** stay in the right page; **←** or **Back** returns to the left rail (nested drill first).
 
-**Symptom fix:** Trap D-pad inside the detail `FocusScope` + linear scope; Back ladder is nested drill → detail → selected category → nav (no Profile hop).
+**Regression (Addons):** Addon rows registered `TvKitRow` with `sortOrder: index` (Playback = 0), colliding with `settings-categories` (also 0). ↑ from IPTV called `moveVerticalInTab` and focused the category rail — Addons looked focused while Playback lost chrome (“invisible”).
 
-**Root fix:** Same — focus ownership for settings rows/buttons (no geometry leak via raw `InkWell` / `IconButton`).
+**Symptom fix:** Trap D-pad inside the detail `FocusScope` + contain; Back / ← ladder is nested drill → detail → selected category → nav (no Profile hop).
 
-**Related:** [RFC-033](../rfc/033-[open]-settings-ux-redesign.md) · [settings overview](../features/settings/overview.md) · backlog [B101-S161](../backlog/1.0.1-[open].md)
+**Root fix (T06/T07):** Addons ↑/↓ only walk sibling addon rows (`sortOrder` 100+, `onFocusUp`/`onFocusDown`); ← at column 0 / first linear control runs `pageBack`.
+
+**Related:** [RFC-033](../rfc/033-[open]-settings-ux-redesign.md) · [settings overview](../features/settings/overview.md)

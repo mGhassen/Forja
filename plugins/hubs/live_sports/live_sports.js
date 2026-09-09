@@ -37,7 +37,8 @@ function liveSportsLayout() {
         widgets: [
           kitStack('page', { expand: true }, [
             kitTopBar('chrome', {
-              focusDown: 'kind',
+              // ↓ from Catalog / Portals restores last schedule row (not All).
+              focusDown: 'schedule',
               actions: liveSportsCatalogActions(),
             }),
             kitCategoryBar('kind', {

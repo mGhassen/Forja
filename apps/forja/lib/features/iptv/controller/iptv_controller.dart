@@ -174,8 +174,30 @@ class IptvController extends ChangeNotifier
 
   /// Last played Live stream id — highlight/scroll in catalog (no autoplay).
   String? browserHighlightedStreamId;
+
+  /// Catalog tile to focus after leaving the player (TV).
+  ///
+  /// Survives [PlayerSurfaceChromeStub] disposing the browser while the player
+  /// is up — the await-after-open path hits a disposed State and cannot restore.
+  String? pendingPostPlayerStreamFocusId;
+
   String browserSearch = '';
   bool browserSearchOpen = false;
+
+  void armPostPlayerStreamFocus(String streamId) {
+    if (streamId.isEmpty) return;
+    pendingPostPlayerStreamFocusId = streamId;
+  }
+
+  void clearPostPlayerStreamFocus() {
+    pendingPostPlayerStreamFocusId = null;
+  }
+
+  String? takePostPlayerStreamFocusId() {
+    final id = pendingPostPlayerStreamFocusId;
+    pendingPostPlayerStreamFocusId = null;
+    return id;
+  }
 
   /// True while a non-empty search filter is active (enter/exit category logic).
   bool _browserSearchFilterActive = false;

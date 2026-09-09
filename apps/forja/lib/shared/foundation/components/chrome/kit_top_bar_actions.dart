@@ -52,7 +52,9 @@ class KitTopBarActions extends ConsumerWidget {
     final actions = _actions;
     if (actions.isEmpty) return const SizedBox.shrink();
     final scope = KitLayoutScope.of(context);
-    final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
+    // last: restore prior schedule/list index (↑ from match → Portals → ↓).
+    final focusDown =
+        kitFocusEdge(tabId, spec['focusDown']?.toString(), last: true);
     final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
     final catalogOptions = catalogsAsync.asData?.value ?? const [];
     final layoutHorizon = scope.selectedId('horizon') ??

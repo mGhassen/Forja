@@ -144,10 +144,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 11/11 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [121-[open]-…](121-[open]-android-tv-skip-shell-slide.md) | Android TV skip shell slide transitions | P1 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [122-[open]-…](122-[open]-android-tv-iptv-player-lost-dpad.md) | Android TV IPTV player lost D-pad | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [123-[open]-…](123-[open]-android-tv-iptv-catalog-focus-after-player.md) | Android TV IPTV catalog focus after player | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [123-[open]-…](123-[open]-android-tv-iptv-catalog-focus-after-player.md) | Android TV IPTV catalog focus after player | P1 | Medium | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [124-[open]-…](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) | Android TV IPTV reconnect banner stuck after recover | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [127-[open]-…](127-[open]-android-tv-settings-detail-dpad.md) | ATV Settings detail D-pad escapes category / Addons ↑ | P1 | High | open | 7/7 · A 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 10/10 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -268,6 +269,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [262-[fixed]-…](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) | ATV Forja Packs last pack clipped / unreachable | P1 | High | fixed | Complete · 3/3 · A 0/1 | [127](127-[open]-android-tv-settings-detail-dpad.md) |
 | [263-[fixed]-…](fixed/263-[fixed]-live-sports-schedule-merge-soft-match.md) | Live Sports schedule merge dead / soft-match too weak | P1 | High | fixed | Complete · 5/5 · A 0/1 | [240](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) |
 | [264-[fixed]-…](fixed/264-[fixed]-live-sports-player-no-auto-failover.md) | Live Sports player does not auto-play next stream | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [265-[open]-…](265-[open]-android-tv-live-sports-dpad-down-from-shelf-portal.md) | ATV Live Sports ↓ from shelf / Portals does not restore match | P1 | Medium | open | 4/4 · A 0/2 | [243](fixed/243-[fixed]-android-tv-live-sports-first-focus-catalog.md) |
+| [266-[open]-…](266-[open]-android-tv-iptv-dpad-up-after-shelf-change.md) | ATV IPTV ↑ from catalog after Movies/Series shelf change | P1 | Medium | open | 3/3 · A 0/2 | [136](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

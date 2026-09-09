@@ -304,6 +304,37 @@ bool iptvFocusPortalTool() {
       iptvFocusRowItem('iptv-top-tools', 0);
 }
 
+/// Focus active Live/Movies/Series tab, else Portals — retry across frames.
+///
+/// Catalog ↑ edges always consume the key; a one-shot miss after a shelf
+/// remount left D-pad stuck in the category/stream pane.
+bool iptvFocusTopBarFromCatalog(
+  IptvController ctrl, {
+  bool preferPortal = false,
+}) {
+  final shelfIndex = iptvActiveSectionShelfIndex(ctrl);
+  bool tryOnce() {
+    if (preferPortal) {
+      if (iptvFocusPortalTool()) return true;
+      return iptvFocusRowItem('iptv-sections', shelfIndex);
+    }
+    if (iptvFocusRowItem('iptv-sections', shelfIndex)) return true;
+    return iptvFocusPortalTool();
+  }
+
+  if (tryOnce()) return true;
+  var tries = 0;
+  void attempt() {
+    if (tryOnce()) return;
+    if (tries++ < 12) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+  }
+
+  WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  return true;
+}
+
 /// Up from a channel tile: right column → portal tool; else → active shelf tab.
 VoidCallback iptvStreamUpEdge(
   IptvController ctrl, {
@@ -311,14 +342,8 @@ VoidCallback iptvStreamUpEdge(
   required int columns,
 }) {
   return () {
-    if (columns > 1 && index % columns == columns - 1) {
-      iptvFocusPortalTool();
-    } else {
-      iptvFocusRowItem(
-        'iptv-sections',
-        iptvActiveSectionShelfIndex(ctrl),
-      );
-    }
+    final preferPortal = columns > 1 && index % columns == columns - 1;
+    iptvFocusTopBarFromCatalog(ctrl, preferPortal: preferPortal);
   };
 }
 

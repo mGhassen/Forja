@@ -53,6 +53,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       'settings',
       pageBack: _handlePageBack,
     );
+    // ← on first column of detail TvKitRows exits like Back (Addons / Features).
+    ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', true);
   }
 
   void _reloadFromProvider(SettingsVisibility next) {
@@ -85,6 +87,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', false);
     _detailScope.dispose();
     super.dispose();
   }
@@ -347,25 +350,31 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 child: tv
                     ? FocusScope(
                         node: _detailScope,
-                        // D-pad stays in the detail pane (vertical reading
-                        // order). Back (_handlePageBack) → category rail.
+                        // D-pad stays in the detail pane. ← at first control /
+                        // Back (_handlePageBack) → category rail.
                         child: SettingsDetailEnter(
                           enterToken: _detailEnterToken,
                           child: ShellTvContainDpad(
                             child: ShellTvLinearFocusScope(
-                              child: FocusTraversalGroup(
-                                policy: ReadingOrderTraversalPolicy(),
-                                child: SettingsAddonsAwareScaffold(
-                                  categoryTitle:
-                                      selectedMeta?.title ?? 'Settings',
-                                  categoryId: widget.selectedId,
-                                  categoryAdminOnly:
-                                      selectedMeta?.adminOnly ?? false,
-                                  scrollable:
-                                      !(selectedMeta?.fillViewport ?? false),
-                                  child: buildSettingsCategoryBody(
-                                    widget.selectedId,
-                                    visibility,
+                              child: ShellTvLinearFocusEdges(
+                                onBackwardEdge: () {
+                                  // First control ← → category (same as Back).
+                                  return _handlePageBack();
+                                },
+                                child: FocusTraversalGroup(
+                                  policy: ReadingOrderTraversalPolicy(),
+                                  child: SettingsAddonsAwareScaffold(
+                                    categoryTitle:
+                                        selectedMeta?.title ?? 'Settings',
+                                    categoryId: widget.selectedId,
+                                    categoryAdminOnly:
+                                        selectedMeta?.adminOnly ?? false,
+                                    scrollable: !(selectedMeta?.fillViewport ??
+                                        false),
+                                    child: buildSettingsCategoryBody(
+                                      widget.selectedId,
+                                      visibility,
+                                    ),
                                   ),
                                 ),
                               ),

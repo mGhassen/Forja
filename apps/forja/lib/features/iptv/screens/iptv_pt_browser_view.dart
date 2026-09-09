@@ -380,6 +380,15 @@ class _BrowserViewState extends State<_BrowserView> {
         catalogKey != _landedCatalogKey &&
         (widget.ctrl.categories.isNotEmpty ||
             widget.ctrl.browserAllStreams.isNotEmpty);
+    // Movies/Series often share numeric category ids ("1"). Without a reset,
+    // → into streams restores the previous shelf's mid-grid index so ↑ never
+    // reaches the top-bar shelf / Portals from the "first" visible row.
+    if (shelfLanded || (loading && _landedCatalogKey != null)) {
+      iptvResetBrowserStreamsFocusMemory();
+      if (_streamScroll.hasClients) {
+        _streamScroll.jumpTo(0);
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (clearedSearch) {
@@ -535,6 +544,7 @@ class _BrowserViewState extends State<_BrowserView> {
 
   /// After leaving the player: select category, scroll, focus the channel tile.
   void _restoreFocusAfterPlayback(IptvStream stream) {
+    widget.ctrl.clearPostPlayerStreamFocus();
     // Keep Favorites / Already watched / search hits when the channel is still
     // visible; otherwise open the channel's real group.
     final alreadyVisible =
@@ -599,9 +609,48 @@ class _BrowserViewState extends State<_BrowserView> {
     if (!mounted) return;
     if (_needsPortal) {
       _focusOpenPortalButton();
-    } else if (!widget.ctrl.isLoading) {
-      _landRestoredCatalog(preferCategoryFocus: true);
+      return;
     }
+    if (widget.ctrl.isLoading) return;
+    // Catalog remount after player: focus the played channel (not category).
+    if (_tryRestorePostPlayerStreamFocus()) return;
+    _landRestoredCatalog(preferCategoryFocus: true);
+  }
+
+  /// When [PlayerSurfaceChromeStub] remounts the browser, restore D-pad onto
+  /// the stream that was playing (armed before open / guide channel change).
+  bool _tryRestorePostPlayerStreamFocus() {
+    final pendingId = widget.ctrl.pendingPostPlayerStreamFocusId;
+    if (pendingId == null || pendingId.isEmpty) return false;
+    if (!iptvUseTvFocus(context)) {
+      widget.ctrl.clearPostPlayerStreamFocus();
+      return false;
+    }
+    IptvStream? stream;
+    for (final s in widget.ctrl.browserAllStreams) {
+      if (s.streamId == pendingId) {
+        stream = s;
+        break;
+      }
+    }
+    if (stream == null) {
+      for (final s in _filteredStreams) {
+        if (s.streamId == pendingId) {
+          stream = s;
+          break;
+        }
+      }
+    }
+    if (stream == null) return false;
+    widget.ctrl.takePostPlayerStreamFocusId();
+    _didInitialFocus = true;
+    final catalogKey = widget.ctrl.activePortal == null
+        ? null
+        : '${widget.ctrl.activePortal!.key}|${widget.ctrl.activeSection?.name}';
+    if (catalogKey != null) _landedCatalogKey = catalogKey;
+    _landedHighlightId = pendingId;
+    _restoreFocusAfterPlayback(stream);
+    return true;
   }
 
   void _enterFromNav() {
@@ -661,11 +710,25 @@ class _BrowserViewState extends State<_BrowserView> {
       _landedHighlightId = null;
     }
     if (!iptvUseTvFocus(context)) return;
-    if (!iptvFocusBrowserCategories(widget.ctrl)) {
-      if (widget.ctrl.browserSidebarCategories.isEmpty) {
-        iptvFocusRowItem('browser-streams', 0);
+    _claimCatalogGroupFocus(preferStreamsIfEmpty: true);
+  }
+
+  /// Retry category land — shelf remounts dispose nodes for a frame.
+  void _claimCatalogGroupFocus({bool preferStreamsIfEmpty = false}) {
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      if (iptvFocusBrowserCategories(widget.ctrl)) return;
+      if (preferStreamsIfEmpty &&
+          widget.ctrl.browserSidebarCategories.isEmpty) {
+        if (iptvFocusRowItem('browser-streams', 0)) return;
+      }
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       }
     }
+
+    attempt();
   }
 
   /// Category rail keeps focus: scroll the restored channel into view and arm
@@ -1404,10 +1467,7 @@ class _BrowserViewState extends State<_BrowserView> {
                   : null,
               onTap: () => _commitBrowserCategory(cat.id, enterStreams: true),
               onUpEdge: listIndex == 0
-                  ? () => iptvFocusRowItem(
-                      'iptv-sections',
-                      iptvActiveSectionShelfIndex(ctrl),
-                    )
+                  ? () => iptvFocusTopBarFromCatalog(ctrl)
                   : () => _focusCategoryAt(
                       listIndex - ShellTvHoldAccel.lastStep,
                     ),
@@ -1521,10 +1581,7 @@ class _BrowserViewState extends State<_BrowserView> {
             sortOrder: 2,
             itemCount: cats.length,
             orientation: ShellTvRowOrientation.vertical,
-            onFocusUp: () => iptvFocusRowItem(
-              'iptv-sections',
-              iptvActiveSectionShelfIndex(ctrl),
-            ),
+            onFocusUp: () => iptvFocusTopBarFromCatalog(ctrl),
             child: list,
           );
         },
@@ -1619,10 +1676,7 @@ class _BrowserViewState extends State<_BrowserView> {
           rowId: 'browser-streams',
           sortOrder: 3,
           itemCount: list.length,
-          onFocusUp: () => iptvFocusRowItem(
-            'iptv-sections',
-            iptvActiveSectionShelfIndex(widget.ctrl),
-          ),
+          onFocusUp: () => iptvFocusTopBarFromCatalog(widget.ctrl),
           child: ListLetterJumpScope(
             enabled: _letterJumpEnabled,
             itemCount: list.length,
@@ -1697,8 +1751,7 @@ class _BrowserViewState extends State<_BrowserView> {
       sortOrder: 3,
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () =>
-          iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
+      onFocusUp: () => iptvFocusTopBarFromCatalog(ctrl),
       child: ListLetterJumpScope(
         enabled: _letterJumpEnabled,
         itemCount: list.length,
@@ -1760,7 +1813,8 @@ class _BrowserViewState extends State<_BrowserView> {
               focusNode: _reloadEmptyFocus,
               tvRowId: 'iptv-streams-reload',
               tvItemIndex: 0,
-              onUpEdge: iptvFocusPortalTool,
+              onUpEdge: () =>
+                  iptvFocusTopBarFromCatalog(ctrl, preferPortal: true),
               onLeftEdge: ctrl.categories.isNotEmpty
                   ? () => iptvFocusBrowserCategories(ctrl)
                   : null,
@@ -1776,7 +1830,7 @@ class _BrowserViewState extends State<_BrowserView> {
         rowId: 'iptv-streams-reload',
         sortOrder: 3,
         itemCount: 1,
-        onFocusUp: iptvFocusPortalTool,
+        onFocusUp: () => iptvFocusTopBarFromCatalog(ctrl, preferPortal: true),
         child: empty,
       );
     }
@@ -1812,7 +1866,11 @@ class _BrowserViewState extends State<_BrowserView> {
     if (p == null) return;
     if (s.kind == 'series' || s.kind == 'vod') {
       ctrl.noteBrowserSearchPlayedStream(s);
+      // Arm before open — catalog State is disposed under the player stub.
+      ctrl.armPostPlayerStreamFocus(s.streamId);
       await openIptvVodStream(context, stream: s, portal: p);
+      if (!mounted) return;
+      _restoreFocusAfterPlayback(s);
       return;
     }
     if (s.kind == 'live') {
@@ -1829,6 +1887,9 @@ class _BrowserViewState extends State<_BrowserView> {
     if (s.kind == 'live') {
       unawaited(ctrl.rememberLivePlayedChannel(s.streamId));
     }
+    // Arm before open — catalog State is disposed under the player stub, so
+    // the await-after-pop path cannot restore; remount reads this id.
+    ctrl.armPostPlayerStreamFocus(s.streamId);
     final channelGuide = s.kind == 'live'
         ? IptvChannelGuide.fromXtreamLive(
             portal: p,
@@ -1848,6 +1909,7 @@ class _BrowserViewState extends State<_BrowserView> {
         channelGuide: channelGuide,
         onChannelChanged: (next) {
           focusStream = next;
+          ctrl.armPostPlayerStreamFocus(next.streamId);
           unawaited(ctrl.rememberLivePlayedChannel(next.streamId));
         },
         onStreamDead: ctrl.markStreamDead,

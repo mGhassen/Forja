@@ -307,6 +307,10 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
           meta: addon,
           visibility: widget.visibility,
           sortOrder: index,
+          prevRowId: index > 0 ? 'addon-${addons[index - 1].id}' : null,
+          nextRowId: index < addons.length - 1
+              ? 'addon-${addons[index + 1].id}'
+              : null,
           onOpen: () => widget.onOpen(addon.id),
         );
       },
@@ -322,11 +326,15 @@ class _AddonRow extends ConsumerStatefulWidget {
     required this.visibility,
     required this.sortOrder,
     required this.onOpen,
+    this.prevRowId,
+    this.nextRowId,
   });
 
   final SettingsAddonMeta meta;
   final SettingsVisibility visibility;
   final int sortOrder;
+  final String? prevRowId;
+  final String? nextRowId;
   final VoidCallback onOpen;
 
   @override
@@ -588,11 +596,30 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
     }
 
     if (!tv) return body;
+    // Keep clear of settings-categories (sortOrder 0). Explicit ↑/↓ stay inside
+    // the Addons list — shared sortOrder used to land ↑ on the category rail
+    // (invisible / wrong focus on Playback).
     return TvKitRow(
       tabId: 'settings',
       rowId: rowId,
-      sortOrder: widget.sortOrder,
+      sortOrder: 100 + widget.sortOrder,
       itemCount: meta.hasToggle ? 2 : 1,
+      onFocusUp: () {
+        final prev = widget.prevRowId;
+        if (prev == null) return; // first addon — trap in page
+        final handle = ShellTvFocusCoordinator.rowHandle('settings', prev);
+        final idx = (handle?.lastFocusedIndex ?? 0)
+            .clamp(0, (handle?.itemCount ?? 1) - 1);
+        ShellTvFocusCoordinator.focusRowItem('settings', prev, idx);
+      },
+      onFocusDown: () {
+        final next = widget.nextRowId;
+        if (next == null) return; // last addon — trap in page
+        final handle = ShellTvFocusCoordinator.rowHandle('settings', next);
+        final idx = (handle?.lastFocusedIndex ?? 0)
+            .clamp(0, (handle?.itemCount ?? 1) - 1);
+        ShellTvFocusCoordinator.focusRowItem('settings', next, idx);
+      },
       child: body,
     );
   }

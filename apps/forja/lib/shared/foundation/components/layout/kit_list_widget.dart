@@ -191,6 +191,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   void initState() {
     super.initState();
     _source = _resolveSource();
+    _syncScrollIntoView();
     TvHeroActions.bind(
       widget.tabId,
       defaultFocus: _defaultFocusNode,
@@ -202,6 +203,15 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   @override
   void didUpdateWidget(KitListWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tabId != oldWidget.tabId ||
+        widget.gridRowId != oldWidget.gridRowId) {
+      ShellTvFocusCoordinator.setRowScrollIntoView(
+        oldWidget.tabId,
+        oldWidget.gridRowId,
+        null,
+      );
+      _syncScrollIntoView();
+    }
     if (widget.listSource != oldWidget.listSource ||
         widget.pluginId != oldWidget.pluginId) {
       _source = _resolveSource();
@@ -218,9 +228,56 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.setRowScrollIntoView(
+      widget.tabId,
+      widget.gridRowId,
+      null,
+    );
     _scroll.dispose();
     ShellTvFocusCoordinator.clearTab(widget.tabId);
     super.dispose();
+  }
+
+  void _syncScrollIntoView() {
+    ShellTvFocusCoordinator.setRowScrollIntoView(
+      widget.tabId,
+      widget.gridRowId,
+      _scrollGridIndexIntoView,
+    );
+  }
+
+  /// Mount a lazy schedule tile before D-pad restore (shelf / Portals ↓).
+  void _scrollGridIndexIntoView(int index) {
+    if (!_scroll.hasClients || index < 0) return;
+    final node = ShellTvFocusCoordinator.itemNode(
+      widget.tabId,
+      widget.gridRowId,
+      index,
+    );
+    final ctx = node?.context;
+    if (ctx != null && ctx.mounted) {
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.25,
+        duration: Duration.zero,
+      );
+      return;
+    }
+    final max = _scroll.position.maxScrollExtent;
+    if (max <= 0) return;
+    final estExtent = widget.isDenseList
+        ? 56.0
+        : widget.isMatchCards
+            ? 160.0
+            : 220.0;
+    final cols = widget.isDenseList
+        ? 1
+        : math.max(1, (_scroll.position.viewportDimension / 180).floor());
+    final row = index ~/ cols;
+    final target = (row * estExtent).clamp(0.0, max);
+    if ((_scroll.offset - target).abs() > 1) {
+      _scroll.jumpTo(target);
+    }
   }
 
   bool _focusRow(String rowId, int index) =>
@@ -557,8 +614,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           tvRowId: widget.gridRowId,
           onUpEdge: index == 0
               ? () =>
-                  _focusRowLast(widget.statusTabId) ||
-                  _focusRow(widget.statusTabId, 0) ||
+                  _focusRowLast(widget.kindMenuId) ||
                   _focusRow(widget.kindMenuId, 0)
               : null,
           onRightEdge: selected && panelActive
@@ -575,8 +631,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       columns: 1,
       itemCount: entries.length,
       onFocusUp: () =>
-          _focusRowLast(widget.statusTabId) ||
-          _focusRow(widget.statusTabId, 0) ||
+          _focusRowLast(widget.kindMenuId) ||
           _focusRow(widget.kindMenuId, 0),
       child: _kitListScrollbar(
         context,

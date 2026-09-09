@@ -166,7 +166,7 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
               onLeftEdge: edges?.onLeft,
               onRightEdge: edges?.onRight,
               onDownEdge: edges?.onDown ??
-                  kitFocusEdge(widget.tabId, focusDownId),
+                  kitFocusEdge(widget.tabId, focusDownId, last: true),
               onUpEdge: focusUp ?? edges?.onUp,
             );
           }

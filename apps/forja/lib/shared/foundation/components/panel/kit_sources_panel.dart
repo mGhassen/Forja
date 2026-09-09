@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
@@ -132,6 +133,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   final Map<String, List<KitSourcesRow>> _rowsByTab = {};
   final Map<String, bool> _loadingByTab = {};
   final Map<String, String?> _errorByTab = {};
+  final ScrollController _listScroll = ScrollController();
   int _loadGen = 0;
   String _internalQuery = '';
   String _selectedCategoryKey = kKitSourcesCategoryAll;
@@ -154,6 +156,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         if (mounted) unawaited(_ensureLoaded(_tabId));
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _listScroll.dispose();
+    super.dispose();
   }
 
   @override
@@ -216,7 +224,29 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         _selectedCategoryKey = kKitSourcesCategoryAll;
       }
     });
+    if (_listScroll.hasClients) _listScroll.jumpTo(0);
     unawaited(_ensureLoaded(id));
+  }
+
+  /// Always-visible thumb so long Providers / Live TV lists show scroll position.
+  Widget _streamListScrollbar({
+    required bool interactive,
+    required Widget child,
+  }) {
+    return RawScrollbar(
+      controller: _listScroll,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: interactive,
+      thickness: 4,
+      radius: const Radius.circular(2),
+      mainAxisMargin: 6,
+      crossAxisMargin: 2,
+      thumbColor: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
+      trackColor: Colors.white.withValues(alpha: 0.08),
+      trackBorderColor: Colors.transparent,
+      child: child,
+    );
   }
 
   void _onQueryChanged(String next) {
@@ -237,7 +267,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     final error = _errorByTab[_tabId];
     final rows = _rowsByTab[_tabId] ?? const [];
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!widget.embedded) _header(context),
@@ -245,6 +275,46 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         Expanded(
           child: _body(context, loading: loading, error: error, rows: rows),
         ),
+      ],
+    );
+    if (!widget.embedded) return column;
+    return _embeddedStreamScrim(column);
+  }
+
+  /// Soft dark scrim behind hero-embedded streams — old live details look.
+  ///
+  /// Flush with the title/pills (no side fade, no card chrome). Only softens
+  /// top/bottom so match art still reads through.
+  Widget _embeddedStreamScrim(Widget child) {
+    return Stack(
+      clipBehavior: Clip.none,
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x00FFFFFF),
+                  Color(0xFFFFFFFF),
+                  Color(0xFFFFFFFF),
+                  Color(0x00FFFFFF),
+                ],
+                stops: [0.0, 0.04, 0.9, 1.0],
+              ).createShader(bounds),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.42),
+                ),
+              ),
+            ),
+          ),
+        ),
+        child,
       ],
     );
   }
@@ -522,6 +592,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
           onTap: () {
             if (_selectedCategoryKey == row.key) return;
             setState(() => _selectedCategoryKey = row.key);
+            if (_listScroll.hasClients) _listScroll.jumpTo(0);
           },
         );
       },
@@ -534,15 +605,21 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     bool hideCategorySubtitle = false,
   }) {
     final tvTabId = _effectiveTvTabId(context);
-    final list = ListView.separated(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-      itemCount: rows.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (context, i) => _tile(
-        context,
-        rows[i],
-        i,
-        hideCategorySubtitle: hideCategorySubtitle,
+    final interactive =
+        !ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final list = _streamListScrollbar(
+      interactive: interactive,
+      child: ListView.separated(
+        controller: _listScroll,
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+        itemCount: rows.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        itemBuilder: (context, i) => _tile(
+          context,
+          rows[i],
+          i,
+          hideCategorySubtitle: hideCategorySubtitle,
+        ),
       ),
     );
     if (tvTabId == null) return list;
@@ -557,73 +634,90 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     );
   }
 
-  /// Pre-kit live details: 2 columns when wide, 1 when narrow / TV compact.
+  /// Hero details: 2 columns when wide (and >1 row), 1 when narrow / single.
+  ///
+  /// Wide layout is **column-major** — fill the left column top→bottom first,
+  /// then the right column.
   Widget _embeddedSourcesGrid(
     BuildContext context,
     List<KitSourcesRow> rows, {
     bool hideCategorySubtitle = false,
   }) {
     const gap = 10.0;
+    // Flush with title / Providers — no extra side inset.
+    const listPad = EdgeInsets.only(bottom: 8);
     final tvTabId = _effectiveTvTabId(context);
-    final grid = LayoutBuilder(
-      builder: (context, constraints) {
-        final metrics = ShellScope.metricsOf(context);
-        final wide = !metrics.usesTvDensity && constraints.maxWidth >= 720;
-        final crossCount = wide ? 2 : 1;
+    final interactive =
+        !ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final grid = _streamListScrollbar(
+      interactive: interactive,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final metrics = ShellScope.metricsOf(context);
+          final wide = !metrics.usesTvDensity &&
+              constraints.maxWidth >= 720 &&
+              rows.length > 1;
 
-        if (crossCount == 1) {
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-            itemCount: rows.length,
-            separatorBuilder: (_, _) => const SizedBox(height: gap),
-            itemBuilder: (context, i) => _tile(
-              context,
-              rows[i],
-              i,
-              hideCategorySubtitle: hideCategorySubtitle,
-            ),
-          );
-        }
-
-        final rowCount = (rows.length + 1) ~/ 2;
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-          itemCount: rowCount,
-          itemBuilder: (context, row) {
-            final left = row * 2;
-            final right = left + 1;
-            return Padding(
-              padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _tile(
-                        context,
-                        rows[left],
-                        left,
-                        hideCategorySubtitle: hideCategorySubtitle,
-                      ),
-                    ),
-                    const SizedBox(width: gap),
-                    Expanded(
-                      child: right < rows.length
-                          ? _tile(
-                              context,
-                              rows[right],
-                              right,
-                              hideCategorySubtitle: hideCategorySubtitle,
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
+          if (!wide) {
+            return ListView.separated(
+              controller: _listScroll,
+              padding: listPad,
+              itemCount: rows.length,
+              separatorBuilder: (_, _) => const SizedBox(height: gap),
+              itemBuilder: (context, i) => _tile(
+                context,
+                rows[i],
+                i,
+                hideCategorySubtitle: hideCategorySubtitle,
+                upToTabs: i == 0,
               ),
             );
-          },
-        );
-      },
+          }
+
+          // Column-major: left = first half, right = remainder.
+          final leftCount = (rows.length + 1) ~/ 2;
+          return ListView.builder(
+            controller: _listScroll,
+            padding: listPad,
+            itemCount: leftCount,
+            itemBuilder: (context, row) {
+              final left = row;
+              final right = leftCount + row;
+              return Padding(
+                padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _tile(
+                          context,
+                          rows[left],
+                          left,
+                          hideCategorySubtitle: hideCategorySubtitle,
+                          upToTabs: row == 0,
+                        ),
+                      ),
+                      const SizedBox(width: gap),
+                      Expanded(
+                        child: right < rows.length
+                            ? _tile(
+                                context,
+                                rows[right],
+                                right,
+                                hideCategorySubtitle: hideCategorySubtitle,
+                                upToTabs: row == 0,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
     if (tvTabId == null || rows.isEmpty) return grid;
     return TvKitRow(
@@ -656,6 +750,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     KitSourcesRow row,
     int index, {
     bool hideCategorySubtitle = false,
+    bool upToTabs = false,
   }) {
     final footer = (row.footer ?? '').trim();
     final tvTabId = _effectiveTvTabId(context);
@@ -671,7 +766,9 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       tvItemIndex: index,
       onHoverProbe: row.onHoverProbe,
       probeHealthCache: row.probeHealthCache,
-      onUpEdge: index == 0 && tvTabId != null ? _listFocusUp(tvTabId) : null,
+      onUpEdge: tvTabId != null && (upToTabs || index == 0)
+          ? _listFocusUp(tvTabId)
+          : null,
       onLeftEdge: widget.onTabsLeftEdge,
       onPlay: () => unawaited(widget.onPlayRow(row)),
     );

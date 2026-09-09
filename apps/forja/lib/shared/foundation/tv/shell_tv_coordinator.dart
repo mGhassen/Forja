@@ -79,6 +79,9 @@ abstract final class ShellTvFocusCoordinator {
   static final Map<String, List<ShellTvRowHandle>> _rowsByTab = {};
   static final List<String> _navOrder = [];
 
+  /// Lazy list / grid: scroll [index] into view before focus retry.
+  static final Map<String, void Function(int index)> _rowScrollIntoView = {};
+
   static VoidCallback? heroReveal;
   static FocusNode? Function(String tabId)? defaultFocusForTab;
 
@@ -90,6 +93,10 @@ abstract final class ShellTvFocusCoordinator {
   /// Optional in-page Back step before focusing the nav rail (e.g. IPTV
   /// channels → category). Return true when Back was consumed.
   static final Map<String, bool Function()> _tabPageBack = {};
+
+  /// When set, ← at column 0 of a [TvKitRow] runs [tryPageBack] (Settings
+  /// detail → category rail). Catalog tabs omit this so ← still traps / nav.
+  static final Set<String> _pageBackOnRowLeftEdge = {};
 
   /// When set, nav RIGHT skips leave-memory and runs [restoreFocus] (e.g. IPTV
   /// → selected category, not a skimmed group / last channel tile).
@@ -127,7 +134,25 @@ abstract final class ShellTvFocusCoordinator {
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
     _tabPageBack.remove(tabId);
+    _pageBackOnRowLeftEdge.remove(tabId);
     _tabPreferCustomNavRestore.remove(tabId);
+  }
+
+  /// Settings detail: ← on the first column of a row exits like Back.
+  static void setPageBackOnRowLeftEdge(String tabId, bool enabled) {
+    if (enabled) {
+      _pageBackOnRowLeftEdge.add(tabId);
+    } else {
+      _pageBackOnRowLeftEdge.remove(tabId);
+    }
+  }
+
+  /// Run the tab's [pageBack] handler when registered (Settings detail ladder).
+  static bool tryPageBack([String? tabId]) {
+    final id = tabId ?? ShellTvFocus.currentNavTabId ?? '';
+    if (id.isEmpty) return false;
+    final pageBack = _tabPageBack[id];
+    return pageBack != null && pageBack();
   }
 
   /// Register the media-details Back chevron for TV remote Back.
@@ -1256,8 +1281,7 @@ abstract final class ShellTvFocusCoordinator {
   }) {
     final results = _rowHandle(tabId, resultsRowId);
     if (results != null && results.itemCount > 0) {
-      final idx = results.lastFocusedIndex.clamp(0, results.itemCount - 1);
-      if (focusRowItem(tabId, resultsRowId, idx)) return true;
+      if (focusRowItemRemembered(tabId, resultsRowId)) return true;
     }
     final chip = _rowHandle(tabId, chipRowId);
     if (chip == null) return false;
@@ -1439,8 +1463,10 @@ abstract final class ShellTvFocusCoordinator {
     while (true) {
       final next = _nextRow(tabId, cursor);
       if (next == null) return true; // trap at last reachable row
-      final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
-      if (focusRowItem(tabId, next.rowId, target)) return true;
+      if (next.itemCount > 0) {
+        // Remembered index + lazy scroll (Live Sports schedule under shelf).
+        return focusRowItemRemembered(tabId, next.rowId);
+      }
       cursor = next.sortOrder;
     }
   }
@@ -1474,7 +1500,61 @@ abstract final class ShellTvFocusCoordinator {
     _rowsByTab.remove(tabId);
     _itemNodes.removeWhere((key, _) => key.startsWith('$tabId:'));
     _rowOwners.removeWhere((key, _) => key.startsWith('$tabId:'));
+    _rowScrollIntoView.removeWhere((key, _) => key.startsWith('$tabId:'));
     unregisterTabDefaults(tabId);
+  }
+
+  /// Register a scroll-into-view helper for lazy [rowId] restores (ListView / grid).
+  static void setRowScrollIntoView(
+    String tabId,
+    String rowId,
+    void Function(int index)? scroll,
+  ) {
+    final key = _rowOwnerKey(tabId, rowId);
+    if (scroll == null) {
+      _rowScrollIntoView.remove(key);
+    } else {
+      _rowScrollIntoView[key] = scroll;
+    }
+  }
+
+  static void _invokeRowScroll(String tabId, String rowId, int index) {
+    _rowScrollIntoView[_rowOwnerKey(tabId, rowId)]?.call(index);
+  }
+
+  /// Focus [rowId] at [index] (or [ShellTvRowHandle.lastFocusedIndex]).
+  ///
+  /// Lazy catalogs often dispose off-screen tiles — scroll then retry across
+  /// frames so ↓ from chrome / chip strips can return to the prior item.
+  static bool focusRowItemRemembered(
+    String tabId,
+    String rowId, {
+    int? index,
+    int maxTries = 12,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final target =
+        (index ?? handle.lastFocusedIndex).clamp(0, handle.itemCount - 1);
+    if (focusRowItemExact(tabId, rowId, target)) return true;
+
+    _invokeRowScroll(tabId, rowId, target);
+    if (focusRowItemExact(tabId, rowId, target)) return true;
+
+    var tries = 0;
+    void attempt() {
+      if (focusRowItemExact(tabId, rowId, target)) return;
+      _invokeRowScroll(tabId, rowId, target);
+      if (focusRowItemExact(tabId, rowId, target)) return;
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      focusRowItem(tabId, rowId, target);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    return true;
   }
 
   /// Drop leave/live memory for [tabId] without unregistering rows or defaults.
@@ -1690,6 +1770,11 @@ class ShellTvFocusMeta {
       if (idx <= 0) {
         if (rid == MediaDetailsTv.heroRowId) {
           ShellTvFocusCoordinator.focusActiveNavTab();
+          return true;
+        }
+        // Settings detail rows: ← leaves the page (same ladder as Back).
+        if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
+          ShellTvFocusCoordinator.tryPageBack(tid);
         }
         return true;
       }

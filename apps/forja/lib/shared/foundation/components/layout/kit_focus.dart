@@ -9,10 +9,7 @@ VoidCallback? kitFocusEdge(
   if (rowId == null || rowId.isEmpty) return null;
   return () {
     if (last) {
-      final handle = ShellTvFocusCoordinator.rowHandle(tabId, rowId);
-      if (handle == null || handle.itemCount <= 0) return;
-      final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
-      ShellTvFocusCoordinator.focusRowItem(tabId, rowId, idx);
+      ShellTvFocusCoordinator.focusRowItemRemembered(tabId, rowId);
       return;
     }
     ShellTvFocusCoordinator.focusRowItem(tabId, rowId, 0);
