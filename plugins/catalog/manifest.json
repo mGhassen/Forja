@@ -44,7 +44,15 @@
         "catalogLayout": "iframe",
         "apis": [
           "https://api.ppv.st/api/streams",
-          "https://api.ppv.cx/api/streams"
+          "https://api.ppv.cx/api/streams",
+          "https://api.ppv.is/api/streams",
+          "https://api.ppv.lc/api/streams",
+          "https://api.ppv.tj/api/streams",
+          "https://api.ppvs.pk/api/streams",
+          "https://api.ppv.rw/api/streams",
+          "https://api.ppv.ms/api/streams",
+          "https://api.ppv.bi/api/streams",
+          "https://api.ppv.ug/api/streams"
         ]
       }
     },
@@ -114,7 +122,15 @@
         "ppvOrigin": "https://ppv.st",
         "ppvApis": [
           "https://api.ppv.st/api/streams",
-          "https://api.ppv.cx/api/streams"
+          "https://api.ppv.cx/api/streams",
+          "https://api.ppv.is/api/streams",
+          "https://api.ppv.lc/api/streams",
+          "https://api.ppv.tj/api/streams",
+          "https://api.ppvs.pk/api/streams",
+          "https://api.ppv.rw/api/streams",
+          "https://api.ppv.ms/api/streams",
+          "https://api.ppv.bi/api/streams",
+          "https://api.ppv.ug/api/streams"
         ]
       }
     },

@@ -129,13 +129,8 @@ List<PluginInstallCandidate> officialPackCandidatesMissing({
   return out;
 }
 
-/// Settings → Official packs: show the checkbox picker; never auto-download all.
-Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
-  if (ShellBus.pendingPluginInstallQueue.value.isNotEmpty ||
-      ShellBus.pendingPluginBatchInstall.value != null) {
-    return OfficialPackPromptOutcome.busy;
-  }
-
+/// Missing official packs that still need a download on this device.
+Future<List<PluginInstallCandidate>> loadMissingOfficialPackCandidates() async {
   final targets = await resolveOfficialForjaHqPacks();
   final installed = await PluginRegistry.instance.listPacksRaw();
   final fullyInstalled = <String>{};
@@ -145,11 +140,20 @@ Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
     if (await PluginRegistry.instance.packNeedsDiskInstall(pack)) continue;
     fullyInstalled.add(url);
   }
-
-  final candidates = officialPackCandidatesMissing(
+  return officialPackCandidatesMissing(
     targets: targets,
     fullyInstalledUrls: fullyInstalled,
   );
+}
+
+/// Settings → Official packs: show the checkbox picker; never auto-download all.
+Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
+  if (ShellBus.pendingPluginInstallQueue.value.isNotEmpty ||
+      ShellBus.pendingPluginBatchInstall.value != null) {
+    return OfficialPackPromptOutcome.busy;
+  }
+
+  final candidates = await loadMissingOfficialPackCandidates();
   if (candidates.isEmpty) {
     return OfficialPackPromptOutcome.alreadyInstalled;
   }
@@ -160,40 +164,39 @@ Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
   return OfficialPackPromptOutcome.prompted;
 }
 
-/// Sequential install of missing official packs. Returns failed pack names.
-///
-/// Used by packs onboarding (explicit “install the bundle” CTA). Settings uses
-/// [promptOfficialForjaHqPackInstall] instead.
-Future<List<String>> installOfficialForjaHqPacks({
+/// Sequential install of the given official candidates. Returns failed names.
+Future<List<String>> installSelectedOfficialPacks(
+  List<PluginInstallCandidate> selected, {
   OfficialPackInstallProgress? onProgress,
 }) async {
-  final targets = await resolveOfficialForjaHqPacks();
-  final installed = await PluginRegistry.instance.listPacksRaw();
-  final have = {
-    for (final p in installed) p.sourceUrl.trim(),
-  };
-  final todo = targets
-      .where((p) => !have.contains(p.manifestUrl.trim()))
+  final todo = selected
+      .where((c) =>
+          c.kind == PluginPackPromptKind.install &&
+          !c.alreadyInstalled &&
+          c.manifestUrl.trim().isNotEmpty)
       .toList(growable: false);
-
   if (todo.isEmpty) {
-    onProgress?.call(done: 0, total: 0, status: 'All official packs installed');
+    onProgress?.call(done: 0, total: 0, status: 'Nothing to install');
     return const [];
   }
 
   final failures = <String>[];
   for (var i = 0; i < todo.length; i++) {
     final pack = todo[i];
+    final label = pack.displayName?.trim().isNotEmpty == true
+        ? pack.displayName!.trim()
+        : pack.manifestUrl.trim();
     onProgress?.call(
       done: i,
       total: todo.length,
-      status: 'Installing ${pack.name} (${i + 1}/${todo.length})…',
+      status: 'Installing $label (${i + 1}/${todo.length})…',
     );
     try {
-      await PluginInstallCoordinator.instance.installManifest(pack.manifestUrl);
+      await PluginInstallCoordinator.instance
+          .installManifest(pack.manifestUrl.trim());
     } catch (e) {
-      debugPrint('[OfficialPacks] install ${pack.id} failed: $e');
-      failures.add(pack.name);
+      debugPrint('[OfficialPacks] install $label failed: $e');
+      failures.add(label);
     }
   }
   onProgress?.call(
@@ -202,4 +205,14 @@ Future<List<String>> installOfficialForjaHqPacks({
     status: failures.isEmpty ? 'Ready' : 'Finished with errors',
   );
   return failures;
+}
+
+/// Sequential install of every missing official pack. Returns failed pack names.
+///
+/// Prefer [installSelectedOfficialPacks] from onboarding / Settings pickers.
+Future<List<String>> installOfficialForjaHqPacks({
+  OfficialPackInstallProgress? onProgress,
+}) async {
+  final candidates = await loadMissingOfficialPackCandidates();
+  return installSelectedOfficialPacks(candidates, onProgress: onProgress);
 }

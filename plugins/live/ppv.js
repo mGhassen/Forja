@@ -2,9 +2,29 @@ var SPECS = {
   "webOrigin": "https://ppv.st",
   "apis": [
     "https://api.ppv.st/api/streams",
-    "https://api.ppv.cx/api/streams"
+    "https://api.ppv.cx/api/streams",
+    "https://api.ppv.is/api/streams",
+    "https://api.ppv.lc/api/streams",
+    "https://api.ppv.tj/api/streams",
+    "https://api.ppvs.pk/api/streams",
+    "https://api.ppv.rw/api/streams",
+    "https://api.ppv.ms/api/streams",
+    "https://api.ppv.bi/api/streams",
+    "https://api.ppv.ug/api/streams"
   ]
 };
+
+function defaultPpvApis() {
+  return SPECS.apis.slice();
+}
+
+function originForApi(api, fallback) {
+  try {
+    var host = new URL(String(api || '')).hostname || '';
+    if (host.indexOf('api.') === 0) return 'https://' + host.slice(4);
+  } catch (_) {}
+  return String(fallback || SPECS.webOrigin || 'https://ppv.st').replace(/\/$/, '');
+}
 
 function ppvHeaders(cfg) {
   var origin = ((cfg && cfg.webOrigin) || 'https://ppv.st').replace(/\/$/, '');
@@ -94,17 +114,18 @@ async function resolvePpv(ctx, cfg) {
   if (iframe) embeds.push(iframe);
 
   if (streamId) {
-    var apis = (cfg && cfg.apis) || [
-      'https://api.ppv.st/api/streams',
-      'https://api.ppv.cx/api/streams',
-    ];
+    var apis = (cfg && cfg.apis) || defaultPpvApis();
     for (var i = 0; i < apis.length; i++) {
       try {
+        var apiHeaders = ppvHeaders({
+          webOrigin: originForApi(apis[i], cfg && cfg.webOrigin),
+        });
         var base = apis[i].replace(/\/$/, '');
-        var detail = await ctx.fetch(base + '/' + streamId, { headers: headers });
+        var detail = await ctx.fetch(base + '/' + streamId, { headers: apiHeaders });
         if (!detail.ok) continue;
         var body = await detail.json();
         if (!body || body.success !== true || !body.data) continue;
+        headers = apiHeaders;
         var source = ppvPlayableUrl(body.data);
         if (source) {
           return [{ url: source, headers: headers, directPlayback: true }];

@@ -2,12 +2,28 @@ var SPECS = {
   "webOrigin": "https://ppv.st",
   "apis": [
     "https://api.ppv.st/api/streams",
-    "https://api.ppv.cx/api/streams"
+    "https://api.ppv.cx/api/streams",
+    "https://api.ppv.is/api/streams",
+    "https://api.ppv.lc/api/streams",
+    "https://api.ppv.tj/api/streams",
+    "https://api.ppvs.pk/api/streams",
+    "https://api.ppv.rw/api/streams",
+    "https://api.ppv.ms/api/streams",
+    "https://api.ppv.bi/api/streams",
+    "https://api.ppv.ug/api/streams"
   ]
 };
 
 function ua() {
   return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+}
+
+function originForApi(api, fallback) {
+  try {
+    var host = new URL(String(api || '')).hostname || '';
+    if (host.indexOf('api.') === 0) return 'https://' + host.slice(4);
+  } catch (_) {}
+  return String(fallback || SPECS.webOrigin || 'https://ppv.st').replace(/\/$/, '');
 }
 
 function ppvHeaders(cfg) {
@@ -26,13 +42,13 @@ async function extract(ctx) {
 
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var pluginId = String(cfg.providerId || 'live-ppv');
-  var apis = cfg.apis || [
-    'https://api.ppv.st/api/streams',
-    'https://api.ppv.cx/api/streams',
-  ];
+  var apis = cfg.apis || SPECS.apis.slice();
   for (var i = 0; i < apis.length; i++) {
     try {
-      var res = await ctx.fetch(apis[i], { headers: ppvHeaders(cfg) });
+      var headers = ppvHeaders({
+        webOrigin: originForApi(apis[i], cfg.webOrigin),
+      });
+      var res = await ctx.fetch(apis[i], { headers: headers });
       if (!res.ok) continue;
       var data = await res.json();
       if (!data || data.success !== true || !Array.isArray(data.streams)) continue;

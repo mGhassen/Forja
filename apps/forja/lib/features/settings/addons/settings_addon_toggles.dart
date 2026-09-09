@@ -89,7 +89,16 @@ Future<bool> setAddonMasterEnabled(
       noteNavigationDirty();
       await settings.setAddonFeatureEnabled(featureNavId!, val);
       await settings.setNavbarTabVisible(featureNavId, val);
-      if (!val) {
+      if (val) {
+        // Deactivate clears EPG; turning IPTV back on restores the platform
+        // default so NOW/NEXT does not stay stuck off.
+        final epgOn = PlatformDefaults.forProfile(
+          SettingsService.platformProfile,
+        ).iptvEpgEnabled;
+        notePreferencesDirty();
+        await settings.setIptvEpgEnabled(epgOn);
+        await notifier.patch((s) => s.copyWith(iptvEpgEnabled: epgOn));
+      } else {
         await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
       }
     case SettingsAddonId.lan:

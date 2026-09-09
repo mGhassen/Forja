@@ -176,7 +176,7 @@ class _SettingsForjaPacksSectionState
                 compact: true,
                 settingsTvFocus: true,
                 communitySubtitle: PlatformInfo.isAndroidTv
-                    ? 'Copy catalog URL for your phone'
+                    ? 'Choose packs on your phone\n$kCommunityPacksUrl'
                     : 'Browse packs on the web',
                 onInstallOfficial: () => unawaited(_installOfficialBundle()),
                 onBrowseCommunity: () => unawaited(_browseCommunityPacks()),

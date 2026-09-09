@@ -73,9 +73,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             onRightEdge: () => _browseNode.requestFocus(),
             icon: Icons.inventory_2_rounded,
             title: 'Official packs',
-            subtitle: widget.compact
-                ? 'Choose which ForjaHQ packs to install'
-                : 'Best experience: install the ForjaHQ bundle',
+            subtitle: 'Choose which ForjaHQ packs to install',
             accent: true,
             onTap: widget.onInstallOfficial,
           ),
@@ -122,6 +120,7 @@ class ForjaPackChoiceCard extends StatefulWidget {
   final FocusNode focusNode;
   final IconData icon;
   final String title;
+  /// May include a trailing URL line (e.g. Community Packs on Android TV).
   final String subtitle;
   final VoidCallback onTap;
   final bool accent;
@@ -199,13 +198,9 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
               ),
             ),
             SizedBox(height: widget.compact ? 4 : 8),
-            Text(
-              widget.subtitle,
-              style: GoogleFonts.plusJakartaSans(
-                color: ForjaShellColors.textSecondary,
-                fontSize: subSize,
-                height: 1.35,
-              ),
+            _SubtitleBlock(
+              text: widget.subtitle,
+              fontSize: subSize,
             ),
           ],
         ),
@@ -261,6 +256,63 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       child: body,
+    );
+  }
+}
+
+/// Renders subtitle; a trailing `http(s)://…` line uses monospace so TV users
+/// can read the Community Packs URL for their phone.
+class _SubtitleBlock extends StatelessWidget {
+  const _SubtitleBlock({required this.text, required this.fontSize});
+
+  final String text;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = text.split('\n');
+    if (lines.length < 2) {
+      return Text(
+        text,
+        style: GoogleFonts.plusJakartaSans(
+          color: ForjaShellColors.textSecondary,
+          fontSize: fontSize,
+          height: 1.35,
+        ),
+      );
+    }
+    final head = lines.sublist(0, lines.length - 1).join('\n');
+    final tail = lines.last.trim();
+    final urlTail = RegExp(r'^https?://', caseSensitive: false).hasMatch(tail);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          head,
+          style: GoogleFonts.plusJakartaSans(
+            color: ForjaShellColors.textSecondary,
+            fontSize: fontSize,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          tail,
+          style: urlTail
+              ? TextStyle(
+                  color: ForjaShellColors.textPrimary.withValues(alpha: 0.92),
+                  fontSize: fontSize,
+                  height: 1.35,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                )
+              : GoogleFonts.plusJakartaSans(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: fontSize,
+                  height: 1.35,
+                ),
+        ),
+      ],
     );
   }
 }
