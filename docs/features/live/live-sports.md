@@ -13,7 +13,7 @@ Live Sports is a **hub pack** (ForjaHQ Live Sports) — same class as Anime or A
 
 Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV channel search under `features/iptv/channel_search/` (RFC-096). The hub pack declares Search / view / Portals in `kit.topBar` (`trailing: true`). Host paints those verbs via kit primitives + `packActionBuilders['portals']` (IPTV data) — it does **not** inject trailing chrome. Portals panel shell is foundation design (`KitPortalsChip` / `KitSidePanelOverlay`); play/resolve via `IptvKitHooksRegister` (RFC-095).
 
-Schedules and streams come from installed **live_sport** plugins (Catalog / Providers capability toggles in Settings). Schedule capability is fixtures only — it does not unlock play. Resolve capability discovers mirrors and unlocks to native play. **Live TV** still matches your Xtream/Stalker/M3U portals to the fixture. Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
+Schedules and streams come from installed **live_sport** plugins (Catalog / Providers capability toggles in Settings). Schedule capability is fixtures only — it does not unlock play. Resolve capability **lists** mirrors in Providers; unlock to native play runs when you tap a row. **Live TV** still matches your Xtream/Stalker/M3U portals to the fixture. Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
 
 ## How to open it
 

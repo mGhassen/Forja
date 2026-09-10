@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
@@ -15,7 +14,7 @@ import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:rust/rust.dart'
-    show BuiltInPlayerContext, SettingsService, StremioService, runLiveSportsFetchJson;
+    show BuiltInPlayerContext, SettingsService, StremioService;
 
 /// Live resolve + Stremio providers + native play (RFC-091).
 /// Live TV portal channels: [IptvChannelSearch] (RFC-096).
@@ -242,10 +241,6 @@ abstract final class LiveResolveStreams {
     final owned = _ownedSourceRef(match, plugin);
     final pluginSource = LivePluginEngine.cachedResolveSourceToken(plugin.id);
 
-    if (owned != null && _isStreamedPkGoatSource(owned.source)) {
-      return _fetchStreamedStreams(owned, allowFallback: false);
-    }
-
     final mid = owned == null
         ? ''
         : LivePluginEngine.cachedResolveRefId(owned.id, plugin.id);
@@ -326,74 +321,6 @@ abstract final class LiveResolveStreams {
     return out;
   }
 
-  static bool _isStreamedPkGoatSource(String source) {
-    switch (source.trim().toLowerCase()) {
-      case 'admin':
-      case 'delta':
-      case 'golf':
-      case 'ppv':
-      case 'bravo':
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  static Future<List<MatchStream>> _fetchStreamedStreams(
-    MatchSourceRef sourceRef, {
-    bool allowFallback = true,
-  }) async {
-    if (sourceRef.source.trim().toLowerCase() == 'echo') return const [];
-    try {
-      final raw = await runLiveSportsFetchJson(
-        jsonEncode({
-          'action': 'streamed_streams',
-          'source': sourceRef.source,
-          'id': sourceRef.id,
-        }),
-      );
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) {
-        return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-      }
-      final list = parsed['items'] as List? ?? [];
-      final rows = list
-          .map((s) {
-            try {
-              return MatchStream.fromJson(s as Map<String, dynamic>);
-            } catch (_) {
-              return null;
-            }
-          })
-          .whereType<MatchStream>()
-          .where((s) => s.embedUrl.isNotEmpty)
-          .toList();
-      if (rows.isNotEmpty) return rows;
-      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-    } catch (_) {
-      return allowFallback ? _streamedEmbedFallback(sourceRef) : const [];
-    }
-  }
-
-  static List<MatchStream> _streamedEmbedFallback(MatchSourceRef sourceRef) {
-    final source = sourceRef.source.trim();
-    final id = sourceRef.id.trim();
-    if (source.isEmpty || id.isEmpty) return const [];
-    if (!_isStreamedPkGoatSource(source)) return const [];
-    if (source.toLowerCase() == 'echo') return const [];
-    return [
-      MatchStream(
-        id: id,
-        streamNo: 1,
-        language: '',
-        hd: false,
-        embedUrl: 'https://embed.st/embed/$source/$id/1',
-        source: source,
-        viewers: 0,
-      ),
-    ];
-  }
-
   static MatchStream _streamFromResolveRow({
     required Map<String, dynamic> row,
     required MatchSourceRef source,
@@ -418,9 +345,16 @@ abstract final class LiveResolveStreams {
         ? rowViewers
         : metaViewers;
     final url = (row['url'] ?? '').toString().trim();
+    final rowSource = (row['source'] ?? '').toString().trim();
+    final rowId = (row['id'] ?? '').toString().trim();
     final sourceToken = meta?.source.trim().isNotEmpty == true
         ? meta!.source
-        : pluginSource;
+        : (rowSource.isNotEmpty
+            ? rowSource
+            : (pluginSource.isNotEmpty ? pluginSource : source.source));
+    final streamId = rowId.isNotEmpty
+        ? rowId
+        : (source.id.trim().isNotEmpty ? source.id.trim() : match.id);
     Map<String, String>? resolvedHeaders;
     final h = row['headers'];
     if (h is Map && h.isNotEmpty) {
@@ -428,9 +362,10 @@ abstract final class LiveResolveStreams {
         for (final e in h.entries) e.key.toString(): e.value.toString(),
       };
     }
+    final rowStreamNo = (row['streamNo'] as num?)?.toInt();
     return MatchStream(
-      id: source.id,
-      streamNo: meta?.streamNo ?? index + 1,
+      id: streamId,
+      streamNo: meta?.streamNo ?? rowStreamNo ?? index + 1,
       language: language,
       hd: hd,
       embedUrl: url,
