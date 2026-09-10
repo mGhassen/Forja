@@ -148,6 +148,14 @@ Map<String, dynamic> _mergeFeedRowPair(
     final o = (other['awayTeam'] ?? '').toString().trim();
     if (o.isNotEmpty) out['awayTeam'] = o;
   }
+  if ((out['homeBadge'] ?? '').toString().trim().isEmpty) {
+    final o = (other['homeBadge'] ?? '').toString().trim();
+    if (o.isNotEmpty) out['homeBadge'] = o;
+  }
+  if ((out['awayBadge'] ?? '').toString().trim().isEmpty) {
+    final o = (other['awayBadge'] ?? '').toString().trim();
+    if (o.isNotEmpty) out['awayBadge'] = o;
+  }
 
   if (primary['airing'] == true || other['airing'] == true) {
     out['airing'] = true;
