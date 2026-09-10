@@ -8,6 +8,7 @@ import 'package:forja/shared/foundation/services/meta/cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
@@ -1705,17 +1706,61 @@ class PluginRegistry {
 
   Future<void>? _hydrateLeanInFlight;
 
+  /// Rewrite lean `manifestUrl`s to published catalog URLs when the opaque
+  /// [forjaHqSlot] matches. Profile rows may still hold a retired host
+  /// (e.g. old monorepo GitHub path) after admin moves `plugin_packs.manifest_url`.
+  static List<Map<String, dynamic>> rewriteLeanUrlsThroughCatalog(
+    Iterable<Map<String, dynamic>> rows,
+    Iterable<OfficialForjaHqPack> catalog,
+  ) {
+    final slotToUrl = <String, String>{};
+    for (final pack in catalog) {
+      final url = pack.manifestUrl.trim();
+      if (url.isEmpty) continue;
+      final slot = forjaHqSlot(url);
+      if (slot == null) continue;
+      slotToUrl[slot] = url;
+    }
+    if (slotToUrl.isEmpty) {
+      return [
+        for (final raw in rows)
+          if (raw is Map<String, dynamic>)
+            Map<String, dynamic>.from(raw)
+          else if (raw is Map)
+            Map<String, dynamic>.from(raw),
+      ];
+    }
+    final out = <Map<String, dynamic>>[];
+    for (final raw in rows) {
+      if (raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      final url = (row['manifestUrl'] as String?)?.trim() ?? '';
+      if (url.isEmpty) {
+        out.add(row);
+        continue;
+      }
+      final slot = forjaHqSlot(url);
+      final catalogUrl = slot == null ? null : slotToUrl[slot];
+      if (catalogUrl != null && catalogUrl != url) {
+        row['manifestUrl'] = catalogUrl;
+      }
+      out.add(row);
+    }
+    return out;
+  }
+
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
   ///
   /// When [purgeRemovedImmediately] is false (mid-session), packs missing from
   /// cloud stay on disk until the uninstall prompt / pending purge / next boot.
   ///
-  /// Manifest URLs are applied as-is (no GitHub rewrite). Unreachable local
-  /// paths from another machine are not turned into install stubs.
+  /// Unreachable local paths from another machine are not turned into install
+  /// stubs. A **readable** local ForjaHQ checkout still satisfies a same-slot
+  /// remote URL so soft-pull does not purge a working Mac install.
   ///
-  /// A local ForjaHQ checkout still satisfies a legacy cloud row that used the
-  /// official GitHub URL (pre-fix rewrite poison) so soft-pull does not purge
-  /// a working Mac install.
+  /// Same-slot **remote → remote** URL changes (catalog / profile move): the
+  /// cloud URL wins — old remote install is purged and the new URL is added
+  /// for download (issue 267).
   Future<LeanApplyResult> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
@@ -1783,6 +1828,26 @@ class PluginRegistry {
             LeanPackDelta(manifestUrl: pack.sourceUrl, name: pack.name),
           );
         }
+        continue;
+      }
+      if (remoteKey != null && remoteKey != pack.sourceUrl) {
+        final localOk = isLocalManifestUrl(pack.sourceUrl) &&
+            await _localManifestExists(pack.sourceUrl);
+        if (localOk) {
+          // Readable checkout wins over same-slot remote URL.
+          satisfiedRemote.add(remoteKey);
+          satisfiedRemote.add(pack.sourceUrl);
+          _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
+          next.add(pack);
+          continue;
+        }
+        // Remote URL moved (or dead local path) — cloud URL wins.
+        debugPrint(
+          '[engine] lean URL migrate ${pack.sourceUrl} → $remoteKey',
+        );
+        victims.add(pack);
+        changed = true;
+        await DeferredRemoteInstallStore.clear(pack.sourceUrl);
         continue;
       }
       if (remoteKey != null) {

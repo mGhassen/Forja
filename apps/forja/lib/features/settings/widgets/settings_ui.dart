@@ -1734,11 +1734,27 @@ class SettingsTextAction extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.color = ForjaShellColors.brandGreen,
+    this.focusNode,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.tvZone,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final Color color;
+  final FocusNode? focusNode;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final ShellTvZone? tvZone;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -1763,6 +1779,7 @@ class SettingsTextAction extends StatelessWidget {
     }
     return shellFocusableTap(
       context: context,
+      focusNode: focusNode,
       onTap: onPressed,
       borderRadius: 8,
       scaleOnFocus: 1.0,
@@ -1770,8 +1787,14 @@ class SettingsTextAction extends StatelessWidget {
       showFocusFill: true,
       showFocusBorder: true,
       tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      tvZone: tvZone ?? ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(label, style: style),
@@ -1796,6 +1819,7 @@ class SettingsFilledButton extends StatelessWidget {
     this.busy = false,
     this.secondary = false,
     this.expand = false,
+    this.focusNode,
   });
 
   final String label;
@@ -1804,6 +1828,7 @@ class SettingsFilledButton extends StatelessWidget {
   final bool busy;
   final bool secondary;
   final bool expand;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -1814,6 +1839,7 @@ class SettingsFilledButton extends StatelessWidget {
       busy: busy,
       expand: expand,
       height: 36,
+      focusNode: focusNode,
       variant: secondary
           ? ForjaButtonVariant.neutral
           : ForjaButtonVariant.primary,
@@ -2036,6 +2062,10 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
     if (inLinear) {
       return shellTvLinearMenuArrows(context: context, event: event);
     }
+
+    final pageBack =
+        shellTvSettingsBackwardEdge(context: context, event: event);
+    if (pageBack == KeyEventResult.handled) return pageBack;
 
     // Spatial nearest-neighbor — same as FocusableControl. App-root
     // DirectionalFocusAction no-ops ←/→; do not require ShellTvContainDpad

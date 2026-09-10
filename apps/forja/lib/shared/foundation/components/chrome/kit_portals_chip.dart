@@ -106,103 +106,103 @@ class _KitPortalsChipState extends State<KitPortalsChip> {
             ? Colors.white
             : Colors.white60;
 
-    return Align(
-      alignment: Alignment.centerRight,
-      child: shellFocusableTap(
-        context: context,
-        onTap: widget.onTap,
-        borderRadius: _radius,
-        tvZone: widget.tvZone,
-        tvTabId: widget.tvTabId,
-        tvRowId: widget.tvRowId,
-        tvItemIndex: widget.tvItemIndex,
-        onLeftEdge: widget.onLeftEdge,
-        onRightEdge: widget.onRightEdge,
-        onUpEdge: widget.onUpEdge,
-        onDownEdge: widget.onDownEdge,
-        onFocusChange: (focused) {
-          setState(() => _focused = focused);
-          widget.onFocusChange?.call(focused);
-        },
-        onHoverChange: (hovered) {
-          setState(() => _hovered = hovered);
-          widget.onHoverChange?.call(hovered);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          height: _height,
-          constraints: BoxConstraints(minWidth: minW, maxWidth: maxW),
-          padding: EdgeInsets.symmetric(horizontal: widget.compact ? 10 : 14),
-          decoration: BoxDecoration(
-            color: tvFocused
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-                : showHighlight
-                    ? Colors.white
-                        .withValues(alpha: widget.selected ? 0.14 : 0.10)
-                    : Colors.white.withValues(alpha: 0.06),
-            borderRadius: chipRadius,
-            border: Border.fromBorderSide(side),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (widget.hasPortal)
-                ClipRect(
-                  child: AnimatedAlign(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.centerRight,
-                    widthFactor: _revealSeats ? 1 : 0,
-                    child: Padding(
-                      padding: EdgeInsets.only(right: widget.compact ? 6 : 8),
-                      child: _seats(),
-                    ),
+    // Size to chip only (no Align fill). Expanding seats must shrink the
+    // trailing Spacer — not paint over Search / view icons to the left.
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: _radius,
+      tvZone: widget.tvZone,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        widget.onFocusChange?.call(focused);
+      },
+      onHoverChange: (hovered) {
+        setState(() => _hovered = hovered);
+        widget.onHoverChange?.call(hovered);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        height: _height,
+        constraints: BoxConstraints(minWidth: minW, maxWidth: maxW),
+        padding: EdgeInsets.symmetric(horizontal: widget.compact ? 10 : 14),
+        decoration: BoxDecoration(
+          color: tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : showHighlight
+                  ? Colors.white
+                      .withValues(alpha: widget.selected ? 0.14 : 0.10)
+                  : Colors.white.withValues(alpha: 0.06),
+          borderRadius: chipRadius,
+          border: Border.fromBorderSide(side),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (widget.hasPortal)
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.centerRight,
+                  widthFactor: _revealSeats ? 1 : 0,
+                  child: Padding(
+                    padding: EdgeInsets.only(right: widget.compact ? 6 : 8),
+                    child: _seats(),
                   ),
-                ),
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: Center(
-                  child: widget.hasPortal
-                      ? _statusDot()
-                      : Icon(
-                          Icons.add_link_rounded,
-                          size: 16,
-                          color: tvFocused
-                              ? ForjaShellColors.brandGreen
-                              : active
-                                  ? Colors.white
-                                  : _accent,
-                        ),
                 ),
               ),
-              if (!widget.compact) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: fg,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ),
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: Center(
+                child: widget.hasPortal
+                    ? _statusDot()
+                    : Icon(
+                        Icons.add_link_rounded,
+                        size: 16,
+                        color: tvFocused
+                            ? ForjaShellColors.brandGreen
+                            : active
+                                ? Colors.white
+                                : _accent,
+                      ),
+              ),
+            ),
+            if (!widget.compact) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: fg,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Icon(
-                  widget.selected
-                      ? Icons.expand_less_rounded
-                      : Icons.expand_more_rounded,
-                  size: 18,
-                  color: fgMuted,
-                ),
-              ],
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                widget.selected
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                size: 18,
+                color: fgMuted,
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );

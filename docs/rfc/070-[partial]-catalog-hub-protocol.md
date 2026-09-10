@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **4 / 4** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
-| **Current slice** | Disk-cached hub nav icons (offline rail); A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **4 / 4** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) · **3 / 3** acceptance (layout `dir` RTL/LTR) |
+| **Current slice** | Layout envelope `dir` — KitShell browse Directionality; Arabic-family packs RTL |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -268,6 +268,18 @@ New hub tabs always show in Features; packs never own visibility defaults.
 
 ---
 
+## Acceptance (layout `dir` RTL / LTR)
+
+Packs declare browse chrome direction on the layout envelope. App nav rail stays LTR.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A81 | Layout data may include `dir: "rtl" \| "ltr"`; `catalogLayoutIsRtl` / KitShell omit → LTR | ✅ |
+| 2 | R70-A82 | KitShell wraps browse body in `Directionality`; section titles + rails use directional insets / start alignment | ✅ |
+| 3 | R70-A83 | Arabic-family hub packs (arabic / aflem / cartoon / kids / shahid) set `dir: "rtl"` on layout | ✅ |
+
+---
+
 ## Manual QA (A15)
 
 Desktop + Android TV D-pad — mark A15 ✅ only after this list is run:
@@ -327,7 +339,7 @@ Feature defaults).
 
 | Action | `params` | `data` |
 |---|---|---|
-| `layout` | `page` | `pages.{page}.widgets[]` |
+| `layout` | `page` | optional `dir: "rtl"\|"ltr"` (omit = LTR); `pages.{page}.widgets[]` |
 | `rail` | `rail`, `filter`, `sort`, `page`, `limit`, `cursor` | `items[]`, `nextCursor` |
 | `search` | `query`, `page`, `limit`, `filter` (when pack has `filters`) | `items[]` |
 | `details` | `id` | `meta` |

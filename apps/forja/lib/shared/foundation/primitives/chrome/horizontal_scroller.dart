@@ -199,13 +199,13 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
                 if (showArrows) ...[
                   _ArrowButton(
                     visible: _hovering && _canLeft,
-                    left: true,
+                    atStart: true,
                     offset: widget.arrowOffset,
                     onTap: () => _scrollBy(-_pageStep(context)),
                   ),
                   _ArrowButton(
                     visible: _hovering && _canRight,
-                    left: false,
+                    atStart: false,
                     offset: widget.arrowOffset,
                     onTap: () => _scrollBy(_pageStep(context)),
                   ),
@@ -227,22 +227,23 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
 
 class _ArrowButton extends StatelessWidget {
   final bool visible;
-  final bool left;
+  /// True = scroll toward start (offset decreases); false = toward end.
+  final bool atStart;
   final double offset;
   final VoidCallback onTap;
 
   const _ArrowButton({
     required this.visible,
-    required this.left,
+    required this.atStart,
     required this.offset,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: left ? offset : null,
-      right: left ? null : offset,
+    return PositionedDirectional(
+      start: atStart ? offset : null,
+      end: atStart ? null : offset,
       top: 0,
       bottom: 0,
       child: IgnorePointer(
@@ -278,9 +279,13 @@ class _ArrowButton extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    left
-                        ? Icons.chevron_left_rounded
-                        : Icons.chevron_right_rounded,
+                    Directionality.of(context) == TextDirection.rtl
+                        ? (atStart
+                            ? Icons.chevron_right_rounded
+                            : Icons.chevron_left_rounded)
+                        : (atStart
+                            ? Icons.chevron_left_rounded
+                            : Icons.chevron_right_rounded),
                     color: hover
                         ? ForjaShellColors.textPrimary
                         : ForjaShellColors.iconActive,

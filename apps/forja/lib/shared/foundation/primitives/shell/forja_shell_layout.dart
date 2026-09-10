@@ -183,27 +183,27 @@ double shellScaled(BuildContext context, double value) =>
 double shellCardBorderRadius(BuildContext context) =>
     shellScaled(context, 14).clamp(4.0, 14.0);
 
-EdgeInsets shellSectionTitlePadding(BuildContext context) {
+EdgeInsetsDirectional shellSectionTitlePadding(BuildContext context) {
   final h = shellHomeSectionHorizontalPadding(context);
-  return EdgeInsets.fromLTRB(
-    h,
-    shellHomeSectionTitleTop(context),
-    h,
-    shellHomeSectionBottomGap(context),
+  return EdgeInsetsDirectional.only(
+    start: h,
+    top: shellHomeSectionTitleTop(context),
+    end: h,
+    bottom: shellHomeSectionBottomGap(context),
   );
 }
 
-EdgeInsets shellHomeSectionTitlePadding(
+EdgeInsetsDirectional shellHomeSectionTitlePadding(
   BuildContext context, {
   double? top,
   double? bottom,
 }) {
   final h = shellHomeSectionHorizontalPadding(context);
-  return EdgeInsets.fromLTRB(
-    h,
-    top ?? shellHomeSectionTitleTop(context),
-    h,
-    bottom ?? shellHomeSectionBottomGap(context),
+  return EdgeInsetsDirectional.only(
+    start: h,
+    top: top ?? shellHomeSectionTitleTop(context),
+    end: h,
+    bottom: bottom ?? shellHomeSectionBottomGap(context),
   );
 }
 

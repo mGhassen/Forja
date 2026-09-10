@@ -804,6 +804,11 @@ String? validateLayoutData(Map<String, dynamic>? data) {
   return null;
 }
 
+/// Layout envelope `dir`: `rtl` | `ltr`. Missing / unknown → LTR.
+bool catalogLayoutIsRtl(Map<String, dynamic>? data) {
+  return (data?['dir'] ?? '').toString().trim().toLowerCase() == 'rtl';
+}
+
 class MetaNavSpec {
   const MetaNavSpec({
     required this.tabId,

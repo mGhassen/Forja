@@ -249,6 +249,9 @@ class _ForjaButtonState extends State<ForjaButton> {
             }
           }
         } else if (shellTvIsNavigationKey(event)) {
+          final pageBack =
+              shellTvSettingsBackwardEdge(context: context, event: event);
+          if (pageBack == KeyEventResult.handled) return pageBack;
           final key = event.logicalKey;
           TraversalDirection? direction;
           if (key == LogicalKeyboardKey.arrowLeft) {

@@ -428,6 +428,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
     if (handled == KeyEventResult.handled) return handled;
 
+    // Settings detail: ← → category even under ShellTvDisableLinearFocus
+    // (Forja Packs 2D) — linear menu path is skipped there.
+    final pageBack =
+        shellTvSettingsBackwardEdge(context: context, event: event);
+    if (pageBack == KeyEventResult.handled) return pageBack;
+
     // Opt-in linear hosts only (rare). Default TV D-pad is spatial 2D below.
     final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);

@@ -12,7 +12,7 @@ Enable the ForjaHQ Aflem pack under **Settings → Forja Packs → Hubs**, turn 
 
 ## What you can do
 
-- Browse latest Brstej series (scroll a rail to load more pages)
+- Browse latest Brstej series (scroll a rail to load more pages) — rail titles and poster rows lay out **right-to-left**
 - Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Egyptian / Shami / Gulf / Turkish / Prestige / Ramadan / movies, …)
 - Search titles (episodes grouped into shows; search walks multiple Brstej pages so deep hits still appear)
 - Open details, pick an episode, and play a direct stream

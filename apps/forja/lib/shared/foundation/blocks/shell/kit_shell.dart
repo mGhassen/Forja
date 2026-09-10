@@ -86,6 +86,9 @@ class _KitShellState extends State<KitShell>
   String? _catalogDataError;
   bool _loading = true;
 
+  /// Pack layout envelope `dir` — browse chrome only (default LTR).
+  TextDirection _textDirection = TextDirection.ltr;
+
   /// Hero bleed rail loaded — `null` loading, `true` has items, `false` empty.
   bool? _bleedPopulated;
 
@@ -369,6 +372,9 @@ class _KitShellState extends State<KitShell>
     final pages = data['pages'] as Map;
     final page = pages[_pageKey] ?? pages.values.first;
     final pageMap = Map<String, dynamic>.from(page as Map);
+    _textDirection = catalogLayoutIsRtl(data)
+        ? TextDirection.rtl
+        : TextDirection.ltr;
     _pageUsesFeed = pageMap['feed'] == true;
     _layoutFeedRailIds = catalogLayoutFeedRailIds(
       pageMap,
@@ -1847,7 +1853,10 @@ class _KitShellState extends State<KitShell>
 
     return ColoredBox(
       color: AppTheme.bgDark,
-      child: TvFocusGraph(tabId: _pageKey, child: body),
+      child: Directionality(
+        textDirection: _textDirection,
+        child: TvFocusGraph(tabId: _pageKey, child: body),
+      ),
     );
   }
 }
@@ -2043,16 +2052,15 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
             ),
             for (var i = 0; i < items.length; i++)
               Padding(
-                padding: EdgeInsets.fromLTRB(
-                  pad,
-                  0,
-                  pad,
-                  widget.showRank
+                padding: EdgeInsetsDirectional.only(
+                  start: pad,
+                  end: pad,
+                  bottom: widget.showRank
                       ? shellScaled(context, 6).clamp(3.0, 6.0)
                       : shellMovieCardRowGap(context),
                 ),
                 child: Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: widget.cardBuilder(context, items[i], i),
                 ),
               ),

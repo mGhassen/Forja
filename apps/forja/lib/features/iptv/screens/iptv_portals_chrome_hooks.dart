@@ -45,7 +45,6 @@ abstract final class IptvPortalsChromeHooks {
     final portalsIndex = startIndex + 2;
     final style = ref.watch(kitScheduleLayoutProvider);
     final isCards = style == KitSchedulePrefs.styleCards;
-    final viewLabel = isCards ? 'Cards' : 'List';
 
     final out = <Widget>[
       KitScheduleEventSearch(
@@ -59,13 +58,11 @@ abstract final class IptvPortalsChromeHooks {
               viewIndex,
             ),
       ),
-      ForjaShellChip(
-        label: viewLabel,
-        selected: true,
-        accentHover: true,
+      _ScheduleViewIconButton(
+        isCards: isCards,
         tvTabId: tabId,
         tvRowId: rowId,
-        listIndex: viewIndex,
+        tvItemIndex: viewIndex,
         onDownEdge: onDownEdge,
         onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
               tabId,
@@ -226,6 +223,103 @@ class _IptvPortalsPanelHostState
         onClose: ctrl.closePortalPanel,
       ),
       child: widget.child,
+    );
+  }
+}
+
+/// Icon-only List/Cards toggle — same 40px circle chrome as event Search.
+class _ScheduleViewIconButton extends StatefulWidget {
+  const _ScheduleViewIconButton({
+    required this.isCards,
+    required this.onTap,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onDownEdge,
+  });
+
+  final bool isCards;
+  final VoidCallback onTap;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_ScheduleViewIconButton> createState() =>
+      _ScheduleViewIconButtonState();
+}
+
+class _ScheduleViewIconButtonState extends State<_ScheduleViewIconButton> {
+  static const _size = 40.0;
+
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
+    final tv = policy.useFocusableMoodChips;
+    final tvFocused = tv && _focused;
+    final tip = widget.isCards ? 'Cards view' : 'List view';
+    final icon =
+        widget.isCards ? Icons.grid_view_rounded : Icons.view_list_rounded;
+
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: _size / 2,
+      scaleOnFocus: 1.0,
+      suppressInkHover: true,
+      showFocusFill: false,
+      tvTabId: widget.tvTabId,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: ShellTvZone.topBar,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onDownEdge: widget.onDownEdge,
+      onUpEdge: () {},
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
+      child: Tooltip(
+        message: tip,
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(
+              alpha: active || tvFocused ? 0.16 : 0.08,
+            ),
+            borderRadius: BorderRadius.circular(_size / 2),
+            border: Border.all(
+              color: Colors.white.withValues(
+                alpha: tvFocused
+                    ? 0.45
+                    : active
+                        ? 0.28
+                        : 0.12,
+              ),
+              width: tvFocused ? 1.5 : 1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: active || tvFocused ? Colors.white : Colors.white60,
+            size: 20,
+          ),
+        ),
+      ),
     );
   }
 }

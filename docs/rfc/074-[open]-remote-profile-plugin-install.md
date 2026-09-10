@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **14 / 16** acceptance |
-| **Current slice** | Multi-profile catalog picker shipped — phone→TV add/remove (A02 / A10) still unverified |
+| **Progress** | **6 / 6** components · **15 / 17** acceptance |
+| **Current slice** | Multi-profile catalog picker shipped — phone→TV add/remove (A02 / A10) still unverified · A17 URL migrate shipped |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,7 @@
 | 14 | R74-A14 | Feature docs + changelog | ✅ |
 | 15 | R74-A15 | Multi-pack lean sync → one batch dialog (install + uninstall rows), not FIFO singles | ✅ |
 | 16 | R74-A16 | Signed-in catalog: cloud/trash opens profile checklist (add/deselect per profile) | ✅ |
+| 17 | R74-A17 | Soft-pull remaps same-slot retired manifest URLs via catalog + remote URL wins ([issue 267](../issues/fixed/267-[fixed]-soft-pull-stale-pack-manifest-urls.md)) | ✅ |
 
 ---
 

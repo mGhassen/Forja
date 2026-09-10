@@ -373,6 +373,24 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
       onForwardEdge != oldWidget.onForwardEdge;
 }
 
+/// Settings detail: ← → category rail via [ShellTvLinearFocusEdges.onBackwardEdge].
+///
+/// Call after [shellTvHandleRowArrows] so explicit [onLeftEdge] / TvKitRow
+/// column-0 still win (Addons chevron → toggle). Used when
+/// [ShellTvDisableLinearFocus] skips the linear menu path (Forja Packs 2D).
+KeyEventResult shellTvSettingsBackwardEdge({
+  required BuildContext context,
+  required KeyEvent event,
+}) {
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+  if (event.logicalKey != LogicalKeyboardKey.arrowLeft) {
+    return KeyEventResult.ignored;
+  }
+  final handler = ShellTvLinearFocusEdges.maybeOf(context)?.onBackwardEdge;
+  if (handler == null) return KeyEventResult.ignored;
+  return handler() ? KeyEventResult.handled : KeyEventResult.ignored;
+}
+
 /// D-pad inside opt-in [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
 /// Default: ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop].
@@ -390,7 +408,8 @@ KeyEventResult shellTvLinearMenuArrows({
     return KeyEventResult.ignored;
   }
   if (ShellTvDisableLinearFocus.activeOf(context)) {
-    return KeyEventResult.ignored;
+    // 2D packs page still owes ← → category when Edges is set.
+    return shellTvSettingsBackwardEdge(context: context, event: event);
   }
   final key = event.logicalKey;
   if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;

@@ -252,6 +252,9 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
         if (arrow == KeyEventResult.handled) return arrow;
+        final pageBack =
+            shellTvSettingsBackwardEdge(context: context, event: event);
+        if (pageBack == KeyEventResult.handled) return pageBack;
         // Opt-in linear only; default TV D-pad is spatial focusInDirection.
         final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);

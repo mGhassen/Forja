@@ -1541,6 +1541,10 @@ class SyncDomainBridge {
   /// may hydrate adds when the shell is open; profile splash /
   /// [PluginInstallCoordinator.ensureAllInstalled] owns pre-shell hydrate
   /// (issue 259).
+  ///
+  /// Before apply: remap lean URLs through published `plugin_packs` when the
+  /// opaque slot matches a newer catalog `manifest_url` (issue 267). After a
+  /// URL migrate (`added`), push so profile `packs[]` stores the new URLs.
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
     // Pack membership only after a profile was launched (guest or selectProfile).
     if (SyncService.instance.isSignedIn &&
@@ -1550,10 +1554,17 @@ class SyncDomainBridge {
     }
     await PacksOnboardingStore.applyFromCloud(payload['onboarded'] == true);
     final packs = payload['packs'] as List? ?? const [];
-    final rows = <Map<String, dynamic>>[
+    final rawRows = <Map<String, dynamic>>[
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
+    List<Map<String, dynamic>> rows = rawRows;
+    if (rawRows.isNotEmpty) {
+      final catalog = await PluginCatalogRemote.fetchPublishedPacks();
+      if (catalog.isNotEmpty) {
+        rows = PluginRegistry.rewriteLeanUrlsThroughCatalog(rawRows, catalog);
+      }
+    }
     debugPrint('[Sync] importForja packs=${rows.length}');
     final result = await EngineService.instance.applyLeanManifestUrls(
       rows,
@@ -1567,6 +1578,11 @@ class SyncDomainBridge {
     // Downloads / hub activate only when splash dismissed (or no-op under
     // bootWarm). Soft-pull before profile splash must not install early.
     await PluginInstallPromptService.applyCloudLeanDiff(result);
+    // Catalog / same-slot URL migrate → push so cloud packs[] leaves the
+    // retired host (otherwise the next pull reintroduces the old URL).
+    if (result.added.isNotEmpty) {
+      scheduleForjaSyncPush();
+    }
     return result;
   }
 }

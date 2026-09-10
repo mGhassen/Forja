@@ -266,11 +266,11 @@ class _KitSectionState<T> extends State<KitSection<T>> {
         if (widget.title.isNotEmpty)
           ShellSectionTitle(
             title: widget.title,
-            padding: EdgeInsets.fromLTRB(
-              horizontalPad,
-              sectionTop,
-              horizontalPad,
-              widget.embedded
+            padding: EdgeInsetsDirectional.only(
+              start: horizontalPad,
+              top: sectionTop,
+              end: horizontalPad,
+              bottom: widget.embedded
                   ? DetailsTokens.sectionTitleGap
                   : shellHomeSectionBottomGap(context),
             ),

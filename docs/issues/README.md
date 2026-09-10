@@ -271,6 +271,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [264-[fixed]-…](fixed/264-[fixed]-live-sports-player-no-auto-failover.md) | Live Sports player does not auto-play next stream | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [265-[open]-…](265-[open]-android-tv-live-sports-dpad-down-from-shelf-portal.md) | ATV Live Sports ↓ from shelf / Portals does not restore match | P1 | Medium | open | 4/4 · A 0/2 | [243](fixed/243-[fixed]-android-tv-live-sports-first-focus-catalog.md) |
 | [266-[open]-…](266-[open]-android-tv-iptv-dpad-up-after-shelf-change.md) | ATV IPTV ↑ from catalog after Movies/Series shelf change | P1 | Medium | open | 3/3 · A 0/2 | [136](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) |
+| [267-[fixed]-…](fixed/267-[fixed]-soft-pull-stale-pack-manifest-urls.md) | Soft-pull keeps stale pack URLs after catalog move | P1 | High | fixed | Complete · 3/3 · A 2/2 | [RFC-074](../rfc/074-[open]-remote-profile-plugin-install.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

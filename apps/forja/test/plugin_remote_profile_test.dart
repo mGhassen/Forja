@@ -125,8 +125,14 @@ void main() {
     });
 
     test('keeps local ForjaHQ checkout when cloud has same-slot remote URL', () async {
-      const local =
-          '/Users/dev/Workspace/Forja/plugins/hubs/shahid/manifest.json';
+      final dir = await Directory.systemTemp.createTemp('lean_local_slot_');
+      final manifest = File('${dir.path}/hubs/shahid/manifest.json');
+      await manifest.parent.create(recursive: true);
+      await manifest.writeAsString('{"name":"Shahid","version":"1.0.0"}');
+      final local = manifest.path;
+      addTearDown(() async {
+        if (await dir.exists()) await dir.delete(recursive: true);
+      });
       const remote =
           'https://cdn.example/packs/hubs/shahid/manifest.json';
       await _seedPacks([
@@ -154,6 +160,68 @@ void main() {
       expect(packs, hasLength(1));
       expect(packs.single.sourceUrl, local);
       expect(packs.single.plugins, isNotEmpty);
+    });
+
+    test('migrates remote pack when same-slot cloud URL changes', () async {
+      const oldUrl =
+          'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/home/manifest.json';
+      const newUrl =
+          'https://raw.githubusercontent.com/mGhassen/forja-packs/main/hubs/home/manifest.json';
+      await _seedPacks([
+        {
+          'sourceUrl': oldUrl,
+          'packId': 'home-old',
+          'name': 'ForjaHQ Home',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'home-hub',
+              'name': 'Home',
+              'entry': 'home.js',
+              'kind': 'http',
+            },
+          ],
+        },
+      ]);
+      final result = await PluginRegistry.instance.applyLeanManifestUrls([
+        {'manifestUrl': newUrl, 'name': 'ForjaHQ Home'},
+      ]);
+      expect(result.removed, isEmpty);
+      expect(result.added, hasLength(1));
+      expect(result.added.single.manifestUrl, newUrl);
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.single.sourceUrl, newUrl);
+      expect(packs.single.plugins, isEmpty);
+    });
+
+    test('rewriteLeanUrlsThroughCatalog remaps same-slot retired hosts', () {
+      const oldUrl =
+          'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/catalog/manifest.json';
+      const newUrl =
+          'https://raw.githubusercontent.com/mGhassen/forja-packs/main/catalog/manifest.json';
+      final rows = PluginRegistry.rewriteLeanUrlsThroughCatalog(
+        [
+          {'manifestUrl': oldUrl, 'name': 'Catalog'},
+          {
+            'manifestUrl': 'https://community.example/custom/manifest.json',
+            'name': 'Custom',
+          },
+        ],
+        [
+          const OfficialForjaHqPack(
+            id: 'catalog',
+            name: 'Catalog',
+            manifestUrl: newUrl,
+          ),
+        ],
+      );
+      expect(rows, hasLength(2));
+      expect(rows[0]['manifestUrl'], newUrl);
+      expect(
+        rows[1]['manifestUrl'],
+        'https://community.example/custom/manifest.json',
+      );
     });
 
     test('keeps readable local checkout when cloud omits it', () async {

@@ -193,6 +193,17 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
   }
 
+  /// Leave share-code edit / IME; keep browse highlight on the paste field.
+  void _endPasteEditing({bool keepFocus = true}) {
+    if (!mounted) return;
+    if (_pasteEditing) setState(() => _pasteEditing = false);
+    if (!keepFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_pasteFocus.hasFocus) _pasteFocus.requestFocus();
+    });
+  }
+
   KeyEventResult _handlePasteKey(FocusNode node, KeyEvent event) {
     if (mounted &&
         iptvUseTvFocus(context) &&
@@ -212,13 +223,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           return KeyEventResult.handled;
         }
       } else {
+        if (shellTvIsActivateKey(event)) {
+          _endPasteEditing(keepFocus: true);
+          return KeyEventResult.handled;
+        }
         if (shellTvIsNavigationKey(event) &&
             event.logicalKey == LogicalKeyboardKey.arrowUp) {
           return KeyEventResult.handled;
         }
         if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          setState(() => _pasteEditing = false);
+            (event.logicalKey == LogicalKeyboardKey.escape ||
+                event.logicalKey == LogicalKeyboardKey.goBack)) {
+          _endPasteEditing(keepFocus: true);
           return KeyEventResult.handled;
         }
       }
@@ -1311,6 +1327,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.visiblePassword,
+                  textInputAction: TextInputAction.done,
                   showCursor: false,
                   style: const TextStyle(
                     color: Colors.transparent,
@@ -1329,6 +1346,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                     ),
                   ],
                   onChanged: _onSharePasteChanged,
+                  onSubmitted: (_) => _endPasteEditing(keepFocus: true),
                 ),
               ),
             ],

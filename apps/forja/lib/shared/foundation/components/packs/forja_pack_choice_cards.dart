@@ -58,8 +58,8 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
   @override
   Widget build(BuildContext context) {
     final gap = widget.compact ? 10.0 : 14.0;
-    // Explicit ←/→ between the pair — Settings linear scope used to make
-    // → === ↓ (nextFocus), so cards felt like one column.
+    // → links Official → Community. ← exits to the Settings category rail
+    // (ShellTvLinearFocusEdges), same as other settings pages / Back.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -85,7 +85,8 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             compact: widget.compact,
             settingsTvFocus: widget.settingsTvFocus,
             tvItemIndex: 1,
-            onLeftEdge: () => _installNode.requestFocus(),
+            // ← exits to the Settings category rail (same as Official / Back).
+            // → from Official still reaches this card.
             icon: Icons.public_rounded,
             title: 'Community Packs',
             subtitle: widget.communitySubtitle ??

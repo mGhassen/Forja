@@ -17,7 +17,7 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## What you can do
 
-- Browse top series / movies and related rails
+- Browse top series / movies and related rails — rail titles and poster rows lay out **right-to-left**
 - Search Shahid titles
 - Open details
 - Sign in under Connected services for premium playout / license

@@ -11,6 +11,8 @@ import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart'
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 
 /// Open pack install/uninstall picker inside Settings → Forja Packs (right pane).
@@ -105,8 +107,16 @@ class SettingsPackPromptPane extends StatefulWidget {
 }
 
 class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
+  static const _listRowId = 'pack-prompt-list';
+  static const _toolbarRowId = 'pack-prompt-toolbar';
+
   late Set<String> _selected;
   bool _busy = false;
+  final FocusNode _selectAllFocus =
+      FocusNode(debugLabel: 'pack_prompt_select_all');
+  final FocusNode _clearFocus = FocusNode(debugLabel: 'pack_prompt_clear');
+  final FocusNode _installFocus =
+      FocusNode(debugLabel: 'pack_prompt_install');
 
   String _key(PluginInstallCandidate c) =>
       '${c.kind.name}|${c.manifestUrl.trim()}';
@@ -116,6 +126,41 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     super.initState();
     // User picks packs — do not pre-check every actionable row.
     _selected = {};
+  }
+
+  @override
+  void dispose() {
+    _selectAllFocus.dispose();
+    _clearFocus.dispose();
+    _installFocus.dispose();
+    super.dispose();
+  }
+
+  void _pageBackLeft() {
+    ShellTvFocusCoordinator.tryPageBack('settings');
+  }
+
+  void _focusFirstPack() {
+    final n = widget.prompt.candidates.length;
+    for (var i = 0; i < n; i++) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+        'settings',
+        _listRowId,
+        i,
+      )) {
+        return;
+      }
+    }
+  }
+
+  void _focusToolbar() {
+    if (_selectAllFocus.canRequestFocus) {
+      _selectAllFocus.requestFocus();
+      return;
+    }
+    if (_clearFocus.canRequestFocus) {
+      _clearFocus.requestFocus();
+    }
   }
 
   Iterable<PluginInstallCandidate> get _actionable =>
@@ -286,9 +331,113 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     final allSelected = actionable.isNotEmpty &&
         actionable.every((c) => _selected.contains(_key(c)));
     final candidates = widget.prompt.candidates;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final selectAllEnabled = !_busy && !allSelected;
+    final clearEnabled = !_busy && _selectedCount > 0;
 
     // Header + list + footer pinned — only the pack rows scroll (Update Forja).
-    return Column(
+    // TV: vertical TvKitRow so ↑/↓ walk packs (ListView linear/spatial was
+    // snapping every ↑ to Select all when neighbors were off-screen).
+    Widget toolbar = Row(
+      children: [
+        Text(
+          '$_selectedCount selected',
+          style: const TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const Spacer(),
+        SettingsTextAction(
+          label: 'Select all',
+          focusNode: tv && selectAllEnabled ? _selectAllFocus : null,
+          tvRowId: tv ? _toolbarRowId : null,
+          tvItemIndex: 0,
+          tvZone: tv ? ShellTvZone.row : null,
+          onLeftEdge: tv ? _pageBackLeft : null,
+          onRightEdge: tv && clearEnabled
+              ? () => _clearFocus.requestFocus()
+              : null,
+          onDownEdge: tv ? _focusFirstPack : null,
+          onPressed: selectAllEnabled ? _selectAllActionable : null,
+        ),
+        SettingsTextAction(
+          label: 'Clear',
+          focusNode: tv && clearEnabled ? _clearFocus : null,
+          tvRowId: tv ? _toolbarRowId : null,
+          tvItemIndex: 1,
+          tvZone: tv ? ShellTvZone.row : null,
+          onLeftEdge: tv
+              ? () {
+                  if (selectAllEnabled) {
+                    _selectAllFocus.requestFocus();
+                  } else {
+                    _pageBackLeft();
+                  }
+                }
+              : null,
+          onDownEdge: tv ? _focusFirstPack : null,
+          onPressed: clearEnabled ? _clearActionable : null,
+        ),
+      ],
+    );
+    if (tv) {
+      toolbar = TvKitRow(
+        tabId: 'settings',
+        rowId: _toolbarRowId,
+        sortOrder: 10,
+        itemCount: 2,
+        child: toolbar,
+      );
+    }
+
+    Widget list = ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: candidates.length,
+      separatorBuilder: (_, _) => const Divider(
+        height: 1,
+        color: ForjaShellColors.borderSubtle,
+      ),
+      itemBuilder: (context, i) {
+        final c = candidates[i];
+        return _PackPromptRow(
+          candidate: c,
+          checked: c.alreadyInstalled || _selected.contains(_key(c)),
+          enabled: !c.alreadyInstalled && !_busy,
+          listIndex: i,
+          listRowId: tv ? _listRowId : null,
+          onLeftEdge: tv ? _pageBackLeft : null,
+          onChanged: (value) {
+            final key = _key(c);
+            setState(() {
+              if (value) {
+                _selected.add(key);
+              } else {
+                _selected.remove(key);
+              }
+            });
+          },
+        );
+      },
+    );
+    if (tv && candidates.isNotEmpty) {
+      list = TvKitRow(
+        tabId: 'settings',
+        rowId: _listRowId,
+        sortOrder: 20,
+        itemCount: candidates.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _focusToolbar,
+        onFocusDown: () {
+          if (_installFocus.canRequestFocus) {
+            _installFocus.requestFocus();
+          }
+        },
+        child: list,
+      );
+    }
+
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
@@ -300,61 +449,16 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Text(
-              '$_selectedCount selected',
-              style: const TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-            const Spacer(),
-            SettingsTextAction(
-              label: 'Select all',
-              onPressed: _busy || allSelected ? null : _selectAllActionable,
-            ),
-            SettingsTextAction(
-              label: 'Clear',
-              onPressed: _busy || _selectedCount == 0 ? null : _clearActionable,
-            ),
-          ],
-        ),
+        toolbar,
         const SizedBox(height: 4),
-        Expanded(
-          child: ListView.separated(
-            padding: EdgeInsets.zero,
-            itemCount: candidates.length,
-            separatorBuilder: (_, _) => const Divider(
-              height: 1,
-              color: ForjaShellColors.borderSubtle,
-            ),
-            itemBuilder: (context, i) {
-              final c = candidates[i];
-              return _PackPromptRow(
-                candidate: c,
-                checked: c.alreadyInstalled || _selected.contains(_key(c)),
-                enabled: !c.alreadyInstalled && !_busy,
-                onChanged: (value) {
-                  final key = _key(c);
-                  setState(() {
-                    if (value) {
-                      _selected.add(key);
-                    } else {
-                      _selected.remove(key);
-                    }
-                  });
-                },
-              );
-            },
-          ),
-        ),
+        Expanded(child: list),
         const SizedBox(height: 16),
         SettingsFilledButton(
           label: _primaryLabel,
           icon: Icons.download_rounded,
           busy: _busy,
           expand: true,
+          focusNode: tv ? _installFocus : null,
           onPressed: _busy || _selectedCount == 0
               ? null
               : () => unawaited(_applySelected()),
@@ -364,11 +468,21 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           child: SettingsTextAction(
             label: 'Not now',
             color: ForjaShellColors.textSecondary,
+            onLeftEdge: tv ? _pageBackLeft : null,
+            onUpEdge: tv
+                ? () {
+                    if (_installFocus.canRequestFocus) {
+                      _installFocus.requestFocus();
+                    }
+                  }
+                : null,
             onPressed: _busy ? null : () => unawaited(_notNow()),
           ),
         ),
       ],
     );
+    if (!tv) return body;
+    return ShellTvDisableLinearFocus(child: body);
   }
 }
 
@@ -379,12 +493,18 @@ class _PackPromptRow extends StatelessWidget {
     required this.checked,
     required this.enabled,
     required this.onChanged,
+    this.listIndex,
+    this.listRowId,
+    this.onLeftEdge,
   });
 
   final PluginInstallCandidate candidate;
   final bool checked;
   final bool enabled;
   final ValueChanged<bool> onChanged;
+  final int? listIndex;
+  final String? listRowId;
+  final VoidCallback? onLeftEdge;
 
   static String _labelize(String raw) {
     final t = raw.trim();
@@ -592,8 +712,11 @@ class _PackPromptRow extends StatelessWidget {
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
+      tvZone: listRowId != null ? ShellTvZone.row : ShellTvZone.settings,
+      tvRowId: listRowId,
+      tvItemIndex: listIndex,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onLeftEdge: onLeftEdge,
       child: row,
     );
   }

@@ -12,7 +12,7 @@ Enable the ForjaHQ Kids pack under **Settings → Forja Packs → Hubs**, turn *
 
 ## What you can do
 
-- Browse latest cartoon **series** (seasons are grouped into one card) and **movies**
+- Browse latest cartoon **series** (seasons are grouped into one card) and **movies** — rail titles and poster rows lay out **right-to-left**
 - See shows with newly added episodes
 - Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Arabic letter ا–ي)
 - Search Dimakids titles (series + movies)

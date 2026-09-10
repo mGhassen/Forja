@@ -6,7 +6,7 @@
 
 Live Sports is a **hub pack** (ForjaHQ Live Sports) — same class as Anime or Asian Drama. The tab mounts **KitShell** from pack `nav` + `layout`, composing generic kit primitives:
 
-- **Top bar** — Catalog / Schedule filter badges + Refresh, plus top-right **Search**, **List/Cards** view toggle, and **Portals** (same IPTV panel; used by Live TV / Forja Sports matching)
+- **Top bar** — Catalog / Schedule filter badges + Refresh, plus top-right **Search**, **List/Cards** icon (same circle chrome as Search), and **Portals** (same IPTV panel; used by Live TV / Forja Sports matching)
 - **Category bar** — sport mood circles with icons (dynamic from the schedule)
 - **List** — dense match rows or landscape cards (toggle from the top bar; default **List**)
 - **Streams** — Providers / Live TV in a **side panel** or a **detail page** (pack Setup → **Open matches in**; default side panel)

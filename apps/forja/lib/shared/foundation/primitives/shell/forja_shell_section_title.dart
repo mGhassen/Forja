@@ -8,7 +8,12 @@ class ShellSectionTitle extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.padding = const EdgeInsets.fromLTRB(24, 36, 24, 16),
+    this.padding = const EdgeInsetsDirectional.only(
+      start: 24,
+      top: 36,
+      end: 24,
+      bottom: 16,
+    ),
     this.trailing,
   });
 
@@ -32,7 +37,13 @@ class ShellSectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedPadding =
-        padding == const EdgeInsets.fromLTRB(24, 36, 24, 16)
+        padding ==
+            const EdgeInsetsDirectional.only(
+              start: 24,
+              top: 36,
+              end: 24,
+              bottom: 16,
+            )
             ? shellSectionTitlePadding(context)
             : padding;
     final titleStyle = shellSectionTitleTextStyle(context);
