@@ -106,6 +106,34 @@ void main() {
     });
   });
 
+  group('LivePluginEngine.ownedSources', () {
+    test('cachedOwnsSourceToken uses pack ownedSources + slug', () {
+      LivePluginEngine.invalidateDerivedCaches();
+      LivePluginEngine.cachePluginMeta(
+        EnginePlugin.fromJson({
+          'id': 'test-live-a',
+          'name': 'Test Live A',
+          'entry': 'a.js',
+          'types': ['live_sport'],
+          'kind': 'http',
+          'capabilities': ['catalog', 'resolve'],
+          'config': {
+            'nativeUnlock': 'test-live-a',
+            'ownedSources': ['slot-x', 'slot-y'],
+          },
+        }),
+      );
+      expect(LivePluginEngine.cachedOwnsSourceToken('test-live-a', 'slot-x'), isTrue);
+      expect(LivePluginEngine.cachedOwnsSourceToken('test-live-a', 'slot-y'), isTrue);
+      expect(
+        LivePluginEngine.cachedOwnsSourceToken('test-live-a', 'test-live-a'),
+        isTrue,
+      );
+      expect(LivePluginEngine.cachedOwnsSourceToken('test-live-a', 'other'), isFalse);
+      LivePluginEngine.invalidateDerivedCaches();
+    });
+  });
+
   group('EnginePack.parse', () {
     test('reads a multi-plugin pack', () {
       final pack = EnginePack.fromJson({

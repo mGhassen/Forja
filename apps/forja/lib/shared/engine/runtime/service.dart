@@ -1085,21 +1085,28 @@ class EngineService {
       gen: gen,
       generation: () => _extractGeneration,
     );
+    // Unlock-on-play when an embed URL is set. Providers discover lists
+    // mirrors (embed pages ok) and unlocks later on tap.
+    final wantsUnlock = _liveResolveWantsUnlock(params);
     if (viaRust != null) {
       // EngineJS has no ctx.live.goatUnlock / sportsEmbedUnlock bridges.
-      // Plugins that skip crack and return sportsembed/embed.st HTML look
-      // "successful" (raw=N) but nothing is native-playable — fall back so
-      // flutter_js can unlock (WatchFooty / Streamed / PPV).
+      // Unlock path: embed-only rows are not native-playable — fall back so
+      // flutter_js can crack. Discover path: keep embed mirrors as-is.
       final processed = await _postProcessLivePluginRows(viaRust);
-      final playable = _liveResolvePlayableRows(processed);
-      if (playable.isNotEmpty) return playable;
+      final kept = wantsUnlock
+          ? _liveResolvePlayableRows(processed)
+          : _liveResolveDiscoverRows(processed);
+      if (kept.isNotEmpty) return kept;
       // Cancel may have emptied the list after gen bump — never stampede JSC.
       if (gen != _extractGeneration) return [];
       debugPrint(
         viaRust.isEmpty
             ? '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback'
-            : '[engine] ${plugin.id} enginejs live resolve no playable urls '
-                '(${viaRust.length}) — flutter_js fallback',
+            : wantsUnlock
+                ? '[engine] ${plugin.id} enginejs live resolve no playable urls '
+                    '(${viaRust.length}) — flutter_js fallback'
+                : '[engine] ${plugin.id} enginejs live resolve no discover rows '
+                    '(${viaRust.length}) — flutter_js fallback',
       );
     }
     if (gen != _extractGeneration) return [];
@@ -1125,12 +1132,23 @@ class EngineService {
           isCancelled: () => gen != _extractGeneration,
         );
         if (gen != _extractGeneration) return <Map<String, dynamic>>[];
-        return _liveResolvePlayableRows(await _postProcessLivePluginRows(raw));
+        final processed = await _postProcessLivePluginRows(raw);
+        return wantsUnlock
+            ? _liveResolvePlayableRows(processed)
+            : _liveResolveDiscoverRows(processed);
       } finally {
         runtime.dispose();
         await Future<void>.delayed(_flutterJsSettle);
       }
     });
+  }
+
+  /// True when params ask for unlock-on-play (embed URL present).
+  static bool _liveResolveWantsUnlock(Map<String, dynamic> params) {
+    final embed = (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
+        .toString()
+        .trim();
+    return embed.isNotEmpty;
   }
 
   /// Native-playable live resolve handoff (HLS / mp4 / local proxy) — not
@@ -1150,6 +1168,23 @@ class EngineService {
       if (row['webviewOnly'] == true) continue;
       final url = (row['url'] ?? '').toString().trim();
       if (!liveResolveUrlPlayable(url)) continue;
+      out.add(row);
+    }
+    return out;
+  }
+
+  /// Providers discover — keep real mirror URLs (embed pages or HLS).
+  /// Unlock happens on play; do not require .m3u8 here.
+  static List<Map<String, dynamic>> _liveResolveDiscoverRows(
+    List<Map<String, dynamic>> rows,
+  ) {
+    final out = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final row in rows) {
+      if (row['webviewOnly'] == true) continue;
+      final url = (row['url'] ?? '').toString().trim();
+      if (url.isEmpty || url.startsWith('pending:')) continue;
+      if (!seen.add(url)) continue;
       out.add(row);
     }
     return out;

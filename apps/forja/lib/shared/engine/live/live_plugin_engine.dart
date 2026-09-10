@@ -23,6 +23,7 @@ class LivePluginEngine {
   static final Map<String, String> _providerResolveIdByPluginId = {};
   static final Map<String, String> _matchIdPrefixByPluginId = {};
   static final Map<String, String> _resolveSourceByPluginId = {};
+  static final Map<String, Set<String>> _ownedSourcesByPluginId = {};
 
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
@@ -90,6 +91,17 @@ class LivePluginEngine {
         (plugin.config['resolveSource'] ?? '').toString().trim();
     if (resolveSource.isNotEmpty) {
       _resolveSourceByPluginId[key] = resolveSource.toLowerCase();
+    }
+    final owned = <String>{};
+    final ownedRaw = plugin.config['ownedSources'];
+    if (ownedRaw is List) {
+      for (final e in ownedRaw) {
+        final s = e.toString().trim().toLowerCase();
+        if (s.isNotEmpty) owned.add(s);
+      }
+    }
+    if (owned.isNotEmpty) {
+      _ownedSourcesByPluginId[key] = owned;
     }
   }
 
@@ -189,6 +201,24 @@ class LivePluginEngine {
     return key;
   }
 
+  /// Pack `config.ownedSources` — opaque source tokens this resolve plugin owns
+  /// (e.g. Streamed goat slots `admin`/`delta` that are not the plugin slug).
+  static Set<String> cachedOwnedSources(String pluginId) {
+    if (pluginId.isEmpty) return const {};
+    return _ownedSourcesByPluginId[_metaPluginKey(pluginId)] ?? const {};
+  }
+
+  /// True when [sourceToken] belongs to [pluginId] (slug, resolveSource, or ownedSources).
+  static bool cachedOwnsSourceToken(String pluginId, String sourceToken) {
+    final src = sourceToken.trim().toLowerCase();
+    if (src.isEmpty || pluginId.isEmpty) return false;
+    final key = _metaPluginKey(pluginId);
+    if (src == key || src == pluginId.toLowerCase()) return true;
+    final token = cachedResolveSourceToken(pluginId).toLowerCase();
+    if (token.isNotEmpty && src == token) return true;
+    return cachedOwnedSources(pluginId).contains(src);
+  }
+
   /// Strip pack-declared `matchIdPrefix` / `{slug}_` before live `resolve`.
   static String cachedResolveRefId(String rowId, String pluginId) {
     final id = rowId.trim();
@@ -261,6 +291,7 @@ class LivePluginEngine {
     _providerResolveIdByPluginId.clear();
     _matchIdPrefixByPluginId.clear();
     _resolveSourceByPluginId.clear();
+    _ownedSourcesByPluginId.clear();
   }
 
   /// Warm name/origin/unlock caches from installed live + catalog plugins.

@@ -736,11 +736,15 @@ class EngineRuntime {
           timeout: timeout,
           allowHostFallback: false,
           isCancelled: isCancelled,
+          // Live resolve must not inherit a stale VOD `_extractUrl` — packs
+          // treat any non-empty url/embedUrl as unlock-on-play (not discover).
           extraCtx: {
             'action': action,
             'pluginId': pluginId,
             'packSourceUrl': (packSourceUrl ?? '').trim(),
             ...params,
+            'url': (params['url'] ?? params['embedUrl'] ?? '').toString(),
+            'embedUrl': (params['embedUrl'] ?? params['url'] ?? '').toString(),
           },
         );
       });
@@ -1016,8 +1020,15 @@ class EngineRuntime {
     matchId: meta.matchId || '',
     source: meta.source || '',
     stream: meta.stream || '',
+    eventId: meta.eventId || '',
     embedUrl: meta.embedUrl || '',
+    iframe: meta.iframe || meta.embedUrl || '',
     category: meta.category || '',
+    homeTeam: meta.homeTeam || '',
+    awayTeam: meta.awayTeam || '',
+    dateMs: meta.dateMs,
+    viewers: meta.viewers,
+    fixtureSearch: meta.fixtureSearch === true,
     pluginId: meta.pluginId || '',
     packSourceUrl: meta.packSourceUrl || '',
     live: {

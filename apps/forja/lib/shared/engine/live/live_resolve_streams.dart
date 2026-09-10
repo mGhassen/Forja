@@ -212,16 +212,28 @@ abstract final class LiveResolveStreams {
     final token =
         LivePluginEngine.cachedResolveSourceToken(plugin.id).toLowerCase();
     final norm = EngineService.normalizeLiveSportPluginId(plugin.id);
+    MatchSourceRef? firstOwned;
     for (final ref in match.sources) {
       final src = ref.source.trim().toLowerCase();
       if (src.isEmpty) continue;
-      if (src == token || src == norm || src == plugin.id.toLowerCase()) {
-        return ref;
-      }
+      if (!LivePluginEngine.cachedOwnsSourceToken(plugin.id, src)) continue;
+      firstOwned ??= ref;
+      // Prefer an opaque slot id when present (goat / stream keys).
+      if (ref.id.trim().isNotEmpty) return ref;
     }
+    if (firstOwned != null) return firstOwned;
     final cardKey = LivePluginEngine.resolvePluginKey(match.livePluginId);
     if (cardKey.isNotEmpty &&
         cardKey == EngineService.normalizeLiveSportPluginId(plugin.id)) {
+      // Prefer first ownedSources[] id on the card before falling back to row id.
+      for (final ref in match.sources) {
+        final src = ref.source.trim().toLowerCase();
+        if (src.isEmpty) continue;
+        if (LivePluginEngine.cachedOwnsSourceToken(plugin.id, src) &&
+            ref.id.trim().isNotEmpty) {
+          return ref;
+        }
+      }
       final id = LivePluginEngine.cachedResolveRefId(match.id, plugin.id);
       if (id.isNotEmpty) {
         return MatchSourceRef(
@@ -273,6 +285,7 @@ abstract final class LiveResolveStreams {
     // Fixture-only: pack searches its own schedule (RFC-105) — no host soft-match.
     List<Map<String, dynamic>> rows = const [];
     try {
+      final ownedSource = source.source.trim();
       rows = await EngineService.instance.runLivePlugin(
         pluginId: pluginId,
         action: 'resolve',
@@ -280,7 +293,9 @@ abstract final class LiveResolveStreams {
           if (!fixtureOnly && source.id.trim().isNotEmpty)
             'matchId': source.id.trim(),
           'eventId': match.id,
-          'source': pluginSource.isNotEmpty ? pluginSource : source.source,
+          // Prefer the card's opaque source token (e.g. goat `admin`) over the
+          // plugin slug so packs can list that slot directly.
+          'source': ownedSource.isNotEmpty ? ownedSource : pluginSource,
           'category': match.category,
           'title': match.title,
           'homeTeam': match.homeTeam ?? '',
