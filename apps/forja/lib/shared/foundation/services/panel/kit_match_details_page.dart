@@ -40,6 +40,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   bool _streamsVisible = false;
   bool _heroFocusDone = false;
   String _liveTvChannelQuery = '';
+  bool _streamsLoading = false;
 
   @override
   void initState() {
@@ -164,6 +165,10 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             showInlineSearch: false,
             channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
             browseCategoryTabIds: const {_liveTv},
+            onLoadingChanged: (loading) {
+              if (!mounted || loading == _streamsLoading) return;
+              setState(() => _streamsLoading = loading);
+            },
             loadTab: _loadTab,
             onPlayRow: (row) => KitResolvePanelHost.playRow(
               context,
@@ -204,50 +209,62 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                         forTabId: MediaDetailsTv.tabId,
                       )
                   : null,
-              // Keep intrinsic size — FittedBox scaleDown shrinks the search.
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  HeroPillSegmentedChoice<String>(
-                    segments: const [
-                      HeroPillSegment(
-                        value: _providers,
-                        label: 'Providers',
-                        icon: Icons.dns_rounded,
-                      ),
-                      HeroPillSegment(
-                        value: _liveTv,
-                        label: 'Live TV',
-                        icon: Icons.live_tv_rounded,
+              // Keep intrinsic height — FittedBox scaleDown shrinks the search.
+              child: SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    HeroPillSegmentedChoice<String>(
+                      segments: const [
+                        HeroPillSegment(
+                          value: _providers,
+                          label: 'Providers',
+                          icon: Icons.dns_rounded,
+                        ),
+                        HeroPillSegment(
+                          value: _liveTv,
+                          label: 'Live TV',
+                          icon: Icons.live_tv_rounded,
+                        ),
+                      ],
+                      selected: _tabId,
+                      onSelected: _selectTab,
+                      onUpEdge:
+                          tvFocus ? () => _backFocus.requestFocus() : null,
+                      onDownEdge: tvFocus
+                          ? () => SourcesPanelTv.focusListItem(
+                                index: 0,
+                                listOnly: true,
+                                forTabId: MediaDetailsTv.tabId,
+                              )
+                          : null,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                      tvItemIndexStart: 0,
+                    ),
+                    if (showLiveTvSearch) ...[
+                      const SizedBox(width: 16),
+                      KitSourcesExpandingSearch(
+                        query: _liveTvChannelQuery,
+                        onQueryChanged: (q) {
+                          if (q == _liveTvChannelQuery) return;
+                          setState(() => _liveTvChannelQuery = q);
+                        },
+                        debugLabel: 'live-match-details-live-tv-search',
                       ),
                     ],
-                    selected: _tabId,
-                    onSelected: _selectTab,
-                    onUpEdge:
-                        tvFocus ? () => _backFocus.requestFocus() : null,
-                    onDownEdge: tvFocus
-                        ? () => SourcesPanelTv.focusListItem(
-                              index: 0,
-                              listOnly: true,
-                              forTabId: MediaDetailsTv.tabId,
-                            )
-                        : null,
-                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                    tvItemIndexStart: 0,
-                  ),
-                  if (showLiveTvSearch) ...[
-                    const SizedBox(width: 16),
-                    KitSourcesExpandingSearch(
-                      query: _liveTvChannelQuery,
-                      onQueryChanged: (q) {
-                        if (q == _liveTvChannelQuery) return;
-                        setState(() => _liveTvChannelQuery = q);
-                      },
-                      debugLabel: 'live-match-details-live-tv-search',
-                    ),
+                    const Spacer(),
+                    if (_streamsLoading)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: ForjaShellColors.sectionAccent,
+                        ),
+                      ),
                   ],
-                ],
+                ),
               ),
             ),
             belowActionRowFullWidth: true,

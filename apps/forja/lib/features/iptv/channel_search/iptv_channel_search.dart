@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
@@ -13,15 +14,37 @@ import 'package:rust/rust.dart' show runLiveSportsFetchJson;
 ///
 /// Engine owns ranking (`sport_match_streams`). This class resolves portal
 /// credentials, calls Rust, normalizes play URLs/logos, and caches results.
+///
+/// Call [cancel] when Live TV is not the visible tab or the app leaves
+/// foreground — in-flight work stops before the next Rust/EPG step (does not
+/// cancel [EngineAsyncJob.liveSportsFetch] globally; that kind is shared with
+/// Providers `streamed_streams`).
 abstract final class IptvChannelSearch {
   IptvChannelSearch._();
 
   static const _cacheTtl = Duration(minutes: 30);
   static const _epgBatchSize = 12;
 
+  /// Bumped by [cancel]; search loops bail when their captured session differs.
+  static int _session = 0;
+
   /// In-session Portals pick (Live Sports / IPTV). Prefer over disk last-key.
   /// Set from [IptvController] when the active portal changes.
   static String? sessionPortalKey;
+
+  /// Drop in-flight Live TV matching. Safe while Providers is open.
+  static void cancel({String reason = 'cancel'}) {
+    _session++;
+    _inFlight.clear();
+    debugPrint('[IptvChannelSearch] cancel session=$_session ($reason)');
+  }
+
+  static bool get appInForeground {
+    final life = SchedulerBinding.instance.lifecycleState;
+    return life == null ||
+        life == AppLifecycleState.resumed ||
+        life == AppLifecycleState.inactive;
+  }
 
   /// Last / requested Xtream or Stalker portal for Forja Sports.
   static Future<VerifiedPortal?> resolvePortal({String? portalKey}) async {
@@ -101,7 +124,16 @@ abstract final class IptvChannelSearch {
     void Function(List<IptvPlaySource> batch)? onPartial,
     bool force = false,
   }) async {
+    if (!appInForeground) {
+      debugPrint('[IptvChannelSearch] skip — app not foreground');
+      return [];
+    }
+
+    final session = _session;
+    bool dead() => session != _session || !appInForeground;
+
     final portal = await resolvePortal(portalKey: portalKey);
+    if (dead()) return [];
     if (portal == null) {
       debugPrint('[IptvChannelSearch] no Xtream/Stalker portal for Live TV');
       return [];
@@ -136,7 +168,9 @@ abstract final class IptvChannelSearch {
     } else {
       final cached = _cacheGet(cacheKey);
       if (cached != null) {
+        if (dead()) return [];
         final logos = await _ensureLogos(cached, portal.key);
+        if (dead()) return [];
         final result = _ensureUrls(logos, portal);
         onPartial?.call(result);
         return result;
@@ -151,6 +185,7 @@ abstract final class IptvChannelSearch {
     late final _Inflight coordinator;
     final future = () async {
       try {
+        if (dead()) return <IptvPlaySource>[];
         final p = portal.portal;
         final Map<String, dynamic> portalCreds;
         if (p.platform == IptvPortalPlatform.stalker) {
@@ -177,7 +212,10 @@ abstract final class IptvChannelSearch {
           'category_ids': cats,
         };
 
-        void emitPartial(List<IptvPlaySource> batch) => coordinator.emit(batch);
+        void emitPartial(List<IptvPlaySource> batch) {
+          if (dead()) return;
+          coordinator.emit(batch);
+        }
 
         final excludeStreamIds = <String>[];
         final accumulated = <IptvPlaySource>[];
@@ -192,6 +230,10 @@ abstract final class IptvChannelSearch {
         final fastRaw = await runLiveSportsFetchJson(
           jsonEncode({...requestBase, 'skip_epg': true}),
         );
+        if (dead()) {
+          debugPrint('[IptvChannelSearch] aborted after fast (session/bg)');
+          return <IptvPlaySource>[];
+        }
         final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
         if (_cancelled(fastParsed)) {
           debugPrint('[IptvChannelSearch] cancelled (fast)');
@@ -216,6 +258,12 @@ abstract final class IptvChannelSearch {
         var epgOffset = 0;
         var epgMore = true;
         while (epgMore) {
+          if (dead()) {
+            debugPrint(
+              '[IptvChannelSearch] aborted (epg) kept=${accumulated.length}',
+            );
+            return accumulated;
+          }
           final raw = await runLiveSportsFetchJson(
             jsonEncode({
               ...requestBase,
@@ -224,6 +272,12 @@ abstract final class IptvChannelSearch {
               'exclude_stream_ids': excludeStreamIds,
             }),
           );
+          if (dead()) {
+            debugPrint(
+              '[IptvChannelSearch] aborted after epg kept=${accumulated.length}',
+            );
+            return accumulated;
+          }
           final parsed = jsonDecode(raw) as Map<String, dynamic>;
           if (_cancelled(parsed)) {
             debugPrint(
@@ -254,20 +308,26 @@ abstract final class IptvChannelSearch {
           }
         }
 
+        if (dead()) return accumulated;
         debugPrint('[IptvChannelSearch] done hits=${accumulated.length}');
         if (accumulated.isEmpty) return <IptvPlaySource>[];
         final enriched = await _ensureLogos(accumulated, portal.key);
+        if (dead()) return accumulated;
         _cachePut(cacheKey, enriched);
         return enriched;
       } catch (e, st) {
+        if (dead()) return <IptvPlaySource>[];
         debugPrint('[IptvChannelSearch] failed: $e\n$st');
         rethrow;
       } finally {
-        _inFlight.remove(cacheKey);
+        final cur = _inFlight[cacheKey];
+        if (cur != null && cur.session == session) {
+          _inFlight.remove(cacheKey);
+        }
       }
     }();
 
-    coordinator = _Inflight(future);
+    coordinator = _Inflight(future, session: session);
     coordinator.subscribe(onPartial);
     _inFlight[cacheKey] = coordinator;
     return future;
@@ -301,8 +361,8 @@ abstract final class IptvChannelSearch {
   }
 
   static void invalidateCache() {
+    cancel(reason: 'invalidateCache');
     _cache.clear();
-    _inFlight.clear();
   }
 }
 
@@ -315,9 +375,10 @@ class _CacheEntry {
 final Map<String, _CacheEntry> _cache = {};
 
 final class _Inflight {
-  _Inflight(this.future);
+  _Inflight(this.future, {required this.session});
 
   final Future<List<IptvPlaySource>> future;
+  final int session;
   final List<IptvPlaySource> _accumulated = [];
   final Set<String> _seenKeys = {};
   final List<void Function(List<IptvPlaySource> batch)> _listeners = [];

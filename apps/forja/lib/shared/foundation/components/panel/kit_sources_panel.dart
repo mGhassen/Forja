@@ -78,6 +78,7 @@ class KitSourcesPanel extends StatefulWidget {
     this.channelQuery,
     this.onChannelQueryChanged,
     this.showInlineSearch = true,
+    this.onLoadingChanged,
   });
 
   final String title;
@@ -120,6 +121,9 @@ class KitSourcesPanel extends StatefulWidget {
   /// Show expanding search next to tabs (side panel) when browse tab active.
   /// Set false when the parent owns search chrome (cards hero).
   final bool showInlineSearch;
+
+  /// Fires when the active tab's load starts/ends (progressive discover).
+  final ValueChanged<bool>? onLoadingChanged;
 
   /// Put D-pad on the first tab (Providers). Retries while nodes mount.
   static void claimProvidersFocus({int maxTries = 24}) {
@@ -189,6 +193,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   Future<void> _ensureLoaded(String tabId, {bool force = false}) async {
     if (tabId.isEmpty) return;
     if (!force && _rowsByTab.containsKey(tabId) && _loadingByTab[tabId] != true) {
+      _emitLoading(false);
       return;
     }
     final gen = ++_loadGen;
@@ -197,6 +202,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       _errorByTab[tabId] = null;
       if (force) _rowsByTab.remove(tabId);
     });
+    _emitLoading(tabId == _tabId);
     try {
       final rows = await widget.loadTab(
         tabId,
@@ -218,6 +224,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
           _selectedCategoryKey = kKitSourcesCategoryAll;
         }
       });
+      _emitLoading(false);
     } catch (e) {
       if (!mounted || gen != _loadGen) return;
       setState(() {
@@ -225,7 +232,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         _loadingByTab[tabId] = false;
         _rowsByTab[tabId] = const [];
       });
+      _emitLoading(false);
     }
+  }
+
+  void _emitLoading(bool loading) {
+    widget.onLoadingChanged?.call(loading);
   }
 
   void _selectTab(String id) {
@@ -235,9 +247,12 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       if (!widget.browseCategoryTabIds.contains(id)) {
         _internalQuery = '';
         _selectedCategoryKey = kKitSourcesCategoryAll;
+      } else {
+        _selectedCategoryKey = kKitSourcesCategoryAll;
       }
     });
     if (_listScroll.hasClients) _listScroll.jumpTo(0);
+    _emitLoading(_loadingByTab[id] == true);
     unawaited(_ensureLoaded(id));
   }
 
@@ -350,6 +365,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     final tvTabId = _effectiveTvTabId(context);
     final showSearch =
         widget.showInlineSearch && _browseActive;
+    final loading = _loadingByTab[_tabId] == true;
     final choice = Align(
       alignment: Alignment.centerLeft,
       child: Row(
@@ -375,11 +391,21 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
               ],
             ),
           ),
-          if (showSearch) ...[
-            const SizedBox(width: 12),
+          const Spacer(),
+          if (showSearch)
             KitSourcesExpandingSearch(
               query: _effectiveQuery,
               onQueryChanged: _onQueryChanged,
+            ),
+          if (loading) ...[
+            if (showSearch) const SizedBox(width: 10),
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: ForjaShellColors.sectionAccent,
+              ),
             ),
           ],
         ],
