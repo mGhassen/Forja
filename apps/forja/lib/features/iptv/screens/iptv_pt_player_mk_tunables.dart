@@ -122,9 +122,11 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   }
 
   /// One HDMI / panel mode switch per open when container fps is known.
+  /// Live only — Movies/Series skip (4K MediaCodec + mode switch OOMs).
   /// Gated by Settings → IPTV match display refresh (default on; admin-only).
   Future<void> _applyAtvMediaKitDisplayFrameRate(NativePlayer p) async {
     if (_s._displayFrameRateApplied) return;
+    if (_s.widget.vodPlayback) return;
     final enabled = await SettingsService().getIptvMatchDisplayRefresh();
     if (!enabled) return;
     try {

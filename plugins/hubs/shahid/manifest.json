@@ -49,7 +49,7 @@
         "auth": {
           "kind": "session",
           "label": "Shahid",
-          "subtitle": "Sign in on Shahid (Google or email) to play premium titles on Android"
+          "subtitle": "Opens Shahid in your browser; connect with email or phone + password"
         }
       },
       "config": {

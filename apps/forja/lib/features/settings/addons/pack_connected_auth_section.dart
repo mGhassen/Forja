@@ -105,30 +105,28 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
       ForjaToast.error('No login URL from ${spec.label}');
       return;
     }
-    final captureRaw = begin['capture'];
-    final capture = captureRaw is Map
-        ? Map<String, dynamic>.from(captureRaw)
-        : <String, dynamic>{};
-    final fields = await showDialog<Map<String, String>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PackAuthBrowserDialog(
-        title: (begin['title'] ?? 'Sign in to ${spec.label}').toString(),
-        url: url,
-        hint: (begin['hint'] ?? '').toString(),
-        capture: capture,
-      ),
-    );
-    if (fields == null || !mounted) return;
-    final sessionId = (fields['sessionId'] ?? '').trim();
-    if (sessionId.isEmpty) {
-      ForjaToast.error('No session imported from ${spec.label}');
-      return;
-    }
+    final methodsRaw = begin['methods'];
+    final methods = <Map<String, dynamic>>[
+      if (methodsRaw is List)
+        for (final m in methodsRaw)
+          if (m is Map) Map<String, dynamic>.from(m),
+    ];
+    final submitted =
+        await showDialog<({String method, Map<String, String> fields})>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => PackAuthBrowserDialog(
+            title: (begin['title'] ?? 'Sign in to ${spec.label}').toString(),
+            url: url,
+            hint: (begin['hint'] ?? '').toString(),
+            methods: methods,
+          ),
+        );
+    if (submitted == null || !mounted) return;
     await PackConnectedAuthService.login(
       spec,
-      method: 'browser',
-      fields: fields,
+      method: submitted.method,
+      fields: submitted.fields,
     );
     if (!mounted) return;
     ForjaToast.success('Connected to ${spec.label}');

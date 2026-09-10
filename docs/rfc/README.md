@@ -123,7 +123,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [099-[open]-…](099-[open]-live-unlock-pack-modules.md) | Live unlock modules in packs (GOAT/GASM host runtime) | v1.4 | open | **4 / 4** · **8 / 9** · smoke ⬜ | — |
 | [100-[open]-…](100-[open]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | open | **5 / 5** · **9 / 9** admin · **6 / 6** app · **4 / 4** web · **3 / 3** retire | — |
 | [101-[open]-…](101-[open]-shahid-hub-provider-exo-widevine.md) | Shahid hub + provider + Exo Widevine | — | open | **4 / 4** · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **2 / 2** E | — |
-| [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **8 / 10** (1 ⏭️ pin · 1 ⬜ browser QA) | — |
+| [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **8 / 10** (1 ⏭️ pin · 1 ⬜ pairing SSO) | — |
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |
 
 ## Related

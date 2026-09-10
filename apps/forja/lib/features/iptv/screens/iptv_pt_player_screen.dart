@@ -1009,9 +1009,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
-  /// ATV MediaKit live uses a smaller Player buffer — demuxer owns readahead.
+  /// ATV MediaKit: lean Player buffer for live and Movies/Series — demuxer
+  /// owns readahead. VOD used to inherit 64 MiB and OOM on 4K MediaCodec.
   PlayerConfiguration get _mediaKitPlayerConfiguration {
-    if (_atvMediaKit && !widget.vodPlayback) {
+    if (_atvMediaKit) {
       return const PlayerConfiguration(
         bufferSize: 32 * 1024 * 1024,
         logLevel: MPVLogLevel.warn,

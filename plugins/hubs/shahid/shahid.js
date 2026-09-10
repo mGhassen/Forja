@@ -180,18 +180,14 @@ function authStatus(ctx) {
 }
 
 function authBegin() {
-  // Browser SSO (Google/Apple/Facebook on Shahid web) — host opens URL, harvests
-  // cookie `token` (= sessionId), then auth_login(method: browser).
+  // System browser only (Google SSO works there). Session cannot be read back
+  // from Chrome/Safari — finish with email/phone + password in Forja.
   return hubOk('auth_begin', {
     flow: 'browser',
     url: 'https://shahid.mbc.net/en/hub/login',
     title: 'Sign in to Shahid',
-    hint: 'Sign in on Shahid (Google or email). Forja imports the session when you finish.',
-    capture: {
-      cookieNames: ['token'],
-      localStorageKeys: ['persist:modules'],
-      originHosts: ['shahid.mbc.net', 'www.shahid.mbc.net'],
-    },
+    hint:
+      'Opens Shahid in your real browser — sign in with Google there if you want.',
     methods: [
       {
         id: 'email',

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **26 / 26** fix · **0 / 3** acceptance |
+| **Progress** | **28 / 28** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -45,6 +45,8 @@
 | 24 | I163-T24 | **Full revert (user B):** restore IPTV player trio from `50ebdaa2`; drop `vodPlayback` / chrome profile / VOD gates / emu MediaKit experiments — Live path as before VOD-profile work (Movies/Series may hit live-edge ANR again) | ✅ |
 | 25 | I163-T25 | Restore `IptvPlayerChromeProfile` + `vodPlayback` player stack (Audio/Subs/Episodes; VOD gates; seekable-live scrubber) after T24 — no emu MediaKit force-Exo | ✅ |
 | 26 | I163-T26 | IPTV Movies/Series boot + persist Settings → Movies & series engine (`vod`); stop always-MediaKit / session-only menu | ✅ |
+| 27 | I163-T27 | ATV MediaKit Movies/Series: Player `bufferSize` 32 MiB (same lean path as live ATV; was 64 MiB via `!vodPlayback` gate) | ✅ |
+| 28 | I163-T28 | ATV MediaKit Movies/Series: skip HDMI display-refresh match after open (live keeps match) | ✅ |
 
 ---
 
@@ -67,6 +69,8 @@ IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` 
 **Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08`–`T10`**: Movies/Series always MediaKit (menu can session-switch to Exo without writing Live’s IPTV engine key); VOD Exo hard-fail swaps once; **Live boot + recovery untouched**. **`I163-T26`**: Movies/Series honor + persist Settings → **Movies & series engine** (`vod`); Live IPTV stays on Settings → **IPTV engine**. VOD still skips live-edge snap / forever cold-retry.
 
 **MediaKit cache (`I163-T11`):** Movies/Series inherited Live’s `demuxer-max-bytes=150MB` / 30s readahead → MediaCodec buffer pool + demuxer OOM/process death on open (goldfish/ATV). VOD now uses 32MiB / 10s; Live profile unchanged.
+
+**4K VOD process death (`I163-T27`–`T28`):** Demuxer was lean, but ATV Movies/Series still used `PlayerConfiguration` **64 MiB** (`_mediaKitPlayerConfiguration` gated lean buffer with `!vodPlayback`). HDMI display-refresh match also ran on VOD UHD after first frame. ATV VOD now uses **32 MiB** Player buffer (same as live ATV) and skips display-refresh match; live unchanged.
 
 **Emulator VOD decode (`I163-T12` → `I163-T13`):** Tried software decode for emulator Movies/Series; **reverted** — ATV MediaKit init is back to `_atvMediaKit` + `mediacodec_embed` for all ATV (Live path identical to pre-T12). Goldfish HEVC/H264 MediaKit ANR remains an emulator limit (issue 108).
 
