@@ -176,8 +176,6 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       ],
       initialTabId: KitResolvePanelHost.providersTab,
       browseCategoryTabIds: const {KitResolvePanelHost.liveTvTab},
-      onBrowseInactive: () =>
-          KitResolveStreamsHooks.cancelLiveTvSearch?.call(),
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,

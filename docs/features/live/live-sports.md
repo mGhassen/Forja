@@ -36,7 +36,7 @@ Schedules and streams come from installed **live_sport** plugins (Catalog / Prov
 ## Tips
 
 - Streams are third-party — availability changes with broadcasts and region. The **schedule** can list a live match before any site has links. **Providers** only shows a row when that site actually has stream links; if the site says zero links, Forja shows no provider for it (no fake preparing row).
-- **Live TV** portal matching runs only while that tab is selected and the app is in the foreground — switching back to Providers, closing the match, or backgrounding the app cancels the search (it resumes when you return to Live TV if it was still loading).
+- **Live TV** portal matching is owned by the Live Sports hub pack (Setup → Enable Forja Sports). Opening the Live TV tab asks the pack to search your Xtream/Stalker portal; Providers never starts that search, and a backgrounded app does not keep matching.
 - **Providers** finds the fixture **inside each resolve-capable pack** (each site searches its own upstream) and installed Stremio sport addons — the app does not soft-match across schedule catalogs. Broadcast-only catalogs feed Live TV name matching only; they are not stream sources. When **Merge matching events** is on, those guide channel names stay on the merged card so **Live TV** can match your IPTV portal. Unlock runs in the pack when you play a listed mirror.
 - Escape / Back closes the streams panel (or details page), then leaves the player and stops audio.
 - **Merge matching events** is **on** by default — same game across catalogs becomes one card (viewer counts from each catalog are added together; Providers still soft-matches every sibling). Turn it off under hub **Setup** if you want every catalog row kept separate.

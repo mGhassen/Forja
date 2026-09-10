@@ -147,7 +147,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
-| IPTV channel search (Live TV) | thin | `features/iptv/channel_search/` → `runLiveSportsFetchJson` | Portal creds + cache + URL/logo; engine ranks | ✅ |
+| IPTV channel search (Live TV) | thin | hub `liveTv` → `ctx.host.iptv.searchChannels` → `IptvChannelSearch` | Pack triggers; host portal/Rust only | ✅ |
 | Portals chrome (design) | — | `foundation` `KitPortalsChip` / overlay / list panel + IPTV hooks | Props-only chip + panel; IPTV wires (RFC-095) | ✅ |
 | Kit list status (design/data) | — | `KitListStatusPin` + `services/follow/kit_list_status_button` | Props pin; follow wires Simkl (RFC-095 B) | ✅ |
 | Kit IPTV / resolve hooks | — | `KitIptvPlayHooks` / `KitResolveStreamsHooks` / `KitPanelSourceFlagsHooks` | Features register at boot (RFC-095 C–D) | ✅ |

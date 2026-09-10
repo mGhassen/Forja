@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **8 / 8** acceptance · **0 / 1** deferred |
-| **Current slice** | Host cut shipped — thin `IptvChannelSearch`; portal sports config/match deleted |
+| **Progress** | **3 / 3** components · **8 / 8** acceptance (host cut) · **1 / 1** acceptance (JS Live TV) |
+| **Current slice** | Pack `liveTv` → `searchChannels` — host no longer triggers portal matching |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -40,17 +40,19 @@
 
 ---
 
-## Acceptance (deferred)
+## Acceptance (JS Live TV)
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 9 | R96-A09 | Full JS-only Live TV resolve via hub action + `searchChannels` | ⏭️ |
+| 9 | R96-A09 | Full JS-only Live TV resolve via hub action + `searchChannels` | ✅ |
 
 ---
 
 ## Summary
 
-Host IPTV sports surface is **channel search only**: portal credentials, Rust `sport_match_streams`, URL rebuild, logo enrich, short cache. Pack owns `forjaSportsEnabled`, merge, and the opaque `game` / `sportMatchGame` on schedule rows.
+Host IPTV sports surface is **channel search only**: portal credentials, Rust `sport_match_streams`, URL rebuild, logo enrich, short cache. Pack owns `forjaSportsEnabled`, merge, opaque `game` / `sportMatchGame`, and the **Live TV tab trigger** (`action: liveTv` → `ctx.host.iptv.searchChannels`).
+
+Host `IptvResolveStreamsAdapter` only runs the hub `liveTv` action and maps `data.sources` — it does not call `IptvChannelSearch.search` itself. Loading Providers cancels any in-flight channel search. The bridge refuses search when the app is not in the foreground.
 
 ### Contract
 
@@ -60,6 +62,13 @@ IptvChannelSearch.search({
   List<String> categoryIds = const [],
   String? portalKey,
 }) → Future<List<IptvPlaySource>>
+```
+
+```js
+// hub extract
+action: 'liveTv', params: { row, force? }
+→ hubOk('liveTv', { sources: [...] })
+// sources from ctx.host.iptv.searchChannels({ game, force })
 ```
 
 ### Related

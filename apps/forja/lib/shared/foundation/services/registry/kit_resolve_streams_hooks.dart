@@ -35,13 +35,9 @@ abstract final class KitResolveStreamsHooks {
   static KitResolvePlayHandler? playRow;
   static KitUrlHealthProbeFactory? createHealthProbe;
 
-  /// Abort Live TV portal channel search (tab leave / app background).
-  static VoidCallback? cancelLiveTvSearch;
-
   static void clear() {
     loadTab = null;
     playRow = null;
     createHealthProbe = null;
-    cancelLiveTvSearch = null;
   }
 }

@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
-import 'package:forja/shared/engine/live/live_feed_merge.dart';
-import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
 /// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095).
+///
+/// Live TV rows come from the live hub pack (`action: liveTv` →
+/// `ctx.host.iptv.searchChannels`). Host does not trigger portal matching.
 abstract final class IptvResolveStreamsAdapter {
   IptvResolveStreamsAdapter._();
 
@@ -25,6 +26,9 @@ abstract final class IptvResolveStreamsAdapter {
       final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }
+
+    // Leaving Live TV — stop portal matching so Providers never shares that work.
+    IptvChannelSearch.cancel(reason: 'Providers tab');
 
     final sources = await LiveResolveStreams.loadProviders(
       legacyRow,
@@ -55,32 +59,43 @@ abstract final class IptvResolveStreamsAdapter {
     ];
   }
 
+  /// Hub pack owns Forja Sports gate + game shape + `searchChannels` call.
   static Future<List<IptvPlaySource>> _loadLiveTv(
     Map<String, dynamic> legacyRow, {
     bool force = false,
   }) async {
-    if (!await IptvForjaSportsGate.isForjaSportsEnabled()) {
-      debugPrint('[IptvChannelSearch] Forja Sports disabled in hub Setup');
+    final pluginId = await IptvForjaSportsGate.resolveSettingsPluginId();
+    if (pluginId == null || pluginId.isEmpty) {
+      debugPrint('[LiveTV] no hub with Forja Sports settings');
       return [];
     }
-    final game = _liveTvGame(legacyRow);
-    return IptvChannelSearch.search(game: game, force: force);
-  }
-
-  /// Pack `sportMatchGame` plus guide channel names from soft-matched siblings
-  /// in the unmerged schedule pool (LiveSoccerTV / LiveOnSat, …).
-  static Map<String, dynamic> _liveTvGame(Map<String, dynamic> legacyRow) {
-    var game = IptvChannelSearch.gameFromLegacyRow(legacyRow);
-    final pool = rememberedLiveFeedAllCatalogPool();
-    if (pool == null || pool.isEmpty) return game;
-
-    final extra = <String>[];
-    for (final row in pool) {
-      if (!liveCatalogEventsSoftMatchMaps(legacyRow, row)) continue;
-      extra.addAll(liveBroadcastChannelsFromRow(row));
+    try {
+      final env = await MetaRuntime.instance.run(
+        pluginId: pluginId,
+        action: 'liveTv',
+        params: {
+          'row': legacyRow,
+          if (force) 'force': true,
+        },
+        forceRefresh: force,
+        timeout: const Duration(seconds: 90),
+      );
+      if (!env.ok) {
+        debugPrint(
+          '[LiveTV] hub liveTv failed: ${env.error?.code} ${env.error?.message}',
+        );
+        return [];
+      }
+      final raw = env.data?['sources'];
+      if (raw is! List) return [];
+      return IptvChannelSearch.sourcesFromMaps([
+        for (final e in raw)
+          if (e is Map) Map<String, dynamic>.from(e),
+      ]);
+    } catch (e, st) {
+      debugPrint('[LiveTV] hub liveTv error: $e\n$st');
+      return [];
     }
-    if (extra.isEmpty) return game;
-    return withLiveBroadcastChannels(game, extra);
   }
 
   static KitSourcesRow _rowForSource({

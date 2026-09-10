@@ -341,6 +341,7 @@ class EngineRuntime {
         final portalKey = (m['portalKey'] ?? m['portal_key'] ?? '')
             .toString()
             .trim();
+        final force = m['force'] == true;
         final gen = _fetchGeneration;
         unawaited(
           _dispatchIptvSearchChannels(
@@ -348,6 +349,7 @@ class EngineRuntime {
             game: game,
             categoryIds: categoryIds,
             portalKey: portalKey.isEmpty ? null : portalKey,
+            force: force,
             gen: gen,
           ),
         );
@@ -1135,7 +1137,8 @@ class EngineRuntime {
               id: id,
               game: o.game == null ? {} : o.game,
               categoryIds: Array.isArray(o.categoryIds) ? o.categoryIds : [],
-              portalKey: o.portalKey == null ? '' : String(o.portalKey)
+              portalKey: o.portalKey == null ? '' : String(o.portalKey),
+              force: o.force === true
             }));
           });
         }
@@ -1497,6 +1500,7 @@ class EngineRuntime {
     required Map<String, dynamic> game,
     required List<String> categoryIds,
     required String? portalKey,
+    required bool force,
     required int gen,
   }) async {
     if (gen != _fetchGeneration) return;
@@ -1506,6 +1510,7 @@ class EngineRuntime {
         game: game,
         categoryIds: categoryIds,
         portalKey: portalKey,
+        force: force,
       );
     } catch (e, st) {
       _forjaRuntimeLog('iptv.searchChannels failed: $e\n$st');

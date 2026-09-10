@@ -169,8 +169,6 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
             browseCategoryTabIds: const {_liveTv},
             reloadNonce: _sourcesReloadNonce,
-            onBrowseInactive: () =>
-                KitResolveStreamsHooks.cancelLiveTvSearch?.call(),
             onLoadingChanged: (loading) {
               if (!mounted || loading == _streamsLoading) return;
               setState(() => _streamsLoading = loading);

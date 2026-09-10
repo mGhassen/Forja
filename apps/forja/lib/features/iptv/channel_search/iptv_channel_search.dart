@@ -338,11 +338,13 @@ abstract final class IptvChannelSearch {
     required Map<String, dynamic> game,
     List<String> categoryIds = const [],
     String? portalKey,
+    bool force = false,
   }) async {
     final sources = await search(
       game: game,
       categoryIds: categoryIds,
       portalKey: portalKey,
+      force: force,
     );
     return [
       for (final s in sources)
@@ -358,6 +360,48 @@ abstract final class IptvChannelSearch {
             'liveSourceKind': s.liveSourceKind!.name,
         },
     ];
+  }
+
+  /// Rebuild play sources from hub / bridge maps (`searchAsMaps` shape).
+  static List<IptvPlaySource> sourcesFromMaps(List<Map<String, dynamic>> maps) {
+    final out = <IptvPlaySource>[];
+    for (final m in maps) {
+      final url = (m['url'] ?? '').toString().trim();
+      final streamId = (m['streamId'] ?? m['stream_id'] ?? '').toString().trim();
+      final kindName =
+          (m['liveSourceKind'] ?? m['live_source_kind'] ?? '').toString().trim();
+      final kind = switch (kindName) {
+        'iptvStalker' => IptvLiveSourceKind.iptvStalker,
+        'iptvXtream' => IptvLiveSourceKind.iptvXtream,
+        'stremio' => IptvLiveSourceKind.stremio,
+        'liveEngine' => IptvLiveSourceKind.liveEngine,
+        _ => streamId.isNotEmpty && url.isEmpty
+            ? IptvLiveSourceKind.iptvStalker
+            : IptvLiveSourceKind.iptvXtream,
+      };
+      if (kind == IptvLiveSourceKind.iptvStalker) {
+        if (streamId.isEmpty) continue;
+      } else if (url.isEmpty) {
+        continue;
+      }
+      final label = (m['label'] ?? m['name'] ?? 'Stream').toString().trim();
+      final detail = (m['detail'] ?? m['title'] ?? '').toString().trim();
+      final logo = (m['logoUrl'] ?? m['logo'] ?? '').toString().trim();
+      final epg =
+          (m['epgChannelId'] ?? m['epg_channel_id'] ?? '').toString().trim();
+      out.add(
+        IptvPlaySource(
+          url: url,
+          label: label.isEmpty ? 'Stream' : label,
+          detail: detail.isEmpty ? null : detail,
+          logoUrl: logo.isEmpty ? null : logo,
+          streamId: streamId.isEmpty ? null : streamId,
+          epgChannelId: epg.isEmpty ? null : epg,
+          liveSourceKind: kind,
+        ),
+      );
+    }
+    return out;
   }
 
   static void invalidateCache() {
