@@ -53,7 +53,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       'settings',
       pageBack: _handlePageBack,
     );
-    // ← on first column of detail TvKitRows exits like Back (Addons / Features).
+    // ← on detail TvKitRows (Addons / Packs / Features) exits like Back.
     ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', true);
   }
 
@@ -350,15 +350,16 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 child: tv
                     ? FocusScope(
                         node: _detailScope,
-                        // D-pad stays in the detail pane. ← at first control /
-                        // Back (_handlePageBack) → category rail.
+                        // D-pad stays in the detail pane. ← on any control /
+                        // Back (_handlePageBack) → category rail (same as
+                        // Addons TvKitRow column-0).
                         child: SettingsDetailEnter(
                           enterToken: _detailEnterToken,
                           child: ShellTvContainDpad(
                             child: ShellTvLinearFocusScope(
                               child: ShellTvLinearFocusEdges(
                                 onBackwardEdge: () {
-                                  // First control ← → category (same as Back).
+                                  // ← anywhere in the page → category.
                                   return _handlePageBack();
                                 },
                                 child: FocusTraversalGroup(

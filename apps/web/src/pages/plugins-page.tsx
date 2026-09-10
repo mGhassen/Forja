@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Cloud, Download, Puzzle, Sparkles } from 'lucide-react'
+import { PluginBundlesShowcase } from '@/components/plugin-bundles-showcase'
 import { PluginCatalogBrowser } from '@/components/plugin-catalog-browser'
 import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
 import { Reveal } from '@/components/reveal'
@@ -8,6 +9,7 @@ import { SiteFooter } from '@/components/legal-shell'
 import { LiquidGlass } from '@/components/liquid-glass'
 import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
+import { useForjaPluginBundles } from '@/hooks/use-forja-plugin-bundles'
 import { useForjaPluginCatalog } from '@/hooks/use-forja-plugin-catalog'
 import { cn } from '@/lib/utils'
 import { Route } from '@/routes/plugins'
@@ -54,6 +56,11 @@ export function PluginsPage() {
   const navigate = useNavigate()
   const search = Route.useSearch()
   const { data: packs, isLoading, error } = useForjaPluginCatalog()
+  const {
+    data: bundles,
+    isLoading: bundlesLoading,
+    error: bundlesError,
+  } = useForjaPluginBundles()
   const [batchInstallOnMount, setBatchInstallOnMount] = useState(
     () => search.batchInstall === true,
   )
@@ -105,9 +112,16 @@ export function PluginsPage() {
 
                 <div className="mt-8 flex flex-wrap gap-3">
                   <a
-                    href="#catalog"
+                    href="#bundles"
                     data-hover=""
                     className="btn-magnet inline-flex items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_32px_rgba(28,231,131,0.35)] will-change-transform sm:text-xs"
+                  >
+                    Start with a set
+                  </a>
+                  <a
+                    href="#catalog"
+                    data-hover=""
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:text-xs"
                   >
                     Browse packs
                   </a>
@@ -116,7 +130,7 @@ export function PluginsPage() {
                     data-hover=""
                     rel="noopener noreferrer"
                     target="_blank"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:text-xs"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
                   >
                     Build a pack
                   </a>
@@ -225,6 +239,38 @@ export function PluginsPage() {
           </section>
 
           <section
+            id="bundles"
+            className="scroll-mt-28 border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20"
+          >
+            <div className="mx-auto max-w-[1400px]">
+              <Reveal>
+                <div className="mb-8 max-w-xl">
+                  <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-flame">
+                    Product sets
+                  </p>
+                  <h2 className="mt-2 font-disp text-[clamp(2rem,5vw,3.5rem)] uppercase leading-[0.92] tracking-[-0.03em]">
+                    Start with a
+                    <br />
+                    <span className="text-forja-flame">bundle.</span>
+                  </h2>
+                  <p className="mt-4 text-[rgba(237,230,218,0.55)]">
+                    Curated pack groups from Forja admin — one tap adds the whole
+                    set to your profile. Pick packs one-by-one below if you
+                    prefer.
+                  </p>
+                </div>
+              </Reveal>
+
+              <PluginBundlesShowcase
+                packs={packs ?? []}
+                bundles={bundles ?? []}
+                isLoading={bundlesLoading || isLoading}
+                error={bundlesError ?? null}
+              />
+            </div>
+          </section>
+
+          <section
             id="catalog"
             className="scroll-mt-28 border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20"
           >
@@ -237,9 +283,10 @@ export function PluginsPage() {
                     <span className="text-forja-flame">pack catalog.</span>
                   </h2>
                   <p className="mt-4 text-[rgba(237,230,218,0.55)]">
-                    Packs published from Forja admin — the same manifests anyone
-                    can fork, remix, and host. Search, pick a pack, add it to
-                    your profile; the app downloads and installs the scripts.
+                    Individual packs published from Forja admin — the same
+                    manifests anyone can fork, remix, and host. Search, pick a
+                    pack, add it to your profile; the app downloads and installs
+                    the scripts.
                   </p>
                 </div>
               </Reveal>

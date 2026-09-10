@@ -22,6 +22,21 @@ export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
   manifestUrl: string
 }
 
+/** Admin-published product set (ordered packs). Not a row in the pack table. */
+export type ForjaPluginBundleMeta = {
+  id: string
+  name: string
+  description: string
+  recommended: boolean
+  sortOrder: number
+  packIds: string[]
+}
+
+export type ForjaPluginBundleLive = ForjaPluginBundleMeta & {
+  /** Published packs in bundle order (missing catalog ids omitted). */
+  packs: ForjaPluginPackLive[]
+}
+
 export function pluginKindLabel(kind: string): string {
   const trimmed = kind.trim()
   if (!trimmed) return 'Pack'
@@ -133,6 +148,86 @@ export async function fetchPublishedPluginPacksFromSupabase(): Promise<
 /** Community Packs UI — admin-published packs only. */
 export async function loadLivePluginCatalog(): Promise<ForjaPluginPackLive[]> {
   return fetchPublishedPluginPacksFromSupabase()
+}
+
+/** Published product bundles from admin (metadata + ordered pack ids). */
+export async function fetchPublishedPluginBundlesFromSupabase(): Promise<
+  ForjaPluginBundleMeta[]
+> {
+  if (!supabaseConfigured) {
+    throw new Error('Plugin catalog requires Supabase.')
+  }
+  const { data: bundles, error: bErr } = await supabase
+    .from('plugin_bundles')
+    .select('id, name, description, recommended, sort_order')
+    .eq('published', true)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
+  if (bErr) {
+    throw new Error(bErr.message || 'Could not load published bundles.')
+  }
+  if (!bundles?.length) return []
+
+  const { data: items, error: iErr } = await supabase
+    .from('plugin_bundle_items')
+    .select('bundle_id, pack_id, sort_order')
+    .order('sort_order', { ascending: true })
+  if (iErr) {
+    throw new Error(iErr.message || 'Could not load bundle items.')
+  }
+
+  const byBundle = new Map<string, Array<{ packId: string; sort: number }>>()
+  for (const row of items ?? []) {
+    const bid = row.bundle_id?.trim()
+    const pid = row.pack_id?.trim()
+    if (!bid || !pid) continue
+    const list = byBundle.get(bid) ?? []
+    list.push({ packId: pid, sort: row.sort_order ?? 0 })
+    byBundle.set(bid, list)
+  }
+
+  const out: ForjaPluginBundleMeta[] = []
+  for (const row of bundles) {
+    const id = row.id?.trim()
+    const name = row.name?.trim()
+    if (!id || !name) continue
+    const ordered = [...(byBundle.get(id) ?? [])].sort(
+      (a, b) => a.sort - b.sort,
+    )
+    out.push({
+      id,
+      name,
+      description: row.description ?? '',
+      recommended: row.recommended === true,
+      sortOrder: row.sort_order ?? 0,
+      packIds: ordered.map((p) => p.packId),
+    })
+  }
+  return out
+}
+
+/** Join bundle pack ids to live catalog packs (order preserved). */
+export function hydratePluginBundles(
+  bundles: ForjaPluginBundleMeta[],
+  packs: ForjaPluginPackLive[],
+): ForjaPluginBundleLive[] {
+  const byId = new Map(packs.map((p) => [p.id, p]))
+  const hydrated: ForjaPluginBundleLive[] = []
+  for (const bundle of bundles) {
+    const resolved: ForjaPluginPackLive[] = []
+    for (const packId of bundle.packIds) {
+      const hit = byId.get(packId)
+      if (hit) resolved.push(hit)
+    }
+    if (resolved.length === 0) continue
+    hydrated.push({ ...bundle, packs: resolved })
+  }
+  return hydrated.sort((a, b) => {
+    const byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0)
+    if (byRec !== 0) return byRec
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+    return a.name.localeCompare(b.name)
+  })
 }
 
 export function groupPluginPacksByKind(

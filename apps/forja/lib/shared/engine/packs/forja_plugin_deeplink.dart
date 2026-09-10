@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/settings/addons/pack_auth_session_handoff.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
@@ -39,6 +40,7 @@ abstract final class ForjaPluginDeepLink {
   }
 
   static void _queueInstall(Uri uri) {
+    if (PackAuthSessionHandoff.tryHandle(uri)) return;
     if (!_isInstallLink(uri)) return;
 
     unawaited(DesktopWindowFocus.bringToFront());
@@ -56,8 +58,9 @@ abstract final class ForjaPluginDeepLink {
         );
       } else {
         debugPrint('[PluginDeepLink] queue batch install (${batch.length})');
-        ShellBus.pendingPluginBatchInstall.value =
-            PluginBatchInstallPrompt(candidates: batch);
+        ShellBus.pendingPluginBatchInstall.value = PluginBatchInstallPrompt(
+          candidates: batch,
+        );
       }
       ShellBus.openSettings(
         categoryId: SettingsCategoryId.forjaPacks,
@@ -132,8 +135,7 @@ abstract final class ForjaPluginDeepLink {
             '';
         if (manifest.isEmpty || !seen.add(manifest)) continue;
         final name =
-            (map['n'] as String?)?.trim() ??
-            (map['name'] as String?)?.trim();
+            (map['n'] as String?)?.trim() ?? (map['name'] as String?)?.trim();
         out.add(
           PluginInstallCandidate(
             manifestUrl: manifest,

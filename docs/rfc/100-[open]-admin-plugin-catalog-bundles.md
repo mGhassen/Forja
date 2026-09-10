@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **7 / 7** acceptance (app) · **4 / 4** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
-| **Current slice** | App + web catalog = admin-published only (baked list is slot→URL recovery, not picker) |
+| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **7 / 7** acceptance (app) · **5 / 5** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
+| **Current slice** | Web bundles marketing showcase above pack catalog |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -65,6 +65,7 @@
 | 2 | R100-A16 | Static `catalog.json` remains fallback | ✅ |
 | 3 | R100-A17 | Public UI still hides install URLs | ✅ |
 | 4 | R100-A21 | Web Community Packs are admin-published only — no static `catalog.json` / generated source map | ✅ |
+| 5 | R100-A24 | Web shows published product bundles as a marketing section above the pack catalog (not in the packs table) | ✅ |
 
 ---
 
@@ -80,7 +81,7 @@
 
 ## Summary
 
-Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers no longer fall back to `kOfficialForjaHqPacks` (R100-A23); that constant remains a slot→raw-URL map for reinstall when a local path is missing.
+Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers no longer fall back to `kOfficialForjaHqPacks` (R100-A23); that constant remains a slot→raw-URL map for reinstall when a local path is missing. Web Community Packs shows published bundles as a marketing section above the individual pack catalog (R100-A24).
 
 **Bundle** in this RFC = product set of packs. Not RFC-083 `manifest.bundle[]` file lists.
 

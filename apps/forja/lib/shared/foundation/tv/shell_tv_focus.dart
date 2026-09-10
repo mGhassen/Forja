@@ -348,10 +348,11 @@ class ShellTvDisableLinearFocus extends InheritedWidget {
       false;
 }
 
-/// Optional edge handlers when linear traversal cannot move further.
+/// Optional edge handlers for linear hosts.
 ///
-/// Settings detail: [onBackwardEdge] runs ← on the first control → category
-/// rail (same ladder as [TvHeroActions] pageBack). Catalog hosts omit it.
+/// Settings detail: [onBackwardEdge] runs on every ← (any control) → category
+/// rail — same ladder as Addons [TvKitRow] column-0 / [TvHeroActions] pageBack.
+/// Catalog hosts omit it (← stays previous in reading order).
 class ShellTvLinearFocusEdges extends InheritedWidget {
   const ShellTvLinearFocusEdges({
     super.key,
@@ -374,9 +375,9 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
 
 /// D-pad inside opt-in [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
-/// ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop] so the first
-/// item never jumps to the last (and last never wraps to first).
-/// When traversal stops, optional [ShellTvLinearFocusEdges] may handle the edge.
+/// Default: ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop].
+/// When [ShellTvLinearFocusEdges.onBackwardEdge] is set (Settings detail), ←
+/// always exits the pane — ↑/↓ still walk the list (parity with Addons rows).
 /// Outside this scope, callers must use spatial [FocusNode.focusInDirection].
 ///
 /// Vertical holds use [ShellTvHoldAccel.lastStep] (set by the caller via
@@ -392,19 +393,32 @@ KeyEventResult shellTvLinearMenuArrows({
     return KeyEventResult.ignored;
   }
   final key = event.logicalKey;
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+
+  final edges = ShellTvLinearFocusEdges.maybeOf(context);
+  // Settings detail: ← anywhere → category (or close drill), not previous row.
+  if (key == LogicalKeyboardKey.arrowLeft && edges?.onBackwardEdge != null) {
+    return edges!.onBackwardEdge!()
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+  if (key == LogicalKeyboardKey.arrowRight && edges?.onForwardEdge != null) {
+    return edges!.onForwardEdge!()
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+
   final backward = key == LogicalKeyboardKey.arrowUp ||
       key == LogicalKeyboardKey.arrowLeft;
   final forward = key == LogicalKeyboardKey.arrowDown ||
       key == LogicalKeyboardKey.arrowRight;
   if (!backward && !forward) return KeyEventResult.ignored;
-  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
 
   final vertical = key == LogicalKeyboardKey.arrowUp ||
       key == LogicalKeyboardKey.arrowDown;
   final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
 
   final scope = FocusScope.of(context);
-  final edges = ShellTvLinearFocusEdges.maybeOf(context);
   // Default closedLoop makes previousFocus on the first node land on the last.
   final edge = scope.traversalEdgeBehavior;
   scope.traversalEdgeBehavior = TraversalEdgeBehavior.stop;

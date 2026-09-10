@@ -138,7 +138,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabPreferCustomNavRestore.remove(tabId);
   }
 
-  /// Settings detail: ← on the first column of a row exits like Back.
+  /// Settings detail: ← on column 0 of a [TvKitRow] exits like Back.
   static void setPageBackOnRowLeftEdge(String tabId, bool enabled) {
     if (enabled) {
       _pageBackOnRowLeftEdge.add(tabId);

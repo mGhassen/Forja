@@ -180,14 +180,13 @@ function authStatus(ctx) {
 }
 
 function authBegin() {
-  // System browser only (Google SSO works there). Session cannot be read back
-  // from Chrome/Safari — finish with email/phone + password in Forja.
+  // System browser + forja:// session handoff (bookmarklet). Already logged-in OK.
   return hubOk('auth_begin', {
     flow: 'browser',
-    url: 'https://shahid.mbc.net/en/hub/login',
+    url: 'https://shahid.mbc.net/en',
     title: 'Sign in to Shahid',
     hint:
-      'Opens Shahid in your real browser — sign in with Google there if you want.',
+      'Opens Shahid in your browser. Already signed in is fine — Copy connect script, paste in that tab’s console (⌘⌥J), Enter.',
     methods: [
       {
         id: 'email',

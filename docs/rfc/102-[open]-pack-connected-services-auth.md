@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **8 / 10** acceptance (1 ⏭️ pin · 1 ⬜ pairing SSO) |
-| **Current slice** | Browser flow opens system browser; auto session import / pairing still open |
+| **Progress** | **4 / 4** components · **9 / 10** acceptance (1 ⏭️ pin) |
+| **Current slice** | System browser + `forja://` session handoff for Shahid; formal device pairing still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -46,7 +46,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R102-A09 | Host handles `auth_begin` `flow: "browser"` — open pack URL in **system browser** (no in-app WebView) | ✅ |
-| 2 | R102-A10 | Shahid Google SSO → auto-import session without password (device pairing / handoff) | ⬜ |
+| 2 | R102-A10 | Shahid: already-logged-in browser → handoff session into Forja (`forja://connected-auth/session`) → Connected | ✅ |
 
 ---
 
@@ -81,7 +81,7 @@ Simkl stays a built-in host panel. Packs that need account sessions declare auth
 
 Host never branches on pack id. Shahid (and future packs) own login methods (browser SSO, email, phone OTP, …) inside `auth_begin` / `auth_login`.
 
-**Browser flow:** pack returns `flow: "browser"` + `url` (+ optional form `methods`). Host opens the URL with the **system browser**. Auto-import from that browser (cookie/session handoff) is R102-A10 / device pairing — not WebView scraping.
+**Browser flow:** pack returns `flow: "browser"` + `url`. Host opens the **system browser**. Session import uses a one-shot connect link (bookmarklet) on the Shahid tab that deep-links `forja://connected-auth/session?token=…` — works when already signed in. Apps cannot close the browser tab.
 
 ### Related
 

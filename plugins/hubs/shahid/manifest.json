@@ -4,7 +4,7 @@
   "name": "ForjaHQ Shahid",
   "description": "Shahid movies and series.",
   "author": "ForjaHQ",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "tags": [
     "arabic",
     "shahid"
@@ -49,7 +49,7 @@
         "auth": {
           "kind": "session",
           "label": "Shahid",
-          "subtitle": "Opens Shahid in your browser; connect with email or phone + password"
+          "subtitle": "Opens your browser; paste the connect script on Shahid to finish"
         }
       },
       "config": {
