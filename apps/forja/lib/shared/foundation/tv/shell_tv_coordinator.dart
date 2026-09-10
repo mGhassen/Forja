@@ -1908,13 +1908,25 @@ const double kShellTvListTopRevealSlackPx = 240;
 
 ScrollableState? _nearestVerticalScrollable(BuildContext context) {
   var scrollable = Scrollable.maybeOf(context);
+  ScrollableState? firstVertical;
   while (scrollable != null) {
     final axis = axisDirectionToAxis(scrollable.position.axisDirection);
-    if (axis == Axis.vertical) return scrollable;
+    if (axis == Axis.vertical) {
+      firstVertical ??= scrollable;
+      final position = scrollable.position;
+      // Settings Addons / Features nest a shrink-wrap NeverScrollable ListView
+      // inside the page SingleChildScrollView. That nest is still a Scrollable
+      // with maxScrollExtent ≈ 0 — jumping it does nothing while the outer
+      // scroller stays pinned at top. Prefer a vertical scroller that can move.
+      if (position.hasContentDimensions &&
+          position.maxScrollExtent > position.minScrollExtent + 0.5) {
+        return scrollable;
+      }
+    }
     // maybeOf skips [scrollable] itself and walks to the parent.
     scrollable = Scrollable.maybeOf(scrollable.context);
   }
-  return null;
+  return firstVertical;
 }
 
 /// TV vertical lists (settings, menus): keep the focused control on-screen.

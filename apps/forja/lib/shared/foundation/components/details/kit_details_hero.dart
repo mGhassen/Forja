@@ -152,7 +152,10 @@ class KitDetailsHero extends StatelessWidget {
                         positionMs: positionMs,
                         durationMs: durationMs,
                         seriesProgress: seriesProgress,
-                        availableWidth: constraints.maxWidth,
+                        // Inside horizontal padding — do not re-count inset.
+                        availableWidth:
+                            (constraints.maxWidth - 2 * contentInset)
+                                .clamp(0.0, double.infinity),
                         maxHeight: constraints.maxHeight,
                       ),
                     ),
@@ -363,9 +366,13 @@ class _KitHeroLayout extends StatelessWidget {
         : (rawLogo.startsWith('http')
             ? rawLogo
             : TmdbApi.getImageUrl(rawLogo));
-    final headerWidth = compact ? (availableWidth ?? width) : leftColumnWidth;
     final useFullWidthList =
         belowActionRow != null && belowActionRowFullWidth && maxHeight != null;
+    // Live match streams: action row (Providers / Live TV + search) needs the
+    // full content width — the 40% description column clips/scales the search.
+    final headerWidth = useFullWidthList
+        ? (availableWidth ?? width)
+        : (compact ? (availableWidth ?? width) : leftColumnWidth);
 
     _KitHeroMainColumn buildMainColumn({
       Widget? belowAction,

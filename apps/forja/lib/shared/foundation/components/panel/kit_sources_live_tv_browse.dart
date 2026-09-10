@@ -204,40 +204,38 @@ class _KitSourcesExpandingSearchState extends State<KitSourcesExpandingSearch>
         final t = _expand.value;
         final width = kKitSourcesSearchCollapsed +
             (kKitSourcesSearchExpanded - kKitSourcesSearchCollapsed) * t;
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            width: width,
-            height: kKitSourcesSearchCollapsed,
-            child: ClipRect(
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  Opacity(
-                    opacity: t,
-                    child: IgnorePointer(
-                      ignoring: t < 0.55,
-                      child: OverflowBox(
-                        maxWidth: kKitSourcesSearchExpanded,
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: kKitSourcesSearchExpanded,
-                          child: _field(context, tvFocus: tvFocus),
-                        ),
+        // Fixed size — no Align (Align expands in Row and gets clipped/scaled).
+        return SizedBox(
+          width: width,
+          height: kKitSourcesSearchCollapsed,
+          child: ClipRect(
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Opacity(
+                  opacity: t,
+                  child: IgnorePointer(
+                    ignoring: t < 0.55,
+                    child: OverflowBox(
+                      maxWidth: kKitSourcesSearchExpanded,
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: kKitSourcesSearchExpanded,
+                        child: _field(context, tvFocus: tvFocus),
                       ),
                     ),
                   ),
-                  if (t < 0.95)
-                    Opacity(
-                      opacity: (1.0 - t * 1.4).clamp(0.0, 1.0),
-                      child: IgnorePointer(
-                        ignoring: t > 0.2,
-                        child: _icon(context),
-                      ),
+                ),
+                if (t < 0.95)
+                  Opacity(
+                    opacity: (1.0 - t * 1.4).clamp(0.0, 1.0),
+                    child: IgnorePointer(
+                      ignoring: t > 0.2,
+                      child: _icon(context),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         );

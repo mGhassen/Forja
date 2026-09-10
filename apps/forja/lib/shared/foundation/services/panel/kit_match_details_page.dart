@@ -224,7 +224,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                     tvItemIndexStart: 0,
                   ),
                   if (showLiveTvSearch) ...[
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     KitSourcesExpandingSearch(
                       query: _liveTvChannelQuery,
                       onQueryChanged: (q) {

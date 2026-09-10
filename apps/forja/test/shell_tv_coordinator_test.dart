@@ -1634,4 +1634,52 @@ void main() {
       page.dispose();
     },
   );
+
+  testWidgets(
+    'shellTvEnsureVisibleItem scrolls outer page past NeverScrollable nest',
+    (tester) async {
+      final outer = ScrollController();
+      final targetKey = GlobalKey();
+
+      await tester.pumpWidget(
+        _wrapTv(
+          SizedBox(
+            width: 400,
+            height: 240,
+            child: SingleChildScrollView(
+              controller: outer,
+              child: ListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (var i = 0; i < 12; i++)
+                    SizedBox(
+                      key: i == 10 ? targetKey : null,
+                      height: 64,
+                      child: Text('row-$i'),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(outer.offset, 0);
+      final ctx = targetKey.currentContext;
+      expect(ctx, isNotNull);
+      shellTvEnsureVisibleItem(ctx!);
+      await tester.pump();
+
+      expect(
+        outer.offset,
+        greaterThan(0),
+        reason: 'must scroll the outer SingleChildScrollView, not the '
+            'shrink-wrap NeverScrollable ListView nest',
+      );
+
+      outer.dispose();
+    },
+  );
 }

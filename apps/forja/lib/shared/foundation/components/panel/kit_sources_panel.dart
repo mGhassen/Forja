@@ -362,7 +362,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
             ),
           ),
           if (showSearch) ...[
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             KitSourcesExpandingSearch(
               query: _effectiveQuery,
               onQueryChanged: _onQueryChanged,
