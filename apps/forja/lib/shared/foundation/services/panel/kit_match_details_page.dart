@@ -81,26 +81,39 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     return parts;
   }
 
-  Future<List<KitSourcesRow>> _loadTab(String tabId) async {
+  Future<List<KitSourcesRow>> _loadTab(
+    String tabId, {
+    void Function(List<KitSourcesRow> rows)? onPartial,
+  }) async {
     final rows = await KitResolvePanelHost.loadTab(
       widget.entry.legacyRow,
       tabId,
       healthProbe: _healthProbe,
+      onPartial: onPartial == null
+          ? null
+          : (partial) {
+              onPartial(partial);
+              if (tabId == _providers && mounted) {
+                _updateProvidersViewerTotal(partial);
+              }
+            },
     );
     if (tabId == _providers && mounted) {
-      final catalog = _match.viewers;
-      final streamSum = rows.fold<int>(
-        0,
-        (n, r) => n + (r.viewerCount ?? 0),
-      );
-      // Catalog merge sum on the card; header prefers listed stream totals when
-      // mirrors report their own counts.
-      final next = streamSum > catalog ? streamSum : catalog;
-      if (next != (_providersViewerTotal ?? catalog)) {
-        setState(() => _providersViewerTotal = next > 0 ? next : null);
-      }
+      _updateProvidersViewerTotal(rows);
     }
     return rows;
+  }
+
+  void _updateProvidersViewerTotal(List<KitSourcesRow> rows) {
+    final catalog = _match.viewers;
+    final streamSum = rows.fold<int>(
+      0,
+      (n, r) => n + (r.viewerCount ?? 0),
+    );
+    final next = streamSum > catalog ? streamSum : catalog;
+    if (next != (_providersViewerTotal ?? catalog)) {
+      setState(() => _providersViewerTotal = next > 0 ? next : null);
+    }
   }
 
   void _selectTab(String id) {
@@ -191,7 +204,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                         forTabId: MediaDetailsTv.tabId,
                       )
                   : null,
-              // No Flexible/Expanded here — hero wraps actionRow in FittedBox.
+              // Keep intrinsic size — FittedBox scaleDown shrinks the search.
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -224,7 +237,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                     tvItemIndexStart: 0,
                   ),
                   if (showLiveTvSearch) ...[
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     KitSourcesExpandingSearch(
                       query: _liveTvChannelQuery,
                       onQueryChanged: (q) {
@@ -238,7 +251,8 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
               ),
             ),
             belowActionRowFullWidth: true,
-            belowActionRowGap: 8,
+            scaleActionRow: false,
+            belowActionRowGap: 16,
             contentScrim: true,
             belowActionRow: streamsPanel,
           ),

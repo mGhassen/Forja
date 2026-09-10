@@ -209,9 +209,10 @@ class _KitSourcesExpandingSearchState extends State<KitSourcesExpandingSearch>
           width: width,
           height: kKitSourcesSearchCollapsed,
           child: ClipRect(
+            clipBehavior: t > 0.01 ? Clip.hardEdge : Clip.none,
             child: Stack(
               alignment: Alignment.centerLeft,
-              clipBehavior: Clip.hardEdge,
+              clipBehavior: Clip.none,
               children: [
                 Opacity(
                   opacity: t,
@@ -244,27 +245,41 @@ class _KitSourcesExpandingSearchState extends State<KitSourcesExpandingSearch>
   }
 
   Widget _icon(BuildContext context) {
-    return shellFocusableTap(
-      context: context,
+    // No scale — hover/focus paint fill only (matches hero pill chrome).
+    return ForjaInteractive(
       onTap: _openSearch,
-      borderRadius: kKitSourcesSearchCollapsed / 2,
-      child: Tooltip(
-        message: 'Search channels',
-        child: Container(
-          width: kKitSourcesSearchCollapsed,
-          height: kKitSourcesSearchCollapsed,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(kKitSourcesSearchCollapsed / 2),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      hoverScale: 1.0,
+      pressScale: 0.96,
+      builder: (active, pressed) {
+        final fill = pressed
+            ? 0.24
+            : active
+                ? 0.18
+                : 0.08;
+        final border = active || pressed ? 0.36 : 0.18;
+        return Tooltip(
+          message: 'Search channels',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            width: kKitSourcesSearchCollapsed,
+            height: kKitSourcesSearchCollapsed,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: fill),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: border),
+              ),
+            ),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Colors.white70,
+              size: 20,
+            ),
           ),
-          child: const Icon(
-            Icons.search_rounded,
-            color: Colors.white70,
-            size: 20,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 

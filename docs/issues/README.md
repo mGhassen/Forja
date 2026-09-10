@@ -273,6 +273,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [266-[open]-…](266-[open]-android-tv-iptv-dpad-up-after-shelf-change.md) | ATV IPTV ↑ from catalog after Movies/Series shelf change | P1 | Medium | open | 3/3 · A 0/2 | [136](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) |
 | [267-[fixed]-…](fixed/267-[fixed]-soft-pull-stale-pack-manifest-urls.md) | Soft-pull keeps stale pack URLs after catalog move | P1 | High | fixed | Complete · 3/3 · A 2/2 | [RFC-074](../rfc/074-[open]-remote-profile-plugin-install.md) |
 | [268-[fixed]-…](fixed/268-[fixed]-android-tv-settings-addons-features-scroll-stuck.md) | ATV Settings Addons / Features D-pad scroll stuck top | P1 | High | fixed | Complete · 2/2 · A 0/2 | [262](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) |
+| [269-[open]-…](269-[open]-windows-iptv-portal-af-inet-dns64.md) | Windows IPTV portal AF_INET DNS (DNS64 residual) | P1 | High | open | 3/3 · A 0/1 | [261](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

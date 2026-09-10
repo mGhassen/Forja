@@ -4,21 +4,32 @@ import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 
-/// Scales hero action rows down on narrow viewports instead of overflowing.
+/// Optionally scales hero action rows down on narrow viewports.
+///
+/// Pass [scaleDown]: false when the row must keep intrinsic size (e.g. live
+/// match Providers / Live TV + search).
 class DetailsHeroActionRowFit extends StatelessWidget {
-  const DetailsHeroActionRowFit({super.key, required this.child});
+  const DetailsHeroActionRowFit({
+    super.key,
+    required this.child,
+    this.scaleDown = true,
+  });
 
   final Widget child;
+  final bool scaleDown;
 
   @override
   Widget build(BuildContext context) {
+    final body = scaleDown
+        ? FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: child,
+          )
+        : child;
     return Align(
       alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: child,
-      ),
+      child: body,
     );
   }
 }

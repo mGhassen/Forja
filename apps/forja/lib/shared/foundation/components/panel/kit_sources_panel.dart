@@ -86,7 +86,10 @@ class KitSourcesPanel extends StatefulWidget {
   final String? initialTabId;
 
   /// Load rows for a tab id. Called on first select and on reload.
-  final Future<List<KitSourcesRow>> Function(String tabId) loadTab;
+  final Future<List<KitSourcesRow>> Function(
+    String tabId, {
+    void Function(List<KitSourcesRow> rows)? onPartial,
+  }) loadTab;
 
   final Future<void> Function(KitSourcesRow row) onPlayRow;
   final VoidCallback? onClosed;
@@ -195,7 +198,18 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       if (force) _rowsByTab.remove(tabId);
     });
     try {
-      final rows = await widget.loadTab(tabId);
+      final rows = await widget.loadTab(
+        tabId,
+        onPartial: (partial) {
+          if (!mounted || gen != _loadGen) return;
+          setState(() {
+            _rowsByTab[tabId] = partial;
+            if (widget.browseCategoryTabIds.contains(tabId)) {
+              _selectedCategoryKey = kKitSourcesCategoryAll;
+            }
+          });
+        },
+      );
       if (!mounted || gen != _loadGen) return;
       setState(() {
         _rowsByTab[tabId] = rows;

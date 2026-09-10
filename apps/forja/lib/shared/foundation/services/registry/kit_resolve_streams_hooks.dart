@@ -17,6 +17,7 @@ typedef KitResolveTabLoader = Future<List<KitSourcesRow>> Function(
   Map<String, dynamic> legacyRow,
   String tabId, {
   KitUrlHealthProbe? healthProbe,
+  void Function(List<KitSourcesRow> rows)? onPartial,
 });
 
 typedef KitResolvePlayHandler = Future<void> Function(

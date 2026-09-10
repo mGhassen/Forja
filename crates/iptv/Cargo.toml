@@ -18,6 +18,7 @@ base64 = { workspace = true }
 getrandom = "0.2"
 reqwest = { workspace = true, features = ["stream", "cookies"] }
 tokio = { workspace = true }
+libc = "0.2"
 futures-util = "0.3"
 urlencoding = "2"
 iana-time-zone = "0.1"

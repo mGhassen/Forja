@@ -43,16 +43,25 @@ List<Map<String, dynamic>>? _rememberedAllCatalogPool;
 DateTime? _rememberedAllCatalogPoolAt;
 const _allCatalogPoolTtl = Duration(minutes: 3);
 
-/// Unfiltered scrape rows keyed by catalog chip (`all` / plugin id / stremio:…).
-/// Status × Horizon (and sport) are applied client-side — schedule chip must
-/// not re-run every live catalog plugin.
+/// Unfiltered scrape rows keyed by catalog chip (`all` / normalized plugin id /
+/// `stremio:…`). Status × Horizon / sport / Catalog chip (All → one pack) are
+/// applied client-side — must not re-run every live catalog plugin.
 final Map<String, ({List<Map<String, dynamic>> rows, DateTime at})>
     _rawFeedByCatalog = {};
 const _rawFeedTtl = Duration(minutes: 5);
 
 String _rawFeedCacheKey(String catalogFilter) {
   final f = catalogFilter.trim();
-  return f.isEmpty ? 'all' : f;
+  if (f.isEmpty || f == 'all') return 'all';
+  if (isLiveStremioCatalogFilter(f)) return f;
+  return EngineService.normalizeLiveSportPluginId(f);
+}
+
+({List<Map<String, dynamic>> rows, DateTime at})? _rawFeedHit(String key) {
+  final hit = _rawFeedByCatalog[key];
+  if (hit == null) return null;
+  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
+  return hit;
 }
 
 /// Drop session scrape cache (Refresh / pack reload).
@@ -62,13 +71,12 @@ void clearLiveFeedSessionCache() {
   _rememberedAllCatalogPoolAt = null;
 }
 
-/// Re-filter a warm scrape for a new Status × Horizon without network.
+/// Re-filter a warm scrape for Status × Horizon / Catalog chip without network.
 Future<List<Map<String, dynamic>>?> tryLiveFeedFromSession(
   LiveFeedQuery query,
 ) async {
-  final hit = _rawFeedByCatalog[_rawFeedCacheKey(query.catalogFilter)];
+  final hit = _rawFeedHit(_rawFeedCacheKey(query.catalogFilter));
   if (hit == null) return null;
-  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
   return filterLiveFeedRowsAsync(hit.rows, query);
 }
 
@@ -107,10 +115,7 @@ List<Map<String, dynamic>>? rememberedLiveFeedAllCatalogPool() {
     return pool;
   }
   // Session raw for Catalog=All — same unmerged rows, longer TTL.
-  final hit = _rawFeedByCatalog[_rawFeedCacheKey('all')];
-  if (hit == null) return null;
-  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
-  return hit.rows;
+  return _rawFeedHit(_rawFeedCacheKey('all'))?.rows;
 }
 
 void rememberLiveFeedAllCatalogPool(List<Map<String, dynamic>> rows) {
@@ -152,8 +157,9 @@ typedef LiveFeedPartialCallback = void Function(LiveFeedPartial partial);
 /// Called from `ctx.host.liveFeed.load` (hub feed owns composition) — not from
 /// a Dart schedule list god path.
 ///
-/// Scrapes once per catalog chip, then applies Status × Horizon / sport in
-/// memory. [forceRefresh] drops the session scrape cache (Refresh).
+/// Scrapes once per catalog pack (All seeds every pack bucket). Catalog chip /
+/// Status × Horizon / sport then refilter in memory. [forceRefresh] drops the
+/// session scrape for this chip (Refresh clears all via [clearLiveFeedSessionCache]).
 ///
 /// [onPartial] fires after each catalog (and once at the end) so the list can
 /// paint before slower sites finish — same progressive UX as pre-kit Live Sports.
@@ -163,13 +169,13 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
   bool forceRefresh = false,
 }) async {
   final filter = query.catalogFilter.trim();
+  final cacheKey = _rawFeedCacheKey(filter);
   final mergeMatching = await _shouldMergeMatching(query);
   if (forceRefresh) {
-    _rawFeedByCatalog.remove(_rawFeedCacheKey(filter));
+    _rawFeedByCatalog.remove(cacheKey);
   } else {
-    final hit = _rawFeedByCatalog[_rawFeedCacheKey(filter)];
-    if (hit != null &&
-        DateTime.now().difference(hit.at) <= _rawFeedTtl) {
+    final hit = _rawFeedHit(cacheKey);
+    if (hit != null) {
       final session = _filterLiveFeedRows(
         hit.rows,
         query,
@@ -261,11 +267,26 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     return const [];
   }
 
+  // Catalog=All with every pack already warm (e.g. browsed each chip) — compose.
+  if (!forceRefresh && (filter.isEmpty || filter == 'all')) {
+    final composed = _composeAllFromPluginCaches(
+      plugins: wanted,
+      query: query,
+      mergeMatching: mergeMatching,
+      onPartial: onPartial,
+    );
+    if (composed != null) return composed;
+  }
+
   final raw = <Map<String, dynamic>>[];
   final seen = <String>{};
   final total = wanted.length;
+  final scrapeAll = filter.isEmpty || filter == 'all';
   for (var i = 0; i < wanted.length; i++) {
     final plugin = wanted[i];
+    final pluginKey = _rawFeedCacheKey(
+      EngineService.normalizeLiveSportPluginId(plugin.id),
+    );
     final label =
         plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
     onPartial?.call(
@@ -281,20 +302,36 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
         currentLabel: label,
       ),
     );
-    try {
-      final batch = await EngineService.instance.runLiveFeed(
-        catalogPlugin: plugin,
-      );
-      for (final row in batch) {
-        final map = Map<String, dynamic>.from(row);
-        map.putIfAbsent('pluginId', () => plugin.id);
-        map.putIfAbsent('livePluginId', () => plugin.id);
-        final item = liveMetaFromFeedRow(map);
-        if (item.id.isEmpty || !seen.add(item.id)) continue;
-        raw.add(map);
+
+    List<Map<String, dynamic>> pluginRows = const [];
+    final warm = !forceRefresh ? _rawFeedHit(pluginKey) : null;
+    if (warm != null) {
+      pluginRows = warm.rows;
+    } else {
+      try {
+        final batch = await EngineService.instance.runLiveFeed(
+          catalogPlugin: plugin,
+        );
+        final collected = <Map<String, dynamic>>[];
+        for (final row in batch) {
+          final map = Map<String, dynamic>.from(row);
+          map.putIfAbsent('pluginId', () => plugin.id);
+          map.putIfAbsent('livePluginId', () => plugin.id);
+          final item = liveMetaFromFeedRow(map);
+          if (item.id.isEmpty) continue;
+          collected.add(map);
+        }
+        pluginRows = collected;
+        _rememberRawFeed(pluginKey, pluginRows);
+      } catch (_) {
+        // Skip failed catalogs — hub UI shows per-plugin errors separately.
       }
-    } catch (_) {
-      // Skip failed catalogs — hub UI shows per-plugin errors separately.
+    }
+
+    for (final map in pluginRows) {
+      final item = liveMetaFromFeedRow(map);
+      if (item.id.isEmpty || !seen.add(item.id)) continue;
+      raw.add(map);
     }
     onPartial?.call(
       LiveFeedPartial(
@@ -310,8 +347,8 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
       ),
     );
   }
-  _rememberRawFeed(filter, raw);
-  if (filter.isEmpty || filter == 'all') {
+  _rememberRawFeed(cacheKey, raw);
+  if (scrapeAll) {
     // Unmerged pool — Providers soft-matches siblings from every catalog.
     rememberLiveFeedAllCatalogPool(raw);
   }
@@ -326,6 +363,45 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
       done: true,
       completed: total,
       total: total,
+    ),
+  );
+  return out;
+}
+
+/// Build Catalog=All from warm per-plugin buckets (no network).
+List<Map<String, dynamic>>? _composeAllFromPluginCaches({
+  required List<EnginePlugin> plugins,
+  required LiveFeedQuery query,
+  required bool mergeMatching,
+  LiveFeedPartialCallback? onPartial,
+}) {
+  final batches = <List<Map<String, dynamic>>>[];
+  for (final plugin in plugins) {
+    final hit = _rawFeedHit(
+      _rawFeedCacheKey(EngineService.normalizeLiveSportPluginId(plugin.id)),
+    );
+    if (hit == null) return null;
+    batches.add(hit.rows);
+  }
+  final raw = <Map<String, dynamic>>[];
+  final seen = <String>{};
+  for (final batch in batches) {
+    for (final row in batch) {
+      final map = Map<String, dynamic>.from(row);
+      final item = liveMetaFromFeedRow(map);
+      if (item.id.isEmpty || !seen.add(item.id)) continue;
+      raw.add(map);
+    }
+  }
+  _rememberRawFeed('all', raw);
+  rememberLiveFeedAllCatalogPool(raw);
+  final out = _filterLiveFeedRows(raw, query, mergeMatching: mergeMatching);
+  onPartial?.call(
+    LiveFeedPartial(
+      rows: List<Map<String, dynamic>>.from(out),
+      done: true,
+      completed: plugins.length,
+      total: plugins.length,
     ),
   );
   return out;

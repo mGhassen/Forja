@@ -9,7 +9,6 @@ import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.da
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
-import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
@@ -27,10 +26,14 @@ abstract final class LiveResolveStreams {
   static const _stremioProvidersTimeout = Duration(seconds: 12);
   static final Map<String, _ProvidersCacheEntry> _providersCache = {};
 
-  /// Providers rail: Forja Live (all soft-matched catalog siblings) + Stremio.
+  /// Providers rail: every enabled resolve pack searches the fixture + Stremio.
+  ///
+  /// Host does **not** soft-match the catalog schedule pool (RFC-105). Packs
+  /// own fixture search; UI paints via [onPartial] as each pack returns.
   static Future<List<IptvPlaySource>> loadProviders(
     Map<String, dynamic> legacyRow, {
     bool force = false,
+    void Function(List<IptvPlaySource> partial)? onPartial,
   }) async {
     final match = MatchEvent.fromLegacyRow(legacyRow);
     final cacheKey = _providersCacheKey(match);
@@ -46,50 +49,59 @@ abstract final class LiveResolveStreams {
       }
     }
 
-    final out = <IptvPlaySource>[];
-    final seen = <String>{};
-
     await LivePluginEngine.warmPluginMeta();
 
-    Future<void> addBatch(List<IptvPlaySource> batch) async {
-      for (final s in batch) {
+    // Stremio Catalog chip row — direct /stream only.
+    if (match.isStremio) {
+      List<IptvPlaySource> stremioOnly = const [];
+      try {
+        stremioOnly = await _loadStremioProviders(match);
+      } catch (e, st) {
+        debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
+      }
+      if (stremioOnly.isNotEmpty) {
+        _providersCache[cacheKey] = _ProvidersCacheEntry(
+          expiresAt: DateTime.now().add(_providersCacheTtl),
+          sources: List<IptvPlaySource>.from(stremioOnly),
+        );
+      }
+      return stremioOnly;
+    }
+
+    var forja = <IptvPlaySource>[];
+    var stremio = <IptvPlaySource>[];
+
+    List<IptvPlaySource> merged() {
+      final out = <IptvPlaySource>[];
+      final seen = <String>{};
+      for (final s in [...forja, ...stremio]) {
         final key = s.url.trim().isNotEmpty
             ? 'u:${s.url.trim()}'
             : 'l:${s.label}|${s.liveEngineEmbedUrl ?? ''}';
         if (!seen.add(key)) continue;
         out.add(s);
       }
-    }
-
-    // Stremio Catalog chip row — direct /stream only (no Forja sibling fan-out).
-    if (match.isStremio) {
-      try {
-        await addBatch(await _loadStremioProviders(match));
-      } catch (e, st) {
-        debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
-      }
-      if (out.isNotEmpty) {
-        _providersCache[cacheKey] = _ProvidersCacheEntry(
-          expiresAt: DateTime.now().add(_providersCacheTtl),
-          sources: List<IptvPlaySource>.from(out),
-        );
-      }
       return out;
     }
 
-    // Start Stremio soft-match in parallel, but never let it strand the panel
-    // after Forja rows are ready (getStreams can hang past catalog soft-match).
+    void publish() => onPartial?.call(merged());
+
     final stremioFuture = _loadStremioProviders(match);
-    List<IptvPlaySource> forja = const [];
     try {
-      forja = await _loadForjaLiveProviders(match);
-      await addBatch(forja);
+      forja = await _loadForjaLiveProviders(
+        match,
+        onPartial: (partial) {
+          forja = partial;
+          publish();
+        },
+      );
+      publish();
     } catch (e, st) {
       debugPrint('[LiveResolveStreams] Forja Live providers error: $e\n$st');
     }
 
     try {
-      final stremio = await stremioFuture.timeout(
+      stremio = await stremioFuture.timeout(
         _stremioProvidersTimeout,
         onTimeout: () {
           debugPrint(
@@ -99,11 +111,12 @@ abstract final class LiveResolveStreams {
           return const <IptvPlaySource>[];
         },
       );
-      await addBatch(stremio);
+      publish();
     } catch (e, st) {
       debugPrint('[LiveResolveStreams] Stremio providers error: $e\n$st');
     }
 
+    final out = merged();
     if (out.isNotEmpty) {
       _providersCache[cacheKey] = _ProvidersCacheEntry(
         expiresAt: DateTime.now().add(_providersCacheTtl),
@@ -144,207 +157,166 @@ abstract final class LiveResolveStreams {
     return 'providers:${matchEventViewerKey(match)}:a$addonRev';
   }
 
+  /// Fan-out every enabled resolve pack — pack searches its own upstream.
   static Future<List<IptvPlaySource>> _loadForjaLiveProviders(
-    MatchEvent match,
-  ) async {
+    MatchEvent match, {
+    void Function(List<IptvPlaySource> partial)? onPartial,
+  }) async {
+    final plugins =
+        await EngineService.instance.listEnabledLiveResolvePlugins();
+    if (plugins.isEmpty) return const [];
+
     final choices = <_StreamChoice>[];
     final seenUrls = <String>{};
-    final seenRefs = <String>{};
 
-    final siblings = await _forjaProviderResolveMatches(match);
-    final jobs = <(MatchEvent, MatchSourceRef)>[];
-    for (final m in siblings) {
-      // Catalog rows are schedule-only — never promote catalog `streams[]` /
-      // iframe payloads into Providers (issue 254).
-      for (final ref in m.sources) {
-        final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
-        if (!seenRefs.add(key)) continue;
-        jobs.add((m, ref));
-      }
-    }
-
-    for (final (m, ref) in jobs) {
-      try {
-        final streams = await _forjaLiveStreamsFromSource(m, ref);
-        for (final stream in streams) {
-          final url = stream.embedUrl.trim();
-          if (url.isEmpty || !seenUrls.add(url)) continue;
-          choices.add(_StreamChoice(match: m, stream: stream));
-        }
-      } catch (e) {
-        debugPrint('[LiveResolveStreams] resolve ${ref.source}/${ref.id}: $e');
-      }
-    }
-
-    choices.sort(
-      (a, b) => effectiveMatchStreamViewers(b.stream, b.match).compareTo(
-        effectiveMatchStreamViewers(a.stream, a.match),
-      ),
-    );
-    return [for (final c in choices) _choiceToPanelSource(c)];
-  }
-
-  /// Same fixture across Forja Live catalogs — resolve every sibling plugin.
-  ///
-  /// Only catalogs that link to a live resolve pack (`providerId`). Broadcast
-  /// guides and scoreboard enrich rows stay out of Providers. Catalog rows
-  /// never contribute embeds — live packs discover streams on demand.
-  ///
-  /// Uses the **unmerged** schedule pool so each sibling keeps its own viewer
-  /// count (merged Catalog=All cards must not own every source ref).
-  static Future<List<MatchEvent>> _forjaProviderResolveMatches(
-    MatchEvent anchor,
-  ) async {
-    final out = <MatchEvent>[];
-    final seen = <String>{};
-
-    void add(MatchEvent raw) {
-      if (raw.livePluginId.isNotEmpty &&
-          !LivePluginEngine.cachedIsProviderStreamFeed(raw.livePluginId)) {
-        return;
-      }
-      final m = _ensureProviderResolveMatch(raw);
-      final key = '${m.livePluginId}|${m.id}';
-      if (key == '|' || !seen.add(key)) return;
-      if (m.sources.isEmpty) return;
-      out.add(m);
-    }
-
-    List<Map<String, dynamic>> pool =
-        rememberedLiveFeedAllCatalogPool() ?? const [];
-    if (pool.isEmpty) {
-      try {
-        // Force a scrape into the unmerged remember-pool; discard the merged
-        // return value — Providers must soft-match per-catalog rows.
-        await aggregateLiveFeed(const LiveFeedQuery());
-        pool = rememberedLiveFeedAllCatalogPool() ?? const [];
-      } catch (e) {
-        debugPrint('[LiveResolveStreams] Forja sibling pool error: $e');
-      }
-    }
-
-    for (final row in pool) {
-      final m = MatchEvent.fromLegacyRow(row);
-      if (!_liveCatalogEventMatch(anchor, m)) continue;
-      add(m);
-    }
-    // Solo / cache-miss: still resolve the opened card's opaque sources.
-    if (out.isEmpty) add(anchor);
-    return out;
-  }
-
-  /// Catalog rows normally carry opaque `sources[]`; synthesize when lost.
-  static MatchEvent _ensureProviderResolveMatch(MatchEvent match) {
-    if (match.sources.isNotEmpty) {
-      return match;
-    }
-    final pluginId = match.livePluginId.trim();
-    if (pluginId.isEmpty || match.id.isEmpty) return match;
-    if (!LivePluginEngine.cachedIsProviderStreamFeed(pluginId)) return match;
-    final source = LivePluginEngine.cachedResolveSourceToken(pluginId);
-    final refId = LivePluginEngine.cachedResolveRefId(match.id, pluginId);
-    if (source.isEmpty || refId.isEmpty) return match;
-    return match.copyWith(
-      sources: [MatchSourceRef(source: source, id: refId)],
-    );
-  }
-
-  static bool _liveCatalogEventMatch(MatchEvent a, MatchEvent b) {
-    return _stremioCatalogEventMatch(a, b);
-  }
-
-  /// Providers list only — real mirrors from live discover. Unlock on play.
-  /// Catalog stays schedule-complete; never invent `pending:` rows here.
-  static Future<List<MatchStream>> _forjaLiveStreamsFromSource(
-    MatchEvent match,
-    MatchSourceRef source,
-  ) async {
-    if (!LivePluginEngine.cachedIsProviderStreamFeed(match.livePluginId)) {
-      return const [];
-    }
-    final pluginId = LivePluginEngine.cachedProviderResolvePluginId(
-      match.livePluginId,
-    );
-    if (pluginId.isEmpty) return const [];
-
-    final token = source.source.trim().toLowerCase();
-    if (token == 'echo') return const [];
-
-    final pluginSource = token.isNotEmpty
-        ? token
-        : LivePluginEngine.cachedResolveSourceToken(pluginId);
-
-    // Streamed: live/Rust lists mirrors by source+id (never catalog embeds).
-    if (_isStreamedPkGoatSource(token)) {
-      final listed = await _fetchStreamedStreams(source, allowFallback: false);
-      return [
-        for (final s in listed)
-          MatchStream(
-            id: s.id.isNotEmpty ? s.id : source.id,
-            streamNo: s.streamNo > 0 ? s.streamNo : 1,
-            language: s.language,
-            hd: s.hd,
-            embedUrl: s.embedUrl,
-            source: s.source.trim().isNotEmpty ? s.source : pluginSource,
-            viewers: s.viewers,
-            directPlayback: false,
+    List<IptvPlaySource> snapshot() {
+      final sorted = List<_StreamChoice>.from(choices)
+        ..sort(
+          (a, b) => effectiveMatchStreamViewers(b.stream, b.match).compareTo(
+            effectiveMatchStreamViewers(a.stream, a.match),
           ),
-      ];
+        );
+      return [for (final c in sorted) _choiceToPanelSource(c)];
     }
+
+    void publish() => onPartial?.call(snapshot());
+
+    await Future.wait(
+      plugins.map((plugin) async {
+        try {
+          final streams = await _discoverFromResolvePlugin(match, plugin);
+          final pluginMatch = match.copyWith(livePluginId: plugin.id);
+          var added = false;
+          for (final stream in streams) {
+            final url = stream.embedUrl.trim();
+            if (url.isEmpty || !seenUrls.add(url)) continue;
+            choices.add(_StreamChoice(match: pluginMatch, stream: stream));
+            added = true;
+          }
+          if (added) publish();
+        } catch (e) {
+          debugPrint(
+            '[LiveResolveStreams] resolve ${plugin.id}: $e',
+          );
+        }
+      }),
+    );
+
+    return snapshot();
+  }
+
+  /// Opaque source ref on the opened card that belongs to [plugin], if any.
+  static MatchSourceRef? _ownedSourceRef(
+    MatchEvent match,
+    EnginePlugin plugin,
+  ) {
+    final token =
+        LivePluginEngine.cachedResolveSourceToken(plugin.id).toLowerCase();
+    final norm = EngineService.normalizeLiveSportPluginId(plugin.id);
+    for (final ref in match.sources) {
+      final src = ref.source.trim().toLowerCase();
+      if (src.isEmpty) continue;
+      if (src == token || src == norm || src == plugin.id.toLowerCase()) {
+        return ref;
+      }
+    }
+    final cardKey = LivePluginEngine.resolvePluginKey(match.livePluginId);
+    if (cardKey.isNotEmpty &&
+        cardKey == EngineService.normalizeLiveSportPluginId(plugin.id)) {
+      final id = LivePluginEngine.cachedResolveRefId(match.id, plugin.id);
+      if (id.isNotEmpty) {
+        return MatchSourceRef(
+          source: token.isNotEmpty ? token : norm,
+          id: id,
+        );
+      }
+    }
+    return null;
+  }
+
+  /// One resolve pack: owned matchId when known, else fixture identity for pack search.
+  static Future<List<MatchStream>> _discoverFromResolvePlugin(
+    MatchEvent match,
+    EnginePlugin plugin,
+  ) async {
+    final owned = _ownedSourceRef(match, plugin);
+    final pluginSource = LivePluginEngine.cachedResolveSourceToken(plugin.id);
+
+    if (owned != null && _isStreamedPkGoatSource(owned.source)) {
+      return _fetchStreamedStreams(owned, allowFallback: false);
+    }
+
+    final mid = owned == null
+        ? ''
+        : LivePluginEngine.cachedResolveRefId(owned.id, plugin.id);
+    final sourceToken = owned?.source.trim().isNotEmpty == true
+        ? owned!.source
+        : pluginSource;
 
     return _discoverLivePackStreams(
       match: match,
-      source: source,
-      pluginId: pluginId,
+      source: MatchSourceRef(
+        source: sourceToken,
+        id: mid.isNotEmpty ? mid : match.id,
+      ),
+      pluginId: plugin.id,
       pluginSource: pluginSource,
+      fixtureOnly: owned == null,
     );
   }
 
-  /// Live pack stream discover for Providers — empty when upstream has no links.
+  /// Providers list only — real mirrors from live discover. Unlock on play.
   static Future<List<MatchStream>> _discoverLivePackStreams({
     required MatchEvent match,
     required MatchSourceRef source,
     required String pluginId,
     required String pluginSource,
+    bool fixtureOnly = false,
   }) async {
-    final mid = source.id.trim();
-    if (mid.isEmpty) return const [];
-
     // Live packs: resolve returns real mirrors (embeds or unlocked URLs).
     // Unlock-on-play when the row is still an embed page.
+    // Fixture-only: pack searches its own schedule (RFC-105) — no host soft-match.
     List<Map<String, dynamic>> rows = const [];
     try {
       rows = await EngineService.instance.runLivePlugin(
         pluginId: pluginId,
         action: 'resolve',
         params: {
-          'matchId': mid,
+          if (!fixtureOnly && source.id.trim().isNotEmpty)
+            'matchId': source.id.trim(),
           'eventId': match.id,
           'source': pluginSource.isNotEmpty ? pluginSource : source.source,
           'category': match.category,
           'title': match.title,
+          'homeTeam': match.homeTeam ?? '',
+          'awayTeam': match.awayTeam ?? '',
+          'dateMs': match.dateMs,
           'stream': '1',
           'viewers': match.viewers,
+          'fixtureSearch': fixtureOnly,
         },
       );
     } catch (e) {
-      debugPrint('[LiveResolveStreams] discover $pluginId/$mid: $e');
+      debugPrint('[LiveResolveStreams] discover $pluginId: $e');
       return const [];
     }
 
     final out = <MatchStream>[];
     final seen = <String>{};
+    final ref = MatchSourceRef(
+      source: pluginSource.isNotEmpty ? pluginSource : source.source,
+      id: source.id.trim().isNotEmpty ? source.id.trim() : match.id,
+    );
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
       if (row['webviewOnly'] == true) continue;
       final url = (row['url'] ?? '').toString().trim();
       if (url.isEmpty || !seen.add(url)) continue;
-      // Skip unresolved placeholders — Providers is resolve-only.
       if (url.startsWith('pending:')) continue;
       out.add(
         _streamFromResolveRow(
           row: row,
-          source: source,
+          source: ref,
           match: match,
           pluginSource: pluginSource,
           index: out.length,

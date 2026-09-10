@@ -57,10 +57,16 @@ final class KitResolvePanelHost implements KitPanelHost {
     Map<String, dynamic> legacyRow,
     String tabId, {
     KitUrlHealthProbe? healthProbe,
+    void Function(List<KitSourcesRow> rows)? onPartial,
   }) async {
     final load = KitResolveStreamsHooks.loadTab;
     if (load == null) return const [];
-    return load(legacyRow, tabId, healthProbe: healthProbe);
+    return load(
+      legacyRow,
+      tabId,
+      healthProbe: healthProbe,
+      onPartial: onPartial,
+    );
   }
 
   static Future<void> playRow(
@@ -171,10 +177,11 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,
-      loadTab: (tabId) => KitResolvePanelHost.loadTab(
+      loadTab: (tabId, {onPartial}) => KitResolvePanelHost.loadTab(
         row,
         tabId,
         healthProbe: healthProbe,
+        onPartial: onPartial,
       ),
       onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
         context,

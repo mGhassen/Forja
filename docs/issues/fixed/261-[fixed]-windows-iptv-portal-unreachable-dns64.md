@@ -42,7 +42,10 @@ Same Xtream portal (e.g. `*.dnsabr.com`) worked on Android TV and macOS but Wind
 
 **Root fix:** `crates/iptv/src/http.rs` — `local_address(0.0.0.0)` on portal/stream reqwest clients so login, catalog, and alive probes always use IPv4.
 
+**Residual (still broken when DNS returns AAAA-only):** hyper filters AF_UNSPEC results to IPv4 after `local_address`, leaving an empty list. Follow-up: [269](../269-[open]-windows-iptv-portal-af-inet-dns64.md) (AF_INET DNS).
+
 ### Related
 
 - [252](fixed/252-[fixed]-iptv-status-checks-false-red.md) — earlier false-red (timeout/auth), separate
+- [269](../269-[open]-windows-iptv-portal-af-inet-dns64.md) — AF_INET DNS residual
 - [iptv-xtream](../../features/live/iptv-xtream.md)

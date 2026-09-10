@@ -15,10 +15,29 @@ abstract final class IptvResolveStreamsAdapter {
     Map<String, dynamic> legacyRow,
     String tabId, {
     KitUrlHealthProbe? healthProbe,
+    void Function(List<KitSourcesRow> rows)? onPartial,
   }) async {
-    final sources = tabId == KitResolvePanelHost.liveTvTab
-        ? await _loadLiveTv(legacyRow)
-        : await LiveResolveStreams.loadProviders(legacyRow);
+    if (tabId == KitResolvePanelHost.liveTvTab) {
+      final sources = await _loadLiveTv(legacyRow);
+      return _rowsFor(tabId, sources, healthProbe);
+    }
+
+    final sources = await LiveResolveStreams.loadProviders(
+      legacyRow,
+      onPartial: onPartial == null
+          ? null
+          : (partial) {
+              onPartial(_rowsFor(tabId, partial, healthProbe));
+            },
+    );
+    return _rowsFor(tabId, sources, healthProbe);
+  }
+
+  static List<KitSourcesRow> _rowsFor(
+    String tabId,
+    List<IptvPlaySource> sources,
+    KitUrlHealthProbe? healthProbe,
+  ) {
     return [
       for (var i = 0; i < sources.length; i++)
         _rowForSource(

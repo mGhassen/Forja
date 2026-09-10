@@ -35,6 +35,16 @@ String liveStremioAddonDisplayName(Map<String, dynamic> addon) {
   return 'Stremio';
 }
 
+/// Short chip label when options miss — never paint `stremio:<full url>`.
+String liveStremioCatalogChipFallbackLabel(String filterId) {
+  final base = liveStremioBaseUrlFromCatalogFilter(filterId);
+  if (base != null) {
+    final host = Uri.tryParse(base)?.host.trim() ?? '';
+    if (host.isNotEmpty) return host;
+  }
+  return 'Stremio';
+}
+
 /// Catalog picker rows for live-targeted Stremio addons (RFC-050).
 Future<List<({String id, String label})>> liveStremioCatalogOptions() async {
   try {

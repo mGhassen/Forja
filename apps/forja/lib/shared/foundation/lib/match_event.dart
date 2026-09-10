@@ -144,6 +144,7 @@ class MatchEvent {
     List<MatchSourceRef>? sources,
     List<MatchStream>? inlineStreams,
     int? viewers,
+    String? livePluginId,
   }) {
     return MatchEvent(
       id: id,
@@ -165,7 +166,7 @@ class MatchEvent {
       stremioType: stremioType,
       stremioAddonName: stremioAddonName,
       sportMatchGame: sportMatchGame ?? this.sportMatchGame,
-      livePluginId: livePluginId,
+      livePluginId: livePluginId ?? this.livePluginId,
     );
   }
 

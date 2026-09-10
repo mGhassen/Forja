@@ -116,9 +116,11 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.cinematic.textSecondary;
 
+    // Cap width — Catalog can fall back to a long id (e.g. stremio:<url>).
     final chip = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOutCubic,
+      constraints: const BoxConstraints(maxWidth: 220),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(_radius),
@@ -133,12 +135,16 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
             if (widget.label.isNotEmpty) const SizedBox(width: 6),
           ],
           if (widget.label.isNotEmpty)
-            Text(
-              widget.label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],

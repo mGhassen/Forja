@@ -87,7 +87,10 @@ abstract final class KitLiveBoot {
       for (final o in options) {
         if (o.id == id) return o.label;
       }
-      // Pref may be a raw plugin id before options finish loading.
+      // Pref before options load — never paint stremio:<full url>.
+      if (isLiveStremioCatalogFilter(id)) {
+        return liveStremioCatalogChipFallbackLabel(id);
+      }
       return id;
     };
     KitTopBarHostHooks.catalogChipSelected = (filter) {

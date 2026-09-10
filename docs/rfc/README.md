@@ -126,6 +126,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **10 / 11** (1 ⏭️ pin) | — |
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |
 | [104-[fixed]-…](fixed/104-[fixed]-merge-live-sports-hubs.md) | Merge Live Sports hubs (list/cards + panel/details) | — | fixed | **Complete** · **5 / 5** · **8 / 8** | — |
+| [105-[fixed]-…](fixed/105-[fixed]-live-providers-plugin-search.md) | Providers — plugin-owned fixture search + progressive paint | — | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 
 ## Related
 
