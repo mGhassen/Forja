@@ -1,0 +1,32 @@
+---
+description: Plans design past current Forja — never phrase gaps as platform impossibility
+alwaysApply: true
+---
+
+# Plans must aim past current Forja
+
+Index: [expert-first](./expert-first.mdc) (Q&A recommend first). This rule covers **plans / RFCs / issue designs**.
+
+When the user asks for a **plan**, design the **better** architecture / API / UX. Current Forja is the baseline to improve — not the ceiling, and not physics.
+
+## Three layers (required in capability tables)
+
+| Layer | Meaning |
+|-------|---------|
+| **Platform / library** | What Exo Media3, mpv, Android, etc. allow |
+| **Forja today** | What we wire now |
+| **Plan target** | What this plan builds |
+
+## Forbidden
+
+- “Not today”, “no”, “can’t”, “fixed at build” as the **only** answer for a capability when the library allows a better approach
+- Letting status quo freeze the design as if the platform forbids the fix
+
+## Required
+
+Lead with the better approach. Put the Forja gap in a baseline column or one short clause. Gap → fix is always one line of **target design** (e.g. mutable custom `LoadControl` + `setLiveCushion`), not “we don’t do X yet.”
+
+```
+Wrong: Exo | No today — DefaultLoadControl fixed at build
+Right: Exo | Mutable custom LoadControl (Media3) — Forja still uses fixed DefaultLoadControl; plan adds runtime caps
+```

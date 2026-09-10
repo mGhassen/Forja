@@ -12,3 +12,5 @@ When the user asks as an expert (architecture, provider behavior, “why”, “
 3. **Implement** — Code/docs changes only after verification, unless the user scoped a spike or doc-only answer.
 
 Forbidden: answering “how Forja works” when the user asked “what should Forja do”.
+
+**Plans / RFCs:** see [plan-better-than-status-quo](./plan-better-than-status-quo.mdc) — design past current Forja; never phrase gaps as platform impossibility.
