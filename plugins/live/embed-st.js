@@ -256,6 +256,64 @@ async function postFetch(ctx, slot, cfg) {
   return { bodyHex: bytesToHex(buf), goat: String(goat) };
 }
 
+function golfPlaybackHeaders() {
+  return {
+    Referer: 'https://exposestrat.st/',
+    Origin: 'https://exposestrat.st',
+    'User-Agent': ua(),
+  };
+}
+
+function golfFidFromHtml(html) {
+  var text = String(html || '');
+  var m =
+    text.match(/window\.fid\s*=\s*["']([^"']+)["']/) ||
+    text.match(/\bfid\s*=\s*["']([^"']+)["']/);
+  if (m) return m[1];
+  // streamed1.php: data-source base64 → embed.st/embed/ingest/{fid}/N
+  var ds = text.match(/data-source=["']([^"']+)["']/);
+  if (!ds) return '';
+  try {
+    var decoded = atob(ds[1]);
+    var ingest = String(decoded).match(/\/embed\/ingest\/([^/]+)\//);
+    return ingest ? ingest[1] : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function resolveGolf(ctx, slot, cfg) {
+  var origin = slot.origin || embedOrigin(cfg);
+  var embedUrl = origin + '/embed/' + slot.path;
+  var embedHtml = await (
+    await ctx.fetch(embedUrl, {
+      headers: { Referer: origin + '/', 'User-Agent': ua() },
+    })
+  ).text();
+  // Odd mirrors often ship iframe src="undefined&id=…" — only absolute URLs.
+  var iframeM = embedHtml.match(/<iframe[^>]*\ssrc=["'](https?:\/\/[^"']+)["']/i);
+  if (!iframeM) throw new Error('golf iframe not found');
+  var streamedUrl = iframeM[1].replace(/&amp;/g, '&');
+  var streamedHtml = await (
+    await ctx.fetch(streamedUrl, {
+      headers: { Referer: embedUrl, 'User-Agent': ua() },
+    })
+  ).text();
+  var fid = golfFidFromHtml(streamedHtml);
+  if (!fid) throw new Error('golf fid not found');
+  var playerUrl =
+    'https://exposestrat.st/maestrohd1.php?player=desktop&live=' +
+    encodeURIComponent(fid);
+  var playerHtml = await (
+    await ctx.fetch(playerUrl, {
+      headers: { Referer: streamedUrl, 'User-Agent': ua() },
+    })
+  ).text();
+  var m3u8M = playerHtml.match(/return\(\[("[^"]+"(?:,"[^"]+")*)\]\.join\(""\)/);
+  if (!m3u8M) throw new Error('golf m3u8 not found');
+  return JSON.parse('[' + m3u8M[1] + ']').join('');
+}
+
 async function probePlayableM3u8(ctx, url, headers) {
   var target = String(url || '').trim();
   if (!target) return false;
@@ -272,6 +330,16 @@ async function probePlayableM3u8(ctx, url, headers) {
 async function resolveGoatEmbed(ctx, embedUrl, cfg) {
   var slot = parseEmbedUrl(embedUrl, cfg);
   if (!slot) return null;
+  // Golf /fetch + lock.wasm does not yield m3u8 (OOB / empty JW) — HTTP scrape.
+  if (slot.source === 'golf') {
+    var golfUrl = await resolveGolf(ctx, slot, cfg);
+    return [
+      {
+        url: golfUrl,
+        headers: golfPlaybackHeaders(),
+      },
+    ];
+  }
   var fetched = await postFetch(ctx, slot, cfg);
   var m3u8 = '';
   if (ctx.live && typeof ctx.live.goatUnlock === 'function') {
@@ -281,7 +349,7 @@ async function resolveGoatEmbed(ctx, embedUrl, cfg) {
   var headers = playbackHeadersForSlot(slot, cfg);
   // Dead/gated slots still crack to a signed CDN URL that 403s on open.
   var src = String(slot.source || '').toLowerCase();
-  if (src === 'echo' || src === 'streamed' || src === 'golf') {
+  if (src === 'echo' || src === 'streamed') {
     if (!(await probePlayableM3u8(ctx, m3u8, headers))) return null;
   }
   return [

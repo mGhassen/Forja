@@ -67,7 +67,7 @@ Bundled live `extract(ctx)` plugins (upstream: [live-sport-plugin](https://githu
 
 ### Contract
 
-Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses for all GOAT slots including golf (**desktop:** Node worker; **Android/iOS:** off-screen WebView + `lock.wasm`). `ctx.live.gasmUnlock(bodyHex, island, slot)` decrypts embedindia.st GASM (**desktop:** Node; **Android/iOS:** off-screen WebView + `gasm.wasm`). `ctx.live.sportsEmbedUnlock(embedUrl)` unlocks sportsembed.su WatchFooty mirrors (**desktop:** Node + `stream-lock.wasm`).
+Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses (**desktop:** Node worker; **Android/iOS:** off-screen WebView + `lock.wasm`; golf uses HTTP scrape via embedhd.st → exposestrat.st — `/fetch` body does not unlock via lock.wasm). `ctx.live.gasmUnlock(bodyHex, island, slot)` decrypts embedindia.st GASM (**desktop:** Node; **Android/iOS:** off-screen WebView + `gasm.wasm`). `ctx.live.sportsEmbedUnlock(embedUrl)` unlocks sportsembed.su WatchFooty mirrors (**desktop:** Node + `stream-lock.wasm`).
 
 ### Related
 

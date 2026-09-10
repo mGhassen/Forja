@@ -7,6 +7,7 @@ import 'package:forja/shared/foundation/components/hero/rotating_hero_backdrop.d
 import 'package:forja/shared/foundation/components/hero/hero_overview_text.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_facts_panel.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
+import 'package:forja/shared/foundation/components/details/kit_hero_content_scrim.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
@@ -29,6 +30,7 @@ class KitDetailsHero extends StatelessWidget {
     this.belowActionRow,
     this.belowActionRowFullWidth = false,
     this.belowActionRowGap = 20,
+    this.contentScrim = false,
     this.height,
     this.positionMs,
     this.durationMs,
@@ -61,6 +63,8 @@ class KitDetailsHero extends StatelessWidget {
   final bool belowActionRowFullWidth;
   /// Gap between [actionRow] and [belowActionRow] (live match streams can sit closer).
   final double belowActionRowGap;
+  /// Full-bleed soft scrim from title through [belowActionRow] (live match details).
+  final bool contentScrim;
   final double? height;
   final int? positionMs;
   final int? durationMs;
@@ -120,7 +124,7 @@ class KitDetailsHero extends StatelessWidget {
               bottom: contentBottom,
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final content = ConstrainedBox(
+                  final paddedContent = ConstrainedBox(
                     constraints: BoxConstraints(
                       maxWidth: ShellTokens.bodyMaxWidthDesktop,
                       maxHeight: constraints.maxHeight,
@@ -153,20 +157,39 @@ class KitDetailsHero extends StatelessWidget {
                       ),
                     ),
                   );
-                  if (belowActionRow != null) {
-                    return SizedBox(
+                  final Widget body;
+                  if (contentScrim && belowActionRow != null) {
+                    // Scrim is edge-to-edge; title / streams stay inset.
+                    body = SizedBox(
+                      width: double.infinity,
+                      height: constraints.maxHeight,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          const Positioned.fill(child: KitHeroContentScrim()),
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: paddedContent,
+                          ),
+                        ],
+                      ),
+                    );
+                  } else if (belowActionRow != null) {
+                    body = SizedBox(
                       width: double.infinity,
                       height: constraints.maxHeight,
                       child: Align(
                         alignment: Alignment.topCenter,
-                        child: content,
+                        child: paddedContent,
                       ),
                     );
+                  } else {
+                    body = Align(
+                      alignment: Alignment.topCenter,
+                      child: paddedContent,
+                    );
                   }
-                  return Align(
-                    alignment: Alignment.topCenter,
-                    child: content,
-                  );
+                  return body;
                 },
               ),
             ),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
@@ -277,69 +276,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         ),
       ],
     );
-    if (!widget.embedded) return column;
-    return _embeddedStreamScrim(column);
-  }
-
-  /// Soft frosted scrim behind hero-embedded streams.
-  ///
-  /// Feathered edges on all four sides + top inset so the first stream card
-  /// sits below the soft top edge (not flush with a hard rectangle).
-  Widget _embeddedStreamScrim(Widget child) {
-    final tint = ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.78);
-    Widget fade({
-      required AlignmentGeometry begin,
-      required AlignmentGeometry end,
-      required List<double> stops,
-      required Widget child,
-    }) {
-      return ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => LinearGradient(
-          begin: begin,
-          end: end,
-          colors: const [
-            Color(0x00FFFFFF),
-            Color(0xFFFFFFFF),
-            Color(0xFFFFFFFF),
-            Color(0x00FFFFFF),
-          ],
-          stops: stops,
-        ).createShader(bounds),
-        child: child,
-      );
-    }
-
-    return Stack(
-      clipBehavior: Clip.none,
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: IgnorePointer(
-            child: fade(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              // Wide top/bottom feather — was 4% and read as a hard edge.
-              stops: const [0.0, 0.12, 0.86, 1.0],
-              child: fade(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                stops: const [0.0, 0.05, 0.95, 1.0],
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                  child: ColoredBox(color: tint),
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Inset so cards start under the top feather, not on the panel rim.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
-          child: child,
-        ),
-      ],
-    );
+    // Hero page paints [KitHeroContentScrim] edge-to-edge; no nested panel scrim.
+    return column;
   }
 
   Widget _header(BuildContext context) {

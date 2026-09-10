@@ -13,7 +13,7 @@
     {
       "id": "live-streamed",
       "name": "Streamed",
-      "description": "streamed.pk stream resolve (GOAT)",
+      "description": "streamed.pk stream resolve (GOAT / golf)",
       "entry": "streamed.js",
       "types": [
         "live"
