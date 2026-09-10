@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/engine/live/live_unlock_modules.dart';
+import 'package:forja/shared/engine/live/pack_unlock_files.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -203,9 +203,9 @@ class LiveGoatWebviewUnlock {
   Future<void> _syncCrackAsset() async {
     final dir = _dir;
     if (dir == null) return;
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.goat,
-      relative: 'webview/crack.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/webview/crack.js',
       dest: File('${dir.path}/crack.js'),
     );
   }
@@ -452,25 +452,25 @@ class LiveGoatWebviewUnlock {
     await dir.create(recursive: true);
     await Directory('${dir.path}/vendor').create(recursive: true);
 
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.goat,
-      relative: 'webview/crack.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/webview/crack.js',
       dest: File('${dir.path}/crack.js'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.goat,
-      relative: 'vendor/lock.wasm',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/vendor/lock.wasm',
       dest: File('${dir.path}/vendor/lock.wasm'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.goat,
-      relative: 'vendor/big-integer.min.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/vendor/big-integer.min.js',
       dest: File('${dir.path}/vendor/big-integer.min.js'),
     );
 
-    final lockEsmBytes = await LiveUnlockModules.loadBytes(
-      module: LiveUnlockModules.goat,
-      relative: 'vendor/lock-esm.mjs',
+    final lockEsmBytes = await PackUnlockFiles.loadBytes(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/vendor/lock-esm.mjs',
     );
     final lockEsm = utf8.decode(lockEsmBytes);
     final browser = _stripNodePreamble(lockEsm);

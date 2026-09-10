@@ -86,6 +86,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     this.showMiniLabel = false,
     this.installProgress,
     this.update,
+    this.deprecated = false,
   });
 
   final EnginePack pack;
@@ -102,6 +103,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   final bool showMiniLabel;
   final PluginInstallProgress? installProgress;
   final EnginePackUpdateInfo? update;
+  final bool deprecated;
 
   @override
   Widget build(BuildContext context) {
@@ -126,20 +128,20 @@ class SettingsEnginePackExpansion extends StatelessWidget {
           trailing: trailing,
           onHeaderActivate: onHeaderActivate,
           leading: Icon(
-            update != null
+            deprecated
+                ? Icons.link_off_rounded
+                : update != null
                 ? Icons.system_update_rounded
                 : Icons.bolt_rounded,
-            color: update != null
+            color: deprecated
+                ? const Color(0xFFF87171)
+                : update != null
                 ? ForjaShellColors.brandGreen
                 : ForjaShellColors.iconActive,
           ),
-          title: Text(
-            pack.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: ForjaShellColors.textPrimary,
-            ),
+          title: SettingsEnginePackTitle(
+            name: pack.name,
+            deprecated: deprecated,
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,6 +323,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
     this.trailing,
     this.onHeaderActivate,
     this.update,
+    this.deprecated = false,
   });
 
   final EnginePack pack;
@@ -328,6 +331,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onHeaderActivate;
   final EnginePackUpdateInfo? update;
+  final bool deprecated;
 
   @override
   Widget build(BuildContext context) {
@@ -338,20 +342,20 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
       trailing: trailing,
       onHeaderActivate: onHeaderActivate,
       leading: Icon(
-        update != null
+        deprecated
+            ? Icons.link_off_rounded
+            : update != null
             ? Icons.system_update_rounded
             : Icons.bolt_rounded,
-        color: update != null
+        color: deprecated
+            ? const Color(0xFFF87171)
+            : update != null
             ? ForjaShellColors.brandGreen
             : ForjaShellColors.iconActive,
       ),
-      title: Text(
-        pack.name,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: ForjaShellColors.textPrimary,
-        ),
+      title: SettingsEnginePackTitle(
+        name: pack.name,
+        deprecated: deprecated,
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

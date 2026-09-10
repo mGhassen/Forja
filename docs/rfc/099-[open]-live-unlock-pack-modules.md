@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **8 / 9** acceptance |
-| **Current slice** | Pack JS owns resolve; host is opaque crack runtime only ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T01) · smoke ⬜ |
+| **Progress** | **4 / 4** components · **12 / 13** acceptance |
+| **Current slice** | Opaque `runUnlock` + pack sugar ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md)) · A09 smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,9 +42,20 @@
 
 ---
 
+## Acceptance (opaque runner)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 10 | R99-A10 | Host exposes only `ctx.live.runUnlock` — no goat/gasm/sportsembed bridge names in Dart injection | ✅ |
+| 11 | R99-A11 | Pack prelude installs goatUnlock/gasmUnlock/sportsEmbedUnlock sugar + recipe `files[]` | ✅ |
+| 12 | R99-A12 | Unlock files resolve via calling `packSourceUrl` + relative paths (no goat bundle discovery) | ✅ |
+| 13 | R99-A13 | Host playback path does not hardcode sportsembed/wfty Referer — pack resolve owns headers | ✅ |
+
+---
+
 ## Summary
 
-GOAT / GASM / sportsembed **crack algorithms and WASM** live in the **live pack** (`plugins/live/goat|gasm|sportsembed`). Pack JS owns `/fetch` + resolve (`streamed.js` / `ppv.js` / `watchfooty.js` + `embed-st.js`). The Flutter host keeps only the opaque unlock **runtime** (Node + happy-dom, off-screen WebView, serialize cracks) and bridges (`ctx.live.goatUnlock` / `gasmUnlock` / `sportsEmbedUnlock`).
+GOAT / GASM / sportsembed **crack algorithms and WASM** live in the pack. Pack JS owns `/fetch` + resolve + unlock sugar (`ensureLiveUnlockApi` → `goatUnlock` / … via `files[]`). The Flutter host keeps only the opaque unlock **runtime** (`ctx.live.runUnlock` → Node / WebView) and stages pack-relative files from the **calling** pack.
 
 Do **not** put streamed/ppv/watchfooty resolve switches back in Dart ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T01).
 
@@ -54,9 +65,9 @@ Pack update can ship a new `lock.wasm` / `unlock.mjs` without an app release. Ap
 
 | Layer | Owns |
 |-------|------|
-| Host | Node/WebView runner, npm once, WebView crack protocol, opaque `ctx.live.*` bridges |
-| Pack | `goat/`, `gasm/`, `sportsembed/` trees listed in `bundle`; `/fetch` + resolve JS |
-| Plugin JS | Slot parse, CDN probe, headers, `directPlayback`, call `ctx.live.*` |
+| Host | Node/WebView runner, npm once, WebView crack protocol, opaque `ctx.live.runUnlock` |
+| Pack | Unlock trees in `bundle`; `/fetch` + resolve JS; sugar APIs + recipe `files[]` |
+| Plugin JS | Slot parse, CDN probe, headers, `directPlayback`, call pack sugar / `runUnlock` |
 
 ### Related
 

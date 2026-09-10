@@ -270,6 +270,7 @@ class _SettingsForjaPacksSectionState
       final rows = <Widget>[];
       for (final pack in kindPacks) {
         final update = packUpdates.forPack(pack.sourceUrl);
+        final deprecated = packUpdates.isDeprecated(pack.sourceUrl);
         rows.add(
           FutureBuilder<PackDeviceSnapshot>(
             future: resolvePackDeviceState(
@@ -330,6 +331,7 @@ class _SettingsForjaPacksSectionState
                       pack: pack,
                       plugins: liveSportPlugins,
                       update: update,
+                      deprecated: deprecated,
                       onHeaderActivate: () => unawaited(
                         _togglePackEnabled(pack, enabled: !pack.enabled),
                       ),
@@ -353,6 +355,7 @@ class _SettingsForjaPacksSectionState
                       groupOrder: EngineCategories.groupOrderFor(panelPlugins),
                       installProgress: installProgress,
                       update: update,
+                      deprecated: deprecated,
                       onHeaderActivate: () => unawaited(
                         _togglePackEnabled(pack, enabled: !pack.enabled),
                       ),

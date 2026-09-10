@@ -961,16 +961,13 @@ abstract final class LiveResolveStreams {
     final skipReuse =
         forceRefresh || (ready && iptvLiveEngineUrlVolatile(embed));
     if (ready && !skipReuse) {
-      final headers = LiveGoatUnlock.withWftyPlaybackReferer(
-        embed,
-        stream.resolvedHeaders ??
+      final headers = stream.resolvedHeaders ??
             _liveEmbedStreamHeaders(
               embed,
               catalogReferer: match.isForjaLive
                   ? _forjaLiveCdnReferer(embed)
                   : null,
-            ),
-      );
+            );
       final direct = liveEngineOpenDirect(
         embed,
         pluginDirect: stream.directPlayback,
@@ -1007,17 +1004,14 @@ abstract final class LiveResolveStreams {
 
     if (embed.isNotEmpty &&
         RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      final headers = LiveGoatUnlock.withWftyPlaybackReferer(
-        embed,
-        iframeCatalog
+      final headers = iframeCatalog
             ? _tokenizedEmbedStreamHeaders(embed)
             : _liveEmbedStreamHeaders(
                 embed,
                 catalogReferer: match.isForjaLive
                     ? _forjaLiveCdnReferer(embed)
                     : null,
-              ),
-      );
+              );
       final direct = liveEngineOpenDirect(embed);
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
@@ -1067,9 +1061,7 @@ abstract final class LiveResolveStreams {
       return null;
     }
 
-    final headers = LiveGoatUnlock.withWftyPlaybackReferer(
-      result.url,
-      result.headers.isNotEmpty
+    final headers = result.headers.isNotEmpty
           ? result.headers
           : iframeCatalog
               ? _tokenizedEmbedStreamHeaders(
@@ -1078,8 +1070,7 @@ abstract final class LiveResolveStreams {
               : _liveEmbedStreamHeaders(
                   result.url,
                   catalogReferer: catalogReferer,
-                ),
-    );
+                );
     final direct = liveEngineOpenDirect(
       result.url,
       pluginDirect: result.directPlayback,
@@ -1249,11 +1240,7 @@ abstract final class LiveResolveStreams {
   static String? _forjaLiveCdnReferer(String embedUrl) {
     final uri = Uri.tryParse(embedUrl.trim());
     if (uri == null || uri.host.isEmpty) return null;
-    final host = uri.host.toLowerCase();
-    if (host.contains('wfty.st')) {
-      return LiveGoatUnlock.sportsEmbedRefererFromWftyPlaylist(embedUrl) ??
-          'https://sportsembed.su/';
-    }
+    // Pack resolve owns playback Referer/Origin (incl. sportsembed ↔ wfty).
     return '${uri.origin}/';
   }
 

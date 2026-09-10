@@ -7,17 +7,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/engine/live/live_goat_webview_unlock.dart';
 import 'package:forja/shared/engine/live/live_gasm_webview_unlock.dart';
-import 'package:forja/shared/engine/live/live_unlock_modules.dart';
+import 'package:forja/shared/engine/live/pack_unlock_files.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// Opaque host crack runtime for live packs (`ctx.live.goatUnlock` /
-/// `gasmUnlock` / `sportsEmbedUnlock` / sniff).
+/// Opaque Node/WebView unlock runtime.
 ///
-/// Packs own `/fetch` + resolve orchestration. This class runs Node/WebView
-/// WASM decrypt (and sportsembed unlock) only — crack scripts come from the
-/// live pack ([LiveUnlockModules]).
+/// Packs own crack scripts, paths, and hosts. This class only runs Node /
+/// WebView against pack-relative files from [LiveUnlockScope].
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
@@ -583,22 +581,30 @@ class LiveGoatUnlock {
   }
 
   static Future<void> _refreshGoatAssets(String dir) async {
-    await _writeModule(
-      LiveUnlockModules.goat,
-      'unlock.mjs',
-      File('$dir/unlock.mjs'),
-    );
-    await _writeModule(
-      LiveUnlockModules.goat,
-      'vendor/lock.wasm',
-      File('$dir/vendor/lock.wasm'),
-    );
-    await _writeModule(
-      LiveUnlockModules.goat,
-      'vendor/lock-esm.mjs',
-      File('$dir/vendor/lock-esm.mjs'),
-    );
-    debugPrint('[LiveGoatUnlock] refreshed goat modules → $dir');
+    await _stageRecipeFiles(dir);
+    debugPrint('[LiveUnlock] refreshed node modules → $dir');
+  }
+
+  /// Stage pack-relative recipe files into [dir]. Pack sugar supplies the map.
+  static Future<void> _stageRecipeFiles(String dir) async {
+    final files = LiveUnlockScope.recipeFiles;
+    if (files == null || files.isEmpty) {
+      throw StateError('live unlock: pack recipe files missing');
+    }
+    for (final f in files) {
+      final to = f.to.replaceAll('\\', '/').replaceFirst(RegExp(r'^/+'), '');
+      if (to.isEmpty) continue;
+      await _writePackFile(f.from, File('$dir/$to'));
+    }
+  }
+
+  static Future<void> _refreshGasmAssets(String dir) async {
+    await _stageRecipeFiles(dir);
+    _gasmAssetsWritten = true;
+  }
+
+  static Future<void> _refreshSportsEmbedAssets(String dir) async {
+    await _stageRecipeFiles(dir);
   }
 
   static Future<void> _prepareGoatDir(String node) async {
@@ -618,15 +624,10 @@ class LiveGoatUnlock {
     await dir.create(recursive: true);
 
     await _refreshGoatAssets(dir.path);
-    await _writeModule(
-      LiveUnlockModules.goat,
-      'package.json',
-      File('${dir.path}/package.json'),
-    );
 
     final npm = await _findNpmBinary();
     if (npm == null) {
-      throw StateError('npm not found (needed once for GOAT unlock deps)');
+      throw StateError('npm not found (needed once for unlock deps)');
     }
     final install = await Process.run(
       npm,
@@ -670,42 +671,6 @@ class LiveGoatUnlock {
     return dir;
   }
 
-  static Future<void> _refreshGasmAssets(String dir) async {
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'unlock.mjs',
-      File('$dir/unlock.mjs'),
-    );
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'sniff.mjs',
-      File('$dir/sniff.mjs'),
-    );
-    // Ref pair (ppv-hls-stream-resolver) — offsets in unlock.mjs match this wasm.
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'vendor/gasm.wasm',
-      File('$dir/vendor/gasm.wasm'),
-    );
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'vendor/gasm.js',
-      File('$dir/vendor/gasm.js'),
-    );
-    // Live embedindia pair (fallback).
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'vendor/gasm-live.wasm',
-      File('$dir/vendor/gasm-live.wasm'),
-    );
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'vendor/gasm-esm.mjs',
-      File('$dir/vendor/gasm-esm.mjs'),
-    );
-    _gasmAssetsWritten = true;
-  }
-
   static Future<void> _prepareGasmDir(String node) async {
     final support = await getApplicationSupportDirectory();
     // v3: pin happy-dom@20.11.6 and drop --prefer-offline (v2 hit ETARGET offline).
@@ -714,11 +679,6 @@ class LiveGoatUnlock {
 
     // Always overwrite unlock/wasm from the pack (script changes often).
     await _refreshGasmAssets(dir.path);
-    await _writeModule(
-      LiveUnlockModules.gasm,
-      'package.json',
-      File('${dir.path}/package.json'),
-    );
 
     final depsReady = File('${dir.path}/node_modules/happy-dom/package.json');
     if (!await depsReady.exists()) {
@@ -783,13 +743,9 @@ class LiveGoatUnlock {
     return null;
   }
 
-  static Future<void> _writeModule(
-    String module,
-    String relative,
-    File out,
-  ) =>
-      LiveUnlockModules.writeTo(
-        module: module,
+  static Future<void> _writePackFile(String relative, File out) =>
+      PackUnlockFiles.writeTo(
+        packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
         relative: relative,
         dest: out,
       );
@@ -811,19 +767,6 @@ class LiveGoatUnlock {
       throw StateError('sportsembed unlock runtime failed to initialize');
     }
     return dir;
-  }
-
-  static Future<void> _refreshSportsEmbedAssets(String dir) async {
-    await _writeModule(
-      LiveUnlockModules.sportsembed,
-      'unlock.mjs',
-      File('$dir/unlock.mjs'),
-    );
-    await _writeModule(
-      LiveUnlockModules.sportsembed,
-      'vendor/stream-lock.wasm',
-      File('$dir/vendor/stream-lock.wasm'),
-    );
   }
 
   static Future<void> _prepareSportsEmbedDir() async {

@@ -78,6 +78,62 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
   }
 }
 
+/// Pack name + optional deprecated tag when the manifest URL is gone.
+class SettingsEnginePackTitle extends StatelessWidget {
+  const SettingsEnginePackTitle({
+    super.key,
+    required this.name,
+    this.deprecated = false,
+  });
+
+  final String name;
+  final bool deprecated;
+
+  static const _deprecatedRed = Color(0xFFF87171);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            name,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: deprecated
+                  ? _deprecatedRed
+                  : ForjaShellColors.textPrimary,
+            ),
+          ),
+        ),
+        if (deprecated) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _deprecatedRed.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: _deprecatedRed.withValues(alpha: 0.45),
+              ),
+            ),
+            child: const Text(
+              'deprecated',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+                color: _deprecatedRed,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Version line under each installed pack row.
 class SettingsEnginePackVersionLine extends StatelessWidget {
   const SettingsEnginePackVersionLine({

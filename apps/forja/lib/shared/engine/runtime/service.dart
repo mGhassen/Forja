@@ -7,7 +7,6 @@ import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
-import 'package:forja/shared/engine/live/live_goat_unlock.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -209,20 +208,37 @@ class EngineService {
   Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
   /// Check installed packs against remote manifests (no install).
-  Future<Map<String, EnginePackUpdateInfo>> checkPackUpdates(
+  Future<EnginePackRemoteCheck> checkPackUpdates(
     List<EnginePack> packs,
   ) async {
-    final out = <String, EnginePackUpdateInfo>{};
+    final updates = <String, EnginePackUpdateInfo>{};
+    final deprecated = <String>{};
     await Future.wait([
       for (final pack in packs)
         () async {
           if (pack.plugins.isEmpty) return;
           if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) return;
-          final info = await PluginRegistry.instance.peekRemoteUpdate(pack);
-          if (info != null) out[pack.sourceUrl] = info;
+          final peek =
+              await PluginRegistry.instance.peekRemoteManifest(pack.sourceUrl);
+          if (peek.gone) {
+            deprecated.add(pack.sourceUrl);
+            return;
+          }
+          final remoteVer = peek.version;
+          if (remoteVer == null) return;
+          if (compareEngineSemver(remoteVer, pack.version) <= 0) return;
+          updates[pack.sourceUrl] = EnginePackUpdateInfo(
+            sourceUrl: pack.sourceUrl,
+            packName: pack.name,
+            installedVersion: pack.version,
+            remoteVersion: remoteVer,
+          );
         }(),
     ]);
-    return out;
+    return EnginePackRemoteCheck(
+      updates: updates,
+      deprecatedUrls: deprecated,
+    );
   }
 
   /// Settings list — prefs first (instant), ensure/hydrate in background.
@@ -538,6 +554,7 @@ class EngineService {
           action: action,
           params: catalogCtx,
           config: config,
+          packSourceUrl: hit.pack.sourceUrl,
           timeout: timeout,
           isCancelled: () => gen != _catalogGeneration,
         );
@@ -1103,6 +1120,7 @@ class EngineService {
           action: 'resolve',
           params: params,
           config: config,
+          packSourceUrl: hit.pack.sourceUrl,
           timeout: timeout,
           isCancelled: () => gen != _extractGeneration,
         );
@@ -1228,6 +1246,7 @@ class EngineService {
           pluginName: catalogPlugin.name,
           action: 'catalog',
           config: config,
+          packSourceUrl: hit?.pack.sourceUrl,
           timeout: catalogTimeout,
           isCancelled: () => gen != _liveCatalogGeneration,
         );
@@ -1359,27 +1378,10 @@ class EngineService {
     final out = <Map<String, dynamic>>[];
     for (final row in raw) {
       if (row['goatPending'] == true) {
-        final slotRaw = row['slot'];
-        final slot = slotRaw is Map
-            ? Map<String, dynamic>.from(slotRaw)
-            : <String, dynamic>{};
-        final url = await LiveGoatUnlock.unlock(
-          slot: slot,
-          goat: (row['goat'] ?? '').toString(),
-          bodyHex: (row['bodyHex'] ?? '').toString(),
+        // EngineJS pending path has no pack recipe — skip (flutter_js unlock owns cracks).
+        debugPrint(
+          '[EngineService] goatPending ignored without pack unlock scope',
         );
-        if (url == null || url.isEmpty) continue;
-        final headers = <String, dynamic>{};
-        final h = row['headers'];
-        if (h is Map) {
-          h.forEach((k, v) => headers[k.toString()] = v);
-        }
-        final headerStr = <String, String>{};
-        headers.forEach((k, v) => headerStr[k] = v.toString());
-        if (!await LiveGoatUnlock.probePlayableM3u8(url, headerStr)) {
-          continue;
-        }
-        out.add({'url': url, 'headers': headers});
         continue;
       }
       if (row['sniffPending'] == true) {

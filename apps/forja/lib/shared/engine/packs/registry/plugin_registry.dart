@@ -140,7 +140,7 @@ class PluginRegistry {
     final file = _asLocalFile(url);
     if (file != null) {
       if (!await file.exists()) {
-        throw Exception('file not found: ${file.path}');
+        throw ManifestGoneException(url);
       }
       return file.readAsBytes();
     }
@@ -148,6 +148,9 @@ class PluginRegistry {
       const Duration(seconds: 45),
       onTimeout: () => throw TimeoutException('plugin fetch $url'),
     );
+    if (resp.statusCode == 404 || resp.statusCode == 410) {
+      throw ManifestGoneException(url, statusCode: resp.statusCode);
+    }
     if (resp.statusCode != 200) {
       throw Exception('HTTP ${resp.statusCode}');
     }
@@ -855,23 +858,41 @@ class PluginRegistry {
     }
   }
 
-  /// Fetch manifest `version` without installing (Settings update badge).
-  Future<String?> peekRemoteVersion(String manifestUrl) async {
+  /// Peek remote manifest without installing.
+  ///
+  /// [gone] is true only when the URL is missing (HTTP 404/410 or local file
+  /// gone). Network / parse failures leave [gone] false and [version] null.
+  Future<({String? version, bool gone})> peekRemoteManifest(
+    String manifestUrl,
+  ) async {
     try {
       final body = await _fetchText(manifestUrl);
       final map = jsonDecode(body);
-      if (map is! Map) return null;
+      if (map is! Map) return (version: null, gone: false);
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
-      return remoteVer.isEmpty ? null : remoteVer;
+      return (
+        version: remoteVer.isEmpty ? null : remoteVer,
+        gone: false,
+      );
+    } on ManifestGoneException catch (e) {
+      debugPrint('[engine] remote manifest gone ($manifestUrl): $e');
+      return (version: null, gone: true);
     } catch (e) {
       debugPrint('[engine] peek remote version failed ($manifestUrl): $e');
-      return null;
+      return (version: null, gone: false);
     }
+  }
+
+  /// Fetch manifest `version` without installing (Settings update badge).
+  Future<String?> peekRemoteVersion(String manifestUrl) async {
+    final peek = await peekRemoteManifest(manifestUrl);
+    return peek.version;
   }
 
   /// Returns update info when the remote manifest version is newer.
   Future<EnginePackUpdateInfo?> peekRemoteUpdate(EnginePack local) async {
-    final remoteVer = await peekRemoteVersion(local.sourceUrl);
+    final peek = await peekRemoteManifest(local.sourceUrl);
+    final remoteVer = peek.version;
     if (remoteVer == null) return null;
     if (compareEngineSemver(remoteVer, local.version) <= 0) return null;
     return EnginePackUpdateInfo(

@@ -599,17 +599,22 @@ final enginePacksProvider =
 class EnginePackUpdatesState {
   const EnginePackUpdatesState({
     this.updates = const {},
+    this.deprecatedUrls = const {},
     this.checking = false,
     this.lastChecked,
   });
 
   final Map<String, EnginePackUpdateInfo> updates;
+  /// Manifest URLs that returned 404/410 (or local file missing).
+  final Set<String> deprecatedUrls;
   final bool checking;
   final DateTime? lastChecked;
 
   int get count => updates.length;
 
   EnginePackUpdateInfo? forPack(String sourceUrl) => updates[sourceUrl];
+
+  bool isDeprecated(String sourceUrl) => deprecatedUrls.contains(sourceUrl);
 }
 
 final enginePackUpdatesProvider =
@@ -637,14 +642,16 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
     final current = stateOrNull ?? const EnginePackUpdatesState();
     state = EnginePackUpdatesState(
       updates: current.updates,
+      deprecatedUrls: current.deprecatedUrls,
       checking: true,
       lastChecked: current.lastChecked,
     );
     try {
-      final updates = await EngineService.instance.checkPackUpdates(packs);
+      final result = await EngineService.instance.checkPackUpdates(packs);
       if (!identical(_checkToken, token)) return;
       state = EnginePackUpdatesState(
-        updates: updates,
+        updates: result.updates,
+        deprecatedUrls: result.deprecatedUrls,
         checking: false,
         lastChecked: DateTime.now(),
       );
@@ -653,6 +660,7 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       final latest = stateOrNull ?? current;
       state = EnginePackUpdatesState(
         updates: latest.updates,
+        deprecatedUrls: latest.deprecatedUrls,
         checking: false,
         lastChecked: latest.lastChecked,
       );
@@ -670,6 +678,7 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       ..remove(sourceUrl);
     state = EnginePackUpdatesState(
       updates: next,
+      deprecatedUrls: state.deprecatedUrls,
       checking: state.checking,
       lastChecked: state.lastChecked,
     );

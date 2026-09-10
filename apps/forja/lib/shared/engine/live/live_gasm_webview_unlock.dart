@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/engine/live/live_unlock_modules.dart';
+import 'package:forja/shared/engine/live/pack_unlock_files.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -190,9 +190,9 @@ class LiveGasmWebviewUnlock {
   Future<void> _syncCrackAsset() async {
     final dir = _dir;
     if (dir == null) return;
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.gasm,
-      relative: 'webview/crack.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/webview/crack.js',
       dest: File('${dir.path}/crack.js'),
     );
   }
@@ -435,35 +435,35 @@ class LiveGasmWebviewUnlock {
     await dir.create(recursive: true);
     await Directory('${dir.path}/vendor').create(recursive: true);
 
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.gasm,
-      relative: 'webview/crack.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/webview/crack.js',
       dest: File('${dir.path}/crack.js'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.gasm,
-      relative: 'vendor/gasm.wasm',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/vendor/gasm.wasm',
       dest: File('${dir.path}/vendor/gasm.wasm'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.gasm,
-      relative: 'vendor/gasm.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/vendor/gasm.js',
       dest: File('${dir.path}/vendor/gasm.js'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.gasm,
-      relative: 'vendor/gasm-live.wasm',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/vendor/gasm-live.wasm',
       dest: File('${dir.path}/vendor/gasm-live.wasm'),
     );
-    await LiveUnlockModules.writeTo(
-      module: LiveUnlockModules.goat,
-      relative: 'vendor/big-integer.min.js',
+    await PackUnlockFiles.writeTo(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'goat/vendor/big-integer.min.js',
       dest: File('${dir.path}/vendor/big-integer.min.js'),
     );
 
-    final gasmEsmBytes = await LiveUnlockModules.loadBytes(
-      module: LiveUnlockModules.gasm,
-      relative: 'vendor/gasm-esm.mjs',
+    final gasmEsmBytes = await PackUnlockFiles.loadBytes(
+      packSourceUrl: LiveUnlockScope.requirePackSourceUrl(),
+      relative: 'gasm/vendor/gasm-esm.mjs',
     );
     final browser = _stripNodePreamble(utf8.decode(gasmEsmBytes));
     await File('${dir.path}/vendor/gasm-browser.mjs').writeAsString(browser);

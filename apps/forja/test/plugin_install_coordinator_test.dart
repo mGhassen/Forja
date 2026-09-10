@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
@@ -603,6 +604,74 @@ void main() {
     expect(update, isNotNull);
     expect(update!.installedVersion, '1.6.0');
     expect(update.remoteVersion, '1.7.0');
+  });
+
+  test('peekRemoteManifest marks gone when local file missing', () async {
+    final missing = '${Directory.systemTemp.path}/no_such_pack_manifest.json';
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      PluginRegistry.packsPrefsKey: jsonEncode([
+        {
+          'sourceUrl': missing,
+          'packId': 'gone-local',
+          'name': 'Gone Local',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+    });
+
+    final packs = await registry.listPacksRaw();
+    final peek = await registry.peekRemoteManifest(packs.first.sourceUrl);
+    expect(peek.gone, isTrue);
+    expect(peek.version, isNull);
+  });
+
+  test('peekRemoteManifest marks gone on HTTP 404', () async {
+    const url = 'https://coord.example/gone/manifest.json';
+    registry.debugHttpClient = MockClient((req) async {
+      expect(req.url.toString(), url);
+      return http.Response('not found', 404);
+    });
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      PluginRegistry.packsPrefsKey: jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'gone-remote',
+          'name': 'Gone Remote',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+    });
+
+    final packs = await registry.listPacksRaw();
+    final peek = await registry.peekRemoteManifest(packs.first.sourceUrl);
+    expect(peek.gone, isTrue);
+    expect(peek.version, isNull);
+
+    final check = await EngineService.instance.checkPackUpdates(packs);
+    expect(check.deprecatedUrls, contains(url));
+    expect(check.updates, isEmpty);
   });
 
   test('ensureAllInstalled silent-downloads new lean stubs', () async {

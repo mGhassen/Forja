@@ -2,6 +2,7 @@ library;
 
 export 'hub/catalog_extract_context.dart';
 export 'live/live_goat_unlock.dart';
+export 'live/pack_unlock_files.dart';
 export 'live/live_sport_capabilities.dart';
 export 'models/categories.dart';
 export 'models/ids.dart';

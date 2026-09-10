@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
 import 'package:forja/shared/engine/lists/my_list_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_goat_unlock.dart';
+import 'package:forja/shared/engine/live/pack_unlock_files.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -157,6 +158,33 @@ class EngineRuntime {
       } catch (_) {}
     }
     return {};
+  }
+
+  /// Pack unlock recipe: `{from,to}` maps, or `goat/unlock.mjs` → strip first segment.
+  static List<({String from, String to})> _parseLiveUnlockFiles(dynamic raw) {
+    if (raw is! List) return const [];
+    final out = <({String from, String to})>[];
+    for (final e in raw) {
+      if (e is Map) {
+        final from = (e['from'] ?? '').toString().trim();
+        var to = (e['to'] ?? '').toString().trim();
+        if (from.isEmpty) continue;
+        if (to.isEmpty) {
+          final parts = from.replaceAll('\\', '/').split('/')
+            ..removeWhere((p) => p.isEmpty);
+          to = parts.length > 1 ? parts.sublist(1).join('/') : parts.last;
+        }
+        out.add((from: from, to: to));
+        continue;
+      }
+      final from = e.toString().trim();
+      if (from.isEmpty) continue;
+      final parts = from.replaceAll('\\', '/').split('/')
+        ..removeWhere((p) => p.isEmpty);
+      final to = parts.length > 1 ? parts.sublist(1).join('/') : parts.last;
+      out.add((from: from, to: to));
+    }
+    return out;
   }
 
   void _registerBridges(JavascriptRuntime rt) {
@@ -367,62 +395,51 @@ class EngineRuntime {
       }
     });
 
-    br('LiveGoatUnlock', (args) async {
+    br('LiveRunUnlock', (args) async {
       try {
         final m = _bridgeMap(args);
+        final packUrl = (m['packSourceUrl'] ?? '').toString().trim();
+        final files = _parseLiveUnlockFiles(m['files']);
+        final kind = (m['kind'] ?? '').toString().trim().toLowerCase();
         final slotRaw = m['slot'];
         final slot = slotRaw is Map
             ? Map<String, dynamic>.from(slotRaw)
             : <String, dynamic>{};
-        final url = await LiveGoatUnlock.unlock(
-          slot: slot,
-          goat: (m['goat'] ?? '').toString(),
-          bodyHex: (m['bodyHex'] ?? '').toString(),
+        return await LiveUnlockScope.runWithPack(
+          packUrl.isEmpty ? LiveUnlockScope.packSourceUrl : packUrl,
+          files: files,
+          () async {
+            switch (kind) {
+              case 'goat':
+                return await LiveGoatUnlock.unlock(
+                      slot: slot,
+                      goat: (m['goat'] ?? '').toString(),
+                      bodyHex: (m['bodyHex'] ?? '').toString(),
+                    ) ??
+                    '';
+              case 'gasm':
+                return await LiveGoatUnlock.unlockGasm(
+                      slot: slot,
+                      island: (m['island'] ?? '').toString(),
+                      bodyHex: (m['bodyHex'] ?? '').toString(),
+                    ) ??
+                    '';
+              case 'sportsembed':
+                final hit = await LiveGoatUnlock.resolveSportsEmbed(
+                  embedUrl: (m['embedUrl'] ?? m['url'] ?? '').toString(),
+                );
+                return hit?.url ?? '';
+              case 'sniff':
+                return await LiveGoatUnlock.sniffEmbed(
+                      embedUrl: (m['url'] ?? m['embedUrl'] ?? '').toString(),
+                      referer: (m['referer'] ?? '').toString(),
+                    ) ??
+                    '';
+              default:
+                return '';
+            }
+          },
         );
-        return url ?? '';
-      } catch (_) {
-        return '';
-      }
-    });
-
-    br('LiveGasmUnlock', (args) async {
-      try {
-        final m = _bridgeMap(args);
-        final slotRaw = m['slot'];
-        final slot = slotRaw is Map
-            ? Map<String, dynamic>.from(slotRaw)
-            : <String, dynamic>{};
-        final url = await LiveGoatUnlock.unlockGasm(
-          slot: slot,
-          island: (m['island'] ?? '').toString(),
-          bodyHex: (m['bodyHex'] ?? '').toString(),
-        );
-        return url ?? '';
-      } catch (_) {
-        return '';
-      }
-    });
-
-    br('LiveSportsEmbedUnlock', (args) async {
-      try {
-        final m = _bridgeMap(args);
-        final url = await LiveGoatUnlock.resolveSportsEmbed(
-          embedUrl: (m['embedUrl'] ?? m['url'] ?? '').toString(),
-        );
-        return url?.url ?? '';
-      } catch (_) {
-        return '';
-      }
-    });
-
-    br('LiveSniffEmbed', (args) async {
-      try {
-        final m = _bridgeMap(args);
-        final url = await LiveGoatUnlock.sniffEmbed(
-          embedUrl: (m['url'] ?? m['embedUrl'] ?? '').toString(),
-          referer: (m['referer'] ?? '').toString(),
-        );
-        return url ?? '';
       } catch (_) {
         return '';
       }
@@ -693,6 +710,7 @@ class EngineRuntime {
     required String action,
     Map<String, dynamic> params = const {},
     Map<String, dynamic> config = const {},
+    String? packSourceUrl,
     Duration timeout = const Duration(seconds: 45),
     bool Function()? isCancelled,
   }) {
@@ -706,21 +724,24 @@ class EngineRuntime {
         }
         _loadPluginUnlocked(pluginId, code);
       }
-      return _extractUnlocked(
-        pluginId: pluginId,
-        pluginName: pluginName,
-        tmdbId: '',
-        type: 'live',
-        config: config,
-        timeout: timeout,
-        allowHostFallback: false,
-        isCancelled: isCancelled,
-        extraCtx: {
-          'action': action,
-          'pluginId': pluginId,
-          ...params,
-        },
-      );
+      return LiveUnlockScope.runWithPack(packSourceUrl, () {
+        return _extractUnlocked(
+          pluginId: pluginId,
+          pluginName: pluginName,
+          tmdbId: '',
+          type: 'live',
+          config: config,
+          timeout: timeout,
+          allowHostFallback: false,
+          isCancelled: isCancelled,
+          extraCtx: {
+            'action': action,
+            'pluginId': pluginId,
+            'packSourceUrl': (packSourceUrl ?? '').trim(),
+            ...params,
+          },
+        );
+      });
     });
   }
 
@@ -996,31 +1017,12 @@ class EngineRuntime {
     embedUrl: meta.embedUrl || '',
     category: meta.category || '',
     pluginId: meta.pluginId || '',
+    packSourceUrl: meta.packSourceUrl || '',
     live: {
-      goatUnlock: function(bodyHex, goat, slot) {
-        return sendMessage('LiveGoatUnlock', JSON.stringify({
-          bodyHex: String(bodyHex == null ? '' : bodyHex),
-          goat: String(goat == null ? '' : goat),
-          slot: slot || {}
-        })) || '';
-      },
-      gasmUnlock: function(bodyHex, island, slot) {
-        return sendMessage('LiveGasmUnlock', JSON.stringify({
-          bodyHex: String(bodyHex == null ? '' : bodyHex),
-          island: String(island == null ? '' : island),
-          slot: slot || {}
-        })) || '';
-      },
-      sportsEmbedUnlock: function(embedUrl) {
-        return sendMessage('LiveSportsEmbedUnlock', JSON.stringify({
-          embedUrl: String(embedUrl == null ? '' : embedUrl)
-        })) || '';
-      },
-      sniffEmbed: function(url, referer) {
-        return sendMessage('LiveSniffEmbed', JSON.stringify({
-          url: String(url == null ? '' : url),
-          referer: String(referer == null ? '' : referer)
-        })) || '';
+      runUnlock: function(spec) {
+        spec = spec || {};
+        if (!spec.packSourceUrl) spec.packSourceUrl = meta.packSourceUrl || '';
+        return sendMessage('LiveRunUnlock', JSON.stringify(spec)) || '';
       }
     },
     log: function(msg) {
@@ -1175,6 +1177,9 @@ class EngineRuntime {
     }),
     streamcrypto: { decrypt: streamDecrypt }
   };
+  if (typeof globalThis.__forjaEnsureLiveUnlock === 'function') {
+    try { globalThis.__forjaEnsureLiveUnlock(ctx); } catch (e) {}
+  }
   Promise.resolve()
     .then(function(){ return fn(ctx); })
     .then(function(r){

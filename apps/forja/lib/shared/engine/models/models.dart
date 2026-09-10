@@ -588,6 +588,34 @@ class EnginePackUpdateInfo {
   final String remoteVersion;
 }
 
+/// Manifest URL returned 404/410 (or local file missing).
+class ManifestGoneException implements Exception {
+  ManifestGoneException(this.url, {this.statusCode});
+
+  final String url;
+  final int? statusCode;
+
+  @override
+  String toString() => statusCode == null
+      ? 'ManifestGoneException($url)'
+      : 'ManifestGoneException($url, HTTP $statusCode)';
+}
+
+/// Result of peeking installed packs against remote manifests.
+@immutable
+class EnginePackRemoteCheck {
+  const EnginePackRemoteCheck({
+    this.updates = const {},
+    this.deprecatedUrls = const {},
+  });
+
+  final Map<String, EnginePackUpdateInfo> updates;
+  /// Source URLs whose remote (or local) manifest no longer exists.
+  final Set<String> deprecatedUrls;
+
+  bool isDeprecated(String sourceUrl) => deprecatedUrls.contains(sourceUrl);
+}
+
 /// Compare semver-ish `a.b.c` strings. Returns negative if [a] < [b].
 int compareEngineSemver(String a, String b) {
   List<int> parts(String s) {

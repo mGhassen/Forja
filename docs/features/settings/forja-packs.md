@@ -20,6 +20,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 - **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack with **OK / click on the row** (switch chrome on the row); the **chevron** expands for per-plugin toggles (Providers, Live, Hubs, Torrent, …). Desktop ExpansionTile still expands on header tap with the switch in the trailing actions.
+- When a pack’s manifest URL is gone (HTTP 404/410), the pack name turns red with a **deprecated** tag — scripts on disk still work until you remove the pack
 - **Refresh** or **Remove** from the same right-side actions (Remove also drops hub tabs from **Features** / the navbar, and drops the pack from your cloud profile on the next sync)
 - When signed in, cloud sync remaps official pack install URLs if the published catalog moved them (same pack slot, new host) — Settings shows the new URL and re-downloads scripts. A local packs checkout on this machine is kept as-is.
 - See badges for **Pending download** when a pack is still hydrating, or **Removed from profile** when cloud dropped it — **Download** / **Uninstall now** from the row when needed. If a pending row still shows a local file path from another device, **Download** fetches the official pack instead; use trash to drop it

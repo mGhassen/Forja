@@ -311,13 +311,13 @@ class PluginInstallCoordinator {
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
-      final updates = await EngineService.instance.checkPackUpdates(packs);
-      if (updates.isEmpty) return;
+      final check = await EngineService.instance.checkPackUpdates(packs);
+      if (check.updates.isEmpty) return;
       if (_updateToastShownThisSession) return;
       await _waitForSplashDismissed();
       if (_updateToastShownThisSession) return;
       _updateToastShownThisSession = true;
-      final list = updates.values.toList(growable: false);
+      final list = check.updates.values.toList(growable: false);
       final count = list.length;
       final sample = list.first.packName;
       ForjaToast.info(
