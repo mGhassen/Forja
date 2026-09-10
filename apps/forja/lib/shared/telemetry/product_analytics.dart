@@ -116,6 +116,12 @@ abstract final class ProductAnalytics {
   }
 
   static Future<void> _start() async {
+    // Debug `flutter run` must not talk to PostHog (pref may still be on).
+    if (kDebugMode) {
+      debugPrint('[ProductAnalytics] Blocked in debug builds');
+      _active = false;
+      return;
+    }
     if (!isConfigured) {
       debugPrint(
         '[ProductAnalytics] On but POSTHOG_API_KEY empty - no-op',

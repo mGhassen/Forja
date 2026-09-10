@@ -16,8 +16,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
   dialog opens; if you are already on the latest, you get a success toast; if
   the check fails (no network, bad manifest, missing CDN config), you get an
   **error** toast (Forja does not claim you are up to date when the check failed)
-- Toggle **Crash reporting** under **Privacy** (on by default; everyone) — shares crash details so bugs can be fixed; passwords and stream links are not included
-- Toggle **Product analytics** under **Privacy** (on by default; everyone) — shares how you use Forja (screens, playback issues) so the product can improve; When signed in, usage is linked to your account without using your email
+- Toggle **Crash reporting** under **Privacy** (everyone) — shares crash details so bugs can be fixed; passwords and stream links are not included. Preference is saved, but **debug** builds never send to Sentry
+- Toggle **Product analytics** under **Privacy** (everyone) — shares how you use Forja (screens, playback issues) so the product can improve; When signed in, usage is linked to your account without using your email. Preference is saved, but **debug** builds never send to PostHog
 - The **web portal** may also collect anonymous page views when configured — separate from the in-app About toggles
 - On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (admin only; off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
 - Accept update prompt when a newer version exists
@@ -36,7 +36,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 
 ## Tips
 
-- **Crash reporting** and **Product analytics** are under About → Privacy for every account (both on by default). Keychain and debug Developer rows stay **admin**-only. Local builds without reporting keys keep the toggles but send nothing
+- **Crash reporting** and **Product analytics** are under About → Privacy for every account. Keychain and Developer verify rows stay **admin**-only (verify appears in profile/release desktop builds, not debug). Local **debug** builds and builds without reporting keys keep the toggles but send nothing
 - Web portal analytics needs its own `VITE_POSTHOG_KEY` (separate PostHog project from the app); empty key means the site never loads PostHog
 - Published releases (CI on forjahq): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
 - After **New version** on forjahq, CI pushes the `chore: release` commit + tag to origin (`mGhassen/Forja`) when repo secret `ORIGIN_SYNC_TOKEN` is set (optional variable `ORIGIN_SYNC_REPO`). Fallback: `./scripts/release_local.sh sync-from`

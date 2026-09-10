@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **8 / 8** Sentry · **7 / 7** PostHog (app) · **4 / 4** PostHog (web) · **6 / 6** PostHog member identity · **0 / 0** deferred |
-| **Current slice** | Session replay disabled — events/pageviews only |
+| **Progress** | **6 / 6** components · **9 / 9** Sentry · **8 / 8** PostHog (app) · **4 / 4** PostHog (web) · **6 / 6** PostHog member identity · **0 / 0** deferred |
+| **Current slice** | Debug builds hard-block Sentry/PostHog SDK start |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -40,6 +40,7 @@
 | 6 | R43-A06 | Feature doc + changelog | ✅ |
 | 7 | R43-A07 | Release CI passes `SENTRY_DSN` from GitHub secret when set | ✅ |
 | 8 | R43-A08 | Unit tests cover scrub + disabled no-op | ✅ |
+| 9 | R43-A26 | `kDebugMode` → Sentry never inits (pref may stay on; Settings copy explains) | ✅ |
 
 ---
 
@@ -54,6 +55,7 @@
 | 5 | R43-A13 | CI dart-defines `POSTHOG_API_KEY` / `POSTHOG_HOST`; feature doc + changelog | ✅ |
 | 6 | R43-A14 | No Sentry Session Replay (product replay is PostHog) | ✅ |
 | 7 | R43-A24 | Session replay disabled in Flutter app; allowlisted events only when opted in | ✅ |
+| 8 | R43-A27 | `kDebugMode` → PostHog never setups; admin Verify rows only in non-debug desktop | ✅ |
 
 ---
 

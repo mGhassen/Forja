@@ -979,9 +979,10 @@ class SettingsAboutPageBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = ref.watch(accountFeaturesProvider).isAdmin;
+    // Profile/release only — SDKs are hard-blocked in kDebugMode.
     final showDeveloperTools =
         isAdmin &&
-        kDebugMode &&
+        !kDebugMode &&
         (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
     return Column(

@@ -112,6 +112,12 @@ abstract final class Telemetry {
   }
 
   static Future<void> _startCrash() async {
+    // Debug `flutter run` must not talk to Sentry (pref may still be on).
+    if (kDebugMode) {
+      debugPrint('[Telemetry] Crash reporting blocked in debug builds');
+      _crashActive = false;
+      return;
+    }
     if (!isConfigured) {
       debugPrint('[Telemetry] Crash reporting on but SENTRY_DSN empty - no-op');
       _crashActive = false;
@@ -123,7 +129,7 @@ abstract final class Telemetry {
       options.dsn = dsn;
       options.sendDefaultPii = false;
       options.tracesSampleRate = 0;
-      options.environment = kDebugMode ? 'debug' : 'release';
+      options.environment = 'release';
       options.beforeSend = scrubEvent;
       options.beforeBreadcrumb = scrubBreadcrumb;
     });

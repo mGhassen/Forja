@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -102,7 +103,9 @@ class _SettingsCrashReportingRowState
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Crash reporting',
-      subtitle: Telemetry.isConfigured
+      subtitle: kDebugMode
+          ? 'Inactive in debug builds. Your choice is saved for release.'
+          : Telemetry.isConfigured
           ? 'Sends crash details so we can fix bugs. No passwords or stream links.'
           : 'Not available in this build. Your choice is still saved.',
       value: enabled,
@@ -116,7 +119,11 @@ class _SettingsCrashReportingRowState
       await Telemetry.setEnabled(value);
       ref.invalidate(crashReportingEnabledProvider);
       if (!mounted) return;
-      if (value && !Telemetry.isConfigured) {
+      if (value && kDebugMode) {
+        ForjaToast.info(
+          'Saved. Crash reporting stays off in debug builds.',
+        );
+      } else if (value && !Telemetry.isConfigured) {
         ForjaToast.info('Crash reporting is not available in this build yet.');
       } else if (value && Telemetry.isActive) {
         ForjaToast.success('Crash reporting on');
@@ -153,7 +160,9 @@ class _SettingsProductAnalyticsRowState
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Product analytics',
-      subtitle: ProductAnalytics.isConfigured
+      subtitle: kDebugMode
+          ? 'Inactive in debug builds. Your choice is saved for release.'
+          : ProductAnalytics.isConfigured
           ? 'Shares how you use Forja so we can improve it.'
           : 'Not available in this build. Your choice is still saved.',
       value: enabled,
@@ -167,7 +176,11 @@ class _SettingsProductAnalyticsRowState
       await Telemetry.setAnalyticsEnabled(value);
       ref.invalidate(productAnalyticsEnabledProvider);
       if (!mounted) return;
-      if (value && !ProductAnalytics.isConfigured) {
+      if (value && kDebugMode) {
+        ForjaToast.info(
+          'Saved. Product analytics stays off in debug builds.',
+        );
+      } else if (value && !ProductAnalytics.isConfigured) {
         ForjaToast.info('Product analytics is not available in this build yet.');
       } else if (value && ProductAnalytics.isActive) {
         ForjaToast.success('Product analytics on');
