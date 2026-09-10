@@ -49,7 +49,11 @@ bool parseIframeCatalogAlwaysLive(dynamic value) {
 /// PPV `viewers` is often a JSON string (`"99"`), not a number.
 int parseLiveViewerCount(dynamic value) {
   if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value.trim()) ?? 0;
+  if (value is String) {
+    final t = value.trim().replaceAll(',', '');
+    if (t.isEmpty) return 0;
+    return int.tryParse(t) ?? num.tryParse(t)?.toInt() ?? 0;
+  }
   return 0;
 }
 

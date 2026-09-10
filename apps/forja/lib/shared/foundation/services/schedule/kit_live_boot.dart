@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_catalog_filter_sheet.dart';
@@ -157,6 +158,12 @@ abstract final class KitLiveBoot {
         busy: busy,
         label: scrape.isEmpty ? 'Loading live catalogs…' : scrape,
       );
+    };
+    KitTopBarHostHooks.readFeedUpdatedLabel = (ref) {
+      // Rebuild when feed finishes so "Updated …" tracks the last scrape.
+      ref.watch(metaFeedCatalogProvider);
+      final filters = ref.watch(kitScheduleFiltersProvider);
+      return liveFeedSessionUpdatedLabel(filters.catalogFilter);
     };
   }
 

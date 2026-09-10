@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/live/live_feed_merge.dart';
 import 'package:forja/shared/engine/live/live_merge_matching_gate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
+import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 
@@ -46,9 +47,10 @@ const _allCatalogPoolTtl = Duration(minutes: 3);
 /// Unfiltered scrape rows keyed by catalog chip (`all` / normalized plugin id /
 /// `stremio:…`). Status × Horizon / sport / Catalog chip (All → one pack) are
 /// applied client-side — must not re-run every live catalog plugin.
+///
+/// Lives until [clearLiveFeedSessionCache] (Refresh / pack reload) — no TTL.
 final Map<String, ({List<Map<String, dynamic>> rows, DateTime at})>
     _rawFeedByCatalog = {};
-const _rawFeedTtl = Duration(minutes: 5);
 
 String _rawFeedCacheKey(String catalogFilter) {
   final f = catalogFilter.trim();
@@ -57,11 +59,32 @@ String _rawFeedCacheKey(String catalogFilter) {
   return EngineService.normalizeLiveSportPluginId(f);
 }
 
-({List<Map<String, dynamic>> rows, DateTime at})? _rawFeedHit(String key) {
-  final hit = _rawFeedByCatalog[key];
-  if (hit == null) return null;
-  if (DateTime.now().difference(hit.at) > _rawFeedTtl) return null;
-  return hit;
+({List<Map<String, dynamic>> rows, DateTime at})? _rawFeedHit(String key) =>
+    _rawFeedByCatalog[key];
+
+/// Newest session scrape time for this Catalog chip. Null if never scraped.
+DateTime? liveFeedSessionUpdatedAt(String catalogFilter) {
+  final key = _rawFeedCacheKey(catalogFilter);
+  final direct = _rawFeedByCatalog[key];
+  if (direct != null) return direct.at;
+  if (key != 'all') return null;
+  DateTime? newest;
+  for (final e in _rawFeedByCatalog.entries) {
+    if (e.key == 'all' || isLiveStremioCatalogFilter(e.key)) continue;
+    if (newest == null || e.value.at.isAfter(newest)) newest = e.value.at;
+  }
+  return newest;
+}
+
+/// Top-bar copy next to Refresh — e.g. `Updated 3m ago`.
+String? liveFeedSessionUpdatedLabel(String catalogFilter) {
+  final at = liveFeedSessionUpdatedAt(catalogFilter);
+  if (at == null) return null;
+  final d = DateTime.now().difference(at);
+  if (d.inSeconds < 45) return 'Updated just now';
+  if (d.inMinutes < 60) return 'Updated ${d.inMinutes}m ago';
+  if (d.inHours < 24) return 'Updated ${d.inHours}h ago';
+  return 'Updated ${d.inDays}d ago';
 }
 
 /// Drop session scrape cache (Refresh / pack reload).
@@ -76,8 +99,13 @@ Future<List<Map<String, dynamic>>?> tryLiveFeedFromSession(
   LiveFeedQuery query,
 ) async {
   final hit = _rawFeedHit(_rawFeedCacheKey(query.catalogFilter));
-  if (hit == null) return null;
-  return filterLiveFeedRowsAsync(hit.rows, query);
+  if (hit != null) {
+    return filterLiveFeedRowsAsync(hit.rows, query);
+  }
+  // Catalog=All after browsing chips — compose in memory, no re-scrape.
+  final filter = query.catalogFilter.trim();
+  if (filter.isNotEmpty && filter != 'all') return null;
+  return _tryComposeAllFromWarmPlugins(query);
 }
 
 /// Status × Horizon (+ optional same-fixture merge for Catalog = All).
@@ -278,12 +306,69 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     if (composed != null) return composed;
   }
 
+  // Seed warm packs immediately; only network-scrape cold ones.
   final raw = <Map<String, dynamic>>[];
   final seen = <String>{};
-  final total = wanted.length;
+  final cold = <EnginePlugin>[];
   final scrapeAll = filter.isEmpty || filter == 'all';
-  for (var i = 0; i < wanted.length; i++) {
-    final plugin = wanted[i];
+  for (final plugin in wanted) {
+    final pluginKey = _rawFeedCacheKey(
+      EngineService.normalizeLiveSportPluginId(plugin.id),
+    );
+    final warm = !forceRefresh ? _rawFeedHit(pluginKey) : null;
+    if (warm == null) {
+      cold.add(plugin);
+      continue;
+    }
+    for (final row in warm.rows) {
+      final map = Map<String, dynamic>.from(row);
+      final item = liveMetaFromFeedRow(map);
+      if (item.id.isEmpty || !seen.add(item.id)) continue;
+      raw.add(map);
+    }
+  }
+
+  final warmCount = wanted.length - cold.length;
+  if (raw.isNotEmpty || cold.isEmpty) {
+    onPartial?.call(
+      LiveFeedPartial(
+        rows: _filterLiveFeedRows(
+          raw,
+          query,
+          mergeMatching: mergeMatching,
+        ),
+        done: cold.isEmpty,
+        completed: warmCount,
+        total: wanted.length,
+        currentLabel: cold.isEmpty
+            ? null
+            : (cold.first.name.trim().isEmpty
+                ? cold.first.id
+                : cold.first.name.trim()),
+      ),
+    );
+  }
+  if (cold.isEmpty) {
+    _rememberRawFeed(cacheKey, raw);
+    if (scrapeAll) rememberLiveFeedAllCatalogPool(raw);
+    final out = _filterLiveFeedRows(
+      raw,
+      query,
+      mergeMatching: mergeMatching,
+    );
+    onPartial?.call(
+      LiveFeedPartial(
+        rows: List<Map<String, dynamic>>.from(out),
+        done: true,
+        completed: wanted.length,
+        total: wanted.length,
+      ),
+    );
+    return out;
+  }
+
+  for (var i = 0; i < cold.length; i++) {
+    final plugin = cold[i];
     final pluginKey = _rawFeedCacheKey(
       EngineService.normalizeLiveSportPluginId(plugin.id),
     );
@@ -297,35 +382,30 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
           mergeMatching: mergeMatching,
         ),
         done: false,
-        completed: i,
-        total: total,
+        completed: warmCount + i,
+        total: wanted.length,
         currentLabel: label,
       ),
     );
 
     List<Map<String, dynamic>> pluginRows = const [];
-    final warm = !forceRefresh ? _rawFeedHit(pluginKey) : null;
-    if (warm != null) {
-      pluginRows = warm.rows;
-    } else {
-      try {
-        final batch = await EngineService.instance.runLiveFeed(
-          catalogPlugin: plugin,
-        );
-        final collected = <Map<String, dynamic>>[];
-        for (final row in batch) {
-          final map = Map<String, dynamic>.from(row);
-          map.putIfAbsent('pluginId', () => plugin.id);
-          map.putIfAbsent('livePluginId', () => plugin.id);
-          final item = liveMetaFromFeedRow(map);
-          if (item.id.isEmpty) continue;
-          collected.add(map);
-        }
-        pluginRows = collected;
-        _rememberRawFeed(pluginKey, pluginRows);
-      } catch (_) {
-        // Skip failed catalogs — hub UI shows per-plugin errors separately.
+    try {
+      final batch = await EngineService.instance.runLiveFeed(
+        catalogPlugin: plugin,
+      );
+      final collected = <Map<String, dynamic>>[];
+      for (final row in batch) {
+        final map = Map<String, dynamic>.from(row);
+        map.putIfAbsent('pluginId', () => plugin.id);
+        map.putIfAbsent('livePluginId', () => plugin.id);
+        final item = liveMetaFromFeedRow(map);
+        if (item.id.isEmpty) continue;
+        collected.add(map);
       }
+      pluginRows = collected;
+      _rememberRawFeed(pluginKey, pluginRows);
+    } catch (_) {
+      // Skip failed catalogs — hub UI shows per-plugin errors separately.
     }
 
     for (final map in pluginRows) {
@@ -341,8 +421,8 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
           mergeMatching: mergeMatching,
         ),
         done: false,
-        completed: i + 1,
-        total: total,
+        completed: warmCount + i + 1,
+        total: wanted.length,
         currentLabel: label,
       ),
     );
@@ -361,11 +441,25 @@ Future<List<Map<String, dynamic>>> aggregateLiveFeed(
     LiveFeedPartial(
       rows: List<Map<String, dynamic>>.from(out),
       done: true,
-      completed: total,
-      total: total,
+      completed: wanted.length,
+      total: wanted.length,
     ),
   );
   return out;
+}
+
+Future<List<Map<String, dynamic>>?> _tryComposeAllFromWarmPlugins(
+  LiveFeedQuery query,
+) async {
+  await LivePluginEngine.warmPluginMeta();
+  final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
+  if (plugins.isEmpty) return null;
+  final mergeMatching = await _shouldMergeMatching(query);
+  return _composeAllFromPluginCaches(
+    plugins: plugins,
+    query: query,
+    mergeMatching: mergeMatching,
+  );
 }
 
 /// Build Catalog=All from warm per-plugin buckets (no network).
@@ -421,8 +515,35 @@ List<Map<String, dynamic>> _filterLiveFeedRows(
     if (!_rowPassesSportAndWindow(map, item, query)) continue;
     out.add(map);
   }
-  if (!mergeMatching) return out;
-  return mergeLiveFeedMatchingRows(out);
+  final filtered = mergeMatching ? mergeLiveFeedMatchingRows(out) : out;
+  return sortLiveFeedRowsLiveFirst(filtered);
+}
+
+/// Live / airing / always-on first, then viewers desc, then kickoff asc.
+List<Map<String, dynamic>> sortLiveFeedRowsLiveFirst(
+  List<Map<String, dynamic>> rows,
+) {
+  if (rows.length < 2) return rows;
+  final keyed = [
+    for (final row in rows)
+      (
+        row: row,
+        event: MatchEvent.fromLegacyRow(row),
+      ),
+  ];
+  keyed.sort((a, b) {
+    final liveA = a.event.isLive;
+    final liveB = b.event.isLive;
+    if (liveA != liveB) return liveA ? -1 : 1;
+    final va = a.event.viewers;
+    final vb = b.event.viewers;
+    if (va != vb) return vb.compareTo(va);
+    final da = a.event.dateMs;
+    final db = b.event.dateMs;
+    if (da != db) return da.compareTo(db);
+    return a.event.id.compareTo(b.event.id);
+  });
+  return [for (final k in keyed) k.row];
 }
 
 bool _rowPassesSportAndWindow(

@@ -239,8 +239,10 @@ class KitTopBarActions extends ConsumerWidget {
     final catalogSelected = KitTopBarHostHooks.catalogChipSelected;
 
     if (isRefresh) {
-      return ForjaActionChip(
-        label: '',
+      final updated =
+          (KitTopBarHostHooks.readFeedUpdatedLabel?.call(ref) ?? '').trim();
+      final chip = ForjaActionChip(
+        label: updated.isEmpty ? '' : updated,
         icon: icon ?? Icons.refresh_rounded,
         iconOnly: true,
         selected: false,
@@ -249,6 +251,24 @@ class KitTopBarActions extends ConsumerWidget {
         tvItemIndex: index,
         onDownEdge: focusDown ?? () {},
         onTap: () => onRefresh?.call(),
+      );
+      if (updated.isEmpty) return chip;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ExcludeFocus(
+            child: Text(
+              updated,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          chip,
+        ],
       );
     }
 

@@ -73,6 +73,9 @@ typedef KitTopBarFeedBusyReader = ({bool busy, String? label}) Function(
   WidgetRef ref,
 );
 
+/// Session scrape age for the Refresh slot (e.g. `Updated 3m ago`).
+typedef KitTopBarFeedUpdatedReader = String? Function(WidgetRef ref);
+
 abstract final class KitTopBarHostHooks {
   KitTopBarHostHooks._();
 
@@ -92,6 +95,7 @@ abstract final class KitTopBarHostHooks {
 
   static KitListBodyWrapper? wrapListBody;
   static KitTopBarFeedBusyReader? readFeedBusy;
+  static KitTopBarFeedUpdatedReader? readFeedUpdatedLabel;
 
   static void clear() {
     loadCatalogOptions = null;
@@ -107,5 +111,6 @@ abstract final class KitTopBarHostHooks {
     packActionBuilders.clear();
     wrapListBody = null;
     readFeedBusy = null;
+    readFeedUpdatedLabel = null;
   }
 }
