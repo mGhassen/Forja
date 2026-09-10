@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Cloud, Plus, Trash2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { useGoToPluginInstall } from '@/components/plugin-install-confirm-dialog'
+import { PluginProfileSelectorDialog } from '@/components/plugin-profile-selector-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { useForjaSetting } from '@/hooks/use-user-setting'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -29,37 +29,37 @@ export function AddToForjaButton({
   variant = 'default',
 }: AddToForjaButtonProps) {
   const navigate = useNavigate()
-  const goToInstall = useGoToPluginInstall()
   const { user, loading: authLoading } = useAuth()
-  const { activeProfile } = useProfiles()
-  const { data, isLoading } = useForjaSetting()
+  const { activeProfile, profiles } = useProfiles()
+  const { data, isLoading, refetch } = useForjaSetting()
   const [opening, setOpening] = useState(false)
+  const [selectorOpen, setSelectorOpen] = useState(false)
 
   const installed = isPackInstalled(
     data?.payload?.packs ?? [],
     pack.manifestUrl,
   )
 
-  const payload = {
+  const packRow = {
     manifestUrl: pack.manifestUrl,
     name: pack.name,
     version: pack.version,
   }
 
-  const openProfileAction = (op: 'add' | 'remove') => {
+  const openProfileSelector = () => {
     if (!user) {
-      rememberPluginInstallIntent(payload)
+      rememberPluginInstallIntent(packRow)
       void navigate({
         to: '/login',
         search: { next: '/account/settings/forja' },
       })
       return
     }
-    if (!activeProfile) {
+    if (profiles.length === 0 || !activeProfile) {
       void navigate({ to: '/account/profiles' })
       return
     }
-    goToInstall(payload, { op })
+    setSelectorOpen(true)
   }
 
   const handleDeepLink = async () => {
@@ -69,7 +69,7 @@ export function AddToForjaButton({
       const opened = await tryOpenForjaInstallDeepLink(pack.manifestUrl, {
         name: pack.name,
       })
-      if (!opened && !user) openProfileAction('add')
+      if (!opened && !user) openProfileSelector()
     } finally {
       setOpening(false)
     }
@@ -81,10 +81,10 @@ export function AddToForjaButton({
       ? 'Opening…'
       : 'Add to Forja'
   const hint = installed
-    ? 'On your profile. Open Forja on this device, or remove it from the profile.'
+    ? 'On your active profile. Open Forja on this device, or manage which profiles have it.'
     : user
-      ? 'Opens Forja on this device. Cloud adds it to your profile for other devices.'
-      : 'Opens Forja if installed, otherwise sign in to add it to your profile.'
+      ? 'Opens Forja on this device. Cloud picks which profiles get the pack.'
+      : 'Opens Forja if installed, otherwise sign in to add it to a profile.'
 
   const magnetClass =
     'btn-magnet inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.28)] will-change-transform sm:text-xs'
@@ -96,10 +96,10 @@ export function AddToForjaButton({
     <button
       type="button"
       className={iconBtnClass}
-      title="Remove from profile (uninstalls on devices after sync)"
-      aria-label="Remove from profile"
+      title="Manage profiles (add or remove this pack)"
+      aria-label="Manage profiles"
       disabled={authLoading || isLoading}
-      onClick={() => openProfileAction('remove')}
+      onClick={openProfileSelector}
     >
       <Trash2 className="size-4" />
     </button>
@@ -107,13 +107,24 @@ export function AddToForjaButton({
     <button
       type="button"
       className={iconBtnClass}
-      title="Add to profile (syncs to all devices)"
-      aria-label="Add to profile"
+      title="Manage profiles (add or remove this pack)"
+      aria-label="Manage profiles"
       disabled={authLoading || isLoading}
-      onClick={() => openProfileAction('add')}
+      onClick={openProfileSelector}
     >
       <Cloud className="size-4" />
     </button>
+  )
+
+  const selector = (
+    <PluginProfileSelectorDialog
+      open={selectorOpen}
+      pack={packRow}
+      onClose={() => setSelectorOpen(false)}
+      onSaved={() => {
+        void refetch()
+      }}
+    />
   )
 
   if (!user && !authLoading) {
@@ -145,6 +156,7 @@ export function AddToForjaButton({
         <p className="text-center font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.38)] sm:text-left">
           {hint}
         </p>
+        {selector}
       </div>
     )
   }
@@ -174,6 +186,7 @@ export function AddToForjaButton({
         <p className="text-center font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.38)]">
           {hint}
         </p>
+        {selector}
       </div>
     )
   }
@@ -203,6 +216,7 @@ export function AddToForjaButton({
       >
         Don&apos;t have the app? Download
       </Link>
+      {selector}
     </div>
   )
 }

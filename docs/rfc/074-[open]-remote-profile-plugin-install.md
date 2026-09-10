@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **13 / 15** acceptance |
-| **Current slice** | Code shipped — phone→TV add/remove (A02 / A10) still unverified |
+| **Progress** | **6 / 6** components · **14 / 16** acceptance |
+| **Current slice** | Multi-profile catalog picker shipped — phone→TV add/remove (A02 / A10) still unverified |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | R74-C03 | Prompt FIFO install + uninstall copy | ✅ |
 | 4 | R74-C04 | Web split button: add and remove from profile | ✅ |
 | 5 | R74-C05 | Settings pending-install / pending-purge badges | ✅ |
+| 6 | R74-C06 | Web catalog cloud/trash → multi-profile membership selector | ✅ |
 
 ---
 
@@ -46,6 +47,7 @@
 | 13 | R74-A13 | Unit tests | ✅ |
 | 14 | R74-A14 | Feature docs + changelog | ✅ |
 | 15 | R74-A15 | Multi-pack lean sync → one batch dialog (install + uninstall rows), not FIFO singles | ✅ |
+| 16 | R74-A16 | Signed-in catalog: cloud/trash opens profile checklist (add/deselect per profile) | ✅ |
 
 ---
 

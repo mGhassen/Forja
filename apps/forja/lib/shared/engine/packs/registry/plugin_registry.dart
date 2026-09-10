@@ -8,12 +8,11 @@ import 'package:forja/shared/foundation/services/meta/cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
-import 'package:forja/shared/engine/packs/plugin_contract.dart';
-import 'package:forja/shared/engine/packs/plugin_install_validator.dart';
-import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
-import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
+import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:http/http.dart' as http;
@@ -106,8 +105,8 @@ class PluginRegistry {
   }
 
   /// When a stored manifest is a local path this device cannot read, try another
-  /// installed pack at the same conventional slot (remote URL), then the
-  /// official ForjaHQ GitHub raw URL for that slot.
+  /// installed pack at the same opaque slot (remote URL), then a published
+  /// catalog row with the same slot. No baked GitHub URL map.
   Future<String> _substituteUnreachableLocalManifest(String url) async {
     if (await _localManifestExists(url)) return url;
     final slot = forjaHqSlot(url);
@@ -121,24 +120,14 @@ class PluginRegistry {
       );
       return pack.sourceUrl;
     }
-    final official = officialManifestUrlForSlot(slot);
-    if (official != null && official != url) {
+    for (final published in await PluginCatalogRemote.fetchPublishedPacks()) {
+      if (forjaHqSlot(published.manifestUrl) != slot) continue;
       debugPrint(
-        '[engine] local manifest missing ($slot) — official $official',
+        '[engine] local manifest missing ($slot) — catalog ${published.manifestUrl}',
       );
-      return official;
+      return published.manifestUrl;
     }
     return url;
-  }
-
-  /// Cloud lean / Settings helper: map a local ForjaHQ checkout to its official
-  /// remote URL when a caller needs a fetchable address. Sync push/pull must
-  /// **not** use this — installed `sourceUrl` is exported and applied as-is.
-  static String cloudSafeManifestUrl(String url) {
-    final t = url.trim();
-    if (t.isEmpty || !isLocalManifestUrl(t)) return t;
-    final official = officialManifestUrlForSlot(forjaHqSlot(t));
-    return official ?? t;
   }
 
   Future<String> _fetchText(String url) async {
@@ -314,7 +303,7 @@ class PluginRegistry {
 
   /// True when a remote pack needs install/repair (lean stub or missing disk JS).
   /// Unreachable local checkout paths (synced Mac paths on TV) also need install
-  /// so [_substituteUnreachableLocalManifest] can fetch the official remote.
+  /// so [_substituteUnreachableLocalManifest] can swap to a peer/catalog URL.
   ///
   /// Lean stubs (`plugins: []`) after sign-out / profile reset still return
   /// true here — call [rehydrateLeanStubsFromDisk] first so the active profile
@@ -780,7 +769,7 @@ class PluginRegistry {
   Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
       applyOfficialKeepSet(keepUrls);
 
-  /// Debug checkout: `catalog/manifest.json` from env or [ForjaPacksRoot].
+  /// Debug override: full manifest URL/path from env only (no packs-tree invent).
   @visibleForTesting
   static String? devCatalogManifestUrl() {
     if (!kDebugMode) return null;
@@ -791,11 +780,10 @@ class PluginRegistry {
       explicit =
           Platform.environment['FORJA_HQ_CATALOG_MANIFEST_URL']?.trim() ?? '';
     }
-    if (explicit.isNotEmpty) return explicit;
-    return ForjaPacksRoot.manifest('catalog/manifest.json');
+    return explicit.isEmpty ? null : explicit;
   }
 
-  /// Debug checkout: local `torrent/manifest.json` for [loadScript] only.
+  /// Debug override: full torrent manifest URL/path from env only.
   @visibleForTesting
   static String? devTorrentManifestUrl() {
     if (!kDebugMode) return null;
@@ -806,11 +794,10 @@ class PluginRegistry {
       explicit =
           Platform.environment['FORJA_HQ_TORRENT_MANIFEST_URL']?.trim() ?? '';
     }
-    if (explicit.isNotEmpty) return explicit;
-    return ForjaPacksRoot.manifest('torrent/manifest.json');
+    return explicit.isEmpty ? null : explicit;
   }
 
-  /// Debug checkout: local `live/manifest.json` for [loadScript] only.
+  /// Debug override: full live manifest URL/path from env only.
   @visibleForTesting
   static String? devLiveManifestUrl() {
     if (!kDebugMode) return null;
@@ -821,8 +808,7 @@ class PluginRegistry {
       explicit =
           Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
     }
-    if (explicit.isNotEmpty) return explicit;
-    return ForjaPacksRoot.manifest('live/manifest.json');
+    return explicit.isEmpty ? null : explicit;
   }
 
   /// Hydrate lean stubs and refresh remote packs when needed.
@@ -1761,7 +1747,7 @@ class PluginRegistry {
     final added = <LeanPackDelta>[];
     final removed = <LeanPackDelta>[];
     var changed = false;
-    // Official GitHub URLs already satisfied by a kept local checkout pack.
+    // Remote lean URLs already satisfied by a kept local/remote pack (same slot).
     final satisfiedRemote = <String>{};
 
     for (final pack in all) {
@@ -1773,13 +1759,12 @@ class PluginRegistry {
       if (removeMissingUserPacks && remoteKey == null) {
         // Readable local checkout is device-local membership — soft-pull must
         // not delete it just because cloud omitted the absolute path (or has
-        // the official GitHub twin).
+        // a same-slot remote twin).
         if (isLocalManifestUrl(pack.sourceUrl) &&
             await _localManifestExists(pack.sourceUrl)) {
           next.add(pack);
-          final safe = cloudSafeManifestUrl(pack.sourceUrl);
-          if (safe.isNotEmpty) satisfiedRemote.add(safe);
           satisfiedRemote.add(pack.sourceUrl);
+          _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
           continue;
         }
         final stub = pack.plugins.isEmpty;
@@ -1803,8 +1788,7 @@ class PluginRegistry {
       if (remoteKey != null) {
         satisfiedRemote.add(remoteKey);
         satisfiedRemote.add(pack.sourceUrl);
-        final safe = cloudSafeManifestUrl(pack.sourceUrl);
-        if (safe.isNotEmpty) satisfiedRemote.add(safe);
+        _markLeanSlotSatisfied(satisfiedRemote, remote, pack.sourceUrl);
       }
       final lean = remoteKey != null ? remote[remoteKey] : null;
       final leanName = lean?.name;
@@ -1878,14 +1862,31 @@ class PluginRegistry {
   }
 
   /// Cloud lean row key for [sourceUrl], or null if the pack is not in [remote].
+  /// Matches exact URL, else same opaque [forjaHqSlot] (local checkout ↔ remote).
   static String? _leanRemoteKeyForPack(
     Map<String, ({String? name, String? version})> remote,
     String sourceUrl,
   ) {
     if (remote.containsKey(sourceUrl)) return sourceUrl;
-    final safe = cloudSafeManifestUrl(sourceUrl);
-    if (safe != sourceUrl && remote.containsKey(safe)) return safe;
+    final slot = forjaHqSlot(sourceUrl);
+    if (slot == null) return null;
+    for (final key in remote.keys) {
+      if (forjaHqSlot(key) == slot) return key;
+    }
     return null;
+  }
+
+  /// Mark every remote lean URL that shares [sourceUrl]'s opaque slot.
+  static void _markLeanSlotSatisfied(
+    Set<String> satisfiedRemote,
+    Map<String, ({String? name, String? version})> remote,
+    String sourceUrl,
+  ) {
+    final slot = forjaHqSlot(sourceUrl);
+    if (slot == null) return;
+    for (final key in remote.keys) {
+      if (forjaHqSlot(key) == slot) satisfiedRemote.add(key);
+    }
   }
 
   Future<void> _purgeRetiredOfficialPacks() async {

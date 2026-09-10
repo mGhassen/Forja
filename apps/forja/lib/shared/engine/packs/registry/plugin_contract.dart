@@ -1,4 +1,4 @@
-/// Machine-readable EngineJS pack contracts — forja-packs `sdk/schema/*.json`.
+/// Machine-readable EngineJS pack contracts — pack SDK `sdk/schema/*.json`.
 library;
 
 import 'package:forja/shared/foundation/lib/pack_assets.dart';

@@ -2,7 +2,7 @@
 
 **Status:** fixed  
 **Depends on:** [RFC-067](067-[fixed]-forjahq-remote-plugin-pack.md)  
-**Area:** `apps/forja/lib/shared/engine/packs/plugin_registry.dart`, Settings → Sources → Forja
+**Area:** `apps/forja/lib/shared/engine/packs/registry/plugin_registry.dart`, Settings → Sources → Forja
 
 ## Status at a glance
 

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/packs/official_forjahq_install.dart';
-import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_install.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 
 void main() {
   group('officialPackCandidatesMissing', () {
@@ -10,6 +10,7 @@ void main() {
         OfficialForjaHqPack(
           id: 'pack-a',
           name: 'Pack A',
+          official: true,
           manifestUrl: 'https://example.test/a/manifest.json',
         ),
         OfficialForjaHqPack(
@@ -18,11 +19,13 @@ void main() {
           description: 'What Pack B does',
           tags: ['anime'],
           kind: 'hubs',
+          official: true,
           manifestUrl: 'https://example.test/b/manifest.json',
         ),
         OfficialForjaHqPack(
           id: 'pack-empty',
           name: 'Empty',
+          official: true,
           manifestUrl: '  ',
         ),
       ];
@@ -47,17 +50,20 @@ void main() {
         OfficialForjaHqPack(
           id: 'kids',
           name: 'ForjaHQ Kids',
+          official: true,
           manifestUrl: 'https://example.test/kids/manifest.json',
         ),
         OfficialForjaHqPack(
           id: 'anime',
           name: 'ForjaHQ Anime',
+          official: true,
           recommended: true,
           manifestUrl: 'https://example.test/anime/manifest.json',
         ),
         OfficialForjaHqPack(
           id: 'home',
           name: 'ForjaHQ Home',
+          official: true,
           recommended: true,
           manifestUrl: 'https://example.test/home/manifest.json',
         ),
@@ -84,6 +90,7 @@ void main() {
         OfficialForjaHqPack(
           id: 'pack-a',
           name: 'Pack A',
+          official: true,
           manifestUrl: 'https://example.test/a/manifest.json',
         ),
       ];
@@ -95,37 +102,29 @@ void main() {
     });
   });
 
-  group('officialManifestUrlForSlot', () {
-    test('maps live_sports_cards and providers', () {
+  group('forjaHqSlot', () {
+    test('opaque path segment only — no GitHub invent', () {
       expect(
-        officialManifestUrlForSlot('live_sports_cards'),
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/live_sports_cards/manifest.json',
-      );
-      expect(
-        officialManifestUrlForSlot('providers'),
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
-      );
-      expect(officialManifestUrlForSlot('nope'), isNull);
-    });
-  });
-
-  group('cloudSafeManifestUrl', () {
-    test('rewrites ForjaHQ checkout paths to official remotes', () {
-      expect(
-        PluginRegistry.cloudSafeManifestUrl(
-          '/Users/x/Forja/plugins/hubs/live_sports_cards/manifest.json',
+        PluginRegistry.forjaHqSlot(
+          '/Users/x/forja-packs/hubs/live_sports_cards/manifest.json',
         ),
-        officialManifestUrlForSlot('live_sports_cards'),
+        'live_sports_cards',
       );
       expect(
-        PluginRegistry.cloudSafeManifestUrl(
-          'https://cdn.example/pack/manifest.json',
+        PluginRegistry.forjaHqSlot(
+          'https://cdn.example/hubs/shahid/manifest.json',
         ),
-        'https://cdn.example/pack/manifest.json',
+        'shahid',
       );
       expect(
-        PluginRegistry.cloudSafeManifestUrl('/tmp/custom/manifest.json'),
-        '/tmp/custom/manifest.json',
+        PluginRegistry.forjaHqSlot(
+          'https://cdn.example/providers/manifest.json',
+        ),
+        'providers',
+      );
+      expect(
+        PluginRegistry.forjaHqSlot('https://cdn.example/pack/manifest.json'),
+        isNull,
       );
     });
   });

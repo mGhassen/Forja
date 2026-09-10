@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Sticky progress card while Engine/Nuvio packs download or update.

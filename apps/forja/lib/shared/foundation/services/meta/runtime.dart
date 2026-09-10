@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 
 import 'package:forja/shared/foundation/protocol/protocol.dart';

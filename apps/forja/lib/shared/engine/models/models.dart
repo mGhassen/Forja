@@ -472,23 +472,18 @@ class EnginePack {
     return plugin.copyWith(prelude: packPrelude);
   }
 
-  /// Pack identity (RFC-094): prefer legacy manifest `id`, else official-tree
-  /// slot, else `pack-<urlHash>`. Community packs omit `id`.
+  /// Pack identity (RFC-094): manifest `id` when set, else `pack-<urlHash>`.
+  /// No host slot→`forjahq-*` map — packs own their ids.
   static String resolvePackId({required String sourceUrl, String? manifestId}) {
     final raw = manifestId?.trim() ?? '';
     if (raw.isNotEmpty) return raw;
-    final slot = forjaHqSlot(sourceUrl);
-    if (slot != null) {
-      return officialPackIdForSlot(slot) ?? packIdFromSourceUrl(sourceUrl);
-    }
     return packIdFromSourceUrl(sourceUrl);
   }
 
-  /// Path-pattern slot for ForjaHQ pack trees (null for arbitrary community URLs).
+  /// Path-pattern slot for pack trees (null for arbitrary community URLs).
   ///
-  /// Matches both legacy monorepo `…/plugins/<slot>/manifest.json` and
-  /// [forja-packs](https://github.com/mGhassen/forja-packs) root layout
-  /// (`…/providers/manifest.json`, `…/hubs/anime/manifest.json`, …).
+  /// Opaque path mechanics only — not an inventory. Matches common layouts
+  /// (`…/providers/manifest.json`, `…/hubs/<slot>/manifest.json`, …).
   static String? forjaHqSlot(String url) {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
     const core = {
@@ -509,29 +504,7 @@ class EnginePack {
     return null;
   }
 
-  /// Stable packId for official tree slots when manifest omits `id`.
-  static String? officialPackIdForSlot(String slot) {
-    const map = {
-      'home': 'forjahq-home',
-      'anime': 'forjahq-anime',
-      'asian_drama': 'forjahq-asian-drama',
-      'arabic': 'forjahq-arabic',
-      'kids': 'forjahq-kids',
-      'cartoon': 'forjahq-cartoon',
-      'aflem': 'forjahq-aflem',
-      'live_sports': 'forjahq-live-sports',
-      'live_sports_cards': 'forjahq-live-sports-cards',
-      'my_list': 'forjahq-my-list',
-      'providers': 'forjahq-providers',
-      'catalog': 'forjahq-catalog',
-      'live': 'forjahq-live',
-      'torrent': 'forjahq-torrent',
-      'iptv-vod': 'forjahq-iptv-vod',
-    };
-    return map[slot];
-  }
-
-  /// Derive a stable packId when the manifest omits `id` (community URLs).
+  /// Derive a stable packId when the manifest omits `id`.
   static String packIdFromSourceUrl(String sourceUrl) =>
       'pack-${urlHash(sourceUrl)}';
 

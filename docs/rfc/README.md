@@ -94,7 +94,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [071-[fixed]-…](fixed/071-[fixed]-live-sports-hub-kit.md) | Live Sports catalog hub kit | v1.4 | fixed | **Complete** · 9/9 · 21/21 | — |
 | [072-[open]-…](072-[open]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | open | 4/4 · 6/6 | — |
 | [073-[fixed]-…](fixed/073-[fixed]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details → platform → teardown → kill live silo → domain home → pack wire) | v1.4 | fixed | **Complete** · 4/4 C · A kill/kit/details/platform/teardown/silo/domain/pack | — |
-| [074-[open]-…](074-[open]-remote-profile-plugin-install.md) | Remote profile plugin install and uninstall | v1.4 | open | **5/5** · **13/15** | — |
+| [074-[open]-…](074-[open]-remote-profile-plugin-install.md) | Remote profile plugin install and uninstall | v1.4 | open | **6/6** · **14/16** | — |
 | [075-[fixed]-…](fixed/075-[fixed]-iptv-portal-probe-detail.md) | IPTV portal probe status + desktop detail card | v1.4 | fixed | **Complete** · 4/4 · 8/8 | — |
 | [076-[fixed]-…](fixed/076-[fixed]-cartoon-hub-dimatoon.md) | كرتون hub (DimaToon) + provider blank.mp4 fix | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
 | [077-[fixed]-…](fixed/077-[fixed]-brstej-hub-laroza-only-arabic.md) | Brstej hub + Laroza-only Arabic | v1.4 | fixed | **Complete** · 3/3 · 7/7 | — |
@@ -121,7 +121,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [097-[fixed]-…](fixed/097-[fixed]-my-list-explode-host-to-packs.md) | Explode My List host → packs MetaRuntime feed | v1.4 | fixed | **Complete** · **4 / 4** · **10 / 10** | — |
 | [098-[fixed]-…](fixed/098-[fixed]-live-sports-event-search.md) | Live Sports event search (top-bar) | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [099-[open]-…](099-[open]-live-unlock-pack-modules.md) | Live unlock modules in packs (GOAT/GASM host runtime) | v1.4 | open | **4 / 4** · **8 / 9** · smoke ⬜ | — |
-| [100-[open]-…](100-[open]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | open | **5 / 5** · **9 / 9** admin · **7 / 7** app · **5 / 5** web · **3 / 3** retire | — |
+| [100-[open]-…](100-[open]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | open | **5 / 5** · **9 / 9** admin · **8 / 8** app · **5 / 5** web · **3 / 3** retire | — |
 | [101-[open]-…](101-[open]-shahid-hub-provider-exo-widevine.md) | Shahid hub + provider + Exo Widevine | — | open | **4 / 4** · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **2 / 2** E | — |
 | [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **10 / 11** (1 ⏭️ pin) | — |
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |

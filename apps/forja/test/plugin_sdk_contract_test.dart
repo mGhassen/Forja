@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/engine/packs/plugin_contract.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 
 /// Pack/SDK files live in sibling [forja-packs] (or legacy `plugins/` / `sdk/`).
 String? _packsRoot() => ForjaPacksRoot.resolve(requireDebug: false);

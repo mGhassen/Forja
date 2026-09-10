@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/pack_hub_features.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/engine/packs/remote_pack_intent_store.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Apply a cloud lean diff on this device: auto-install adds, toast results.

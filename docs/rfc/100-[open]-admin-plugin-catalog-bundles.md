@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **7 / 7** acceptance (app) · **5 / 5** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
+| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **8 / 8** acceptance (app) · **5 / 5** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
 | **Current slice** | Web bundles marketing showcase above pack catalog |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -54,6 +54,7 @@
 | 5 | R100-A13 | Settings Forja Packs can install a published bundle | ✅ |
 | 6 | R100-A14 | Existing paste-URL + per-pack update unchanged | ✅ |
 | 7 | R100-A23 | Official picker / onboarding / bundles = published only; empty when admin has none (no baked catalog fallback) | ✅ |
+| 8 | R100-A25 | No baked pack URL map — unreachable local recovers via peer install or published catalog slot match ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md) I260-T02) | ✅ |
 
 ---
 
@@ -81,7 +82,7 @@
 
 ## Summary
 
-Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers no longer fall back to `kOfficialForjaHqPacks` (R100-A23); that constant remains a slot→raw-URL map for reinstall when a local path is missing. Web Community Packs shows published bundles as a marketing section above the individual pack catalog (R100-A24).
+Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers use published rows only (R100-A23). Unreachable local checkout recovery uses peer installed remotes or published catalog by opaque path slot — no baked forja-packs URL invent (R100-A25). Web Community Packs shows published bundles as a marketing section above the individual pack catalog (R100-A24).
 
 **Bundle** in this RFC = product set of packs. Not RFC-083 `manifest.bundle[]` file lists.
 

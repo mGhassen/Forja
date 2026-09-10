@@ -1,20 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
-import 'package:forja/shared/engine/packs/pack_hub_features.dart';
-import 'package:forja/shared/engine/packs/plugin_catalog_remote.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 /// Resolve official packs from admin-published Supabase catalog only.
 ///
-/// Empty when unconfigured / none published — no baked inventory for the picker.
+/// Filters `published` rows where admin set `official`. Empty when none.
 Future<List<OfficialForjaHqPack>> resolveOfficialForjaHqPacks() async {
   final remote = await PluginCatalogRemote.fetchPublishedPacks();
-  if (remote.isEmpty) return const [];
-  final out = List<OfficialForjaHqPack>.from(remote);
+  final official = [
+    for (final p in remote)
+      if (p.official) p,
+  ];
+  if (official.isEmpty) return const [];
+  final out = List<OfficialForjaHqPack>.from(official);
   out.sort((a, b) {
     final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
     if (byRec != 0) return byRec;
@@ -88,7 +92,7 @@ List<PluginInstallCandidate> officialPackCandidatesMissing({
         description: pack.description,
         tags: pack.tags,
         catalogKind: pack.kind,
-        official: true,
+        official: pack.official,
         recommended: pack.recommended,
       ),
     );

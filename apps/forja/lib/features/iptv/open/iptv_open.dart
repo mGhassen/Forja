@@ -10,7 +10,7 @@ import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 
 /// Build hub seed meta from a portal stream (host prefetches episodes for series).
 MetaItem metaItemFromIptvStream({

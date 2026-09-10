@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/playback/probe/hubcloud_drive_quota.dart';
-import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'nuvio_runtime.dart';

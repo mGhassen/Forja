@@ -124,10 +124,11 @@ void main() {
       expect(await PluginRegistry.instance.listPacksRaw(), isEmpty);
     });
 
-    test('keeps local ForjaHQ checkout when cloud has official URL', () async {
+    test('keeps local ForjaHQ checkout when cloud has same-slot remote URL', () async {
       const local =
           '/Users/dev/Workspace/Forja/plugins/hubs/shahid/manifest.json';
-      final official = officialManifestUrlForSlot('shahid')!;
+      const remote =
+          'https://cdn.example/packs/hubs/shahid/manifest.json';
       await _seedPacks([
         {
           'sourceUrl': local,
@@ -145,7 +146,7 @@ void main() {
         },
       ]);
       final result = await PluginRegistry.instance.applyLeanManifestUrls([
-        {'manifestUrl': official, 'name': 'ForjaHQ Shahid'},
+        {'manifestUrl': remote, 'name': 'ForjaHQ Shahid'},
       ]);
       expect(result.added, isEmpty);
       expect(result.removed, isEmpty);

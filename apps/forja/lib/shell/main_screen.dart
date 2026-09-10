@@ -9,7 +9,7 @@ import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';

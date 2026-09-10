@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 
 void main() {
   test('hubTabIds uses official slot when nav has no tabId', () {

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 
@@ -49,6 +49,7 @@ class PluginCatalogRemote {
             kind: (raw['kind'] as String?)?.trim(),
             tags: tags,
             recommended: raw['recommended'] == true,
+            official: raw['official'] == true,
           ),
         );
       }

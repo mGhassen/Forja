@@ -44,6 +44,6 @@ Opening the plugin pack update confirm left D-pad focus on the Home poster (or o
 ## Related
 
 - [173](../173-[open]-android-tv-update-dialog-focus-leak.md) — app update gate focus leak
-- `apps/forja/lib/shared/engine/packs/plugin_pack_update_prompt_host.dart`
-- `apps/forja/lib/shared/engine/packs/plugin_pack_update_dialog.dart`
+- `apps/forja/lib/shared/engine/packs/install/plugin_pack_update_prompt_host.dart`
+- `apps/forja/lib/shared/engine/packs/install/plugin_pack_update_dialog.dart`
 - `apps/forja/test/plugin_pack_update_focus_test.dart`

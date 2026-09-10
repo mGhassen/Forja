@@ -7,8 +7,8 @@ import 'package:forja/shared/foundation/foundation.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 

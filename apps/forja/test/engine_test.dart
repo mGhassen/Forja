@@ -405,11 +405,17 @@ void main() {
       );
     });
 
-    test('resolvePackId derives from URL when manifest omits id', () {
+    test('resolvePackId uses manifest id or URL hash — no slot map', () {
+      const animeUrl =
+          'https://raw.githubusercontent.com/mGhassen/forja-packs/main/hubs/anime/manifest.json';
+      expect(
+        EnginePack.resolvePackId(sourceUrl: animeUrl),
+        'pack-${EnginePack.urlHash(animeUrl)}',
+      );
       expect(
         EnginePack.resolvePackId(
-          sourceUrl:
-              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/anime/manifest.json',
+          sourceUrl: animeUrl,
+          manifestId: 'forjahq-anime',
         ),
         'forjahq-anime',
       );

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 
 /// Resolves pack-relative asset paths from a hub plugin manifest URL.
 abstract final class PackAssets {

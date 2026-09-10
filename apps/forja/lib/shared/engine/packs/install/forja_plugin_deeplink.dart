@@ -5,7 +5,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/addons/pack_auth_session_handoff.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 

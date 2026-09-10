@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:rust/rust.dart';

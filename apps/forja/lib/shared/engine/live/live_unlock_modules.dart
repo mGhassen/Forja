@@ -4,9 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
-import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 
 /// Resolves GOAT / GASM / sportsembed unlock modules from the live pack.
@@ -20,8 +19,8 @@ abstract final class LiveUnlockModules {
 
   static const _assetRoot = 'assets/plugins/live';
 
-  /// Prefer local live checkout when present, else enabled ForjaHQ `live`
-  /// pack, else any pack whose bundle lists `goat/unlock.mjs`.
+  /// Prefer local live checkout when present, else enabled live pack, else any
+  /// pack whose bundle lists `goat/unlock.mjs`.
   static Future<String?> livePackSourceUrl() async {
     final registry = PluginRegistry.instance;
     final packs = await registry.listPacksRaw();
@@ -55,6 +54,7 @@ abstract final class LiveUnlockModules {
     return liveSlot?.sourceUrl ?? goatBundle?.sourceUrl;
   }
 
+  /// Explicit env override only — no sibling packs-tree invent.
   static String? _debugLiveManifestPath() {
     var explicit = const String.fromEnvironment(
       'FORJA_HQ_LIVE_MANIFEST_URL',
@@ -63,8 +63,7 @@ abstract final class LiveUnlockModules {
       explicit =
           Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
     }
-    if (explicit.isNotEmpty) return explicit;
-    return ForjaPacksRoot.manifest('live/manifest.json');
+    return explicit.isEmpty ? null : explicit;
   }
 
   /// Absolute file for `module/relative` from pack install or local checkout.

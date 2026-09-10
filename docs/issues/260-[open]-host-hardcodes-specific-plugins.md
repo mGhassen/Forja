@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **2 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -21,7 +21,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I260-T01 | Live unlock: remove host streamed / ppv / watchfooty / GOAT API branches — opaque pack modules only | ✅ |
-| 2 | I260-T02 | Delete official hub inventories (`official_forjahq_packs`, `officialPackIdForSlot` maps) — remote catalog / pack `id` only | ⬜ |
+| 2 | I260-T02 | Delete official hub inventories (`official_forjahq_packs`, `officialPackIdForSlot` maps) — remote catalog / pack `id` only | ✅ |
 | 3 | I260-T03 | My List / follow: drop first-class `anilistId` / `kisskhId` / `my-list-hub` — opaque `open` + id bag | ⬜ |
 | 4 | I260-T04 | Playback headers / ProviderRuntimeConfig: no Dart `if (kisskh|videasy|dimatoon)` — packs own knobs ([255](255-[open]-provider-runtime-config-builtins-debt.md)) | ⬜ |
 | 5 | I260-T05 | Kit details: stop host `TmdbApi` rich enrich — pack enrich companions only | ⬜ |
@@ -59,7 +59,7 @@ Audit (2026-09-09): root app still points at specific plugins. Direction is inve
 
 | Area | Worst files |
 |------|-------------|
-| Official pack list | `official_forjahq_packs.dart`, `models.dart` `officialPackIdForSlot` |
+| Official pack list | ~~baked inventory / forja-packs sibling invent~~ **I260-T02 ✅** — admin `plugin_packs` (`official`/`recommended`/`manifest_url`); `FORJA_PACKS_ROOT` env only for debug hot-reload |
 | Legacy pack ids | `plugin_registry.dart` `forjahq-hubs` |
 | Pref / alias hub tabs | `shell_bus.dart` `iptv_sports`→`live_sports`, `kit_schedule_*` `live_sports_*` keys |
 | Host tests as pack oracle | `catalog_protocol_test.dart`, `engine_test.dart`, `plugin_sdk_contract_test.dart` |

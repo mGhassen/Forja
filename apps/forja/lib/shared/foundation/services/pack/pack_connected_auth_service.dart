@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/foundation/services/pack/pack_connected_auth_spec.dart';

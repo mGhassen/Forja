@@ -14,7 +14,7 @@ import 'package:forja/shared/foundation/services/meta/runtime.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.dart';
 import 'package:forja/shared/foundation/services/registry/kit_panel_source_flags_hooks.dart';
-import 'package:forja/shared/engine/packs/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';

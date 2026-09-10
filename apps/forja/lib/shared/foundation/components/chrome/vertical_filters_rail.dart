@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:forja/shared/engine/packs/plugin_registry.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';

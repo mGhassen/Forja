@@ -11,7 +11,7 @@ import 'package:forja/features/settings/widgets/settings_plugin_install_progress
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/packs/pack_hub_features.dart';
+import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
