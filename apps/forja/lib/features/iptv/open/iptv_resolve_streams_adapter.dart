@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/live/live_feed_merge.dart';
+import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
@@ -53,9 +56,28 @@ abstract final class IptvResolveStreamsAdapter {
   static Future<List<IptvPlaySource>> _loadLiveTv(
     Map<String, dynamic> legacyRow,
   ) async {
-    if (!await IptvForjaSportsGate.isForjaSportsEnabled()) return [];
-    final game = IptvChannelSearch.gameFromLegacyRow(legacyRow);
+    if (!await IptvForjaSportsGate.isForjaSportsEnabled()) {
+      debugPrint('[IptvChannelSearch] Forja Sports disabled in hub Setup');
+      return [];
+    }
+    final game = _liveTvGame(legacyRow);
     return IptvChannelSearch.search(game: game);
+  }
+
+  /// Pack `sportMatchGame` plus guide channel names from soft-matched siblings
+  /// in the unmerged schedule pool (LiveSoccerTV / LiveOnSat, …).
+  static Map<String, dynamic> _liveTvGame(Map<String, dynamic> legacyRow) {
+    var game = IptvChannelSearch.gameFromLegacyRow(legacyRow);
+    final pool = rememberedLiveFeedAllCatalogPool();
+    if (pool == null || pool.isEmpty) return game;
+
+    final extra = <String>[];
+    for (final row in pool) {
+      if (!liveCatalogEventsSoftMatchMaps(legacyRow, row)) continue;
+      extra.addAll(liveBroadcastChannelsFromRow(row));
+    }
+    if (extra.isEmpty) return game;
+    return withLiveBroadcastChannels(game, extra);
   }
 
   static KitSourcesRow _rowForSource({

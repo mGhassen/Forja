@@ -19,27 +19,10 @@ abstract final class LiveUnlockModules {
 
   static const _assetRoot = 'assets/plugins/live';
 
-  /// Prefer local live checkout when present, else enabled live pack, else any
-  /// pack whose bundle lists `goat/unlock.mjs`.
+  /// Prefer env override, else any enabled pack whose bundle lists
+  /// `goat/unlock.mjs` (opaque unlock contract — no pack id / folder allowlist).
   static Future<String?> livePackSourceUrl() async {
     final registry = PluginRegistry.instance;
-    final packs = await registry.listPacksRaw();
-    EnginePack? liveSlot;
-    EnginePack? goatBundle;
-    for (final pack in packs) {
-      if (!pack.enabled) continue;
-      if (EnginePack.forjaHqSlot(pack.sourceUrl) == 'live') {
-        liveSlot ??= pack;
-      }
-      if (pack.bundle.any((p) => p.replaceAll('\\', '/') == 'goat/unlock.mjs')) {
-        goatBundle ??= pack;
-      }
-    }
-
-    if (liveSlot != null &&
-        PluginRegistry.isLocalManifestUrl(liveSlot.sourceUrl)) {
-      return liveSlot.sourceUrl;
-    }
 
     if (kDebugMode) {
       final local = _debugLiveManifestPath();
@@ -51,7 +34,20 @@ abstract final class LiveUnlockModules {
       }
     }
 
-    return liveSlot?.sourceUrl ?? goatBundle?.sourceUrl;
+    final packs = await registry.listPacksRaw();
+    EnginePack? goatBundle;
+    EnginePack? localGoat;
+    for (final pack in packs) {
+      if (!pack.enabled) continue;
+      if (!pack.bundle.any((p) => p.replaceAll('\\', '/') == 'goat/unlock.mjs')) {
+        continue;
+      }
+      goatBundle ??= pack;
+      if (PluginRegistry.isLocalManifestUrl(pack.sourceUrl)) {
+        localGoat ??= pack;
+      }
+    }
+    return localGoat?.sourceUrl ?? goatBundle?.sourceUrl;
   }
 
   /// Explicit env override only — no sibling packs-tree invent.

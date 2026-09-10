@@ -174,6 +174,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     required bool persistSection,
   }) async {
     _c.activePortal = p;
+    IptvChannelSearch.sessionPortalKey =
+        p.platform.supportsForjaSports ? p.key : null;
     _c.activeSection = section;
     _c.view = IptvView.browser;
     _c.isLoading = false;

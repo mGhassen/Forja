@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
+import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/m3u/m3u_store.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
@@ -830,6 +831,7 @@ class IptvController extends ChangeNotifier
     final active = activePortal;
     if (active != null && !knownKeys.contains(active.key)) {
       activePortal = null;
+      IptvChannelSearch.sessionPortalKey = null;
       activeSection = null;
       await IptvStore.clearLastPortalKey();
       if (_disposed) return;
@@ -842,6 +844,8 @@ class IptvController extends ChangeNotifier
             active.portal.password != v.portal.password ||
             !active.sameAccountFields(v)) {
           activePortal = v;
+          IptvChannelSearch.sessionPortalKey =
+              v.platform.supportsForjaSports ? v.key : null;
         }
         break;
       }
@@ -970,6 +974,7 @@ class IptvController extends ChangeNotifier
     final lastKey = await IptvStore.loadLastPortalKey();
     if (lastKey == null) {
       activePortal = null;
+      IptvChannelSearch.sessionPortalKey = null;
       activeSection = null;
       notifyListeners();
       return;
@@ -983,12 +988,15 @@ class IptvController extends ChangeNotifier
     }
     if (portal == null) {
       activePortal = null;
+      IptvChannelSearch.sessionPortalKey = null;
       activeSection = null;
       await IptvStore.clearLastPortalKey();
       notifyListeners();
       return;
     }
     activePortal = portal;
+    IptvChannelSearch.sessionPortalKey =
+        portal.platform.supportsForjaSports ? portal.key : null;
     // Arm spinner before health probe notifyListeners / store awaits.
     isLoading = true;
     error = null;
@@ -1058,6 +1066,8 @@ class IptvController extends ChangeNotifier
             for (final v in verified) {
               if (v.key == lastKey) {
                 activePortal = v;
+                IptvChannelSearch.sessionPortalKey =
+                    v.platform.supportsForjaSports ? v.key : null;
                 notifyListeners();
                 break;
               }
@@ -1110,6 +1120,8 @@ class IptvController extends ChangeNotifier
 
   Future<void> selectPortal(VerifiedPortal p, {bool closePanel = true}) async {
     activePortal = p;
+    IptvChannelSearch.sessionPortalKey =
+        p.platform.supportsForjaSports ? p.key : null;
     // Arm spinner before health / store / panel notifies paint empty error UI.
     isLoading = true;
     error = null;

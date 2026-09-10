@@ -237,24 +237,29 @@ class PluginRegistry {
   };
 
   /// Pack bucket for the installed list: Providers / Live / Catalog / IPTV / Hubs / Other.
+  ///
+  /// Known URL tree segments map when present; unknown slots fall through to
+  /// plugin-type heuristics (no pack-id / folder allowlist for community packs).
   static String packKindKey(EnginePack pack) {
     final slot = forjaHqSlot(pack.sourceUrl);
     if (slot != null) {
-      return switch (slot) {
+      final fromSlot = switch (slot) {
         'providers' => packKindProviders,
         'live' => packKindLive,
         'catalog' => packKindCatalog,
         'torrent' => packKindTorrent,
         'iptv-vod' => packKindIptv,
         _ when isHubManifestSlot(slot) => packKindHubs,
-        _ => packKindOther,
+        _ => null,
       };
+      if (fromSlot != null) return fromSlot;
     }
     if (pack.plugins.any((p) => p.types.contains('iptv'))) return packKindIptv;
     if (pack.plugins.any((p) => p.isKitPlugin)) return packKindHubs;
     if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {
       return packKindLive;
     }
+    if (pack.plugins.any((p) => p.isLiveFeedPlugin)) return packKindCatalog;
     if (pack.plugins.any((p) => p.isHttp)) return packKindProviders;
     return packKindOther;
   }
@@ -1407,7 +1412,8 @@ class PluginRegistry {
     notifyChanged();
   }
 
-  /// One-time migration from unified `live_sport` ids back to split catalog/live.
+  /// One-time: retired twin plugin ids on `legacyIds` → capability prefs.
+  /// Runs for any pack that declares `liveLegacyIds` (no pack id / slot filter).
   Future<void> migrateLegacyLiveSportPacksIfNeeded() async {
     final prefs = await _prefs;
     if (prefs.getBool(_liveSportMigrationKey) == true) return;
@@ -1416,7 +1422,6 @@ class PluginRegistry {
     final capabilityWrites = <String, bool>{};
 
     for (final pack in packs) {
-      if (forjaHqSlot(pack.sourceUrl) != 'live') continue;
       for (final p in pack.plugins) {
         final legacy = p.liveLegacyIds;
         if (legacy == null) continue;
@@ -1537,7 +1542,9 @@ class PluginRegistry {
       final String? devUrl;
       if (plugin.isTorrent) {
         devUrl = devTorrentManifestUrl();
-      } else if (plugin.isLiveResolve) {
+      } else if (plugin.isLiveSportPlugin ||
+          plugin.isLiveResolve ||
+          plugin.supportsLiveResolve) {
         devUrl = devLiveManifestUrl();
       } else if (plugin.isKitPlugin) {
         devUrl = _asLocalFile(sourceUrl)?.path;

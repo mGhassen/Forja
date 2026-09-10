@@ -19,18 +19,33 @@ abstract final class IptvChannelSearch {
   static const _cacheTtl = Duration(minutes: 30);
   static const _epgBatchSize = 12;
 
+  /// In-session Portals pick (Live Sports / IPTV). Prefer over disk last-key.
+  /// Set from [IptvController] when the active portal changes.
+  static String? sessionPortalKey;
+
   /// Last / requested Xtream or Stalker portal for Forja Sports.
   static Future<VerifiedPortal?> resolvePortal({String? portalKey}) async {
     final portals = await IptvStore.load();
-    final key = (portalKey ?? await IptvStore.loadLastPortalKey() ?? '').trim();
-    if (key.isNotEmpty) {
+
+    VerifiedPortal? pickSports(String key) {
+      final k = key.trim();
+      if (k.isEmpty) return null;
       for (final p in portals) {
-        if (p.key == key && p.portal.platform.supportsForjaSports) {
-          return p;
-        }
+        if (p.key == k && p.portal.platform.supportsForjaSports) return p;
       }
       return null;
     }
+
+    final explicit = pickSports(portalKey ?? '');
+    if (explicit != null) return explicit;
+
+    final session = pickSports(sessionPortalKey ?? '');
+    if (session != null) return session;
+
+    final last = pickSports(await IptvStore.loadLastPortalKey() ?? '');
+    if (last != null) return last;
+
+    // Last portal may be M3U / deleted — use any Forja Sports-capable portal.
     for (final p in portals) {
       if (p.portal.platform.supportsForjaSports) return p;
     }
@@ -87,7 +102,10 @@ abstract final class IptvChannelSearch {
     bool force = false,
   }) async {
     final portal = await resolvePortal(portalKey: portalKey);
-    if (portal == null) return [];
+    if (portal == null) {
+      debugPrint('[IptvChannelSearch] no Xtream/Stalker portal for Live TV');
+      return [];
+    }
 
     final home = (game['homeTeam'] ?? '').toString().trim();
     final away = (game['awayTeam'] ?? '').toString().trim();
@@ -96,6 +114,15 @@ abstract final class IptvChannelSearch {
       debugPrint('[IptvChannelSearch] no title/teams for search');
       return [];
     }
+
+    final broadcastCount = () {
+      final raw = game['broadcastChannels'] ?? game['broadcast_channels'];
+      return raw is List ? raw.length : 0;
+    }();
+    debugPrint(
+      '[IptvChannelSearch] start portal=${portal.key} '
+      'title="$title" teams="$home"/"$away" broadcasts=$broadcastCount',
+    );
 
     final cats = List<String>.from(categoryIds);
     final cacheKey = _cacheKey(
@@ -166,8 +193,15 @@ abstract final class IptvChannelSearch {
           jsonEncode({...requestBase, 'skip_epg': true}),
         );
         final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
-        if (_cancelled(fastParsed)) return <IptvPlaySource>[];
-        if (!fastParsed.containsKey('error')) {
+        if (_cancelled(fastParsed)) {
+          debugPrint('[IptvChannelSearch] cancelled (fast)');
+          return <IptvPlaySource>[];
+        }
+        if (fastParsed.containsKey('error')) {
+          debugPrint(
+            '[IptvChannelSearch] fast error: ${fastParsed['error']}',
+          );
+        } else {
           final fast = _parseItems(
             fastParsed['items'] as List? ?? [],
             platform: p.platform,
@@ -176,6 +210,7 @@ abstract final class IptvChannelSearch {
           emitPartial(fastNorm);
           accumulated.addAll(fastNorm);
           trackExcludeIds(fastNorm);
+          debugPrint('[IptvChannelSearch] fast hits=${fastNorm.length}');
         }
 
         var epgOffset = 0;
@@ -190,13 +225,16 @@ abstract final class IptvChannelSearch {
             }),
           );
           final parsed = jsonDecode(raw) as Map<String, dynamic>;
-          if (_cancelled(parsed)) return accumulated;
+          if (_cancelled(parsed)) {
+            debugPrint(
+              '[IptvChannelSearch] cancelled (epg) kept=${accumulated.length}',
+            );
+            return accumulated;
+          }
           if (parsed.containsKey('error')) {
-            if (!_cancelled(parsed)) {
-              debugPrint(
-                '[IptvChannelSearch] streams error: ${parsed['error']}',
-              );
-            }
+            debugPrint(
+              '[IptvChannelSearch] streams error: ${parsed['error']}',
+            );
             break;
           }
           final batch = _parseItems(
@@ -216,10 +254,14 @@ abstract final class IptvChannelSearch {
           }
         }
 
+        debugPrint('[IptvChannelSearch] done hits=${accumulated.length}');
         if (accumulated.isEmpty) return <IptvPlaySource>[];
         final enriched = await _ensureLogos(accumulated, portal.key);
         _cachePut(cacheKey, enriched);
         return enriched;
+      } catch (e, st) {
+        debugPrint('[IptvChannelSearch] failed: $e\n$st');
+        rethrow;
       } finally {
         _inFlight.remove(cacheKey);
       }

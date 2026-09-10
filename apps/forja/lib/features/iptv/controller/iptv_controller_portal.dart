@@ -258,6 +258,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
         _c.verified.where((v) => !keys.contains(v.key)).toList(growable: false);
     if (_c.activePortal != null && keys.contains(_c.activePortal!.key)) {
       _c.activePortal = null;
+      IptvChannelSearch.sessionPortalKey = null;
       _c.activeSection = null;
       _c.categories = const [];
       _c.browserAllStreams = const [];

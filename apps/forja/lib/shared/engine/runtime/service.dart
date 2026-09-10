@@ -172,7 +172,8 @@ class EngineService {
   void cancelLiveCatalog() {
     _liveCatalogGeneration++;
     _abortLiveMetaRuntime();
-    Engine.cancelLiveSportsFetch();
+    // Do not Engine.cancelLiveSportsFetch() — that job kind is shared with
+    // Live TV `sport_match_streams`; killing it leaves Live TV empty.
   }
 
   void _abortLiveMetaRuntime() {

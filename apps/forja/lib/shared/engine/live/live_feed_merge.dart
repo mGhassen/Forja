@@ -2,10 +2,66 @@ import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 
+/// Broadcast channel names from a schedule row (`sportMatchGame` and/or top-level).
+List<String> liveBroadcastChannelsFromRow(Map<String, dynamic> row) {
+  final out = <String>[];
+  final seen = <String>{};
+  void addAll(Object? raw) {
+    if (raw is! List) return;
+    for (final item in raw) {
+      final name = item.toString().trim();
+      if (name.isEmpty) continue;
+      if (!seen.add(name.toLowerCase())) continue;
+      out.add(name);
+    }
+  }
+
+  addAll(row['broadcastChannels']);
+  addAll(row['broadcast_channels']);
+  final game = row['sportMatchGame'];
+  if (game is Map) {
+    addAll(game['broadcastChannels']);
+    addAll(game['broadcast_channels']);
+  }
+  return out;
+}
+
+/// Union [extra] into [game]'s `broadcastChannels` (case-insensitive dedupe).
+Map<String, dynamic> withLiveBroadcastChannels(
+  Map<String, dynamic> game,
+  Iterable<String> extra,
+) {
+  final out = Map<String, dynamic>.from(game);
+  final merged = <String>[];
+  final seen = <String>{};
+  void add(String name) {
+    final t = name.trim();
+    if (t.isEmpty) return;
+    if (!seen.add(t.toLowerCase())) return;
+    merged.add(t);
+  }
+
+  final existing = out['broadcastChannels'] ?? out['broadcast_channels'];
+  if (existing is List) {
+    for (final item in existing) {
+      add(item.toString());
+    }
+  }
+  for (final name in extra) {
+    add(name);
+  }
+  if (merged.isNotEmpty) {
+    out['broadcastChannels'] = merged;
+    out.remove('broadcast_channels');
+  }
+  return out;
+}
+
 /// Collapse same-fixture schedule rows across catalogs (Catalog = All).
 ///
-/// Keeps opaque `sources[]` union + summed viewers. Prefer poster / structured
-/// teams / more specific category on the surviving card.
+/// Keeps opaque `sources[]` union + summed viewers + guide `broadcastChannels`
+/// (Live TV IPTV matching). Prefer poster / structured teams / more specific
+/// category on the surviving card.
 List<Map<String, dynamic>> mergeLiveFeedMatchingRows(
   List<Map<String, dynamic>> rows,
 ) {
@@ -100,7 +156,59 @@ Map<String, dynamic> _mergeFeedRowPair(
     out['live'] = true;
   }
 
+  _mergeSportMatchGame(out, primary, other);
+
   return out;
+}
+
+void _mergeSportMatchGame(
+  Map<String, dynamic> out,
+  Map<String, dynamic> primary,
+  Map<String, dynamic> other,
+) {
+  final channels = [
+    ...liveBroadcastChannelsFromRow(primary),
+    ...liveBroadcastChannelsFromRow(other),
+  ];
+  final a = primary['sportMatchGame'];
+  final b = other['sportMatchGame'];
+  final Map<String, dynamic>? base;
+  if (a is Map && b is Map) {
+    // Prefer the game that already carries guide channel names.
+    final aCh = liveBroadcastChannelsFromRow({'sportMatchGame': a});
+    final bCh = liveBroadcastChannelsFromRow({'sportMatchGame': b});
+    final preferA = aCh.length >= bCh.length;
+    base = Map<String, dynamic>.from(preferA ? a : b);
+    final filler = preferA ? b : a;
+    for (final key in ['homeTeam', 'awayTeam', 'title', 'sport', 'category']) {
+      final cur = (base[key] ?? '').toString().trim();
+      if (cur.isNotEmpty) continue;
+      final alt = (filler[key] ?? '').toString().trim();
+      if (alt.isNotEmpty) base[key] = alt;
+    }
+  } else if (a is Map) {
+    base = Map<String, dynamic>.from(a);
+  } else if (b is Map) {
+    base = Map<String, dynamic>.from(b);
+  } else if (channels.isEmpty) {
+    return;
+  } else {
+    base = {
+      'id': (out['id'] ?? '').toString(),
+      'title': (out['title'] ?? out['name'] ?? '').toString(),
+      'homeTeam': (out['homeTeam'] ?? '').toString(),
+      'awayTeam': (out['awayTeam'] ?? '').toString(),
+      'sport': (out['category'] ?? out['sport'] ?? '').toString(),
+      'category': (out['category'] ?? out['sport'] ?? '').toString(),
+    };
+  }
+
+  final merged = withLiveBroadcastChannels(base, channels);
+  out['sportMatchGame'] = merged;
+  final list = merged['broadcastChannels'];
+  if (list is List && list.isNotEmpty) {
+    out['broadcastChannels'] = List<String>.from(list.map((e) => e.toString()));
+  }
 }
 
 Map<String, dynamic> _pickBetterFeedRow(
