@@ -31,6 +31,8 @@ abstract final class IptvKitHooksRegister {
     KitResolveStreamsHooks.playRow = IptvResolveStreamsAdapter.playRow;
     KitResolveStreamsHooks.createHealthProbe = ({onResult}) =>
         IptvLazyUrlHealthProbe(onResult: onResult);
+    KitResolveStreamsHooks.cancelLiveTvSearch = () =>
+        IptvChannelSearch.cancel(reason: 'Live TV not foreground');
   }
 
   static Future<List<KitIptvRecHit>> _loadCatalogRecs({

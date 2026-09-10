@@ -41,6 +41,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   bool _heroFocusDone = false;
   String _liveTvChannelQuery = '';
   bool _streamsLoading = false;
+  int _sourcesReloadNonce = 0;
 
   @override
   void initState() {
@@ -85,11 +86,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   Future<List<KitSourcesRow>> _loadTab(
     String tabId, {
     void Function(List<KitSourcesRow> rows)? onPartial,
+    bool force = false,
   }) async {
     final rows = await KitResolvePanelHost.loadTab(
       widget.entry.legacyRow,
       tabId,
       healthProbe: _healthProbe,
+      force: force,
       onPartial: onPartial == null
           ? null
           : (partial) {
@@ -165,6 +168,9 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             showInlineSearch: false,
             channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
             browseCategoryTabIds: const {_liveTv},
+            reloadNonce: _sourcesReloadNonce,
+            onBrowseInactive: () =>
+                KitResolveStreamsHooks.cancelLiveTvSearch?.call(),
             onLoadingChanged: (loading) {
               if (!mounted || loading == _streamsLoading) return;
               setState(() => _streamsLoading = loading);
@@ -254,7 +260,17 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                       ),
                     ],
                     const Spacer(),
-                    if (_streamsLoading)
+                    ForjaPlainIcon(
+                      icon: Icons.refresh_rounded,
+                      tooltip: 'Reload',
+                      color: ForjaShellColors.textSecondary,
+                      size: 20,
+                      onTap: _streamsLoading
+                          ? null
+                          : () => setState(() => _sourcesReloadNonce++),
+                    ),
+                    if (_streamsLoading) ...[
+                      const SizedBox(width: 10),
                       const SizedBox(
                         width: 18,
                         height: 18,
@@ -263,6 +279,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                           color: ForjaShellColors.sectionAccent,
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),

@@ -18,6 +18,7 @@ typedef KitResolveTabLoader = Future<List<KitSourcesRow>> Function(
   String tabId, {
   KitUrlHealthProbe? healthProbe,
   void Function(List<KitSourcesRow> rows)? onPartial,
+  bool force,
 });
 
 typedef KitResolvePlayHandler = Future<void> Function(
@@ -34,9 +35,13 @@ abstract final class KitResolveStreamsHooks {
   static KitResolvePlayHandler? playRow;
   static KitUrlHealthProbeFactory? createHealthProbe;
 
+  /// Abort Live TV portal channel search (tab leave / app background).
+  static VoidCallback? cancelLiveTvSearch;
+
   static void clear() {
     loadTab = null;
     playRow = null;
     createHealthProbe = null;
+    cancelLiveTvSearch = null;
   }
 }

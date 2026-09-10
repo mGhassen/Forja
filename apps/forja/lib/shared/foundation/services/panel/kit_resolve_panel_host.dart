@@ -58,6 +58,7 @@ final class KitResolvePanelHost implements KitPanelHost {
     String tabId, {
     KitUrlHealthProbe? healthProbe,
     void Function(List<KitSourcesRow> rows)? onPartial,
+    bool force = false,
   }) async {
     final load = KitResolveStreamsHooks.loadTab;
     if (load == null) return const [];
@@ -66,6 +67,7 @@ final class KitResolvePanelHost implements KitPanelHost {
       tabId,
       healthProbe: healthProbe,
       onPartial: onPartial,
+      force: force,
     );
   }
 
@@ -174,14 +176,18 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       ],
       initialTabId: KitResolvePanelHost.providersTab,
       browseCategoryTabIds: const {KitResolvePanelHost.liveTvTab},
+      onBrowseInactive: () =>
+          KitResolveStreamsHooks.cancelLiveTvSearch?.call(),
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,
-      loadTab: (tabId, {onPartial}) => KitResolvePanelHost.loadTab(
+      loadTab: (tabId, {onPartial, force = false}) =>
+          KitResolvePanelHost.loadTab(
         row,
         tabId,
         healthProbe: healthProbe,
         onPartial: onPartial,
+        force: force,
       ),
       onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
         context,

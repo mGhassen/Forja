@@ -75,10 +75,12 @@ class KitSourcesPanel extends StatefulWidget {
     this.showTabs = true,
     this.onTabsLeftEdge,
     this.browseCategoryTabIds = const {'live_tv'},
+    this.onBrowseInactive,
     this.channelQuery,
     this.onChannelQueryChanged,
     this.showInlineSearch = true,
     this.onLoadingChanged,
+    this.reloadNonce = 0,
   });
 
   final String title;
@@ -87,9 +89,11 @@ class KitSourcesPanel extends StatefulWidget {
   final String? initialTabId;
 
   /// Load rows for a tab id. Called on first select and on reload.
+  /// When [force] is true, skip warm caches and rediscover from scratch.
   final Future<List<KitSourcesRow>> Function(
     String tabId, {
     void Function(List<KitSourcesRow> rows)? onPartial,
+    bool force,
   }) loadTab;
 
   final Future<void> Function(KitSourcesRow row) onPlayRow;
@@ -111,6 +115,9 @@ class KitSourcesPanel extends StatefulWidget {
   /// Tabs that get Categories rail + channel search filtering.
   final Set<String> browseCategoryTabIds;
 
+  /// Browse tab left foreground (tab switch / dispose / app pause).
+  final VoidCallback? onBrowseInactive;
+
   /// External channel query (e.g. cards hero owns search). When null, panel
   /// keeps its own query when [showInlineSearch] is true.
   final String? channelQuery;
@@ -125,6 +132,9 @@ class KitSourcesPanel extends StatefulWidget {
   /// Fires when the active tab's load starts/ends (progressive discover).
   final ValueChanged<bool>? onLoadingChanged;
 
+  /// Parent bumps this to force-reload the active tab (embedded details chrome).
+  final int reloadNonce;
+
   /// Put D-pad on the first tab (Providers). Retries while nodes mount.
   static void claimProvidersFocus({int maxTries = 24}) {
     SourcesPanelTv.focusKindItem(maxTries: maxTries);
@@ -134,7 +144,8 @@ class KitSourcesPanel extends StatefulWidget {
   State<KitSourcesPanel> createState() => _KitSourcesPanelState();
 }
 
-class _KitSourcesPanelState extends State<KitSourcesPanel> {
+class _KitSourcesPanelState extends State<KitSourcesPanel>
+    with WidgetsBindingObserver {
   late String _tabId;
   final Map<String, List<KitSourcesRow>> _rowsByTab = {};
   final Map<String, bool> _loadingByTab = {};
@@ -143,6 +154,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   int _loadGen = 0;
   String _internalQuery = '';
   String _selectedCategoryKey = kKitSourcesCategoryAll;
+  bool _reloadBrowseOnResume = false;
 
   bool get _browseActive =>
       widget.browseCategoryTabIds.contains(_tabId);
@@ -152,6 +164,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabId = widget.initialTabId ??
         (widget.tabs.isNotEmpty ? widget.tabs.first.id : '');
     if (widget.channelQuery != null) {
@@ -166,8 +179,35 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.onBrowseInactive?.call();
     _listScroll.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      widget.onBrowseInactive?.call();
+      if (!_browseActive) return;
+      _reloadBrowseOnResume = _loadingByTab[_tabId] == true ||
+          !_rowsByTab.containsKey(_tabId);
+      _loadGen++;
+      if (!mounted) return;
+      if (_loadingByTab[_tabId] == true) {
+        setState(() => _loadingByTab[_tabId] = false);
+        _emitLoading(false);
+      }
+      return;
+    }
+    if (state == AppLifecycleState.resumed &&
+        _browseActive &&
+        _reloadBrowseOnResume) {
+      _reloadBrowseOnResume = false;
+      unawaited(_ensureLoaded(_tabId, force: true));
+    }
   }
 
   @override
@@ -177,6 +217,10 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         oldWidget.subtitle != widget.subtitle) {
       _rowsByTab.clear();
       _errorByTab.clear();
+      if (_tabId.isNotEmpty) unawaited(_ensureLoaded(_tabId, force: true));
+    }
+    if (widget.reloadNonce != oldWidget.reloadNonce &&
+        widget.reloadNonce != 0) {
       if (_tabId.isNotEmpty) unawaited(_ensureLoaded(_tabId, force: true));
     }
     if (widget.initialTabId != null &&
@@ -206,6 +250,7 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     try {
       final rows = await widget.loadTab(
         tabId,
+        force: force,
         onPartial: (partial) {
           if (!mounted || gen != _loadGen) return;
           setState(() {
@@ -242,6 +287,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
 
   void _selectTab(String id) {
     if (id == _tabId) return;
+    final leavingBrowse = _browseActive &&
+        !widget.browseCategoryTabIds.contains(id);
     setState(() {
       _tabId = id;
       if (!widget.browseCategoryTabIds.contains(id)) {
@@ -251,6 +298,10 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
         _selectedCategoryKey = kKitSourcesCategoryAll;
       }
     });
+    if (leavingBrowse) {
+      _reloadBrowseOnResume = false;
+      widget.onBrowseInactive?.call();
+    }
     if (_listScroll.hasClients) _listScroll.jumpTo(0);
     _emitLoading(_loadingByTab[id] == true);
     unawaited(_ensureLoaded(id));

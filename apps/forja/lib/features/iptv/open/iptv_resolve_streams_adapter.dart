@@ -19,14 +19,16 @@ abstract final class IptvResolveStreamsAdapter {
     String tabId, {
     KitUrlHealthProbe? healthProbe,
     void Function(List<KitSourcesRow> rows)? onPartial,
+    bool force = false,
   }) async {
     if (tabId == KitResolvePanelHost.liveTvTab) {
-      final sources = await _loadLiveTv(legacyRow);
+      final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }
 
     final sources = await LiveResolveStreams.loadProviders(
       legacyRow,
+      force: force,
       onPartial: onPartial == null
           ? null
           : (partial) {
@@ -54,14 +56,15 @@ abstract final class IptvResolveStreamsAdapter {
   }
 
   static Future<List<IptvPlaySource>> _loadLiveTv(
-    Map<String, dynamic> legacyRow,
-  ) async {
+    Map<String, dynamic> legacyRow, {
+    bool force = false,
+  }) async {
     if (!await IptvForjaSportsGate.isForjaSportsEnabled()) {
       debugPrint('[IptvChannelSearch] Forja Sports disabled in hub Setup');
       return [];
     }
     final game = _liveTvGame(legacyRow);
-    return IptvChannelSearch.search(game: game);
+    return IptvChannelSearch.search(game: game, force: force);
   }
 
   /// Pack `sportMatchGame` plus guide channel names from soft-matched siblings
