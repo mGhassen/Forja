@@ -11,23 +11,24 @@ Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [catalo
 
 **Forja does not know plugins.** See [forja-plugins-community-owned.mdc](./forja-plugins-community-owned.mdc).
 
-Repo-root `plugins/` holds **community packs** for local/dev — **not** compiled into
-the Flutter binary, and **not** a host inventory. They will leave the release tree later.
-The app **installs, caches, and runs** whatever packs the user has via
+Official packs live in the sibling **[forja-packs](https://github.com/mGhassen/forja-packs)**
+repo — **not** compiled into the Flutter binary, and **not** a host inventory.
+Local/dev: set `FORJA_PACKS_ROOT` or clone `forja-packs` next to Forja. The app
+**installs, caches, and runs** whatever packs the user has via
 `PluginRegistry` + `EngineService`.
 
-| Pack tree (dev layout only) | Role | Host entry |
+| Pack tree (`forja-packs`) | Role | Host entry |
 |-----------------------------|------|------------|
-| `plugins/hubs/**` | Browse catalogs (any hub the user installs) | `MetaRuntime.run(pluginId, action, …)` |
-| `plugins/providers/**` | Stream extractors | `EngineService.runPlugin(…)` |
-| `plugins/live/**` | Live matches / schedules | Engine live APIs |
-| `plugins/catalog/**` | Stremio-style catalog addons | Engine catalog |
+| `hubs/**` | Browse catalogs (any hub the user installs) | `MetaRuntime.run(pluginId, action, …)` |
+| `providers/**` | Stream extractors | `EngineService.runPlugin(…)` |
+| `live/**` | Live matches / schedules | Engine live APIs |
+| `catalog/**` | Stremio-style catalog addons | Engine catalog |
 
 Each pack has `manifest.json` → plugin ids, `engine.json` **types**, optional `nav`
 (tabId, icon), and JS handlers. Those ids are **pack-owned**, never Dart allowlists.
 
 **Pack knowledge** (AniList, KissKh, Larozaa, TMDB match, scraper URLs, episode id
-formats, hub folder names) lives **only in `plugins/**` JS** (and optional enrich companions).
+formats, hub folder names) lives **only in forja-packs JS** (and optional enrich companions).
 
 The Flutter app (`apps/forja/`) is the **host**: shell, generic catalog kit, player,
 engine runtime. Foundation stays generic kits — not a ForjaHQ plugin index.
@@ -37,7 +38,7 @@ engine runtime. Foundation stays generic kits — not a ForjaHQ plugin index.
 ## Repo layout (do not blur these)
 
 ```
-plugins/           ← external packs (source of truth for pack behavior)
+forja-packs/       ← external packs (source of truth for pack behavior)
 apps/forja/        ← Flutter host (generic contracts + UI)
 packages/rust/     ← native playback / torrent / resolve engine
 ```

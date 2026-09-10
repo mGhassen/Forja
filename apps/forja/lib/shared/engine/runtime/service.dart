@@ -1337,6 +1337,14 @@ class EngineService {
         if (s is Map) rawList.add(Map<String, dynamic>.from(s));
       }
     }
+
+    final logsRaw = decoded['logs'];
+    if (logsRaw is List) {
+      for (final line in logsRaw) {
+        final s = line?.toString().trim() ?? '';
+        if (s.isNotEmpty) debugPrint('[engine] $s');
+      }
+    }
     debugPrint(
       '[engine] ${plugin.id} done (enginejs live) raw=${rawList.length} '
       '${sw.elapsedMilliseconds}ms',
@@ -1640,6 +1648,14 @@ class EngineService {
     if (streamsRaw is List) {
       for (final s in streamsRaw) {
         if (s is Map) rawList.add(Map<String, dynamic>.from(s));
+      }
+    }
+
+    final logsRaw = decoded['logs'];
+    if (logsRaw is List) {
+      for (final line in logsRaw) {
+        final s = line?.toString().trim() ?? '';
+        if (s.isNotEmpty) debugPrint('[engine] $s');
       }
     }
 

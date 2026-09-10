@@ -195,7 +195,7 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 
 | Doc | Purpose |
 |-----|---------|
-| [plugins/DEVELOPING.md](../plugins/DEVELOPING.md) | **Community plugin packs** — manifest, EngineJS API, catalog protocol |
+| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community plugin packs** — separate repo; see `sdk/DEVELOPING.md` |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, engine, data flows |
 | [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
 | [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |

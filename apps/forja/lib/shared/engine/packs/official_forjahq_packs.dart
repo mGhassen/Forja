@@ -32,7 +32,7 @@ class OfficialForjaHqPack {
 }
 
 const _kPacksBase =
-    'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins';
+    'https://raw.githubusercontent.com/mGhassen/forja-packs/main';
 
 /// Slot → GitHub raw URL hints for reinstall when a synced local path is gone.
 ///
@@ -189,29 +189,29 @@ String? officialManifestUrlForSlot(String? slot) {
   if (want == null || want.isEmpty) return null;
   for (final pack in kOfficialForjaHqPacks) {
     final path = pack.manifestUrl.trim().replaceAll('\\', '/').toLowerCase();
-    if (want == 'providers' && path.endsWith('plugins/providers/manifest.json')) {
+    if (want == 'providers' && path.endsWith('providers/manifest.json')) {
       return pack.manifestUrl;
     }
-    if (want == 'catalog' && path.endsWith('plugins/catalog/manifest.json')) {
+    if (want == 'catalog' && path.endsWith('catalog/manifest.json')) {
       return pack.manifestUrl;
     }
-    if (want == 'live' && path.endsWith('plugins/live/manifest.json')) {
+    if (want == 'live' && path.endsWith('live/manifest.json')) {
       return pack.manifestUrl;
     }
-    if (want == 'torrent' && path.endsWith('plugins/torrent/manifest.json')) {
+    if (want == 'torrent' && path.endsWith('torrent/manifest.json')) {
       return pack.manifestUrl;
     }
     if (want == 'iptv-vod' &&
-        (path.endsWith('plugins/iptv/vod/manifest.json') ||
-            path.endsWith('plugins/hubs/iptv/manifest.json'))) {
+        (path.endsWith('iptv/vod/manifest.json') ||
+            path.endsWith('hubs/iptv/manifest.json'))) {
       return pack.manifestUrl;
     }
     if (want == 'home' &&
-        (path.endsWith('plugins/hubs/home/manifest.json') ||
-            path.endsWith('plugins/hubs/manifest.json'))) {
+        (path.endsWith('hubs/home/manifest.json') ||
+            path.endsWith('hubs/manifest.json'))) {
       return pack.manifestUrl;
     }
-    if (path.endsWith('plugins/hubs/$want/manifest.json')) {
+    if (path.endsWith('hubs/$want/manifest.json')) {
       return pack.manifestUrl;
     }
   }

@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "anilist"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "serde",
  "serde_json",
@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "anime_extractors"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "aes",
  "base64",
@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "books"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "scraper",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "catalog"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "scraper",
@@ -1050,7 +1050,7 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 
 [[package]]
 name = "debrid"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "reqwest",
  "serde",
@@ -1193,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "engine"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1263,7 +1263,7 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 
 [[package]]
 name = "ffi"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "debrid",
  "engine",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "host-http"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "base64",
  "reqwest",
@@ -1995,7 +1995,7 @@ dependencies = [
 
 [[package]]
 name = "indexer"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "base64",
  "quick-xml 0.37.5",
@@ -2057,7 +2057,7 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
 name = "iptv"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "aes",
  "base64",
@@ -2080,7 +2080,7 @@ dependencies = [
 
 [[package]]
 name = "iptv-worker"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "clap",
  "iptv",
@@ -2122,7 +2122,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jellyfin"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "reqwest",
  "serde",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "lan"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "axum",
  "http",
@@ -2547,7 +2547,7 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "live-sports"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "base64",
  "iptv",
@@ -2596,7 +2596,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "manga"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "scraper",
@@ -2662,7 +2662,7 @@ dependencies = [
 
 [[package]]
 name = "media-extra"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "base64",
  "host-http",
@@ -2675,7 +2675,7 @@ dependencies = [
 
 [[package]]
 name = "media-metadata"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "serde",
  "serde_json",
@@ -2753,7 +2753,7 @@ dependencies = [
 
 [[package]]
 name = "music"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "reqwest",
@@ -3144,7 +3144,7 @@ dependencies = [
 
 [[package]]
 name = "proxy"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "aes",
  "axum",
@@ -3748,7 +3748,7 @@ dependencies = [
 
 [[package]]
 name = "scrapers"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "serde",
@@ -4067,7 +4067,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "storage"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "serde",
  "serde_json",
@@ -4075,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "stream"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "serde",
  "serde_json",
@@ -4084,7 +4084,7 @@ dependencies = [
 
 [[package]]
 name = "stremio"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "reqwest",
  "serde",
@@ -4127,7 +4127,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "subtitles"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "regex",
  "serde",
@@ -4320,7 +4320,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tmdb"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "serde",
  "serde_json",
@@ -4452,7 +4452,7 @@ dependencies = [
 
 [[package]]
 name = "torrent"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "axum",
  "futures-util",
@@ -4547,7 +4547,7 @@ dependencies = [
 
 [[package]]
 name = "trakt"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "reqwest",
  "serde",
@@ -4818,7 +4818,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "1.2.69"
+version = "1.2.70"
 dependencies = [
  "aes",
  "base64",

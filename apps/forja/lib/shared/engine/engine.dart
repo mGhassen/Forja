@@ -7,6 +7,7 @@ export 'models/categories.dart';
 export 'models/ids.dart';
 export 'models/lean_apply_result.dart';
 export 'models/models.dart';
+export 'packs/forja_packs_root.dart';
 export 'packs/official_forjahq_install.dart';
 export 'packs/official_forjahq_packs.dart';
 export 'packs/pack_device_state.dart';

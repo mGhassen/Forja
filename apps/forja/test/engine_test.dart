@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
+import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
@@ -16,28 +17,41 @@ import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// True when repo `plugins/` tree is available (local checkout).
+/// True when a forja-packs checkout is available (sibling or FORJA_PACKS_ROOT).
 bool get forjaHqPackEnvReady => _repoPluginsRoot() != null;
 
 String? _repoPluginsRoot() {
+  final fromHelper = ForjaPacksRoot.resolve(requireDebug: false);
+  if (fromHelper != null) return fromHelper;
+
   var dir = Directory.current;
   for (var i = 0; i < 10; i++) {
     final plugins = Directory('${dir.path}/plugins');
     if (File('${plugins.path}/providers/manifest.json').existsSync()) {
       return plugins.path;
     }
+    final sibling = Directory('${dir.path}/forja-packs');
+    if (File('${sibling.path}/providers/manifest.json').existsSync()) {
+      return sibling.path;
+    }
     final parent = dir.parent;
     if (parent.path == dir.path) break;
     dir = parent;
+    final next = Directory('${dir.path}/forja-packs');
+    if (File('${next.path}/providers/manifest.json').existsSync()) {
+      return next.path;
+    }
   }
   return null;
 }
 
-/// Load a file under repo `plugins/` (pack tests — not host inventory).
+/// Load a file under forja-packs (pack tests — not host inventory).
 Future<String> loadForjaHqFile(String relativePath) async {
   final root = _repoPluginsRoot();
   if (root == null) {
-    throw StateError('plugins/ tree not found — run tests from Forja checkout');
+    throw StateError(
+      'forja-packs tree not found — clone sibling forja-packs or set FORJA_PACKS_ROOT',
+    );
   }
   final file = File('$root/$relativePath');
   if (!file.existsSync()) {
@@ -712,13 +726,19 @@ void main() {
     test('forjaHqSlot detects providers/catalog/live paths', () {
       expect(
         PluginRegistry.forjaHqSlot(
+          'https://raw.githubusercontent.com/mGhassen/forja-packs/main/providers/manifest.json',
+        ),
+        'providers',
+      );
+      expect(
+        PluginRegistry.forjaHqSlot(
           'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
         ),
         'providers',
       );
       expect(
         PluginRegistry.forjaHqSlot(
-          '/Users/x/Forja/plugins/catalog/manifest.json',
+          '/Users/x/forja-packs/catalog/manifest.json',
         ),
         'catalog',
       );
@@ -727,7 +747,7 @@ void main() {
         'live',
       );
       expect(
-        PluginRegistry.forjaHqSlot('/Users/x/Forja/plugins/torrent/manifest.json'),
+        PluginRegistry.forjaHqSlot('/Users/x/forja-packs/torrent/manifest.json'),
         'torrent',
       );
       expect(
@@ -736,20 +756,18 @@ void main() {
       );
     });
 
-    test('devTorrentManifestUrl joins FORJA_REPO_ROOT when set', () {
-      final root = Platform.environment['FORJA_REPO_ROOT']?.trim();
-      if (root == null || root.isEmpty) return;
+    test('devTorrentManifestUrl resolves forja-packs checkout', () {
       final url = PluginRegistry.devTorrentManifestUrl();
-      expect(url, isNotNull);
-      expect(url, endsWith('plugins/torrent/manifest.json'));
-      expect(File(url!).existsSync(), isTrue);
+      if (url == null) return;
+      expect(url, endsWith('torrent/manifest.json'));
+      expect(File(url).existsSync(), isTrue);
     });
 
-    test('devLiveManifestUrl finds plugins/live from checkout walk', () {
+    test('devLiveManifestUrl finds live from packs checkout', () {
       final url = PluginRegistry.devLiveManifestUrl();
-      // null outside Forja tree / non-debug; when present must be live manifest
+      // null outside packs tree / non-debug; when present must be live manifest
       if (url == null) return;
-      expect(url, endsWith('plugins/live/manifest.json'));
+      expect(url, endsWith('live/manifest.json'));
       expect(File(url).existsSync(), isTrue);
     });
 

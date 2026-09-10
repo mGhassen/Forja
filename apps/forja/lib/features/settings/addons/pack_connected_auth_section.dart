@@ -55,19 +55,12 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
         );
         return;
       }
-      if (flow == 'browser') {
+      final methods = _methodsFromBegin(begin);
+      // TV cannot paste a browser console script — prefer pack form methods.
+      if (flow == 'browser' && !(isTvProfile(context) && methods.isNotEmpty)) {
         await _loginBrowser(spec, begin ?? const {});
         return;
       }
-      final methodsRaw = begin?['methods'];
-      if (methodsRaw is! List || methodsRaw.isEmpty) {
-        ForjaToast.error('No login methods from ${spec.label}');
-        return;
-      }
-      final methods = [
-        for (final m in methodsRaw)
-          if (m is Map) Map<String, dynamic>.from(m),
-      ];
       if (methods.isEmpty) {
         ForjaToast.error('No login methods from ${spec.label}');
         return;
@@ -94,6 +87,15 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
     } finally {
       if (mounted) setState(() => _busy.remove(spec.pluginId));
     }
+  }
+
+  List<Map<String, dynamic>> _methodsFromBegin(Map<String, dynamic>? begin) {
+    final methodsRaw = begin?['methods'];
+    if (methodsRaw is! List) return const [];
+    return [
+      for (final m in methodsRaw)
+        if (m is Map) Map<String, dynamic>.from(m),
+    ];
   }
 
   Future<void> _loginBrowser(
@@ -300,8 +302,9 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
               const SizedBox(height: 12),
             ],
             for (final f in _fields) ...[
-              TextField(
-                controller: _controllers[(f['id'] ?? '').toString()],
+              SettingsTextField(
+                controller: _controllers[(f['id'] ?? '').toString()]!,
+                label: (f['label'] ?? f['id'] ?? '').toString(),
                 obscureText:
                     (f['type'] ?? '').toString().toLowerCase() == 'password' ||
                     (f['type'] ?? '').toString().toLowerCase() == 'secret',
@@ -309,9 +312,6 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
                     (f['type'] ?? '').toString().toLowerCase() == 'phone'
                     ? TextInputType.phone
                     : TextInputType.text,
-                decoration: InputDecoration(
-                  labelText: (f['label'] ?? f['id'] ?? '').toString(),
-                ),
               ),
               const SizedBox(height: 8),
             ],

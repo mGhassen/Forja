@@ -1,9 +1,0 @@
-[
-  {
-    "ok": true,
-    "kit": 99,
-    "protocol": 99,
-    "action": "layout",
-    "data": { "pages": { "home": { "widgets": [] } } }
-  }
-]

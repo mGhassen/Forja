@@ -131,6 +131,9 @@ pub struct ExtractResult {
     /// Plugin called `ctx.host(id)` with no streams; optional app host fallback may run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub needs_host: Option<String>,
+    /// `ctx.log` / console lines from the plugin (capped).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub logs: Vec<String>,
 }
 
 const HOST_JS: &str = r#"
@@ -376,7 +379,7 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
-const STREAMCRYPTO_JS: &str = include_str!("../../../plugins/providers/_streamcrypto.js");
+const STREAMCRYPTO_JS: &str = include_str!("_streamcrypto.js");
 const CHEERIO_BUNDLE: &str =
     include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
@@ -602,6 +605,7 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
                 error: Some("engine timed out".into()),
                 unsupported: None,
                 needs_host: None,
+                logs: vec![],
             },
         },
         _ = token.cancelled() => ExtractResult {
@@ -609,6 +613,7 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
             error: Some("cancelled".into()),
             unsupported: None,
             needs_host: None,
+            logs: vec![],
         },
     }
 }
@@ -650,6 +655,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
             error: Some("cancelled".into()),
             unsupported: None,
             needs_host: None,
+            logs: vec![],
         };
     }
 
@@ -661,6 +667,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 error: Some(format!("AsyncRuntime: {e}")),
                 unsupported: Some(true),
                 needs_host: None,
+                logs: vec![],
             };
         }
     };
@@ -672,6 +679,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 error: Some(format!("AsyncContext: {e}")),
                 unsupported: Some(true),
                 needs_host: None,
+                logs: vec![],
             };
         }
     };
@@ -692,13 +700,14 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     let _ = rt.idle().await;
 
     match result {
-        Ok((streams, needs_host)) => {
+        Ok((streams, needs_host, logs)) => {
             let needs_host = if streams.is_empty() { needs_host } else { None };
             ExtractResult {
                 streams,
                 error: None,
                 unsupported: None,
                 needs_host,
+                logs,
             }
         }
         Err(e) => {
@@ -709,6 +718,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 error: Some(msg),
                 unsupported: if unsupported { Some(true) } else { None },
                 needs_host: None,
+                logs: vec![],
             }
         }
     }
@@ -723,7 +733,7 @@ async fn run_in_ctx<'js>(
     hops: std::sync::Arc<Vec<HopScript>>,
     hop_depth: u32,
     allow_host: bool,
-) -> Result<(Vec<Value>, Option<String>), String> {
+) -> Result<(Vec<Value>, Option<String>, Vec<String>), String> {
     let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
         .map_err(|e| e.to_string())?
         .with_name("__native_fetch")
@@ -780,8 +790,16 @@ async fn run_in_ctx<'js>(
         .set("__native_kisskh_kkey", kisskh_kkey_fn)
         .map_err(|e| e.to_string())?;
 
-    let log_fn = Function::new(ctx.clone(), |msg: String| {
+    let plugin_logs: std::sync::Arc<std::sync::Mutex<Vec<String>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let plugin_logs_fn = plugin_logs.clone();
+    let log_fn = Function::new(ctx.clone(), move |msg: String| {
         eprintln!("[engine] {msg}");
+        if let Ok(mut g) = plugin_logs_fn.lock() {
+            if g.len() < 48 {
+                g.push(msg);
+            }
+        }
     })
     .map_err(|e| e.to_string())?
     .with_name("__native_log")
@@ -1088,7 +1106,12 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     let streams: Vec<Value> = serde_json::from_str(&raw).unwrap_or_default();
     let needs_host = host_req.lock().ok().and_then(|g| g.clone());
-    Ok((streams, needs_host))
+    let logs = plugin_logs
+        .lock()
+        .ok()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    Ok((streams, needs_host, logs))
 }
 
 #[cfg(test)]

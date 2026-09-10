@@ -10,7 +10,9 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 1. Enable **ForjaHQ Shahid** under **Settings → Forja Packs → Hubs**.
 2. Turn **Shahid** on in **Settings → Features** if needed.
-3. Open **Settings → Addons → Connected services** and tap **Login with Shahid**. Forja opens Shahid in your browser. Tap **Copy connect script**, on the Shahid tab open the browser console, paste, Enter — Forja imports the session (already signed in is fine). You can close the Shahid tab after.
+3. Open **Settings → Addons → Connected services** and tap **Login with Shahid**.
+   - **Phone / tablet / desktop:** Forja opens Shahid in your browser. Tap **Copy connect script**, on the Shahid tab open the browser console, paste, Enter — Forja imports the session (already signed in is fine). Or use **email/password** in the same dialog.
+   - **Android TV:** Enter your Shahid **email and password** (browser paste is not available on TV).
 4. Open the **Shahid** tab.
 
 ## What you can do
@@ -22,12 +24,12 @@ The Shahid tab is a catalog hub from the ForjaHQ **Shahid** pack. It browses Sha
 
 ## Setup
 
-- Shahid account via **Settings → Addons → Connected services → Shahid** (Login opens your browser + connect link; Logout)
+- Shahid account via **Settings → Addons → Connected services → Shahid** (Login / Logout)
 
 ## Tips
 
 - DRM titles need a license after resolve. Until desktop DRM play ships, Play / Sources on Mac will not open MediaKit for those titles (toast instead of a green/gray screen).
-- VIP titles return nothing until you sign in.
+- VIP titles return nothing until you sign in on **that device** (sessions do not sync from another machine).
 
 ## Related
 

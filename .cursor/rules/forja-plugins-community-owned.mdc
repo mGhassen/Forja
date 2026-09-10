@@ -12,11 +12,11 @@ Index: [external plugins vs host](./forja-external-plugins-host.mdc) · [catalog
 | Tree | Role |
 |------|------|
 | `apps/forja/`, `packages/rust/` | **Host / foundation** — generic runtime, kit, player, engine contracts |
-| `plugins/` | **Community packs** — temporary in this repo for development; wiped from the release product later |
+| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community packs** — separate repo; not part of the host binary |
 
 The root app ships **infrastructure to install, run, and render plugins**. It does **not** ship knowledge of which packs exist.
 
-`plugins/` today is convenience for local/dev. Treat every pack as **replaceable, renameable, and absent**. A user may install zero official hubs and only community packs.
+Treat every pack as **replaceable, renameable, and absent**. A user may install zero official hubs and only community packs. Local/dev: `FORJA_PACKS_ROOT` or sibling `forja-packs/` checkout.
 
 ---
 
@@ -44,7 +44,7 @@ The root app ships **infrastructure to install, run, and render plugins**. It do
 
 - Parse **opaque** manifest fields, `nav`, `open.surface`, kit layout
 - Path mechanics: `forjaHqSlot(url)` → last path segment (any string)
-- Pack **kind** buckets from URL tree shape (`plugins/providers`, `plugins/hubs`, …) as install UI grouping — not a hub name allowlist
+- Pack **kind** buckets from URL tree shape (`providers`, `hubs`, `live`, …) as install UI grouping — not a hub name allowlist
 - Host **route surfaces** (`open.surface`) as kit destinations — not permission to list which packs exist
 
 ---
@@ -53,7 +53,7 @@ The root app ships **infrastructure to install, run, and render plugins**. It do
 
 | May know scrapers / pack ids / hub folders | Must not |
 |-------------------------------------------|----------|
-| `plugins/**` only | `apps/forja/**`, `packages/rust/**` (except opaque passthrough) |
+| forja-packs only | `apps/forja/**`, `packages/rust/**` (except opaque passthrough) |
 
 When adding a hub or provider: change the pack. Do not teach the host a new name.
 

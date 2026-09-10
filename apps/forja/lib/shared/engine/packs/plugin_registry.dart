@@ -8,6 +8,7 @@ import 'package:forja/shared/foundation/services/meta/cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/plugin_install_validator.dart';
@@ -779,8 +780,7 @@ class PluginRegistry {
   Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
       applyOfficialKeepSet(keepUrls);
 
-  /// Debug checkout: `plugins/catalog/manifest.json` from env or by walking up
-  /// from [Directory.current] (flutter run from `apps/forja`).
+  /// Debug checkout: `catalog/manifest.json` from env or [ForjaPacksRoot].
   @visibleForTesting
   static String? devCatalogManifestUrl() {
     if (!kDebugMode) return null;
@@ -792,30 +792,10 @@ class PluginRegistry {
           Platform.environment['FORJA_HQ_CATALOG_MANIFEST_URL']?.trim() ?? '';
     }
     if (explicit.isNotEmpty) return explicit;
-
-    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
-    if (root.isEmpty) {
-      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
-    }
-    if (root.isNotEmpty) {
-      final normalized = root
-          .replaceAll('\\', '/')
-          .replaceAll(RegExp(r'/+$'), '');
-      return '$normalized/plugins/catalog/manifest.json';
-    }
-
-    var dir = Directory.current;
-    for (var i = 0; i < 8; i++) {
-      final candidate = File('${dir.path}/plugins/catalog/manifest.json');
-      if (candidate.existsSync()) return candidate.path;
-      final parent = dir.parent;
-      if (parent.path == dir.path) break;
-      dir = parent;
-    }
-    return null;
+    return ForjaPacksRoot.manifest('catalog/manifest.json');
   }
 
-  /// Debug checkout: local `plugins/torrent/manifest.json` for [loadScript] only.
+  /// Debug checkout: local `torrent/manifest.json` for [loadScript] only.
   @visibleForTesting
   static String? devTorrentManifestUrl() {
     if (!kDebugMode) return null;
@@ -827,19 +807,10 @@ class PluginRegistry {
           Platform.environment['FORJA_HQ_TORRENT_MANIFEST_URL']?.trim() ?? '';
     }
     if (explicit.isNotEmpty) return explicit;
-
-    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
-    if (root.isEmpty) {
-      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
-    }
-    if (root.isEmpty) return null;
-    final normalized = root
-        .replaceAll('\\', '/')
-        .replaceAll(RegExp(r'/+$'), '');
-    return '$normalized/plugins/torrent/manifest.json';
+    return ForjaPacksRoot.manifest('torrent/manifest.json');
   }
 
-  /// Debug checkout: local `plugins/live/manifest.json` for [loadScript] only.
+  /// Debug checkout: local `live/manifest.json` for [loadScript] only.
   @visibleForTesting
   static String? devLiveManifestUrl() {
     if (!kDebugMode) return null;
@@ -851,27 +822,7 @@ class PluginRegistry {
           Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
     }
     if (explicit.isNotEmpty) return explicit;
-
-    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
-    if (root.isEmpty) {
-      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
-    }
-    if (root.isNotEmpty) {
-      final normalized = root
-          .replaceAll('\\', '/')
-          .replaceAll(RegExp(r'/+$'), '');
-      return '$normalized/plugins/live/manifest.json';
-    }
-
-    var dir = Directory.current;
-    for (var i = 0; i < 8; i++) {
-      final candidate = File('${dir.path}/plugins/live/manifest.json');
-      if (candidate.existsSync()) return candidate.path;
-      final parent = dir.parent;
-      if (parent.path == dir.path) break;
-      dir = parent;
-    }
-    return null;
+    return ForjaPacksRoot.manifest('live/manifest.json');
   }
 
   /// Hydrate lean stubs and refresh remote packs when needed.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/settings/addons/pack_auth_session_handoff.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -234,8 +235,9 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                 const SizedBox(height: 8),
               ],
               for (final f in _fields) ...[
-                TextField(
-                  controller: _controllers[(f['id'] ?? '').toString()],
+                SettingsTextField(
+                  controller: _controllers[(f['id'] ?? '').toString()]!,
+                  label: (f['label'] ?? f['id'] ?? '').toString(),
                   obscureText:
                       (f['type'] ?? '').toString().toLowerCase() ==
                           'password' ||
@@ -244,9 +246,6 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                       (f['type'] ?? '').toString().toLowerCase() == 'phone'
                       ? TextInputType.phone
                       : TextInputType.text,
-                  decoration: InputDecoration(
-                    labelText: (f['label'] ?? f['id'] ?? '').toString(),
-                  ),
                 ),
                 const SizedBox(height: 8),
               ],

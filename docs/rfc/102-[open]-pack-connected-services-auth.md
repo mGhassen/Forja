@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **9 / 10** acceptance (1 ⏭️ pin) |
-| **Current slice** | System browser + `forja://` session handoff for Shahid; formal device pairing still open |
+| **Progress** | **4 / 4** components · **10 / 11** acceptance (1 ⏭️ pin) |
+| **Current slice** | System browser + `forja://` session handoff (desktop); TV form login for browser packs with methods |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,6 +47,7 @@
 |--:|----|-------------|--------|
 | 1 | R102-A09 | Host handles `auth_begin` `flow: "browser"` — open pack URL in **system browser** (no in-app WebView) | ✅ |
 | 2 | R102-A10 | Shahid: already-logged-in browser → handoff session into Forja (`forja://connected-auth/session`) → Connected | ✅ |
+| 3 | R102-A11 | TV: `flow: "browser"` with pack `methods[]` uses email/password form (no console paste) | ✅ |
 
 ---
 

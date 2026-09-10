@@ -1,55 +1,19 @@
-# ForjaHQ plugins
+# Packs moved
 
-Official engine JS packs for [Forja](https://github.com/mGhassen/Forja) — maintained by **Forja Team**.
+Official EngineJS packs live in **[forja-packs](https://github.com/mGhassen/forja-packs)**.
 
-**Community developers:** [DEVELOPING.md](DEVELOPING.md) — manifest schema, `extract(ctx)` / `search(ctx)` API, catalog hub protocol. **Contracts:** [sdk/contract.json](sdk/contract.json) + [sdk/schema/](sdk/schema/).
+Clone next to this repo:
 
-Every `manifest.json` under this tree is an installable pack (except `archived/`). Web **Community Packs** lists packs **published in admin** (`plugin_packs`); register a pack there with its GitHub (or CDN) `manifest.json` URL — no static site catalog.
-
-| Pack | Path | Role |
-|------|------|------|
-| **ForjaHQ Providers** | [`providers/manifest.json`](providers/manifest.json) | VOD / anime / drama scrapers + file-host hops |
-| **ForjaHQ Catalog** | [`catalog/manifest.json`](catalog/manifest.json) | Live Sports schedule catalogs |
-| **ForjaHQ Live** | [`live/manifest.json`](live/manifest.json) | Live Sports stream resolve (Forja Live) |
-| **ForjaHQ Torrent** | [`torrent/manifest.json`](torrent/manifest.json) | Builtin torrent indexer search (`kind: torrent`) |
-| **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
-| **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |
-| **ForjaHQ Asian Drama** | [`hubs/asian_drama/manifest.json`](hubs/asian_drama/manifest.json) | Asian Drama catalog hub (KissKH) |
-| **ForjaHQ Arabic** | [`hubs/arabic/manifest.json`](hubs/arabic/manifest.json) | Arabic hub (Larozaa) |
-| **ForjaHQ Aflem** | [`hubs/aflem/manifest.json`](hubs/aflem/manifest.json) | Aflem series hub (Brstej upstream / provider) |
-| **ForjaHQ Cartoon** | [`hubs/cartoon/manifest.json`](hubs/cartoon/manifest.json) | كرتون / DimaToon hub |
-| **ForjaHQ Kids** | [`hubs/kids/manifest.json`](hubs/kids/manifest.json) | Kids / Dimakids hub |
-| **ForjaHQ Live Sports** | [`hubs/live_sports/manifest.json`](hubs/live_sports/manifest.json) | Live sports schedule hub |
-| **ForjaHQ My List** | [`hubs/my_list/manifest.json`](hubs/my_list/manifest.json) | My List hub (local + Simkl via host widget) |
-| **ForjaHQ IPTV VOD** | [`iptv/vod/manifest.json`](iptv/vod/manifest.json) | IPTV portal VOD details + optional TMDB enrich (no shell tab) |
-
-## Install in Forja
-
-The Flutter host does **not** ship or hardcode pack inventory. Packs are **external**:
-
-1. **Settings → Sources → Forja** — paste a manifest URL (`https://…/manifest.json` or local `file://` path on desktop dev).
-2. **Profile sync** — signed-in users get lean pack rows from the cloud; the app hydrates full manifests on first use.
-
-Point each manifest at the packs in this repo (e.g. raw GitHub URLs or your own CDN). Hub packs cover Home, Anime, Asian Drama, and My List catalog tabs. Install **IPTV VOD** separately for IPTV Movies/Series hub details (`FORJA_HQ_IPTV_VOD_MANIFEST_URL` in `.env.example`).
-
-**Local dev:** install manifests with absolute paths to this checkout, e.g. `/path/to/Forja/plugins/providers/manifest.json`.
-
-## Layout
-
-| Path | Role |
-|------|------|
-| `providers/` | VOD extractors |
-| `torrent/` | Torrent indexer search plugins |
-| `live/` | Live match resolvers |
-| `catalog/` | Live schedule catalogs |
-| `iptv/` | IPTV feature packs (VOD details — not shell hub tabs) |
-| `hubs/` | Catalog hub packs (home, anime, …) |
-| `sdk/` | JSON Schema contracts + canonical JS kits |
-
-Each pack is a `manifest.json` plus JS entries. Optional **`bundle`** is a list of those file paths — the host downloads every listed file on install.
-
-```json
-"bundle": ["videasy.js", "hops/abyss.js", "_kit.js"]
+```text
+Workspace/
+├── Forja/
+└── forja-packs/
 ```
 
-If `bundle` is omitted, the host derives paths from each plugin’s `entry` / `prelude`.
+Set in `.env`:
+
+```bash
+FORJA_PACKS_ROOT=/path/to/forja-packs
+```
+
+Authoring guide: [forja-packs/sdk/DEVELOPING.md](https://github.com/mGhassen/forja-packs/blob/main/sdk/DEVELOPING.md).

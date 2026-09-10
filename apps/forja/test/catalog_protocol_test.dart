@@ -6,30 +6,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/foundation.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
-/// `sdk/fixtures/<name>.json` — test cwd is `apps/forja`.
+String? _packsRoot() => ForjaPacksRoot.resolve(requireDebug: false);
+
+/// `sdk/fixtures/<name>.json` under forja-packs.
 dynamic loadHubFixture(String name) {
-  final file = File('../../sdk/fixtures/$name.json');
+  final root = _packsRoot();
+  expect(root, isNotNull, reason: 'forja-packs not found');
+  final file = File('$root/sdk/fixtures/$name.json');
   expect(file.existsSync(), isTrue, reason: 'missing fixture ${file.path}');
   return jsonDecode(file.readAsStringSync());
 }
 
-/// `plugins/hubs/<pack>/manifest.json` — test cwd is `apps/forja`.
+/// `hubs/<pack>/manifest.json` under forja-packs.
 Map<String, dynamic> loadHubPackManifest(String packDir) {
-  final file = File('../../plugins/hubs/$packDir/manifest.json');
+  final root = _packsRoot();
+  expect(root, isNotNull, reason: 'forja-packs not found');
+  final file = File('$root/hubs/$packDir/manifest.json');
   expect(file.existsSync(), isTrue, reason: 'missing ${file.path}');
   return Map<String, dynamic>.from(
     jsonDecode(file.readAsStringSync()) as Map,
   );
 }
 
-/// `plugins/iptv/vod/manifest.json` — IPTV VOD details pack (not a hub tab).
+/// `iptv/vod/manifest.json` — IPTV VOD details pack (not a hub tab).
 Map<String, dynamic> loadIptvVodPackManifest() {
-  final file = File('../../plugins/iptv/vod/manifest.json');
+  final root = _packsRoot();
+  expect(root, isNotNull, reason: 'forja-packs not found');
+  final file = File('$root/iptv/vod/manifest.json');
   expect(file.existsSync(), isTrue, reason: 'missing ${file.path}');
   return Map<String, dynamic>.from(
     jsonDecode(file.readAsStringSync()) as Map,

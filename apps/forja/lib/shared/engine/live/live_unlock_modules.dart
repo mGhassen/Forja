@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/plugin_script_disk_store.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
@@ -63,28 +64,7 @@ abstract final class LiveUnlockModules {
           Platform.environment['FORJA_HQ_LIVE_MANIFEST_URL']?.trim() ?? '';
     }
     if (explicit.isNotEmpty) return explicit;
-
-    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
-    if (root.isEmpty) {
-      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
-    }
-    if (root.isNotEmpty) {
-      final normalized = root
-          .replaceAll('\\', '/')
-          .replaceAll(RegExp(r'/+$'), '');
-      final candidate = File('$normalized/plugins/live/manifest.json');
-      if (candidate.existsSync()) return candidate.path;
-    }
-
-    var dir = Directory.current;
-    for (var i = 0; i < 8; i++) {
-      final candidate = File('${dir.path}/plugins/live/manifest.json');
-      if (candidate.existsSync()) return candidate.path;
-      final parent = dir.parent;
-      if (parent.path == dir.path) break;
-      dir = parent;
-    }
-    return null;
+    return ForjaPacksRoot.manifest('live/manifest.json');
   }
 
   /// Absolute file for `module/relative` from pack install or local checkout.
