@@ -160,9 +160,13 @@ Map<String, dynamic>? liveStremioMetaToFeedRow(
     title: title,
     genres: genres,
   );
-  // LIVE badge with no kickoff, or kickoff inside the live window.
-  final airing =
-      alwaysOn || (live && dateMs <= 0) || stremioKickoffIsAiringNow(dateMs);
+  final ongoing = stremioTitleEventIsOngoing(title);
+  // LIVE badge with no kickoff, kickoff inside live window, or multi-day
+  // tournament window still covering today (Flix Solheim / US Open).
+  final airing = alwaysOn ||
+      (live && dateMs <= 0) ||
+      stremioKickoffIsAiringNow(dateMs) ||
+      ongoing;
   final categoryRaw =
       alwaysOn ? '24/7' : stremioCategoryFromGenres(genres);
   final category = categoryRaw.isEmpty ? 'other' : categoryRaw.toLowerCase();

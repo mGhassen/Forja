@@ -111,16 +111,76 @@ void main() {
       final ms = stremioKickoffMsFromTitleAndTime(
         title: 'Premier League Season | 22 August 2026',
         description: 'Category: Upcoming Events\nTime: 07:00\nChannels: Sky',
+        now: DateTime.utc(2026, 8, 1),
       );
       expect(ms, DateTime.utc(2026, 8, 22, 7, 0).millisecondsSinceEpoch);
     });
 
-    test('parses date range start day', () {
+    test('upcoming same-month range uses start day', () {
       final ms = stremioKickoffMsFromTitleAndTime(
         title: 'Cup Final | 7 – 13 September 2026',
         description: 'Time: 07:10\nChannels: Golf',
+        now: DateTime.utc(2026, 9, 1),
       );
       expect(ms, DateTime.utc(2026, 9, 7, 7, 10).millisecondsSinceEpoch);
+    });
+
+    test('ongoing range uses today + Time', () {
+      final ms = stremioKickoffMsFromTitleAndTime(
+        title: 'Solheim Cup | 7 – 13 September 2026',
+        description: 'Time: 07:10\nChannels: Golf',
+        now: DateTime.utc(2026, 9, 10, 15, 0),
+      );
+      expect(ms, DateTime.utc(2026, 9, 10, 7, 10).millisecondsSinceEpoch);
+    });
+
+    test('cross-month ongoing uses today + Time', () {
+      final ms = stremioKickoffMsFromTitleAndTime(
+        title: 'US Open | 23 August – 13 September 2026',
+        description: 'Time: 11:30\nChannels: ESPN',
+        now: DateTime.utc(2026, 9, 10, 12, 0),
+      );
+      expect(ms, DateTime.utc(2026, 9, 10, 11, 30).millisecondsSinceEpoch);
+    });
+
+    test('expired range returns 0', () {
+      final ms = stremioKickoffMsFromTitleAndTime(
+        title: 'Grand Prix | 4 – 6 September 2026',
+        description: 'Time: 11:00',
+        now: DateTime.utc(2026, 9, 10),
+      );
+      expect(ms, 0);
+    });
+
+    test('Time only assumes today UTC', () {
+      final ms = stremioKickoffMsFromTitleAndTime(
+        title: 'Camera Feed 1',
+        description: 'Time: 18:30',
+        now: DateTime.utc(2026, 9, 10, 12, 0),
+      );
+      expect(ms, DateTime.utc(2026, 9, 10, 18, 30).millisecondsSinceEpoch);
+    });
+  });
+
+  group('stremioTitleEventIsOngoing', () {
+    test('true inside multi-day window', () {
+      expect(
+        stremioTitleEventIsOngoing(
+          'Solheim Cup | 7 – 13 September 2026',
+          now: DateTime.utc(2026, 9, 10),
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for single day', () {
+      expect(
+        stremioTitleEventIsOngoing(
+          'Match | 10 September 2026',
+          now: DateTime.utc(2026, 9, 10),
+        ),
+        isFalse,
+      );
     });
   });
 
