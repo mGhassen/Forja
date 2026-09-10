@@ -161,3 +161,69 @@ int stremioKickoffMsFromTitleAndTime({
     return 0;
   }
 }
+
+const _stremioMonths = {
+  'jan': 1,
+  'feb': 2,
+  'mar': 3,
+  'apr': 4,
+  'may': 5,
+  'jun': 6,
+  'jul': 7,
+  'aug': 8,
+  'sep': 9,
+  'oct': 10,
+  'nov': 11,
+  'dec': 12,
+};
+
+/// Highfly Sports Streams style: `10 Sep 2026 · 10:00 UTC`.
+final _stremioReleaseInfoKickoffRe = RegExp(
+  r'^(\d{1,2})\s+'
+  r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+'
+  r'(\d{4})\s*[·•\-\u2013|]\s*'
+  r'(\d{1,2}):(\d{2})(?:\s*UTC)?',
+  caseSensitive: false,
+);
+
+/// Parse Stremio `releaseInfo` kickoff (ISO or Highfly day·time UTC).
+int stremioKickoffMsFromReleaseInfo(String releaseInfo) {
+  final s = releaseInfo.trim();
+  if (s.isEmpty) return 0;
+  // Bare LIVE / labels are not dates.
+  if (RegExp(r'^(live|live\s*now|live\s*tv)$', caseSensitive: false)
+      .hasMatch(s)) {
+    return 0;
+  }
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return iso.millisecondsSinceEpoch;
+
+  final m = _stremioReleaseInfoKickoffRe.firstMatch(s);
+  if (m == null) return 0;
+  final month = _stremioMonths[m.group(2)!.toLowerCase().substring(0, 3)];
+  final day = int.tryParse(m.group(1)!);
+  final year = int.tryParse(m.group(3)!);
+  final hour = int.tryParse(m.group(4)!);
+  final minute = int.tryParse(m.group(5)!);
+  if (month == null ||
+      day == null ||
+      year == null ||
+      hour == null ||
+      minute == null) {
+    return 0;
+  }
+  try {
+    return DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
+  } catch (_) {
+    return 0;
+  }
+}
+
+/// True when kickoff is in the live window (started, not older than 6h).
+bool stremioKickoffIsAiringNow(int dateMs, {DateTime? now}) {
+  if (dateMs <= 0) return false;
+  final n = now ?? DateTime.now();
+  final start = DateTime.fromMillisecondsSinceEpoch(dateMs);
+  return !start.isAfter(n) &&
+      !start.isBefore(n.subtract(const Duration(hours: 6)));
+}

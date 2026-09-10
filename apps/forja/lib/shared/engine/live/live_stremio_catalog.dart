@@ -160,6 +160,9 @@ Map<String, dynamic>? liveStremioMetaToFeedRow(
     title: title,
     genres: genres,
   );
+  // LIVE badge with no kickoff, or kickoff inside the live window.
+  final airing =
+      alwaysOn || (live && dateMs <= 0) || stremioKickoffIsAiringNow(dateMs);
   final categoryRaw =
       alwaysOn ? '24/7' : stremioCategoryFromGenres(genres);
   final category = categoryRaw.isEmpty ? 'other' : categoryRaw.toLowerCase();
@@ -175,7 +178,7 @@ Map<String, dynamic>? liveStremioMetaToFeedRow(
     if (dateMs > 0)
       'startsAt': DateTime.fromMillisecondsSinceEpoch(dateMs).toIso8601String(),
     'poster': poster,
-    'airing': live && dateMs <= 0,
+    'airing': airing,
     'alwaysLive': alwaysOn,
     'sources': const <Map<String, dynamic>>[],
     'catalog': 'stremio',
@@ -200,11 +203,15 @@ int liveStremioKickoffMs(Map<String, dynamic> meta) {
     if (dt != null) return dt.millisecondsSinceEpoch;
   }
   final releaseInfo = meta['releaseInfo']?.toString().trim() ?? '';
-  if (releaseInfo.isNotEmpty) {
-    final dt = DateTime.tryParse(releaseInfo);
-    if (dt != null) return dt.millisecondsSinceEpoch;
-  }
+  final fromRelease = stremioKickoffMsFromReleaseInfo(releaseInfo);
+  if (fromRelease > 0) return fromRelease;
+  final title = meta['name']?.toString() ?? '';
   final desc = meta['description']?.toString() ?? '';
+  final fromTitleTime = stremioKickoffMsFromTitleAndTime(
+    title: title,
+    description: desc,
+  );
+  if (fromTitleTime > 0) return fromTitleTime;
   final timeLine = RegExp(
     r'Time:\s*([^\n]+)',
     caseSensitive: false,

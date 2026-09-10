@@ -123,4 +123,29 @@ void main() {
       expect(ms, DateTime.utc(2026, 9, 7, 7, 10).millisecondsSinceEpoch);
     });
   });
+
+  group('stremioKickoffMsFromReleaseInfo', () {
+    test('parses Highfly Sports Streams day·time UTC', () {
+      final ms = stremioKickoffMsFromReleaseInfo('10 Sep 2026 · 16:45 UTC');
+      expect(ms, DateTime.utc(2026, 9, 10, 16, 45).millisecondsSinceEpoch);
+    });
+
+    test('ignores LIVE label', () {
+      expect(stremioKickoffMsFromReleaseInfo('LIVE'), 0);
+    });
+  });
+
+  group('stremioKickoffIsAiringNow', () {
+    test('true inside live window', () {
+      final now = DateTime.utc(2026, 9, 10, 17, 0);
+      final kick = DateTime.utc(2026, 9, 10, 16, 45).millisecondsSinceEpoch;
+      expect(stremioKickoffIsAiringNow(kick, now: now), isTrue);
+    });
+
+    test('false before kickoff', () {
+      final now = DateTime.utc(2026, 9, 10, 16, 0);
+      final kick = DateTime.utc(2026, 9, 10, 16, 45).millisecondsSinceEpoch;
+      expect(stremioKickoffIsAiringNow(kick, now: now), isFalse);
+    });
+  });
 }
