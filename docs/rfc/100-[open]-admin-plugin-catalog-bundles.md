@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **6 / 6** acceptance (app) · **4 / 4** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
-| **Current slice** | Admin register/validate proxies pack fetch + normalizes GitHub blob URLs |
+| **Progress** | **5 / 5** components · **9 / 9** acceptance (admin) · **7 / 7** acceptance (app) · **4 / 4** acceptance (web) · **3 / 3** acceptance (retire remote runtime) |
+| **Current slice** | App + web catalog = admin-published only (baked list is slot→URL recovery, not picker) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,7 @@
 | 4 | R100-A12 | Install recommended / best-experience uses published bundle order | ✅ |
 | 5 | R100-A13 | Settings Forja Packs can install a published bundle | ✅ |
 | 6 | R100-A14 | Existing paste-URL + per-pack update unchanged | ✅ |
+| 7 | R100-A23 | Official picker / onboarding / bundles = published only; empty when admin has none (no baked catalog fallback) | ✅ |
 
 ---
 
@@ -79,7 +80,7 @@
 
 ## Summary
 
-Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback.
+Replace the obsolete admin Providers runtime overlay with a **Plugins** ops console. Pack files stay on **GitHub raw**. Supabase stores catalog metadata, publish flags, validation results, and **product bundles** (ordered groups of packs for onboarding). Flutter and web consume the **published** catalog only; install still downloads from GitHub URLs. Web has no static `catalog.json` fallback. App Official / bundle pickers no longer fall back to `kOfficialForjaHqPacks` (R100-A23); that constant remains a slot→raw-URL map for reinstall when a local path is missing.
 
 **Bundle** in this RFC = product set of packs. Not RFC-083 `manifest.bundle[]` file lists.
 

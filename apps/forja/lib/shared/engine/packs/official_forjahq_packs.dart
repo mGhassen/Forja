@@ -1,7 +1,8 @@
-/// Official ForjaHQ pack install targets for offline / empty-catalog fallback.
+/// Official ForjaHQ pack metadata (picker rows + slot→URL recovery).
 ///
-/// Live lists prefer admin-published `plugin_packs` (Supabase). Pack files stay
-/// on GitHub raw via [manifestUrl].
+/// Catalog lists come from admin-published `plugin_packs` only. This type is
+/// also used by the baked [kOfficialForjaHqPacks] URL map for reinstall when a
+/// local checkout path is unreachable. Pack files stay on GitHub raw.
 class OfficialForjaHqPack {
   const OfficialForjaHqPack({
     required this.id,
@@ -30,22 +31,12 @@ class OfficialForjaHqPack {
   final bool recommended;
 }
 
-/// Core ForjaHQ packs surfaced with a Recommended badge.
-const kOfficialRecommendedPackIds = <String>{
-  'home',
-  'anime',
-  'asian-drama',
-  'providers',
-  'live',
-  'catalog',
-  'torrent',
-  'live-sports',
-};
-
 const _kPacksBase =
     'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins';
 
-/// Full official set (best-experience bundle).
+/// Slot → GitHub raw URL hints for reinstall when a synced local path is gone.
+///
+/// Not a catalog. Official / Community pack pickers use admin-published rows only.
 const kOfficialForjaHqPacks = <OfficialForjaHqPack>[
   OfficialForjaHqPack(
     id: 'providers',

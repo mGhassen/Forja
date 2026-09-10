@@ -8,35 +8,24 @@ import 'package:forja/shared/engine/packs/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/plugin_registry.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
-/// Resolve official packs (admin-published Supabase → baked offline fallback).
+/// Resolve official packs from admin-published Supabase catalog only.
+///
+/// Empty when unconfigured / none published — no baked inventory for the picker.
 Future<List<OfficialForjaHqPack>> resolveOfficialForjaHqPacks() async {
   final remote = await PluginCatalogRemote.fetchPublishedPacks();
-  if (remote.isNotEmpty) {
-    final out = List<OfficialForjaHqPack>.from(remote);
-    out.sort((a, b) {
-      final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
-      if (byRec != 0) return byRec;
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
-    return out;
-  }
-  return List<OfficialForjaHqPack>.from(kOfficialForjaHqPacks);
+  if (remote.isEmpty) return const [];
+  final out = List<OfficialForjaHqPack>.from(remote);
+  out.sort((a, b) {
+    final byRec = (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
+    if (byRec != 0) return byRec;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  });
+  return out;
 }
 
-/// Resolve published product bundles; fallback = hardcoded recommended set.
+/// Resolve published product bundles from admin only (empty when none).
 Future<List<PluginProductBundle>> resolvePublishedBundles() async {
-  final remote = await PluginCatalogRemote.fetchPublishedBundles();
-  if (remote.isNotEmpty) return remote;
-  return [
-    PluginProductBundle(
-      id: 'best-experience',
-      name: 'Best experience',
-      description:
-          'Core ForjaHQ packs for Home, hubs, providers, live sports, and torrent.',
-      recommended: true,
-      packIds: kOfficialRecommendedPackIds.toList(growable: false),
-    ),
-  ];
+  return PluginCatalogRemote.fetchPublishedBundles();
 }
 
 /// Preferred recommended / best-experience bundle (first recommended, else first).
@@ -100,8 +89,7 @@ List<PluginInstallCandidate> officialPackCandidatesMissing({
         tags: pack.tags,
         catalogKind: pack.kind,
         official: true,
-        recommended: pack.recommended ||
-            kOfficialRecommendedPackIds.contains(pack.id),
+        recommended: pack.recommended,
       ),
     );
   }

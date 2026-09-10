@@ -9,7 +9,7 @@ import 'package:forja/shared/foundation/primitives/primitives.dart';
 class KitHeroContentScrim extends StatelessWidget {
   const KitHeroContentScrim({
     super.key,
-    this.tintAlpha = 0.36,
+    this.tintAlpha = 0.66,
     this.blurSigma = 24,
   });
 
@@ -18,8 +18,9 @@ class KitHeroContentScrim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint =
-        ForjaShellColors.cinematic.menuSurface.withValues(alpha: tintAlpha);
+    final tint = ForjaShellColors.cinematic.menuSurface.withValues(
+      alpha: tintAlpha,
+    );
     return IgnorePointer(
       child: ShaderMask(
         blendMode: BlendMode.dstIn,

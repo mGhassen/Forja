@@ -97,10 +97,17 @@ abstract final class PluginNavRegistry {
       for (final h in hubs)
         hostNavId(sourceUrl: h.$1.sourceUrl, authorTabId: h.$3.tabId),
     };
-    // Lean / not-yet-scannable ForjaHQ packs still own a host tab via URL slot.
+    // Lean / not-yet-scannable ForjaHQ packs still own a host tab via URL
+    // slot. Once a pack contributes `nav`, only [hostNavId] (author tabId or
+    // slot when omitted) counts — never also keep the bare folder slot, or
+    // `my_list` ghosts survive next to real `mylist` and paint Material apps.
+    final packsWithNav = {
+      for (final h in hubs) h.$1.sourceUrl,
+    };
     final packs = await PluginRegistry.instance.listPacksRaw();
     for (final pack in packs) {
       if (EnginePack.forjaHqSlot(pack.sourceUrl) == null) continue;
+      if (packsWithNav.contains(pack.sourceUrl)) continue;
       installedHubIds.add(
         PluginRegistry.hostNavId(
           sourceUrl: pack.sourceUrl,
@@ -108,9 +115,30 @@ abstract final class PluginNavRegistry {
         ),
       );
     }
-    if (installedHubIds.isEmpty) return List<String>.from(ids);
+    // Soft-pull may still carry folder slots (`my_list`) while destinations
+    // use `nav.tabId` (`mylist`). Remap before keep/drop so My List is not
+    // stripped as "uninstalled".
+    final slotToCanonical = <String, String>{};
+    for (final (pack, _, nav) in hubs) {
+      final slot = EnginePack.forjaHqSlot(pack.sourceUrl);
+      if (slot == null || slot.isEmpty) continue;
+      final canonical = hostNavId(
+        sourceUrl: pack.sourceUrl,
+        authorTabId: nav.tabId,
+      );
+      if (canonical.isNotEmpty && canonical != slot) {
+        slotToCanonical[slot] = canonical;
+      }
+    }
+    final remapped = <String>[];
+    final seen = <String>{};
+    for (final id in ids) {
+      final next = slotToCanonical[id] ?? id;
+      if (seen.add(next)) remapped.add(next);
+    }
+    if (installedHubIds.isEmpty) return remapped;
     return [
-      for (final id in ids)
+      for (final id in remapped)
         if (coreShellNavIds.contains(id) ||
             SettingsService.addonGatedNavIds.contains(id) ||
             installedHubIds.contains(id))
@@ -552,6 +580,11 @@ abstract final class PluginNavRegistry {
     _tabPackUrls = tabPackUrls;
     _seeded = true;
 
+    // Folder slot ≠ author `nav.tabId` (e.g. my_list → mylist). Soft-pull /
+    // lean boot can leave the slot in Features visibleIds; destinations are
+    // keyed by hostNavId only → Material apps glyph on the rail.
+    final remapped = await _remapForjaHqSlotAliasesInNavbar(hubs: hubs);
+
     if (extras.isNotEmpty) {
       SettingsService.registerExtraNavIds(extras);
     }
@@ -597,10 +630,81 @@ abstract final class PluginNavRegistry {
     } else {
       await _clearNavSnapshot();
     }
-    if (changed && _refreshNotifyPending) {
+    if ((changed || remapped) && _refreshNotifyPending) {
       SettingsService.navbarChangeNotifier.value++;
     }
-    return changed;
+    return changed || remapped;
+  }
+
+  /// Rewrite Features/rail ids when a ForjaHQ folder slot differs from the
+  /// pack's `nav.tabId` (RFC-094). Dedupes if both were visible.
+  static Future<bool> _remapForjaHqSlotAliasesInNavbar({
+    required List<(EnginePack, EnginePlugin, MetaNavSpec)> hubs,
+  }) async {
+    final slotToCanonical = <String, String>{};
+    for (final (pack, _, nav) in hubs) {
+      final slot = EnginePack.forjaHqSlot(pack.sourceUrl);
+      if (slot == null || slot.isEmpty) continue;
+      final canonical = hostNavId(
+        sourceUrl: pack.sourceUrl,
+        authorTabId: nav.tabId,
+      );
+      if (canonical.isEmpty || canonical == slot) continue;
+      slotToCanonical[slot] = canonical;
+    }
+    if (slotToCanonical.isEmpty) return false;
+
+    final settings = SettingsService();
+    final visible = await settings.getNavbarConfig();
+    final order = await settings.getNavbarTabOrder();
+
+    List<String> remapDedup(List<String> ids) {
+      final out = <String>[];
+      final seen = <String>{};
+      for (final id in ids) {
+        final next = slotToCanonical[id] ?? id;
+        if (seen.add(next)) out.add(next);
+      }
+      return out;
+    }
+
+    final nextVisible = remapDedup(visible);
+    final nextOrder = remapDedup(order);
+    if (_stringListEq(nextVisible, visible) &&
+        _stringListEq(nextOrder, order)) {
+      return false;
+    }
+    debugPrint(
+      '[PluginNav] remap slot→tabId $slotToCanonical '
+      'visible $visible → $nextVisible',
+    );
+    await settings.setNavbarConfig(
+      nextVisible,
+      tabOrder: nextOrder.isEmpty ? null : nextOrder,
+    );
+    return true;
+  }
+
+  static bool _stringListEq(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// Destination for a rail id, including ForjaHQ folder-slot aliases
+  /// (`my_list` → `mylist` destination) so a stale visibleId never paints
+  /// Material [ForjaHostAssets.defaultNavIcon] / apps glyphs.
+  static NavDestination? destinationFor(String id) {
+    _ensureSeeded();
+    final direct = _destinations[id];
+    if (direct != null) return direct;
+    for (final e in _tabPackUrls.entries) {
+      final slot = EnginePack.forjaHqSlot(e.value);
+      if (slot == id) return _destinations[e.key];
+    }
+    return null;
   }
 
   /// Hub tab ids that left the pack index (or linger in Features visible KV).

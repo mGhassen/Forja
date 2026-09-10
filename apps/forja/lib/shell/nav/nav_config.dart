@@ -54,6 +54,15 @@ Map<String, NavDestination> get navDestinations => {
     if (!archivedNavIds.contains(e.key)) e.key: e.value,
 };
 
+/// Resolve a rail id to a destination, including ForjaHQ slot→`nav.tabId`
+/// aliases (`my_list` → My List pack destination).
+NavDestination? navDestinationFor(String id) {
+  if (archivedNavIds.contains(id)) return null;
+  final core = coreNavDestinations[id];
+  if (core != null) return core;
+  return PluginNavRegistry.destinationFor(id);
+}
+
 const Map<String, Color> coreNavDestinationAccentColors = {
   'iptv': Color(0xFF22D3EE),
   'settings': Color(0xFF94A3B8),

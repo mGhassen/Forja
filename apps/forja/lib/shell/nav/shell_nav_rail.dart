@@ -332,7 +332,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
               builder: (context) {
                 final id = _navIds[i];
                 final index = _indexForId(id)!;
-                final dest = navDestinations[id] ??
+                final dest = navDestinationFor(id) ??
                     NavDestination(
                       id: id,
                       icon: Icons.apps_outlined,
