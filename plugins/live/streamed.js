@@ -19,20 +19,7 @@ async function resolveStream(ctx, cfg) {
   }
   if (!slot) throw new Error('streamed resolve: missing embed slot');
 
-  if (slot.source === 'golf') {
-    var golfUrl = await resolveGolf(ctx, slot, cfg);
-    return [
-      {
-        url: golfUrl,
-        headers: {
-          Referer: 'https://exposestrat.com/',
-          Origin: 'https://exposestrat.com',
-          'User-Agent': ua(),
-        },
-      },
-    ];
-  }
-
+  // golf is a normal GOAT slot now (old exposestrat.com scrape is dead).
   var fetched = await postFetch(ctx, slot, cfg);
   var m3u8 = '';
   if (ctx.live && typeof ctx.live.goatUnlock === 'function') {
@@ -41,7 +28,7 @@ async function resolveStream(ctx, cfg) {
   if (!m3u8) throw new Error('goat unlock failed');
   var headers = playbackHeadersForSlot(slot, cfg);
   var src = String(slot.source || '').toLowerCase();
-  if (src === 'echo' || src === 'streamed') {
+  if (src === 'echo' || src === 'streamed' || src === 'golf') {
     if (!(await probePlayableM3u8(ctx, m3u8, headers))) {
       throw new Error('goat m3u8 not playable');
     }

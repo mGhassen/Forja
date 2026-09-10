@@ -238,6 +238,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
               ),
             ),
             belowActionRowFullWidth: true,
+            belowActionRowGap: 8,
             belowActionRow: streamsPanel,
           ),
           MediaDetailsBackButton(focusNode: _backFocus),

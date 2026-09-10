@@ -28,6 +28,7 @@ class KitDetailsHero extends StatelessWidget {
     this.actionRow,
     this.belowActionRow,
     this.belowActionRowFullWidth = false,
+    this.belowActionRowGap = 20,
     this.height,
     this.positionMs,
     this.durationMs,
@@ -58,6 +59,8 @@ class KitDetailsHero extends StatelessWidget {
   /// When true, [belowActionRow] spans the full hero content width instead of
   /// the narrow description column (40% on desktop).
   final bool belowActionRowFullWidth;
+  /// Gap between [actionRow] and [belowActionRow] (live match streams can sit closer).
+  final double belowActionRowGap;
   final double? height;
   final int? positionMs;
   final int? durationMs;
@@ -141,6 +144,7 @@ class KitDetailsHero extends StatelessWidget {
                         actionRow: actionRow,
                         belowActionRow: belowActionRow,
                         belowActionRowFullWidth: belowActionRowFullWidth,
+                        belowActionRowGap: belowActionRowGap,
                         positionMs: positionMs,
                         durationMs: durationMs,
                         seriesProgress: seriesProgress,
@@ -297,6 +301,7 @@ class _KitHeroLayout extends StatelessWidget {
     this.actionRow,
     this.belowActionRow,
     this.belowActionRowFullWidth = false,
+    this.belowActionRowGap = 20,
     this.positionMs,
     this.durationMs,
     this.seriesProgress,
@@ -316,6 +321,7 @@ class _KitHeroLayout extends StatelessWidget {
   final Widget? actionRow;
   final Widget? belowActionRow;
   final bool belowActionRowFullWidth;
+  final double belowActionRowGap;
   final int? positionMs;
   final int? durationMs;
   final Widget? seriesProgress;
@@ -362,6 +368,7 @@ class _KitHeroLayout extends StatelessWidget {
         overview: overview,
         actionRow: actionRow,
         belowActionRow: belowAction,
+        belowActionRowGap: belowActionRowGap,
         positionMs: positionMs,
         durationMs: durationMs,
         seriesProgress: seriesProgress,
@@ -378,7 +385,7 @@ class _KitHeroLayout extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             buildMainColumn(contentWidth: headerWidth),
-            const SizedBox(height: 20),
+            SizedBox(height: belowActionRowGap),
             Expanded(child: belowActionRow!),
           ],
         ),
@@ -551,6 +558,7 @@ class _KitHeroMainColumn extends StatelessWidget {
     required this.overview,
     this.actionRow,
     this.belowActionRow,
+    this.belowActionRowGap = 20,
     this.positionMs,
     this.durationMs,
     this.seriesProgress,
@@ -571,7 +579,6 @@ class _KitHeroMainColumn extends StatelessWidget {
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
-  static const _belowActionGap = 20.0;
   static const _progressBlockHeight = 36.0;
   static const _seriesProgressBlockHeight = 28.0;
 
@@ -585,6 +592,7 @@ class _KitHeroMainColumn extends StatelessWidget {
   final String overview;
   final Widget? actionRow;
   final Widget? belowActionRow;
+  final double belowActionRowGap;
   final int? positionMs;
   final int? durationMs;
   final Widget? seriesProgress;
@@ -619,7 +627,7 @@ class _KitHeroMainColumn extends StatelessWidget {
   }) {
     var reserved = 0.0;
     if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
-    if (belowActionRow != null) reserved += _belowActionGap;
+    if (belowActionRow != null) reserved += belowActionRowGap;
     if (showProgress) reserved += 14 + _progressBlockHeight;
     if (showSeriesProgress) {
       reserved += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
@@ -838,7 +846,7 @@ class _KitHeroMainColumn extends StatelessWidget {
               const SizedBox(height: _actionGap),
               DetailsHeroActionRowFit(child: actionRow!),
             ],
-            const SizedBox(height: _belowActionGap),
+            SizedBox(height: belowActionRowGap),
             Expanded(child: belowActionRow!),
           ],
         ),

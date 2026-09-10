@@ -303,6 +303,26 @@ bool iptvLiveEngineCanForceRefresh(IptvPlaySource src) {
   return matchId.isNotEmpty;
 }
 
+/// Soft buffering reopen reuses the URL. Hard/dead open or volatile CDN
+/// re-unlocks (GOAT/GASM). Avoids "Preparing playback…" spam mid-watch.
+@visibleForTesting
+bool iptvLiveEngineShouldForceRefreshOnRecovery(
+  IptvPlaySource src, {
+  required String reason,
+}) {
+  if (!iptvLiveEngineCanForceRefresh(src)) return false;
+  if (iptvLiveEngineUrlVolatile(src.url)) return true;
+  return iptvIsHardOpenFail(reason) || iptvIsDeadEndpointFail(reason);
+}
+
+/// Resolve-path banners set via [IptvLiveEngineResolveSource] onProgress.
+@visibleForTesting
+bool iptvIsLiveResolveStatusBanner(String? banner) {
+  return banner == 'Unlocking source…' ||
+      banner == 'Refreshing stream…' ||
+      banner == 'Preparing playback…';
+}
+
 /// Cache key for live-source hover / picker health probes.
 String iptvLiveSourceProbeKey(IptvPlaySource src) {
   final id = (src.streamId ?? '').trim();

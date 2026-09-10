@@ -281,40 +281,63 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     return _embeddedStreamScrim(column);
   }
 
-  /// Soft dark scrim behind hero-embedded streams — old live details look.
+  /// Soft frosted scrim behind hero-embedded streams.
   ///
-  /// Flush with the title/pills (no side fade, no card chrome). Only softens
-  /// top/bottom so match art still reads through.
+  /// Feathered edges on all four sides + top inset so the first stream card
+  /// sits below the soft top edge (not flush with a hard rectangle).
   Widget _embeddedStreamScrim(Widget child) {
+    final tint = ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.78);
+    Widget fade({
+      required AlignmentGeometry begin,
+      required AlignmentGeometry end,
+      required List<double> stops,
+      required Widget child,
+    }) {
+      return ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => LinearGradient(
+          begin: begin,
+          end: end,
+          colors: const [
+            Color(0x00FFFFFF),
+            Color(0xFFFFFFFF),
+            Color(0xFFFFFFFF),
+            Color(0x00FFFFFF),
+          ],
+          stops: stops,
+        ).createShader(bounds),
+        child: child,
+      );
+    }
+
     return Stack(
       clipBehavior: Clip.none,
       fit: StackFit.expand,
       children: [
         Positioned.fill(
           child: IgnorePointer(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x00FFFFFF),
-                  Color(0xFFFFFFFF),
-                  Color(0xFFFFFFFF),
-                  Color(0x00FFFFFF),
-                ],
-                stops: [0.0, 0.04, 0.9, 1.0],
-              ).createShader(bounds),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: ColoredBox(
-                  color: Colors.black.withValues(alpha: 0.42),
+            child: fade(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              // Wide top/bottom feather — was 4% and read as a hard edge.
+              stops: const [0.0, 0.12, 0.86, 1.0],
+              child: fade(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                stops: const [0.0, 0.05, 0.95, 1.0],
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                  child: ColoredBox(color: tint),
                 ),
               ),
             ),
           ),
         ),
-        child,
+        // Inset so cards start under the top feather, not on the panel rim.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
+          child: child,
+        ),
       ],
     );
   }

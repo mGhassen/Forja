@@ -147,7 +147,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
           setState(() {
             _s._playing = playing;
             if (playing &&
-                (_s._retryAttempt > 0 || _s._lastRecoveryAt != null)) {
+                (_s._retryAttempt > 0 ||
+                    _s._lastRecoveryAt != null ||
+                    iptvIsLiveResolveStatusBanner(_s._statusBanner))) {
               _s._statusBanner = null;
             }
           });
@@ -563,9 +565,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       }
       return resolved;
     } finally {
-      if (mounted &&
-          (_s._statusBanner == 'Unlocking source…' ||
-              _s._statusBanner == 'Refreshing stream…')) {
+      // onProgress often ends on "Preparing playback…" — clear that too.
+      if (mounted && iptvIsLiveResolveStatusBanner(_s._statusBanner)) {
         setState(() => _s._statusBanner = null);
       }
     }
@@ -742,7 +743,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
             _s._statusBanner != null &&
             (_s._retryAttempt > 0 ||
                 _s._lastRecoveryAt != null ||
-                (_s._statusBanner?.startsWith('Switching to') ?? false))) {
+                (_s._statusBanner?.startsWith('Switching to') ?? false) ||
+                iptvIsLiveResolveStatusBanner(_s._statusBanner))) {
           _s._statusBanner = null;
         }
       });

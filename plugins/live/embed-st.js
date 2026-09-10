@@ -256,36 +256,6 @@ async function postFetch(ctx, slot, cfg) {
   return { bodyHex: bytesToHex(buf), goat: String(goat) };
 }
 
-async function resolveGolf(ctx, slot, cfg) {
-  var origin = slot.origin || embedOrigin(cfg);
-  var embedUrl = origin + '/embed/' + slot.path;
-  var embedRes = await ctx.fetch(embedUrl, {
-    headers: { Referer: origin + '/', 'User-Agent': ua() },
-  });
-  var embedHtml = await embedRes.text();
-  var iframeM = embedHtml.match(/iframe src="([^"]+)"/);
-  if (!iframeM) throw new Error('golf iframe not found');
-  var streamedUrl = iframeM[1].replace(/&amp;/g, '&');
-  var streamedHtml = await (
-    await ctx.fetch(streamedUrl, {
-      headers: { Referer: embedUrl, 'User-Agent': ua() },
-    })
-  ).text();
-  var fidM = streamedHtml.match(/fid="([^"]+)"/);
-  if (!fidM) throw new Error('golf fid not found');
-  var playerUrl =
-    'https://exposestrat.com/maestrohd1.php?player=desktop&live=' +
-    encodeURIComponent(fidM[1]);
-  var playerHtml = await (
-    await ctx.fetch(playerUrl, {
-      headers: { Referer: streamedUrl, 'User-Agent': ua() },
-    })
-  ).text();
-  var m3u8M = playerHtml.match(/return\(\[("[^"]+"(?:,"[^"]+")*)\]\.join\(""\)/);
-  if (!m3u8M) throw new Error('golf m3u8 not found');
-  return JSON.parse('[' + m3u8M[1] + ']').join('');
-}
-
 async function probePlayableM3u8(ctx, url, headers) {
   var target = String(url || '').trim();
   if (!target) return false;
@@ -302,19 +272,6 @@ async function probePlayableM3u8(ctx, url, headers) {
 async function resolveGoatEmbed(ctx, embedUrl, cfg) {
   var slot = parseEmbedUrl(embedUrl, cfg);
   if (!slot) return null;
-  if (slot.source === 'golf') {
-    var golfUrl = await resolveGolf(ctx, slot, cfg);
-    return [
-      {
-        url: golfUrl,
-        headers: {
-          Referer: 'https://exposestrat.com/',
-          Origin: 'https://exposestrat.com',
-          'User-Agent': ua(),
-        },
-      },
-    ];
-  }
   var fetched = await postFetch(ctx, slot, cfg);
   var m3u8 = '';
   if (ctx.live && typeof ctx.live.goatUnlock === 'function') {
@@ -324,7 +281,7 @@ async function resolveGoatEmbed(ctx, embedUrl, cfg) {
   var headers = playbackHeadersForSlot(slot, cfg);
   // Dead/gated slots still crack to a signed CDN URL that 403s on open.
   var src = String(slot.source || '').toLowerCase();
-  if (src === 'echo' || src === 'streamed') {
+  if (src === 'echo' || src === 'streamed' || src === 'golf') {
     if (!(await probePlayableM3u8(ctx, m3u8, headers))) return null;
   }
   return [

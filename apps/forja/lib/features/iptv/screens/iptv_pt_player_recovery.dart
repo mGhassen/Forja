@@ -273,8 +273,9 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
           if (!await _recreatePlayer()) return;
           await _engineOpenSource(
             _s._sources[_s._sourceIdx],
-            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+            forceLiveRefresh: iptvLiveEngineShouldForceRefreshOnRecovery(
               _s._sources[_s._sourceIdx],
+              reason: reason,
             ),
           );
           if (mounted) setState(() {});
@@ -300,6 +301,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } else if (allowHardRecreate || (atvMkLive && _s._retryAttempt > 2)) {
         try {
           if (!await _recreatePlayer()) return;
+          // Escalated recreate: re-unlock when possible (signed playlists).
           await _engineOpenSource(
             _s._sources[_s._sourceIdx],
             forceLiveRefresh: iptvLiveEngineCanForceRefresh(
@@ -313,11 +315,13 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } else if (_s._retryAttempt <= 2 || forceHard) {
         // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
         // forceHard on attempt 1–2 also soft-reopens (ATV ANR if we recreate).
+        // Soft buffering: reuse URL unless volatile / hard-open death.
         try {
           await _engineOpenSource(
             _s._sources[_s._sourceIdx],
-            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+            forceLiveRefresh: iptvLiveEngineShouldForceRefreshOnRecovery(
               _s._sources[_s._sourceIdx],
+              reason: reason,
             ),
           );
           await _enginePlay();
@@ -333,8 +337,9 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         try {
           await _engineOpenSource(
             _s._sources[_s._sourceIdx],
-            forceLiveRefresh: iptvLiveEngineCanForceRefresh(
+            forceLiveRefresh: iptvLiveEngineShouldForceRefreshOnRecovery(
               _s._sources[_s._sourceIdx],
+              reason: reason,
             ),
           );
         } catch (_) {}
