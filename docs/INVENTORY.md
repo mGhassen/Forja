@@ -16,7 +16,7 @@ Forja is a **melos + Cargo monorepo** shipping:
 |---------|------|-------|
 | Flutter app | `apps/forja` | Dart + `packages/rust` → `libffi` |
 | Web portal | `apps/web` | Next/React + Supabase + `packages/forja-auth` |
-| Admin | `apps/admin` | Web admin tooling |
+| Admin | [forja-admin](https://github.com/mGhassen/forja-admin) | Ops console (external repo) |
 
 Playback uses **media_kit** (all platforms) and **ExoPlayer/Media3** (Android option). Rust workspace (`crates/`) ships as `libffi`, loaded by `packages/rust`.
 

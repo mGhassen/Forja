@@ -11,7 +11,7 @@ Technical architecture reference for the Forja engine and monorepo.
 
 ## 1. System overview
 
-Forja is a **GPL-2.0 melos + Cargo monorepo**: one cross-platform Flutter product (`apps/forja`) backed by a Rust engine (`crates/*`) exposed through FFI. A separate web portal (`apps/web`) and admin (`apps/admin`) share auth helpers via `packages/forja-auth` (TypeScript). The Flutter app is a fat-client media hub — movies/TV, IPTV, live matches, anime, Asian drama, torrents, Stremio addons, and more.
+Forja is a **GPL-2.0 melos + Cargo monorepo**: one cross-platform Flutter product (`apps/forja`) backed by a Rust engine (`crates/*`) exposed through FFI. A separate web portal (`apps/web`) uses `packages/forja-auth` (TypeScript). The ops console lives in the sibling **[forja-admin](https://github.com/mGhassen/forja-admin)** repo (vendors the same auth helpers). The Flutter app is a fat-client media hub — movies/TV, IPTV, live matches, anime, Asian drama, torrents, Stremio addons, and more.
 
 **Core principle** ([ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md)):
 
@@ -43,7 +43,7 @@ flowchart TB
   Flutter --> DartFFI --> FFICrate
 ```
 
-Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web/admin are separate surfaces.
+Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web portal and [forja-admin](https://github.com/mGhassen/forja-admin) are separate surfaces.
 
 ### Layer cake (Flutter)
 
@@ -69,8 +69,7 @@ Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web/admin are 
 Forja/
 ├── apps/
 │   ├── forja/           Flutter product (permanent host)
-│   ├── web/             Portal (Supabase) — download, account, …
-│   └── admin/           Admin tooling
+│   └── web/             Portal (Supabase) — download, account, …
 ├── packages/
 │   ├── rust/            Dart FFI bridge + thin glue (permanent)
 │   └── forja-auth/      Shared TS auth helpers for web
@@ -79,12 +78,15 @@ Forja/
 └── scripts/             build_rust.sh, build_rust_mobile.sh, …
 ```
 
+Sibling: **[forja-admin](https://github.com/mGhassen/forja-admin)** — ops console (IPTV catalog scrape, accounts, plugin catalog). Remove legacy `apps/admin/` once that checkout is the deploy source.
+
 | Path | Role | Fate |
 |------|------|------|
 | `apps/forja` | Flutter UI + platform host | **Permanent** |
-| `apps/web` / `apps/admin` | Web portal / admin | **Permanent** (separate from Flutter engine) |
+| `apps/web` | Web portal | **Permanent** (separate from Flutter engine) |
+| [forja-admin](https://github.com/mGhassen/forja-admin) | Ops console | **Permanent** (external repo) |
 | `packages/rust` | Dart FFI bridge + parity tests + thin services | **Permanent** |
-| `packages/forja-auth` | TS auth for web | **Permanent** (web stack) |
+| `packages/forja-auth` | TS auth for web (+ vendored copy in forja-admin) | **Permanent** (web stack) |
 | ~~`packages/api`~~ / ~~`packages/{core,storage,streaming}`~~ | Legacy Dart engines | **Deleted** (waves 1–2) |
 | `crates/*` | Rust engine | **Permanent** |
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
@@ -17,6 +18,7 @@ import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks
 import 'package:forja/shared/foundation/services/registry/meta_surface_open.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_filters.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
+import 'package:forja/shared/foundation/services/schedule/live_sports_hub_merge_upgrade.dart';
 
 /// Boot registration for opaque `live_schedule` list + resolve panel.
 ///
@@ -41,6 +43,25 @@ abstract final class KitLiveBoot {
     MetaSurfaceOpen.register(LiveSurfaceOpen.surface, LiveSurfaceOpen.openFromMeta);
     matchEventAiringOnlyLiveCheck = LivePluginEngine.cachedAiringOnlyLive;
     _registerTopBarHooks();
+    // One-shot cards→merged hub (needs WidgetsBinding / SharedPreferences).
+    if (_widgetsBindingReady) {
+      unawaited(
+        LiveSportsHubMergeUpgrade.runOnce().catchError((Object e, StackTrace st) {
+          if (kDebugMode) {
+            debugPrint('[KitLiveBoot] merge upgrade skipped: $e');
+          }
+        }),
+      );
+    }
+  }
+
+  static bool get _widgetsBindingReady {
+    try {
+      WidgetsBinding.instance;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static void _registerTopBarHooks() {

@@ -13,9 +13,12 @@ import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_layout.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
-/// Registers event Search + Portals chip on kit tabs that use [KitLiveBoot.listSourceId].
+/// Registers event Search + List/Cards + Portals chip on kit tabs that use
+/// [KitLiveBoot.listSourceId].
 ///
 /// Design: [KitScheduleEventSearch] / [KitPortalsChip] / [KitSidePanelOverlay].
 /// Data: IPTV controller + pack `forjaSportsEnabled` gate for Portals (RFC-096).
@@ -38,13 +41,37 @@ abstract final class IptvPortalsChromeHooks {
     final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
     final showPortals = enabled != false;
     final searchIndex = startIndex;
-    final portalsIndex = startIndex + 1;
+    final viewIndex = startIndex + 1;
+    final portalsIndex = startIndex + 2;
+    final style = ref.watch(kitScheduleLayoutProvider);
+    final isCards = style == KitSchedulePrefs.styleCards;
+    final viewLabel = isCards ? 'Cards' : 'List';
+
     final out = <Widget>[
       KitScheduleEventSearch(
         tabId: tabId,
         rowId: rowId,
         itemIndex: searchIndex,
         onDownEdge: onDownEdge,
+        onRightEdge: () => ShellTvFocusCoordinator.focusRowItem(
+              tabId,
+              rowId,
+              viewIndex,
+            ),
+      ),
+      ForjaShellChip(
+        label: viewLabel,
+        selected: true,
+        accentHover: true,
+        tvTabId: tabId,
+        tvRowId: rowId,
+        listIndex: viewIndex,
+        onDownEdge: onDownEdge,
+        onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
+              tabId,
+              rowId,
+              searchIndex,
+            ),
         onRightEdge: showPortals
             ? () => ShellTvFocusCoordinator.focusRowItem(
                   tabId,
@@ -52,6 +79,11 @@ abstract final class IptvPortalsChromeHooks {
                   portalsIndex,
                 )
             : () {},
+        onTap: () {
+          unawaited(
+            ref.read(kitScheduleLayoutProvider.notifier).toggleStyle(),
+          );
+        },
       ),
     ];
     if (!showPortals) return out;
@@ -73,7 +105,7 @@ abstract final class IptvPortalsChromeHooks {
         onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
               tabId,
               rowId,
-              searchIndex,
+              viewIndex,
             ),
         // When closed, trap → at the chrome edge. When open, enter the list
         // (IPTV hub Portals chip does the same via iptvFocusPortalList).

@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-036](036-[open]-accounts-iptv-profile-settings.md)  
-**Area:** `apps/admin/` (UI + Inngest catalog scrape), `apps/web/supabase/`, `crates/iptv/` (Rust worker on hold)
+**Area:** [forja-admin](https://github.com/mGhassen/forja-admin) (UI + Inngest catalog scrape), `apps/web/supabase/`, `crates/iptv/` (Rust worker on hold)
 
 ## Status at a glance
 

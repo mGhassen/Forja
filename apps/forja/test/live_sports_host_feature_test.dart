@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
+    SharedPreferences.setMockInitialValues({
+      KitSchedulePrefs.mergeUpgradeDoneKey: true,
+    });
     HostListRegistry.debugReset();
     KitLiveBoot.debugReset();
     PluginNavRegistry.seedBuiltIns();

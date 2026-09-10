@@ -125,6 +125,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [101-[open]-…](101-[open]-shahid-hub-provider-exo-widevine.md) | Shahid hub + provider + Exo Widevine | — | open | **4 / 4** · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **2 / 2** E | — |
 | [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **10 / 11** (1 ⏭️ pin) | — |
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |
+| [104-[fixed]-…](fixed/104-[fixed]-merge-live-sports-hubs.md) | Merge Live Sports hubs (list/cards + panel/details) | — | fixed | **Complete** · **5 / 5** · **8 / 8** | — |
 
 ## Related
 

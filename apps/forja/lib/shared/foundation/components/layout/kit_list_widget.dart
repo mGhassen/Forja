@@ -17,7 +17,11 @@ import 'package:forja/shared/foundation/services/registry/host_list_registry.dar
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_list_open_mode.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_event_query.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_layout.dart';
+import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
@@ -86,7 +90,7 @@ class KitListWidget extends ConsumerStatefulWidget {
       (layoutSpec['statusTab'] ?? 'status').toString();
   String get gridRowId => (layoutSpec['id'] ?? 'grid').toString();
 
-  /// `list` → dense rows; `cards` → landscape live match cards; else poster grid.
+  /// Pack layout defaults (overridden at runtime for `live_schedule` / openSetting).
   String get listStyle =>
       (layoutSpec['style'] ?? 'grid').toString().trim().toLowerCase();
 
@@ -103,6 +107,11 @@ class KitListWidget extends ConsumerStatefulWidget {
   bool get opensPanel =>
       entryOpen == 'panel' || (entryOpen.isEmpty && isDenseList);
 
+  String? get openSettingId {
+    final raw = (layoutSpec['openSetting'] ?? '').toString().trim();
+    return raw.isEmpty ? null : raw;
+  }
+
   @override
   ConsumerState<KitListWidget> createState() =>
       _KitListWidgetState();
@@ -115,6 +124,48 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   List<String> _dynamicKinds = const [];
   String? _kindFilter;
   bool _pendingOpenConsumed = false;
+
+  /// Runtime style / open (prefs + pack settings override layoutSpec).
+  String _effectiveStyle = 'grid';
+  String _effectiveOpen = '';
+
+  bool get _isDenseList => _effectiveStyle == 'list';
+  bool get _isMatchCards => _effectiveStyle == 'cards';
+  bool get _opensDetails => _effectiveOpen == 'details';
+  bool get _opensPanel =>
+      _effectiveOpen == 'panel' ||
+      (_effectiveOpen.isEmpty && _isDenseList);
+
+  void _resolveEffectiveLayout(WidgetRef ref) {
+    if (widget.listSource == KitLiveBoot.listSourceId) {
+      final style = ref.watch(kitScheduleLayoutProvider).trim().toLowerCase();
+      _effectiveStyle = style == KitSchedulePrefs.styleCards
+          ? KitSchedulePrefs.styleCards
+          : KitSchedulePrefs.styleList;
+    } else {
+      _effectiveStyle = widget.listStyle;
+    }
+
+    final openSetting = widget.openSettingId;
+    if (openSetting != null && widget.pluginId.trim().isNotEmpty) {
+      final async = ref.watch(
+        kitListOpenModeProvider((
+          pluginId: widget.pluginId,
+          fieldId: openSetting,
+        )),
+      );
+      final fromPack = (async.asData?.value ?? widget.entryOpen)
+          .trim()
+          .toLowerCase();
+      _effectiveOpen = fromPack.isEmpty ? kKitListOpenModeDefault : fromPack;
+    } else {
+      _effectiveOpen = widget.entryOpen;
+    }
+
+    if (_opensDetails && _selected != null) {
+      _selected = null;
+    }
+  }
 
   KitListSource? _resolveSource() => HostListRegistry.resolve(
         sourceId: widget.listSource.isEmpty ? null : widget.listSource,
@@ -130,8 +181,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   bool get _autoPanel =>
       widget.sidePanel == null &&
       _panelHost != null &&
-      widget.opensPanel &&
-      widget.isDenseList;
+      _opensPanel;
 
   bool get _layoutHasCategoryBar {
     var found = false;
@@ -149,7 +199,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   void _openEntry(BuildContext context, KitListSource source,
       KitListEntry entry) {
     widget.onEntrySelected?.call(entry);
-    if (widget.opensDetails && _panelHost != null) {
+    if (_opensDetails && _panelHost != null) {
       final layouts = widget.layoutWidgets.isNotEmpty
           ? widget.layoutWidgets
           : [widget.layoutSpec];
@@ -265,12 +315,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     }
     final max = _scroll.position.maxScrollExtent;
     if (max <= 0) return;
-    final estExtent = widget.isDenseList
+    final estExtent = _isDenseList
         ? 56.0
-        : widget.isMatchCards
+        : _isMatchCards
             ? 160.0
             : 220.0;
-    final cols = widget.isDenseList
+    final cols = _isDenseList
         ? 1
         : math.max(1, (_scroll.position.viewportDimension / 180).floor());
     final row = index ~/ cols;
@@ -335,6 +385,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   @override
   Widget build(BuildContext context) {
+    _resolveEffectiveLayout(ref);
     final source = _source;
     if (source == null) {
       final label = widget.listSource.isNotEmpty
@@ -415,7 +466,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
-        final isLiveSchedule = widget.isDenseList || widget.isMatchCards;
+        final isLiveSchedule = _isDenseList || _isMatchCards;
         final eventQuery =
             isLiveSchedule ? ref.watch(kitScheduleEventQueryProvider) : '';
         final entries = kitScheduleFilterEntries(
@@ -433,14 +484,19 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           );
         }
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
-        final body = widget.isDenseList
+        final body = _isDenseList
             ? _denseList(context, source, entries, selectedId: selectedId)
-            : widget.isMatchCards
-                ? _matchCards(context, source, entries)
+            : _isMatchCards
+                ? _matchCards(
+                    context,
+                    source,
+                    entries,
+                    selectedId: selectedId,
+                  )
                 : _grid(context, source, entries);
         final panel = widget.sidePanel ?? _buildAutoPanel();
         Widget listBody = body;
-        if (panel != null && widget.isDenseList) {
+        if (panel != null && _opensPanel) {
           final wide = MediaQuery.sizeOf(context).width >= 900;
           final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
           if (useSideSplit) {
@@ -644,9 +700,11 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   Widget _matchCards(
     BuildContext context,
     KitListSource source,
-    List<KitListEntry> entries,
-  ) {
+    List<KitListEntry> entries, {
+    String? selectedId,
+  }) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final panelActive = widget.sidePanel != null || _autoPanel;
     return LayoutBuilder(
       builder: (context, constraints) {
         final grid = _liveCardsGrid(
@@ -689,18 +747,24 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final entry = entries[index];
                       final match = MatchEvent.fromLegacyRow(entry.legacyRow);
+                      final selected =
+                          selectedId != null && selectedId == entry.meta.id;
                       return KitEventCard(
                         match: match,
                         width: grid.cardW,
                         height: grid.cardH,
                         gridIndex: index,
                         gridColumns: grid.columns,
+                        selected: selected,
                         tvTabId: widget.tabId,
                         tvRowId: widget.gridRowId,
                         onUpEdge: index < grid.columns
                             ? () =>
                                 _focusRowLast(widget.kindMenuId) ||
                                 _focusRow(widget.kindMenuId, 0)
+                            : null,
+                        onRightEdge: selected && panelActive
+                            ? _claimPanelProvidersFocus
                             : null,
                         onTap: () => _openEntry(context, source, entry),
                       );
@@ -826,7 +890,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }
 
   Widget _loadingGrid(BuildContext context) {
-    if (widget.isDenseList || widget.isMatchCards) {
+    if (_isDenseList || _isMatchCards) {
       return _catalogLoadingBody(context);
     }
     return LayoutBuilder(
@@ -915,7 +979,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
       }
     }
-    final isLiveSchedule = widget.isDenseList || widget.isMatchCards;
+    final isLiveSchedule = _isDenseList || _isMatchCards;
     final title = searching
         ? 'No matches for “$searchQ”'
         : filtered && kindLabel != null

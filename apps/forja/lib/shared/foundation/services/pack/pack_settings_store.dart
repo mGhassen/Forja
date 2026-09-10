@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Secrets (RFC-101): `pack_secret_v1_<pluginId>_<fieldId>` via [SecureSettings].
 abstract final class PackSettingsStore {
   PackSettingsStore._();
+
+  /// Bumped on every write so Riverpod / UI can rebuild (RFC-104 open mode).
+  static final ValueNotifier<int> revision = ValueNotifier(0);
+
+  static void _bump() => revision.value++;
 
   static const _prefix = 'pack_setting_v1_';
   static const _secretPrefix = 'pack_secret_v1_';
@@ -41,6 +47,7 @@ abstract final class PackSettingsStore {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key(pluginId, fieldId), value);
+    _bump();
   }
 
   static Future<String> getString(
@@ -61,6 +68,7 @@ abstract final class PackSettingsStore {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key(pluginId, fieldId), value);
+    _bump();
   }
 
   static Future<String> getSecret(
@@ -82,9 +90,11 @@ abstract final class PackSettingsStore {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       await SecureSettings.delete(k);
+      _bump();
       return;
     }
     await SecureSettings.write(k, trimmed);
+    _bump();
   }
 
   static Future<List<String>> getStringList(

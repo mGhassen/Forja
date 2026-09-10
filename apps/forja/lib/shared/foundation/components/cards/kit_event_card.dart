@@ -15,6 +15,7 @@ class KitEventCard extends StatefulWidget {
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
+    this.selected = false,
     this.tvTabId = 'kit_cards',
     this.tvRowId = 'schedule',
     this.tvZone = ShellTvZone.grid,
@@ -30,6 +31,9 @@ class KitEventCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+
+  /// Side-panel selection chrome (OR'd into hover/focus active).
+  final bool selected;
   final String tvTabId;
   final String tvRowId;
   final ShellTvZone tvZone;
@@ -82,11 +86,12 @@ class _KitEventCardState extends State<KitEventCard> {
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+          context: context,
+        ) ||
+        widget.selected;
     final viewers = _viewers;
     final posterUrl = kitEventImageUrl(m.poster);
     final time = kitEventTimeLabel(m);

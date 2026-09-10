@@ -65,7 +65,6 @@ void main() {
       'hubs/asian_drama/manifest.json',
       'hubs/my_list/manifest.json',
       'hubs/live_sports/manifest.json',
-      'hubs/live_sports_cards/manifest.json',
       'hubs/arabic/manifest.json',
       'hubs/aflem/manifest.json',
       'hubs/cartoon/manifest.json',

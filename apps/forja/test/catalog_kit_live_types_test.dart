@@ -7,9 +7,14 @@ import 'package:forja/shared/foundation/services/registry/host_list_registry.dar
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
+    SharedPreferences.setMockInitialValues({
+      KitSchedulePrefs.mergeUpgradeDoneKey: true,
+    });
     HostListRegistry.debugReset();
     KitLiveBoot.debugReset();
     KitLiveBoot.ensureRegistered();
@@ -67,7 +72,10 @@ void main() {
         'live_sports_forja_catalog_filter_v1',
       );
       expect(KitSchedulePrefs.scheduleKey, 'live_sports_schedule_v2');
-      expect(KitSchedulePrefs.viewKey, 'live_sports_timeline_view');
+      expect(KitSchedulePrefs.styleKey, 'live_sports_list_style');
+      expect(KitSchedulePrefs.viewKey, KitSchedulePrefs.styleKey);
+      expect(KitSchedulePrefs.styleList, 'list');
+      expect(KitSchedulePrefs.styleCards, 'cards');
     });
   });
 

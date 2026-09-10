@@ -10,7 +10,7 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 
 1. Apply migrations `20260718224617_iptv_catalog_ops.sql` and `20260718225349_iptv_catalog_region_ops.sql` on the Forja Supabase project
 2. Set `accounts.is_admin = true` for your operator account
-3. From `apps/admin`: `pnpm install`, `pnpm dev` → **http://127.0.0.1:4000**
+3. From sibling [forja-admin](https://github.com/mGhassen/forja-admin): `pnpm install`, `pnpm dev` → **http://127.0.0.1:4000**
 4. Sign in with the same Auth + Turnstile stack as the user portal (same Supabase project)
 
 ## What you can do
@@ -24,7 +24,7 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 
 ## Scrape (Inngest on admin)
 
-Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv-worker` is optional/local only).
+Production scrape runs in **TypeScript** on [forja-admin](https://github.com/mGhassen/forja-admin) via Inngest (Rust `iptv-worker` is optional/local only).
 
 1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `REDDIT_CLIENT_IDS` (comma-separated Reddit installed-app client IDs) — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
@@ -48,7 +48,8 @@ If a run shows **new posts > 0** but **portals = 0**, paste decrypt / deep extra
 Local:
 
 ```bash
-cd apps/admin && pnpm dev   # :4000
+# sibling checkout: ../forja-admin
+cd ../forja-admin && pnpm dev   # :4000
 npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 # Invoke iptv-catalog-scrape or send event iptv/catalog.scrape
 # Optional data: { "maxPages": 100 }  # Reddit pages of 10 posts; watermark usually stops earlier
@@ -73,7 +74,7 @@ In the Forja app: IPTV → Portals → **Deal** (hidden unless `dealPortal` is o
 
 ## Tips
 
-- **Separate app** from the user portal (`apps/web`), but **same** TanStack Start stack, Forja design tokens/UI, AuthProvider, and Turnstile
+- **Separate app** from the user portal (`apps/web`): [forja-admin](https://github.com/mGhassen/forja-admin) — same TanStack Start stack, Forja design tokens/UI, AuthProvider, and Turnstile
 - Stalker / MAC / M3U notes are kept (platform + type + full outputs on deep refs; all upsert into the pool). Mechanical extract covers `MAC Addr:` / `Exp date:` cards, bare MAC dumps under a `/c/` portal line (`MAC [Total US CA UK Other] [date]` → region tags), `Portal:` + `user pass (Bitiş: …)` sheets, Spanish panel tables with separate User/Pass columns (`http://host:80  user  pass  UTC|Bogota,…  Activa  …`), and bare / labeled `.m3u` / `.m3u8` playlist URLs (username `__m3u__`). LLM extract is opt-in only (`IPTV_LLM_EXTRACT=1`) and does not fail the scrape.
 - With `scrape --verify`, region is guessed from timezone + live category names
 - Agents must **not** run `supabase db reset` or `db push` unless you explicitly approve in chat
@@ -82,4 +83,4 @@ In the Forja app: IPTV → Portals → **Deal** (hidden unless `dealPortal` is o
 
 - [IPTV — Xtream](iptv-xtream.md)
 - [RFC-040](../../rfc/040-[open]-iptv-catalog-ops.md)
-- [apps/admin README](../../../apps/admin/README.md)
+- [forja-admin](https://github.com/mGhassen/forja-admin)

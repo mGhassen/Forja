@@ -116,8 +116,8 @@ void main() {
       final result = await PluginRegistry.instance.applyLeanManifestUrls([
         {
           'manifestUrl':
-              '/Users/dev/Workspace/Forja/plugins/hubs/live_sports_cards/manifest.json',
-          'name': 'Live Sports Cards',
+              '/Users/dev/Workspace/Forja/plugins/hubs/live_sports/manifest.json',
+          'name': 'Live Sports',
         },
       ]);
       expect(result.added, isEmpty);

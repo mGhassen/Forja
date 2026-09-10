@@ -106,9 +106,9 @@ void main() {
     test('opaque path segment only — no GitHub invent', () {
       expect(
         PluginRegistry.forjaHqSlot(
-          '/Users/x/forja-packs/hubs/live_sports_cards/manifest.json',
+          '/Users/x/forja-packs/hubs/asian_drama/manifest.json',
         ),
-        'live_sports_cards',
+        'asian_drama',
       );
       expect(
         PluginRegistry.forjaHqSlot(

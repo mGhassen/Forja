@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** `apps/admin` Inngest catalog scrape · `apps/web/supabase/` · RFC-040
+**Area:** [forja-admin](https://github.com/mGhassen/forja-admin) Inngest catalog scrape · `apps/web/supabase/` · RFC-040
 
 ## Status at a glance
 
