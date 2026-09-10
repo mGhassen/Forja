@@ -80,6 +80,13 @@ class KitTopBarActions extends ConsumerWidget {
     final layoutCatalog = scope.selectedId('catalog');
     final catalogPref =
         KitTopBarHostHooks.readCatalogPref?.call(ref) ?? layoutCatalog;
+    final feedBusy = KitTopBarHostHooks.readFeedBusy?.call(ref);
+    final busy = feedBusy?.busy == true;
+    final busyLabel = () {
+      final raw = (feedBusy?.label ?? '').trim();
+      if (raw.isNotEmpty) return raw;
+      return 'Loading live catalogs…';
+    }();
 
     final leading = <Map<String, dynamic>>[];
     final trailing = <Map<String, dynamic>>[];
@@ -94,6 +101,8 @@ class KitTopBarActions extends ConsumerWidget {
     final built = <Widget>[];
     var index = 0;
     for (final a in leading) {
+      // Hide Refresh while scrape/search is busy — progress chip goes trailing.
+      if (busy && _isRefreshAction(a)) continue;
       final w = _buildAction(
         context,
         ref,
@@ -112,7 +121,12 @@ class KitTopBarActions extends ConsumerWidget {
     }
     final leadingCount = built.length;
     final trailingBuilt = <Widget>[];
+    if (busy) {
+      trailingBuilt.add(_KitTopBarCatalogProgressChip(label: busyLabel));
+      index++;
+    }
     for (final a in trailing) {
+      if (busy && _isRefreshAction(a)) continue;
       final w = _buildAction(
         context,
         ref,
@@ -160,6 +174,12 @@ class KitTopBarActions extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static bool _isRefreshAction(Map<String, dynamic> action) {
+    final verb = _verb(action);
+    final id = (action['id'] ?? '').toString();
+    return verb == 'refresh' || id == 'refresh';
   }
 
   Widget? _buildAction(
@@ -219,14 +239,6 @@ class KitTopBarActions extends ConsumerWidget {
     final catalogSelected = KitTopBarHostHooks.catalogChipSelected;
 
     if (isRefresh) {
-      final feedBusy = KitTopBarHostHooks.readFeedBusy?.call(ref);
-      if (feedBusy != null && feedBusy.busy) {
-        return _KitTopBarCatalogProgressChip(
-          label: (feedBusy.label ?? '').trim().isEmpty
-              ? 'Loading live catalogs…'
-              : feedBusy.label!.trim(),
-        );
-      }
       return ForjaActionChip(
         label: '',
         icon: icon ?? Icons.refresh_rounded,
@@ -496,8 +508,16 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
     return ExcludeFocus(
       child: Tooltip(
         message: label,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 280),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+            ),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -510,8 +530,7 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 220),
+              Flexible(
                 child: Text(
                   label,
                   maxLines: 1,

@@ -441,10 +441,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       ),
       data: (page) {
         if (page.loadingRemote && page.totalCount == 0) {
-          return _catalogLoadingBody(
-            context,
-            label: page.loadingProgressLabel,
-          );
+          return _scheduleLoadingSkeleton(context);
         }
         final wantKinds =
             widget.dynamicKindChips ||
@@ -479,7 +476,6 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             context,
             kind: kind,
             loadingRemote: page.loadingRemote,
-            progressLabel: page.loadingProgressLabel,
             eventQuery: eventQuery,
           );
         }
@@ -891,7 +887,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   Widget _loadingGrid(BuildContext context) {
     if (_isDenseList || _isMatchCards) {
-      return _catalogLoadingBody(context);
+      return _scheduleLoadingSkeleton(context);
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -929,29 +925,61 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     );
   }
 
-  /// Live schedule / cards — spinner + label (not My List empty copy).
-  Widget _catalogLoadingBody(BuildContext context, {String? label}) {
-    final text = (label ?? '').trim().isEmpty
-        ? 'Loading live catalogs…'
-        : label!.trim();
-    return Padding(
-      padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
-            const SizedBox(height: 12),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+  /// Live schedule / cards — skeleton rows (progress copy lives in top bar).
+  Widget _scheduleLoadingSkeleton(BuildContext context) {
+    if (_isMatchCards) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final grid = _liveCardsGrid(
+            context,
+            constraints.maxWidth,
+            chromeTop: _hoistedTopBarInset(context),
+          );
+          return homeLoadingShimmer(
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                grid.leading,
+                grid.topPad,
+                grid.rightPad,
+                ShellTokens.bodyHorizontalPadding,
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: grid.columns,
+                mainAxisSpacing: grid.gap,
+                crossAxisSpacing: grid.gap,
+                childAspectRatio: grid.cardW / grid.cardH,
+              ),
+              itemCount: grid.columns * 2,
+              itemBuilder: (context, _) => DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(
+                    shellCardBorderRadius(context),
+                  ),
+                ),
               ),
             ),
-          ],
+          );
+        },
+      );
+    }
+    final leading = ShellTokens.compactChromeLeadingInset(context);
+    return homeLoadingShimmer(
+      ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          leading,
+          4 + _hoistedTopBarInset(context),
+          ShellTokens.bodyHorizontalPadding,
+          shellTvKitScrollBottomGap(context),
         ),
+        itemCount: 10,
+        separatorBuilder: (_, _) => Divider(
+          height: 1,
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+        ),
+        itemBuilder: (context, _) => const _KitDenseRowSkeleton(),
       ),
     );
   }
@@ -960,11 +988,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     BuildContext context, {
     String? kind,
     bool loadingRemote = false,
-    String? progressLabel,
     String eventQuery = '',
   }) {
     if (loadingRemote) {
-      return _catalogLoadingBody(context, label: progressLabel);
+      return _scheduleLoadingSkeleton(context);
     }
     final searchQ = eventQuery.trim();
     final searching = searchQ.isNotEmpty;
@@ -1120,6 +1147,55 @@ String kitListPosterUrl(MetaItem meta) {
   if (poster.startsWith('http')) return poster;
   if (poster.startsWith('/')) return TmdbApi.getImageUrl(poster);
   return poster;
+}
+
+/// Placeholder dense schedule row while live catalogs scrape.
+class _KitDenseRowSkeleton extends StatelessWidget {
+  const _KitDenseRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 12,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 10,
+                  width: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// @deprecated Use [kitListPosterUrl].

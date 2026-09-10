@@ -152,9 +152,10 @@ abstract final class KitLiveBoot {
       final page = async.asData?.value;
       final busy =
           async.isLoading || (page?.loadingRemote ?? false);
+      final scrape = (page?.loadingProgressLabel ?? '').trim();
       return (
         busy: busy,
-        label: page?.loadingProgressLabel,
+        label: scrape.isEmpty ? 'Loading live catalogs…' : scrape,
       );
     };
   }

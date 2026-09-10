@@ -646,10 +646,10 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
     );
   }
 
-  /// Hero details: 2 columns when wide (and >1 row), 1 when narrow / single.
+  /// Hero details: 2 columns when wide, 1 when narrow.
   ///
   /// Wide layout is **column-major** — fill the left column top→bottom first,
-  /// then the right column.
+  /// then the right column (one stream still sits in the left half).
   Widget _embeddedSourcesGrid(
     BuildContext context,
     List<KitSourcesRow> rows, {
@@ -666,9 +666,8 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final metrics = ShellScope.metricsOf(context);
-          final wide = !metrics.usesTvDensity &&
-              constraints.maxWidth >= 720 &&
-              rows.length > 1;
+          final wide =
+              !metrics.usesTvDensity && constraints.maxWidth >= 720;
 
           if (!wide) {
             return ListView.separated(
