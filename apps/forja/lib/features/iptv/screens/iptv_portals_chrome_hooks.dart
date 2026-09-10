@@ -8,111 +8,56 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_schedule_event_search.dart';
 import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_layout.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
-/// Registers event Search + List/Cards + Portals chip on kit tabs that use
-/// [KitLiveBoot.listSourceId].
+/// IPTV data for pack-declared `kit.topBar` `action: portals` (+ list overlay).
 ///
-/// Design: [KitScheduleEventSearch] / [KitPortalsChip] / [KitSidePanelOverlay].
-/// Data: IPTV controller + pack `forjaSportsEnabled` gate for Portals (RFC-096).
+/// Packs must list the Portals action themselves — this never invents chrome.
 abstract final class IptvPortalsChromeHooks {
   IptvPortalsChromeHooks._();
 
   static void ensureRegistered() {
-    KitTopBarHostHooks.buildTrailingCluster = _buildTrailingCluster;
+    KitTopBarHostHooks.packActionBuilders['portals'] = _buildPortalsAction;
     KitTopBarHostHooks.wrapListBody = _wrapListBody;
   }
 
-  static List<Widget> _buildTrailingCluster(
+  static Widget? _buildPortalsAction(
     BuildContext context,
     WidgetRef ref, {
+    required Map<String, dynamic> action,
     required String tabId,
     required String rowId,
-    required int startIndex,
+    required int itemIndex,
     VoidCallback? onDownEdge,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
   }) {
     final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
-    final showPortals = enabled != false;
-    final searchIndex = startIndex;
-    final viewIndex = startIndex + 1;
-    final portalsIndex = startIndex + 2;
-    final style = ref.watch(kitScheduleLayoutProvider);
-    final isCards = style == KitSchedulePrefs.styleCards;
-
-    final out = <Widget>[
-      KitScheduleEventSearch(
-        tabId: tabId,
-        rowId: rowId,
-        itemIndex: searchIndex,
-        onDownEdge: onDownEdge,
-        onRightEdge: () => ShellTvFocusCoordinator.focusRowItem(
-              tabId,
-              rowId,
-              viewIndex,
-            ),
-      ),
-      _ScheduleViewIconButton(
-        isCards: isCards,
-        tvTabId: tabId,
-        tvRowId: rowId,
-        tvItemIndex: viewIndex,
-        onDownEdge: onDownEdge,
-        onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
-              tabId,
-              rowId,
-              searchIndex,
-            ),
-        onRightEdge: showPortals
-            ? () => ShellTvFocusCoordinator.focusRowItem(
-                  tabId,
-                  rowId,
-                  portalsIndex,
-                )
-            : () {},
-        onTap: () {
-          unawaited(
-            ref.read(kitScheduleLayoutProvider.notifier).toggleStyle(),
-          );
-        },
-      ),
-    ];
-    if (!showPortals) return out;
+    if (enabled == false) return null;
 
     final ctrl = ref.watch(iptvControllerProvider);
     final panelOpen = ctrl.portalPanelOpen;
-    out.add(
-      IptvPortalsTopBarButton(
-        ctrl: ctrl,
-        onTogglePanel: () {
-          final opening = !ctrl.portalPanelOpen;
-          ctrl.togglePortalPanel();
-          // Same as IPTV hub: OK on Portals lands D-pad on the selected portal.
-          if (opening) iptvClaimPortalListFocus(ctrl);
-        },
-        tvTabId: tabId,
-        tvRowId: rowId,
-        tvItemIndex: portalsIndex,
-        onLeftEdge: () => ShellTvFocusCoordinator.focusRowItem(
-              tabId,
-              rowId,
-              viewIndex,
-            ),
-        // When closed, trap → at the chrome edge. When open, enter the list
-        // (IPTV hub Portals chip does the same via iptvFocusPortalList).
-        onRightEdge: panelOpen ? () => iptvClaimPortalListFocus(ctrl) : () {},
-        onDownEdge: panelOpen
-            ? () => iptvClaimPortalListFocus(ctrl)
-            : onDownEdge,
-      ),
+    return IptvPortalsTopBarButton(
+      ctrl: ctrl,
+      onTogglePanel: () {
+        final opening = !ctrl.portalPanelOpen;
+        ctrl.togglePortalPanel();
+        if (opening) iptvClaimPortalListFocus(ctrl);
+      },
+      tvTabId: tabId,
+      tvRowId: rowId,
+      tvItemIndex: itemIndex,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: panelOpen
+          ? () => iptvClaimPortalListFocus(ctrl)
+          : (onRightEdge ?? () {}),
+      onDownEdge: panelOpen
+          ? () => iptvClaimPortalListFocus(ctrl)
+          : onDownEdge,
     );
-    return out;
   }
 
   static Widget _wrapListBody(
@@ -223,103 +168,6 @@ class _IptvPortalsPanelHostState
         onClose: ctrl.closePortalPanel,
       ),
       child: widget.child,
-    );
-  }
-}
-
-/// Icon-only List/Cards toggle — same 40px circle chrome as event Search.
-class _ScheduleViewIconButton extends StatefulWidget {
-  const _ScheduleViewIconButton({
-    required this.isCards,
-    required this.onTap,
-    this.tvTabId,
-    this.tvRowId,
-    this.tvItemIndex,
-    this.onLeftEdge,
-    this.onRightEdge,
-    this.onDownEdge,
-  });
-
-  final bool isCards;
-  final VoidCallback onTap;
-  final String? tvTabId;
-  final String? tvRowId;
-  final int? tvItemIndex;
-  final VoidCallback? onLeftEdge;
-  final VoidCallback? onRightEdge;
-  final VoidCallback? onDownEdge;
-
-  @override
-  State<_ScheduleViewIconButton> createState() =>
-      _ScheduleViewIconButtonState();
-}
-
-class _ScheduleViewIconButtonState extends State<_ScheduleViewIconButton> {
-  static const _size = 40.0;
-
-  bool _hovered = false;
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final policy = ShellScope.inputPolicyOf(context);
-    final active = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-      context: context,
-    );
-    final tv = policy.useFocusableMoodChips;
-    final tvFocused = tv && _focused;
-    final tip = widget.isCards ? 'Cards view' : 'List view';
-    final icon =
-        widget.isCards ? Icons.grid_view_rounded : Icons.view_list_rounded;
-
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: _size / 2,
-      scaleOnFocus: 1.0,
-      suppressInkHover: true,
-      showFocusFill: false,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
-      tvItemIndex: widget.tvItemIndex,
-      tvZone: ShellTvZone.topBar,
-      onLeftEdge: widget.onLeftEdge,
-      onRightEdge: widget.onRightEdge,
-      onDownEdge: widget.onDownEdge,
-      onUpEdge: () {},
-      onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
-      child: Tooltip(
-        message: tip,
-        child: Container(
-          width: _size,
-          height: _size,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(
-              alpha: active || tvFocused ? 0.16 : 0.08,
-            ),
-            borderRadius: BorderRadius.circular(_size / 2),
-            border: Border.all(
-              color: Colors.white.withValues(
-                alpha: tvFocused
-                    ? 0.45
-                    : active
-                        ? 0.28
-                        : 0.12,
-              ),
-              width: tvFocused ? 1.5 : 1,
-            ),
-          ),
-          child: Icon(
-            icon,
-            color: active || tvFocused ? Colors.white : Colors.white60,
-            size: 20,
-          ),
-        ),
-      ),
     );
   }
 }

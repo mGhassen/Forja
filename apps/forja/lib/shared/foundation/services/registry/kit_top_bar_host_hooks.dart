@@ -43,25 +43,20 @@ typedef KitTopBarCatalogFilterWriter = Future<void> Function(
   String filter,
 );
 
-/// Optional trailing chrome after the top-bar [Spacer] (e.g. IPTV Portals).
-typedef KitTopBarTrailingBuilder = Widget? Function(
+/// Pack-declared top-bar action (`action` / `id`) → host widget.
+///
+/// Packs list actions in `kit.topBar`; the host never invents trailing chrome.
+/// Features register opaque verbs here (e.g. `portals` → IPTV chip).
+typedef KitTopBarPackActionBuilder = Widget? Function(
   BuildContext context,
   WidgetRef ref, {
+  required Map<String, dynamic> action,
   required String tabId,
   required String rowId,
   required int itemIndex,
+  VoidCallback? onDownEdge,
   VoidCallback? onLeftEdge,
-  VoidCallback? onDownEdge,
-});
-
-/// Trailing focusables after [Spacer] (Search, Portals, …) — each owns TV index.
-typedef KitTopBarTrailingClusterBuilder = List<Widget> Function(
-  BuildContext context,
-  WidgetRef ref, {
-  required String tabId,
-  required String rowId,
-  required int startIndex,
-  VoidCallback? onDownEdge,
+  VoidCallback? onRightEdge,
 });
 
 /// Wrap kit page content *below* the top bar (e.g. Portals over category + list).
@@ -91,8 +86,10 @@ abstract final class KitTopBarHostHooks {
   static KitTopBarCatalogChipLabel? catalogChipLabel;
   static KitTopBarCatalogChipSelected? catalogChipSelected;
   static KitTopBarCatalogFilterWriter? writeCatalogFilter;
-  static KitTopBarTrailingBuilder? buildTrailing;
-  static KitTopBarTrailingClusterBuilder? buildTrailingCluster;
+
+  /// Verb → builder. Keys are pack `action` (preferred) or `id`.
+  static final Map<String, KitTopBarPackActionBuilder> packActionBuilders = {};
+
   static KitListBodyWrapper? wrapListBody;
   static KitTopBarFeedBusyReader? readFeedBusy;
 
@@ -107,8 +104,7 @@ abstract final class KitTopBarHostHooks {
     catalogChipLabel = null;
     catalogChipSelected = null;
     writeCatalogFilter = null;
-    buildTrailing = null;
-    buildTrailingCluster = null;
+    packActionBuilders.clear();
     wrapListBody = null;
     readFeedBusy = null;
   }

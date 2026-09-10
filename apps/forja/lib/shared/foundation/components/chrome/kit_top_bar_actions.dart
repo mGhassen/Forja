@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_schedule_event_search.dart';
+import 'package:forja/shared/foundation/components/chrome/kit_schedule_view_toggle.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/primitives/primitives.dart';
@@ -18,10 +20,11 @@ final kitTopBarCatalogOptionsProvider =
   return loader();
 });
 
-/// Layout widget [`kit.topBar`] — Catalog / Schedule / Refresh chrome.
+/// Layout widget [`kit.topBar`] — pack-declared actions only.
 ///
-/// Product sheets (Live Sports catalog/schedule) register via
-/// [KitTopBarHostHooks] — this widget stays pack-agnostic.
+/// Leading chips (Catalog / Schedule / Refresh) sit left of [Spacer].
+/// Actions with `trailing: true` sit right. Host never invents chrome;
+/// opaque verbs use [KitTopBarHostHooks.packActionBuilders] (e.g. portals).
 class KitTopBarActions extends ConsumerWidget {
   const KitTopBarActions({
     super.key,
@@ -47,6 +50,18 @@ class KitTopBarActions extends ConsumerWidget {
     ];
   }
 
+  static bool _isTrailing(Map<String, dynamic> action) {
+    if (action['trailing'] == true) return true;
+    final slot = (action['slot'] ?? '').toString().trim().toLowerCase();
+    return slot == 'trailing' || slot == 'end' || slot == 'right';
+  }
+
+  static String _verb(Map<String, dynamic> action) {
+    final a = (action['action'] ?? '').toString().trim().toLowerCase();
+    if (a.isNotEmpty) return a;
+    return (action['id'] ?? '').toString().trim().toLowerCase();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = _actions;
@@ -65,36 +80,57 @@ class KitTopBarActions extends ConsumerWidget {
     final layoutCatalog = scope.selectedId('catalog');
     final catalogPref =
         KitTopBarHostHooks.readCatalogPref?.call(ref) ?? layoutCatalog;
-    final trailingIndex = actions.length;
-    final trailingCluster = KitTopBarHostHooks.buildTrailingCluster?.call(
-          context,
-          ref,
-          tabId: tabId,
-          rowId: _widgetId,
-          startIndex: trailingIndex,
-          onDownEdge: focusDown,
-        ) ??
-        const <Widget>[];
-    final trailingLegacy = trailingCluster.isEmpty
-        ? KitTopBarHostHooks.buildTrailing?.call(
-            context,
-            ref,
-            tabId: tabId,
-            rowId: _widgetId,
-            itemIndex: trailingIndex,
-            onLeftEdge: null,
-            onDownEdge: focusDown,
-          )
-        : null;
-    final trailingWidgets = trailingCluster.isNotEmpty
-        ? trailingCluster
-        : [
-            ?trailingLegacy,
-          ];
-    final itemCount = actions.length + trailingWidgets.length;
 
-    // Negative sortOrder = chrome (Catalog / Schedule). Content rows
-    // (category bar, list) stay ≥ 0 so enter / focusFirstContentRow skip here.
+    final leading = <Map<String, dynamic>>[];
+    final trailing = <Map<String, dynamic>>[];
+    for (final a in actions) {
+      if (_isTrailing(a)) {
+        trailing.add(a);
+      } else {
+        leading.add(a);
+      }
+    }
+
+    final built = <Widget>[];
+    var index = 0;
+    for (final a in leading) {
+      final w = _buildAction(
+        context,
+        ref,
+        scope,
+        a,
+        index: index,
+        focusDown: focusDown,
+        catalogOptions: catalogOptions,
+        catalogPref: catalogPref,
+        horizonPref: horizonPref,
+      );
+      if (w != null) {
+        built.add(w);
+        index++;
+      }
+    }
+    final leadingCount = built.length;
+    final trailingBuilt = <Widget>[];
+    for (final a in trailing) {
+      final w = _buildAction(
+        context,
+        ref,
+        scope,
+        a,
+        index: index,
+        focusDown: focusDown,
+        catalogOptions: catalogOptions,
+        catalogPref: catalogPref,
+        horizonPref: horizonPref,
+      );
+      if (w != null) {
+        trailingBuilt.add(w);
+        index++;
+      }
+    }
+
+    final itemCount = leadingCount + trailingBuilt.length;
     final chromeOrder = sortOrder < 0 ? sortOrder : -100 - sortOrder;
     return TvKitRow(
       tabId: tabId,
@@ -111,24 +147,14 @@ class KitTopBarActions extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            for (var i = 0; i < actions.length; i++) ...[
+            for (var i = 0; i < built.length; i++) ...[
               if (i > 0) const SizedBox(width: 8),
-              _buildAction(
-                context,
-                ref,
-                scope,
-                actions[i],
-                index: i,
-                focusDown: focusDown,
-                catalogOptions: catalogOptions,
-                catalogPref: catalogPref,
-                horizonPref: horizonPref,
-              ),
+              built[i],
             ],
             const Spacer(),
-            for (var t = 0; t < trailingWidgets.length; t++) ...[
+            for (var t = 0; t < trailingBuilt.length; t++) ...[
               const SizedBox(width: 8),
-              trailingWidgets[t],
+              trailingBuilt[t],
             ],
           ],
         ),
@@ -136,7 +162,7 @@ class KitTopBarActions extends ConsumerWidget {
     );
   }
 
-  Widget _buildAction(
+  Widget? _buildAction(
     BuildContext context,
     WidgetRef ref,
     KitLayoutScope scope,
@@ -147,11 +173,45 @@ class KitTopBarActions extends ConsumerWidget {
     required String? catalogPref,
     required String? horizonPref,
   }) {
-    final verb = (action['action'] ?? '').toString().trim().toLowerCase();
+    final verb = _verb(action);
     final id = (action['id'] ?? '').toString();
     final isRefresh = verb == 'refresh' || id == 'refresh';
     final isSchedule = id == 'horizon' || id == 'schedule' || id == 'time';
     final isCatalog = id == 'catalog' || action['dynamicCatalogs'] == true;
+
+    if (verb == 'eventsearch' || verb == 'search') {
+      return KitScheduleEventSearch(
+        tabId: tabId,
+        rowId: _widgetId,
+        itemIndex: index,
+        onDownEdge: focusDown,
+      );
+    }
+    if (verb == 'scheduleview' || verb == 'view' || verb == 'listcards') {
+      return KitScheduleViewToggle(
+        tvTabId: tabId,
+        tvRowId: _widgetId,
+        tvItemIndex: index,
+        onDownEdge: focusDown,
+      );
+    }
+
+    final hostBuilder = KitTopBarHostHooks.packActionBuilders[verb] ??
+        KitTopBarHostHooks.packActionBuilders[id];
+    if (hostBuilder != null) {
+      return hostBuilder(
+        context,
+        ref,
+        action: action,
+        tabId: tabId,
+        rowId: _widgetId,
+        itemIndex: index,
+        onDownEdge: focusDown,
+        onLeftEdge: null,
+        onRightEdge: null,
+      );
+    }
+
     final icon = _iconFor(action);
     final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
     final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
@@ -200,8 +260,6 @@ class KitTopBarActions extends ConsumerWidget {
       tvTabId: tabId,
       tvRowId: _widgetId,
       tvItemIndex: index,
-      // Left/right stay null — ShellTvFocusMeta walks the chrome row
-      // (Catalog → Schedule → Refresh → Portals). Empty () {} swallowed D-pad.
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
         isSchedule
