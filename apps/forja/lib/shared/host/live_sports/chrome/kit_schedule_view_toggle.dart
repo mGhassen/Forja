@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/shared/host/live_sports/schedule/kit_schedule_layout.dart';
 import 'package:forja/shared/host/live_sports/schedule/kit_schedule_prefs.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 /// Icon-only list/cards toggle for kit.topBar `action: scheduleView`.
 class KitScheduleViewToggle extends ConsumerStatefulWidget {
   const KitScheduleViewToggle({

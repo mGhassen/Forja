@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
+import 'package:forja/shared/shell/desktop_window_focus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Opens the Forja web portal login and captures the session via a localhost

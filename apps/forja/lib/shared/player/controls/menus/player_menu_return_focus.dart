@@ -9,7 +9,7 @@ import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 
 FocusNode? _playerMenuReturnFocus;
 

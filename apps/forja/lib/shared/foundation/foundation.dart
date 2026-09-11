@@ -9,20 +9,23 @@
 /// for Live TV is `features/iptv/channel_search/` (RFC-096).
 library;
 
-export 'package:forja_foundation/components/button.dart';
 export 'package:forja_foundation/components/button_group.dart';
 export 'package:forja_foundation/components/vertical_menu.dart';
 export 'package:forja_foundation/widgets/logo_menu_rail.dart';
-// New DS APIs (RFC-106). Hide names still owned by host `primitives/` shims.
+// Gallery barrel — hide names re-exported via primitives stubs (same types).
 export 'ds_bridge.dart'
     hide
       BecauseSection,
+      Button,
+      ButtonSize,
+      ButtonVariant,
       DetailsTokens,
       DesignTokens,
       ForjaNetworkImage,
       ForjaShellColors,
       SettingsTokens,
       ShellTokens,
+      Switch,
       forjaSwitchOverlayColor,
       forjaSwitchThemeData,
       forjaSwitchThumbColor,

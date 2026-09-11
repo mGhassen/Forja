@@ -1,8 +1,8 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
 
@@ -106,7 +106,8 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
             ),
           ),
         ),
-        ForjaButton.primary(
+        Button(
+              variant: ButtonVariant.primary,
           label: 'Use Keychain',
           onPressed: () => _choose(context, ForjaKeychainConsent.accepted),
         ),

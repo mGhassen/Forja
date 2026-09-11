@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
 import 'package:forja/features/settings/addons/settings_addon_deactivate.dart';
@@ -11,11 +11,11 @@ import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 /// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).
 bool addonMasterEnabled({
   required String addonId,
@@ -246,10 +246,10 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     }
     final enabled = optimistic ?? computed;
 
-    final switchChrome = ForjaSwitch(
+    final switchChrome = Switch(
       value: enabled,
       onChanged: null,
-      scale: ForjaSwitch.settingsScale,
+      scale: Switch.settingsScale,
       emphasized: _chromeActive,
     );
 
@@ -311,10 +311,10 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
         setState(() => _hovered = false);
       },
       cursor: SystemMouseCursors.click,
-      child: ForjaSwitch(
+      child: Switch(
         value: enabled,
         onChanged: (v) => unawaited(_flipTo(v)),
-        scale: ForjaSwitch.settingsScale,
+        scale: Switch.settingsScale,
         emphasized: _chromeActive,
       ),
     );

@@ -25,12 +25,12 @@ import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});

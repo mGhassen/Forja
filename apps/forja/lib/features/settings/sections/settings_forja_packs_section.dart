@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -15,15 +15,15 @@ import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
@@ -718,9 +718,9 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: IgnorePointer(
-              child: ForjaSwitch(
+              child: Switch(
                 value: widget.packEnabled,
-                scale: ForjaSwitch.settingsScale,
+                scale: Switch.settingsScale,
                 onChanged: null,
                 emphasized: false,
               ),
@@ -737,9 +737,9 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
               setState(() => _hovered = false);
             },
             cursor: SystemMouseCursors.click,
-            child: ForjaSwitch(
+            child: Switch(
               value: widget.packEnabled,
-              scale: ForjaSwitch.settingsScale,
+              scale: Switch.settingsScale,
               onChanged: (v) => widget.onTogglePack(v),
               emphasized: _chromeActive,
             ),

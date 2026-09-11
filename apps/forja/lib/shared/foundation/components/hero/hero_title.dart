@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/hero/desktop_selectable_title.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:rust/rust.dart';
 

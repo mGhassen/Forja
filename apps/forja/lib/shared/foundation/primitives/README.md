@@ -1,19 +1,10 @@
-# Foundation primitives
+# Foundation primitives (shim stubs)
 
-App-wide atomic UI. Domains:
+Re-export only until G14-E. Do not add implementations here.
 
-| Folder | Holds |
-|--------|--------|
-| `tokens/` | colors, theme, shell/details/settings tokens |
-| `shell/` | scope, metrics, layout, platform, section title |
-| `controls/` | buttons, switch, chips, tabs |
-| `feedback/` | toast, loading, frosted / player overlays |
-| `chrome/` | scroller, focus tap, posters, mood circle |
-| `brand/` · `desktop/` · `tv/` | platform / brand leafs |
+| Need | Import |
+|------|--------|
+| Tokens, Button, Switch, NetworkImage | `package:forja_foundation/<file>.dart` |
+| ShellScope, toast, TV, desktop chrome | `package:forja/shared/shell/<file>.dart` |
 
-```dart
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-```
-
-Composers (`kit.categoryBar`, hero, media_details, posters, …) live under `../components/`.
-There is no peer `shared/widgets/` package.
+Checklist: [`packages/forja_foundation/MIGRATION.md`](../../../../../../packages/forja_foundation/MIGRATION.md).

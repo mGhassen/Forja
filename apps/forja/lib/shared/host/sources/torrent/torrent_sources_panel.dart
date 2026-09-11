@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja/shared/shell/forja_frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';

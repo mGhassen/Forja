@@ -1,0 +1,2046 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/shell/tv/shell_tv_app_exit.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+
+/// Focus zone within a shell tab.
+enum ShellTvZone { nav, hero, topBar, chipStrip, row, grid, settings }
+
+/// Last-known TV focus for a tab.
+class ShellTvFocusMemory {
+  const ShellTvFocusMemory({
+    required this.zone,
+    this.rowId,
+    this.itemIndex = 0,
+    this.node,
+  });
+
+  final ShellTvZone zone;
+  final String? rowId;
+  final int itemIndex;
+  final FocusNode? node;
+
+  ShellTvFocusMemory copyWith({
+    ShellTvZone? zone,
+    String? rowId,
+    int? itemIndex,
+    FocusNode? node,
+  }) {
+    return ShellTvFocusMemory(
+      zone: zone ?? this.zone,
+      rowId: rowId ?? this.rowId,
+      itemIndex: itemIndex ?? this.itemIndex,
+      node: node ?? this.node,
+    );
+  }
+}
+
+/// Horizontal vs vertical item layout within a registered TV row.
+enum ShellTvRowOrientation { horizontal, vertical }
+
+/// Horizontal catalog row registered with the coordinator.
+class ShellTvRowHandle {
+  ShellTvRowHandle({
+    required this.tabId,
+    required this.rowId,
+    required this.sortOrder,
+    required this.itemCount,
+    required this.nodeAt,
+    this.orientation = ShellTvRowOrientation.horizontal,
+    this.isFirstRow = false,
+    this.isLastRow = false,
+    this.onFocusUp,
+    this.onFocusDown,
+  });
+
+  final String tabId;
+  final String rowId;
+  final int sortOrder;
+  int itemCount;
+  int lastFocusedIndex = 0;
+  final FocusNode? Function(int index) nodeAt;
+  final ShellTvRowOrientation orientation;
+  bool isFirstRow;
+  bool isLastRow;
+  final VoidCallback? onFocusUp;
+  final VoidCallback? onFocusDown;
+}
+
+/// Central TV D-pad coordinator - nav isolation, row memory, tab restore.
+abstract final class ShellTvFocusCoordinator {
+  static final Map<String, ShellTvFocusMemory> _tabMemory = {};
+  static final Map<String, List<ShellTvRowHandle>> _rowsByTab = {};
+  static final List<String> _navOrder = [];
+
+  /// Lazy list / grid: scroll [index] into view before focus retry.
+  static final Map<String, void Function(int index)> _rowScrollIntoView = {};
+
+  static VoidCallback? heroReveal;
+  static FocusNode? Function(String tabId)? defaultFocusForTab;
+
+  static final Map<String, FocusNode? Function()> _tabDefaultFocus = {};
+  static final Map<String, VoidCallback> _tabHeroReveal = {};
+  static final Map<String, VoidCallback> _tabEnterFocus = {};
+  static final Map<String, bool Function()> _tabRestoreFocus = {};
+
+  /// Optional in-page Back step before focusing the nav rail (e.g. IPTV
+  /// channels → category). Return true when Back was consumed.
+  static final Map<String, bool Function()> _tabPageBack = {};
+
+  /// When set, ← at column 0 of a [TvKitRow] runs [tryPageBack] (Settings
+  /// detail → category rail). Catalog tabs omit this so ← still traps / nav.
+  static final Set<String> _pageBackOnRowLeftEdge = {};
+
+  /// When set, nav RIGHT skips leave-memory and runs [restoreFocus] (e.g. IPTV
+  /// → selected category, not a skimmed group / last channel tile).
+  static final Set<String> _tabPreferCustomNavRestore = {};
+
+  /// Details overlay Back control - first remote Back focuses it, second pops.
+  static FocusNode? _detailBackFocus;
+  static bool _detailBackExitArmed = false;
+
+  /// Per-tab default focus and hero scroll - survives multi-tab mount order.
+  static void registerTabDefaults(
+    String tabId, {
+    FocusNode? Function()? defaultFocus,
+    VoidCallback? heroReveal,
+    VoidCallback? enterFromNavFocus,
+    bool Function()? restoreFocus,
+    bool Function()? pageBack,
+    bool preferCustomRestoreFromNav = false,
+  }) {
+    if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
+    if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
+    if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
+    if (restoreFocus != null) _tabRestoreFocus[tabId] = restoreFocus;
+    if (pageBack != null) _tabPageBack[tabId] = pageBack;
+    if (preferCustomRestoreFromNav) {
+      _tabPreferCustomNavRestore.add(tabId);
+    } else {
+      _tabPreferCustomNavRestore.remove(tabId);
+    }
+  }
+
+  static void unregisterTabDefaults(String tabId) {
+    _tabDefaultFocus.remove(tabId);
+    _tabHeroReveal.remove(tabId);
+    _tabEnterFocus.remove(tabId);
+    _tabRestoreFocus.remove(tabId);
+    _tabPageBack.remove(tabId);
+    _pageBackOnRowLeftEdge.remove(tabId);
+    _tabPreferCustomNavRestore.remove(tabId);
+  }
+
+  /// Settings detail: ← on column 0 of a [TvKitRow] exits like Back.
+  static void setPageBackOnRowLeftEdge(String tabId, bool enabled) {
+    if (enabled) {
+      _pageBackOnRowLeftEdge.add(tabId);
+    } else {
+      _pageBackOnRowLeftEdge.remove(tabId);
+    }
+  }
+
+  /// Run the tab's [pageBack] handler when registered (Settings detail ladder).
+  static bool tryPageBack([String? tabId]) {
+    final id = tabId ?? ShellTvFocus.currentNavTabId ?? '';
+    if (id.isEmpty) return false;
+    final pageBack = _tabPageBack[id];
+    return pageBack != null && pageBack();
+  }
+
+  /// Register the media-details Back chevron for TV remote Back.
+  static void registerDetailBackFocus(FocusNode? node) {
+    _detailBackFocus = node;
+    _detailBackExitArmed = false;
+  }
+
+  static void unregisterDetailBackFocus(FocusNode? node) {
+    if (identical(_detailBackFocus, node)) {
+      _detailBackFocus = null;
+      _detailBackExitArmed = false;
+    }
+  }
+
+  /// First Back on details focuses the Back chevron; returns true when stayed.
+  static bool _tryFocusDetailBack() {
+    final back = _detailBackFocus;
+    if (back == null || !back.canRequestFocus) return false;
+    if (back.hasFocus || _detailBackExitArmed) {
+      _detailBackExitArmed = false;
+      return false;
+    }
+    _detailBackExitArmed = true;
+    back.requestFocus();
+    debugPrint('[NavBack] focused details back - stay on details');
+    return true;
+  }
+
+  /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
+  ///
+  /// Returns true only when page focus landed **off** top-bar chrome. Flutter
+  /// autofocuses the first focusable (often Catalog) when the tab becomes
+  /// hittable; treating that as success left Live Sports stuck on Catalog.
+  static bool focusTabEnterFromNav(String tabId) {
+    final enter = _tabEnterFocus[tabId];
+    if (enter == null) return false;
+    enter();
+    return _pageHasContentFocus(tabId);
+  }
+
+  /// Page has D-pad focus that is not shell top-bar chrome (Catalog / Schedule).
+  static bool _pageHasContentFocus(String tabId) {
+    if (!_pageHasFocus()) return false;
+    final mem = _tabMemory[tabId];
+    if (mem != null && mem.zone == ShellTvZone.topBar) return false;
+    return true;
+  }
+
+  /// OK / click on a nav item: select tab, then land page focus (hero Play, etc.).
+  ///
+  /// Retries across frames when hub heroes are still on shimmer; falls back to
+  /// [restoreTabFocusAfterNav] so focus does not stay on the rail silently.
+  static void enterTabFromNav(String tabId) {
+    _clearFocusBeforeNav();
+    void attempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusTabEnterFromNav(tabId) && _pageHasContentFocus(tabId)) {
+          return;
+        }
+        if (remaining > 0) {
+          attempt(remaining: remaining - 1);
+          return;
+        }
+        // Catalog/Schedule autofocus often wrote topBar memory during retries —
+        // drop it so restore lands on category / list, not chrome.
+        final mem = _tabMemory[tabId];
+        if (mem?.zone == ShellTvZone.topBar) {
+          _tabMemory.remove(tabId);
+        }
+        restoreTabFocusAfterNav(tabId);
+      });
+    }
+
+    attempt(remaining: 6);
+  }
+
+  // --- Nav order ---
+
+  static void setNavOrder(List<String> ids) {
+    _navOrder
+      ..clear()
+      ..addAll(ids);
+  }
+
+  static List<String> get navOrder => List.unmodifiable(_navOrder);
+
+  static int? _navIndexForId(String? id) {
+    if (id == null) return null;
+    final idx = _navOrder.indexOf(id);
+    return idx >= 0 ? idx : null;
+  }
+
+  static String? _navIdAt(int index) {
+    if (index < 0 || index >= _navOrder.length) return null;
+    return _navOrder[index];
+  }
+
+  static FocusNode? _navNodeForId(String? id) {
+    if (id == null) return null;
+    return ShellTvFocus.navNode(id);
+  }
+
+  static String? _focusedNavId() {
+    for (final id in _navOrder) {
+      final node = ShellTvFocus.navNode(id);
+      if (node?.hasFocus ?? false) return id;
+    }
+    return null;
+  }
+
+  static bool focusActiveNavTab() {
+    // Guest / Settings-only rail: parking on the lone Settings icon traps
+    // D-pad (RIGHT used to restore dead empty-shell memory). Stay on page.
+    if (_navOrder.length <= 1) return false;
+    _captureFocusBeforeNav();
+    return ShellTvFocus.focusCurrentNavTab();
+  }
+
+  /// First rail tab in [navOrder] that can take focus (cold-start / overlay fallback).
+  static bool focusFirstNavTab() {
+    for (final id in _navOrder) {
+      if (ShellTvFocus.focusNavTab(id)) return true;
+    }
+    return false;
+  }
+
+  /// Retry [focusFirstNavTab] across frames (after ExcludeFocus / overlay tear-down).
+  static void scheduleFocusFirstNavTab({int maxAttempts = 6}) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusFirstNavTab()) return;
+        if (n < maxAttempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
+  }
+
+  /// Remember the page control under focus before the rail takes D-pad.
+  ///
+  /// Details Play / hub hero often steal focus for a frame while leaving the
+  /// overlay or catalog; that overwrites [_tabMemory] so RIGHT would land on
+  /// Play instead of the episode / card the user left.
+  static void _captureFocusBeforeNav() {
+    // Prefer the tab whose remembered node still has focus (episode / card).
+    String? focusedTab;
+    ShellTvFocusMemory? focusedMem;
+    for (final e in _tabMemory.entries) {
+      final mem = e.value;
+      if (mem.zone == ShellTvZone.nav) continue;
+      final node = mem.node;
+      if (node == null) continue;
+      try {
+        if (node.hasFocus) {
+          focusedTab = e.key;
+          focusedMem = mem;
+          break;
+        }
+      } catch (_) {}
+    }
+    final tabId =
+        focusedTab ?? _navRestoreTabId(ShellTvFocus.currentNavTabId ?? '');
+    final mem = focusedMem ?? memoryFor(tabId);
+    if (mem == null || mem.zone == ShellTvZone.nav) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+      return;
+    }
+    _navLeaveTabId = tabId;
+    _navLeaveSnapshot = ShellTvFocusMemory(
+      zone: mem.zone,
+      rowId: mem.rowId,
+      itemIndex: mem.itemIndex,
+      node: mem.node,
+    );
+  }
+
+  static void _clearFocusBeforeNav() {
+    _navLeaveTabId = '';
+    _navLeaveSnapshot = null;
+  }
+
+  /// Drop rail focus so desktop nav chrome (scale + label) does not stick.
+  static void unfocusShellNav() {
+    if (!ShellTvFocus.anyNavFocused && !ShellTvFocus.primaryFocusIsNav) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  /// TV remote Back: pop overlay/route first, else focus active nav tab.
+  /// Back on the nav rail: first press arms exit, second within 2s quits.
+  /// Remote Exit (Escape) is separate — [handleShellExitKey].
+  /// Returns true when consumed.
+  ///
+  /// Set [tvBackPolicyEnabled] from [ShellScaffold] when leanback TV policy is
+  /// active ([ShellInputPolicy.leanbackOnly] — not desktop hybrid D-pad focus).
+  static bool tvBackPolicyEnabled = false;
+
+  static DateTime? _lastBackHandledAt;
+  static String _overlayReturnTabId = '';
+  static ShellTvFocusMemory? _overlayReturnSnapshot;
+
+  /// Frozen page focus when D-pad left the page for the nav rail.
+  /// Survives Play/autofocus overwriting [_tabMemory] before RIGHT restores.
+  static String _navLeaveTabId = '';
+  static ShellTvFocusMemory? _navLeaveSnapshot;
+
+  static const Duration _backDebounceWindow = Duration(milliseconds: 400);
+
+  /// HW + didPopRoute land a few ms apart. Shorter than [_backDebounceWindow]
+  /// so a real second Back can confirm after a stay step.
+  static const Duration _backTwinWindow = Duration(milliseconds: 80);
+
+  /// True after a Back that only moved focus (player/details Back control) so
+  /// the confirming Back is not swallowed by [_backDebounceWindow].
+  static bool _backStepPending = false;
+
+  /// Test-only - clears back debounce between widget tests.
+  static void resetBackDebounceForTest() {
+    _lastBackHandledAt = null;
+    _backStepPending = false;
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
+    _navLeaveTabId = '';
+    _navLeaveSnapshot = null;
+    _dismissTransientOverlay = null;
+    _dismissSourcesPanel = null;
+    PlayerBackExitGate.resetForTest();
+    ShellTvAppExit.resetForTest();
+  }
+
+  /// Shell OverlayEntry menus (hero My List status). HardwareKeyboard steals
+  /// goBack before Focus onKey — register so Back dismisses the menu first.
+  static bool Function()? _dismissTransientOverlay;
+
+  /// Details/player Sources panel. Separate from My List so they cannot clobber.
+  static bool Function()? _dismissSourcesPanel;
+
+  static void setTransientOverlayDismiss(bool Function()? dismiss) {
+    _dismissTransientOverlay = dismiss;
+  }
+
+  static bool tryDismissTransientOverlay() {
+    final cb = _dismissTransientOverlay;
+    if (cb == null) return false;
+    return cb();
+  }
+
+  static void setSourcesPanelDismiss(bool Function()? dismiss) {
+    _dismissSourcesPanel = dismiss;
+  }
+
+  static bool tryDismissSourcesPanel() {
+    final cb = _dismissSourcesPanel;
+    if (cb == null) return false;
+    return cb();
+  }
+
+  static void _stampOverlayBackConsumed() {
+    PlayerBackExitGate.markStay();
+    PlayerBackExitGate.exitReady = false;
+    _backStepPending = false;
+    ShellTvAppExit.clear();
+    _lastBackHandledAt = DateTime.now();
+  }
+
+  /// Close a [showDialog] / bottom sheet on top of the player before exit.
+  ///
+  /// HardwareKeyboard steals goBack, so [DialogRoute] never sees the key.
+  /// [resolveBackTarget] is `player` while a popup is up, and the player
+  /// PopScope twin would then [_exit] after chrome overlays are already gone.
+  static bool tryPopPopupRoute() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null || !ctx.mounted) return false;
+    final route = ModalRoute.of(ctx);
+    if (route is! PopupRoute || !route.isActive) return false;
+    final nav = Navigator.maybeOf(ctx);
+    if (nav != null && nav.canPop()) {
+      nav.maybePop();
+      return true;
+    }
+    final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
+      rootNav.maybePop();
+      return true;
+    }
+    return false;
+  }
+
+  /// Dismiss player menus, Sources, and dialogs. True = this Back is done.
+  ///
+  /// Player [PopScope] must call this before [_exit] — HW may already have
+  /// dismissed the overlay on the same press.
+  static bool consumeOverlayBack() {
+    if (dismissAnyPlayerChromeOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryDismissSourcesPanel()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryDismissTransientOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryPopPopupRoute()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    return false;
+  }
+
+  static bool _consumeDuplicateBack() {
+    final now = DateTime.now();
+    final last = _lastBackHandledAt;
+    if (last != null && now.difference(last) < _backDebounceWindow) {
+      return true;
+    }
+    _lastBackHandledAt = now;
+    return false;
+  }
+
+  /// Level-aware back - see [ShellNavigationLevels].
+  /// Always returns true when [tvBackPolicyEnabled] (never finishes via a
+  /// single Back — nav needs a second press; see [ShellTvAppExit]).
+  static bool handleShellBackKey() {
+    // Menus, Sources, [showDialog] — before debounce / player exit. HW +
+    // didPopRoute / PopScope twins would otherwise close the dialog then
+    // pop the player on the same press.
+    if (consumeOverlayBack()) return true;
+
+    // Confirming exit / pop must not be swallowed by debounce.
+    // Same-press twins (HardwareKeyboard + didPopRoute) often land a few ms
+    // apart — but under load they can exceed [_backTwinWindow]. After a stay
+    // (hide chrome / arm), swallow within [_backDebounceWindow] without
+    // re-running the exit ladder: hide+arm then a late twin would otherwise
+    // treat chrome-already-down + armed as confirm-exit on the same press.
+    final now = DateTime.now();
+    final lastBack = _lastBackHandledAt;
+    if (lastBack != null && now.difference(lastBack) < _backTwinWindow) {
+      return true;
+    }
+    if (_backStepPending &&
+        lastBack != null &&
+        now.difference(lastBack) < _backDebounceWindow) {
+      return true;
+    }
+    if (!_backStepPending &&
+        !PlayerBackExitGate.exitReady &&
+        _consumeDuplicateBack()) {
+      return true;
+    }
+    _backStepPending = false;
+
+    // TV players: hide chrome → arm (+ toast) → exit (desktop Escape parity).
+    if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
+      _backStepPending = true;
+      PlayerBackExitGate.exitReady = false;
+      _lastBackHandledAt = DateTime.now();
+      ShellTvAppExit.clear();
+      debugPrint('[NavBack] player back consumed - stay in player');
+      return true;
+    }
+
+    if (!tvBackPolicyEnabled) {
+      return _handleLegacyBackKey();
+    }
+
+    final target = ShellNavigationLevels.resolveBackTarget();
+    debugPrint('[NavBack] shell back target=$target');
+    switch (target) {
+      case ShellNavLevel.player:
+        ShellTvAppExit.clear();
+        ShellNavigationLevels.popRootRoute();
+        return true;
+      case ShellNavLevel.detail:
+        ShellTvAppExit.clear();
+        if (_tryFocusDetailBack()) {
+          _backStepPending = true;
+          return true;
+        }
+        maybePopShellOverlay();
+        return true;
+      case ShellNavLevel.tabStack:
+        ShellTvAppExit.clear();
+        if (ShellNavigationLevels.popTabStack()) return true;
+        _focusActiveNavFromPage();
+        return true;
+      case ShellNavLevel.page:
+        ShellTvAppExit.clear();
+        final tabId = ShellTvFocus.currentNavTabId ?? '';
+        final pageBack = _tabPageBack[tabId];
+        if (pageBack != null && pageBack()) {
+          _backStepPending = true;
+          return true;
+        }
+        // Settings-only / empty guest: skip the useless lone nav icon.
+        if (_navOrder.length <= 1) {
+          ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
+          return true;
+        }
+        _focusActiveNavFromPage();
+        return true;
+      case ShellNavLevel.menu:
+        // Double Back on the rail exits (first arms, second quits).
+        // Do not set _backStepPending — Android delivers Back twice per press
+        // (HardwareKeyboard + didPopRoute); shell debounce + minConfirmGap
+        // must swallow the duplicate so we do not quit on the first press.
+        ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
+        return true;
+    }
+  }
+
+  /// Remote Exit (Escape on TV).
+  /// In a player: same leave ladder as Back (hide chrome → arm → leave).
+  /// Elsewhere: double-confirm quit.
+  static bool handleShellExitKey() {
+    if (!tvBackPolicyEnabled) {
+      return handleShellBackKey();
+    }
+    if (ShellBus.playerSurfaceActive.value) {
+      return handleShellBackKey();
+    }
+    // Same double-delivery problem as Back — minConfirmGap absorbs it.
+    ShellTvAppExit.armOrExit(message: 'Press Exit again to exit');
+    return true;
+  }
+
+  static bool _handleLegacyBackKey() {
+    if (shellOverlayCanPop()) {
+      maybePopShellOverlay();
+      return true;
+    }
+
+    if (_tryPopFocusedNavigator()) {
+      return true;
+    }
+
+    if (ShellTvFocus.currentNavTabId == null) {
+      if (tvBackPolicyEnabled) {
+        _focusActiveNavFromPage();
+        return true;
+      }
+      return false;
+    }
+
+    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
+      _restorePageFromNav(ShellTvFocus.currentNavTabId ?? '');
+      return true;
+    }
+
+    _focusActiveNavFromPage();
+    return true;
+  }
+
+  static void _focusActiveNavFromPage() {
+    _captureFocusBeforeNav();
+    FocusManager.instance.primaryFocus?.unfocus();
+    // Do not call [focusActiveNavTab] — that would re-capture after unfocus
+    // (empty / Play pollution) and wipe the leave snapshot.
+    if (ShellTvFocus.focusCurrentNavTab()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocus.focusCurrentNavTab();
+    });
+  }
+
+  static bool _tryPopFocusedNavigator() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+
+    final nav = Navigator.maybeOf(ctx);
+    if (nav != null && nav.canPop()) {
+      nav.maybePop();
+      return true;
+    }
+
+    final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+    if (rootNav != null && rootNav != nav && rootNav.canPop()) {
+      rootNav.maybePop();
+      return true;
+    }
+    return false;
+  }
+
+  static bool focusNextNavItem() {
+    final current = _focusedNavId() ?? ShellTvFocus.currentNavTabId;
+    final idx = _navIndexForId(current);
+    if (idx == null) return false;
+    // Skip holes (tab still in order but FocusNode not registered yet after
+    // async navbar rebuild) so ↑/↓ never appear to jump over menus.
+    for (var i = idx + 1; i < _navOrder.length; i++) {
+      final next = _navNodeForId(_navIdAt(i));
+      if (next != null && next.canRequestFocus) {
+        next.requestFocus();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool focusPrevNavItem() {
+    final current = _focusedNavId() ?? ShellTvFocus.currentNavTabId;
+    final idx = _navIndexForId(current);
+    if (idx == null || idx <= 0) return false;
+    for (var i = idx - 1; i >= 0; i--) {
+      final prev = _navNodeForId(_navIdAt(i));
+      if (prev != null && prev.canRequestFocus) {
+        prev.requestFocus();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool handleNavKey(LogicalKeyboardKey key) {
+    return switch (key) {
+      LogicalKeyboardKey.arrowDown => focusNextNavItem(),
+      LogicalKeyboardKey.arrowUp => focusPrevNavItem(),
+      LogicalKeyboardKey.arrowLeft => true, // trap
+      LogicalKeyboardKey.arrowRight => _restorePageFromNav(
+        ShellTvFocus.currentNavTabId ?? '',
+      ),
+      _ => false,
+    };
+  }
+
+  /// Nav RIGHT - return to the active tab page without switching tabs.
+  static bool _restorePageFromNav(String tabId) {
+    ShellTvAppExit.clear();
+    restoreTabFocusAfterNav(_navRestoreTabId(tabId));
+    return true;
+  }
+
+  /// Overlay routes (details, search) own their own TV tab memory.
+  static String _navRestoreTabId(String shellTabId) {
+    if (!shellOverlayCanPop()) return shellTabId;
+    // Prefer frozen leave target (episode before Play pollution on the way out).
+    if (_navLeaveTabId == MediaDetailsTv.tabId ||
+        _tabMemory.containsKey(MediaDetailsTv.tabId) ||
+        (_rowsByTab[MediaDetailsTv.tabId]?.isNotEmpty ?? false)) {
+      return MediaDetailsTv.tabId;
+    }
+    if (_navLeaveTabId == 'search' ||
+        _tabMemory.containsKey('search') ||
+        (_rowsByTab['search']?.isNotEmpty ?? false)) {
+      return 'search';
+    }
+    return shellTabId;
+  }
+
+  /// Snapshot the underlying tab's focus before overlay chrome remounts.
+  ///
+  /// Home's top bar unmounts while details is open. On pop it remounts and
+  /// Flutter lands D-pad on Search / Films instead of the last catalog card.
+  static void captureOverlayReturnFocus({String? tabId}) {
+    if (!tvBackPolicyEnabled) return;
+    final resolved =
+        tabId ?? ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId ?? '';
+    _overlayReturnTabId = resolved;
+    _overlayReturnSnapshot = memoryFor(_overlayReturnTabId);
+  }
+
+  /// Restore [captureOverlayReturnFocus] after the overlay stack is empty.
+  static void restoreCapturedOverlayReturnFocus() {
+    if (!tvBackPolicyEnabled) return;
+    final tabId = _overlayReturnTabId;
+    final snapshot = _overlayReturnSnapshot;
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
+    restoreTabFocusAfterOverlayPop(tabId, snapshot);
+  }
+
+  static void discardCapturedOverlayReturnFocus() {
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
+  }
+
+  /// After details/search overlay pop: last catalog card, not top-bar chrome.
+  ///
+  /// Does **not** fall back to hero Play when row memory exists — that would
+  /// scroll the feed to the top while the viewport is still on the card.
+  static void restoreTabFocusAfterOverlayPop(
+    String tabId, [
+    ShellTvFocusMemory? snapshot,
+  ]) {
+    if (!tvBackPolicyEnabled) return;
+    if (tabId.isEmpty) return;
+
+    // Back from hub details often leaves a rail item focused (big icon + label)
+    // even though the hub tab is still selected underneath.
+    unfocusShellNav();
+
+    final memory = snapshot ?? _tabMemory[tabId];
+
+    bool landed() {
+      if (memory == null || memory.zone == ShellTvZone.nav) {
+        return _pageHasFocus();
+      }
+      return _memoryHasFocus(tabId, memory);
+    }
+
+    void attempt() {
+      if (memory != null && memory.zone != ShellTvZone.nav) {
+        saveFocus(tabId, memory);
+        if (_restoreOverlayMemory(tabId, memory) && landed()) return;
+        if (_tryRestoreLiveNode(memory) && landed()) return;
+        return;
+      }
+      restoreTabFocus(tabId);
+    }
+
+    attempt();
+    if (landed()) return;
+
+    void scheduleAttempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt();
+        if (!landed() && remaining > 0) {
+          scheduleAttempt(remaining: remaining - 1);
+        }
+      });
+    }
+
+    scheduleAttempt(remaining: 4);
+  }
+
+  static bool _memoryHasFocus(String tabId, ShellTvFocusMemory memory) {
+    final node = memory.node;
+    if (node != null) {
+      try {
+        if (node.hasFocus) return true;
+      } catch (_) {}
+    }
+    final rowId = memory.rowId;
+    if (rowId == null) return false;
+    final item = itemNode(tabId, rowId, memory.itemIndex);
+    if (item == null) return false;
+    try {
+      return item.hasFocus;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool _restoreOverlayMemory(String tabId, ShellTvFocusMemory memory) {
+    if (memory.zone == ShellTvZone.row && memory.rowId != null) {
+      if (focusRowItemExact(tabId, memory.rowId!, memory.itemIndex)) {
+        return true;
+      }
+      return focusRowItem(tabId, memory.rowId!, memory.itemIndex);
+    }
+    return _restoreFromMemory(tabId, memory);
+  }
+
+  /// Restore page focus after the rail handles RIGHT.
+  ///
+  /// Snapshots tab memory **before** moving focus — an empty
+  /// [FocusManager.primaryFocus.unfocus] gap lets Flutter autofocus hero
+  /// Play, which overwrites memory via [ShellTvFocusMeta.notifyFocused].
+  ///
+  /// [FocusNode.requestFocus] only *marks* the next focus; the manager
+  /// applies it in a microtask. Falling through to [_restoreDefault] in the
+  /// same turn used to mark hero Play instead, start scroll-to-top, then a
+  /// post-frame reclaim fought the viewport (ATV home rails ← nav →).
+  ///
+  /// Details: [_captureFocusBeforeNav] freezes episode/row memory when leaving
+  /// for the rail so a mid-transfer Play focus cannot win on RIGHT.
+  static void restoreTabFocusAfterNav(String tabId) {
+    if (tabId.isEmpty) return;
+
+    // IPTV (and similar): ignore leave-memory — custom restore owns the land
+    // (selected category, not skimmed group / last channel).
+    if (_tabPreferCustomNavRestore.contains(tabId) &&
+        _tabRestoreFocus.containsKey(tabId)) {
+      bool customLanded() => _pageHasFocus();
+      void tryCustom({required int remaining}) {
+        if (restoreTabFocus(tabId) && customLanded()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        FocusManager.instance.applyFocusChangesIfNeeded();
+        if (customLanded()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        if (remaining > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            tryCustom(remaining: remaining - 1);
+          });
+        }
+      }
+
+      tryCustom(remaining: 4);
+      return;
+    }
+
+    final leaveSnap =
+        (_navLeaveTabId == tabId) ? _navLeaveSnapshot : null;
+    final snapshot = leaveSnap ?? _tabMemory[tabId];
+    var trackingMemory =
+        snapshot != null && snapshot.zone != ShellTvZone.nav;
+
+    bool landed() {
+      if (!trackingMemory || snapshot == null) return _pageHasFocus();
+      if (_memoryHasFocus(tabId, snapshot)) return true;
+      // Lazy ListView may have focused a mounted neighbor in the same row.
+      if (snapshot.zone == ShellTvZone.row && snapshot.rowId != null) {
+        final live = _tabMemory[tabId];
+        if (live != null &&
+            live.zone == ShellTvZone.row &&
+            live.rowId == snapshot.rowId &&
+            _pageHasFocus()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    void attempt({required bool allowDefault}) {
+      final snap = snapshot;
+      if (trackingMemory && snap != null) {
+        // Dead row/grid/chip memory (empty-shell after Settings mounts): clear
+        // immediately — do not burn retries that only re-saveFocus the ghost.
+        if (snap.zone == ShellTvZone.row ||
+            snap.zone == ShellTvZone.grid ||
+            snap.zone == ShellTvZone.chipStrip) {
+          final rowId = snap.rowId;
+          final rowAlive =
+              rowId != null && _rowHandle(tabId, rowId) != null;
+          if (!rowAlive) {
+            _tabMemory.remove(tabId);
+            if (_navLeaveTabId == tabId) {
+              _navLeaveTabId = '';
+              _navLeaveSnapshot = null;
+            }
+            trackingMemory = false;
+            unfocusShellNav();
+            if (!restoreTabFocus(tabId)) {
+              _restoreDefault(tabId);
+            }
+            return;
+          }
+        }
+        // Re-apply in case a mid-frame autofocus polluted live memory.
+        saveFocus(tabId, snap);
+        if (_restoreOverlayMemory(tabId, snap) && landed()) return;
+        if (_tryRestoreLiveNode(snap) && landed()) return;
+        if (!allowDefault) return;
+        // Live row still registered but item not focusable yet — keep
+        // retrying; never [_restoreDefault] (hero Play + scroll-to-top).
+        return;
+      }
+      if (!restoreTabFocus(tabId)) {
+        _restoreDefault(tabId);
+      }
+    }
+
+    // Prefer a synchronous mark so nav loses focus by transfer once the
+    // manager applies — do not chain [_restoreDefault] in the same turn.
+    attempt(allowDefault: false);
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    if (landed()) {
+      _clearFocusBeforeNav();
+      return;
+    }
+
+    // Post-frame passes — ExcludeFocus / overlay stack may lift next frame;
+    // catalog nodes may not be focusable until then.
+    void scheduleAttempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt(allowDefault: remaining <= 1);
+        FocusManager.instance.applyFocusChangesIfNeeded();
+        if (landed()) {
+          _clearFocusBeforeNav();
+          return;
+        }
+        if (remaining > 0) {
+          scheduleAttempt(remaining: remaining - 1);
+        }
+      });
+    }
+
+    scheduleAttempt(remaining: 4);
+  }
+
+  static bool _pageHasFocus() {
+    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
+      return false;
+    }
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return false;
+    // Empty FocusScope (shell overlay root / ModalScope) is not page focus -
+    // treating it as success left Anime/Home stuck after nav RIGHT.
+    if (primary is FocusScopeNode && primary.focusedChild == null) {
+      return false;
+    }
+    final ctx = primary.context;
+    return ctx != null && ctx.mounted;
+  }
+
+  /// After the player route pops or stream loading is cancelled, put D-pad
+  /// on hero Play/Resume. Leftover focus (Cancel, empty overlay scope) is
+  /// not "usable" — always reclaim Play.
+  static void claimHeroPlayAfterPlayerExit(
+    FocusNode play, {
+    required bool Function() isMounted,
+    bool Function()? skip,
+    int frameRetries = 4,
+  }) {
+    if (!tvBackPolicyEnabled) return;
+
+    void attempt({required int remaining}) {
+      if (!isMounted()) return;
+      if (skip?.call() == true) return;
+      final ctx = play.context;
+      if (ctx != null && ctx.mounted && play.canRequestFocus) {
+        FocusScope.of(ctx).requestFocus(play);
+      }
+      if (remaining <= 0) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt(remaining: remaining - 1);
+      });
+    }
+
+    attempt(remaining: frameRetries);
+  }
+
+  static void _revealHeroForTab(String tabId) {
+    _tabHeroReveal[tabId]?.call();
+    if (!_tabHeroReveal.containsKey(tabId)) {
+      heroReveal?.call();
+    }
+  }
+
+  /// Scroll the active tab's hero into view (e.g. when a hero CTA gains focus).
+  static void revealHeroForTab(String tabId) => _revealHeroForTab(tabId);
+
+  // --- Tab memory ---
+
+  static void saveFocus(String tabId, ShellTvFocusMemory memory) {
+    if (tabId.isEmpty) return;
+    _tabMemory[tabId] = memory;
+  }
+
+  static ShellTvFocusMemory? memoryFor(String tabId) => _tabMemory[tabId];
+
+  static bool restoreTabFocus(String tabId) {
+    if (tabId.isEmpty) return false;
+    final custom = _tabRestoreFocus[tabId];
+    if (custom != null && custom()) {
+      if (_pageHasFocus()) return true;
+      // requestFocus is async — do not treat a failed land as done (blocks
+      // defaultFocus fallthrough for dead leave memory).
+    }
+    final memory = _tabMemory[tabId];
+    if (memory != null && memory.zone != ShellTvZone.nav) {
+      if (_restoreFromMemory(tabId, memory) && _pageHasFocus()) {
+        return true;
+      }
+      if (_tryRestoreLiveNode(memory) && _pageHasFocus()) {
+        return true;
+      }
+    }
+    return _restoreDefault(tabId);
+  }
+
+  static bool _tryRestoreLiveNode(ShellTvFocusMemory memory) {
+    final node = memory.node;
+    if (node == null || !node.canRequestFocus) return false;
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    return _request(node);
+  }
+
+  static bool _restoreFromMemory(String tabId, ShellTvFocusMemory memory) {
+    switch (memory.zone) {
+      case ShellTvZone.hero:
+        if (_tryRestoreLiveNode(memory)) return true;
+        return focusHero(revealFull: true, tabId: tabId);
+      case ShellTvZone.row:
+        if (memory.rowId != null) {
+          return focusRowItem(tabId, memory.rowId!, memory.itemIndex);
+        }
+        return _restoreDefault(tabId);
+      case ShellTvZone.grid:
+        if (memory.node != null && memory.node!.canRequestFocus) {
+          return _request(memory.node!);
+        }
+        return _restoreDefault(tabId);
+      case ShellTvZone.topBar:
+        // Prefer the remembered node (Search field/close). Never steal to Home
+        // chrome when restoring a non-home tab.
+        if (_tryRestoreLiveNode(memory)) return true;
+        if (tabId == 'home') {
+          return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
+        }
+        return ShellTvFocus.focusHubHeroSearch() || _restoreDefault(tabId);
+      case ShellTvZone.chipStrip:
+      case ShellTvZone.settings:
+        if (memory.node != null && memory.node!.canRequestFocus) {
+          return _request(memory.node!);
+        }
+        return _restoreDefault(tabId);
+      case ShellTvZone.nav:
+        return _restoreDefault(tabId);
+    }
+  }
+
+  static bool _restoreDefault(String tabId) {
+    _revealHeroForTab(tabId);
+    final node =
+        _tabDefaultFocus[tabId]?.call() ?? defaultFocusForTab?.call(tabId);
+    if (node != null && node.canRequestFocus) {
+      return _request(node);
+    }
+    return focusHero(revealFull: false, tabId: tabId);
+  }
+
+  static bool focusHero({bool revealFull = true, String? tabId}) {
+    final tid = tabId ?? ShellTvFocus.currentNavTabId ?? '';
+    if (revealFull) {
+      _revealHeroForTab(tid);
+    }
+    final node = _tabDefaultFocus[tid]?.call();
+    if (node != null && node.canRequestFocus) {
+      return _request(node);
+    }
+    return ShellTvFocus.focusHomeHeroPlay();
+  }
+
+  // --- Row registry ---
+
+  /// Last [TvKitRow] (or caller) that registered each row. PageView hero
+  /// slides remount the same rowId in one frame — a deactivating sibling must
+  /// not wipe the active slide's registration.
+  static final Map<String, Object> _rowOwners = {};
+
+  static String _rowOwnerKey(String tabId, String rowId) => '$tabId:$rowId';
+
+  static void registerRow(ShellTvRowHandle handle, {Object? owner}) {
+    final list = _rowsByTab.putIfAbsent(handle.tabId, () => []);
+    final existing = _rowHandle(handle.tabId, handle.rowId);
+    list.removeWhere((r) => r.rowId == handle.rowId);
+    final h = ShellTvRowHandle(
+      tabId: handle.tabId,
+      rowId: handle.rowId,
+      sortOrder: handle.sortOrder,
+      itemCount: handle.itemCount,
+      nodeAt: (index) =>
+          itemNode(handle.tabId, handle.rowId, index) ?? handle.nodeAt(index),
+      orientation: handle.orientation,
+      isFirstRow: handle.isFirstRow,
+      isLastRow: handle.isLastRow,
+      onFocusUp: handle.onFocusUp,
+      onFocusDown: handle.onFocusDown,
+    )..lastFocusedIndex = existing?.lastFocusedIndex ?? handle.lastFocusedIndex;
+    list.add(h);
+    list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    _recomputeRowEdges(handle.tabId);
+    final key = _rowOwnerKey(handle.tabId, handle.rowId);
+    if (owner != null) {
+      _rowOwners[key] = owner;
+    } else {
+      _rowOwners.remove(key);
+    }
+  }
+
+  static void unregisterRow(String tabId, String rowId, {Object? owner}) {
+    final key = _rowOwnerKey(tabId, rowId);
+    if (owner != null && _rowOwners[key] != owner) {
+      // Newer registrant owns this rowId (e.g. next hero PageView slide).
+      return;
+    }
+    _rowOwners.remove(key);
+    final list = _rowsByTab[tabId];
+    if (list == null) return;
+    list.removeWhere((r) => r.rowId == rowId);
+    if (list.isEmpty) {
+      _rowsByTab.remove(tabId);
+    } else {
+      _recomputeRowEdges(tabId);
+    }
+  }
+
+  static void updateRowItemCount(String tabId, String rowId, int count) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return;
+    handle.itemCount = count;
+  }
+
+  /// Clears remembered D-pad index for a row (next restore lands on [index]).
+  static void setRowLastFocusedIndex(String tabId, String rowId, int index) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return;
+    handle.lastFocusedIndex = handle.itemCount <= 0
+        ? 0
+        : index.clamp(0, handle.itemCount - 1);
+  }
+
+  static void _recomputeRowEdges(String tabId) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return;
+    for (var i = 0; i < list.length; i++) {
+      list[i].isFirstRow = i == 0;
+      list[i].isLastRow = i == list.length - 1;
+    }
+  }
+
+  static ShellTvRowHandle? rowHandle(String tabId, String rowId) =>
+      _rowHandle(tabId, rowId);
+
+  static ShellTvRowHandle? _rowHandle(String tabId, String rowId) {
+    final list = _rowsByTab[tabId];
+    if (list == null) return null;
+    for (final row in list) {
+      if (row.rowId == rowId) return row;
+    }
+    return null;
+  }
+
+  static ShellTvRowHandle? _nextRow(String tabId, int currentSortOrder) {
+    final list = _rowsByTab[tabId];
+    if (list == null) return null;
+    ShellTvRowHandle? best;
+    for (final row in list) {
+      if (row.sortOrder <= currentSortOrder) continue;
+      if (best == null || row.sortOrder < best.sortOrder) best = row;
+    }
+    return best;
+  }
+
+  static ShellTvRowHandle? _prevRow(String tabId, int currentSortOrder) {
+    final list = _rowsByTab[tabId];
+    if (list == null) return null;
+    ShellTvRowHandle? best;
+    for (final row in list) {
+      if (row.sortOrder >= currentSortOrder) continue;
+      if (best == null || row.sortOrder > best.sortOrder) best = row;
+    }
+    return best;
+  }
+
+  /// First catalog/chip row under the hero (skips chrome with sortOrder < 0).
+  static bool focusFirstContentRow(String tabId) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return false;
+    for (final row in list) {
+      if (row.sortOrder < 0) continue;
+      if (row.itemCount <= 0) continue;
+      final idx = row.lastFocusedIndex.clamp(0, row.itemCount - 1);
+      if (focusRowItem(tabId, row.rowId, idx)) return true;
+    }
+    return false;
+  }
+
+  static bool focusRowItem(String tabId, String rowId, int index) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final clamped = index.clamp(0, handle.itemCount - 1);
+    // Prefer requested index, then 0 - lazy ListViews often lack off-screen nodes.
+    for (final candidate in {clamped, 0}) {
+      if (candidate < 0 || candidate >= handle.itemCount) continue;
+      final node = handle.nodeAt(candidate);
+      if (node == null || !node.canRequestFocus) continue;
+      handle.lastFocusedIndex = candidate;
+      saveFocus(
+        tabId,
+        ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: rowId,
+          itemIndex: candidate,
+          node: node,
+        ),
+      );
+      if (_request(node)) return true;
+    }
+    return false;
+  }
+
+  /// Like [focusRowItem] but never falls back to index 0.
+  /// Use when scrolling to a specific tile (e.g. return from IPTV player).
+  static bool focusRowItemExact(String tabId, String rowId, int index) {
+    if (index < 0) return false;
+    final handle = _rowHandle(tabId, rowId);
+    if (handle != null) {
+      if (handle.itemCount <= 0 || index >= handle.itemCount) return false;
+    }
+    final node = handle?.nodeAt(index) ?? itemNode(tabId, rowId, index);
+    if (node == null || !_canRequest(node)) return false;
+    if (handle != null) handle.lastFocusedIndex = index;
+    saveFocus(
+      tabId,
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
+        rowId: rowId,
+        itemIndex: index,
+        node: node,
+      ),
+    );
+    return _request(node);
+  }
+
+  /// Focus a row item, or the next registered row below when empty/unavailable.
+  static bool focusRowItemOrNextBelow(String tabId, String rowId, int index) {
+    if (focusRowItem(tabId, rowId, index)) return true;
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return false;
+    final next = _nextRow(tabId, handle.sortOrder);
+    if (next == null || next.itemCount <= 0) return false;
+    final target = next.lastFocusedIndex.clamp(0, next.itemCount - 1);
+    return focusRowItem(tabId, next.rowId, target);
+  }
+
+  /// Focus results row from chip strip - restores results history, not chip index.
+  static bool focusFromChipStripDown({
+    required String tabId,
+    required String chipRowId,
+    required String resultsRowId,
+  }) {
+    final results = _rowHandle(tabId, resultsRowId);
+    if (results != null && results.itemCount > 0) {
+      if (focusRowItemRemembered(tabId, resultsRowId)) return true;
+    }
+    final chip = _rowHandle(tabId, chipRowId);
+    if (chip == null) return false;
+    return moveVerticalInTab(
+      tabId: tabId,
+      rowId: chipRowId,
+      currentIndex: chip.lastFocusedIndex,
+      down: true,
+    );
+  }
+
+  /// Focus chip strip from results row - restores chip history, not card index.
+  static bool focusFromResultsRowUp({
+    required String tabId,
+    required String chipRowId,
+  }) {
+    final chip = _rowHandle(tabId, chipRowId);
+    if (chip == null || chip.itemCount <= 0) return false;
+    final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
+    return focusRowItem(tabId, chipRowId, idx);
+  }
+
+  static bool focusAdjacentInRow({
+    required String tabId,
+    required String rowId,
+    required int currentIndex,
+    required bool right,
+    int step = 1,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    final stride = step < 1 ? 1 : step;
+    final dir = right ? 1 : -1;
+    if (handle == null) {
+      for (var n = stride; n >= 1; n--) {
+        final next = currentIndex + dir * n;
+        if (next < 0) return false;
+        if (focusRowItemExact(tabId, rowId, next)) return true;
+      }
+      return false;
+    }
+    if (handle.itemCount <= 0) return false;
+    final delta = dir * stride;
+    final target = (currentIndex + delta).clamp(0, handle.itemCount - 1);
+    if (target == currentIndex) return false;
+    // Prefer the accelerated target; walk back toward current if unmounted.
+    for (var i = target; i != currentIndex; i -= dir) {
+      if (focusRowItemExact(tabId, rowId, i)) return true;
+    }
+    // Step-1 fallback: keep walking past the neighbor (sparse registration).
+    if (stride <= 1) {
+      var next = target + dir;
+      while (next >= 0 && next < handle.itemCount) {
+        if (focusRowItemExact(tabId, rowId, next)) return true;
+        next += dir;
+      }
+    }
+    return false;
+  }
+
+  static bool moveInGrid({
+    required String tabId,
+    required String rowId,
+    required int currentIndex,
+    required int columns,
+    required int rowDelta,
+    required int colDelta,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0 || columns <= 0) {
+      return false;
+    }
+    final row = currentIndex ~/ columns;
+    final col = currentIndex % columns;
+    var nextRow = row + rowDelta;
+    final nextCol = col + colDelta;
+    if (nextCol < 0 || nextCol >= columns) return false;
+    final maxRow = (handle.itemCount - 1) ~/ columns;
+    // Accel overshoot: clamp inside the grid (first-row exit uses onUpEdge).
+    if (rowDelta.abs() > 1) {
+      if (nextRow < 0) nextRow = 0;
+      if (nextRow > maxRow) nextRow = maxRow;
+    } else {
+      if (nextRow < 0) return false;
+      // Last-row down: trap so Flutter closedLoop cannot wrap to another pane.
+      if (nextRow > maxRow) return true;
+    }
+    var nextIndex = nextRow * columns + nextCol;
+    if (nextIndex < 0) return false;
+    if (nextIndex >= handle.itemCount) {
+      nextIndex = handle.itemCount - 1;
+    }
+    if (nextIndex == currentIndex) {
+      return rowDelta > 0;
+    }
+    if (focusRowItemExact(tabId, rowId, nextIndex)) return true;
+    final step = nextIndex > currentIndex ? -1 : 1;
+    for (var i = nextIndex; i != currentIndex; i += step) {
+      if (focusRowItemExact(tabId, rowId, i)) return true;
+    }
+    return false;
+  }
+
+  static void onRowItemFocused({
+    required String tabId,
+    required String rowId,
+    required int index,
+    required FocusNode node,
+    ShellTvZone zone = ShellTvZone.row,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle != null) handle.lastFocusedIndex = index;
+    saveFocus(
+      tabId,
+      ShellTvFocusMemory(
+        zone: zone,
+        rowId: rowId,
+        itemIndex: index,
+        node: node,
+      ),
+    );
+  }
+
+  static bool moveVerticalInTab({
+    required String tabId,
+    required String rowId,
+    required int currentIndex,
+    required bool down,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return false;
+
+    if (!down) {
+      // Explicit onFocusUp (e.g. Featured → View details) when set.
+      if (handle.onFocusUp != null) {
+        handle.onFocusUp!();
+        return true;
+      }
+      if (handle.isFirstRow) {
+        return focusHero(revealFull: true, tabId: tabId);
+      }
+      // Walk upward past rows whose items are not built / not focusable yet.
+      // When several rows share a sortOrder (e.g. top bar + leaked sheet), try
+      // every sibling — picking only one left ↑ dead after a modal dismiss.
+      var cursor = handle.sortOrder;
+      final list = _rowsByTab[tabId] ?? const <ShellTvRowHandle>[];
+      while (true) {
+        final prev = _prevRow(tabId, cursor);
+        if (prev == null) {
+          return focusHero(revealFull: true, tabId: tabId);
+        }
+        final prevSort = prev.sortOrder;
+        final atOrder = [
+          for (final row in list)
+            if (row.sortOrder == prevSort) row,
+        ];
+        for (final candidate in atOrder) {
+          if (candidate.sortOrder < 0) {
+            final target =
+                candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+            if (focusRowItem(tabId, candidate.rowId, target)) return true;
+            return focusHero(revealFull: true, tabId: tabId);
+          }
+          if (candidate.itemCount <= 0) continue;
+          final target =
+              candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+          if (focusRowItem(tabId, candidate.rowId, target)) return true;
+        }
+        cursor = prevSort;
+      }
+    }
+
+    if (handle.onFocusDown != null) {
+      handle.onFocusDown!();
+      return true;
+    }
+
+    // Walk downward past unbuilt / empty rows instead of swallowing the key.
+    var cursor = handle.sortOrder;
+    while (true) {
+      final next = _nextRow(tabId, cursor);
+      if (next == null) return true; // trap at last reachable row
+      if (next.itemCount > 0) {
+        // Remembered index + lazy scroll (Live Sports schedule under shelf).
+        return focusRowItemRemembered(tabId, next.rowId);
+      }
+      cursor = next.sortOrder;
+    }
+  }
+
+  static bool _canRequest(FocusNode node) {
+    try {
+      if (!node.canRequestFocus) return false;
+    } catch (_) {
+      return false;
+    }
+    final ctx = node.context;
+    return ctx != null && ctx.mounted;
+  }
+
+  /// Overlay [FocusScope] remount (reopen Sources): bare [FocusNode.requestFocus]
+  /// can no-op; request through the node's scope like panel claim does.
+  static bool _request(FocusNode node) {
+    if (!_canRequest(node)) return false;
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    FocusScope.of(ctx).requestFocus(node);
+    return true;
+  }
+
+  static void clearTab(String tabId) {
+    _tabMemory.remove(tabId);
+    if (_navLeaveTabId == tabId) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+    }
+    _rowsByTab.remove(tabId);
+    _itemNodes.removeWhere((key, _) => key.startsWith('$tabId:'));
+    _rowOwners.removeWhere((key, _) => key.startsWith('$tabId:'));
+    _rowScrollIntoView.removeWhere((key, _) => key.startsWith('$tabId:'));
+    unregisterTabDefaults(tabId);
+  }
+
+  /// Register a scroll-into-view helper for lazy [rowId] restores (ListView / grid).
+  static void setRowScrollIntoView(
+    String tabId,
+    String rowId,
+    void Function(int index)? scroll,
+  ) {
+    final key = _rowOwnerKey(tabId, rowId);
+    if (scroll == null) {
+      _rowScrollIntoView.remove(key);
+    } else {
+      _rowScrollIntoView[key] = scroll;
+    }
+  }
+
+  static void _invokeRowScroll(String tabId, String rowId, int index) {
+    _rowScrollIntoView[_rowOwnerKey(tabId, rowId)]?.call(index);
+  }
+
+  /// Focus [rowId] at [index] (or [ShellTvRowHandle.lastFocusedIndex]).
+  ///
+  /// Lazy catalogs often dispose off-screen tiles — scroll then retry across
+  /// frames so ↓ from chrome / chip strips can return to the prior item.
+  static bool focusRowItemRemembered(
+    String tabId,
+    String rowId, {
+    int? index,
+    int maxTries = 12,
+  }) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final target =
+        (index ?? handle.lastFocusedIndex).clamp(0, handle.itemCount - 1);
+    if (focusRowItemExact(tabId, rowId, target)) return true;
+
+    _invokeRowScroll(tabId, rowId, target);
+    if (focusRowItemExact(tabId, rowId, target)) return true;
+
+    var tries = 0;
+    void attempt() {
+      if (focusRowItemExact(tabId, rowId, target)) return;
+      _invokeRowScroll(tabId, rowId, target);
+      if (focusRowItemExact(tabId, rowId, target)) return;
+      if (tries++ < maxTries) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      focusRowItem(tabId, rowId, target);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    return true;
+  }
+
+  /// Drop leave/live memory for [tabId] without unregistering rows or defaults.
+  ///
+  /// Used when Settings hub replaces the empty get-started cards so nav RIGHT
+  /// does not restore a disposed `empty-shell-cards` row.
+  static void discardTabMemory(String tabId) {
+    if (tabId.isEmpty) return;
+    _tabMemory.remove(tabId);
+    if (_navLeaveTabId == tabId) {
+      _navLeaveTabId = '';
+      _navLeaveSnapshot = null;
+    }
+  }
+
+  // --- Per-item focus nodes (key = "tabId:rowId:index") ---
+
+  static final Map<String, FocusNode> _itemNodes = {};
+
+  static String _itemKey(String tabId, String rowId, int index) =>
+      '$tabId:$rowId:$index';
+
+  static void registerItemNode({
+    required String tabId,
+    required String rowId,
+    required int index,
+    required FocusNode node,
+  }) {
+    _itemNodes[_itemKey(tabId, rowId, index)] = node;
+  }
+
+  static void unregisterItemNode({
+    required String tabId,
+    required String rowId,
+    required int index,
+    required FocusNode node,
+  }) {
+    final key = _itemKey(tabId, rowId, index);
+    if (_itemNodes[key] != node) return;
+    // Shared FocusNode (home hero Play across PageView slides): a deactivating
+    // sibling must not wipe the active slide's registration of the same node.
+    try {
+      if (node.context != null) return;
+    } catch (_) {}
+    _itemNodes.remove(key);
+  }
+
+  static FocusNode? itemNode(String tabId, String rowId, int index) =>
+      _itemNodes[_itemKey(tabId, rowId, index)];
+
+  /// True when an attached item node for [tabId] currently has focus.
+  static bool tabHasAttachedFocus(String tabId) {
+    final prefix = '$tabId:';
+    for (final e in _itemNodes.entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      try {
+        if (e.value.hasFocus) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+}
+
+/// Metadata attached to TV focusable widgets.
+class ShellTvFocusMeta {
+  const ShellTvFocusMeta({
+    required this.tabId,
+    required this.zone,
+    this.rowId,
+    this.itemIndex,
+    this.gridColumns,
+    this.onSave,
+  });
+
+  final String tabId;
+  final ShellTvZone zone;
+  final String? rowId;
+  final int? itemIndex;
+  final int? gridColumns;
+  final void Function(FocusNode node)? onSave;
+
+  bool _isHorizontalNavZone() =>
+      zone == ShellTvZone.row ||
+      zone == ShellTvZone.chipStrip ||
+      zone == ShellTvZone.topBar;
+
+  bool Function()? resolveDownEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () => ShellTvFocusCoordinator.moveInGrid(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        columns: cols,
+        rowDelta: ShellTvHoldAccel.lastStep,
+        colDelta: 0,
+      );
+    }
+    if (!_isHorizontalNavZone()) return null;
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () {
+        final step = ShellTvHoldAccel.lastStep;
+        if (idx >= handle!.itemCount - 1) {
+          return ShellTvFocusCoordinator.moveVerticalInTab(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            down: true,
+          );
+        }
+        return ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          right: true,
+          step: step,
+        );
+      };
+    }
+    return () => ShellTvFocusCoordinator.moveVerticalInTab(
+      tabId: tid,
+      rowId: rid,
+      currentIndex: idx,
+      down: true,
+    );
+  }
+
+  bool Function()? resolveUpEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () => ShellTvFocusCoordinator.moveInGrid(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        columns: cols,
+        rowDelta: -ShellTvHoldAccel.lastStep,
+        colDelta: 0,
+      );
+    }
+    if (!_isHorizontalNavZone()) return null;
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () {
+        final step = ShellTvHoldAccel.lastStep;
+        if (idx <= 0) {
+          return ShellTvFocusCoordinator.moveVerticalInTab(
+            tabId: tid,
+            rowId: rid,
+            currentIndex: idx,
+            down: false,
+          );
+        }
+        return ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          right: false,
+          step: step,
+        );
+      };
+    }
+    return () => ShellTvFocusCoordinator.moveVerticalInTab(
+      tabId: tid,
+      rowId: rid,
+      currentIndex: idx,
+      down: false,
+    );
+  }
+
+  bool Function()? resolveLeftEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () {
+        if (idx % cols <= 0) return true;
+        return ShellTvFocusCoordinator.moveInGrid(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          columns: cols,
+          rowDelta: 0,
+          colDelta: -1,
+        );
+      };
+    }
+    if (!_isHorizontalNavZone()) return null;
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () => true;
+    }
+    return () {
+      if (idx <= 0) {
+        if (rid == MediaDetailsTv.heroRowId) {
+          ShellTvFocusCoordinator.focusActiveNavTab();
+          return true;
+        }
+        // Settings detail rows: ← leaves the page (same ladder as Back).
+        if (ShellTvFocusCoordinator._pageBackOnRowLeftEdge.contains(tid)) {
+          ShellTvFocusCoordinator.tryPageBack(tid);
+        }
+        return true;
+      }
+      return ShellTvFocusCoordinator.focusAdjacentInRow(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        right: false,
+      );
+    };
+  }
+
+  bool Function()? resolveRightEdge() {
+    if (rowId == null || itemIndex == null) return null;
+    if (zone == ShellTvZone.grid && gridColumns != null) {
+      final tid = tabId;
+      final rid = rowId!;
+      final idx = itemIndex!;
+      final cols = gridColumns!;
+      return () {
+        // Last column of a full row, or last item of an incomplete last row.
+        if (idx % cols >= cols - 1) return true;
+        final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+        if (handle != null && idx >= handle.itemCount - 1) return true;
+        return ShellTvFocusCoordinator.moveInGrid(
+          tabId: tid,
+          rowId: rid,
+          currentIndex: idx,
+          columns: cols,
+          rowDelta: 0,
+          colDelta: 1,
+        );
+      };
+    }
+    if (!_isHorizontalNavZone()) return null;
+    final tid = tabId;
+    final rid = rowId!;
+    final idx = itemIndex!;
+    final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
+    if (handle?.orientation == ShellTvRowOrientation.vertical) {
+      return () => true;
+    }
+    return () {
+      // Always handled: false must not fall through to spatial focusInDirection
+      // (that leaks into the next catalog row). Left edge already traps at 0.
+      if (handle != null && idx >= handle.itemCount - 1) return true;
+      ShellTvFocusCoordinator.focusAdjacentInRow(
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        right: true,
+      );
+      return true;
+    };
+  }
+
+  void notifyFocused(FocusNode node) {
+    onSave?.call(node);
+    if ((zone == ShellTvZone.row ||
+            zone == ShellTvZone.chipStrip ||
+            zone == ShellTvZone.grid) &&
+        rowId != null &&
+        itemIndex != null) {
+      ShellTvFocusCoordinator.onRowItemFocused(
+        tabId: tabId,
+        rowId: rowId!,
+        index: itemIndex!,
+        node: node,
+        zone: zone,
+      );
+    }
+    switch (zone) {
+      case ShellTvZone.hero:
+        ShellTvFocusCoordinator.revealHeroForTab(tabId);
+        ShellTvFocusCoordinator.saveFocus(
+          tabId,
+          ShellTvFocusMemory(zone: ShellTvZone.hero, node: node),
+        );
+      case ShellTvZone.topBar:
+        ShellTvFocusCoordinator.saveFocus(
+          tabId,
+          ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
+        );
+      case ShellTvZone.chipStrip:
+        if (rowId == null) {
+          ShellTvFocusCoordinator.saveFocus(
+            tabId,
+            ShellTvFocusMemory(zone: zone, node: node),
+          );
+        }
+      case ShellTvZone.grid:
+      case ShellTvZone.settings:
+        ShellTvFocusCoordinator.saveFocus(
+          tabId,
+          ShellTvFocusMemory(zone: zone, node: node),
+        );
+      case ShellTvZone.row:
+      case ShellTvZone.nav:
+        break;
+    }
+  }
+}
+
+/// Whether [key] is a TV activate key (Select / OK / Enter / Space).
+bool shellTvIsActivateLogicalKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.enter ||
+      key == LogicalKeyboardKey.select ||
+      key == LogicalKeyboardKey.space ||
+      key == LogicalKeyboardKey.numpadEnter;
+}
+
+/// Whether [event] is a TV activate key (Select / OK) on KeyDown.
+bool shellTvIsActivateKey(KeyEvent event) {
+  if (event is! KeyDownEvent) return false;
+  return shellTvIsActivateLogicalKey(event.logicalKey);
+}
+
+/// Whether [event] is a TV activate key on KeyUp (for hold / double-tap).
+bool shellTvIsActivateKeyUp(KeyEvent event) {
+  if (event is! KeyUpEvent) return false;
+  return shellTvIsActivateLogicalKey(event.logicalKey);
+}
+
+/// Scroll visibility mode for TV focus.
+enum ShellTvEnsureVisibleMode { off, row, item }
+
+/// Content-Y slack: page title + section label + first control still count as
+/// "page top" so ↑ / land-focus snaps to [minScrollExtent] instead of
+/// pinning the control flush and clipping chrome above it.
+const double kShellTvListTopRevealSlackPx = 240;
+
+ScrollableState? _nearestVerticalScrollable(BuildContext context) {
+  var scrollable = Scrollable.maybeOf(context);
+  ScrollableState? firstVertical;
+  while (scrollable != null) {
+    final axis = axisDirectionToAxis(scrollable.position.axisDirection);
+    if (axis == Axis.vertical) {
+      firstVertical ??= scrollable;
+      final position = scrollable.position;
+      // Settings Addons / Features nest a shrink-wrap NeverScrollable ListView
+      // inside the page SingleChildScrollView. That nest is still a Scrollable
+      // with maxScrollExtent ≈ 0 — jumping it does nothing while the outer
+      // scroller stays pinned at top. Prefer a vertical scroller that can move.
+      if (position.hasContentDimensions &&
+          position.maxScrollExtent > position.minScrollExtent + 0.5) {
+        return scrollable;
+      }
+    }
+    // maybeOf skips [scrollable] itself and walks to the parent.
+    scrollable = Scrollable.maybeOf(scrollable.context);
+  }
+  return firstVertical;
+}
+
+/// TV vertical lists (settings, menus): keep the focused control on-screen.
+///
+/// When the control sits near the **start** of the scroll content, jump to
+/// [ScrollPosition.minScrollExtent] so page titles / group labels above the
+/// first focusable stay visible. Mid/end rows leave a **bottom inset** so the
+/// next item peeks and the last row is not pinned under ATV overscan (flush
+/// [ScrollPositionAlignmentPolicy.keepVisibleAtEnd] caused that).
+void shellTvEnsureVisibleItem(
+  BuildContext context, {
+  double topRevealSlackPx = kShellTvListTopRevealSlackPx,
+  double bottomInsetFraction = ShellTokens.tvSettingsFocusBottomInsetFraction,
+}) {
+  final scrollable = _nearestVerticalScrollable(context);
+  if (scrollable == null) return;
+  final position = scrollable.position;
+  if (!position.hasContentDimensions) return;
+
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize || !box.attached) return;
+  final viewportBox = scrollable.context.findRenderObject();
+  if (viewportBox is! RenderBox || !viewportBox.hasSize) return;
+
+  final topInViewport = box
+      .localToGlobal(Offset.zero, ancestor: viewportBox)
+      .dy;
+  final contentY = position.pixels + topInViewport;
+  if (contentY <= topRevealSlackPx) {
+    if (position.pixels > position.minScrollExtent + 0.5) {
+      position.jumpTo(position.minScrollExtent);
+    }
+    return;
+  }
+
+  final viewportH = position.viewportDimension;
+  final cardTop = topInViewport;
+  final cardBottom = topInViewport + box.size.height;
+  final maxBottom = viewportH * (1.0 - bottomInsetFraction);
+
+  var delta = 0.0;
+  if (cardBottom > maxBottom) {
+    delta = cardBottom - maxBottom;
+  }
+  // Prefer keeping the top on-screen when the control is taller than the band.
+  if (cardTop - delta < 0) {
+    delta = cardTop;
+  }
+  if (delta.abs() < 0.5) return;
+
+  position.jumpTo(
+    (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    ),
+  );
+}
+
+/// Lift a focused catalog card in the **vertical** page scroller.
+///
+/// Cards live inside a horizontal [ListView], so [Scrollable.maybeOf] / nearest
+/// [RenderAbstractViewport] are the row — not the hub [CustomScrollView].
+/// Use global coords vs the vertical viewport instead.
+///
+/// Only scrolls when the card would sit under the bottom inset (or above the
+/// preferred top band) — mid-screen rows stay put.
+void shellTvRevealCatalogRowFocus(
+  BuildContext context, {
+  double bottomInsetFraction = ShellTokens.tvKitRowFocusBottomInsetFraction,
+  double? topInsetFraction,
+  double extraBottomPx = 0,
+  double extraTopPx = 0,
+}) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize || !box.attached) return;
+
+  final scrollable = _nearestVerticalScrollable(context);
+  if (scrollable == null) return;
+  final position = scrollable.position;
+  final viewportBox = scrollable.context.findRenderObject();
+  if (viewportBox is! RenderBox || !viewportBox.hasSize) return;
+
+  final topLeft = box.localToGlobal(Offset.zero, ancestor: viewportBox);
+  final viewportH = position.viewportDimension;
+  final cardTop = topLeft.dy - extraTopPx;
+  final cardBottom = topLeft.dy + box.size.height + extraBottomPx;
+  final maxBottom = viewportH * (1.0 - bottomInsetFraction);
+  // Details body: leave ~25% above Cast/Crew/Trailers. Hub rails stay flush
+  // (topInset 0) so Home Featured under the hero does not jump.
+  final inDetails =
+      context.findAncestorWidgetOfExactType<MediaDetailsTvScope>() != null;
+  final minTop = viewportH *
+      (topInsetFraction ??
+          (inDetails
+              ? ShellTokens.tvDetailsRowFocusTopInsetFraction
+              : 0.0));
+
+  var delta = 0.0;
+  if (cardBottom > maxBottom) {
+    delta = cardBottom - maxBottom;
+  }
+  if (cardTop - delta < minTop) {
+    delta = cardTop - minTop;
+  }
+  // Tall cards: bottom inset wins if top preference would clip the bottom.
+  if (cardBottom - delta > maxBottom) {
+    delta = cardBottom - maxBottom;
+  }
+  if (delta.abs() < 0.5) return;
+
+  position.jumpTo(
+    (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    ),
+  );
+}

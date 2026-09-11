@@ -6,12 +6,12 @@ import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 

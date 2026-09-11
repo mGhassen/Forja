@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/shared/host/live_sports/schedule/kit_schedule_event_query.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 const _kSearchCollapsed = 40.0;
 const _kSearchExpanded = 260.0;

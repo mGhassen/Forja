@@ -7,13 +7,13 @@ import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart'
 import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Sentinel for the "All" entry in the categories popup menu.

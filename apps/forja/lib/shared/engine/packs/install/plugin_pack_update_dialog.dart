@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Confirm overlay listing plugin packs with pending version bumps.
@@ -220,21 +219,22 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
                 ),
               ),
               const SizedBox(height: 24),
-              ForjaButton.primary(
+              Button(
+              variant: ButtonVariant.primary,
                 label:
                     _busy ? 'Updating…' : (count == 1 ? 'Update' : 'Update all'),
                 expand: true,
                 autofocus: tv,
                 focusNode: _confirmFocus,
-                activateOnKeyUp: tv,
                 onPressed: _busy ? null : _submit,
               ),
               const SizedBox(height: 4),
               Center(
-                child: ForjaGhostButton(
+                child: Button(
+                variant: ButtonVariant.ghost,
                   label: 'Cancel',
                   focusNode: _cancelFocus,
-                  onTap: _busy ? null : widget.onCancel,
+                  onPressed: _busy ? null : widget.onCancel,
                 ),
               ),
             ],

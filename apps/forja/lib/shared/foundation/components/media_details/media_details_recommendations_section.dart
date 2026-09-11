@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja/shared/foundation/components/posters/home_movie_row.dart';
 import 'package:rust/rust.dart';
 

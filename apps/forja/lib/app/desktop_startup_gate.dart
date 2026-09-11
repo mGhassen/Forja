@@ -15,7 +15,7 @@ import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/desktop_window_chrome.dart';
 import 'package:forja/shared/host/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 class _StaleProbe extends StatefulWidget {
   const _StaleProbe();

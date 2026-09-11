@@ -21,8 +21,8 @@ import 'package:forja/shared/playback/probe/sources_panel_stream_probe.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
@@ -30,9 +30,9 @@ import 'package:forja/shared/foundation/components/media_details/torrent_source_
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Right-side Sources panel in the player - same shell/chrome/tiles as

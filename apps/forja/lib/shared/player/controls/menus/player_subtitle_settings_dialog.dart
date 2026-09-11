@@ -1,20 +1,20 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class PlayerSubtitleSettingsValues {
   const PlayerSubtitleSettingsValues({
@@ -952,9 +952,9 @@ class _BoldRow extends StatelessWidget {
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         const Spacer(),
-        ForjaSwitch(
+        Switch(
           value: bold,
-          scale: ForjaSwitch.settingsScale,
+          scale: Switch.settingsScale,
           // Desktop hybrid: keep mouse toggle. Leanback: FocusableControl owns OK.
           onChanged: tvFocus &&
                   !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ??

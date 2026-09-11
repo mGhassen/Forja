@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 

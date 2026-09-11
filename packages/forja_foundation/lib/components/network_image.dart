@@ -10,22 +10,30 @@ class ForjaNetworkImage extends StatelessWidget {
     super.key,
     required this.url,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
     this.width,
     this.height,
     this.borderRadius,
     this.fadeDuration = const Duration(milliseconds: 250),
     this.placeholder,
     this.error,
+    this.useOldImageOnUrlChange = true,
+    this.memCacheWidth,
+    this.filterQuality = FilterQuality.medium,
   });
 
   final String url;
   final BoxFit fit;
+  final Alignment alignment;
   final double? width;
   final double? height;
   final BorderRadius? borderRadius;
   final Duration fadeDuration;
   final Widget? placeholder;
   final Widget? error;
+  final bool useOldImageOnUrlChange;
+  final int? memCacheWidth;
+  final FilterQuality filterQuality;
 
   bool get _isAbsolute {
     final u = url.trim();
@@ -55,9 +63,13 @@ class ForjaNetworkImage extends StatelessWidget {
         borderRadius: radius,
         child: Image.network(
           url.trim(),
+          key: useOldImageOnUrlChange ? null : ValueKey(url.trim()),
           fit: fit,
+          alignment: alignment,
           width: width,
           height: height,
+          cacheWidth: memCacheWidth,
+          filterQuality: filterQuality,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (wasSynchronouslyLoaded || frame != null) {
               return AnimatedOpacity(

@@ -3,12 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/widgets/logo_menu_rail.dart';
 
 /// Pack-owned logo on a contrasting tile.

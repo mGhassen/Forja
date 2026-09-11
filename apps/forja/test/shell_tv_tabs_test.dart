@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_shell_chip.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
 import 'package:rust/rust.dart';
 

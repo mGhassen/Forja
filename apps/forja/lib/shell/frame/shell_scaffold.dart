@@ -8,10 +8,10 @@ import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class ShellScaffold extends StatefulWidget {
   const ShellScaffold({

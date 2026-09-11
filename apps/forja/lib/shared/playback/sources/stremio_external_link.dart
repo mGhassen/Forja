@@ -7,7 +7,7 @@ import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 /// Handles `externalUrl` on Stremio addon streams (`stremio:///…` or https).
 Future<bool> handleStremioStreamIfExternal(

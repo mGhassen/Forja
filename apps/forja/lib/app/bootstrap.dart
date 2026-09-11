@@ -42,9 +42,9 @@ import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dar
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
 import 'package:forja/shared/foundation/components/packs/plugin_install_progress_banner.dart';
 
-import 'package:forja/shared/foundation/tv/shell_tv_back_handler.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/tv_remote_debug.dart';
+import 'package:forja/shared/shell/tv/shell_tv_back_handler.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/tv_remote_debug.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -59,12 +59,12 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
-import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_keyboard_focus.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/shell/brand/animated_logo.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/forja_shell_keyboard_focus.dart';
+import 'package:forja/shared/shell/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 bool _appShutdownStarted = false;
 

@@ -9,7 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Shared code/QR connect step for TV cold start and Settings → Profile.
 class DeviceLinkConnectView extends StatefulWidget {
@@ -315,7 +315,7 @@ class _CompactConnectLayout extends StatelessWidget {
               ),
               if (onBack != null) ...[
                 const SizedBox(height: 16),
-                ForjaButton(
+                Button(
                   label: 'Cancel',
                   icon: Icons.close_rounded,
                   onPressed: onBack,
@@ -336,7 +336,7 @@ class _CompactConnectLayout extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: 12),
-            ForjaButton(
+            Button(
               label: 'Get a new code',
               icon: Icons.refresh_rounded,
               onPressed: onRetry,
@@ -437,7 +437,7 @@ class _TvConnectLayout extends StatelessWidget {
                     ),
                     if (onRetry != null) ...[
                       const SizedBox(height: 20),
-                      ForjaButton(
+                      Button(
                         label: 'Get a new code',
                         icon: Icons.refresh_rounded,
                         onPressed: onRetry,

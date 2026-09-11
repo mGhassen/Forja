@@ -5,8 +5,8 @@ import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 
 /// Shell-level event bus - decouples features from [MainScreen].
 class ShellBus {

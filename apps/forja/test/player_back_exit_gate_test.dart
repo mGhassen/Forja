@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 
 void main() {
   setUp(() {

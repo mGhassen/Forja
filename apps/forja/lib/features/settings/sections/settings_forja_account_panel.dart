@@ -10,13 +10,13 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 // Passkey type is @experimental.
@@ -905,7 +905,8 @@ class _SignedOutAccountBody extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    ForjaButton.primary(
+                    Button(
+              variant: ButtonVariant.primary,
                       label: 'Link with code or QR',
                       icon: Icons.tv_rounded,
                       onPressed: formLocked ? null : onTvDeviceLink,
@@ -970,7 +971,8 @@ class _SignedOutAccountBody extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ForjaButton.primary(
+                      Button(
+              variant: ButtonVariant.primary,
                         label: 'Sign in',
                         icon: Icons.link_rounded,
                         onPressed: formLocked ? null : onStartDeviceLink,
@@ -1071,22 +1073,23 @@ class _SignedOutAccountBody extends StatelessWidget {
                     spacing: 10,
                     runSpacing: 10,
                     children: [
-                      ForjaButton.primary(
+                      Button(
+              variant: ButtonVariant.primary,
                         label: busy ? 'Signing in…' : 'Sign in',
                         icon: Icons.login_rounded,
-                        busy: busy,
+                        loading: busy,
                         onPressed: canSubmitPassword ? onSignIn : null,
                       ),
                       if (showPasskey)
-                        ForjaButton(
+                        Button(
                           label: passkeyBusy
                               ? 'Waiting…'
                               : 'Sign in with passkey',
                           icon: Icons.fingerprint_rounded,
-                          busy: passkeyBusy,
+                          loading: passkeyBusy,
                           onPressed: canSubmitPasskey ? onPasskeyLogin : null,
                         ),
-                      ForjaButton(
+                      Button(
                         label: webBusy ? 'Cancel web login' : 'Web login',
                         icon: webBusy
                             ? Icons.close_rounded

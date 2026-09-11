@@ -7,7 +7,7 @@ import 'package:forja/shared/services/update/app_update_macos_installer.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 enum AppUpdateDownloadPhase { idle, downloading, completed, failed }
 

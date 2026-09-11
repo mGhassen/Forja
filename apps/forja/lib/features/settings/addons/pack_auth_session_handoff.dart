@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_focus.dart';
+import 'package:forja/shared/shell/desktop_window_focus.dart';
 
 /// Handoff for pack browser auth: Shahid (or any site) runs a bookmarklet that
 /// navigates to `forja://connected-auth/session?state=&token=&label=`.

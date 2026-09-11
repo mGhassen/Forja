@@ -8,8 +8,8 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 /// Fired when the user picks Off, an embedded track, or an external file.
 typedef PlayerSubtitleSelectionCallback = void Function({
   required bool off,

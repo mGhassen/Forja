@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/features/archive/audio/audiobook_player_service.dart';
 import 'package:forja/features/archive/audio/audiobook_download_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 class AudiobookPlayerScreen extends StatefulWidget {
@@ -366,10 +366,10 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
                 children: [
                   const Text('AUTOPLAY', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   const SizedBox(width: 8),
-                  ForjaSwitch(
+                  Switch(
                     value: auto,
                     onChanged: (v) => _service.autoplay.value = v,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ],
               ),

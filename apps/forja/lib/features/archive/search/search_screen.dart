@@ -12,17 +12,17 @@ import 'package:forja/shared/foundation/components/chrome/kit_search_filters.dar
 
 import 'package:forja/shared/foundation/components/chrome/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/shell/horizontal_scroller.dart';
 import 'package:forja/shared/foundation/components/chrome/recent_search_helper_tile.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/tv/tv_search_browse_overlay.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv_search_browse_overlay.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/foundation/services/registry/kit_list_host_hooks.dart';
 import 'package:forja/shared/host/live_sports/cards/kit_event_card.dart';
 import 'package:forja/shared/host/live_sports/match_event.dart';

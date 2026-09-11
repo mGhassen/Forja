@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/components/media_details/tv_season_episode_picker.dart';
 
 Widget _wrapTv(Widget child) {

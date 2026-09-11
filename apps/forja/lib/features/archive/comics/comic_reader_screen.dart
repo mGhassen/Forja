@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:forja/features/archive/comics/catalog/comics_service.dart';
 import 'package:forja/features/archive/comics/catalog/comic_page_extractor.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 class ComicReaderScreen extends StatefulWidget {
   final String chapterTitle;

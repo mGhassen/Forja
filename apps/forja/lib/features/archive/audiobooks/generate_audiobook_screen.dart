@@ -11,7 +11,7 @@ import 'package:forja/features/archive/utils/epub_splitter.dart';
 import 'package:forja/features/archive/utils/epub_cover.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 /// Top-level worker for `compute` so the EPUB parsing/splitting runs off the UI thread.
 Future<List<EpubPart>> _splitWorker(String path) {

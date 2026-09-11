@@ -14,14 +14,15 @@ import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
-import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/hover_scale.dart';
+import 'package:forja/shared/shell/horizontal_scroller.dart';
+import 'package:forja/shared/shell/shell_card_play_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});
@@ -689,10 +690,11 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
               const SizedBox(height: 18),
               Row(
                 children: [
-                  ForjaGhostButton(
+                  Button(
+                    variant: ButtonVariant.ghost,
                     label: 'مشاهدة',
                     icon: Icons.play_arrow_rounded,
-                    onTap: () => _openDetails(a),
+                    onPressed: () => _openDetails(a),
                     focusNode: ShellScope.inputPolicyOf(context)
                             .heroPlayAutoFocus
                         ? _tvHeroPlayFocus

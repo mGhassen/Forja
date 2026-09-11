@@ -15,7 +15,7 @@ import 'package:forja/shared/foundation/lib/match_event.dart';
 import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:rust/rust.dart'
     show BuiltInPlayerContext, SettingsService, StremioService;
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Live resolve + Stremio providers + native play (RFC-091).

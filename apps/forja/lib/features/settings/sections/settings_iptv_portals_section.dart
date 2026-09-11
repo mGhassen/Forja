@@ -8,9 +8,9 @@ import 'package:forja/features/iptv/data/iptv_portal_csv.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Settings → Data & backup - export / import Xtream portals as CSV.
 class SettingsIptvPortalsSection extends StatefulWidget {

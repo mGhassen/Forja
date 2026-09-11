@@ -3,7 +3,7 @@ import 'package:forja/features/account/device_link_connect_view.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_fractal_glass_gradient.dart';
+import 'package:forja/shared/shell/forja_fractal_glass_gradient.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 enum _TvLinkStep { welcome, connect, error }
 

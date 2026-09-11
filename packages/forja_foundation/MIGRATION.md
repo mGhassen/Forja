@@ -1,55 +1,280 @@
 # Migrating to `forja_foundation` (RFC-106)
 
-App code imports the **file for the widget**, not the root barrel.
+This file is the **only** checklist. If a row has no New path, that is a
+package or host gap — close it in the same slice. Do not skip. Do not treat
+`package:forja/shared/foundation/primitives/**` as a destination.
 
-```dart
-import 'package:forja_foundation/components/button.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/kit/kit_types.dart';
-```
+## Rules
 
-`forja_foundation.dart` is a gallery/test barrel. Do not import it next to
-`material.dart` (that is what produced the `hide Switch, Chip, …` lists).
+1. Import the **file**, never `package:forja_foundation/forja_foundation.dart`.
+2. Never `hide Switch, Chip, …` against Material.
+3. Never add `import` lines to `part of` files — put them on the library parent.
+4. Never import `package:forja/shared/foundation/primitives/**` from app/feature/player/test code after this slice. Foundation primitives may exist only as **re-export stubs** until G14-E.
+5. If the package is missing an API the host uses: **extend the package** or **move the module** to `shared/shell/` or `shared/host/`. Do not keep the old foundation import.
 
-Full export list: `docs/rfc/106-export-inventory.txt`. Pack wire: [PACK_AUTHORS.md](PACK_AUTHORS.md).
+`forja_foundation.dart` is a gallery/test barrel.
 
-## Symbol map
+Pack JSON wire: [PACK_AUTHORS.md](PACK_AUTHORS.md). Do not edit forja-packs unless an alias is dropped.
+
+---
+
+## Destination buckets
+
+Every old symbol has **exactly one** New import.
+
+| Bucket | Import prefix | What |
+|--------|---------------|------|
+| Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, kit types, protocol, NetworkImage (after host args) |
+| Host shell | `package:forja/shared/shell/<file>.dart` | ShellScope, shellScaled, TV browse, TV coordinators, desktop chrome, ForjaToast, shellFocusableTap, ForjaInteractive |
+| Host product | `package:forja/shared/host/**` | live sports, packs, lists, torrent, update, keychain (already evacuated) |
+| Kit runtime | `package:forja/shared/foundation/services/**` **until G14-E only** | listed below — not a dump for chrome |
+
+---
+
+## Tokens
+
+| Old symbol | Old path | New import |
+|------------|----------|------------|
+| `ForjaShellColors` | `foundation/primitives/tokens/forja_shell_colors.dart` | `package:forja_foundation/tokens/forja_shell_colors.dart` |
+| `ShellTokens` | `…/tokens/forja_shell_tokens.dart` | `package:forja_foundation/tokens/forja_shell_tokens.dart` |
+| `DetailsTokens` | `…/tokens/forja_details_tokens.dart` | `package:forja_foundation/tokens/forja_details_tokens.dart` |
+| `SettingsTokens` | `…/tokens/forja_settings_tokens.dart` | `package:forja_foundation/tokens/forja_settings_tokens.dart` |
+| `DesignTokens` | `…/tokens/forja_theme.dart` | `package:forja_foundation/tokens/forja_theme.dart` |
+| `ForjaThemeExtension` / `forjaThemeData()` | host theme glue | `package:forja_foundation/theme/forja_theme_extension.dart` — host `AppTheme` sets `extensions: [ForjaThemeExtension.dark()]` |
+| `ShellTokens.usesCompactNavDrawer` | width + TV gate | package tokens + host `ShellScope` wraps `CompactNavDrawerPolicy` |
+
+---
+
+## Buttons — constructor recipes
+
+Import: `package:forja_foundation/components/button.dart`.
+
+Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`, optional `height`.
 
 | Old | New |
 |-----|-----|
-| `ForjaGhostButton` | `Button(variant: ghost)` |
-| `ForjaPlainIcon` | `Button(variant: plainIcon, size: icon)` |
-| `ForjaIconButton` | `Button(size: icon)` / `Button(variant: outline, size: icon)` |
-| `ForjaCloseButton` | `Button(variant: ghost, size: icon)` + close icon |
-| `ForjaSwitch` | `Switch` (package; hide Material) |
-| `VerticalFiltersRail` | `LogoMenuRail` + `VerticalMenu` (host rail wraps until PackAssets props-only) |
-| `VerticalFiltersSpec` | host registry + `toLogoMenuItems()` |
-| `DesignTokens` / `ForjaShellColors` | `ForjaThemeExtension` / package tokens |
-| `ShellTokens` | package `ShellTokens` (+ host TV overrides where still needed) |
-| `package:forja/shared/foundation/...` | `package:forja_foundation/...` |
+| `ForjaButton(variant: ForjaButtonVariant.primary, …)` / `ForjaButton.primary(…)` | `Button(variant: ButtonVariant.primary, label:, onPressed:, icon:, loading: busy, expand:, autofocus:, focusNode:)` |
+| `ForjaButton(variant: ForjaButtonVariant.neutral, …)` / `ForjaButton(…)` | `Button(variant: ButtonVariant.secondary, …)` — `neutral` → `secondary` |
+| `ForjaButton(variant: ForjaButtonVariant.destructive, …)` / `ForjaButton.destructive(…)` | `Button(variant: ButtonVariant.destructive, …)` |
+| `busy: true` | `loading: true` |
+| `ForjaGhostButton(label:, onTap:, icon:, autoFocus:, focusNode:)` | `Button(variant: ButtonVariant.ghost, label:, onPressed: onTap, icon:, autofocus: autoFocus, focusNode:)` |
+| `ForjaPlainIcon(icon:, onTap:, tooltip:, color:, size:, focusNode:)` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:, color:, iconSize: size, focusNode:)` |
+| `ForjaIconButton(icon:, onTap:, tooltip:)` | `Button(variant: ButtonVariant.outline, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:)` |
+| `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, compact: true)` |
+| `ForjaInteractive` | **not** Button — `package:forja/shared/shell/forja_interactive.dart` |
 
-## Compat (until G14-E)
+Do **not** import `compat/legacy_buttons.dart` from app code. Rewrite constructors.
 
-- `package:forja/shared/foundation/compat_exports.dart`
-- `package:forja/shared/foundation/ds_bridge.dart`
-- Per-path re-export stubs (e.g. `lib/match_event.dart` → `shared/host/live_sports/`)
+`ForjaButton.activateOnKeyUp` — drop; TV activate is host `ShellInputPolicy` + `Button` focus. If a call site still needs key-up activate, keep that logic next to the call site, not a second button type.
 
-**Shim death** (delete `apps/forja/lib/shared/foundation/`) only after Q1–Q12 QA
-and inventory greps — see RFC-106 A19. Per G14-G, that is a **separate** PR.
+---
 
-## Host APIs — do not replace `primitives.dart` wholesale
+## Controls
 
-`package:forja_foundation` does **not** export host shell/TV/splash widgets.
-Keep host imports for:
+| Old | New import | Recipe |
+|-----|------------|--------|
+| `ForjaSwitch` / `forjaSwitchThemeData` | `package:forja_foundation/components/switch.dart` | `Switch(value:, onChanged:, scale:, emphasized:)` — hide Material `Switch` on that file only (`import 'package:flutter/material.dart' hide Switch;`) |
+| `ForjaShellChip` | host shell until Chip covers TV | `package:forja/shared/shell/forja_shell_chip.dart` (moved) **or** `package:forja_foundation/components/chip.dart` when the row is a simple filter chip |
+| `ForjaChipRow` | `package:forja/shared/shell/forja_chip_row.dart` (moved) | |
+| `ForjaActionChip` | `package:forja/shared/shell/forja_action_chip.dart` (moved) | |
+| `ForjaStatusTabs` / `ForjaUnderlineTab` | `package:forja/shared/shell/…` (moved) | package `Tabs` only if the row is the new family |
 
-| Stay on host | Why |
-|--------------|-----|
-| `ForjaInteractive` / `ForjaPlainIcon` / `ForjaCloseButton.compact` | Package compat aliases are incomplete (no `color`/`size`/`compact`) — not barrel-exported |
-| `ShellScope` / `shellScaled` / `shellUsesWideLayout` / `resolveShellProfile` | Host shell |
-| `shellFocusableTap` / `shellRoundedInkHost` / `shellMenuItemStyle` | Host chrome |
-| `TvBrowseTextField` / splash (`SplashLoadingDots`, …) / `ForjaToast` | Host-only |
-| Host `ForjaNetworkImage` | Extra args (`alignment`, `useOldImageOnUrlChange`) |
+---
 
-Never add `import` lines to `part of` files — put them on the library parent.
+## Feedback
 
-Compat `Forja*` button aliases: import `package:forja_foundation/compat/legacy_buttons.dart` **explicitly**. The package barrel does not export them (they shadow host buttons).
+Winner: **move the real host implementations** to `shared/shell/`. Package `showForjaToast` is a SnackBar stub — do not point live call sites at it.
+
+| Old | New import |
+|-----|------------|
+| `ForjaToast` / `ForjaToastHost` / `ForjaToastKind` | `package:forja/shared/shell/forja_toast.dart` |
+| `ForjaLoadingDots` / `ForjaBusyCancelGlyph` | `package:forja/shared/shell/forja_loading_dots.dart` |
+| `ForjaPlayerOverlayPanel` | `package:forja/shared/shell/forja_player_overlay.dart` |
+| `ForjaFrostedPanel` | `package:forja/shared/shell/forja_frosted_panel.dart` |
+| `FractalGlassGradient` / splash logo | `package:forja/shared/shell/brand/…` (moved from primitives/brand + feedback) |
+
+---
+
+## Chrome / images / tap
+
+| Old | New |
+|-----|-----|
+| `ForjaNetworkImage` | `package:forja_foundation/components/network_image.dart` after package gains `alignment`, `useOldImageOnUrlChange`, `memCacheWidth`, `filterQuality` |
+| `shellFocusableTap` / `shellGridColumnCount` / `shellTvRegisterRow` | `package:forja/shared/shell/shell_focusable_tap.dart` |
+| Package `FocusableTap` | kit-only stand-in — **not** a replacement for `shellFocusableTap` |
+| `HoverScale` | `package:forja/shared/shell/hover_scale.dart` |
+| `HorizontalScroller` | `package:forja/shared/shell/horizontal_scroller.dart` |
+| `LoadingOverlay` / `dismissActiveLoadingOverlayRoute` | `package:forja/shared/shell/loading_overlay.dart` |
+| `ShellCardPlayOverlay` | `package:forja/shared/shell/shell_card_play_overlay.dart` |
+| `ShellErrorRetryPanel` | `package:forja/shared/shell/shell_error_retry_panel.dart` |
+| `ShellMoodCircleLayout` / `ShellMoodCircleItem` | `package:forja/shared/shell/shell_mood_circle.dart` |
+| `ForjaPosterCard` / `ForjaServerGrid` | `package:forja/shared/shell/…` (moved) |
+
+---
+
+## Host shell (moved off foundation)
+
+| Old path | New path |
+|----------|----------|
+| `foundation/primitives/shell/forja_shell_scope.dart` | `package:forja/shared/shell/forja_shell_scope.dart` |
+| `…/forja_shell_layout.dart` (`shellScaled`, `shellUsesWideLayout`, …) | `package:forja/shared/shell/forja_shell_layout.dart` |
+| `…/forja_shell_profile.dart` (`ShellProfile`, `resolveShellProfile`) | `package:forja/shared/shell/forja_shell_profile.dart` |
+| `…/forja_shell_platform.dart` (`shellPlatformConfigFor`) | `package:forja/shared/shell/forja_shell_platform.dart` |
+| `…/forja_shell_metrics.dart` | `package:forja/shared/shell/forja_shell_metrics.dart` |
+| `…/forja_shell_input_policy.dart` | `package:forja/shared/shell/forja_shell_input_policy.dart` |
+| `…/forja_shell_keyboard_focus.dart` | `package:forja/shared/shell/forja_shell_keyboard_focus.dart` |
+| `…/forja_shell_keyboard_focus_scope.dart` | `package:forja/shared/shell/forja_shell_keyboard_focus_scope.dart` |
+| `…/forja_shell_section_title.dart` | `package:forja/shared/shell/forja_shell_section_title.dart` |
+| `…/forja_shell_tab_header.dart` | `package:forja/shared/shell/forja_shell_tab_header.dart` |
+| `foundation/primitives/tv/tv_browse_text_field.dart` | `package:forja/shared/shell/tv_browse_text_field.dart` |
+| `…/tv_search_browse_overlay.dart` | `package:forja/shared/shell/tv_search_browse_overlay.dart` |
+| `foundation/primitives/desktop/desktop_window_chrome.dart` | `package:forja/shared/shell/desktop_window_chrome.dart` |
+| `…/desktop_window_geometry.dart` | `package:forja/shared/shell/desktop_window_geometry.dart` |
+| `…/desktop_window_focus.dart` | `package:forja/shared/shell/desktop_window_focus.dart` |
+| `foundation/tv/shell_tv_coordinator.dart` | `package:forja/shared/shell/tv/shell_tv_coordinator.dart` |
+| `foundation/tv/shell_tv_focus.dart` | `package:forja/shared/shell/tv/shell_tv_focus.dart` |
+| `foundation/tv/tv_focus_graph.dart` | `package:forja/shared/shell/tv/tv_focus_graph.dart` |
+| `foundation/tv/shell_tv_back_handler.dart` | `package:forja/shared/shell/tv/shell_tv_back_handler.dart` |
+| `foundation/tv/shell_tv_app_exit.dart` | `package:forja/shared/shell/tv/shell_tv_app_exit.dart` |
+| `foundation/tv/shell_tv_hold_accel.dart` | `package:forja/shared/shell/tv/shell_tv_hold_accel.dart` |
+| `foundation/tv/tv_remote_debug.dart` | `package:forja/shared/shell/tv/tv_remote_debug.dart` |
+| `foundation/tv/media_details_tv_scope.dart` | `package:forja/shared/shell/tv/media_details_tv_scope.dart` |
+
+---
+
+## Host product (already evacuated — import host, not foundation stubs)
+
+| Surface | New path |
+|---------|----------|
+| Live match / schedule / cards | `package:forja/shared/host/live_sports/**` |
+| Packs / PackAssets | `package:forja/shared/host/packs/**` |
+| Follow / My List | `package:forja/shared/host/lists/**` |
+| Torrent panels | `package:forja/shared/host/sources/torrent/**` |
+| Live TV browse / resolve host | `package:forja/shared/host/sources/panel/**` |
+| TMDB enrich hooks | `package:forja/shared/host/details/**` |
+| Watch history | `package:forja/shared/host/watch/watch_history.dart` |
+| Update dialog / banner | `package:forja/shared/host/update/**` |
+| Keychain consent | `package:forja/shared/host/account/**` |
+
+---
+
+## Kit types / protocol (package)
+
+| Old | New |
+|-----|-----|
+| `KitTypes` | `package:forja_foundation/kit/kit_types.dart` |
+| `kit_layout_map` | `package:forja_foundation/kit/kit_layout_map.dart` |
+| `Deeplink` / filter / protocol / pack_capabilities | `package:forja_foundation/protocol/<file>.dart` |
+| `resolveCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
+
+Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …): new work imports the package file. Live foundation copies stay until G14-E only if they still **are** the running implementation — do not add new imports of those foundation copies.
+
+---
+
+## Kit runtime — foundation until G14-E (listed, not a dump)
+
+These files stay under `package:forja/shared/foundation/services/**` (or blocks that **are** the runtime) until shim death. Chrome does not hide here.
+
+| File | Why |
+|------|-----|
+| `services/nav/plugin_nav.dart` | pack nav registry |
+| `services/meta/runtime.dart` / `cache.dart` | MetaRuntime |
+| `services/registry/host_list_registry.dart` | list sources |
+| `services/registry/kit_*_hooks.dart` | host hook registries |
+| `services/registry/meta_surface_open.dart` | open.surface routing |
+| `host/live_sports/schedule/kit_live_boot.dart` | live boot (already host) |
+| `blocks/shell/kit_open.dart` / `kit_shell.dart` | kit runtime + page template |
+
+---
+
+## Tests — same tables
+
+Every inventory test that imported foundation chrome follows the **same** New path. No “tests later.”
+
+`apps/forja/test/catalog_extract_context_test.dart`
+`apps/forja/test/catalog_hub_search_capabilities_test.dart`
+`apps/forja/test/catalog_kit_category_circle_meta_test.dart`
+`apps/forja/test/catalog_kit_live_types_test.dart`
+`apps/forja/test/catalog_movie_id_for_play_test.dart`
+`apps/forja/test/catalog_open_test.dart`
+`apps/forja/test/catalog_play_filters_test.dart`
+`apps/forja/test/catalog_protocol_test.dart`
+`apps/forja/test/desktop_browser_auth_test.dart`
+`apps/forja/test/engine_test.dart`
+`apps/forja/test/episode_torrent_search_queries_test.dart`
+`apps/forja/test/forja_loading_dots_test.dart`
+`apps/forja/test/forja_logo_halo_pixels_test.dart`
+`apps/forja/test/hub_boot_prefetch_test.dart`
+`apps/forja/test/hub_details_meta_test.dart`
+`apps/forja/test/iptv_play_source_display_test.dart`
+`apps/forja/test/kisskh_cover_url_test.dart`
+`apps/forja/test/kit_schedule_event_query_test.dart`
+`apps/forja/test/kit_sources_live_tv_browse_test.dart`
+`apps/forja/test/list_follow_from_watched_test.dart`
+`apps/forja/test/list_follow_test.dart`
+`apps/forja/test/list_letter_jump_test.dart`
+`apps/forja/test/live_embed_m3u8_rewrite_test.dart`
+`apps/forja/test/live_feed_merge_test.dart`
+`apps/forja/test/live_sports_host_feature_test.dart`
+`apps/forja/test/live_sports_sport_filter_test.dart`
+`apps/forja/test/live_sports_team_parse_test.dart`
+`apps/forja/test/live_stremio_meta_test.dart`
+`apps/forja/test/main_screen_shell_test.dart`
+`apps/forja/test/my_list_catalog_test.dart`
+`apps/forja/test/pack_addon_settings_test.dart`
+`apps/forja/test/pack_connected_auth_test.dart`
+`apps/forja/test/pack_secret_settings_test.dart`
+`apps/forja/test/player_back_exit_gate_test.dart`
+`apps/forja/test/player_popup_panel_back_test.dart`
+`apps/forja/test/player_stream_menu_order_test.dart`
+`apps/forja/test/player_tv_remote_test.dart`
+`apps/forja/test/plugin_install_validator_test.dart`
+`apps/forja/test/plugin_pack_update_focus_test.dart`
+`apps/forja/test/profile_avatar_test.dart`
+`apps/forja/test/provider_score_probe_sync_test.dart`
+`apps/forja/test/shell_adapters_test.dart`
+`apps/forja/test/shell_bus_test.dart`
+`apps/forja/test/shell_card_play_overlay_test.dart`
+`apps/forja/test/shell_metrics_test.dart`
+`apps/forja/test/shell_navigation_levels_test.dart`
+`apps/forja/test/shell_profile_behavior_test.dart`
+`apps/forja/test/shell_profile_test.dart`
+`apps/forja/test/shell_scaffold_test.dart`
+`apps/forja/test/shell_tab_refresh_test.dart`
+`apps/forja/test/shell_tv_app_exit_test.dart`
+`apps/forja/test/shell_tv_coordinator_test.dart`
+`apps/forja/test/shell_tv_hold_accel_test.dart`
+`apps/forja/test/shell_tv_tabs_test.dart`
+`apps/forja/test/sources_filter_panel_width_test.dart`
+`apps/forja/test/sources_panel_back_test.dart`
+`apps/forja/test/sources_panel_filters_nuvio_lazy_test.dart`
+`apps/forja/test/sources_panel_tv_test.dart`
+`apps/forja/test/sources_request_context_test.dart`
+`apps/forja/test/splash_halo_test.dart`
+`apps/forja/test/tab_watch_history_test.dart`
+`apps/forja/test/torrent_release_metadata_test.dart`
+`apps/forja/test/tv_focus_graph_test.dart`
+`apps/forja/test/tv_season_episode_picker_test.dart`
+
+Kit-runtime tests (`catalog_*`, `engine_test`, `list_follow_*`, …) may still import `foundation/services/**` until G14-E.
+
+---
+
+## Done greps
+
+Run from repo root after this slice:
+
+```bash
+# primitives must not be a destination (stubs may still export)
+rg "package:forja/shared/foundation/primitives/" apps/forja/lib apps/forja/test \
+  --glob '!**/shared/foundation/**'
+
+rg "forja_foundation.dart' hide" apps/forja
+
+rg "ForjaGhostButton|ForjaButton\(|ForjaButtonVariant" \
+  apps/forja/lib/features apps/forja/lib/shell apps/forja/lib/shared/player
+```
+
+Empty (except kit-runtime service imports) is done for this slice.
+
+G14-E (delete `apps/forja/lib/shared/foundation/`) is a **separate** PR after Q1–Q12.

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/settings/addons/pack_auth_session_handoff.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 

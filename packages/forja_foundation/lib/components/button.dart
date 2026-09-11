@@ -37,6 +37,10 @@ class Button extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.tooltip,
+    this.color,
+    this.iconSize,
+    this.compact = false,
+    this.height,
   }) : assert(child != null || label != null || icon != null);
 
   final VoidCallback? onPressed;
@@ -50,13 +54,17 @@ class Button extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final String? tooltip;
+  final Color? color;
+  final double? iconSize;
+  final bool compact;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
     final enabled = onPressed != null && !loading;
-    final dims = _dims(size);
-    final colors = _resolveColors(theme, variant, enabled);
+    final dims = _dims(compact ? ButtonSize.sm : size, height: height);
+    final colors = _resolveColors(theme, variant, enabled, color);
 
     Widget content;
     if (loading) {
@@ -71,14 +79,22 @@ class Button extends StatelessWidget {
     } else if (child != null) {
       content = child!;
     } else if (size == ButtonSize.icon || variant == ButtonVariant.plainIcon) {
-      content = Icon(icon, size: dims.iconSize, color: colors.foreground);
+      content = Icon(
+        icon,
+        size: iconSize ?? dims.iconSize,
+        color: colors.foreground,
+      );
     } else {
       content = Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: dims.iconSize, color: colors.foreground),
+            Icon(
+              icon,
+              size: iconSize ?? dims.iconSize,
+              color: colors.foreground,
+            ),
             SizedBox(width: theme.spaceSm),
           ],
           if (label != null)
@@ -139,7 +155,8 @@ class Button extends StatelessWidget {
     return button;
   }
 
-  static _ButtonDims _dims(ButtonSize size) => switch (size) {
+  static _ButtonDims _dims(ButtonSize size, {double? height}) {
+    final base = switch (size) {
         ButtonSize.sm => const _ButtonDims(
             height: 32,
             fontSize: 12,
@@ -165,17 +182,33 @@ class Button extends StatelessWidget {
             padding: EdgeInsets.zero,
           ),
       };
+    if (height == null) return base;
+    return _ButtonDims(
+      height: height,
+      fontSize: base.fontSize,
+      iconSize: base.iconSize,
+      padding: base.padding,
+    );
+  }
 
   static _ButtonColors _resolveColors(
     ForjaThemeExtension theme,
     ButtonVariant variant,
     bool enabled,
+    Color? color,
   ) {
     if (!enabled) {
       return _ButtonColors(
-        foreground: theme.textSecondary.withValues(alpha: 0.45),
+        foreground: (color ?? theme.textSecondary).withValues(alpha: 0.45),
         background: Colors.transparent,
         border: theme.borderSubtle,
+      );
+    }
+    if (color != null) {
+      return _ButtonColors(
+        foreground: color,
+        background: Colors.transparent,
+        border: variant == ButtonVariant.outline ? color : null,
       );
     }
     return switch (variant) {

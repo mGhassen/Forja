@@ -1,25 +1,25 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/foundation/components/media_details/episode_air_date.dart';
 import 'package:forja/shared/foundation/components/media_details/episode_range_bar.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/forja_shell_chip.dart';
+import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
@@ -1773,10 +1773,10 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  ForjaSwitch(
+                  Switch(
                     value: widget.autoNext,
                     onChanged: widget.onAutoNextChanged,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ],
               ],
@@ -1833,10 +1833,10 @@ class _EpisodeAutoNextFocus extends StatelessWidget {
               const SizedBox(width: 4),
               ExcludeFocus(
                 child: IgnorePointer(
-                  child: ForjaSwitch(
+                  child: Switch(
                     value: autoNext,
                     onChanged: onChanged,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ),
               ),

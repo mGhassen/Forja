@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
+import 'package:forja/shared/shell/loading_overlay.dart';
 import 'package:forja/shared/foundation/components/playback/resolve_failure_view.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart';

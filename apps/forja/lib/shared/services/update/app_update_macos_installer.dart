@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 /// Silent macOS apply: replace installed [Forja.app] from a downloaded DMG.
 ///

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_logo.dart';
+import 'package:forja/shared/shell/brand/animated_logo.dart';
+import 'package:forja/shared/shell/brand/forja_logo.dart';
 
 void main() {
   testWidgets('splash logo paints a halo shadow layer', (tester) async {

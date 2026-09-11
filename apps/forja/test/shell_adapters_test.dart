@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/nav/shell_bottom_nav.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shared/shell/forja_shell_platform.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 
 Widget _wrapShellHost({
   required ShellProfile profile,

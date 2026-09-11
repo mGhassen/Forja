@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/shell/shell_card_play_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 Widget _overlayHarness({

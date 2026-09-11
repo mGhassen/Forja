@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -11,11 +11,11 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr (Sources → Forja addons).
@@ -374,9 +374,9 @@ class _SettingsForjaAddonsSectionState
                       }
 
                       if (!leanback) {
-                        return ForjaSwitch(
+                        return Switch(
                           value: allOn,
-                          scale: ForjaSwitch.settingsScale,
+                          scale: Switch.settingsScale,
                           onChanged: addon.scrapers.isEmpty ? null : toggle,
                         );
                       }
@@ -399,9 +399,9 @@ class _SettingsForjaAddonsSectionState
                           )?.call();
                         },
                         child: IgnorePointer(
-                          child: ForjaSwitch(
+                          child: Switch(
                             value: allOn,
-                            scale: ForjaSwitch.settingsScale,
+                            scale: Switch.settingsScale,
                             onChanged: (_) {},
                           ),
                         ),
@@ -870,9 +870,9 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
           const SizedBox(width: 12),
           Expanded(child: titleBlock),
           if (!_confirming && !leanback)
-            ForjaSwitch(
+            Switch(
               value: widget.enabled,
-              scale: ForjaSwitch.settingsScale,
+              scale: Switch.settingsScale,
               onChanged: widget.onEnabledChanged,
             ),
         ],

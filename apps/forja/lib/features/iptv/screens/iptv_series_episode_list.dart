@@ -8,8 +8,8 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_hero.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
@@ -20,8 +20,8 @@ import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 
 Future<T?> openIptvSeriesEpisodeList<T>(

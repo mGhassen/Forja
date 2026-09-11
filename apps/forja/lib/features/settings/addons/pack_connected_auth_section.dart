@@ -4,8 +4,8 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 import 'package:forja/shared/foundation/services/pack/pack_connected_auth_service.dart';
 import 'package:forja/shared/foundation/services/pack/pack_connected_auth_spec.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Generic Connected Services rows for packs that declare `settings.auth`
 /// (RFC-102). No pack-id hardcoding — Simkl stays a separate host panel.

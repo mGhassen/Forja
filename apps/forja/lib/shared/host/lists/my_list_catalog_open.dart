@@ -8,7 +8,7 @@ import 'package:forja/shared/host/lists/kit_list_status_button.dart';
 import 'package:forja/shared/host/lists/my_list_host.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
 Future<void> openMyListCatalogEntry(
   BuildContext context,
   KitListEntry entry,

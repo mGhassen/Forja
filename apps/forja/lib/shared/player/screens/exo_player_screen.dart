@@ -51,13 +51,13 @@ import 'package:forja/shared/foundation/services/follow/list_follow_from_watched
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/loading_overlay.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';
 part 'exo_player_failover.dart';

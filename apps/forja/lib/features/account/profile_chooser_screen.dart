@@ -10,11 +10,11 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
+import 'package:forja/shared/shell/desktop_window_chrome.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 enum ProfileChooserMode { choose, manage }
@@ -1014,19 +1014,21 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  ForjaButton.primary(
+                  Button(
+              variant: ButtonVariant.primary,
                     label: widget.saving ? 'Saving…' : 'Save profile',
                     onPressed:
                         widget.saving || name.isEmpty ? null : widget.onSave,
-                    busy: widget.saving,
+                    loading: widget.saving,
                   ),
                   if (widget.canCancel)
-                    ForjaButton(
+                    Button(
                       label: 'Cancel',
                       onPressed: widget.saving ? null : widget.onCancel,
                     ),
                   if (widget.canDelete)
-                    ForjaButton.destructive(
+                    Button(
+              variant: ButtonVariant.destructive,
                       label: 'Delete profile',
                       onPressed: widget.saving ? null : widget.onDelete,
                     ),

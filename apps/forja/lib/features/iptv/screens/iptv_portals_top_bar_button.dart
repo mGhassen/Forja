@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_portals_chip.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 
 /// IPTV data adapter over [KitPortalsChip] (RFC-095).
 class IptvPortalsTopBarButton extends StatefulWidget {

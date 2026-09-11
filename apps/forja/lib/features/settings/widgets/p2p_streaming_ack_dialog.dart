@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 const _kP2pBullets = [
@@ -143,12 +143,13 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
       ),
       actions: [
         if (!widget.reviewOnly)
-          ForjaButton(
+          Button(
             label: 'Cancel',
             focusNode: _cancelFocus,
             onPressed: () => Navigator.pop(context, false),
           ),
-        ForjaButton.primary(
+        Button(
+              variant: ButtonVariant.primary,
           label: widget.reviewOnly ? 'Close' : 'I am aware',
           focusNode: _confirmFocus,
           onPressed: () => Navigator.pop(context, true),

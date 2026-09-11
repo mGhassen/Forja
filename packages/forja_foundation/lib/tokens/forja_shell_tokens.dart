@@ -8,8 +8,8 @@ import 'package:flutter/scheduler.dart';
 ///
 /// Media-details layout lives in `DetailsTokens` (`forja_details_tokens.dart`).
 ///
-/// Package copy: ShellScope-aware compact-nav gating lives in the host until
-/// platform/ is migrated (RFC-106). Here we use width only.
+/// Host [ShellScope] wraps the tree in [CompactNavDrawerPolicy] so TV
+/// (rail-always) does not get hamburger insets.
 abstract final class ShellTokens {
   static const double bottomNavHeight = 88;
   static const double bottomNavItemWidth = 100;
@@ -32,9 +32,9 @@ abstract final class ShellTokens {
 
   /// True when the window is narrow enough for ☰ + drawer.
   ///
-  /// Host [ShellScope] may still force rail-always (TV). Wire that through
-  /// platform/ when ShellScope lands in this package.
+  /// [CompactNavDrawerPolicy.allow] == false (TV rail-always) wins over width.
   static bool usesCompactNavDrawer(BuildContext context) {
+    if (CompactNavDrawerPolicy.maybeAllow(context) == false) return false;
     return MediaQuery.sizeOf(context).width < shellNavCompactMaxWidth;
   }
 
@@ -402,4 +402,24 @@ abstract final class ShellTokens {
     if (views.isEmpty) return null;
     return views.first.physicalSize;
   }
+}
+
+/// Host [ShellScope] sets [allow] from shell metrics (`allowCompactNavDrawer`).
+class CompactNavDrawerPolicy extends InheritedWidget {
+  const CompactNavDrawerPolicy({
+    super.key,
+    required this.allow,
+    required super.child,
+  });
+
+  final bool allow;
+
+  static bool? maybeAllow(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<CompactNavDrawerPolicy>()
+          ?.allow;
+
+  @override
+  bool updateShouldNotify(CompactNavDrawerPolicy oldWidget) =>
+      allow != oldWidget.allow;
 }

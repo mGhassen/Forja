@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/services/update/app_version.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/forja_shell_chip.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -1100,10 +1100,10 @@ class SettingsToggleRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                   ],
-                  ForjaSwitch(
+                  Switch(
                     value: value,
                     onChanged: enabled ? onChanged : null,
-                    scale: ForjaSwitch.settingsScale,
+                    scale: Switch.settingsScale,
                   ),
                 ],
               ),
@@ -1811,7 +1811,7 @@ class SettingsTextAction extends StatelessWidget {
   }
 }
 
-/// Settings action button - thin wrapper over the shared [ForjaButton].
+/// Settings action button - thin wrapper over package [Button].
 ///
 /// Hugs its label and left-aligns by default (never full-width in a stretch
 /// column). Pass `expand: true` only when a caller explicitly wants a
@@ -1840,17 +1840,17 @@ class SettingsFilledButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = ForjaButton(
+    final button = Button(
       label: label,
       onPressed: onPressed,
       icon: icon,
-      busy: busy,
+      loading: busy,
       expand: expand,
       height: 36,
       focusNode: focusNode,
       variant: secondary
-          ? ForjaButtonVariant.neutral
-          : ForjaButtonVariant.primary,
+          ? ButtonVariant.secondary
+          : ButtonVariant.primary,
     );
     if (expand) return button;
     return Align(alignment: Alignment.centerRight, child: button);

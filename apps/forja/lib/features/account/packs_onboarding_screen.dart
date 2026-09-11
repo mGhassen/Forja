@@ -12,8 +12,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_fractal_glass_gradient.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_fractal_glass_gradient.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 TextStyle _onboardText({
   required Color color,
@@ -568,7 +568,7 @@ class _OfficialPicker extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ForjaButton(
+        Button(
           label: selectedCount == 1
               ? 'Install 1 pack'
               : 'Install $selectedCount packs',

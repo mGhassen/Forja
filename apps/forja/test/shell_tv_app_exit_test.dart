@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_app_exit.dart';
+import 'package:forja/shared/shell/tv/shell_tv_app_exit.dart';
 
 void main() {
   tearDown(ShellTvAppExit.resetForTest);

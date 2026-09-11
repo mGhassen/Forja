@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Pair / desktop-offline prompt. [OverlayEntry] so it stacks above player
@@ -160,20 +159,21 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
               ),
             ),
             const SizedBox(height: 24),
-            ForjaButton.primary(
+            Button(
+              variant: ButtonVariant.primary,
               label: 'Open LAN',
               expand: true,
               autofocus: true,
               focusNode: _confirmFocus,
-              activateOnKeyUp: true,
               onPressed: widget.onOpenLan,
             ),
             const SizedBox(height: 4),
             Center(
-              child: ForjaGhostButton(
+              child: Button(
+                variant: ButtonVariant.ghost,
                 label: neverPaired ? 'Cancel' : 'Close',
                 focusNode: _cancelFocus,
-                onTap: widget.onCancel,
+                onPressed: widget.onCancel,
               ),
             ),
           ],

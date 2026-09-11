@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 class StreamSourcePanel {
   static void show(

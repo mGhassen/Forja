@@ -5,7 +5,7 @@ import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv_title_clean.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/features/iptv/screens/iptv_series_episode_list.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';

@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
@@ -29,15 +29,15 @@ import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
-import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja_foundation/components/switch.dart';
+import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -721,9 +721,9 @@ class _SettingsNavigationPageBodyState
                         // Switch is pointer/desktop; on TV OK on the label toggles.
                         ExcludeFocus(
                           excluding: leanback,
-                          child: ForjaSwitch(
+                          child: Switch(
                             value: isVisible,
-                            scale: ForjaSwitch.settingsScale,
+                            scale: Switch.settingsScale,
                             onChanged: (val) {
                               unawaited(
                                 _toggleNavbarVisible(id, enable: val),

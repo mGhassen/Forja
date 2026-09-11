@@ -12,7 +12,7 @@ import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.
 
 import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
-import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 
 /// IPTV data for pack-declared `kit.topBar` `action: portals` (+ list overlay).
 ///

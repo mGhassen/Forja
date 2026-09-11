@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
