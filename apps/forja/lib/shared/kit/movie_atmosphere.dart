@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/kit/settled_network_image.dart';
+import 'package:forja_foundation/widgets/catalog/ken_burns_backdrop.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -111,196 +111,6 @@ Future<BackdropEdgeColors> extractBackdropEdgeColors(String imageUrl) async {
     );
   } catch (_) {
     return BackdropEdgeColors.fallback;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  KEN BURNS BACKDROP - slow cinematic pan & zoom
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class KenBurnsBackdrop extends StatefulWidget {
-  final String imageUrl;
-  final AtmosphereColors? colors;
-  final double blurSigma;
-  final Duration cycleDuration;
-  final double minScale;
-  final double maxScale;
-  final bool showColorTint;
-  final Alignment panBegin;
-  final Alignment panEnd;
-  final BoxFit fit;
-  final Alignment imageAlignment;
-  final FilterQuality filterQuality;
-
-  /// When false, shows a still even if the shell policy allows Ken Burns
-  /// (e.g. off-screen PageView neighbors).
-  final bool enableMotion;
-
-  const KenBurnsBackdrop({
-    super.key,
-    required this.imageUrl,
-    this.colors,
-    this.blurSigma = 28,
-    this.cycleDuration = const Duration(seconds: 25),
-    this.minScale = 1.0,
-    this.maxScale = 1.25,
-    this.showColorTint = true,
-    this.panBegin = const Alignment(-0.5, -0.3),
-    this.panEnd = const Alignment(0.5, 0.2),
-    this.fit = BoxFit.cover,
-    this.imageAlignment = Alignment.topCenter,
-    this.filterQuality = FilterQuality.low,
-    this.enableMotion = true,
-  });
-
-  @override
-  State<KenBurnsBackdrop> createState() => _KenBurnsBackdropState();
-}
-
-class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
-    with TickerProviderStateMixin {
-  AnimationController? _controller;
-  Animation<double>? _scaleAnimation;
-  Animation<Alignment>? _alignAnimation;
-  bool? _motionEnabled;
-
-  bool _resolveMotionEnabled(BuildContext context) {
-    if (!widget.enableMotion) return false;
-    final policy = ShellScope.maybeOf(context)?.inputPolicy ??
-        ShellInputPolicy.desktop;
-    return policy.kenBurnsBackdrop;
-  }
-
-  void _syncMotion(BuildContext context) {
-    final enabled = _resolveMotionEnabled(context);
-    if (_motionEnabled == enabled) return;
-    _motionEnabled = enabled;
-    if (enabled) {
-      _setupAnimations();
-    } else {
-      _tearDownAnimations();
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncMotion(context);
-  }
-
-  @override
-  void didUpdateWidget(KenBurnsBackdrop oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.enableMotion != widget.enableMotion) {
-      _syncMotion(context);
-    }
-    if (_motionEnabled != true) return;
-    // imageUrl crossfades inside SettledNetworkImage — keep the pan running.
-    if (oldWidget.cycleDuration != widget.cycleDuration ||
-        oldWidget.minScale != widget.minScale ||
-        oldWidget.maxScale != widget.maxScale ||
-        oldWidget.panBegin != widget.panBegin ||
-        oldWidget.panEnd != widget.panEnd) {
-      _tearDownAnimations();
-      _setupAnimations();
-    }
-  }
-
-  void _tearDownAnimations() {
-    _controller?.dispose();
-    _controller = null;
-    _scaleAnimation = null;
-    _alignAnimation = null;
-  }
-
-  void _setupAnimations() {
-    _tearDownAnimations();
-    final controller = AnimationController(
-      duration: widget.cycleDuration,
-      vsync: this,
-    )..repeat(reverse: true);
-    _controller = controller;
-    _scaleAnimation = Tween<double>(
-      begin: widget.minScale,
-      end: widget.maxScale,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
-    _alignAnimation = AlignmentTween(
-      begin: widget.panBegin,
-      end: widget.panEnd,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _tearDownAnimations();
-    super.dispose();
-  }
-
-  Widget _image() {
-    return SettledNetworkImage(
-      imageUrl: widget.imageUrl,
-      fit: widget.fit,
-      alignment: widget.imageAlignment,
-      filterQuality: widget.filterQuality,
-    );
-  }
-
-  Widget _tintOverlay() {
-    final colors = widget.colors;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.lerp(
-              const Color(0xFF141414),
-              colors?.dominant ?? const Color(0xFF141414),
-              0.35,
-            )!
-                .withValues(alpha: 0.75),
-            Color.lerp(
-              const Color(0xFF000000),
-              colors?.muted ?? const Color(0xFF000000),
-              0.15,
-            )!
-                .withValues(alpha: 0.88),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = _controller;
-    final scale = _scaleAnimation;
-    final align = _alignAnimation;
-    final motion = _motionEnabled == true &&
-        controller != null &&
-        scale != null &&
-        align != null;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (motion)
-          AnimatedBuilder(
-            animation: controller,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: scale.value,
-                alignment: align.value,
-                child: child,
-              );
-            },
-            child: _image(),
-          )
-        else
-          _image(),
-        if (widget.showColorTint) _tintOverlay(),
-      ],
-    );
   }
 }
 
@@ -910,8 +720,12 @@ mixin AtmosphereMixin<T extends StatefulWidget> on State<T> {
         children: [
           KenBurnsBackdrop(
             imageUrl: imageUrl,
-            colors: atmosphereColors,
+            tintDominant: atmosphereColors?.dominant,
+            tintMuted: atmosphereColors?.muted,
             blurSigma: blurSigma,
+            enableMotion: (ShellScope.maybeOf(context)?.inputPolicy ??
+                    ShellInputPolicy.desktop)
+                .kenBurnsBackdrop,
           ),
           IgnorePointer(
             child: GenreParticles(

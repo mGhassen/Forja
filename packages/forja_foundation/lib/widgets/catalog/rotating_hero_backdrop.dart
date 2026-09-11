@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/kit/movie_atmosphere.dart';
+import 'package:forja_foundation/widgets/catalog/ken_burns_backdrop.dart';
 
 /// Ken Burns hero that crossfades through [imageUrls] on a random beat.
 class RotatingHeroBackdrop extends StatefulWidget {
@@ -14,17 +14,17 @@ class RotatingHeroBackdrop extends StatefulWidget {
     this.maxBeat = const Duration(seconds: 20),
     this.fit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
+    this.enableMotion = true,
   });
 
-  /// Absolute image URLs (already resolved to CDN).
   final List<String> imageUrls;
   final bool showColorTint;
   final Duration minBeat;
   final Duration maxBeat;
   final BoxFit fit;
   final Alignment imageAlignment;
+  final bool enableMotion;
 
-  /// Dedupe + drop empties; keep order (primary first).
   static List<String> normalizeUrls(Iterable<String> raw) {
     final out = <String>[];
     final seen = <String>{};
@@ -115,12 +115,12 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
       return const ColoredBox(color: Color(0xFF141414));
     }
     final url = _urls[_index.clamp(0, _urls.length - 1)];
-    // Same KenBurns state so SettledNetworkImage can crossfade the still.
     return KenBurnsBackdrop(
       imageUrl: url,
       showColorTint: widget.showColorTint,
       fit: widget.fit,
       imageAlignment: widget.imageAlignment,
+      enableMotion: widget.enableMotion,
     );
   }
 }

@@ -1,20 +1,24 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:rust/rust.dart';
 
-/// Flip to `true` to show TMDB watch-provider logos on media details hero.
-const bool kShowHeroWatchProviders = false;
+class WatchProviderTile {
+  const WatchProviderTile({required this.name, required this.logoUrl});
 
-/// TMDB watch-provider logos for media details hero (Netflix, Disney+, etc.).
+  final String name;
+  final String logoUrl;
+}
+
+/// Watch-provider logos on a details hero. Host maps rust `WatchProvider`.
 class HeroWatchProvidersRow extends StatelessWidget {
   const HeroWatchProvidersRow({
     super.key,
     required this.providers,
     this.maxVisible = 8,
+    this.visible = true,
   });
 
-  final List<WatchProvider> providers;
+  final List<WatchProviderTile> providers;
   final int maxVisible;
+  final bool visible;
 
   static const double tileSize = 40;
   static const double tileGap = 8;
@@ -22,13 +26,13 @@ class HeroWatchProvidersRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!kShowHeroWatchProviders) return const SizedBox.shrink();
+    if (!visible) return const SizedBox.shrink();
 
-    final visible = providers
-        .where((p) => p.logoPath.isNotEmpty)
+    final shown = providers
+        .where((p) => p.logoUrl.trim().isNotEmpty)
         .take(maxVisible)
         .toList();
-    if (visible.isEmpty) return const SizedBox.shrink();
+    if (shown.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: rowHeight,
@@ -36,10 +40,10 @@ class HeroWatchProvidersRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         shrinkWrap: true,
         physics: const BouncingScrollPhysics(),
-        itemCount: visible.length,
+        itemCount: shown.length,
         separatorBuilder: (_, _) => const SizedBox(width: tileGap),
         itemBuilder: (context, index) {
-          final provider = visible[index];
+          final provider = shown[index];
           return Tooltip(
             message: provider.name,
             child: Semantics(
@@ -47,10 +51,10 @@ class HeroWatchProvidersRow extends StatelessWidget {
               child: SizedBox(
                 width: tileSize,
                 height: tileSize,
-                child: CachedNetworkImage(
-                  imageUrl: provider.logoUrl,
+                child: Image.network(
+                  provider.logoUrl,
                   fit: BoxFit.contain,
-                  errorWidget: (_, _, _) => Text(
+                  errorBuilder: (_, _, _) => Text(
                     provider.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

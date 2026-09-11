@@ -13,13 +13,16 @@ import 'package:forja_foundation/widgets/details/meta_line.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
 import 'package:forja/shared/shell/desktop_selectable_title.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/kit/hero_watch_providers_row.dart';
-import 'package:forja/shared/kit/rotating_hero_backdrop.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
+import 'package:forja_foundation/widgets/details/watch_providers_row.dart';
+import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja/shared/kit/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+const bool kShowHeroWatchProviders = false;
 
 class MediaDetailsHero extends StatefulWidget {
   const MediaDetailsHero({
@@ -661,6 +664,9 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     return RotatingHeroBackdrop(
       imageUrls: urls,
       showColorTint: false,
+      enableMotion: (ShellScope.maybeOf(context)?.inputPolicy ??
+              ShellInputPolicy.desktop)
+          .kenBurnsBackdrop,
     );
   }
 
@@ -1404,7 +1410,13 @@ class _HeroMainColumn extends StatelessWidget {
       ],
       if (showProviders) ...[
         const SizedBox(height: 10),
-        HeroWatchProvidersRow(providers: watchProviders),
+        HeroWatchProvidersRow(
+          visible: kShowHeroWatchProviders,
+          providers: [
+            for (final p in watchProviders)
+              WatchProviderTile(name: p.name, logoUrl: p.logoUrl),
+          ],
+        ),
       ],
       if (showDirector) ...[
         const SizedBox(height: 10),

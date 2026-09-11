@@ -10,6 +10,7 @@ import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_metrics.dart';
 import 'package:forja/shared/shell/forja_shell_profile.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
@@ -18,7 +19,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/kit/hero_pill_buttons.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
 import 'package:forja/shared/shell/desktop_selectable_title.dart';
-import 'package:forja/shared/kit/rotating_hero_backdrop.dart';
+import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja/shared/kit/home_loading_skeleton.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
@@ -1574,6 +1575,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             showColorTint: false,
             fit: item.imageFit,
             imageAlignment: item.imageAlignment,
+            enableMotion: (ShellScope.maybeOf(context)?.inputPolicy ??
+                    ShellInputPolicy.desktop)
+                .kenBurnsBackdrop,
           ),
         // Trailing join only - opacity tracks scroll so it fades out while
         // sliding left (never parks under the hero text fade). Reverse swipe

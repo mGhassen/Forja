@@ -10,7 +10,7 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/kit/rotating_hero_backdrop.dart';
+import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja/shared/kit/kit_details_hero.dart';
 import 'package:forja/shared/kit/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/media_details_scroll_page.dart';

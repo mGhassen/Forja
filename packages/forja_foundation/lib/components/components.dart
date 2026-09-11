@@ -31,6 +31,7 @@ export 'package:forja_foundation/components/tooltip.dart';
 export 'package:forja_foundation/components/tabs.dart';
 export 'package:forja_foundation/components/poster_frame.dart';
 export 'package:forja_foundation/components/network_image.dart';
+export 'package:forja_foundation/components/settled_network_image.dart';
 export 'package:forja_foundation/components/mood_circle.dart';
 export 'package:forja_foundation/components/item.dart';
 export 'package:forja_foundation/components/breadcrumb.dart';
