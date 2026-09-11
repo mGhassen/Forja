@@ -233,7 +233,7 @@ export function AccountSettingsShell({
                     Switch profile
                   </DropdownMenuLabel>
                   {user?.email ? (
-                    <p className="truncate px-3 pb-2 text-xs text-forja-muted">
+                    <p className="truncate px-3 pb-2 font-mono text-[12px] font-medium normal-case tracking-normal text-[rgba(237,230,218,0.72)]">
                       {user.email}
                     </p>
                   ) : null}
@@ -288,6 +288,12 @@ export function AccountSettingsShell({
                     >
                       Account settings
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => void onSignOut()}
+                    className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                  >
+                    Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
