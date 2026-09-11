@@ -863,6 +863,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               hint: 'My provider',
                               focusNode: _labelFocus,
                               dialogIndex: labelIndex,
+                              suffixFocus: _labelSuffixFocus,
+                              suffix: _portalFieldSuffix(
+                                icon: Icons.casino_outlined,
+                                tooltip: 'Random name',
+                                fieldFocus: _labelFocus,
+                                suffixFocus: _labelSuffixFocus,
+                                dialogIndex: labelIndex,
+                                onTap: () => setState(
+                                  () => _labelCtrl.text =
+                                      IptvPortalName.generate(),
+                                ),
+                              ),
                             ),
                             if (ctrl.addError != null) ...[
                               SizedBox(

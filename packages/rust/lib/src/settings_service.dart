@@ -1853,8 +1853,7 @@ class SettingsService {
       if (listEquals(raw, next)) return;
       debugPrint(
         '[Settings] syncActiveHubNavIds strip $raw → $next '
-        '(active=$activeHubIds known=$knownHubIds)\n'
-        '${StackTrace.current}',
+        '(active=$activeHubIds known=$knownHubIds)',
       );
       await _setNavbarConfigUnlocked(next, notify: notify);
       final defaultTab = await getDefaultNavTab();
@@ -2359,8 +2358,7 @@ class SettingsService {
     final unchanged = raw != null && listEquals(raw, ids);
     if (kDebugMode && !unchanged) {
       debugPrint(
-        '[Settings] navbar write ${raw ?? const <String>[]} → $ids\n'
-        '${StackTrace.current}',
+        '[Settings] navbar write ${raw ?? const <String>[]} → $ids',
       );
     }
     _navbarVisibleMemory = List<String>.from(ids);
