@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';

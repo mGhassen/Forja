@@ -30,17 +30,18 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
 import 'package:forja/shared/foundation/services/follow/my_list_host.dart';
+import 'package:forja/shared/host/details/tmdb_details_enrich.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/engine/packs/install/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/foundation/components/update/app_update_progress_banner.dart';
+import 'package:forja/shared/host/update/app_update_progress_banner.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
 import 'package:forja/shared/foundation/components/packs/plugin_install_progress_banner.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_remote_debug.dart';
@@ -58,7 +59,13 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
-
+import 'package:forja/shared/foundation/primitives/brand/animated_logo.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_keyboard_focus.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 bool _appShutdownStarted = false;
 
 /// Stop all media_kit (MPV) players before native teardown.
@@ -144,6 +151,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   MyListHost.ensureRegistered();
   KitLiveBoot.ensureRegistered();
+  TmdbDetailsEnrich.ensureRegistered();
   IptvPortalsChromeHooks.ensureRegistered();
   IptvKitHooksRegister.ensureRegistered();
   SettingsKitHooksRegister.ensureRegistered();

@@ -10,7 +10,7 @@ import 'package:forja/shared/foundation/blocks/play/play_resolve.dart';
 import 'package:forja/shared/foundation/services/watch/watch_history.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:rust/rust.dart' show WatchHistoryService, canResumeFromSavedProgress;
 

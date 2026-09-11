@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/tv/tv_search_browse_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Leanback TV only — desktop has arrow-key focus too but should type immediately.

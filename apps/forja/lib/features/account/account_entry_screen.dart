@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Desktop email/password/passkey/Web login. Kept but hidden from cold start
 /// (`kShowDesktopEmailAuth` in desktop_startup_gate.dart).

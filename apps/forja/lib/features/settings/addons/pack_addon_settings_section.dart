@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
 import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).
 ///
 /// Pass [addonId] for host Addon detail pages, or [plugins] for Forja Packs

@@ -2,8 +2,15 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_error_retry_panel.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_mood_circle.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_section_title.dart';
 import 'package:forja/shared/foundation/services/follow/list_follow.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
@@ -1594,11 +1601,16 @@ class _KitShellState extends State<KitShell>
     final raw = _rawLayoutWidgetType(spec);
     final kit = KitTypes.normalize(raw, spec);
     if (kit.startsWith('kit.')) return kit;
+    // Section slots + aliases (watch_providers → vertical_filters, etc.).
+    if (kit == KitTypes.hero ||
+        kit == KitTypes.mood ||
+        kit == KitTypes.continueWatching ||
+        kit == KitTypes.because ||
+        kit == KitTypes.verticalFilters) {
+      return kit;
+    }
     return switch (raw) {
-      'host.continue' => 'continue',
-      'host.because' => 'because',
       'host.trakt' => 'trakt',
-      'host.vertical_filters' => 'vertical_filters',
       _ => raw,
     };
   }

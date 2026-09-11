@@ -77,6 +77,8 @@ dependencies:
       path: libs/linux/media_kit_libs_linux
   rust:
     path: ../../packages/rust
+  forja_foundation:
+    path: ../../packages/forja_foundation
   qr_flutter: ^4.1.0
   supabase_flutter: ^2.16.0
   app_links: ^7.2.1

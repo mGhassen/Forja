@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Old Live Sports Catalog sheet — flat ListTile rows (not bordered cards).
 Future<String?> showKitCatalogFilterSheet(

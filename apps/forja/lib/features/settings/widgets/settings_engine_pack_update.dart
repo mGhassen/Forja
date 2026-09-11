@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Banner above installed packs when one or more updates are available.
 class SettingsEnginePackUpdatesBar extends StatelessWidget {

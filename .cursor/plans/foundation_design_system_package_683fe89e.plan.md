@@ -3,38 +3,38 @@ name: Foundation Design System Package
 overview: "Two parts: (1) build forja_foundation DS; (2) zero-regression upgrade of every consumer (Dart call sites, pack wire, evacuate parity, QA). Done only when both parts are complete."
 todos:
   - id: p1-rfc
-    content: "PART1 RFC — G0–G13 acceptance tables"
-    status: pending
+    content: PART1 RFC — G0–G13 acceptance tables
+    status: completed
   - id: p1-scaffold
-    content: "PART1 — package scaffold, tokens/theme, lint zones, barrels"
-    status: pending
+    content: PART1 — package scaffold, tokens/theme, lint zones, barrels
+    status: completed
   - id: p1-components
-    content: "PART1 — Button family + ButtonGroup slots + VerticalMenu + full component catalog"
-    status: pending
+    content: PART1 — Button family + ButtonGroup slots + VerticalMenu + full component catalog
+    status: completed
   - id: p1-kit-widgets-blocks
-    content: "PART1 — kit layout map, widgets, blocks, convergences, pull-in chrome"
-    status: pending
+    content: PART1 — kit layout map, widgets, blocks, convergences, pull-in chrome
+    status: completed
   - id: p1-evacuate-ds
-    content: "PART1 — domain out of package into host adapters (API ready for Part 2 wiring)"
-    status: pending
+    content: PART1 — domain out of package into host adapters (API ready for Part 2 wiring)
+    status: completed
   - id: p2-compat-shims
-    content: "PART2 — compat shims + deprecated aliases; old paths keep working"
-    status: pending
+    content: PART2 — compat shims + deprecated aliases; old paths keep working
+    status: completed
   - id: p2-callsite-migrate
-    content: "PART2 — migrate all Dart imports (features/shell/player/tests); CI bans old paths"
-    status: pending
+    content: PART2 G14-B — primitives.dart barrels gone; leftover imports are keepers + kit runtime until G14-E
+    status: completed
   - id: p2-pack-wire
-    content: "PART2 — pack wire freeze + aliases; forja-packs PR only if JSON must change"
-    status: pending
+    content: PART2 — pack wire freeze + aliases; forja-packs PR only if JSON must change
+    status: completed
   - id: p2-evacuate-parity
-    content: "PART2 — host wiring parity (match details, sources, follow UI) — no dropped surfaces"
-    status: pending
+    content: PART2 G14-D — host wiring exists; Q1–Q12 still unsigned (surfaces not proven)
+    status: in_progress
   - id: p2-qa-shim-death
-    content: "PART2 — Q1–Q12 QA + export/import greps → delete shims + shared/foundation"
+    content: PART2 G14-E — Q1–Q12 QA then delete apps/forja/lib/shared/foundation/
     status: pending
   - id: p2-invariants
     content: "PART2 — G14-G invariants: compile every PR, no pack break, no delete-before-wire"
-    status: pending
+    status: completed
 isProject: false
 ---
 

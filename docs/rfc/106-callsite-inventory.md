@@ -1,0 +1,434 @@
+# RFC-106 call-site inventory (G14-B freeze)
+
+**Count:** 410 Dart files
+
+Generated with:
+
+```bash
+rg -l "shared/foundation|ForjaGhostButton|ForjaPlainIcon|ForjaIconButton" apps/forja --glob '*.dart' | sort
+```
+
+## Migrated
+
+| Metric | Value |
+|--------|------:|
+| **Migrated (package importers, excl. bridge)** | **99** host + **8** foundation kit chrome |
+| **Checked off below** | **153** |
+| **Host paths not in freeze list** | **14** (`shared/host/lists/kit_list_status_button.dart`, `shared/host/live_sports/cards/kit_event_card.dart`, `shared/host/live_sports/cards/kit_event_dense_tile.dart`, `shared/host/live_sports/chrome/kit_schedule_event_search.dart`, `shared/host/live_sports/chrome/kit_schedule_window_sheet.dart`, `shared/host/live_sports/kit_category_circle_meta.dart`, `shared/host/live_sports/kit_match_details_page.dart`, `shared/host/packs/components/forja_pack_choice_cards.dart`, `shared/host/packs/components/plugin_install_progress_banner.dart`, `shared/host/sources/panel/kit_sources_live_tv_browse.dart`, `shared/host/sources/torrent/torrent_source_filters.dart`, `shared/host/sources/torrent/torrent_source_tiles.dart`, `shared/host/sources/torrent/torrent_sources_panel.dart`, `shared/host/sources/torrent/torrent_sources_panel_chrome.dart`) |
+| **Remaining (freeze checklist)** | **257** (keepers + kit runtime until G14-E; `primitives.dart` barrels gone) |
+
+Batch notes: app code imports **per-file** package paths (`tokens/forja_shell_colors.dart`, `components/button.dart`, …). Root `forja_foundation.dart` is gallery/test only — no `hide Switch, Chip, …` lists. Host keepers stay on host paths.
+
+
+Checklist (paths only — migrate batches tick these):
+
+- [ ] `apps/forja/lib/app/boot_needs.dart`
+- [x] `apps/forja/lib/app/bootstrap.dart`
+- [ ] `apps/forja/lib/app/desktop_startup_gate.dart`
+- [ ] `apps/forja/lib/app/hub_boot_prefetch.dart`
+- [x] `apps/forja/lib/features/account/account_entry_screen.dart`
+- [x] `apps/forja/lib/features/account/device_link_connect_view.dart`
+- [x] `apps/forja/lib/features/account/packs_onboarding_screen.dart`
+- [x] `apps/forja/lib/features/account/profile_chooser_metrics.dart`
+- [x] `apps/forja/lib/features/account/profile_chooser_screen.dart`
+- [x] `apps/forja/lib/features/account/profile_switch_splash.dart`
+- [x] `apps/forja/lib/features/account/tv_account_link_screen.dart`
+- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_details_screen.dart`
+- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_screen.dart`
+- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_search_screen.dart`
+- [ ] `apps/forja/lib/features/archive/audiobooks/audiobook_downloads_screen.dart`
+- [x] `apps/forja/lib/features/archive/audiobooks/audiobook_player_screen.dart`
+- [x] `apps/forja/lib/features/archive/audiobooks/audiobook_screen.dart`
+- [ ] `apps/forja/lib/features/archive/audiobooks/generate_audiobook_screen.dart`
+- [ ] `apps/forja/lib/features/archive/comics/comic_details_screen.dart`
+- [ ] `apps/forja/lib/features/archive/comics/comic_reader_screen.dart`
+- [x] `apps/forja/lib/features/archive/discover/discover_screen.dart`
+- [ ] `apps/forja/lib/features/archive/downloader/media_downloader_screen.dart`
+- [ ] `apps/forja/lib/features/archive/jellyfin/jellyfin_details_screen.dart`
+- [x] `apps/forja/lib/features/archive/jellyfin/jellyfin_screen.dart`
+- [ ] `apps/forja/lib/features/archive/manga/manga_details_screen.dart`
+- [ ] `apps/forja/lib/features/archive/manga/manga_reader_screen.dart`
+- [x] `apps/forja/lib/features/archive/music/music_player_screen.dart`
+- [x] `apps/forja/lib/features/archive/music/music_screen.dart`
+- [ ] `apps/forja/lib/features/archive/search/search_build.dart`
+- [x] `apps/forja/lib/features/archive/search/search_screen.dart`
+- [ ] `apps/forja/lib/features/archive/similar/similar_hub_screen.dart`
+- [ ] `apps/forja/lib/features/archive/similar/similar_results_screen.dart`
+- [x] `apps/forja/lib/features/iptv/channel_guide/iptv_channel_guide_panel.dart`
+- [x] `apps/forja/lib/features/iptv/channel_guide/iptv_channel_search_overlay.dart`
+- [x] `apps/forja/lib/features/iptv/channel_guide/iptv_epg_guide_view.dart`
+- [ ] `apps/forja/lib/features/iptv/channel_guide/iptv_guide_epg.dart`
+- [ ] `apps/forja/lib/features/iptv/channel_search/iptv_channel_search.dart`
+- [ ] `apps/forja/lib/features/iptv/channel_search/iptv_forja_sports_gate.dart`
+- [ ] `apps/forja/lib/features/iptv/controller/iptv_controller.dart`
+- [ ] `apps/forja/lib/features/iptv/iptv_lazy_url_health.dart`
+- [x] `apps/forja/lib/features/iptv/iptv_shell_style.dart`
+- [x] `apps/forja/lib/features/iptv/iptv_tv_focus.dart`
+- [ ] `apps/forja/lib/features/iptv/open/iptv_kit_hooks_register.dart`
+- [ ] `apps/forja/lib/features/iptv/open/iptv_open.dart`
+- [ ] `apps/forja/lib/features/iptv/open/iptv_play.dart`
+- [ ] `apps/forja/lib/features/iptv/open/iptv_resolve_streams_adapter.dart`
+- [ ] `apps/forja/lib/features/iptv/screens/iptv_catalog_portal_form.dart`
+- [x] `apps/forja/lib/features/iptv/screens/iptv_catalog_workspace.dart`
+- [ ] `apps/forja/lib/features/iptv/screens/iptv_portals_chrome_hooks.dart`
+- [ ] `apps/forja/lib/features/iptv/screens/iptv_portals_top_bar_button.dart`
+- [x] `apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart`
+- [x] `apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart`
+- [x] `apps/forja/lib/features/iptv/screens/iptv_series_episode_list.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack_addon_settings_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack_auth_browser_dialog.dart`
+- [ ] `apps/forja/lib/features/settings/addons/pack_auth_session_handoff.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack_connected_auth_section.dart`
+- [ ] `apps/forja/lib/features/settings/addons/settings_addon_catalog.dart`
+- [ ] `apps/forja/lib/features/settings/addons/settings_addon_toggles.dart`
+- [x] `apps/forja/lib/features/settings/addons/settings_addons_host.dart`
+- [x] `apps/forja/lib/features/settings/pages/settings_category_bodies.dart`
+- [ ] `apps/forja/lib/features/settings/providers/settings_panel_providers.dart`
+- [x] `apps/forja/lib/features/settings/sections/lan_settings_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_about_panel.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_cache_data_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_debrid_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_forja_account_panel.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_forja_addons_play_toggles.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_forja_packs_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_iptv_portals_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_mdblist_panel.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_providers_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_search_torrents_section.dart`
+- [x] `apps/forja/lib/features/settings/sections/settings_simkl_panel.dart`
+- [ ] `apps/forja/lib/features/settings/settings_kit_hooks_register.dart`
+- [x] `apps/forja/lib/features/settings/settings_screen.dart`
+- [x] `apps/forja/lib/features/settings/widgets/lan_p2p_required_dialog.dart`
+- [x] `apps/forja/lib/features/settings/widgets/p2p_streaming_ack_dialog.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_engine_pack_update.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_engine_plugin_pack.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_hub_scaffold.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_pack_prompt_pane.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_plugin_install_progress.dart`
+- [x] `apps/forja/lib/features/settings/widgets/settings_ui.dart`
+- [ ] `apps/forja/lib/shared/engine/engine.dart`
+- [ ] `apps/forja/lib/shared/engine/hub/catalog_extract_context.dart`
+- [ ] `apps/forja/lib/shared/engine/hub/hub_plugin_config.dart`
+- [ ] `apps/forja/lib/shared/engine/lists/my_list_feed_aggregate.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_feed_aggregate.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_feed_merge.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_fixture_match.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_merge_matching_gate.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_plugin_engine.dart`
+- [x] `apps/forja/lib/shared/engine/live/live_resolve_streams.dart`
+- [ ] `apps/forja/lib/shared/engine/live/live_stremio_catalog.dart`
+- [ ] `apps/forja/lib/shared/engine/live/pack_unlock_files.dart`
+- [ ] `apps/forja/lib/shared/engine/models/models.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/install/forja_plugin_deeplink.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/install/plugin_install_coordinator.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/install/plugin_install_validator.dart`
+- [x] `apps/forja/lib/shared/engine/packs/install/plugin_pack_update_dialog.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/install/plugin_pack_update_prompt_host.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/registry/pack_hub_features.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/registry/plugin_contract.dart`
+- [ ] `apps/forja/lib/shared/engine/packs/registry/plugin_registry.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/service.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_meta.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_play.dart`
+- [x] `apps/forja/lib/shared/foundation/blocks/details/kit_details_screen.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_sections.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_stremio.dart`
+- [x] `apps/forja/lib/shared/foundation/blocks/details/kit_entry_details.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/details/play_filters.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/kit_episodes.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/play_context.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/play_hooks.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/play_resolve.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/play_session.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/sources_request_context.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/play/stremio_stream_id.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/shell/kit_open.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/shell/kit_search_screen.dart`
+- [x] `apps/forja/lib/shared/foundation/blocks/shell/kit_shell.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/shell/kit_top_bar_host.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/shell/legacy_list_item.dart`
+- [ ] `apps/forja/lib/shared/foundation/blocks/shell/legacy_movie_meta.dart`
+- [x] `apps/forja/lib/shared/foundation/compat_exports.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/account/macos_keychain_consent_screen.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/cards/kit_event_card.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/cards/kit_event_dense_tile.dart`
+- [x] `apps/forja/lib/shared/foundation/components/cards/kit_poster_card.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/chrome_filters.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_catalog_filter_sheet.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_category_bar.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/kit_category_circle_meta.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_filter_sheet_option.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_list_status_pin.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_portals_chip.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/kit_schedule_event_search.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/kit_schedule_view_toggle.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/kit_schedule_window_sheet.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_search_filters.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_search_page.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/kit_top_bar_actions.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/pack_filters.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/recent_search_helper_tile.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/chrome/vertical_filters.dart`
+- [x] `apps/forja/lib/shared/foundation/components/chrome/vertical_filters_rail.dart`
+- [x] `apps/forja/lib/shared/foundation/components/details/kit_details_facts_panel.dart`
+- [x] `apps/forja/lib/shared/foundation/components/details/kit_details_hero.dart`
+- [x] `apps/forja/lib/shared/foundation/components/details/kit_details_play_row.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/details/kit_engine_auto_play.dart`
+- [x] `apps/forja/lib/shared/foundation/components/details/kit_hero_content_scrim.dart`
+- [x] `apps/forja/lib/shared/foundation/components/details/kit_sources.dart`
+- [x] `apps/forja/lib/shared/foundation/components/hero/cinematic_hero.dart`
+- [x] `apps/forja/lib/shared/foundation/components/hero/desktop_selectable_title.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/hero/hero_facts_panel.dart`
+- [x] `apps/forja/lib/shared/foundation/components/hero/hero_pill_buttons.dart`
+- [x] `apps/forja/lib/shared/foundation/components/hero/hero_title.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/hero/kit_list_status_hero.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/hero/rotating_hero_backdrop.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/layout/kit_focus.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/layout/kit_list_source.dart`
+- [x] `apps/forja/lib/shared/foundation/components/layout/kit_list_widget.dart`
+- [x] `apps/forja/lib/shared/foundation/components/layout/kit_menu_widget.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/layout/kit_panel_host.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/layout/kit_tabs_widget.dart`
+- [x] `apps/forja/lib/shared/foundation/components/layout/kit_top_menu_registry.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/episode_range_bar.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_body.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_cast_section.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_hero.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_recommendations_section.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_scroll_page.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_torrent_action_row.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_tracker_handlers.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_trailers_section.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/sources_panel_tv.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/torrent_source_filters.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/torrent_source_tiles.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/torrent_sources_panel.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/torrent_sources_panel_chrome.dart`
+- [x] `apps/forja/lib/shared/foundation/components/media_details/tv_season_episode_picker.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/watch_progress_bar.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/media_details/watch_series_progress.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/meta/meta_movie.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/packs/forja_pack_choice_cards.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/packs/plugin_install_progress_banner.dart`
+- [x] `apps/forja/lib/shared/foundation/components/panel/kit_side_panel_overlay.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/panel/kit_sources_live_tv_browse.dart`
+- [x] `apps/forja/lib/shared/foundation/components/panel/kit_sources_panel.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/playback/direct_stream_loading_panel.dart`
+- [x] `apps/forja/lib/shared/foundation/components/playback/resolve_failure_view.dart`
+- [x] `apps/forja/lib/shared/foundation/components/posters/home_loading_skeleton.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/posters/home_movie_card.dart`
+- [x] `apps/forja/lib/shared/foundation/components/posters/home_movie_row.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/posters/movie_atmosphere.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/posters/movie_poster.dart`
+- [x] `apps/forja/lib/shared/foundation/components/posters/movie_poster_card.dart`
+- [x] `apps/forja/lib/shared/foundation/components/posters/movie_poster_row.dart`
+- [x] `apps/forja/lib/shared/foundation/components/rows/kit_section.dart`
+- [x] `apps/forja/lib/shared/foundation/components/sections/because_section.dart`
+- [x] `apps/forja/lib/shared/foundation/components/sections/continue_watching_card.dart`
+- [x] `apps/forja/lib/shared/foundation/components/sections/continue_watching_section.dart`
+- [x] `apps/forja/lib/shared/foundation/components/sections/continue_widget.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/update/app_update_progress_banner.dart`
+- [ ] `apps/forja/lib/shared/foundation/components/update/update_dialog.dart`
+- [x] `apps/forja/lib/shared/foundation/ds_bridge.dart`
+- [ ] `apps/forja/lib/shared/foundation/lib/match_event.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/brand/animated_logo.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/horizontal_scroller.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/hover_scale.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/loading_overlay.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/shell_card_play_overlay.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/shell_error_retry_panel.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/shell_focusable_tap.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/chrome/shell_mood_circle.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_action_chip.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_button.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_buttons.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_chip_row.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_shell_chip.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_status_tabs.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_switch.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/controls/forja_underline_tab.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/feedback/forja_player_overlay.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/feedback/forja_toast.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_input_policy.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_keyboard_focus.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_layout.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_metrics.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_platform.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_profile.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_scope.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_section_title.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/shell/forja_shell_tab_header.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/tokens/forja_details_tokens.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/tokens/forja_shell_tokens.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/tokens/forja_theme.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/tv/tv_browse_text_field.dart`
+- [ ] `apps/forja/lib/shared/foundation/primitives/tv/tv_search_browse_overlay.dart`
+- [ ] `apps/forja/lib/shared/foundation/protocol/protocol.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/kit_list_status_button.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/list_follow.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/list_follow_from_watched.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/my_list_catalog_open.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/my_list_catalog_source.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/my_list_host.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/follow/my_list_merge.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/meta/cache.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/meta/details_fetch.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/meta/meta_feed_list_source.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/meta/runtime.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/nav/plugin_nav.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/pack/pack_addon_settings_spec.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/pack/pack_connected_auth_service.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/panel/kit_match_details_page.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/panel/kit_resolve_panel_host.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/play/live_surface_open.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/registry/host_list_registry.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/registry/kit_iptv_play_hooks.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/registry/kit_panel_source_flags_hooks.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/registry/kit_resolve_streams_hooks.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/registry/meta_surface_open.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/kit_list_open_mode.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/kit_live_boot.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/kit_schedule_event_query.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/kit_schedule_filters.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/kit_schedule_layout.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/schedule/live_sports_hub_merge_upgrade.dart`
+- [ ] `apps/forja/lib/shared/foundation/services/watch/watch_history.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/media_details_tv_scope.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/shell_tv_app_exit.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/shell_tv_back_handler.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/shell_tv_coordinator.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/shell_tv_focus.dart`
+- [ ] `apps/forja/lib/shared/foundation/tv/tv_focus_graph.dart`
+- [x] `apps/forja/lib/shared/lan/lan_pairing_presence.dart`
+- [ ] `apps/forja/lib/shared/navigation/back_navigation_scope.dart`
+- [x] `apps/forja/lib/shared/navigation/desktop_swipe_back_indicator.dart`
+- [x] `apps/forja/lib/shared/navigation/media_details_back_button.dart`
+- [x] `apps/forja/lib/shared/navigation/shell_back_icon_button.dart`
+- [ ] `apps/forja/lib/shared/navigation/shell_navigation_levels.dart`
+- [x] `apps/forja/lib/shared/platform/platform_channel.dart`
+- [ ] `apps/forja/lib/shared/playback/cache/catalog_sources_session_cache.dart`
+- [ ] `apps/forja/lib/shared/playback/cache/settings_data_cleaner.dart`
+- [ ] `apps/forja/lib/shared/playback/open/engine_auto_play.dart`
+- [ ] `apps/forja/lib/shared/playback/open/history_playback_resume.dart`
+- [ ] `apps/forja/lib/shared/playback/open/stream_loading.dart`
+- [ ] `apps/forja/lib/shared/playback/probe/provider_score_probe_sync.dart`
+- [ ] `apps/forja/lib/shared/playback/sources/stremio_external_link.dart`
+- [x] `apps/forja/lib/shared/player/controls/chrome/player_chrome_overlay.dart`
+- [ ] `apps/forja/lib/shared/player/controls/chrome/player_chrome_overlays.dart`
+- [ ] `apps/forja/lib/shared/player/controls/chrome/player_status_roulette.dart`
+- [x] `apps/forja/lib/shared/player/controls/episodes/player_episode_panel.dart`
+- [ ] `apps/forja/lib/shared/player/controls/episodes/player_kit_episode.dart`
+- [x] `apps/forja/lib/shared/player/controls/menus/player_app_menu.dart`
+- [ ] `apps/forja/lib/shared/player/controls/menus/player_menu_return_focus.dart`
+- [x] `apps/forja/lib/shared/player/controls/menus/player_popup_panel.dart`
+- [x] `apps/forja/lib/shared/player/controls/menus/player_subtitle_dialog.dart`
+- [ ] `apps/forja/lib/shared/player/controls/menus/player_subtitle_menu.dart`
+- [x] `apps/forja/lib/shared/player/controls/menus/player_subtitle_settings_dialog.dart`
+- [x] `apps/forja/lib/shared/player/controls/seek/player_touch_seekbar.dart`
+- [x] `apps/forja/lib/shared/player/controls/seek/seek_bar_with_preview.dart`
+- [x] `apps/forja/lib/shared/player/controls/sources/player_server_stream_dialog.dart`
+- [x] `apps/forja/lib/shared/player/controls/sources/player_sources_panel.dart`
+- [x] `apps/forja/lib/shared/player/controls/sources/player_stream_menu.dart`
+- [x] `apps/forja/lib/shared/player/controls/sources/player_torrent_file_panel.dart`
+- [ ] `apps/forja/lib/shared/player/controls/sources/stream_source_panel.dart`
+- [ ] `apps/forja/lib/shared/player/controls/tv/player_tv_key_scope.dart`
+- [ ] `apps/forja/lib/shared/player/controls/tv/player_tv_remote.dart`
+- [x] `apps/forja/lib/shared/player/entry/external_player_handoff_screen.dart`
+- [x] `apps/forja/lib/shared/player/entry/player_screen.dart`
+- [ ] `apps/forja/lib/shared/player/exo/exo_player_menus.dart`
+- [ ] `apps/forja/lib/shared/player/in_app_mini/in_app_mini_player_controller.dart`
+- [ ] `apps/forja/lib/shared/player/platform/external_player_service.dart`
+- [ ] `apps/forja/lib/shared/player/resolvers/episode_torrent_resolver.dart`
+- [x] `apps/forja/lib/shared/player/screens/desktop_player_screen.dart`
+- [x] `apps/forja/lib/shared/player/screens/exo_player_screen.dart`
+- [x] `apps/forja/lib/shared/player/screens/mobile_player_screen.dart`
+- [x] `apps/forja/lib/shared/player/screens/shared_widgets.dart`
+- [ ] `apps/forja/lib/shared/player/screens/tv_player_screen.dart`
+- [ ] `apps/forja/lib/shared/player/screens/utils.dart`
+- [x] `apps/forja/lib/shared/player/trailer/trailer_player_screen.dart`
+- [ ] `apps/forja/lib/shared/services/tracker/simkl_service.dart`
+- [ ] `apps/forja/lib/shared/services/update/app_update_auto_check.dart`
+- [ ] `apps/forja/lib/shared/services/update/app_update_download_service.dart`
+- [ ] `apps/forja/lib/shared/services/update/app_update_macos_installer.dart`
+- [ ] `apps/forja/lib/shared/sync/auth/desktop_browser_auth.dart`
+- [ ] `apps/forja/lib/shared/sync/bridge/sync_domain_bridge.dart`
+- [x] `apps/forja/lib/shared/theme/app_theme.dart`
+- [ ] `apps/forja/lib/shell/adapters/shell_host.dart`
+- [ ] `apps/forja/lib/shell/bus/shell_bus.dart`
+- [x] `apps/forja/lib/shell/chrome/kit_chrome_top_bar.dart`
+- [x] `apps/forja/lib/shell/chrome/shell_search_bar.dart`
+- [x] `apps/forja/lib/shell/frame/shell_empty_features_screen.dart`
+- [x] `apps/forja/lib/shell/frame/shell_scaffold.dart`
+- [x] `apps/forja/lib/shell/main_screen.dart`
+- [ ] `apps/forja/lib/shell/nav/nav_config.dart`
+- [ ] `apps/forja/lib/shell/nav/nav_destination.dart`
+- [x] `apps/forja/lib/shell/nav/shell_bottom_nav.dart`
+- [x] `apps/forja/lib/shell/nav/shell_nav_rail.dart`
+- [x] `apps/forja/lib/shell/routing/app_router.dart`
+- [ ] `apps/forja/lib/shell/routing/shell_overlay_navigator.dart`
+- [x] `apps/forja/lib/shell/routing/shell_tab_refresh.dart`
+- [ ] `apps/forja/test/catalog_extract_context_test.dart`
+- [ ] `apps/forja/test/catalog_hub_search_capabilities_test.dart`
+- [ ] `apps/forja/test/catalog_kit_category_circle_meta_test.dart`
+- [ ] `apps/forja/test/catalog_kit_live_types_test.dart`
+- [ ] `apps/forja/test/catalog_movie_id_for_play_test.dart`
+- [ ] `apps/forja/test/catalog_open_test.dart`
+- [ ] `apps/forja/test/catalog_play_filters_test.dart`
+- [ ] `apps/forja/test/catalog_protocol_test.dart`
+- [ ] `apps/forja/test/desktop_browser_auth_test.dart`
+- [ ] `apps/forja/test/engine_test.dart`
+- [ ] `apps/forja/test/episode_torrent_search_queries_test.dart`
+- [x] `apps/forja/test/forja_loading_dots_test.dart`
+- [ ] `apps/forja/test/forja_logo_halo_pixels_test.dart`
+- [ ] `apps/forja/test/hub_boot_prefetch_test.dart`
+- [ ] `apps/forja/test/hub_details_meta_test.dart`
+- [ ] `apps/forja/test/iptv_play_source_display_test.dart`
+- [ ] `apps/forja/test/kisskh_cover_url_test.dart`
+- [ ] `apps/forja/test/kit_schedule_event_query_test.dart`
+- [ ] `apps/forja/test/kit_sources_live_tv_browse_test.dart`
+- [ ] `apps/forja/test/list_follow_from_watched_test.dart`
+- [ ] `apps/forja/test/list_follow_test.dart`
+- [ ] `apps/forja/test/list_letter_jump_test.dart`
+- [ ] `apps/forja/test/live_embed_m3u8_rewrite_test.dart`
+- [ ] `apps/forja/test/live_feed_merge_test.dart`
+- [ ] `apps/forja/test/live_sports_host_feature_test.dart`
+- [ ] `apps/forja/test/live_sports_sport_filter_test.dart`
+- [ ] `apps/forja/test/live_sports_team_parse_test.dart`
+- [ ] `apps/forja/test/live_stremio_meta_test.dart`
+- [x] `apps/forja/test/main_screen_shell_test.dart`
+- [ ] `apps/forja/test/my_list_catalog_test.dart`
+- [ ] `apps/forja/test/pack_addon_settings_test.dart`
+- [ ] `apps/forja/test/pack_connected_auth_test.dart`
+- [ ] `apps/forja/test/pack_secret_settings_test.dart`
+- [x] `apps/forja/test/player_back_exit_gate_test.dart`
+- [x] `apps/forja/test/player_popup_panel_back_test.dart`
+- [ ] `apps/forja/test/player_stream_menu_order_test.dart`
+- [x] `apps/forja/test/player_tv_remote_test.dart`
+- [ ] `apps/forja/test/plugin_install_validator_test.dart`
+- [x] `apps/forja/test/plugin_pack_update_focus_test.dart`
+- [ ] `apps/forja/test/profile_avatar_test.dart`
+- [ ] `apps/forja/test/provider_score_probe_sync_test.dart`
+- [x] `apps/forja/test/shell_adapters_test.dart`
+- [ ] `apps/forja/test/shell_bus_test.dart`
+- [x] `apps/forja/test/shell_card_play_overlay_test.dart`
+- [x] `apps/forja/test/shell_metrics_test.dart`
+- [ ] `apps/forja/test/shell_navigation_levels_test.dart`
+- [x] `apps/forja/test/shell_profile_behavior_test.dart`
+- [x] `apps/forja/test/shell_profile_test.dart`
+- [x] `apps/forja/test/shell_scaffold_test.dart`
+- [ ] `apps/forja/test/shell_tab_refresh_test.dart`
+- [ ] `apps/forja/test/shell_tv_app_exit_test.dart`
+- [x] `apps/forja/test/shell_tv_coordinator_test.dart`
+- [ ] `apps/forja/test/shell_tv_hold_accel_test.dart`
+- [x] `apps/forja/test/shell_tv_tabs_test.dart`
+- [ ] `apps/forja/test/sources_filter_panel_width_test.dart`
+- [x] `apps/forja/test/sources_panel_back_test.dart`
+- [ ] `apps/forja/test/sources_panel_filters_nuvio_lazy_test.dart`
+- [x] `apps/forja/test/sources_panel_tv_test.dart`
+- [ ] `apps/forja/test/sources_request_context_test.dart`
+- [ ] `apps/forja/test/splash_halo_test.dart`
+- [ ] `apps/forja/test/tab_watch_history_test.dart`
+- [ ] `apps/forja/test/torrent_release_metadata_test.dart`
+- [x] `apps/forja/test/tv_focus_graph_test.dart`
+- [x] `apps/forja/test/tv_season_episode_picker_test.dart`

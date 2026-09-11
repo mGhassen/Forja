@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Resolves [PlatformProfile] and configures [SettingsService] at boot.
 abstract final class PlatformChannel {

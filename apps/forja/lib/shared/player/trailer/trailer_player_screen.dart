@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
@@ -26,7 +26,12 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
-
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 part 'trailer_player_playback.dart';
 part 'trailer_player_menus.dart';
 part 'trailer_player_build.dart';

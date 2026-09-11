@@ -6,7 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
@@ -16,7 +16,11 @@ import 'package:forja/shared/foundation/components/details/kit_details_play_row.
 import 'package:forja/shared/foundation/components/media_details/media_details_body.dart';
 import 'package:forja/shared/foundation/components/media_details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class AnimeArabicDetailsScreen extends StatefulWidget {
   final ArabicAnimeCard anime;
 

@@ -5,12 +5,15 @@ import 'package:forja/features/settings/addons/pack_addon_settings_section.dart'
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).
 ({Map<String, List<EnginePlugin>> byGroup, List<String> orderedGroups})
 groupEnginePluginsForSettings({

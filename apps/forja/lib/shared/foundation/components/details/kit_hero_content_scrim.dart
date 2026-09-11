@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Soft dark scrim for live match hero — title through streams, edge to edge.
 ///

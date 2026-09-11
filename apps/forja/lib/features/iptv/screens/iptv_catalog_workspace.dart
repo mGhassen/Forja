@@ -13,13 +13,19 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:forja/shared/foundation/components/panel/kit_portal_list_panel.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
-
 part 'iptv_catalog_top_bar.dart';
 part 'iptv_catalog_portal_panel.dart';
 part 'iptv_catalog_portal_form.dart';

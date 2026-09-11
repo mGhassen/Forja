@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';

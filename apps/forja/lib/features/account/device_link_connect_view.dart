@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -9,7 +9,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Shared code/QR connect step for TV cold start and Settings → Profile.
 class DeviceLinkConnectView extends StatefulWidget {
   const DeviceLinkConnectView({

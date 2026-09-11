@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 
 /// Live plugin catalog / resolve meta cache (RFC-065).
 ///

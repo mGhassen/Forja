@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
@@ -9,6 +9,7 @@ import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 
 FocusNode? _playerMenuReturnFocus;
 

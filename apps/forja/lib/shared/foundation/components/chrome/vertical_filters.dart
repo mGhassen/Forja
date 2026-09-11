@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja_foundation/widgets/logo_menu_rail.dart';
 
 import '../../protocol/protocol.dart';
 
@@ -63,6 +64,28 @@ class VerticalFiltersSpec {
       if (o.id == id) return o;
     }
     return null;
+  }
+
+  /// Maps options to [LogoMenuItem] for DS [LogoMenuRail].
+  ///
+  /// Pass [leadingFor] for pack SVG / [VerticalFilterLogoMark] tiles.
+  /// Pass [resolveLogoUrl] for absolute network logos when no leading.
+  List<LogoMenuItem> toLogoMenuItems({
+    String? Function(VerticalFilterOption option)? resolveLogoUrl,
+    Widget? Function(VerticalFilterOption option)? leadingFor,
+  }) {
+    return [
+      for (final o in options)
+        LogoMenuItem(
+          id: o.id,
+          label: o.label,
+          leading: leadingFor?.call(o),
+          logoUrl: leadingFor != null
+              ? null
+              : (resolveLogoUrl?.call(o) ??
+                  (_isAbsoluteUrl(o.logo) ? o.logo : null)),
+        ),
+    ];
   }
 
   factory VerticalFiltersSpec.fromWidget({
@@ -320,6 +343,11 @@ abstract final class VerticalFiltersRegistry {
     if (id == null || id.isEmpty || !hasFilters(id)) return null;
     return selectedIdFor(id);
   }
+}
+
+bool _isAbsoluteUrl(String raw) {
+  final s = raw.trim();
+  return s.startsWith('http://') || s.startsWith('https://');
 }
 
 Color? _parseColor(Object? raw) {

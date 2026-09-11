@@ -10,9 +10,14 @@ import 'package:forja/shared/foundation/components/hero/hero_overview_text.dart'
 import 'package:forja/shared/foundation/components/hero/hero_title.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 part 'player_chrome_overlay_hero.dart';
 
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].

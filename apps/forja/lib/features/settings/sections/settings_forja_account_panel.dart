@@ -5,7 +5,7 @@ import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
@@ -13,7 +13,12 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 // Passkey type is @experimental.
 // ignore_for_file: experimental_member_use
 

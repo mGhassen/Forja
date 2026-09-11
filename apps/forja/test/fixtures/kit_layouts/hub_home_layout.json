@@ -1,0 +1,19 @@
+{
+  "pluginId": "test-hub-home",
+  "layout": [
+    {
+      "type": "kit.stack",
+      "id": "root",
+      "expand": true,
+      "children": [
+        { "type": "kit.topBar", "id": "top" },
+        { "type": "vertical_filters", "id": "platforms" },
+        { "type": "hero", "id": "hero", "source": "test-feed" },
+        { "type": "mood", "id": "mood", "options": [] },
+        { "type": "rail", "id": "row1", "source": "test-feed" },
+        { "type": "continue", "id": "continue" },
+        { "type": "because", "id": "because" }
+      ]
+    }
+  ]
+}

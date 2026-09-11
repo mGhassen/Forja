@@ -1,6 +1,5 @@
 import 'package:forja/shared/foundation/lib/cover_urls.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
 import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
 import 'package:forja/shared/foundation/components/rows/kit_section.dart';
@@ -11,6 +10,7 @@ import 'package:forja/shared/foundation/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details_recommendations_section.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details_cast_section.dart';
 import 'package:forja/shared/foundation/components/media_details/media_details_trailers_section.dart';
+import 'package:forja/shared/foundation/services/registry/kit_details_host_hooks.dart';
 import 'package:rust/rust.dart';
 
 class KitDetailRailSection {
@@ -245,16 +245,7 @@ List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
   ];
 }
 
-final _hubTmdbRichCache = <String, RichMediaDetails>{};
-final _hubTmdbBackdropCache = <String, List<String>>{};
 final _hubHeroBackdropCache = <String, List<String>>{};
-
-String _hubTmdbUiCacheKey(MetaItem meta) {
-  final tmdbId = meta.numericId('tmdb');
-  if (tmdbId == null) return meta.id;
-  final mediaType = hubMetaTmdbMediaType(meta);
-  return '$tmdbId|$mediaType';
-}
 
 String _hubHeroCacheKey(MetaItem meta) =>
     '${meta.id}|${meta.background}|${meta.bannerImage}|${meta.poster}';
@@ -283,63 +274,25 @@ List<String> _packHeroBackdropUrls(MetaItem meta) {
 List<String> hubHeroBackdropUrls(MetaItem meta) =>
     _packHeroBackdropUrls(meta);
 
+/// TMDB backdrop fetch — host [KitDetailsHostHooks]; pack URLs if unregistered.
 Future<List<String>> kitTmdbHeroBackdropUrls(MetaItem meta) async {
-  final tmdbId = meta.numericId('tmdb');
-  if (tmdbId == null) return _packHeroBackdropUrls(meta);
-
-  final mediaType = hubMetaTmdbMediaType(meta);
-  final cacheKey = _hubTmdbUiCacheKey(meta);
-  final cached = _hubTmdbBackdropCache[cacheKey];
-  if (cached != null) return cached;
-
-  final api = TmdbApi();
-  final urls = <String>[];
-
-  void addUrl(String path) {
-    if (path.isEmpty) return;
-    final u = path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
-    if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
-  }
-
-  for (final raw in _packHeroBackdropUrls(meta)) {
-    addUrl(raw);
-  }
-
-  try {
-    final paths = await api.getBackdrops(tmdbId, mediaType: mediaType);
-    for (final p in paths) {
-      addUrl(p);
-    }
-  } catch (_) {}
-
-  final out = urls.take(12).toList();
-  _hubTmdbBackdropCache[cacheKey] = out;
-  return out;
+  final pack = _packHeroBackdropUrls(meta);
+  final hook = KitDetailsHostHooks.loadTmdbBackdropUrls;
+  if (hook == null) return pack;
+  return hook(meta, packUrls: pack);
 }
 
+/// TMDB rich details — host hook only (no TmdbApi in this file).
 Future<RichMediaDetails?> kitLoadTmdbRich(MetaItem meta) async {
-  final tmdbId = meta.numericId('tmdb');
-  if (tmdbId == null) return null;
-
-  final mediaType = hubMetaTmdbMediaType(meta);
-  final cacheKey = _hubTmdbUiCacheKey(meta);
-  final cached = _hubTmdbRichCache[cacheKey];
-  if (cached != null) return cached;
-
-  try {
-    final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
-    _hubTmdbRichCache[cacheKey] = rich;
-    return rich;
-  } catch (_) {
-    return null;
-  }
+  final hook = KitDetailsHostHooks.loadTmdbRich;
+  if (hook == null) return null;
+  return hook(meta);
 }
 
 String? hubTmdbLogoUrl(RichMediaDetails? rich) {
-  if (rich == null) return null;
-  final path = rich.movie.logoPath.trim();
-  if (path.isEmpty) return null;
-  return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+  final hook = KitDetailsHostHooks.tmdbLogoUrl;
+  if (hook != null) return hook(rich);
+  return null;
 }
 
 String? hubMetaLogoUrl(MetaItem meta) {

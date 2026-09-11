@@ -6,9 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/foundation/services/follow/external_list_providers.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 class SettingsSimklPanel extends ConsumerStatefulWidget {
   const SettingsSimklPanel({super.key});

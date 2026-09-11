@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:rust/rust.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 const _kP2pBullets = [
   'Your IP address will be visible to other peers in the network',

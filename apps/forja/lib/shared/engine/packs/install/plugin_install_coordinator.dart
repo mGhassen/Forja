@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -14,6 +14,7 @@ import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 
 /// User-visible install phase for Settings + shell banner.
 enum PluginInstallPhase { loading, installing, ready }

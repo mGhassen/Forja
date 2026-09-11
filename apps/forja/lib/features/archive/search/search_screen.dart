@@ -9,7 +9,7 @@ import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/shell_search_bar.dart';
 import 'package:forja/shared/foundation/components/chrome/kit_search_filters.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/components/chrome/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
@@ -19,6 +19,12 @@ import 'package:forja/shared/foundation/primitives/tv/tv_search_browse_overlay.d
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 part 'search_models.dart';
 part 'search_widgets.dart';
@@ -122,7 +128,6 @@ class SearchScreenState extends ConsumerState<SearchScreen>
     if (!mounted) return;
     setState(() => _recentQueries = recent);
   }
-
 
   void focusFromFindShortcut() => _focusSearchFieldBrowse();
 

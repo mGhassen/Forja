@@ -5,7 +5,7 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/foundation/services/meta/runtime.dart';
-import 'package:forja/shared/foundation/services/panel/kit_resolve_panel_host.dart';
+import 'package:forja/shared/host/sources/panel/kit_resolve_panel_host.dart';
 import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
 
 /// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095).

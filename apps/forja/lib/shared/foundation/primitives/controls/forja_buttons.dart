@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart'
 import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_foundation/components/button.dart';
 
 typedef ForjaInteractiveBuilder = Widget Function(bool hover, bool pressed);
 
@@ -312,6 +312,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
 }
 
 /// Text-only CTA - no border, no filled background.
+///
+/// Delegates to package [Button] (RFC-106 G14-B) — same constructor API.
 class ForjaGhostButton extends StatelessWidget {
   const ForjaGhostButton({
     super.key,
@@ -328,39 +330,15 @@ class ForjaGhostButton extends StatelessWidget {
   final bool autoFocus;
   final FocusNode? focusNode;
 
-  Color get _color => ForjaShellColors.textPrimary;
-
   @override
   Widget build(BuildContext context) {
-    return ForjaInteractive(
-      onTap: onTap,
-      autoFocus: autoFocus,
+    return Button(
+      variant: ButtonVariant.ghost,
+      label: label,
+      icon: icon,
+      onPressed: onTap,
+      autofocus: autoFocus,
       focusNode: focusNode,
-      hoverScale: 1.04,
-      pressScale: 0.96,
-      builder: (hover, pressed) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 22, color: _color),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                label,
-                style: GoogleFonts.plusJakartaSans(
-                  color: _color,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -671,6 +649,8 @@ class ForjaCloseButton extends StatelessWidget {
 }
 
 /// Bordered square icon - use sparingly; prefer [ForjaPlainIcon] in hero chrome.
+///
+/// Delegates to package [Button] when [child] is null (RFC-106 G14-B).
 class ForjaIconButton extends StatelessWidget {
   const ForjaIconButton({
     super.key,
@@ -689,6 +669,16 @@ class ForjaIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (child == null) {
+      return Button(
+        variant: ButtonVariant.outline,
+        size: ButtonSize.icon,
+        icon: icon,
+        onPressed: onTap,
+        tooltip: tooltip,
+      );
+    }
+
     const borderColor = ForjaShellColors.ghostBorder;
     const iconColor = ForjaShellColors.textPrimary;
 

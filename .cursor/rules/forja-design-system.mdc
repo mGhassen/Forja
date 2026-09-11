@@ -4,9 +4,20 @@ globs: apps/forja/lib/**/*.dart
 alwaysApply: false
 ---
 
-# Forja design system (RFC-025 · RFC-095)
+# Forja design system (RFC-025 · RFC-095 · RFC-106)
 
-**Source of truth:** `apps/forja/lib/shared/foundation/primitives/` — import via `package:forja/shared/foundation/primitives/primitives.dart`.
+**Source of truth (new components):** [`packages/forja_foundation`](../../packages/forja_foundation). Import the **file** you use — not `forja_foundation.dart` (gallery/test barrel). Never `hide Switch, Chip, …` against Material.
+
+**Legacy (until Part 2 shim death — [RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md)):** `apps/forja/lib/shared/foundation/` — existing primitives/components/blocks keep working; migrate call sites to the package, then delete the shim tree.
+
+Host-only APIs stay on host paths (`ForjaInteractive`, `ForjaCloseButton.compact`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
+
+| New work | Package API |
+|----------|-------------|
+| Buttons | `Button`, `ButtonGroup` — `package:forja_foundation/components/button.dart` |
+| Vertical flyout | `VerticalMenu.item` — `package:forja_foundation/components/vertical_menu.dart` |
+| Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/logo_menu_rail.dart` |
+| Kit layout types | `KitTypes` — `package:forja_foundation/kit/kit_types.dart` (app `kit_types.dart` re-exports) |
 
 ## Design alone / data alone (RFC-095)
 

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_dialog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 void main() {

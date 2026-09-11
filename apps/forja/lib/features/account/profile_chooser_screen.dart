@@ -6,12 +6,16 @@ import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja/shared/foundation/primitives/brand/forja_profile_avatar.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 enum ProfileChooserMode { choose, manage }
 

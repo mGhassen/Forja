@@ -9,7 +9,7 @@ import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
@@ -20,7 +20,11 @@ import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
 import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
   const SettingsForjaPacksSection({super.key, required this.visibility});

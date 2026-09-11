@@ -1,15 +1,12 @@
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 
-/// Hub thumbnail URL normalization (pack-agnostic).
-String normalizeCoverUrl(String raw) {
-  final value = raw.trim();
-  if (value.isEmpty) return value;
-  final uri = Uri.tryParse(value);
-  if (uri == null || uri.host != 'media.themoviedb.org') return value;
-  return uri.replace(host: 'image.tmdb.org').toString();
-}
+export 'package:forja_foundation/utils/cover_urls.dart' show normalizeCoverUrl;
 
 /// CDN URLs, TMDB `/path.jpg` keys, and legacy bare paths → loadable URL.
+///
+/// Absolute URLs use package [normalizeCoverUrl] / [resolveAbsoluteCoverUrl].
+/// Relative `/` keys stay host-owned (TMDB CDN via [TmdbApi]).
 String resolveCoverUrl(String raw) {
   final value = normalizeCoverUrl(raw.trim());
   if (value.isEmpty) return value;

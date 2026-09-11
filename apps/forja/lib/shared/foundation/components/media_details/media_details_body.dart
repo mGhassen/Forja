@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Constrained column below the full-bleed media details hero.

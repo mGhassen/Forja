@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/foundation/components/media_details/episode_air_date.dart';
@@ -14,7 +14,13 @@ import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_shell_chip.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
 

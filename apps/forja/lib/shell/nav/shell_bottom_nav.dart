@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_tokens.dart';
+
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 class ShellBottomNav extends StatelessWidget {
   const ShellBottomNav({

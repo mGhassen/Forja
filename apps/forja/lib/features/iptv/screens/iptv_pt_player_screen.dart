@@ -42,7 +42,7 @@ import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_ho
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
@@ -68,6 +68,12 @@ import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 part 'iptv_pt_player_engine_core.dart';
 part 'iptv_pt_player_mk_tunables.dart';

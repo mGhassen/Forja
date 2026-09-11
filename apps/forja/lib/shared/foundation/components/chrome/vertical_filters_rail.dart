@@ -3,9 +3,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/foundation/lib/pack_assets.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
+import 'package:forja_foundation/widgets/logo_menu_rail.dart';
 
 /// Pack-owned logo on a contrasting tile.
 class VerticalFilterLogoMark extends StatefulWidget {
@@ -273,6 +277,11 @@ class _TvSelectedFilterLogo extends StatelessWidget {
 }
 
 /// Floating vertical filter panel beside the nav rail.
+///
+/// DS target: [LogoMenuRail] + [VerticalMenu] from `package:forja_foundation`
+/// (see [VerticalFiltersSpec.toLogoMenuItems]). This host widget stays until
+/// pack SVG tiles, [PackAssets], tile colors, and TV focus graph can be
+/// expressed as props-only leading widgets on [LogoMenuRail].
 class VerticalFiltersRail extends StatelessWidget {
   const VerticalFiltersRail({super.key, required this.tabId});
 
@@ -424,6 +433,16 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
         final maxH = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : MediaQuery.sizeOf(context).height * 0.88;
+        final items = widget.spec.toLogoMenuItems(
+          leadingFor: (o) => VerticalFilterLogoMark(
+            option: o,
+            packSourceUrl: widget.spec.packSourceUrl,
+            width: ShellTokens.shellProviderTileWidth,
+            height: ShellTokens.shellProviderTileHeight,
+            inset: o.inset,
+            borderRadius: BorderRadius.circular(6.5),
+          ),
+        );
         return Material(
           color: Colors.transparent,
           elevation: 0,
@@ -446,34 +465,50 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
             clipBehavior: Clip.antiAlias,
             child: FocusTraversalGroup(
               policy: OrderedTraversalPolicy(),
-              child: ListView.separated(
-                shrinkWrap: true,
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   vertical: ShellTokens.shellProviderRailPadV,
                   horizontal: ShellTokens.shellProviderRailPadH,
                 ),
-                itemCount: widget.spec.options.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: ShellTokens.shellProviderRailGap),
-                itemBuilder: (context, i) {
-                  final option = widget.spec.options[i];
-                  return FocusTraversalOrder(
-                    order: NumericFocusOrder(i.toDouble()),
-                    child: _VerticalFilterTile(
-                      tabId: widget.tabId,
-                      option: option,
-                      packSourceUrl: widget.spec.packSourceUrl,
-                      index: i,
-                      focusNodes: _focusNodes,
-                      selected: widget.selectedId == option.id,
-                      onTap: () => VerticalFiltersRegistry.toggleOption(
-                        widget.tabId,
-                        option.id,
+                child: LogoMenuRail(
+                  width: ShellTokens.shellProviderRailWidth -
+                      ShellTokens.shellProviderRailPadH * 2,
+                  items: items,
+                  selectedId: widget.selectedId,
+                  onSelect: (id) => VerticalFiltersRegistry.toggleOption(
+                    widget.tabId,
+                    id,
+                  ),
+                  itemBuilder: (context, item, selected) {
+                    final i = widget.spec.options
+                        .indexWhere((o) => o.id == item.id);
+                    if (i < 0) return const SizedBox.shrink();
+                    final option = widget.spec.options[i];
+                    return FocusTraversalOrder(
+                      order: NumericFocusOrder(i.toDouble()),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          bottom: i < widget.spec.options.length - 1
+                              ? ShellTokens.shellProviderRailGap
+                              : 0,
+                        ),
+                        child: _VerticalFilterTile(
+                          tabId: widget.tabId,
+                          option: option,
+                          packSourceUrl: widget.spec.packSourceUrl,
+                          index: i,
+                          focusNodes: _focusNodes,
+                          selected: selected,
+                          onTap: () => VerticalFiltersRegistry.toggleOption(
+                            widget.tabId,
+                            option.id,
+                          ),
+                          onFocusNeighbor: _focusTile,
+                        ),
                       ),
-                      onFocusNeighbor: _focusTile,
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),

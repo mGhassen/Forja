@@ -3,25 +3,23 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/cards/kit_event_dense_tile.dart';
 import 'package:forja/shared/foundation/components/cards/kit_poster_card.dart';
 import 'package:forja/shared/foundation/blocks/details/kit_entry_details.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
-import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
 import 'package:forja/shared/foundation/components/layout/kit_top_menu_registry.dart';
 import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
 import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
+import 'package:forja/shared/foundation/services/registry/kit_list_host_hooks.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_chip_row.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_list_open_mode.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_live_boot.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_event_query.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_layout.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_prefs.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
@@ -137,14 +135,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       (_effectiveOpen.isEmpty && _isDenseList);
 
   void _resolveEffectiveLayout(WidgetRef ref) {
-    if (widget.listSource == KitLiveBoot.listSourceId) {
-      final style = ref.watch(kitScheduleLayoutProvider).trim().toLowerCase();
-      _effectiveStyle = style == KitSchedulePrefs.styleCards
-          ? KitSchedulePrefs.styleCards
-          : KitSchedulePrefs.styleList;
-    } else {
-      _effectiveStyle = widget.listStyle;
-    }
+    final hostStyle = KitListHostHooks.resolveStyle?.call(
+      ref,
+      listSource: widget.listSource,
+      layoutStyle: widget.listStyle,
+    );
+    _effectiveStyle = (hostStyle ?? widget.listStyle).trim().toLowerCase();
+    if (_effectiveStyle.isEmpty) _effectiveStyle = 'grid';
 
     final openSetting = widget.openSettingId;
     if (openSetting != null && widget.pluginId.trim().isNotEmpty) {
@@ -450,7 +447,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         if (wantKinds) {
           final kinds = <String>{};
           for (final e in page.entriesForKind(null)) {
-            if (e.kind.isNotEmpty && e.kind != 'live_match') kinds.add(e.kind);
+            if (e.kind.isEmpty) continue;
+            final omit = KitListHostHooks.omitKind?.call(
+                  widget.listSource,
+                  e.kind,
+                ) ??
+                false;
+            if (!omit) kinds.add(e.kind);
           }
           final sorted = kinds.toList()..sort();
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -463,13 +466,18 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
-        final isLiveSchedule = _isDenseList || _isMatchCards;
-        final eventQuery =
-            isLiveSchedule ? ref.watch(kitScheduleEventQueryProvider) : '';
-        final entries = kitScheduleFilterEntries(
-          page.entriesForKind(kind),
-          eventQuery,
-        );
+        final eventQuery = KitListHostHooks.readEventQuery?.call(
+              ref,
+              widget.listSource,
+            ) ??
+            '';
+        final rawEntries = page.entriesForKind(kind);
+        final entries = KitListHostHooks.filterEntries?.call(
+              widget.listSource,
+              rawEntries,
+              eventQuery,
+            ) ??
+            rawEntries;
         _consumePendingOpen(entries);
         if (entries.isEmpty) {
           return _emptyState(
@@ -653,12 +661,8 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             genres: meta.genres,
           ),
           airing: airing,
-          viewers: () {
-            final fromRow =
-                parseLiveViewerCount(entry.legacyRow['viewers']);
-            final fromMeta = meta.viewers ?? 0;
-            return fromRow > fromMeta ? fromRow : fromMeta;
-          }(),
+          viewers: KitListHostHooks.entryViewers?.call(entry) ??
+              (entry.meta.viewers ?? 0),
           selected: selected,
           index: index,
           playable: true,
@@ -699,13 +703,18 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     List<KitListEntry> entries, {
     String? selectedId,
   }) {
+    final buildEntry = KitListHostHooks.buildCardsEntry;
+    final layoutFor = KitListHostHooks.cardsGridLayout;
+    if (buildEntry == null || layoutFor == null) {
+      return _grid(context, source, entries);
+    }
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final panelActive = widget.sidePanel != null || _autoPanel;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _liveCardsGrid(
+        final grid = layoutFor(
           context,
-          constraints.maxWidth,
+          maxWidth: constraints.maxWidth,
           chromeTop: _hoistedTopBarInset(context),
         );
         return TvGrid(
@@ -740,31 +749,34 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                       crossAxisSpacing: grid.gap,
                       mainAxisExtent: grid.cardH,
                     ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final entry = entries[index];
-                      final match = MatchEvent.fromLegacyRow(entry.legacyRow);
-                      final selected =
-                          selectedId != null && selectedId == entry.meta.id;
-                      return KitEventCard(
-                        match: match,
-                        width: grid.cardW,
-                        height: grid.cardH,
-                        gridIndex: index,
-                        gridColumns: grid.columns,
-                        selected: selected,
-                        tvTabId: widget.tabId,
-                        tvRowId: widget.gridRowId,
-                        onUpEdge: index < grid.columns
-                            ? () =>
-                                _focusRowLast(widget.kindMenuId) ||
-                                _focusRow(widget.kindMenuId, 0)
-                            : null,
-                        onRightEdge: selected && panelActive
-                            ? _claimPanelProvidersFocus
-                            : null,
-                        onTap: () => _openEntry(context, source, entry),
-                      );
-                    }, childCount: entries.length),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final entry = entries[index];
+                        final selected =
+                            selectedId != null && selectedId == entry.meta.id;
+                        return buildEntry(
+                          context,
+                          entry: entry,
+                          index: index,
+                          columns: grid.columns,
+                          cardW: grid.cardW,
+                          cardH: grid.cardH,
+                          selected: selected,
+                          tabId: widget.tabId,
+                          gridRowId: widget.gridRowId,
+                          onUpEdge: index < grid.columns
+                              ? () =>
+                                  _focusRowLast(widget.kindMenuId) ||
+                                  _focusRow(widget.kindMenuId, 0)
+                              : null,
+                          onRightEdge: selected && panelActive
+                              ? _claimPanelProvidersFocus
+                              : null,
+                          onTap: () => _openEntry(context, source, entry),
+                        );
+                      },
+                      childCount: entries.length,
+                    ),
                   ),
                 ),
               ],
@@ -928,13 +940,23 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   /// Live schedule / cards — skeleton rows (progress copy lives in top bar).
   Widget _scheduleLoadingSkeleton(BuildContext context) {
     if (_isMatchCards) {
+      final layoutFor = KitListHostHooks.cardsGridLayout;
       return LayoutBuilder(
         builder: (context, constraints) {
-          final grid = _liveCardsGrid(
-            context,
-            constraints.maxWidth,
-            chromeTop: _hoistedTopBarInset(context),
-          );
+          final grid = layoutFor?.call(
+                context,
+                maxWidth: constraints.maxWidth,
+                chromeTop: _hoistedTopBarInset(context),
+              ) ??
+              (
+                columns: 2,
+                cardW: 160.0,
+                cardH: 120.0,
+                gap: 8.0,
+                leading: 16.0,
+                rightPad: 16.0,
+                topPad: _hoistedTopBarInset(context) + 4,
+              );
           return homeLoadingShimmer(
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
@@ -1107,36 +1129,6 @@ _HomeGrid _homeGrid(
     gap: gap,
     leading: leading,
     rightPad: rightPad,
-    topPad: topPad,
-  );
-}
-
-_HomeGrid _liveCardsGrid(
-  BuildContext context,
-  double maxWidth, {
-  double chromeTop = 0,
-}) {
-  final minW = KitEventCard.cardWidth(context);
-  final minH = KitEventCard.cardHeight(context);
-  final gap = KitEventCard.gridGap(context);
-  final pad = shellHomeSectionHorizontalPadding(context);
-  final inner = math.max(0.0, maxWidth - pad * 2);
-  // Fit as many columns as the preferred min width allows, then stretch
-  // each card so the row uses the full inner width (no leftover right gutter).
-  final columns =
-      math.max(1, ((inner + gap) / (minW + gap)).floor()).clamp(1, 8);
-  final cardW = columns <= 1
-      ? inner
-      : (inner - (columns - 1) * gap) / columns;
-  final cardH = minW > 0 ? minH * (cardW / minW) : minH;
-  final topPad = chromeTop + 4;
-  return _HomeGrid(
-    columns: columns,
-    cardW: cardW,
-    cardH: cardH,
-    gap: gap,
-    leading: pad,
-    rightPad: pad,
     topPad: topPad,
   );
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
@@ -12,7 +12,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_button.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_fractal_glass_gradient.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 TextStyle _onboardText({
   required Color color,
   required double size,

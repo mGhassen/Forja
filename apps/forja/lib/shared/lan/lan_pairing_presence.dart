@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/lan/lan_server_service.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Same window as Settings device Active/Quiet and `crates/lan` idle-watch.
 const int kLanDeviceIdleSecs = 120;

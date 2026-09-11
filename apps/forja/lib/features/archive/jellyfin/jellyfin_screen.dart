@@ -4,11 +4,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:forja/features/archive/jellyfin/catalog/jellyfin_service.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
 import 'jellyfin_details_screen.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 // ─── Jellyfin Palette ────────────────────────────────────────────────────────
 const _jfBlue = Color(0xFF00A4DC);

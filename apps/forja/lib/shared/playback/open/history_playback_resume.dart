@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shell/routing/app_router.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 
 Movie movieFromWatchHistory(Map<String, dynamic> item) {
   final season = item['season'] as int?;

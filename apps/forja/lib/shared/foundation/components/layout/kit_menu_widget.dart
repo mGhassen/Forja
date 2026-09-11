@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_underline_tab.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Layout widget [`KitTypes.menu`] — underline kind/filter menu.

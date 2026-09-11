@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
 
 bool shellDesktopTextSelect(BuildContext context) {
   final profile =

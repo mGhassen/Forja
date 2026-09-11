@@ -9,12 +9,16 @@ import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
-
+import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_platform.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
   AppRouter._();

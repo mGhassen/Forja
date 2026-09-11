@@ -22,7 +22,7 @@ import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
@@ -75,7 +75,10 @@ import 'package:forja/shell/routing/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
-
+import 'package:forja/shared/foundation/primitives/chrome/loading_overlay.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/foundation/primitives/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
 part 'desktop_player_glass.dart';
 part 'desktop_player_lifecycle.dart';
 part 'desktop_player_playback.dart';

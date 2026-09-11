@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Scales on hover/focus with a flat cinematic shadow (no colored glow).
 /// Uses [shellFocusableTap] for D-pad focus lift + thin white focus border.

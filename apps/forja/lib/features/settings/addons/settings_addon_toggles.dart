@@ -8,12 +8,14 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
 /// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).
 bool addonMasterEnabled({
   required String addonId,

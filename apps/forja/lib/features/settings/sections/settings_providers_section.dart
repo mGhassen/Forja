@@ -8,11 +8,16 @@ import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
-
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_switch.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr (Sources → Forja addons).
 class SettingsForjaAddonsSection extends ConsumerStatefulWidget {
   const SettingsForjaAddonsSection({

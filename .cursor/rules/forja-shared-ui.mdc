@@ -4,11 +4,15 @@ globs: apps/forja/lib/**/*.dart
 alwaysApply: false
 ---
 
-# Shared UI components (RFC-026 · RFC-095)
+# Shared UI components (RFC-026 · RFC-095 · RFC-106)
 
-Extract **presentation** into `shared/foundation/` (`primitives/` atoms, `components/` composers); keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
+Extract **presentation** into the design system; keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
 
-**Design alone / data alone:** `components/` widgets must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt.
+**Source of truth (new):** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import via `package:forja_foundation/...` or `package:forja/shared/foundation/ds_bridge.dart`.
+
+**Legacy (Part 2 cutover):** `apps/forja/lib/shared/foundation/` (`primitives/` atoms, `components/` composers) until shim death ([RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md)).
+
+**Design alone / data alone:** DS `components/` / `widgets/` must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt. Host-only chrome (e.g. `VerticalFiltersRail` with `PackAssets`) documents the DS target (`LogoMenuRail`) until pack logos are props-only.
 
 ## Folder map
 

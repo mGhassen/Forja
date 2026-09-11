@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/lib/cover_urls.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/foundation/components/hero/hero_facts_panel.dart';
 import 'package:forja/shared/foundation/components/hero/hero_title.dart';
 import 'package:forja/shared/foundation/components/hero/rotating_hero_backdrop.dart';
@@ -367,11 +369,7 @@ class _KitHeroLayout extends StatelessWidget {
     final leftColumnWidth = width * DetailsTokens.heroDescriptionWidthFraction;
     final tmdb = richFacts?.movie;
     final rawLogo = (logoUrl ?? tmdb?.logoPath ?? '').trim();
-    final resolvedLogo = rawLogo.isEmpty
-        ? null
-        : (rawLogo.startsWith('http')
-            ? rawLogo
-            : TmdbApi.getImageUrl(rawLogo));
+    final resolvedLogo = rawLogo.isEmpty ? null : resolveCoverUrl(rawLogo);
     final useFullWidthList =
         belowActionRow != null && belowActionRowFullWidth && maxHeight != null;
     // Live match streams: action row (Providers / Live TV + search) needs the

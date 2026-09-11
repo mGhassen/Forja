@@ -728,6 +728,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  forja_foundation:
+    dependency: "direct main"
+    description:
+      path: "../../packages/forja_foundation"
+      relative: true
+    source: path
+    version: "0.1.0"
   freezed_annotation:
     dependency: transitive
     description:
@@ -1430,7 +1437,7 @@ packages:
       path: "../../packages/rust"
       relative: true
     source: path
-    version: "1.2.68"
+    version: "1.2.72"
   rxdart:
     dependency: transitive
     description:

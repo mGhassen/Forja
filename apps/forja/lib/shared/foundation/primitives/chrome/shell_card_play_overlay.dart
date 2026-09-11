@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 
 /// Centered play control for catalog / continue-watching cards.

@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/features/iptv/channel_guide/iptv_channel_guide.dart';
@@ -34,7 +34,16 @@ import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/open/iptv_open.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'iptv_pt_player_screen.dart';
-
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/foundation/primitives/chrome/forja_network_image.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 part 'iptv_pt_catalog_shell.dart';
 part 'iptv_pt_widgets_common.dart';
 part 'iptv_pt_browser_view.dart';
@@ -218,5 +227,4 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     }
   }
 }
-
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:forja/shared/foundation/components/sections/continue_watching_card.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_layout.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_section_title.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
 
 /// Generic Continue Watching row — layout widget type `continue`.

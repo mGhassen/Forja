@@ -10,16 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
-import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
-import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
-import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
 import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
-
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja/shared/foundation/primitives/feedback/forja_toast.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/chrome/hover_scale.dart';
+import 'package:forja/shared/foundation/primitives/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_card_play_overlay.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class AnimeArabicScreen extends StatefulWidget {
   const AnimeArabicScreen({super.key});
 

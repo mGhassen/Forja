@@ -1,0 +1,22 @@
+{
+  "pluginId": "test-hub-list",
+  "layout": [
+    {
+      "type": "kit.list",
+      "id": "mylist",
+      "source": "host.my_list"
+    },
+    {
+      "type": "host.my_list",
+      "id": "legacy_list"
+    },
+    {
+      "type": "host.continue",
+      "id": "continue_host"
+    },
+    {
+      "type": "host.because",
+      "id": "because_host"
+    }
+  ]
+}

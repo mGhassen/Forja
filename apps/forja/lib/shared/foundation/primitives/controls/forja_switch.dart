@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/primitives/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/components/switch.dart' as ds;
 
-/// Shared Forja toggle - brand-green track, elevated thumb, hairline off outline.
+/// Shared Forja toggle — delegates to package [ds.Switch] (RFC-106).
 ///
-/// Prefer this over raw [Switch] / [SwitchListTile] color overrides. App theme
-/// [forjaSwitchThemeData] mirrors the same tokens so Material list tiles inherit
-/// the look when they do not override colors.
-///
-/// Hover/focus feedback is the thumb turning white (no halo). When the switch
-/// is wrapped in [IgnorePointer] (TV focus stop), pass [emphasized] from the
-/// outer hover/focus instead.
+/// Prefer this over raw Material [Switch] / [SwitchListTile] color overrides.
+/// App theme [forjaSwitchThemeData] mirrors the same tokens.
 class ForjaSwitch extends StatelessWidget {
   const ForjaSwitch({
     super.key,
@@ -20,70 +15,35 @@ class ForjaSwitch extends StatelessWidget {
   });
 
   /// Compact scale used by settings toggle rows.
-  static const double settingsScale = 0.82;
+  static const double settingsScale = ds.Switch.settingsScale;
 
   final bool value;
   final ValueChanged<bool>? onChanged;
-
-  /// Visual scale (e.g. [settingsScale] in dense settings lists).
   final double scale;
-
-  /// Force the hover/focus thumb (white) — for wrappers that own pointer/focus.
   final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
-    final child = Switch(
+    return ds.Switch(
       value: value,
       onChanged: onChanged,
-      thumbColor: emphasized
-          ? const WidgetStatePropertyAll(Colors.white)
-          : forjaSwitchThumbColor,
-      trackColor: forjaSwitchTrackColor,
-      trackOutlineColor: forjaSwitchTrackOutlineColor,
-      overlayColor: forjaSwitchOverlayColor,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      scale: scale,
+      emphasized: emphasized,
     );
-    if ((scale - 1.0).abs() < 0.001) return child;
-    return Transform.scale(scale: scale, child: child);
   }
 }
 
-/// Theme data matching [ForjaSwitch] - set on [ThemeData.switchTheme].
-SwitchThemeData get forjaSwitchThemeData => SwitchThemeData(
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      thumbColor: forjaSwitchThumbColor,
-      trackColor: forjaSwitchTrackColor,
-      trackOutlineColor: forjaSwitchTrackOutlineColor,
-      overlayColor: forjaSwitchOverlayColor,
-    );
+/// Theme data matching [ForjaSwitch] — set on [ThemeData.switchTheme].
+SwitchThemeData get forjaSwitchThemeData => ds.forjaSwitchThemeData;
 
-final WidgetStateProperty<Color?> forjaSwitchThumbColor =
-    WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.hovered) ||
-      states.contains(WidgetState.focused) ||
-      states.contains(WidgetState.pressed)) {
-    return Colors.white;
-  }
-  return ForjaShellColors.surfaceElevated;
-});
+WidgetStateProperty<Color?> get forjaSwitchThumbColor =>
+    ds.forjaSwitchThumbColor;
 
-final WidgetStateProperty<Color?> forjaSwitchTrackColor =
-    WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.selected)) {
-    return ForjaShellColors.brandGreen;
-  }
-  return const Color(0xFF3A3A3A);
-});
+WidgetStateProperty<Color?> get forjaSwitchTrackColor =>
+    ds.forjaSwitchTrackColor;
 
-final WidgetStateProperty<Color?> forjaSwitchTrackOutlineColor =
-    WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.selected)) {
-    return Colors.transparent;
-  }
-  return ForjaShellColors.borderSubtle;
-});
+WidgetStateProperty<Color?> get forjaSwitchTrackOutlineColor =>
+    ds.forjaSwitchTrackOutlineColor;
 
-/// No hover/focus halo - the thumb turning white is the only feedback.
-const WidgetStateProperty<Color?> forjaSwitchOverlayColor =
-    WidgetStatePropertyAll<Color?>(Colors.transparent);
+WidgetStateProperty<Color?> get forjaSwitchOverlayColor =>
+    ds.forjaSwitchOverlayColor;

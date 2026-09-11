@@ -4,11 +4,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
+
 import 'package:forja/shared/foundation/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/tv/shell_tv_focus.dart';
 import 'package:forja/shared/foundation/tv/tv_focus_graph.dart';
-
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_scope.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_input_policy.dart';
+import 'package:forja/shared/foundation/primitives/shell/forja_shell_profile.dart';
+import 'package:forja/shared/foundation/primitives/chrome/shell_focusable_tap.dart';
+import 'package:forja/shared/foundation/primitives/controls/forja_buttons.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// D-pad / focus-graph surface (leanback **and** desktop hybrid).
 ///
 /// Do **not** use this to hide mouse hover chrome (pin-on-hover, portal

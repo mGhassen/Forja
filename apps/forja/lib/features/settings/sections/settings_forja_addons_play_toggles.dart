@@ -7,9 +7,9 @@ import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/foundation/primitives/primitives.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Direct torrent / Stremio / Nuvio play-source toggles under Sources → Forja addons.
 class SettingsForjaAddonsPlayToggles extends ConsumerStatefulWidget {
