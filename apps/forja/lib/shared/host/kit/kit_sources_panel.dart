@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
+import 'package:forja/shared/host/kit/kit_panel_tabs.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/host/kit/hero_pill_buttons.dart';
@@ -17,10 +18,12 @@ class KitSourcesTab {
   const KitSourcesTab({
     required this.id,
     required this.label,
+    this.icon = '',
   });
 
   final String id;
   final String label;
+  final String icon;
 }
 
 /// Opaque row for [KitSourcesPanel].
@@ -394,11 +397,11 @@ class _KitSourcesPanelState extends State<KitSourcesPanel> {
                   ? () => SourcesPanelTv.focusListItem(index: 0)
                   : null,
               segments: [
-                for (var i = 0; i < widget.tabs.length; i++)
+                for (final tab in widget.tabs)
                   HeroPillSegment(
-                    value: widget.tabs[i].id,
-                    label: widget.tabs[i].label,
-                    icon: i == 0 ? Icons.dns_rounded : Icons.live_tv_rounded,
+                    value: tab.id,
+                    label: tab.label,
+                    icon: kitPanelTabIcon(tab.icon),
                   ),
               ],
             ),

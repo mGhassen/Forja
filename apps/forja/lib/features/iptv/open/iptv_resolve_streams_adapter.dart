@@ -21,13 +21,12 @@ abstract final class IptvResolveStreamsAdapter {
     void Function(List<KitSourcesRow> rows)? onPartial,
     bool force = false,
   }) async {
-    if (tabId == 'live_tv') {
+    if (tabId == 'liveTv') {
       final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }
 
-    // Leaving Live TV — stop portal matching so Providers never shares that work.
-    IptvChannelSearch.cancel(reason: 'Providers tab');
+    IptvChannelSearch.cancel(reason: 'leave browse tab');
 
     final sources = await LiveResolveStreams.loadProviders(
       legacyRow,

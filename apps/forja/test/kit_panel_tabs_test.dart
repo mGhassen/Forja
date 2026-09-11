@@ -8,13 +8,21 @@ void main() {
       'panelTab': 'alpha',
       'panelTabs': [
         {'id': 'alpha', 'label': 'Alpha', 'icon': 'dns'},
-        {'id': 'beta', 'label': 'Beta', 'icon': 'tv', 'browse': true},
+        {
+          'id': 'beta',
+          'label': 'Beta',
+          'icon': 'tv',
+          'browse': true,
+          'action': 'loadBeta',
+        },
       ],
     });
     expect(tabs.map((t) => t.id).toList(), ['alpha', 'beta']);
     expect(tabs.last.browse, isTrue);
     expect(kitPanelDefaultTabId({'panelTab': 'alpha'}, tabs), 'alpha');
     expect(kitPanelBrowseTabIds(tabs), {'beta'});
+    expect(kitPanelTabLoadId(tabs, 'beta'), 'loadBeta');
+    expect(kitPanelTabLoadId(tabs, 'alpha'), 'alpha');
     expect(kitPanelTabIcon('dns'), Icons.dns_rounded);
     expect(kitPanelTabIcon('tv'), Icons.live_tv_rounded);
   });

@@ -5,7 +5,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/host/kit/kit_filter_sheet_option.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Old Live Sports Catalog sheet — flat ListTile rows (not bordered cards).
+/// Generic catalog picker — flat ListTile rows.
 Future<String?> showKitCatalogFilterSheet(
   BuildContext context, {
   required String current,
@@ -15,15 +15,15 @@ Future<String?> showKitCatalogFilterSheet(
     context: context,
     backgroundColor: ForjaShellColors.surfaceElevated,
     isScrollControlled: true,
-    builder: (ctx) => _LiveCatalogSheet(
+    builder: (ctx) => _KitCatalogSheet(
       current: current,
       options: options,
     ),
   );
 }
 
-class _LiveCatalogSheet extends StatefulWidget {
-  const _LiveCatalogSheet({
+class _KitCatalogSheet extends StatefulWidget {
+  const _KitCatalogSheet({
     required this.current,
     required this.options,
   });
@@ -32,13 +32,13 @@ class _LiveCatalogSheet extends StatefulWidget {
   final List<({String id, String label, String? subtitle})> options;
 
   @override
-  State<_LiveCatalogSheet> createState() => _LiveCatalogSheetState();
+  State<_KitCatalogSheet> createState() => _KitCatalogSheetState();
 }
 
-class _LiveCatalogSheetState extends State<_LiveCatalogSheet> {
-  static const _tvTabId = 'live_sports_catalog_sheet';
-  static const _rowId = 'live-catalog-sheet';
-  final _firstFocus = FocusNode(debugLabel: 'live-catalog-sheet-first');
+class _KitCatalogSheetState extends State<_KitCatalogSheet> {
+  static const _tvTabId = 'kit_catalog_sheet';
+  static const _rowId = 'kit-catalog-sheet';
+  final _firstFocus = FocusNode(debugLabel: 'kit-catalog-sheet-first');
 
   @override
   void initState() {

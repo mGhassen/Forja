@@ -59,12 +59,17 @@ final class KitResolvePanelHost implements KitPanelHost {
     KitUrlHealthProbe? healthProbe,
     void Function(List<KitSourcesRow> rows)? onPartial,
     bool force = false,
+    List<Map<String, dynamic>> layoutWidgets = const [],
   }) async {
     final load = KitResolveStreamsHooks.loadTab;
     if (load == null) return const [];
+    final loadId = kitPanelTabLoadId(
+      kitPanelChromeFromLayouts(layoutWidgets).tabs,
+      tabId,
+    );
     return load(
       legacyRow,
-      tabId,
+      loadId,
       healthProbe: healthProbe,
       onPartial: onPartial,
       force: force,
@@ -168,7 +173,8 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       title: title.isEmpty ? 'Streams' : title,
       subtitle: subtitle.isEmpty ? null : subtitle,
       tabs: [
-        for (final t in chrome.tabs) KitSourcesTab(id: t.id, label: t.label),
+        for (final t in chrome.tabs)
+          KitSourcesTab(id: t.id, label: t.label, icon: t.icon),
       ],
       initialTabId: chrome.initial,
       browseCategoryTabIds: kitPanelBrowseTabIds(chrome.tabs),
@@ -182,6 +188,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
         healthProbe: healthProbe,
         onPartial: onPartial,
         force: force,
+        layoutWidgets: widget.layoutWidgets,
       ),
       onPlayRow: (kitRow) => KitResolvePanelHost.playRow(
         context,

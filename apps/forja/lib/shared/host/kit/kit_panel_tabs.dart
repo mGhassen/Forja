@@ -8,12 +8,16 @@ class KitPanelTabSpec {
     required this.label,
     this.icon = '',
     this.browse = false,
+    this.action = '',
   });
 
   final String id;
   final String label;
   final String icon;
   final bool browse;
+
+  /// MetaRuntime / loader key. Empty → [id].
+  final String action;
 }
 
 List<KitPanelTabSpec> kitPanelTabsFromSpec(Map<String, dynamic> spec) {
@@ -31,6 +35,7 @@ List<KitPanelTabSpec> kitPanelTabsFromSpec(Map<String, dynamic> spec) {
         label: label.isEmpty ? id : label,
         icon: (item['icon'] ?? '').toString().trim(),
         browse: item['browse'] == true,
+        action: (item['action'] ?? '').toString().trim(),
       ),
     );
   }
@@ -68,6 +73,16 @@ Set<String> kitPanelBrowseTabIds(List<KitPanelTabSpec> tabs) => {
       for (final t in tabs)
         if (t.browse) t.id,
     };
+
+/// Loader key for [tabId] — pack `action` if set, else the chrome id.
+String kitPanelTabLoadId(List<KitPanelTabSpec> tabs, String tabId) {
+  for (final t in tabs) {
+    if (t.id == tabId) {
+      return t.action.isNotEmpty ? t.action : t.id;
+    }
+  }
+  return tabId;
+}
 
 IconData kitPanelTabIcon(String token) {
   return switch (token.trim().toLowerCase()) {

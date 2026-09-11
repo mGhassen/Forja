@@ -95,6 +95,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
       widget.entry.legacyRow,
       tabId,
       healthProbe: _healthProbe,
+      layoutWidgets: widget.layoutWidgets,
       force: force,
       onPartial: onPartial == null
           ? null
@@ -167,7 +168,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             embedded: true,
             tabs: [
               for (final t in chrome.tabs)
-                KitSourcesTab(id: t.id, label: t.label),
+                KitSourcesTab(id: t.id, label: t.label, icon: t.icon),
             ],
             initialTabId: _tabId,
             showTabs: false,

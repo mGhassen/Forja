@@ -109,4 +109,4 @@ Host `kitMoodCircleMeta` only resolves pack **icon tokens** (`soccer`, `tv`, …
 
 ## Correction — panel tabs are pack chrome
 
-`kit.list.panelTabs` / `panelTab` declare Providers / Live TV (or any tabs). Host `KitSourcesPanel` default `browseCategoryTabIds` is empty. `KitResolvePanelHost` no longer owns `providers` / `live_tv` constants. IPTV adapter loads pack tab id `live_tv` → MetaRuntime `liveTv`.
+`kit.list.panelTabs` / `panelTab` declare Providers / Live TV (or any tabs). Host `KitSourcesPanel` default `browseCategoryTabIds` is empty. Tab icons come from pack `icon` (not index 0/1). IPTV adapter loads pack tab `action` (`liveTv`) — not chrome id `live_tv`.
