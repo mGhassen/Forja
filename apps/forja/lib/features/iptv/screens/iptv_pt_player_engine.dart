@@ -428,6 +428,16 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       final useProxy = _livePlaybackProfile &&
           iptvShouldUseContinuityProxy(kind: kind, url: candidate.url);
       var playUrl = candidate.url;
+      // MediaKit/mpv: Lume uses AVPlayer for HLS ABR. mpv stalls on DAI/XUMO
+      // masters — pin one media playlist ≤ ~3.5 Mbps before open.
+      if (!useProxy &&
+          !_s._exoBackend &&
+          iptvUrlLooksLikeHls(playUrl)) {
+        playUrl = await iptvResolveHlsPlayUrl(
+          url: playUrl,
+          headers: headers,
+        );
+      }
       if (useProxy) {
         final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
           onUpstreamReconnected: _onProxyUpstreamReconnected,
@@ -503,15 +513,17 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
               headers,
               streamUrl: playUrl,
             );
+            // Before open: HLS must not inherit lavf reconnect-on-EOF (playlist
+            // body ends → "Will reconnect at N" death spiral).
+            if (_livePlaybackProfile) {
+              await _applyStreamLavfReconnect(
+                np,
+                continuityProxy: false,
+                streamUrl: candidate.url,
+              );
+            }
           }
           await player.open(Media(playUrl, httpHeaders: headers));
-          if (np is NativePlayer && _livePlaybackProfile) {
-            await _applyStreamLavfReconnect(
-              np,
-              continuityProxy: false,
-              streamUrl: candidate.url,
-            );
-          }
         }
         await player.play();
         if (_s._atvMediaKit) {

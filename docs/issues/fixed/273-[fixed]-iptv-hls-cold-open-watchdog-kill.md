@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6/6** tasks · **0 / 2** acceptance (manual) |
+| **Progress** | **Complete · 7/7** tasks · **0 / 2** acceptance (manual) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,8 +23,9 @@
 | 2 | I273-T02 | Treat network-feeding / HLS cold open as `_streamWorking` (stall mode) | ✅ |
 | 3 | I273-T03 | `demuxer-lavf-o` `+igndts` for DAI pts&lt;dts stalls | ✅ |
 | 4 | I273-T04 | macOS/Linux: do not force TextureSW for HLS `.m3u8` (M3U/Xtream) | ✅ |
-| 5 | I273-T05 | HLS lavf reconnect without `reconnect_at_eof` | ✅ |
-| 6 | I273-T06 | Unit test + changelog + feature doc | ✅ |
+| 5 | I273-T05 | HLS: `stream-lavf-o reconnect=0` before open (no playlist EOF reconnect loop) | ✅ |
+| 6 | I273-T06 | MediaKit: resolve HLS master → one media playlist (Lume/AVPlayer-style ABR pin) | ✅ |
+| 7 | I273-T07 | Unit test + changelog + feature doc | ✅ |
 
 ---
 
@@ -41,4 +42,4 @@
 
 After [272](272-[fixed]-iptv-hls-m3u-continuity-proxy-death-spiral.md) skipped the TS proxy for `.m3u8`, MediaKit still failed on playable DAI channels (CBS News). ffmpeg was downloading variants/segments (`Invalid timestamps` / SCTE CUE-OUT) while demuxer cache stayed `0`. Stall recovery treated that as dead at **5s** and soft-reopened → `mbedtls_ssl_handshake` fail → forever Buffering.
 
-**Root fix:** do not soft-reopen during HLS cold open; ignore bad DTS with `+igndts`; on macOS/Linux keep VideoToolbox for `.m3u8` (TextureSW was starving demux the same way Stremio HLS already documented). Geo-blocked Amagi/CloudFront channels outside the US remain upstream 403 — not this bug.
+**Root fix:** do not soft-reopen during HLS cold open; ignore bad DTS with `+igndts`; on macOS/Linux keep VideoToolbox for `.m3u8`; disable lavf HTTP reconnect on HLS; **pin one media playlist** before MediaKit open (Lume uses AVPlayer native ABR — mpv stalls probing every DAI/XUMO variant). Geo-blocked Amagi/CloudFront outside the US remains upstream 403.

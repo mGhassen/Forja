@@ -107,22 +107,18 @@ mixin _IptvPtPlayerLiveProxy on _IptvPtPlayerEngineCore {
       'reconnect_on_network_error=1,'
       'reconnect_on_http_error=4xx\\,5xx';
 
-  /// HLS playlists "EOF" between reloads — reconnect_at_eof fights the demuxer.
-  static const _lavfReconnectHls =
-      'reconnect=1,'
-      'reconnect_streamed=1,'
-      'reconnect_delay_max=30,'
-      'reconnect_on_network_error=1';
-
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     required bool continuityProxy,
     String? streamUrl,
   }) async {
-    if (continuityProxy) {
+    // HLS masters/media playlists are short HTTP bodies that EOF normally.
+    // lavf reconnect treats that as a progressive socket death and loops
+    // "Will reconnect at N … End of file" forever (issue 273) — demuxer owns
+    // playlist refresh + segment GETs.
+    if (continuityProxy ||
+        (streamUrl != null && iptvUrlLooksLikeHls(streamUrl))) {
       await p.setProperty('stream-lavf-o', 'reconnect=0');
-    } else if (streamUrl != null && iptvUrlLooksLikeHls(streamUrl)) {
-      await p.setProperty('stream-lavf-o', _lavfReconnectHls);
     } else {
       await p.setProperty('stream-lavf-o', _lavfReconnectDirect);
     }

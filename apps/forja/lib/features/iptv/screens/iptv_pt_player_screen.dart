@@ -33,6 +33,7 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv_live_continuity_proxy.dart';
+import 'package:forja/features/iptv/iptv_hls_play_url.dart';
 import 'package:forja/features/iptv/iptv_proxy_reconnect_skip.dart';
 import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
