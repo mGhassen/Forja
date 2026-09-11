@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/protocol/filter.dart';
+import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/host/kit/chrome_filters.dart';
 import 'package:forja/shared/host/kit/meta_movie.dart';
 import 'package:forja/shared/host/kit/kit_search_page.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/meta_runtime.dart';
 import 'package:forja/shared/host/kit/kit_open.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';

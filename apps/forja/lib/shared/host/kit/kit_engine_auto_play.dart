@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/kit/kit_details_play.dart';
 import 'package:forja/shared/playback/play_context.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:rust/rust.dart';

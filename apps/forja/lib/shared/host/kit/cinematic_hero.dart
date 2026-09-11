@@ -20,11 +20,11 @@ import 'package:forja/shared/host/kit/hero_title.dart';
 import 'package:forja/shared/host/kit/rotating_hero_backdrop.dart';
 import 'package:forja/shared/host/kit/hero_overview_text.dart';
 import 'package:forja/shared/host/kit/home_loading_skeleton.dart';
-import 'package:forja/shared/foundation/services/follow/list_follow.dart';
+import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shared/host/kit/kit_section.dart';
 import 'package:forja/shared/host/kit/kit_details_play_row.dart';
 import 'package:forja/shared/host/kit/kit_list_status_hero.dart';
-import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
+import 'package:forja/shared/host/kit/kit_list_status_button.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 bool hubIsFullCinematicHero(BuildContext context) =>

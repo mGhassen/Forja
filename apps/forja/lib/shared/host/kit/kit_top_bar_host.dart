@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/protocol/pack_capabilities.dart';
+import 'package:forja_foundation/protocol/pack_capabilities.dart';
 import 'package:forja/shared/host/kit/pack_filters.dart';
 import 'package:forja/shared/shell/vertical_filters.dart';
 import 'package:forja/shared/host/kit/kit_top_bar.dart';

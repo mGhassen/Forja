@@ -1,6 +1,6 @@
 import 'package:forja/shared/host/kit/cover_urls.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/meta_runtime.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 

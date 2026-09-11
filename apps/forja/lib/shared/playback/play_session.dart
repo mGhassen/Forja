@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Opaque kit play state passed through player + engine auto-play.
 class PlaySession {

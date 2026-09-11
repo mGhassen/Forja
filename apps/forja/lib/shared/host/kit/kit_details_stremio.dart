@@ -1,5 +1,5 @@
 import 'package:forja/shared/host/kit/kit_details_sections.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 class KitStremioLoadResult {

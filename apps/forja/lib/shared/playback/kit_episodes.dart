@@ -1,7 +1,7 @@
 import 'package:forja/shared/host/kit/kit_details_meta.dart';
 import 'package:forja/shared/host/kit/details_fetch.dart';
 import 'package:forja/shared/host/kit/cover_urls.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 
 class KitEpisodeCache {

@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:rust/rust.dart';

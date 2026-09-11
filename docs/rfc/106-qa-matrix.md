@@ -21,7 +21,7 @@ Manual sign-off required. Automated gates below do **not** replace Q1–Q12.
 
 1. All Q1–Q12 manual ✅
 2. `docs/rfc/106-export-inventory.txt` symbols resolvable from package or host
-3. `rg "package:forja/shared/foundation/" apps/forja` → empty (or only intentional host leftovers moved)
+3. `rg "package:forja/shared/foundation/" apps/forja --glob '*.dart'` → **empty** (stubs unused)
 4. Separate PR for shim death (G14-G #4)
 
 **Do not** delete the folder in the same PR as evacuate.

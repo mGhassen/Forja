@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
+import 'package:forja/shared/host/kit/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/host/kit/kit_panel_tabs.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

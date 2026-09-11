@@ -9,7 +9,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 1. Import the **file**, never `package:forja_foundation/forja_foundation.dart`.
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
-4. Never import `package:forja/shared/foundation/primitives/**` from app/feature/player/test code after this slice. Foundation primitives may exist only as **re-export stubs** until G14-E.
+4. Never import `package:forja/shared/foundation/**`. Stubs still exist until G14-E delete; app/test dart must not use them.
 5. If the package is missing an API: **extend the package** or **move** to `shared/shell/`, `shared/engine/`, or `shared/host/kit|packs|update|account|watch`. Do **not** put pack surfaces in `shared/host/lists|live_sports|sources`. Do not keep the old foundation import.
 
 `forja_foundation.dart` is a gallery/test barrel.
@@ -172,7 +172,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | `kit_layout_map` | `package:forja_foundation/kit/kit_layout_map.dart` |
 | `Deeplink` / filter / protocol / pack_capabilities | `package:forja_foundation/protocol/<file>.dart` |
 | `normalizeCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
-| `resolveCoverUrl` | stay on `package:forja/shared/foundation/lib/cover_urls.dart` until G14-E — host TMDB relative-path, not the package util |
+| `resolveCoverUrl` | `package:forja/shared/host/kit/cover_urls.dart` — host TMDB relative-path, not the package util |
 
 Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …): new work imports the package file. Live foundation copies stay until G14-E only if they still **are** the running implementation — do not add new imports of those foundation copies.
 
@@ -266,19 +266,11 @@ Kit-runtime tests (`catalog_*`, `engine_test`, `list_follow_*`, …) may still i
 
 ## Done greps
 
-Run from repo root after this slice:
-
 ```bash
-# primitives must not be a destination (stubs may still export)
-rg "package:forja/shared/foundation/primitives/" apps/forja/lib apps/forja/test \
-  --glob '!**/shared/foundation/**'
-
+rg "package:forja/shared/foundation/" apps/forja --glob '*.dart'
 rg "forja_foundation.dart' hide" apps/forja
-
 rg "ForjaGhostButton|ForjaButton\(|ForjaButtonVariant" \
   apps/forja/lib/features apps/forja/lib/shell apps/forja/lib/shared/player
 ```
 
-Empty (except kit-runtime service imports) is done for this slice.
-
-G14-E (delete `apps/forja/lib/shared/foundation/`) is a **separate** PR after Q1–Q12.
+All three empty. Stub tree under `shared/foundation/` is unused by dart. Delete that tree after Q1–Q12 (G14-E).

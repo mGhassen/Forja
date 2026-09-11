@@ -1,7 +1,7 @@
 import 'package:forja/shared/host/kit/meta_movie.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
 import 'package:forja/shared/playback/play_context.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 

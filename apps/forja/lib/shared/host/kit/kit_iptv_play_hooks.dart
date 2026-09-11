@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:forja/shared/playback/play_context.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext, Movie;
 
 /// Kit-facing IPTV recommendation row (feature fills [stream]).

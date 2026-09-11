@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart' show RichMediaDetails;
 
 /// Host adapters for details enrich (RFC-106 G11 — no TmdbApi in kit UI).

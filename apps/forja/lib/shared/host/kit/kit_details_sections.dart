@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/host/kit/meta_movie.dart';
 import 'package:forja/shared/host/kit/kit_poster_card.dart';
 import 'package:forja/shared/host/kit/kit_section.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/legacy_movie_meta.dart';
 import 'package:forja/shared/host/kit/kit_open.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';

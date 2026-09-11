@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/services/follow/list_follow.dart';
-import 'package:forja/shared/foundation/services/follow/kit_list_status_button.dart';
+import 'package:forja/shared/engine/lists/list_follow.dart';
+import 'package:forja/shared/host/kit/kit_list_status_button.dart';
 
 /// Details hero pin — same glass **+** + floating status menu as movie rows.
 class KitListStatusHero extends StatelessWidget {

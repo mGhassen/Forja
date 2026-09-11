@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
 
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 /// In-memory catalog response cache.
 ///

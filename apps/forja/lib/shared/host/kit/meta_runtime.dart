@@ -5,7 +5,7 @@ import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 import 'package:forja/shared/host/kit/meta_cache.dart';
 

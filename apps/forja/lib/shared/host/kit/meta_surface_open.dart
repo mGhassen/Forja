@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Host-registered open handlers for pack `open.surface` values.
 ///

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/horizontal_scroller.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_section_title.dart';

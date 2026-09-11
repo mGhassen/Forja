@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/protocol/filter.dart';
+import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/host/kit/play_filters.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/meta_runtime.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
