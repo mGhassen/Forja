@@ -23,11 +23,32 @@ import 'package:forja/shell/bus/shell_bus.dart';
 
 String? _packsRoot() => ForjaPacksRoot.resolve(requireDebug: false);
 
-/// `sdk/fixtures/<name>.json` under forja-packs.
+/// Sibling [forja-sdk] or `FORJA_SDK_ROOT` — catalog fixtures.
+String? _sdkRoot() {
+  final env = Platform.environment['FORJA_SDK_ROOT']?.trim() ?? '';
+  if (env.isNotEmpty) {
+    final d = Directory(env);
+    if (d.existsSync()) return d.absolute.path.replaceAll('\\', '/');
+  }
+  var dir = Directory.current;
+  for (var i = 0; i < 8; i++) {
+    final sibling = Directory('${dir.path}/forja-sdk');
+    if (sibling.existsSync() &&
+        File('${sibling.path}/contract.json').existsSync()) {
+      return sibling.absolute.path.replaceAll('\\', '/');
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/// `fixtures/<name>.json` under forja-sdk.
 dynamic loadHubFixture(String name) {
-  final root = _packsRoot();
-  expect(root, isNotNull, reason: 'forja-packs not found');
-  final file = File('$root/sdk/fixtures/$name.json');
+  final root = _sdkRoot();
+  expect(root, isNotNull, reason: 'forja-sdk not found');
+  final file = File('$root/fixtures/$name.json');
   expect(file.existsSync(), isTrue, reason: 'missing fixture ${file.path}');
   return jsonDecode(file.readAsStringSync());
 }

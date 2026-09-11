@@ -15,8 +15,7 @@ import { cn } from '@/lib/utils'
 import { Route } from '@/routes/plugins'
 
 const BUILD_GUIDE_URL =
-  'https://github.com/mGhassen/Forja/blob/main/plugins/DEVELOPING.md'
-const PACKS_REPO_URL = 'https://github.com/mGhassen/Forja/tree/main/plugins'
+  'https://github.com/mGhassen/forja-sdk/blob/main/DEVELOPING.md'
 
 const MARQUEE = [
   'Community packs',
@@ -328,10 +327,10 @@ export function PluginsPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 {[
                   {
-                    title: 'Start from official packs',
-                    copy: 'Clone providers, hubs, live, torrent, and IPTV packs. See how extract, catalog, and search handlers work in production.',
-                    href: PACKS_REPO_URL,
-                    cta: 'Browse plugins repo',
+                    title: 'Start from a starter',
+                    copy: 'Provider → Sources panel. Hub → shell tab with layout/rails/details. Copy starters/provider or starters/hub.',
+                    href: 'https://github.com/mGhassen/forja-sdk/tree/main/starters',
+                    cta: 'Open starters',
                   },
                   {
                     title: 'Follow the SDK',

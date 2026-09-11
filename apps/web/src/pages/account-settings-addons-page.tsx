@@ -302,14 +302,14 @@ export function AccountSettingsAddonsPage() {
       >
         <AddonRow
           title="Playback"
-          description="Quality, audio, auto-play, web streaming"
+          description="Quality, audio, auto-play"
           hasToggle={false}
           href="/account/settings/playback"
           disabled={busy}
         />
         <AddonRow
           title="IPTV"
-          description="Xtream portals, EPG, live quality"
+          description="Portals, EPG, live quality"
           checked={playDraft.draft.addon_feature_iptv === true}
           onCheckedChange={(v) => setIptvAddon(v)}
           href="/account/settings/iptv"

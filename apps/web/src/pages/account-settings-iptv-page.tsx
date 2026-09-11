@@ -20,11 +20,14 @@ import {
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
+import { SettingsToggle } from '@/components/settings-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
 import { useAccountFeatures, canAddIptvPortal } from '@/hooks/use-account-features'
+import { useCommitDraft } from '@/hooks/use-commit-draft'
+import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import { useUserIptvPortals } from '@/hooks/use-user-iptv-portals'
 import {
   downloadTextFile,
@@ -36,11 +39,20 @@ import {
   formatShareCode,
 } from '@/lib/iptv-portal-share'
 import {
+  emptyPreferencesPayload,
   portalDisplayLabel,
   portalKey,
   type IptvPortalRow,
+  type PreferencesPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
+
+function playbackFromServer(value: unknown): PreferencesPayload {
+  return {
+    ...emptyPreferencesPayload(),
+    ...((value as PreferencesPayload | undefined) ?? {}),
+  }
+}
 
 const PAGE_SIZE = 10
 
@@ -197,6 +209,23 @@ type DraftState = {
 
 export function AccountSettingsIptvPage() {
   const portalsHook = useUserIptvPortals()
+  const playbackSetting = usePlaybackSetting()
+  const {
+    draft: playDraft,
+    commit: commitPlay,
+    controlsLocked: playLocked,
+    isSaving: playSaving,
+    savedFlash: playFlash,
+    saveError: playSaveError,
+  } = useCommitDraft({
+    profileId: playbackSetting.profileId,
+    updatedAt: playbackSetting.data?.updated_at,
+    isReady: Boolean(playbackSetting.data) && !playbackSetting.isLoading,
+    serverValue: playbackSetting.data?.payload,
+    mapServer: playbackFromServer,
+    makeEmpty: emptyPreferencesPayload,
+    save: playbackSetting.save,
+  })
   const { data: accountFeatures } = useAccountFeatures()
   const iptvScrapeActive = accountFeatures?.iptvScrape === true
   const dealPortalActive = accountFeatures?.dealPortal === true
@@ -204,7 +233,7 @@ export function AccountSettingsIptvPage() {
   const maxIptvPortals = accountFeatures?.maxIptvPortals ?? 5
   const profileId = portalsHook.profileId
   const isLoading = portalsHook.isLoading
-  const isSaving = portalsHook.isSaving
+  const isSaving = portalsHook.isSaving || playSaving
   const saveError = portalsHook.saveError
   const [draft, setDraft] = useState<DraftState>({
     portals: [],
@@ -556,16 +585,17 @@ export function AccountSettingsIptvPage() {
   return (
     <AccountSettingsShell
       title="IPTV"
-      description="Addons → IPTV — assign Xtream portals for this profile. Turn the IPTV tab on from the Addons hub."
+      description="Addons → IPTV — programme guide and Xtream portals for this profile. Turn the IPTV tab on from the Addons hub. Live quality and recovery stay in the app."
       wide
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
-          savedFlash={savedFlash}
+          savedFlash={savedFlash || playFlash}
           error={
-            saveError instanceof Error
+            playSaveError ??
+            (saveError instanceof Error
               ? saveError
-              : hydrateError
+              : hydrateError)
           }
           extra={
             shareError && !addOpen ? (
@@ -575,6 +605,21 @@ export function AccountSettingsIptvPage() {
         />
       }
     >
+      <SettingsSection
+        label="Player"
+        description="Same IPTV programme guide toggle as Settings → Addons → IPTV in the app."
+      >
+        <SettingsToggle
+          label="IPTV programme guide"
+          description="Show NOW and NEXT programme info in the player and channel browser."
+          checked={playDraft.iptv_epg_enabled ?? true}
+          onChange={(v) =>
+            void commitPlay((prev) => ({ ...prev, iptv_epg_enabled: v }))
+          }
+          disabled={playLocked || playSaving}
+        />
+      </SettingsSection>
+
       <div className="mb-8 space-y-3">
         {dealPortalActive ? (
           <div

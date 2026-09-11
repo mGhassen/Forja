@@ -2,7 +2,7 @@
 
 Your cinema universe in one app. This guide explains every **in-scope** feature — what it does and how to use it.
 
-**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md) · [Plugin packs](https://github.com/mGhassen/forja-packs)  
+**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md) · [Plugin SDK](https://github.com/mGhassen/forja-sdk) · [Plugin packs](https://github.com/mGhassen/forja-packs)  
 **Archived tabs & verticals:** [archive/](archive/README.md) (Search, Discover, Jellyfin, Stremio, Music, Reading, …)
 
 ---

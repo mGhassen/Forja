@@ -99,14 +99,21 @@ export type PreferencesPayload = {
   play_source_torrent_enabled?: boolean
   play_source_stremio_enabled?: boolean
   play_source_nuvio_enabled?: boolean
+  /** Synced key — no Settings UI in app or web (defaults off). */
   play_source_webstreaming_enabled?: boolean
+  /** Synced key — admin/device only in app; not exposed on web. */
   simple_streaming_resolve_enabled?: boolean
   preferred_audio_lang?: string
+  preferred_subtitle_lang?: string
   avoid_unsupported_audio?: boolean
   auto_next_episode?: boolean
   auto_skip_intro?: boolean
+  content_warnings?: boolean
+  auto_pip_on_desktop_switch?: boolean
   iptv_epg_enabled?: boolean
   max_playback_height?: number
+  /** Stored: romaji | english | native */
+  anime_title_language?: string
   /** Host Addons → IPTV unlocked (RFC-086). Rail default-on via navigation. */
   addon_feature_iptv?: boolean
   /** @deprecated RFC-093 — Live Sports is pack-only; stripped on write. */
@@ -321,6 +328,16 @@ export const AUDIO_LANGUAGE_OPTIONS = [
   'Chinese',
 ] as const
 
+/** Same list as preferred audio — subtitle “None” starts with subs off. */
+export const SUBTITLE_LANGUAGE_OPTIONS = AUDIO_LANGUAGE_OPTIONS
+
+/** Flutter `SettingsService.animeTitleLanguageOptions` labels → stored values. */
+export const ANIME_TITLE_LANGUAGE_OPTIONS = [
+  { label: 'Romaji', value: 'romaji' },
+  { label: 'English', value: 'english' },
+  { label: 'Native', value: 'native' },
+] as const
+
 export type RemoteSettingSection = {
   key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv' | 'addons'
   title: string
@@ -333,21 +350,21 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     key: 'addons',
     title: 'Addons',
     description:
-      'Host product surfaces (Playback, IPTV, Live Sports, torrent, Stremio, Nuvio). Detail routes under /addons.',
+      'Host product surfaces (Playback, IPTV, torrent, Stremio, Nuvio). Detail routes under /addons.',
     href: '/account/settings/addons',
   },
   {
     key: 'iptv',
     title: 'IPTV portals',
     description:
-      'Assign Xtream portals for this profile (user_iptv_portals). Open from Addons → IPTV.',
+      'Assign Xtream portals and IPTV EPG for this profile. Open from Addons → IPTV.',
     href: '/account/settings/iptv',
   },
   {
     key: 'playback',
     title: 'Playback',
     description:
-      'Play sources, auto next, audio language, quality cap — Addons → Playback.',
+      'Player prefs — audio, subtitles, auto next/skip, quality, anime titles. Play sources live on the Addons hub.',
     href: '/account/settings/playback',
   },
   {
@@ -535,14 +552,18 @@ export function emptyPreferencesPayload(): PreferencesPayload {
     play_source_torrent_enabled: true,
     play_source_stremio_enabled: true,
     play_source_nuvio_enabled: true,
-    play_source_webstreaming_enabled: true,
+    play_source_webstreaming_enabled: false,
     simple_streaming_resolve_enabled: true,
     preferred_audio_lang: 'None',
+    preferred_subtitle_lang: 'English',
     avoid_unsupported_audio: true,
     auto_next_episode: true,
     auto_skip_intro: false,
+    content_warnings: true,
+    auto_pip_on_desktop_switch: false,
     iptv_epg_enabled: true,
     max_playback_height: 2160,
+    anime_title_language: 'romaji',
   }
 }
 
