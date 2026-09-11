@@ -80,7 +80,7 @@ abstract final class KitLiveBoot {
       final scrape = (page?.loadingProgressLabel ?? '').trim();
       return (
         busy: busy,
-        label: scrape.isEmpty ? 'Loading live catalogs…' : scrape,
+        label: scrape.isEmpty ? 'Loading…' : scrape,
       );
     };
     KitTopBarHostHooks.readFeedUpdatedLabel = (ref) {

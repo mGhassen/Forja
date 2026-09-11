@@ -98,3 +98,9 @@ Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (T
 ## Correction — cards are kit.list, not a Live Sports module
 
 `KitListLiveCards` / `KitListHostHooks` are **deleted**. `KitEventCard` / `KitMatchDetailsPage` paint from `KitListEntry` (`KitEventPaint`). `MatchEvent` stays in `engine/live` for merge/resolve/IPTV match. Badge URLs are pack-absolute — host `kitEventImageUrl` does not invent `streamed.pk`.
+
+---
+
+## Correction — kind icons and list search are pack chrome
+
+Host `kitMoodCircleMeta` only resolves pack **icon tokens** (`soccer`, `tv`, …). It does not map NFL / La Liga / WWE. `kindIcons` + search `placeholder` live on `hubs/live_sports/live_sports.js`. Horizon chip default is the pack `default` — host no longer hardcodes `airing|1h`. `KitScheduleEventSearch` is `KitListEventSearch`.

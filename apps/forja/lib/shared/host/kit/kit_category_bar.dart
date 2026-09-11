@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_category_circle_meta.dart';
+import 'package:forja/shared/host/kit/kit_category_circle_meta.dart';
 import 'package:forja/shared/host/kit/kit_focus.dart';
 import 'package:forja/shared/host/kit/kit_layout_scope.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
@@ -60,8 +60,10 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
     final dynamic = widget.spec['dynamic'] == true;
     final sourceId = (widget.spec['source'] ?? '').toString().trim();
 
-    var kinds = <({String id, String label})>[
-      for (final i in staticItems) i,
+    final kindIcons = kitCategoryBarKindIcons(widget.spec);
+    var kinds = <({String id, String label, String? icon})>[
+      for (final i in staticItems)
+        (id: i.id, label: i.label, icon: kindIcons[i.id.toLowerCase()]),
     ];
 
     if (dynamic) {
@@ -101,7 +103,14 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
           final sorted = found.toList()..sort();
           final haveAll = kinds.any((i) => i.id == 'all');
           if (!haveAll) {
-            kinds = [(id: 'all', label: 'All'), ...kinds];
+            kinds = [
+              (
+                id: 'all',
+                label: 'All',
+                icon: kindIcons['all'] ?? 'grid',
+              ),
+              ...kinds,
+            ];
           }
           final existing = {for (final i in kinds) i.id};
           for (final id in sorted) {
@@ -109,6 +118,7 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
             kinds.add((
               id: id,
               label: catalogKitCategoryLabel(id),
+              icon: kindIcons[id.toLowerCase()],
             ));
           }
         }
@@ -149,7 +159,7 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
 
           Widget circleAt(int i, {TvChipEdges? edges}) {
             final item = kinds[i];
-            final meta = catalogKitCategoryCircleMeta(item.id);
+            final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
             final on = selected == item.id;
             return ShellMoodCircleItem(
               layout: layout,
@@ -221,7 +231,7 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
             );
           }
 
-          // Overflow: scale to fit and keep centered (same as old Live Sports).
+          // Overflow: scale to fit and keep centered.
           return centeredRow(
             scaleToFit:
                 layout.contentWidth(kinds.length) > constraints.maxWidth,

@@ -1,2 +1,1 @@
-// Compatibility shim — RFC-106. Prefer shared/host/live_sports/chrome/...
-export 'package:forja/shared/host/kit/kit_schedule_event_search.dart';
+export 'package:forja/shared/host/kit/kit_list_event_search.dart';

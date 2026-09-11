@@ -135,7 +135,7 @@ class MetaFeedCatalogNotifier
           MetaFeedCatalogPage(
             entries: [],
             loadingRemote: true,
-            loadingProgressLabel: 'Loading live catalogs…',
+            loadingProgressLabel: 'Loading…',
           ),
         );
       }
@@ -144,7 +144,7 @@ class MetaFeedCatalogNotifier
         MetaFeedCatalogPage(
           entries: [],
           loadingRemote: true,
-          loadingProgressLabel: 'Loading live catalogs…',
+          loadingProgressLabel: 'Loading…',
         ),
       );
     }

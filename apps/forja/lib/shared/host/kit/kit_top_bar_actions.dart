@@ -6,7 +6,7 @@ import 'package:forja/shared/host/kit/kit_filter_sheet_option.dart';
 import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
 import 'package:forja/shared/host/kit/kit_focus.dart';
 import 'package:forja/shared/host/kit/kit_layout_scope.dart';
-import 'package:forja/shared/host/kit/kit_schedule_event_search.dart';
+import 'package:forja/shared/host/kit/kit_list_event_search.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';
 import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
@@ -91,7 +91,7 @@ class KitTopBarActions extends ConsumerWidget {
     final busyLabel = () {
       final raw = (feedBusy?.label ?? '').trim();
       if (raw.isNotEmpty) return raw;
-      return 'Loading live catalogs…';
+      return 'Loading…';
     }();
 
     final leading = <Map<String, dynamic>>[];
@@ -224,10 +224,14 @@ class KitTopBarActions extends ConsumerWidget {
     final isCatalog = id == 'catalog' || action['dynamicCatalogs'] == true;
 
     if (verb == 'eventsearch' || verb == 'search') {
-      return KitScheduleEventSearch(
+      final tooltip = (action['label'] ?? 'Search').toString().trim();
+      final hint = (action['placeholder'] ?? action['hint'] ?? '').toString().trim();
+      return KitListEventSearch(
         tabId: tabId,
         rowId: _widgetId,
         itemIndex: index,
+        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+        placeholder: hint.isEmpty ? 'Search…' : hint,
         onDownEdge: focusDown,
         onLeftEdge: focusLeft,
         onRightEdge: focusRight,
@@ -294,9 +298,10 @@ class KitTopBarActions extends ConsumerWidget {
     final bool selected;
     if (isSchedule) {
       label = _horizonChipLabel(action, horizonPref, catalogOptions);
+      final packDefault = _packActionDefault(action);
       selected = horizonPref != null &&
           horizonPref.isNotEmpty &&
-          horizonPref != 'airing|1h';
+          horizonPref != packDefault;
     } else if (isCatalog && catalogLabel != null) {
       label = catalogLabel(catalogPref, catalogOptions);
       selected = catalogSelected?.call(catalogPref) ?? false;
@@ -349,12 +354,17 @@ class KitTopBarActions extends ConsumerWidget {
     List<({String id, String label})> catalogOptions,
   ) {
     final items = _itemsFor(action, catalogOptions: catalogOptions);
-    final pref = (horizonPref ?? 'airing|1h').trim();
+    final pref = (horizonPref ?? '').trim().isNotEmpty
+        ? horizonPref!.trim()
+        : _packActionDefault(action);
     for (final item in items) {
       if (item.id == pref) return item.label;
     }
     return (action['label'] ?? 'Schedule').toString();
   }
+
+  static String _packActionDefault(Map<String, dynamic> action) =>
+      (action['default'] ?? '').toString().trim();
 
   String _chipLabel(
     KitLayoutScope scope,
@@ -460,7 +470,9 @@ class KitTopBarActions extends ConsumerWidget {
       context,
       title: (action['label'] ?? 'Schedule').toString(),
       sheetId: 'horizon',
-      current: (horizonPref ?? 'airing|1h').trim(),
+      current: ((horizonPref ?? '').trim().isNotEmpty
+              ? horizonPref!.trim()
+              : _packActionDefault(action)),
       items: items,
     );
     if (picked == null || !context.mounted) return;

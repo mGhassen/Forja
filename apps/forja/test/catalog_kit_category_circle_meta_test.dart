@@ -21,23 +21,29 @@ void main() {
     });
   });
 
-  group('catalogKitCategoryCircleMeta', () {
-    test('maps american-football before generic football', () {
-      final american = catalogKitCategoryCircleMeta('american-football');
-      final soccer = catalogKitCategoryCircleMeta('football');
-      expect(american.icon, Icons.sports_football_rounded);
-      expect(soccer.icon, Icons.sports_soccer_rounded);
+  group('kitMoodCircleMeta', () {
+    test('uses pack icon tokens — does not infer sports from kind ids', () {
+      expect(
+        kitMoodCircleMeta(icon: 'soccer').icon,
+        Icons.sports_soccer_rounded,
+      );
+      expect(
+        kitMoodCircleMeta(icon: 'football').icon,
+        Icons.sports_football_rounded,
+      );
+      expect(kitMoodCircleMeta(id: 'football').icon, Icons.sports_rounded);
+      expect(kitMoodCircleMeta(id: 'all').icon, Icons.grid_view_rounded);
     });
 
-    test('maps 24-7 and combat', () {
-      expect(
-        catalogKitCategoryCircleMeta('24-7').icon,
-        Icons.live_tv_rounded,
-      );
-      expect(
-        catalogKitCategoryCircleMeta('combat-sports').icon,
-        Icons.sports_mma_rounded,
-      );
+    test('unknown token falls back to sports', () {
+      expect(kitMoodIconToken('nope').icon, Icons.sports_rounded);
     });
+  });
+
+  test('kitCategoryBarKindIcons lowercases keys', () {
+    final map = kitCategoryBarKindIcons({
+      'kindIcons': {'Football': 'soccer'},
+    });
+    expect(map['football'], 'soccer');
   });
 }

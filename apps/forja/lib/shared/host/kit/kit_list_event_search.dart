@@ -13,16 +13,19 @@ import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 const _kSearchCollapsed = 40.0;
 const _kSearchExpanded = 260.0;
 
-/// Expanding event search for Live Sports kit top bar (left of Portals).
-class KitScheduleEventSearch extends ConsumerStatefulWidget {
-  const KitScheduleEventSearch({
+/// Expanding list search for [kit.topBar] (`action: search` / `eventSearch`).
+class KitListEventSearch extends ConsumerStatefulWidget {
+  const KitListEventSearch({
     super.key,
     required this.tabId,
     required this.rowId,
     required this.itemIndex,
+    this.tooltip = 'Search',
+    this.placeholder = 'Search…',
     this.onLeftEdge,
     this.onRightEdge,
     this.onDownEdge,
@@ -31,23 +34,24 @@ class KitScheduleEventSearch extends ConsumerStatefulWidget {
   final String tabId;
   final String rowId;
   final int itemIndex;
+  final String tooltip;
+  final String placeholder;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
 
   @override
-  ConsumerState<KitScheduleEventSearch> createState() =>
-      _KitScheduleEventSearchState();
+  ConsumerState<KitListEventSearch> createState() =>
+      _KitListEventSearchState();
 }
 
-class _KitScheduleEventSearchState
-    extends ConsumerState<KitScheduleEventSearch>
+class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
     with SingleTickerProviderStateMixin {
   final TextEditingController _ctrl = TextEditingController();
   final FocusNode _fieldFocus =
-      FocusNode(debugLabel: 'kit-schedule-event-search');
+      FocusNode(debugLabel: 'kit-list-event-search');
   final FocusNode _closeFocus =
-      FocusNode(debugLabel: 'kit-schedule-event-search-close');
+      FocusNode(debugLabel: 'kit-list-event-search-close');
   final GlobalKey<TvBrowseTextFieldState> _fieldKey =
       GlobalKey<TvBrowseTextFieldState>();
   late final AnimationController _anim;
@@ -85,7 +89,6 @@ class _KitScheduleEventSearchState
 
   void _onExpandStatus(AnimationStatus status) {
     if (!mounted) return;
-    // Collapsed tool unmounts at the end of expand — reclaim the chrome slot.
     if (status == AnimationStatus.completed &&
         ref.read(kitListEventSearchOpenProvider)) {
       _syncTvFieldRegistration(open: true);
@@ -104,9 +107,6 @@ class _KitScheduleEventSearchState
     super.dispose();
   }
 
-  /// When expanded, the collapsed Search tool unmounts — register [_fieldFocus]
-  /// at the same chrome slot so D-pad (← from Portals, → from Refresh, ↑ restore)
-  /// can land on the open field again (IPTV `_syncSearchChromeRow` parity).
   void _syncTvFieldRegistration({required bool open}) {
     if (open) {
       ShellTvFocusCoordinator.registerItemNode(
@@ -153,7 +153,6 @@ class _KitScheduleEventSearchState
     _anim.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Collapsed tool may still be registered mid-anim — re-claim the slot.
       _syncTvFieldRegistration(open: true);
       _focusField(edit: _tv);
     });
@@ -169,14 +168,17 @@ class _KitScheduleEventSearchState
         final local = TextEditingController(text: initial);
         return AlertDialog(
           backgroundColor: ForjaShellColors.surfaceElevated,
-          title: const Text('Search events', style: TextStyle(color: Colors.white)),
+          title: Text(
+            widget.tooltip,
+            style: const TextStyle(color: Colors.white),
+          ),
           content: TextField(
             controller: local,
             autofocus: true,
             style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'Team, match, sport…',
-              hintStyle: TextStyle(color: Colors.white38),
+            decoration: InputDecoration(
+              hintText: widget.placeholder,
+              hintStyle: const TextStyle(color: Colors.white38),
             ),
             onSubmitted: (v) => Navigator.pop(ctx, v),
           ),
@@ -351,7 +353,7 @@ class _KitScheduleEventSearchState
       onFocusChange: (f) => setState(() => _toolFocused = f),
       onHoverChange: (h) => setState(() => _toolHovered = h),
       child: Tooltip(
-        message: 'Search events',
+        message: widget.tooltip,
         child: Container(
           width: _kSearchCollapsed,
           height: _kSearchCollapsed,
@@ -415,7 +417,7 @@ class _KitScheduleEventSearchState
               onEscape: _closeSearch,
               onSubmitted: (_) => _focusField(edit: false),
               onKeyEvent: _onFieldKey,
-              browsePlaceholder: 'Search events…',
+              browsePlaceholder: widget.placeholder,
               browseHintStyle: GoogleFonts.plusJakartaSans(
                 color: Colors.white38,
                 fontSize: 13,
