@@ -1873,6 +1873,7 @@ class SettingsTextField extends StatefulWidget {
     this.autofocus = false,
     this.onSubmitted,
     this.keyboardType,
+    this.minLines,
     this.maxLines = 1,
     this.maxLength,
     this.inputFormatters,
@@ -1889,6 +1890,9 @@ class SettingsTextField extends StatefulWidget {
   final bool autofocus;
   final ValueChanged<String>? onSubmitted;
   final TextInputType? keyboardType;
+
+  /// When set with [maxLines] > 1, field stays one line tall until content grows.
+  final int? minLines;
   final int maxLines;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
@@ -2126,6 +2130,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
               (widget.maxLines > 1
                   ? TextInputType.multiline
                   : TextInputType.text)),
+      minLines: widget.minLines,
       maxLines: widget.maxLines,
       maxLength: widget.maxLength,
       inputFormatters: widget.inputFormatters,
