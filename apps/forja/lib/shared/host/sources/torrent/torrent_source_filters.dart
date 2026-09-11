@@ -14,7 +14,7 @@ import 'package:forja/shared/foundation/components/media_details/torrent_release
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/shell/forja_shell_chip.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -956,12 +956,14 @@ class _ScrollArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ForjaPlainIcon(
+    return Button(
+      variant: ButtonVariant.plainIcon,
+      size: ButtonSize.icon,
       icon: icon,
-      size: 16,
-      hitSize: 28,
+      iconSize: 16,
+      height: 28,
       color: ForjaShellColors.cinematic.textSecondary,
-      onTap: onTap,
+      onPressed: onTap,
     );
   }
 }
@@ -1434,10 +1436,12 @@ class _TorrentSourceSearchToolbarState
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ForjaPlainIcon(
+                Button(
+                  variant: ButtonVariant.plainIcon,
+                  size: ButtonSize.icon,
                   icon: Icons.tune_rounded,
-                  size: 18,
-                  hitSize: 32,
+                  iconSize: 18,
+                  height: 32,
                   color: (_activeCount > 0 || _filtersOpen)
                       ? ForjaShellColors.chipSelectedIcon
                       : ForjaShellColors.cinematic.textPrimary,
@@ -1583,10 +1587,13 @@ class _SearchFieldState extends State<_SearchField> {
           const SizedBox(width: 8),
           Expanded(child: field),
           if (widget.query.isNotEmpty)
-            ForjaCloseButton.compact(
-              tooltip: null,
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.close_rounded,
+              compact: true,
               color: secondary,
-              onTap: () => widget.onChanged(''),
+              onPressed: () => widget.onChanged(''),
             ),
         ],
       ),
@@ -1755,9 +1762,12 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
             ),
           )
         else
-          ForjaCloseButton(
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
+            icon: Icons.close_rounded,
             color: cinematic.textSecondary,
-            onTap: widget.onRequestClose,
+            onPressed: widget.onRequestClose,
           ),
       ],
     ];

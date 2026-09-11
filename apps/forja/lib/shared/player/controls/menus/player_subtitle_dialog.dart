@@ -16,7 +16,7 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Two-column Subtitles dialog — left languages, right tracks in the group.
@@ -252,7 +252,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     );
   }
 
-  /// Tune control — [ForjaPlainIcon] traps D-pad (no spatial arrows).
+  /// Tune control — desktop [Button] plainIcon; TV uses [FocusableControl].
   Widget _settingsChip() {
     final onSettings = widget.onSubtitleSettings;
     if (onSettings == null) return const SizedBox.shrink();
@@ -266,13 +266,15 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       ),
     );
     if (!_tvFocus) {
-      return ForjaPlainIcon(
+      return Button(
+        variant: ButtonVariant.plainIcon,
+        size: ButtonSize.icon,
         icon: Icons.tune_rounded,
-        size: 18,
-        hitSize: 32,
+        iconSize: 18,
+        height: 32,
         color: ForjaShellColors.cinematic.textSecondary,
         tooltip: 'Subtitle settings',
-        onTap: () {
+        onPressed: () {
           PlayerSubtitleDialog.dismiss();
           onSettings();
         },

@@ -14,7 +14,7 @@ import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_hero.dart';
 import 'package:forja/shared/foundation/components/details/kit_details_play_row.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Full-bleed live match details — [KitDetailsHero] + Providers / Live TV.
@@ -260,12 +260,14 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                       ),
                     ],
                     const Spacer(),
-                    ForjaPlainIcon(
+                    Button(
+                      variant: ButtonVariant.plainIcon,
+                      size: ButtonSize.icon,
                       icon: Icons.refresh_rounded,
                       tooltip: 'Reload',
                       color: ForjaShellColors.textSecondary,
-                      size: 20,
-                      onTap: _streamsLoading
+                      iconSize: 20,
+                      onPressed: _streamsLoading
                           ? null
                           : () => setState(() => _sourcesReloadNonce++),
                     ),

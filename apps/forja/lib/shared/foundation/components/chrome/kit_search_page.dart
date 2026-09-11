@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/shell/shell_error_retry_panel.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/tv_search_browse_overlay.dart';
@@ -833,24 +833,29 @@ class _KitSearchPageState extends State<KitSearchPage> {
       ),
       actions: [
         if (widget.structuredSearch)
-          ForjaPlainIcon(
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
             icon: Icons.tune_rounded,
-            size: 22,
+            iconSize: 22,
             focusNode: _filterFocusNode,
             color: (_filtersOpen || _filters.isActive)
                 ? ForjaShellColors.textPrimary
                 : ForjaShellColors.textSecondary,
             tooltip: 'Filters',
             onKeyEvent: _searchFilterTuneKeyEvent,
-            onTap: _toggleFiltersOpen,
+            onPressed: _toggleFiltersOpen,
           ),
         if (_controller.text.isNotEmpty)
-          ForjaCloseButton.compact(
-            tooltip: null,
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
+            icon: Icons.close_rounded,
+            compact: true,
             color: ForjaShellColors.cinematic.textPrimary,
             focusNode: _closeFocusNode,
             onKeyEvent: _searchCloseKeyEvent,
-            onTap: () {
+            onPressed: () {
               _controller.clear();
               _onSearchChanged('');
               _focusSearchFieldBrowse();
@@ -1022,12 +1027,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
             isDense: true,
             contentPadding: EdgeInsets.zero,
             suffixIcon: _query.isNotEmpty
-                ? ForjaCloseButton.compact(
-                    tooltip: null,
+                ? Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
+                    icon: Icons.close_rounded,
+                    compact: true,
                     color: ForjaShellColors.textSecondary,
                     focusNode: _closeFocusNode,
                     onKeyEvent: _searchCloseKeyEvent,
-                    onTap: () {
+                    onPressed: () {
                       _controller.clear();
                       _onSearchChanged('');
                       _focusSearchFieldBrowse();
@@ -1052,16 +1060,18 @@ class _KitSearchPageState extends State<KitSearchPage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: field),
-        ForjaPlainIcon(
+        Button(
+          variant: ButtonVariant.plainIcon,
+          size: ButtonSize.icon,
           icon: Icons.tune_rounded,
-          size: 24,
+          iconSize: 24,
           focusNode: _filterFocusNode,
           color: (_filtersOpen || _filters.isActive)
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.textSecondary,
           tooltip: 'Filters',
           onKeyEvent: _searchFilterTuneKeyEvent,
-          onTap: _toggleFiltersOpen,
+          onPressed: _toggleFiltersOpen,
         ),
       ],
     );

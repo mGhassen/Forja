@@ -14,7 +14,6 @@ import 'anime_arabic_details_screen.dart';
 import 'anime_arabic_player_screen.dart';
 import 'anime_arabic_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -325,10 +324,12 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                                   ),
                                 ),
                                 actions: [
-                                  ForjaPlainIcon(
+                                  Button(
+                                    variant: ButtonVariant.plainIcon,
+                                    size: ButtonSize.icon,
                                     icon: Icons.search,
                                     color: Colors.white,
-                                    onTap: _openSearch,
+                                    onPressed: _openSearch,
                                   ),
                                   const SizedBox(width: 4),
                                 ],
@@ -701,10 +702,12 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
                         : null,
                   ),
                   const SizedBox(width: 16),
-                  ForjaPlainIcon(
+                  Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
                     icon: Icons.info_outline_rounded,
                     tooltip: 'تفاصيل',
-                    onTap: () => _openDetails(a),
+                    onPressed: () => _openDetails(a),
                   ),
                 ],
               ),

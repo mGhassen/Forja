@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Shell-owned search field shown above tab body on the Search tab.
@@ -65,10 +65,13 @@ class ShellSearchBar extends StatelessWidget {
             prefixIcon: const Icon(Icons.search, color: Colors.white54),
             suffixIcon: query.isNotEmpty
                 ? (clearSuffix ??
-                    ForjaCloseButton.compact(
-                      tooltip: null,
+                    Button(
+                      variant: ButtonVariant.plainIcon,
+                      size: ButtonSize.icon,
+                      icon: Icons.close_rounded,
+                      compact: true,
                       color: Colors.white70,
-                      onTap: onClear,
+                      onPressed: onClear,
                     ))
                 : null,
           ),

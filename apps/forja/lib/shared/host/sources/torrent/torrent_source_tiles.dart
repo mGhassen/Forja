@@ -7,7 +7,7 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
@@ -903,13 +903,15 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 if (showCopyMagnet) ...[
                                   if (hasProvider || hasSeeders)
                                     const SizedBox(height: 2),
-                                  ForjaPlainIcon(
+                                  Button(
+                                    variant: ButtonVariant.plainIcon,
+                                    size: ButtonSize.icon,
                                     icon: Icons.content_copy_rounded,
                                     tooltip: 'Copy magnet',
-                                    size: 15,
-                                    hitSize: 24,
+                                    iconSize: 15,
+                                    height: 24,
                                     color: cinematic.textSecondary,
-                                    onTap: () async {
+                                    onPressed: () async {
                                       await Clipboard.setData(
                                         ClipboardData(text: magnet),
                                       );

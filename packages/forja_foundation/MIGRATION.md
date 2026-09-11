@@ -58,9 +58,9 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | `ForjaButton(variant: ForjaButtonVariant.destructive, …)` / `ForjaButton.destructive(…)` | `Button(variant: ButtonVariant.destructive, …)` |
 | `busy: true` | `loading: true` |
 | `ForjaGhostButton(label:, onTap:, icon:, autoFocus:, focusNode:)` | `Button(variant: ButtonVariant.ghost, label:, onPressed: onTap, icon:, autofocus: autoFocus, focusNode:)` |
-| `ForjaPlainIcon(icon:, onTap:, tooltip:, color:, size:, focusNode:)` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:, color:, iconSize: size, focusNode:)` |
+| `ForjaPlainIcon(icon:, onTap:, tooltip:, color:, size:, focusNode:, onKeyEvent:)` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, focusNode:, onKeyEvent:)` |
 | `ForjaIconButton(icon:, onTap:, tooltip:)` | `Button(variant: ButtonVariant.outline, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:)` |
-| `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, compact: true)` |
+| `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, compact: true, onKeyEvent:)` |
 | `ForjaInteractive` | **not** Button — `package:forja/shared/shell/forja_interactive.dart` |
 
 Do **not** import `compat/legacy_buttons.dart` from app code. Rewrite constructors.

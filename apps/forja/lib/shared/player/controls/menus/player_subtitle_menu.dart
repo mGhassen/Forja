@@ -8,7 +8,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 /// Fired when the user picks Off, an embedded track, or an external file.
 typedef PlayerSubtitleSelectionCallback = void Function({
@@ -466,11 +466,13 @@ class _SubtitleTuneChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!tv) {
-      return ForjaPlainIcon(
+      return Button(
+        variant: ButtonVariant.plainIcon,
+        size: ButtonSize.icon,
         icon: Icons.tune_rounded,
-        size: 18,
+        iconSize: 18,
         color: Colors.white54,
-        onTap: onTap,
+        onPressed: onTap,
       );
     }
     return FocusableControl(

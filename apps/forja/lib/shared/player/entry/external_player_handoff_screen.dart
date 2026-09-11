@@ -9,7 +9,8 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/shell/loading_overlay.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/forja_interactive.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
@@ -314,9 +315,13 @@ class _PlayerPickerBody extends StatelessWidget {
               // Order 0: ↑ from first list row lands here (exit).
               FocusTraversalOrder(
                 order: const NumericFocusOrder(0),
-                child: ForjaCloseButton.compact(
+                child: Button(
+                  variant: ButtonVariant.plainIcon,
+                  size: ButtonSize.icon,
+                  icon: Icons.close_rounded,
+                  compact: true,
                   color: ForjaShellColors.textSecondary,
-                  onTap: onCancel,
+                  onPressed: onCancel,
                 ),
               ),
             ],

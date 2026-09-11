@@ -675,12 +675,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   Widget _portalDialogCloseButton({required VoidCallback? onTap}) {
-    final icon = ForjaPlainIcon(
+    final icon = Button(
+      variant: ButtonVariant.plainIcon,
+      size: ButtonSize.icon,
       icon: Icons.close_rounded,
       tooltip: 'Close',
       color: IptvShellStyle.iconMuted,
-      size: 22,
-      onTap: onTap,
+      iconSize: 22,
+      onPressed: onTap,
     );
     if (iptvUseTvFocus(context)) {
       return ExcludeFocus(child: icon);
@@ -1004,15 +1006,19 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                             dialogIndex: urlIndex,
                                             suffix: _platform ==
                                                     IptvPortalPlatform.m3u
-                                                ? ForjaPlainIcon(
+                                                ? Button(
+                                                    variant:
+                                                        ButtonVariant.plainIcon,
+                                                    size: ButtonSize.icon,
                                                     icon: Icons
                                                         .folder_open_rounded,
                                                     tooltip:
                                                         'Choose local file',
                                                     color: IptvShellStyle
                                                         .iconMuted,
-                                                    size: 20,
-                                                    onTap: _pickPlaylistFile,
+                                                    iconSize: 20,
+                                                    onPressed:
+                                                        _pickPlaylistFile,
                                                   )
                                                 : null,
                                           ),
@@ -1035,15 +1041,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                               suffix: _platform ==
                                                       IptvPortalPlatform
                                                           .stalker
-                                                  ? ForjaPlainIcon(
+                                                  ? Button(
+                                                      variant: ButtonVariant
+                                                          .plainIcon,
+                                                      size: ButtonSize.icon,
                                                       icon: Icons
                                                           .autorenew_rounded,
                                                       tooltip:
                                                           'Generate MAC',
                                                       color: IptvShellStyle
                                                           .iconMuted,
-                                                      size: 20,
-                                                      onTap: () => setState(
+                                                      iconSize: 20,
+                                                      onPressed: () => setState(
                                                         () => _userCtrl.text =
                                                             StalkerMac
                                                                 .generate(),
@@ -1536,12 +1545,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }) {
     final tv = iptvUseTvFocus(context);
     if (!tv) {
-      return ForjaPlainIcon(
+      return Button(
+        variant: ButtonVariant.plainIcon,
+        size: ButtonSize.icon,
         icon: icon,
         tooltip: tooltip,
         color: IptvShellStyle.iconMuted,
-        size: 20,
-        onTap: onTap,
+        iconSize: 20,
+        onPressed: onTap,
       );
     }
     final focused = suffixFocus.hasFocus;

@@ -15,7 +15,7 @@ import 'package:forja/shared/foundation/components/media_details/watch_progress_
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/shell/forja_shell_chip.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
@@ -1731,10 +1731,13 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
                   Expanded(child: searchField),
                   if (widget.searchQuery.isNotEmpty)
                     ExcludeFocus(
-                      child: ForjaCloseButton.compact(
-                        tooltip: null,
+                      child: Button(
+                        variant: ButtonVariant.plainIcon,
+                        size: ButtonSize.icon,
+                        icon: Icons.close_rounded,
+                        compact: true,
                         color: secondary,
-                        onTap: () => widget.onSearchChanged(''),
+                        onPressed: () => widget.onSearchChanged(''),
                       ),
                     ),
                 ],

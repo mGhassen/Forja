@@ -10,7 +10,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 /// Exo track / settings menus — same popup chrome as MediaKit.
 abstract final class ExoPlayerMenus {
@@ -656,7 +656,7 @@ class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> 
   }
 }
 
-/// Tune icon — [ForjaPlainIcon] traps D-pad; TV uses [FocusableControl] → Close.
+/// Tune icon — desktop [Button] plainIcon; TV uses [FocusableControl] → Close.
 class _SubtitleTuneChip extends StatelessWidget {
   const _SubtitleTuneChip({
     required this.tv,
@@ -671,11 +671,13 @@ class _SubtitleTuneChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!tv) {
-      return ForjaPlainIcon(
+      return Button(
+        variant: ButtonVariant.plainIcon,
+        size: ButtonSize.icon,
         icon: Icons.tune_rounded,
-        size: 18,
+        iconSize: 18,
         color: Colors.white54,
-        onTap: onTap,
+        onPressed: onTap,
       );
     }
     final face = SizedBox(

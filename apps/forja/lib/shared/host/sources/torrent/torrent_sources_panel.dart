@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -140,9 +140,12 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        ForjaCloseButton(
+        Button(
+          variant: ButtonVariant.plainIcon,
+          size: ButtonSize.icon,
+          icon: Icons.close_rounded,
           color: ForjaShellColors.cinematic.textSecondary,
-          onTap: onClose,
+          onPressed: onClose,
         ),
       ],
     );
@@ -238,9 +241,13 @@ class PlayerSidePanelHeader extends StatelessWidget {
                 if (showClose) const SizedBox(width: 2),
               ],
               if (showClose)
-                ForjaCloseButton.compact(
+                Button(
+                  variant: ButtonVariant.plainIcon,
+                  size: ButtonSize.icon,
+                  icon: Icons.close_rounded,
+                  compact: true,
                   color: cinematic.textSecondary,
-                  onTap: onClose,
+                  onPressed: onClose,
                   focusNode: closeFocusNode,
                   onKeyEvent: closeOnKeyEvent,
                 ),

@@ -14,6 +14,7 @@ class PrimitiveButton extends StatelessWidget {
     this.constraints,
     this.borderRadius,
     this.tooltip,
+    this.onKeyEvent,
   });
 
   final VoidCallback? onPressed;
@@ -26,6 +27,7 @@ class PrimitiveButton extends StatelessWidget {
   final BoxConstraints? constraints;
   final BorderRadius? borderRadius;
   final String? tooltip;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +58,56 @@ class PrimitiveButton extends StatelessWidget {
     if (tooltip != null && tooltip!.isNotEmpty) {
       button = Tooltip(message: tooltip!, child: button);
     }
+    final node = focusNode;
+    final keyHook = onKeyEvent;
+    if (node != null && keyHook != null) {
+      button = _FocusKeyHook(node: node, onKeyEvent: keyHook, child: button);
+    }
     return button;
   }
+}
+
+class _FocusKeyHook extends StatefulWidget {
+  const _FocusKeyHook({
+    required this.node,
+    required this.onKeyEvent,
+    required this.child,
+  });
+
+  final FocusNode node;
+  final KeyEventResult Function(FocusNode node, KeyEvent event) onKeyEvent;
+  final Widget child;
+
+  @override
+  State<_FocusKeyHook> createState() => _FocusKeyHookState();
+}
+
+class _FocusKeyHookState extends State<_FocusKeyHook> {
+  @override
+  void initState() {
+    super.initState();
+    widget.node.onKeyEvent = widget.onKeyEvent;
+  }
+
+  @override
+  void didUpdateWidget(covariant _FocusKeyHook oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.node != widget.node) {
+      if (oldWidget.node.onKeyEvent == oldWidget.onKeyEvent) {
+        oldWidget.node.onKeyEvent = null;
+      }
+    }
+    widget.node.onKeyEvent = widget.onKeyEvent;
+  }
+
+  @override
+  void dispose() {
+    if (widget.node.onKeyEvent == widget.onKeyEvent) {
+      widget.node.onKeyEvent = null;
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

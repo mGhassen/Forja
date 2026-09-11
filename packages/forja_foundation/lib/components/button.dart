@@ -41,6 +41,7 @@ class Button extends StatelessWidget {
     this.iconSize,
     this.compact = false,
     this.height,
+    this.onKeyEvent,
   }) : assert(child != null || label != null || icon != null);
 
   final VoidCallback? onPressed;
@@ -58,6 +59,7 @@ class Button extends StatelessWidget {
   final double? iconSize;
   final bool compact;
   final double? height;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +148,7 @@ class Button extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(theme.radiusMd),
       tooltip: tooltip,
+      onKeyEvent: onKeyEvent,
       child: content,
     );
 

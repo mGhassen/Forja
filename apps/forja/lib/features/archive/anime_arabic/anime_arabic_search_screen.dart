@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service.dart';
 import 'anime_arabic_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/hover_scale.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class AnimeArabicSearchScreen extends StatefulWidget {
@@ -102,10 +102,13 @@ class _AnimeArabicSearchScreenState extends State<AnimeArabicSearchScreen> {
                 TextStyle(color: Colors.white.withValues(alpha: 0.4)),
             border: InputBorder.none,
             suffixIcon: _ctrl.text.isNotEmpty
-                ? ForjaCloseButton.compact(
-                    tooltip: null,
+                ? Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
+                    icon: Icons.close_rounded,
+                    compact: true,
                     color: Colors.white70,
-                    onTap: () {
+                    onPressed: () {
                       _ctrl.clear();
                       _onChanged('');
                     },

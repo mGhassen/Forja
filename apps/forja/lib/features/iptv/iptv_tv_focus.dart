@@ -12,7 +12,7 @@ import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/forja_shell_profile.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// D-pad / focus-graph surface (leanback **and** desktop hybrid).
@@ -597,12 +597,13 @@ Widget iptvBackButton(
       onFocusChange: onFocusChange,
     );
   }
-  return ForjaPlainIcon(
+  return Button(
+    variant: ButtonVariant.plainIcon,
+    size: ButtonSize.icon,
     icon: Icons.arrow_back_rounded,
-    onTap: onTap,
+    onPressed: onTap,
     color: color,
-    size: size,
-    hoverScale: 1.15,
+    iconSize: size,
     tooltip: tooltip,
   );
 }
@@ -626,12 +627,15 @@ Widget iptvCloseButton(
       borderRadius: hitSize / 2,
     );
   }
-  return ForjaCloseButton.compact(
-    tooltip: null,
+  return Button(
+    variant: ButtonVariant.plainIcon,
+    size: ButtonSize.icon,
+    icon: Icons.close_rounded,
+    compact: true,
     color: idle,
-    size: size,
-    hitSize: hitSize,
-    onTap: onTap,
+    iconSize: size,
+    height: hitSize,
+    onPressed: onTap,
   );
 }
 

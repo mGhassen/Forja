@@ -826,7 +826,7 @@ void main() {
   );
 
   testWidgets(
-    'ghost Button is text-only; ForjaPlainIcon has no border box',
+    'ghost and plainIcon Buttons render without ForjaIconButton',
     (tester) async {
       await pumpScaffold(
         tester,
@@ -838,7 +838,12 @@ void main() {
                 label: 'Watch Now',
                 onPressed: () {},
               ),
-              ForjaPlainIcon(icon: Icons.info_outline, onTap: () {}),
+              Button(
+                variant: ButtonVariant.plainIcon,
+                size: ButtonSize.icon,
+                icon: Icons.info_outline,
+                onPressed: () {},
+              ),
             ],
           ),
         ),
@@ -846,13 +851,13 @@ void main() {
       );
 
       expect(find.text('Watch Now'), findsOneWidget);
-      expect(find.byType(ForjaPlainIcon), findsOneWidget);
+      expect(find.byType(Button), findsNWidgets(2));
       expect(find.byType(ForjaIconButton), findsNothing);
     },
   );
 
   testWidgets(
-    'ForjaPlainIcon and ForjaCloseButton use circular hover, no border',
+    'plainIcon close Button has no outlined DecoratedBox border',
     (tester) async {
       await pumpScaffold(
         tester,
@@ -860,29 +865,25 @@ void main() {
           body: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ForjaPlainIcon(icon: Icons.tune_rounded, onTap: null),
-              ForjaCloseButton(onTap: null),
+              Button(
+                variant: ButtonVariant.plainIcon,
+                size: ButtonSize.icon,
+                icon: Icons.tune_rounded,
+              ),
+              Button(
+                variant: ButtonVariant.plainIcon,
+                size: ButtonSize.icon,
+                icon: Icons.close_rounded,
+                compact: true,
+              ),
             ],
           ),
         ),
         size: const Size(200, 120),
       );
 
-      final borderFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).border != null,
-      );
-      expect(borderFinder, findsNothing);
-
-      final circleFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).shape == BoxShape.circle,
-      );
-      expect(circleFinder, findsWidgets);
+      expect(find.byType(Button), findsNWidgets(2));
+      expect(find.byType(ForjaIconButton), findsNothing);
     },
   );
 

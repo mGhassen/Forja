@@ -38,24 +38,29 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       ),
       actions: [
         if (_s._controller.text.isNotEmpty)
-          ForjaCloseButton.compact(
-            tooltip: null,
+          Button(
+            variant: ButtonVariant.plainIcon,
+            size: ButtonSize.icon,
+            icon: Icons.close_rounded,
+            compact: true,
             color: ForjaShellColors.cinematic.textPrimary,
-            onTap: () {
+            onPressed: () {
               _s._controller.clear();
               _s._onSearchChanged('');
             },
           ),
-        ForjaPlainIcon(
+        Button(
+          variant: ButtonVariant.plainIcon,
+          size: ButtonSize.icon,
           icon: Icons.tune_rounded,
-          size: 24,
+          iconSize: 24,
           focusNode: _s._filterFocusNode,
           color: (_s._filtersOpen || _s._filters.isActive)
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.textSecondary,
           tooltip: 'Filters',
           onKeyEvent: _s._searchFilterTuneKeyEvent,
-          onTap: _s._toggleFiltersOpen,
+          onPressed: _s._toggleFiltersOpen,
         ),
         const SizedBox(width: 4),
       ],
@@ -82,16 +87,18 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 },
               ),
             ),
-            ForjaPlainIcon(
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
               icon: Icons.tune_rounded,
-              size: 24,
+              iconSize: 24,
               focusNode: _s._filterFocusNode,
               color: (_s._filtersOpen || _s._filters.isActive)
                   ? ForjaShellColors.textPrimary
                   : ForjaShellColors.textSecondary,
               tooltip: 'Filters',
               onKeyEvent: _s._searchFilterTuneKeyEvent,
-              onTap: _s._toggleFiltersOpen,
+              onPressed: _s._toggleFiltersOpen,
             ),
             const SizedBox(width: 8),
           ],
@@ -316,27 +323,32 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               ),
             ),
             if (_s._query.isNotEmpty)
-              ForjaCloseButton.compact(
-                tooltip: null,
+              Button(
+                variant: ButtonVariant.plainIcon,
+                size: ButtonSize.icon,
+                icon: Icons.close_rounded,
+                compact: true,
                 color: ForjaShellColors.textSecondary,
                 focusNode: _s._closeFocusNode,
                 onKeyEvent: _s._searchCloseKeyEvent,
-                onTap: () {
+                onPressed: () {
                   _s._controller.clear();
                   _s._onSearchChanged('');
                   _s._focusSearchFieldBrowse();
                 },
               ),
-            ForjaPlainIcon(
+            Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
               icon: Icons.tune_rounded,
-              size: 24,
+              iconSize: 24,
               focusNode: _s._filterFocusNode,
               color: (_s._filtersOpen || filtersActive)
                   ? ForjaShellColors.textPrimary
                   : ForjaShellColors.textSecondary,
               tooltip: 'Filters',
               onKeyEvent: _s._searchFilterTuneKeyEvent,
-              onTap: _s._toggleFiltersOpen,
+              onPressed: _s._toggleFiltersOpen,
             ),
           ],
         ),

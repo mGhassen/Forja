@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/shell/shell_card_play_overlay.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -226,11 +226,14 @@ class _ContinueWatchingCardState
                     excluding: !policy.scaleOnHover,
                     child: Column(
                       children: [
-                        ForjaCloseButton(
-                          size: 14,
-                          hitSize: 28,
+                        Button(
+                          variant: ButtonVariant.plainIcon,
+                          size: ButtonSize.icon,
+                          icon: Icons.close_rounded,
+                          iconSize: 14,
+                          height: 28,
                           color: Colors.white70,
-                          onTap: widget.onRemove,
+                          onPressed: widget.onRemove,
                         ),
                         const SizedBox(height: 4),
                         Material(
