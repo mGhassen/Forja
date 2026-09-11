@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/live/kit_schedule_event_query.dart';
+import 'package:forja/shared/host/kit/kit_list_event_query.dart';
 
 KitListEntry _entry({
   required String name,
@@ -21,16 +21,16 @@ KitListEntry _entry({
 void main() {
   test('empty query matches everything', () {
     final e = _entry(name: 'Clydebank vs Alloa Athletic');
-    expect(kitScheduleEntryMatchesQuery(e, ''), isTrue);
-    expect(kitScheduleEntryMatchesQuery(e, '   '), isTrue);
+    expect(kitListEntryMatchesQuery(e, ''), isTrue);
+    expect(kitListEntryMatchesQuery(e, '   '), isTrue);
   });
 
   test('matches title tokens', () {
     final e = _entry(name: 'Clydebank vs Alloa Athletic');
-    expect(kitScheduleEntryMatchesQuery(e, 'clydebank'), isTrue);
-    expect(kitScheduleEntryMatchesQuery(e, 'alloa'), isTrue);
-    expect(kitScheduleEntryMatchesQuery(e, 'clyde alloa'), isTrue);
-    expect(kitScheduleEntryMatchesQuery(e, 'arsenal'), isFalse);
+    expect(kitListEntryMatchesQuery(e, 'clydebank'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'alloa'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'clyde alloa'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'arsenal'), isFalse);
   });
 
   test('matches teams and sport from row', () {
@@ -43,16 +43,16 @@ void main() {
         'sport': 'Basketball',
       },
     );
-    expect(kitScheduleEntryMatchesQuery(e, 'lakers'), isTrue);
-    expect(kitScheduleEntryMatchesQuery(e, 'celtics basketball'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'lakers'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'celtics basketball'), isTrue);
   });
 
-  test('kitScheduleFilterEntries drops misses', () {
+  test('kitListFilterEntries drops misses', () {
     final entries = [
       _entry(name: 'A vs B'),
       _entry(name: 'C vs D'),
     ];
-    expect(kitScheduleFilterEntries(entries, 'c vs').single.meta.name, 'C vs D');
-    expect(kitScheduleFilterEntries(entries, '').length, 2);
+    expect(kitListFilterEntries(entries, 'c vs').single.meta.name, 'C vs D');
+    expect(kitListFilterEntries(entries, '').length, 2);
   });
 }

@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/host/kit/kit_filter_sheet_option.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_schedule_event_search.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_schedule_view_toggle.dart';
+import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
 import 'package:forja/shared/host/kit/kit_focus.dart';
 import 'package:forja/shared/host/kit/kit_layout_scope.dart';
+import 'package:forja/shared/host/kit/kit_schedule_event_search.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';
 import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -77,8 +76,11 @@ class KitTopBarActions extends ConsumerWidget {
     final layoutHorizon = scope.selectedId('horizon') ??
         scope.selectedId('schedule') ??
         scope.selectedId('time');
-    final horizonPref =
-        KitTopBarHostHooks.readSchedulePref?.call(ref) ?? layoutHorizon;
+    final horizonPref = ref.watch(kitFeedHorizonPrefProvider);
+    final resolvedHorizon =
+        (layoutHorizon == null || layoutHorizon.isEmpty)
+            ? horizonPref
+            : layoutHorizon;
     final layoutCatalog = scope.selectedId('catalog');
     final catalogPref =
         KitTopBarHostHooks.readCatalogPref?.call(ref) ?? layoutCatalog;
@@ -114,7 +116,7 @@ class KitTopBarActions extends ConsumerWidget {
         focusDown: focusDown,
         catalogOptions: catalogOptions,
         catalogPref: catalogPref,
-        horizonPref: horizonPref,
+        horizonPref: resolvedHorizon,
       );
       if (w != null) {
         built.add(w);
@@ -138,7 +140,7 @@ class KitTopBarActions extends ConsumerWidget {
         focusDown: focusDown,
         catalogOptions: catalogOptions,
         catalogPref: catalogPref,
-        horizonPref: horizonPref,
+        horizonPref: resolvedHorizon,
       );
       if (w != null) {
         trailingBuilt.add(w);
@@ -209,14 +211,6 @@ class KitTopBarActions extends ConsumerWidget {
         onDownEdge: focusDown,
       );
     }
-    if (verb == 'scheduleview' || verb == 'view' || verb == 'listcards') {
-      return KitScheduleViewToggle(
-        tvTabId: tabId,
-        tvRowId: _widgetId,
-        tvItemIndex: index,
-        onDownEdge: focusDown,
-      );
-    }
 
     final hostBuilder = KitTopBarHostHooks.packActionBuilders[verb] ??
         KitTopBarHostHooks.packActionBuilders[id];
@@ -235,8 +229,6 @@ class KitTopBarActions extends ConsumerWidget {
     }
 
     final icon = _iconFor(action);
-    final scheduleLabel = KitTopBarHostHooks.scheduleChipLabel;
-    final scheduleSelected = KitTopBarHostHooks.scheduleChipSelected;
     final catalogLabel = KitTopBarHostHooks.catalogChipLabel;
     final catalogSelected = KitTopBarHostHooks.catalogChipSelected;
 
@@ -276,9 +268,11 @@ class KitTopBarActions extends ConsumerWidget {
 
     final String label;
     final bool selected;
-    if (isSchedule && scheduleLabel != null) {
-      label = scheduleLabel(horizonPref);
-      selected = scheduleSelected?.call(horizonPref) ?? false;
+    if (isSchedule) {
+      label = _horizonChipLabel(action, horizonPref, catalogOptions);
+      selected = horizonPref != null &&
+          horizonPref.isNotEmpty &&
+          horizonPref != 'airing|1h';
     } else if (isCatalog && catalogLabel != null) {
       label = catalogLabel(catalogPref, catalogOptions);
       selected = catalogSelected?.call(catalogPref) ?? false;
@@ -297,7 +291,14 @@ class KitTopBarActions extends ConsumerWidget {
       onDownEdge: focusDown ?? () {},
       onTap: () => unawaited(
         isSchedule
-            ? _onSchedule(context, scope, horizonPref: horizonPref)
+            ? _onSchedule(
+                context,
+                ref,
+                scope,
+                action: action,
+                horizonPref: horizonPref,
+                catalogOptions: catalogOptions,
+              )
             : isCatalog
                 ? _onCatalog(
                     context,
@@ -307,12 +308,26 @@ class KitTopBarActions extends ConsumerWidget {
                   )
                 : _onAction(
                     context,
+                    ref,
                     scope,
                     action,
                     catalogOptions: catalogOptions,
                   ),
       ),
     );
+  }
+
+  String _horizonChipLabel(
+    Map<String, dynamic> action,
+    String? horizonPref,
+    List<({String id, String label})> catalogOptions,
+  ) {
+    final items = _itemsFor(action, catalogOptions: catalogOptions);
+    final pref = (horizonPref ?? 'airing|1h').trim();
+    for (final item in items) {
+      if (item.id == pref) return item.label;
+    }
+    return (action['label'] ?? 'Schedule').toString();
   }
 
   String _chipLabel(
@@ -407,23 +422,29 @@ class KitTopBarActions extends ConsumerWidget {
 
   Future<void> _onSchedule(
     BuildContext context,
+    WidgetRef ref,
     KitLayoutScope scope, {
+    required Map<String, dynamic> action,
     required String? horizonPref,
+    required List<({String id, String label})> catalogOptions,
   }) async {
-    final opener = KitTopBarHostHooks.openScheduleSheet;
-    if (opener == null) return;
-    await opener(
+    final items = _itemsFor(action, catalogOptions: catalogOptions);
+    if (items.isEmpty) return;
+    final picked = await _genericPicker(
       context,
-      currentPref: horizonPref ?? kKitScheduleDefaultPref,
-      onChanged: (pref) {
-        if (!context.mounted) return;
-        scope.onSelect('horizon', pref, toggle: false);
-      },
+      title: (action['label'] ?? 'Schedule').toString(),
+      sheetId: 'horizon',
+      current: (horizonPref ?? 'airing|1h').trim(),
+      items: items,
     );
+    if (picked == null || !context.mounted) return;
+    scope.onSelect('horizon', picked, toggle: false);
+    ref.read(kitFeedHorizonPrefProvider.notifier).state = picked;
   }
 
   Future<void> _onAction(
     BuildContext context,
+    WidgetRef ref,
     KitLayoutScope scope,
     Map<String, dynamic> action, {
     required List<({String id, String label})> catalogOptions,
@@ -449,6 +470,9 @@ class KitTopBarActions extends ConsumerWidget {
     );
     if (picked == null || !context.mounted) return;
     scope.onSelect(id, picked, toggle: false);
+    if (id == 'view' || verb == 'view') {
+      ref.read(kitListStyleOverrideProvider.notifier).state = picked;
+    }
   }
 
   Future<String?> _genericPicker(

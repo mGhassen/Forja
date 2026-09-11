@@ -149,7 +149,8 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 
 | Surface | New path |
 |---------|----------|
-| Match / schedule models + prefs | `package:forja/shared/engine/live/**` |
+| Live feed merge / resolve / unlock | `package:forja/shared/engine/live/**` (no pack UX) |
+| Horizon / view / open menus | live_sports hub pack layout + settings |
 | List-follow / merge | `package:forja/shared/engine/lists/**` |
 | Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `package:forja/shared/player/sources/**` |

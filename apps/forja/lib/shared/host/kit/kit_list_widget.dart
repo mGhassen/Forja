@@ -19,7 +19,9 @@ import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_list_open_mode.dart';
+import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
+import 'package:forja/shared/host/kit/kit_list_event_query.dart';
+import 'package:forja/shared/host/kit/kit_list_open_mode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
@@ -135,12 +137,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       (_effectiveOpen.isEmpty && _isDenseList);
 
   void _resolveEffectiveLayout(WidgetRef ref) {
-    final hostStyle = KitListHostHooks.resolveStyle?.call(
-      ref,
-      listSource: widget.listSource,
-      layoutStyle: widget.listStyle,
-    );
-    _effectiveStyle = (hostStyle ?? widget.listStyle).trim().toLowerCase();
+    final override = ref.watch(kitListStyleOverrideProvider).trim().toLowerCase();
+    _effectiveStyle = (override.isEmpty ? widget.listStyle : override)
+        .trim()
+        .toLowerCase();
     if (_effectiveStyle.isEmpty) _effectiveStyle = 'grid';
 
     final openSetting = widget.openSettingId;
@@ -448,11 +448,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           final kinds = <String>{};
           for (final e in page.entriesForKind(null)) {
             if (e.kind.isEmpty) continue;
-            final omit = KitListHostHooks.omitKind?.call(
-                  widget.listSource,
-                  e.kind,
-                ) ??
-                false;
+            final omit = source.omitKindIds.contains(e.kind) ||
+                (KitListHostHooks.omitKind?.call(
+                      widget.listSource,
+                      e.kind,
+                    ) ??
+                    false);
             if (!omit) kinds.add(e.kind);
           }
           final sorted = kinds.toList()..sort();
@@ -466,18 +467,14 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
-        final eventQuery = KitListHostHooks.readEventQuery?.call(
-              ref,
-              widget.listSource,
-            ) ??
-            '';
+        final eventQuery = ref.watch(kitListEventQueryProvider);
         final rawEntries = page.entriesForKind(kind);
-        final entries = KitListHostHooks.filterEntries?.call(
+        final hooked = KitListHostHooks.filterEntries?.call(
               widget.listSource,
               rawEntries,
               eventQuery,
-            ) ??
-            rawEntries;
+            );
+        final entries = hooked ?? kitListFilterEntries(rawEntries, eventQuery);
         _consumePendingOpen(entries);
         if (entries.isEmpty) {
           return _emptyState(

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:forja/shared/engine/live/kit_schedule_event_query.dart';
+import 'package:forja/shared/host/kit/kit_list_event_query.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -63,7 +63,7 @@ class _KitScheduleEventSearchState
   @override
   void initState() {
     super.initState();
-    _ctrl.text = ref.read(kitScheduleEventQueryProvider);
+    _ctrl.text = ref.read(kitListEventQueryProvider);
     _anim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -74,7 +74,7 @@ class _KitScheduleEventSearchState
       reverseCurve: Curves.easeInCubic,
     );
     _anim.addStatusListener(_onExpandStatus);
-    if (ref.read(kitScheduleEventSearchOpenProvider)) {
+    if (ref.read(kitListEventSearchOpenProvider)) {
       _anim.value = 1;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncTvFieldRegistration(open: true);
@@ -87,7 +87,7 @@ class _KitScheduleEventSearchState
     if (!mounted) return;
     // Collapsed tool unmounts at the end of expand — reclaim the chrome slot.
     if (status == AnimationStatus.completed &&
-        ref.read(kitScheduleEventSearchOpenProvider)) {
+        ref.read(kitListEventSearchOpenProvider)) {
       _syncTvFieldRegistration(open: true);
     }
   }
@@ -132,11 +132,11 @@ class _KitScheduleEventSearchState
   }
 
   void _setQuery(String value) {
-    ref.read(kitScheduleEventQueryProvider.notifier).state = value;
+    ref.read(kitListEventQueryProvider.notifier).state = value;
   }
 
   void _setOpen(bool open) {
-    ref.read(kitScheduleEventSearchOpenProvider.notifier).state = open;
+    ref.read(kitListEventSearchOpenProvider.notifier).state = open;
     _syncTvFieldRegistration(open: open);
   }
 
@@ -145,7 +145,7 @@ class _KitScheduleEventSearchState
       unawaited(_openCompactDialog());
       return;
     }
-    if (ref.read(kitScheduleEventSearchOpenProvider)) {
+    if (ref.read(kitListEventSearchOpenProvider)) {
       _focusField(edit: _tv);
       return;
     }
@@ -162,7 +162,7 @@ class _KitScheduleEventSearchState
   Future<void> _openCompactDialog() async {
     if (_dialogOpen) return;
     _dialogOpen = true;
-    final initial = ref.read(kitScheduleEventQueryProvider);
+    final initial = ref.read(kitListEventQueryProvider);
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) {
@@ -256,14 +256,14 @@ class _KitScheduleEventSearchState
 
   @override
   Widget build(BuildContext context) {
-    final open = ref.watch(kitScheduleEventSearchOpenProvider);
-    final query = ref.watch(kitScheduleEventQueryProvider);
-    ref.listen<bool>(kitScheduleEventSearchOpenProvider, (prev, next) {
+    final open = ref.watch(kitListEventSearchOpenProvider);
+    final query = ref.watch(kitListEventQueryProvider);
+    ref.listen<bool>(kitListEventSearchOpenProvider, (prev, next) {
       if (prev == next) return;
       _syncTvFieldRegistration(open: next);
       if (next) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && ref.read(kitScheduleEventSearchOpenProvider)) {
+          if (mounted && ref.read(kitListEventSearchOpenProvider)) {
             _syncTvFieldRegistration(open: true);
           }
         });

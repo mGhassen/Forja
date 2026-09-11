@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
 
-/// Session-only Live Sports event search query (does not reload the feed).
-final kitScheduleEventQueryProvider = StateProvider<String>((ref) => '');
+/// Session-only list search query (does not reload the feed).
+final kitListEventQueryProvider = StateProvider<String>((ref) => '');
 
 /// Whether the expanding search field is open on the kit top bar.
-final kitScheduleEventSearchOpenProvider = StateProvider<bool>((ref) => false);
+final kitListEventSearchOpenProvider = StateProvider<bool>((ref) => false);
 
-/// Client-side match against title / teams / sport / league tokens.
-bool kitScheduleEntryMatchesQuery(KitListEntry entry, String rawQuery) {
+bool kitListEntryMatchesQuery(KitListEntry entry, String rawQuery) {
   final q = rawQuery.trim().toLowerCase();
   if (q.isEmpty) return true;
   final row = entry.legacyRow;
@@ -40,7 +39,7 @@ bool kitScheduleEntryMatchesQuery(KitListEntry entry, String rawQuery) {
   return true;
 }
 
-List<KitListEntry> kitScheduleFilterEntries(
+List<KitListEntry> kitListFilterEntries(
   List<KitListEntry> entries,
   String query,
 ) {
@@ -48,6 +47,6 @@ List<KitListEntry> kitScheduleFilterEntries(
   if (q.isEmpty) return entries;
   return [
     for (final e in entries)
-      if (kitScheduleEntryMatchesQuery(e, q)) e,
+      if (kitListEntryMatchesQuery(e, q)) e,
   ];
 }

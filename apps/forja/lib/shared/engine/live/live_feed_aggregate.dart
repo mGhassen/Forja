@@ -5,39 +5,96 @@ import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/engine/live/match_event.dart';
 import 'package:forja/shared/engine/live/schedule_sport_filter.dart';
-import 'package:forja/shared/engine/live/kit_schedule_window.dart';
 
-/// Query for [aggregateLiveFeed] — catalog filter + schedule window.
+/// Query for [aggregateLiveFeed] — opaque strings from pack chrome / host.liveFeed.
 class LiveFeedQuery {
   const LiveFeedQuery({
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
-    this.scheduleStatus = KitScheduleStatus.airing,
-    this.scheduleHorizon = KitScheduleHorizon.h1,
+    this.scheduleStatus = 'airing',
+    this.scheduleHorizon = 'h1',
   });
 
   final String catalogFilter;
   final String sportFilter;
-  final KitScheduleStatus scheduleStatus;
-  final KitScheduleHorizon scheduleHorizon;
+
+  /// `airing` | `upcoming` | `both`
+  final String scheduleStatus;
+
+  /// `h1` | `h3` | `h6` | `h24`
+  final String scheduleHorizon;
 
   factory LiveFeedQuery.fromHostParams(Map<String, dynamic>? params) {
     final p = params ?? const {};
-    final statusName = (p['scheduleStatus'] ?? '').toString();
-    final horizonName = (p['scheduleHorizon'] ?? '').toString();
-    final status = KitScheduleStatus.values.where((e) => e.name == statusName);
-    final horizon =
-        KitScheduleHorizon.values.where((e) => e.name == horizonName);
+    final combined = (p['horizon'] ?? p['schedule'] ?? '').toString();
+    var status = (p['scheduleStatus'] ?? '').toString();
+    var horizon = (p['scheduleHorizon'] ?? '').toString();
+    if (status.trim().isEmpty || horizon.trim().isEmpty) {
+      final parsed = parseLiveFeedHorizonPref(combined);
+      if (status.trim().isEmpty) status = parsed.status;
+      if (horizon.trim().isEmpty) horizon = parsed.horizon;
+    }
     return LiveFeedQuery(
       catalogFilter: (p['catalogFilter'] ?? 'all').toString(),
       sportFilter: (p['sportFilter'] ?? 'all').toString(),
-      scheduleStatus:
-          status.isEmpty ? KitScheduleStatus.airing : status.first,
-      scheduleHorizon:
-          horizon.isEmpty ? KitScheduleHorizon.h1 : horizon.first,
+      scheduleStatus: normalizeLiveFeedStatus(status),
+      scheduleHorizon: normalizeLiveFeedHorizon(horizon),
+    );
+  }
+
+  factory LiveFeedQuery.fromHorizonPref({
+    required String catalogFilter,
+    String sportFilter = 'all',
+    required String horizonPref,
+  }) {
+    final parsed = parseLiveFeedHorizonPref(horizonPref);
+    return LiveFeedQuery(
+      catalogFilter: catalogFilter,
+      sportFilter: sportFilter,
+      scheduleStatus: parsed.status,
+      scheduleHorizon: parsed.horizon,
     );
   }
 }
+
+/// Pack menu token `status|horizon` (e.g. `airing|1h`, `both|24h`).
+({String status, String horizon}) parseLiveFeedHorizonPref(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return (status: 'airing', horizon: 'h1');
+  }
+  final parts = raw.split('|');
+  if (parts.length == 2) {
+    return (
+      status: normalizeLiveFeedStatus(parts[0]),
+      horizon: normalizeLiveFeedHorizon(parts[1]),
+    );
+  }
+  return switch (raw.trim().toLowerCase()) {
+    'live' || 'airing' => (status: 'airing', horizon: 'h1'),
+    'upcoming' => (status: 'upcoming', horizon: 'h24'),
+    '1h' => (status: 'both', horizon: 'h1'),
+    '3h' => (status: 'both', horizon: 'h3'),
+    '6h' => (status: 'both', horizon: 'h6'),
+    '12h' || '24h' || 'all' || 'day' || 'both' => (
+        status: 'both',
+        horizon: 'h24',
+      ),
+    _ => (status: 'airing', horizon: 'h1'),
+  };
+}
+
+String normalizeLiveFeedStatus(String raw) => switch (raw.trim().toLowerCase()) {
+      'upcoming' => 'upcoming',
+      'both' => 'both',
+      _ => 'airing',
+    };
+
+String normalizeLiveFeedHorizon(String raw) => switch (raw.trim().toLowerCase()) {
+      'h3' || '3h' => 'h3',
+      'h6' || '6h' => 'h6',
+      'h24' || '12h' || '24h' || 'all' || 'day' => 'h24',
+      _ => 'h1',
+    };
 
 /// Last full-catalog schedule rows (Catalog = All) for Providers soft-match.
 List<Map<String, dynamic>>? _rememberedAllCatalogPool;
@@ -573,13 +630,49 @@ bool liveFeedRowMatches(
       row['alwaysLive'] == true ||
       (item.badge ?? '').toLowerCase().contains('24/7') ||
       item.genres.any((g) => g.toLowerCase().contains('24/7'));
-  return kitScheduleKickoffMatches(
+  return liveFeedKickoffMatches(
     start: liveFeedStartsAt(row, item),
     status: query.scheduleStatus,
     horizon: query.scheduleHorizon,
     alwaysOn: alwaysOn,
     liveOrAiring: airing,
   );
+}
+
+bool liveFeedKickoffMatches({
+  required DateTime? start,
+  required String status,
+  required String horizon,
+  required bool alwaysOn,
+  required bool liveOrAiring,
+}) {
+  final isLiveNow = alwaysOn || liveOrAiring;
+  switch (normalizeLiveFeedStatus(status)) {
+    case 'airing':
+      return isLiveNow;
+    case 'upcoming':
+      if (isLiveNow) return false;
+    case 'both':
+      if (isLiveNow) return true;
+  }
+  if (start == null) return false;
+  final now = DateTime.now();
+  final range = _horizonRange(horizon);
+  return !start.isBefore(now.subtract(range.past)) &&
+      !start.isAfter(now.add(range.future));
+}
+
+({Duration past, Duration future}) _horizonRange(String horizon) {
+  switch (normalizeLiveFeedHorizon(horizon)) {
+    case 'h3':
+      return (past: const Duration(hours: 3), future: const Duration(hours: 3));
+    case 'h6':
+      return (past: const Duration(hours: 3), future: const Duration(hours: 6));
+    case 'h24':
+      return (past: const Duration(hours: 3), future: const Duration(hours: 24));
+    default:
+      return (past: const Duration(hours: 1), future: const Duration(hours: 1));
+  }
 }
 
 DateTime? liveFeedStartsAt(Map<String, dynamic> row, MetaItem item) {

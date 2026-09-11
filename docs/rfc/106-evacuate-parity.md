@@ -86,3 +86,9 @@ See per-folder READMEs for leftover kit entanglement.
 | Catalog boot / cards / resolve panel / my-list catalog / `plugin_nav` / MetaRuntime / `kit_shell` | `shared/host/kit/**` |
 
 Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (TMDB enrich still debt).
+
+---
+
+## Correction — Live Sports UX is the pack
+
+`engine/live/kit_schedule_*` and `LiveSportsHubMergeUpgrade` are **deleted**. Horizon / view items live on `hubs/live_sports/live_sports.js`. Engine `LiveFeedQuery` takes opaque strings (`airing` / `h1`). `KitLiveBoot` only registers `live_schedule` + catalog options from the engine.

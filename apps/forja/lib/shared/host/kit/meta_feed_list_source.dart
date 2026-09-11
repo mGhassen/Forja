@@ -7,8 +7,8 @@ import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/host/kit/meta_cache.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/host/kit/live_surface_open.dart';
+import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
 import 'package:forja/shared/host/kit/kit_live_boot.dart';
-import 'package:forja/shared/engine/live/kit_schedule_filters.dart';
 
 /// Selected kit list entry for list+panel chrome.
 final metaFeedSelectedEntryProvider =
@@ -64,7 +64,8 @@ class MetaFeedCatalogNotifier
     // autoDispose drops the feed and Back from the player re-scrapes every catalog.
     ref.keepAlive();
 
-    final filters = ref.watch(kitScheduleFiltersProvider);
+    final catalogFilter = ref.watch(kitFeedCatalogFilterProvider);
+    final horizonPref = ref.watch(kitFeedHorizonPrefProvider);
     final forceRefresh = ref.read(metaFeedForceRefreshProvider);
     final gen = ++_gen;
 
@@ -79,18 +80,16 @@ class MetaFeedCatalogNotifier
       return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
     }
 
-    final query = LiveFeedQuery(
-      catalogFilter: filters.catalogFilter,
-      sportFilter: filters.sportFilter,
-      scheduleStatus: filters.scheduleStatus,
-      scheduleHorizon: filters.scheduleHorizon,
+    final query = LiveFeedQuery.fromHorizonPref(
+      catalogFilter: catalogFilter,
+      horizonPref: horizonPref,
     );
 
     final feedParams = <String, dynamic>{
-      'catalogFilter': filters.catalogFilter,
-      'scheduleStatus': filters.scheduleStatus.name,
-      'scheduleHorizon': filters.scheduleHorizon.name,
-      'sportFilter': filters.sportFilter,
+      'catalogFilter': query.catalogFilter,
+      'scheduleStatus': query.scheduleStatus,
+      'scheduleHorizon': query.scheduleHorizon,
+      'sportFilter': query.sportFilter,
     };
     final cacheKey = MetaCache.keyFor(
       pluginId: hubId,
@@ -299,6 +298,9 @@ final class MetaFeedListSource extends KitListSource {
   final String engineType;
 
   @override
+  List<String> get omitKindIds => [engineType];
+
+  @override
   String? get hubPluginId => null;
 
   /// Remap without stripping previous data on reload — bare
@@ -341,16 +343,19 @@ final class MetaFeedListSource extends KitListSource {
   @override
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
     final catalog = filters['catalog'];
-    final current = ref.read(kitScheduleFiltersProvider);
-    final notifier = ref.read(kitScheduleFiltersProvider.notifier);
-    if (catalog != null &&
-        catalog.isNotEmpty &&
-        catalog != current.catalogFilter) {
-      notifier.setCatalogFilter(catalog);
+    if (catalog != null && catalog.isNotEmpty) {
+      final current = ref.read(kitFeedCatalogFilterProvider);
+      if (catalog != current) {
+        ref.read(kitFeedCatalogFilterProvider.notifier).state = catalog;
+      }
     }
-    // Schedule Status×Horizon is owned by [kitScheduleFiltersProvider] (sheet /
-    // hydrate). Do not push layout `horizon` back into the provider — that raced
-    // the sheet and reset picks to the pack default `airing|1h`.
+    final horizon = filters['horizon'];
+    if (horizon != null && horizon.isNotEmpty) {
+      final current = ref.read(kitFeedHorizonPrefProvider);
+      if (horizon != current) {
+        ref.read(kitFeedHorizonPrefProvider.notifier).state = horizon;
+      }
+    }
   }
 
   @override

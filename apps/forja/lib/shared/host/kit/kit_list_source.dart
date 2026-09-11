@@ -56,6 +56,9 @@ abstract class KitListSource {
   }) =>
       null;
 
+  /// Kind chip ids to hide (e.g. the engine type token on a live feed).
+  List<String> get omitKindIds => const [];
+
   /// Optional layout menu filters (`catalog` / `horizon` ids → selected value).
   /// Default no-op — host sources that care sync prefs from kit chrome.
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {}

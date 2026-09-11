@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
 
-/// Default pack open mode when layout has no stored setting.
 const kKitListOpenModeDefault = 'panel';
 
-/// Watches [PackSettingsStore.revision] so Addon select changes rebuild the list.
 final packSettingsRevisionProvider = Provider<int>((ref) {
   final n = PackSettingsStore.revision;
   void listener() => ref.invalidateSelf();
@@ -14,8 +12,6 @@ final packSettingsRevisionProvider = Provider<int>((ref) {
 });
 
 /// Pack setting string for kit.list `openSetting` (e.g. `matchOpen`).
-///
-/// Family key: `(pluginId, fieldId)`. Default [kKitListOpenModeDefault].
 final kitListOpenModeProvider =
     FutureProvider.autoDispose.family<String, ({String pluginId, String fieldId})>(
   (ref, key) async {

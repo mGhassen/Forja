@@ -1,2 +1,1 @@
-// Compatibility shim — RFC-106. Prefer shared/host/live_sports/schedule/...
-export 'package:forja/shared/engine/live/kit_list_open_mode.dart';
+export 'package:forja/shared/host/kit/kit_list_open_mode.dart';

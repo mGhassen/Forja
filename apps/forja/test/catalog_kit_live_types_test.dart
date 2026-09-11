@@ -5,16 +5,12 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/meta_feed_list_source.dart';
 import 'package:forja/shared/host/kit/host_list_registry.dart';
 import 'package:forja/shared/host/kit/kit_live_boot.dart';
-import 'package:forja/shared/engine/live/kit_schedule_prefs.dart';
-import 'package:forja/shared/engine/live/kit_schedule_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      KitSchedulePrefs.mergeUpgradeDoneKey: true,
-    });
+    SharedPreferences.setMockInitialValues({});
     HostListRegistry.debugReset();
     KitLiveBoot.debugReset();
     KitLiveBoot.ensureRegistered();
@@ -62,20 +58,6 @@ void main() {
         KitTypes.categoryBar,
       );
       expect(KitTypes.normalize('kit.live.mode'), 'kit.live.mode');
-    });
-  });
-
-  group('KitSchedulePrefs', () {
-    test('keeps catalog / schedule / view keys; mode keys retired', () {
-      expect(
-        KitSchedulePrefs.catalogFilterKey,
-        'live_sports_forja_catalog_filter_v1',
-      );
-      expect(KitSchedulePrefs.scheduleKey, 'live_sports_schedule_v2');
-      expect(KitSchedulePrefs.styleKey, 'live_sports_list_style');
-      expect(KitSchedulePrefs.viewKey, KitSchedulePrefs.styleKey);
-      expect(KitSchedulePrefs.styleList, 'list');
-      expect(KitSchedulePrefs.styleCards, 'cards');
     });
   });
 
@@ -142,8 +124,8 @@ void main() {
           row,
           item,
           const LiveFeedQuery(
-            scheduleStatus: KitScheduleStatus.both,
-            scheduleHorizon: KitScheduleHorizon.h1,
+            scheduleStatus: 'both',
+            scheduleHorizon: 'h1',
           ),
         ),
         isFalse,
@@ -153,8 +135,8 @@ void main() {
           row,
           item,
           const LiveFeedQuery(
-            scheduleStatus: KitScheduleStatus.both,
-            scheduleHorizon: KitScheduleHorizon.h3,
+            scheduleStatus: 'both',
+            scheduleHorizon: 'h3',
           ),
         ),
         isTrue,
@@ -164,8 +146,8 @@ void main() {
           row,
           item,
           const LiveFeedQuery(
-            scheduleStatus: KitScheduleStatus.both,
-            scheduleHorizon: KitScheduleHorizon.h24,
+            scheduleStatus: 'both',
+            scheduleHorizon: 'h24',
           ),
         ),
         isTrue,

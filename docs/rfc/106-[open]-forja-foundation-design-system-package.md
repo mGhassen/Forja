@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **5 / 7** acceptance (Part 2) · **1** ⏭️ shim death |
-| **Current slice** | Part 1 ✅ · remaining kit/play/details composers out of foundation → `host/kit` / `playback` / `player/details` / shell · foundation = stubs + barrel · A16 ✅ · A18 🔄 · **shim death waits Q1–Q12** |
+| **Current slice** | Part 1 ✅ · Live Sports horizon/view owned by pack · engine live = feed/resolve only · A16 ✅ · A18 🔄 · **shim death waits Q1–Q12** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
