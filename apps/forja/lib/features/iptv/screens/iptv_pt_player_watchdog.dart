@@ -338,8 +338,26 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         _IptvPtPlayerScreenState._liveEmptyBufferingUnderrun;
   }
 
+  String get _activePlayUrl {
+    if (_s._sources.isEmpty) return '';
+    final i = _s._sourceIdx.clamp(0, _s._sources.length - 1);
+    return _s._sources[i].url;
+  }
+
+  bool get _hlsColdOpenHold => iptvHlsColdOpenHold(
+        url: _activePlayUrl,
+        playbackStarted: _playbackStarted,
+        openedAt: _s._openedAt,
+        now: DateTime.now(),
+        grace: _IptvPtPlayerScreenState._hlsColdOpenGrace,
+      );
+
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
+    // HLS ABR probe: demuxer cache stays 0 while ffmpeg opens every variant —
+    // do not treat that as dead (stall mode would soft-reopen and kill TLS).
+    if (_hlsColdOpenHold) return true;
+    if (_networkStillFeeding && !_playbackStarted) return true;
     if (_stallWithoutPlayhead) return false;
     if (_bufferingHardWall) return false;
     if (_sustainedEmptyBufferingUnderrun) return false;
@@ -360,6 +378,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     // sits at 0 while TS paints; ignoring cache made Auto feel like stall ON.
     if (_mediaKitLiveProfile) {
       if (_playheadRecentlyMoved) return true;
+      if (_networkStillFeeding) return true;
       if (!_stallReopenRecovery &&
           _s._cacheAheadSecs >=
               _IptvPtPlayerScreenState._minHealthyCacheSecs) {
@@ -371,6 +390,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       return true;
     }
     if (_playheadRecentlyMoved) return true;
+    if (_networkStillFeeding) return true;
     return false;
   }
 
@@ -448,6 +468,12 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       // Detector 1: long buffering — only if cache is empty / not working.
       // Empty underrun (cache < 0.5s): shorter grace so Stalker/direct live
       // soft-reopens instead of forever `skip recovery … working` on fps pulse.
+      // HLS cold open: hold — 5s TS grace aborts ABR probe (issue 273).
+      if (_hlsColdOpenHold) {
+        _ensureBufferingChrome(now);
+        _logHold('hls cold open grace (buffering)', healthy: false);
+        return;
+      }
       final emptyUnderrun = _s._cacheAheadSecs <
           _IptvPtPlayerScreenState._liveEmptyUnderrunCacheSecs;
       final bufferGrace = emptyUnderrun
@@ -502,6 +528,11 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         // healthy cushion when playhead sits at 0.
         // Empty underrun: fps pulse must not abort — detector 1 / soft
         // reopen owns recovery (macOS Stalker TextureSW stutter).
+        if (_hlsColdOpenHold) {
+          _ensureBufferingChrome(now);
+          _logHold('hls cold open grace (paint)', healthy: false);
+          return;
+        }
         if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
           _s._livePaintMissStreak = 0;
           return;

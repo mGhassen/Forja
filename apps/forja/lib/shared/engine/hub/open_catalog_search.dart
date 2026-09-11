@@ -9,9 +9,8 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
 ///
-/// Pack capability [PackCapabilities.hostSearch] → shared host Search
-/// overlay (structured TMDB + addons). Otherwise pack `search` via
-/// [KitSearchScreen].
+/// Pack `search` → [KitSearchScreen]. Legacy `host_search` (archived Search tab)
+/// also uses kit search — structured host overlay lives in `apps/archive`.
 Future<void> openCatalogSearch(
   BuildContext context, {
   required String pluginId,
@@ -24,11 +23,6 @@ Future<void> openCatalogSearch(
     return;
   }
   if (!context.mounted) return;
-
-  if (plugin.hasCapability(PackCapabilities.hostSearch)) {
-    await AppRouter.openSearch(context);
-    return;
-  }
 
   pushShellRoute(
     context,

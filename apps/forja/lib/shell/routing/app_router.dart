@@ -3,7 +3,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/player/details/kit_details_screen.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
-import 'package:forja/features/archive/search/search_screen.dart';
+import 'package:forja/shared/engine/hub/open_catalog_search.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
@@ -216,14 +216,17 @@ class AppRouter {
     );
   }
 
-  static Future<T?> openSearch<T>(BuildContext context) {
-    return pushShellRoute<T>(
+  static Future<T?> openSearch<T>(BuildContext context) async {
+    final tabId = await SettingsService().getDefaultNavTab();
+    final pluginId = await PluginNavRegistry.resolveKitPluginId(tabId: tabId);
+    if (pluginId == null || !context.mounted) return null;
+    await openCatalogSearch(
       context,
-      slideShellRoute(
-        (_) => const SearchScreen(overlay: true),
-        settings: const RouteSettings(name: 'search_overlay'),
-      ),
+      pluginId: pluginId,
+      tabId: tabId,
+      hintText: 'Search',
     );
+    return null;
   }
 
   static Future<T?> openTrailerPlayer<T>(

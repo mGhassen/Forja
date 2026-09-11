@@ -4,7 +4,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 
 **Active engine:** everything else under [`crates/`](../) linked from [`ffi`](../ffi/Cargo.toml).
 
-**Matching Flutter archive:** [`apps/forja/lib/features/archive/`](../../apps/forja/lib/features/archive/README.md)
+**Matching Flutter archive:** [`apps/archive/`](../../apps/archive/README.md)
 
 ## Archived crates
 

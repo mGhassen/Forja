@@ -7,8 +7,8 @@ import 'package:forja/shell/nav/nav_destination.dart';
 
 export 'package:forja/shell/nav/nav_destination.dart';
 
-/// Tab ids under [features/archive/] — stripped from shell, Features settings,
-/// and saved nav configs. Re-register in [coreNavDestinations] to restore.
+/// Tab ids vaulted under [apps/archive/] — stripped from shell, Features settings,
+/// and saved nav configs. Restore from that vault to bring a tab back.
 const Set<String> archivedNavIds = {
   'search',
   'discover',

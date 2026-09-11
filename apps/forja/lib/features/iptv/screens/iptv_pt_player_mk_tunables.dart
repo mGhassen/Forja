@@ -382,9 +382,11 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       // intentionally not set - when the stream isn't HLS, libavformat
       // rejects them and mpv prints noisy errors the watchdog mistakes
       // for stream failures.
+      // +igndts: DAI / SCTE ad-splice HLS often emits pts < dts (CBS News etc.)
+      // — without it demuxer stalls with cache=0 while segments still download.
       await p.setProperty(
         'demuxer-lavf-o',
-        'fflags=+discardcorrupt+genpts,'
+        'fflags=+discardcorrupt+genpts+igndts,'
             'probesize=5000000,'
             'analyzeduration=5000000',
       );

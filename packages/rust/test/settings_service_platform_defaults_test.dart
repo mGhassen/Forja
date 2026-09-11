@@ -350,7 +350,7 @@ void main() {
     expect(nav, _legacyPackSeededDefaultNavIds);
   });
 
-  test('Android TV custom nav is not overwritten by shell 088', () async {
+  test('Android TV custom nav drops archived search id', () async {
     await kvSetStringList('navbar_config', const ['home', 'iptv', 'search']);
     await kvSetStringList(
       'navbar_known_ids',
@@ -367,7 +367,46 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, ['home', 'iptv', 'search']);
+    expect(nav, ['home', 'iptv']);
+  });
+
+  test('getNavbarTabOrder omits archived host ids', () async {
+    await kvSetStringList('navbar_config', const ['home', 'iptv']);
+    await kvSetStringList('navbar_known_ids', const [
+      'home',
+      'iptv',
+      'search',
+      'discover',
+      'jellyfin',
+    ]);
+    await kvSetStringList('navbar_tab_order', const [
+      'home',
+      'iptv',
+      'search',
+      'discover',
+      'jellyfin',
+    ]);
+    for (final k in [
+      'navbar_shell_080',
+      'navbar_shell_081',
+      'navbar_shell_084',
+      'navbar_shell_085',
+      'navbar_shell_086',
+      'navbar_shell_087',
+      'navbar_shell_088',
+      'navbar_shell_089',
+      'navbar_shell_090',
+      'navbar_shell_091',
+    ]) {
+      await kvSetString(k, '1');
+    }
+
+    final order = await SettingsService().getNavbarTabOrder();
+    expect(order, isNot(contains('search')));
+    expect(order, isNot(contains('discover')));
+    expect(order, isNot(contains('jellyfin')));
+    expect(order, contains('home'));
+    expect(order, contains('iptv'));
   });
 
   test('Android TV search-first legacy migrates to pack-seeded default', () async {

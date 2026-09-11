@@ -241,7 +241,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 
 ---
 
-## Host orchestration (`shared/playback/`, `features/archive/audio/`, `shared/foundation/`)
+## Host orchestration (`shared/playback/`, `apps/archive/lib/audio/`, foundation)
 
 | Component | Path | Role | Target |
 |-----------|------|------|--------|
@@ -250,10 +250,10 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 | `PlayerStreamExtractCache` | `shared/playback/cache/player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
 | `HistoryPlaybackResume` | `shared/playback/open/history_playback_resume.dart` | C11 resume routing | ✅ Host |
 | `BestSimilarScraper` | `shared/foundation/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
-| `MusicPlayerService` | `features/archive/audio/music_player_service.dart` | C6 audio playback UI glue (archived) | ✅ Host |
-| `MusicStorageService` / `MusicDownloaderService` | `features/archive/audio/` | C6/C9 local files (archived) | ✅ Host |
-| `LyricsService` | `features/archive/audio/lyrics_service.dart` | C1 via engine (archived) | ✅ Thin host over engine |
-| `AudiobookPlayerService` / `AudiobookDownloadService` | `features/archive/audio/` | C6 host playback (archived) | ✅ Host |
+| `MusicPlayerService` | `apps/archive/lib/audio/music_player_service.dart` | C6 audio playback UI glue (vaulted) | ⏭️ Outside forja |
+| `MusicStorageService` / `MusicDownloaderService` | `apps/archive/lib/audio/` | C6/C9 local files (vaulted) | ⏭️ Outside forja |
+| `LyricsService` | `apps/archive/lib/audio/lyrics_service.dart` | C1 via engine (vaulted) | ⏭️ Outside forja |
+| `AudiobookPlayerService` / `AudiobookDownloadService` | `apps/archive/lib/audio/` | C6 host playback (vaulted) | ⏭️ Outside forja |
 | `CastingService` | `shared/casting/` | C12 AirPlay/Chromecast (RFC-005) | ✅ Host |
 | `SyncService` | `shared/sync/` | C12 LAN sync (RFC-013) | ✅ Host |
 

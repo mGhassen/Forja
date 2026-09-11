@@ -129,6 +129,21 @@ bool iptvShouldUseContinuityProxy({
   return true;
 }
 
+/// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.
+/// Soft-reopen at the TS empty-cache grace (~5 s) aborts TLS mid-probe (issue 273).
+@visibleForTesting
+bool iptvHlsColdOpenHold({
+  required String url,
+  required bool playbackStarted,
+  required DateTime openedAt,
+  required DateTime now,
+  Duration grace = const Duration(seconds: 30),
+}) {
+  if (playbackStarted) return false;
+  if (!iptvUrlLooksLikeHls(url)) return false;
+  return now.difference(openedAt) < grace;
+}
+
 /// IPTV catalog / Forja Sports: Stalker stays direct; Xtream/M3U TS use the
 /// continuity proxy; HLS channel URLs open direct regardless of portal kind.
 @visibleForTesting
@@ -964,6 +979,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Soft reopen when live stays paused with empty cache this long.
   static const Duration _liveEmptyPauseReopen = Duration(seconds: 5);
+
+  /// HLS cold open: allow ABR variant probe + first segments before soft-reopen.
+  static const Duration _hlsColdOpenGrace = Duration(seconds: 30);
 
   /// After continuity-proxy CDN reopen: prefer Buffering + refill over
   /// soft-reopen while the skip gap is absorbed (adaptive skip / ATV).

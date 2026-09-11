@@ -98,6 +98,46 @@ void main() {
       );
     });
 
+    test('HLS cold open hold covers ABR probe window', () {
+      final opened = DateTime.utc(2026, 9, 11, 22, 0, 0);
+      expect(
+        iptvHlsColdOpenHold(
+          url: 'https://dai.google.com/linear/hls/event/x/master.m3u8',
+          playbackStarted: false,
+          openedAt: opened,
+          now: opened.add(const Duration(seconds: 12)),
+        ),
+        isTrue,
+      );
+      expect(
+        iptvHlsColdOpenHold(
+          url: 'https://dai.google.com/linear/hls/event/x/master.m3u8',
+          playbackStarted: true,
+          openedAt: opened,
+          now: opened.add(const Duration(seconds: 12)),
+        ),
+        isFalse,
+      );
+      expect(
+        iptvHlsColdOpenHold(
+          url: 'http://portal.example/live/u/p/1.ts',
+          playbackStarted: false,
+          openedAt: opened,
+          now: opened.add(const Duration(seconds: 12)),
+        ),
+        isFalse,
+      );
+      expect(
+        iptvHlsColdOpenHold(
+          url: 'https://dai.google.com/linear/hls/event/x/master.m3u8',
+          playbackStarted: false,
+          openedAt: opened,
+          now: opened.add(const Duration(seconds: 31)),
+        ),
+        isFalse,
+      );
+    });
+
     test('Stalker / stremio / liveEngine never use proxy', () {
       expect(
         iptvShouldUseContinuityProxy(

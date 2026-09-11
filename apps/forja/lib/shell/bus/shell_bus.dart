@@ -99,7 +99,7 @@ class ShellBus {
   static ValueNotifier<double> hubHeroHeightFor(String tabId) =>
       _hubHeroHeights.putIfAbsent(tabId, () => ValueNotifier(0));
 
-  /// SearchScreen listens for incoming Stremio search requests.
+  /// Legacy Stremio search deep-link bus (archived Search overlay consumed this).
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.
   static final ValueNotifier<Map<String, String>?> stremioSearchNotifier =
       ValueNotifier<Map<String, String>?>(null);

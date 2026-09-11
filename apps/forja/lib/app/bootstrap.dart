@@ -10,8 +10,6 @@ import 'package:logging/logging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/features/archive/audio/audiobook_player_service.dart';
-import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'package:forja/features/iptv/open/iptv_kit_hooks_register.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_chrome_hooks.dart';
 import 'package:forja/features/settings/settings_kit_hooks_register.dart';
@@ -72,12 +70,6 @@ bool _appShutdownStarted = false;
 Future<void> _shutdownMediaKitPlayers() async {
   try {
     await MpvExclusiveSession.instance.shutdownAllPlayers();
-  } catch (_) {}
-  try {
-    await MusicPlayerService().dispose();
-  } catch (_) {}
-  try {
-    await AudiobookPlayerService().dispose();
   } catch (_) {}
   try {
     await PlayerPoolService().dispose();

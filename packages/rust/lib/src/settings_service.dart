@@ -1710,24 +1710,34 @@ class SettingsService {
     'iptv',
   };
 
-  /// Host / archived shell ids only. Catalog hub tab ids register via
+  /// Host shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
   /// Live Sports tab id comes from pack `nav` only (RFC-087).
-  static const List<String> _baseAllNavIds = [
+  /// Archived tabs live under `apps/archive/` — keep out of [allNavIds].
+  static const Set<String> archivedNavIds = {
+    'search',
     'discover',
     'similar',
-    'search',
     'downloader',
     'magnet',
-    'iptv',
     'audiobooks',
     'books',
     'music',
     'comics',
     'manga',
     'jellyfin',
+    'anime_arabic',
+  };
+
+  static const List<String> _baseAllNavIds = [
+    'iptv',
   ];
+
+  static bool _isArchivedNavId(String id) => archivedNavIds.contains(id);
+
+  static List<String> _withoutArchivedNavIds(Iterable<String> ids) =>
+      ids.where((id) => !_isArchivedNavId(id)).toList();
 
   static final List<String> _extraNavIds = [];
 
@@ -1741,7 +1751,7 @@ class SettingsService {
   static void registerExtraNavIds(Iterable<String> ids) {
     for (final id in ids) {
       final t = id.trim();
-      if (t.isEmpty) continue;
+      if (t.isEmpty || _isArchivedNavId(t)) continue;
       if (_baseAllNavIds.contains(t) || _extraNavIds.contains(t)) continue;
       _extraNavIds.add(t);
     }
@@ -2225,6 +2235,7 @@ class SettingsService {
     final filtered = raw
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
+        .where((id) => !_isArchivedNavId(id))
         .toList();
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
@@ -2239,11 +2250,11 @@ class SettingsService {
       if (addonGatedNavIds.contains(id)) continue;
       unknown.add(id);
     }
-    if (unknown.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
-      await kvSetStringList(_navbarKnownIdsKey, {
-        ...known,
-        ...allNavIds,
-      }.toList());
+    final knownClean = _withoutArchivedNavIds({...known, ...allNavIds});
+    if (unknown.isNotEmpty ||
+        known.length != knownClean.length ||
+        allNavIds.any((id) => !known.contains(id))) {
+      await kvSetStringList(_navbarKnownIdsKey, knownClean);
     }
     return _applyStoredTabOrder(filtered);
   }
@@ -2252,24 +2263,28 @@ class SettingsService {
   /// [getNavbarConfig], which returns the visible subset in this order.
   Future<List<String>> getNavbarTabOrder() async {
     final visible = await getNavbarConfig();
-    final known = (await kvGetStringList(
-      _navbarKnownIdsKey,
-      fallback: const [],
-    )).toSet();
+    final known = _withoutArchivedNavIds(
+      await kvGetStringList(
+        _navbarKnownIdsKey,
+        fallback: const [],
+      ),
+    ).toSet();
     // Preserve hub ids (anime/home/…) — [allNavIds] alone drops them from
     // cloud `tabOrder` export so Features sort never landed (224).
-    final catalog = <String>{
+    final catalog = _withoutArchivedNavIds({
       ...allNavIds,
       ...visible,
       ...known,
-    }.toList();
+    });
     if (!await kvHasKey(_navbarTabOrderKey)) {
       final hidden = catalog.where((id) => !visible.contains(id)).toList();
       return [...visible, ...hidden];
     }
-    final stored = await kvGetStringList(
-      _navbarTabOrderKey,
-      fallback: const [],
+    final stored = _withoutArchivedNavIds(
+      await kvGetStringList(
+        _navbarTabOrderKey,
+        fallback: const [],
+      ),
     );
     return _mergeNavbarTabOrder(stored, catalog);
   }
@@ -2352,9 +2367,10 @@ class SettingsService {
         (await kvHasKey(_navbarTabOrderKey)
             ? await kvGetStringList(_navbarTabOrderKey, fallback: const [])
             : null);
+    final visibleClean = _withoutArchivedNavIds(visibleIds);
     final ids = (orderForVisible != null && orderForVisible.isNotEmpty)
-        ? _visibleInTabOrder(visibleIds, orderForVisible)
-        : List<String>.from(visibleIds);
+        ? _visibleInTabOrder(visibleClean, _withoutArchivedNavIds(orderForVisible))
+        : List<String>.from(visibleClean);
     final unchanged = raw != null && listEquals(raw, ids);
     if (kDebugMode && !unchanged) {
       debugPrint(
@@ -2379,19 +2395,25 @@ class SettingsService {
       _navbarKnownIdsKey,
       fallback: const [],
     )).toSet();
-    await kvSetStringList(_navbarKnownIdsKey, {
-      ...known,
-      ...allNavIds,
-      ...ids,
-    }.toList());
+    await kvSetStringList(
+      _navbarKnownIdsKey,
+      _withoutArchivedNavIds({
+        ...known,
+        ...allNavIds,
+        ...ids,
+      }),
+    );
     if (tabOrder != null) {
       await kvSetStringList(
         _navbarTabOrderKey,
-        _mergeNavbarTabOrder(tabOrder, {
-          ...allNavIds,
-          ...tabOrder,
-          ...ids,
-        }.toList()),
+        _mergeNavbarTabOrder(
+          _withoutArchivedNavIds(tabOrder),
+          _withoutArchivedNavIds({
+            ...allNavIds,
+            ...tabOrder,
+            ...ids,
+          }),
+        ),
       );
     }
     if (notify && !unchanged) navbarChangeNotifier.value++;

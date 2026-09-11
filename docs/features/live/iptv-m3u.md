@@ -16,7 +16,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 - Tap the dice icon next to the portal name field for a random name
 - Tap the folder icon next to the URL field to pick a local `.m3u`/`.m3u8` file instead of pasting a link
 - Browse live channels by `group-title` in the same catalog browser as Xtream
-- Play a channel in the IPTV player — in-player guide and search work for live. **HLS** channel URLs (`.m3u8`) open directly in MediaKit/Exo; progressive MPEG-TS URLs still use the Xtream-style continuity proxy
+- Play a channel in the IPTV player — in-player guide and search work for live. **HLS** channel URLs (`.m3u8`) open directly in MediaKit/Exo (the player waits for the ABR probe before reconnecting); progressive MPEG-TS URLs still use the Xtream-style continuity proxy
 - Manage M3U portals in the Portals panel (edit, favorite, delete, share/CSV)
 - Sync M3U portals to your signed-in profile (same cloud list as Xtream)
 

@@ -33,27 +33,27 @@ Checklist (paths only — migrate batches tick these):
 - [x] `apps/forja/lib/features/account/profile_chooser_screen.dart`
 - [x] `apps/forja/lib/features/account/profile_switch_splash.dart`
 - [x] `apps/forja/lib/features/account/tv_account_link_screen.dart`
-- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_details_screen.dart`
-- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_screen.dart`
-- [x] `apps/forja/lib/features/archive/anime_arabic/anime_arabic_search_screen.dart`
-- [ ] `apps/forja/lib/features/archive/audiobooks/audiobook_downloads_screen.dart`
-- [x] `apps/forja/lib/features/archive/audiobooks/audiobook_player_screen.dart`
-- [x] `apps/forja/lib/features/archive/audiobooks/audiobook_screen.dart`
-- [ ] `apps/forja/lib/features/archive/audiobooks/generate_audiobook_screen.dart`
-- [ ] `apps/forja/lib/features/archive/comics/comic_details_screen.dart`
-- [ ] `apps/forja/lib/features/archive/comics/comic_reader_screen.dart`
-- [x] `apps/forja/lib/features/archive/discover/discover_screen.dart`
-- [ ] `apps/forja/lib/features/archive/downloader/media_downloader_screen.dart`
-- [ ] `apps/forja/lib/features/archive/jellyfin/jellyfin_details_screen.dart`
-- [x] `apps/forja/lib/features/archive/jellyfin/jellyfin_screen.dart`
-- [ ] `apps/forja/lib/features/archive/manga/manga_details_screen.dart`
-- [ ] `apps/forja/lib/features/archive/manga/manga_reader_screen.dart`
-- [x] `apps/forja/lib/features/archive/music/music_player_screen.dart`
-- [x] `apps/forja/lib/features/archive/music/music_screen.dart`
-- [ ] `apps/forja/lib/features/archive/search/search_build.dart`
-- [x] `apps/forja/lib/features/archive/search/search_screen.dart`
-- [ ] `apps/forja/lib/features/archive/similar/similar_hub_screen.dart`
-- [ ] `apps/forja/lib/features/archive/similar/similar_results_screen.dart`
+- [x] `apps/archive/lib/anime_arabic/anime_arabic_details_screen.dart`
+- [x] `apps/archive/lib/anime_arabic/anime_arabic_screen.dart`
+- [x] `apps/archive/lib/anime_arabic/anime_arabic_search_screen.dart`
+- [ ] `apps/archive/lib/audiobooks/audiobook_downloads_screen.dart`
+- [x] `apps/archive/lib/audiobooks/audiobook_player_screen.dart`
+- [x] `apps/archive/lib/audiobooks/audiobook_screen.dart`
+- [ ] `apps/archive/lib/audiobooks/generate_audiobook_screen.dart`
+- [ ] `apps/archive/lib/comics/comic_details_screen.dart`
+- [ ] `apps/archive/lib/comics/comic_reader_screen.dart`
+- [x] `apps/archive/lib/discover/discover_screen.dart`
+- [ ] `apps/archive/lib/downloader/media_downloader_screen.dart`
+- [ ] `apps/archive/lib/jellyfin/jellyfin_details_screen.dart`
+- [x] `apps/archive/lib/jellyfin/jellyfin_screen.dart`
+- [ ] `apps/archive/lib/manga/manga_details_screen.dart`
+- [ ] `apps/archive/lib/manga/manga_reader_screen.dart`
+- [x] `apps/archive/lib/music/music_player_screen.dart`
+- [x] `apps/archive/lib/music/music_screen.dart`
+- [ ] `apps/archive/lib/search/search_build.dart`
+- [x] `apps/archive/lib/search/search_screen.dart`
+- [ ] `apps/archive/lib/similar/similar_hub_screen.dart`
+- [ ] `apps/archive/lib/similar/similar_results_screen.dart`
 - [x] `apps/forja/lib/features/iptv/channel_guide/iptv_channel_guide_panel.dart`
 - [x] `apps/forja/lib/features/iptv/channel_guide/iptv_channel_search_overlay.dart`
 - [x] `apps/forja/lib/features/iptv/channel_guide/iptv_epg_guide_view.dart`
