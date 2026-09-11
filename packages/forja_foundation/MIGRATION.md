@@ -64,7 +64,7 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, compact: true, onKeyEvent:)` |
 | `ForjaInteractive` | **not** Button — `package:forja/shared/shell/forja_interactive.dart` |
 
-`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` are **deleted**. Do not reintroduce them. `forja_buttons.dart` is an Interactive re-export only.
+`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` are **deleted**. Do not reintroduce them. `ForjaInteractive` is `package:forja/shared/shell/forja_interactive.dart` — import that file, not a buttons barrel.
 
 Do **not** import `compat/legacy_buttons.dart` from app code. Rewrite constructors.
 
@@ -174,7 +174,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | `normalizeCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
 | `resolveCoverUrl` | `package:forja/shared/host/kit/cover_urls.dart` — host TMDB relative-path, not the package util |
 
-Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …): new work imports the package file. Live foundation copies stay until G14-E only if they still **are** the running implementation — do not add new imports of those foundation copies.
+Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …) are props-only gallery copies. Running catalog UI is `package:forja/shared/host/kit/**`. New work that is props-only imports the package file. Do not recreate `shared/foundation/` copies.
 
 ---
 
@@ -187,7 +187,7 @@ Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_h
 | Episode / media-details / sources TV | `package:forja/shared/player/details/<file>.dart` |
 | Vertical filters / letter jump | `package:forja/shared/shell/<file>.dart` |
 
-Foundation copies are **export stubs**. Only `foundation.dart` barrel is still real. G14-E deletes the stub tree after Q1–Q12.
+`apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 
 ---
 
@@ -260,7 +260,7 @@ Every inventory test that imported foundation chrome follows the **same** New pa
 `apps/forja/test/tv_focus_graph_test.dart`
 `apps/forja/test/tv_season_episode_picker_test.dart`
 
-Kit-runtime tests (`catalog_*`, `engine_test`, `list_follow_*`, …) may still import `foundation/services/**` until G14-E.
+Kit-runtime tests import `shared/host/kit/**`, `shared/engine/**`, `shared/player/**`, or `package:forja_foundation/<file>.dart` — never `shared/foundation/`.
 
 ---
 

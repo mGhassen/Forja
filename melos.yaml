@@ -43,6 +43,12 @@ scripts:
   rust:check-tv-shell:
     run: ../../scripts/check_tv_shell_boundary.sh
     description: Fail if ShellTokens TV APIs leak outside shell resolver
+  rust:check-foundation-zone:
+    run: ../../scripts/check_foundation_import_zone.sh
+    description: Fail if package zone A imports the Flutter host or Riverpod
+  rust:check-foundation-shim:
+    run: ../../scripts/check_foundation_shim_alive.sh
+    description: Fail if shared/foundation is restored or Dart still imports it
   analyze:
     run: flutter analyze
     exec:

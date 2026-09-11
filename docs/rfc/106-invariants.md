@@ -1,7 +1,7 @@
 # RFC-106 hard invariants (G14-G)
 
-These stay true for every Part 1 evacuate PR and every Part 2 migrate PR until
-shim death (G14-E). Plan source: Part 2 G14-G.
+These stay true for every Part 2 PR. Shim tree is already deleted (A22).
+Q1–Q12 remains unsigned (A19). Plan source: Part 2 G14-G.
 
 | # | Invariant |
 |--:|-----------|
