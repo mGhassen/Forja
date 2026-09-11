@@ -10,6 +10,7 @@ import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
 import 'package:forja/shared/shell/desktop_selectable_title.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
+import 'package:forja/shared/player/entry/player_metadata.dart';
 import 'package:rust/rust.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';

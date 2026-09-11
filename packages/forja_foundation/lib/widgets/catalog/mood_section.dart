@@ -1,31 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 import 'package:forja_foundation/widgets/chrome/section_title.dart';
 
-/// Horizontal mood section — wraps [MoodCircle] items.
+/// Horizontal mood section — wraps host-built strips or [children] chips.
+///
+/// Zone A paint only. Host supplies TV focus / selection into [chipStrip] or
+/// [children]; optional [results] sits under the chip row.
 class MoodSection extends StatelessWidget {
   const MoodSection({
     super.key,
     this.title,
-    required this.children,
+    this.titlePadding,
+    this.titleStyle,
+    this.children = const [],
+    this.chipStrip,
+    this.results,
     this.padding,
+    this.rowHeight = 120,
   });
 
   final String? title;
+  final EdgeInsetsGeometry? titlePadding;
+  final TextStyle? titleStyle;
   final List<Widget> children;
+
+  /// Prebuilt chip row (TV strips, FittedBox, etc.). When set, [children] is
+  /// ignored for the chip area.
+  final Widget? chipStrip;
+
+  /// Optional results rail under chips (host [KitSection], etc.).
+  final Widget? results;
+
   final EdgeInsetsGeometry? padding;
+  final double rowHeight;
 
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (title != null) SectionTitle(title!),
+    final chips = chipStrip ??
         SizedBox(
-          height: 120,
+          height: rowHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding:
@@ -34,7 +48,24 @@ class MoodSection extends StatelessWidget {
             separatorBuilder: (_, _) => SizedBox(width: theme.spaceMd),
             itemBuilder: (_, i) => children[i],
           ),
-        ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (title != null)
+          Padding(
+            padding: titlePadding ?? EdgeInsets.zero,
+            child: titleStyle != null
+                ? Text(title!, style: titleStyle)
+                : SectionTitle(title!),
+          ),
+        chips,
+        if (results != null) ...[
+          SizedBox(height: theme.spaceMd),
+          results!,
+        ],
       ],
     );
   }

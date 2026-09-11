@@ -37,6 +37,7 @@ class CatalogSearchPage extends StatelessWidget {
     this.hintText = 'Search',
     this.header,
     this.filters,
+    this.field,
     this.emptyChild,
     this.backgroundColor,
   });
@@ -49,6 +50,9 @@ class CatalogSearchPage extends StatelessWidget {
   final String hintText;
   final Widget? header;
   final Widget? filters;
+
+  /// Host-owned search field chrome; when set, default [Input] is skipped.
+  final Widget? field;
   final Widget? emptyChild;
   final Color? backgroundColor;
 
@@ -62,13 +66,9 @@ class CatalogSearchPage extends StatelessWidget {
       onSubmitted: onSubmitted,
       hintText: hintText,
       header: header,
-      results: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (filters != null) filters!,
-          Expanded(child: results),
-        ],
-      ),
+      field: field,
+      filters: filters,
+      results: results,
     );
 
     return ColoredBox(

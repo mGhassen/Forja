@@ -919,36 +919,46 @@ class _KitSearchPageState extends State<KitSearchPage> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            ShellTokens.searchPageInset,
-            ShellTokens.searchPageInset,
-            ShellTokens.searchPageInset,
-            ShellTokens.searchPageInset,
+        CatalogSearchPage(
+          backgroundColor: Colors.transparent,
+          hintText: widget.hintText,
+          field: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              ShellTokens.searchPageInset,
+              ShellTokens.searchPageInset,
+              ShellTokens.searchPageInset,
+              0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSearchField(context),
+                _buildFilterChrome(context),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSearchField(context),
-              _buildFilterChrome(context),
-              const SizedBox(height: 24),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: _buildHelpersList(context),
-                    ),
-                    const SizedBox(width: ShellTokens.searchColumnGap),
-                    Expanded(
-                      flex: 7,
-                      child: _buildResultsColumn(context),
-                    ),
-                  ],
+          results: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              ShellTokens.searchPageInset,
+              0,
+              ShellTokens.searchPageInset,
+              ShellTokens.searchPageInset,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildHelpersList(context),
                 ),
-              ),
-            ],
+                const SizedBox(width: ShellTokens.searchColumnGap),
+                Expanded(
+                  flex: 7,
+                  child: _buildResultsColumn(context),
+                ),
+              ],
+            ),
           ),
         ),
       ],

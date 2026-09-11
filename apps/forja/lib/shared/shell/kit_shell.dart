@@ -53,6 +53,8 @@ import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/hub/kit_live_boot.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/engine/hub/catalog_open.dart';
+import 'package:forja_foundation/widgets/catalog/mood_section.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_body.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_shell.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.
@@ -1487,101 +1489,97 @@ class _KitShellState extends State<KitShell>
 
     final resultsSpec = _moodResultsSpec(spec);
 
-    Widget moodBody() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: shellHomeSectionTitlePadding(
-              context,
-              top: titleTop,
-              bottom: shellScaled(context, 12).clamp(4.0, 12.0),
-            ),
-            child: Text(title, style: ShellSectionTitle.titleStyle),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final layout = ShellMoodCircleLayout.resolve(
-                context,
-                itemCount: options.length,
-                maxWidth: constraints.maxWidth,
-              );
-              if (tvNav) {
-                return TvChipStrip(
-                  tabId: widget.tabId,
-                  rowId: chipRowId,
-                  sortOrder: tvRowOrder,
-                  itemCount: options.length,
-                  resultsRowId: resultsRowId,
-                  builder: (context, edgesFor) {
-                    if (layout.contentWidth(options.length) <=
-                        constraints.maxWidth) {
-                      return moodChipRow(
-                        layout: layout,
-                        edgesFor: edgesFor,
-                        scaleToFit: true,
-                      );
-                    }
-                    return SizedBox(
-                      height: layout.rowHeight,
-                      child: HorizontalScroller(
-                        height: layout.rowHeight,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: shellHomeSectionHorizontalPadding(
-                            context,
-                          ),
-                        ),
-                        itemCount: options.length,
-                        separatorBuilder: (_, _) =>
-                            SizedBox(width: layout.horizontalGap),
-                        itemBuilder: (context, i) =>
-                            moodChip(layout: layout, i: i, edges: edgesFor(i)),
-                      ),
-                    );
-                  },
+    Widget moodChipStrip() {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: options.length,
+            maxWidth: constraints.maxWidth,
+          );
+          if (tvNav) {
+            return TvChipStrip(
+              tabId: widget.tabId,
+              rowId: chipRowId,
+              sortOrder: tvRowOrder,
+              itemCount: options.length,
+              resultsRowId: resultsRowId,
+              builder: (context, edgesFor) {
+                if (layout.contentWidth(options.length) <=
+                    constraints.maxWidth) {
+                  return moodChipRow(
+                    layout: layout,
+                    edgesFor: edgesFor,
+                    scaleToFit: true,
+                  );
+                }
+                return SizedBox(
+                  height: layout.rowHeight,
+                  child: HorizontalScroller(
+                    height: layout.rowHeight,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: shellHomeSectionHorizontalPadding(context),
+                    ),
+                    itemCount: options.length,
+                    separatorBuilder: (_, _) =>
+                        SizedBox(width: layout.horizontalGap),
+                    itemBuilder: (context, i) =>
+                        moodChip(layout: layout, i: i, edges: edgesFor(i)),
+                  ),
                 );
-              }
+              },
+            );
+          }
 
-              if (layout.contentWidth(options.length) <= constraints.maxWidth) {
-                return Center(child: moodChipRow(layout: layout));
-              }
-              return HorizontalScroller(
-                height: layout.rowHeight,
-                padding: EdgeInsets.symmetric(
-                  horizontal: shellHomeSectionHorizontalPadding(context),
-                ),
-                itemCount: options.length,
-                separatorBuilder: (_, _) =>
-                    SizedBox(width: layout.horizontalGap),
-                itemBuilder: (context, i) => moodChip(layout: layout, i: i),
-              );
-            },
-          ),
-          if (resultsRail.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            KitSection<MetaItem>(
-              key: ValueKey('mood-results:$id:$selected'),
-              title: '',
-              reloadToken: _railReloadToken,
-              holdEmptyStructure: _holdEmptyCatalogStructure,
-              fetchPage: (page) => _fetchRailPage(resultsSpec, page: page),
-              pageSizeHint: _railPageSizeHint(spec),
-              itemKey: (item) => item.id,
-              embedded: true,
-              compactTop: true,
-              tvTabId: widget.tabId,
-              tvRowId: resultsRowId,
-              tvRowOrder: tvRowOrder + 1,
-              cardBuilder: (context, item, index) => _card(
-                context,
-                item,
-                index,
-                rowId: resultsRowId,
-                onUpEdge: tvResultsUpToChips(context, chipRowId: chipRowId),
-              ),
+          if (layout.contentWidth(options.length) <= constraints.maxWidth) {
+            return Center(child: moodChipRow(layout: layout));
+          }
+          return HorizontalScroller(
+            height: layout.rowHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: shellHomeSectionHorizontalPadding(context),
             ),
-          ],
-        ],
+            itemCount: options.length,
+            separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
+            itemBuilder: (context, i) => moodChip(layout: layout, i: i),
+          );
+        },
+      );
+    }
+
+    Widget moodBody() {
+      return MoodSection(
+        title: title,
+        titlePadding: shellHomeSectionTitlePadding(
+          context,
+          top: titleTop,
+          bottom: shellScaled(context, 12).clamp(4.0, 12.0),
+        ),
+        titleStyle: ShellSectionTitle.titleStyle,
+        chipStrip: moodChipStrip(),
+        results: resultsRail.isEmpty
+            ? null
+            : KitSection<MetaItem>(
+                key: ValueKey('mood-results:$id:$selected'),
+                title: '',
+                reloadToken: _railReloadToken,
+                holdEmptyStructure: _holdEmptyCatalogStructure,
+                fetchPage: (page) => _fetchRailPage(resultsSpec, page: page),
+                pageSizeHint: _railPageSizeHint(spec),
+                itemKey: (item) => item.id,
+                embedded: true,
+                compactTop: true,
+                tvTabId: widget.tabId,
+                tvRowId: resultsRowId,
+                tvRowOrder: tvRowOrder + 1,
+                cardBuilder: (context, item, index) => _card(
+                  context,
+                  item,
+                  index,
+                  rowId: resultsRowId,
+                  onUpEdge: tvResultsUpToChips(context, chipRowId: chipRowId),
+                ),
+              ),
       );
     }
 
@@ -1861,22 +1859,16 @@ class _KitShellState extends State<KitShell>
           rowIndex++;
         }
       }
-      if (sections.isEmpty) {
-        return ShellErrorRetryPanel(
+      return CatalogBody(
+        controller: _scroll,
+        sections: sections,
+        bottomGap: shellTvKitScrollBottomGap(context),
+        emptyChild: ShellErrorRetryPanel(
           message: '${widget.pluginId} returned an empty layout',
           onRetry: () => unawaited(_loadLayout(forceRefresh: true)),
-        );
-      }
-
-      return CustomScrollView(
-        controller: _scroll,
-        slivers: [
-          for (var i = 0; i < sections.length; i++)
-            hubRowSliver(context, sections[i], isFirstAfterHero: i == 0),
-          SliverToBoxAdapter(
-            child: SizedBox(height: shellTvKitScrollBottomGap(context)),
-          ),
-        ],
+        ),
+        sectionSliver: (context, section, i) =>
+            hubRowSliver(context, section, isFirstAfterHero: i == 0),
       );
     }();
 

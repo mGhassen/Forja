@@ -946,7 +946,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     final path = widget.movie.backdropPath;
     if (path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    return TmdbApi.getBackdropUrl(path);
+    return '';
   }
 
   Widget _titleFallback() {

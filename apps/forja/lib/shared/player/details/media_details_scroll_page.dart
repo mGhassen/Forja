@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/player/details/media_details_body.dart';
 
 /// Unified scroll layout for torrent and streaming media details screens.
+///
+/// Paint composition via [DetailsBlock]; host keeps TV focus + fade.
 class MediaDetailsScrollPage extends StatelessWidget {
   const MediaDetailsScrollPage({
     super.key,
@@ -30,15 +33,14 @@ class MediaDetailsScrollPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget scroll = SingleChildScrollView(
-      controller: scrollController,
+    Widget scroll = DetailsBlock(
+      hero: hero,
+      scrollController: scrollController,
       physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          hero,
-          if (sections.isNotEmpty)
-            _FadeIn(
+      backgroundColor: backgroundColor,
+      body: sections.isEmpty
+          ? const SizedBox.shrink()
+          : _FadeIn(
               child: MediaDetailsBody(
                 backgroundColor: backgroundColor,
                 bodyOverlap: bodyOverlap,
@@ -55,8 +57,6 @@ class MediaDetailsScrollPage extends StatelessWidget {
                 ),
               ),
             ),
-        ],
-      ),
     );
 
     if (tvHeroPlayFocus != null && scrollController != null) {

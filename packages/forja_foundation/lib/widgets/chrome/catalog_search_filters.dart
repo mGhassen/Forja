@@ -79,6 +79,14 @@ class SearchFilters {
       (genreToken == null || genreToken!.isEmpty) &&
       (countryToken == null || countryToken!.isEmpty);
 
+  /// Host structured-search lens: year range only counts when both ends set.
+  bool get isActive =>
+      media != SearchMediaFilter.all ||
+      minScore != null ||
+      (yearStart != null && yearEnd != null) ||
+      genreToken != null ||
+      countryToken != null;
+
   SearchFilters copyWith({
     SearchMediaFilter? media,
     double? minScore,
@@ -89,44 +97,110 @@ class SearchFilters {
     bool clearMinScore = false,
     bool clearYearStart = false,
     bool clearYearEnd = false,
+    bool clearYears = false,
     bool clearGenre = false,
     bool clearCountry = false,
   }) {
+    final clearY = clearYears || clearYearStart;
+    final clearYe = clearYears || clearYearEnd;
     return SearchFilters(
       media: media ?? this.media,
       minScore: clearMinScore ? null : (minScore ?? this.minScore),
-      yearStart: clearYearStart ? null : (yearStart ?? this.yearStart),
-      yearEnd: clearYearEnd ? null : (yearEnd ?? this.yearEnd),
+      yearStart: clearY ? null : (yearStart ?? this.yearStart),
+      yearEnd: clearYe ? null : (yearEnd ?? this.yearEnd),
       genreToken: clearGenre ? null : (genreToken ?? this.genreToken),
       countryToken: clearCountry ? null : (countryToken ?? this.countryToken),
     );
   }
 
-  /// Append filter tokens to a free-text [query] for structured search packs.
-  String composeQuery(String query) {
-    final parts = <String>[query.trim()];
+  /// Tokens appended to the typed query for pack structured search.
+  String toQuerySuffix() {
+    final parts = <String>[];
     switch (media) {
       case SearchMediaFilter.movie:
-        parts.add('movie');
+        parts.add('films');
       case SearchMediaFilter.tv:
-        parts.add('tv');
+        parts.add('series');
       case SearchMediaFilter.all:
         break;
     }
-    if (minScore != null) parts.add('score:${minScore!.toStringAsFixed(1)}');
-    if (yearStart != null && yearEnd != null) {
-      parts.add('$yearStart-$yearEnd');
-    } else if (yearStart != null) {
-      parts.add('$yearStart');
-    } else if (yearEnd != null) {
-      parts.add('$yearEnd');
+    if (genreToken != null) parts.add(genreToken!);
+    if (countryToken != null) parts.add(countryToken!);
+    if (minScore != null) {
+      final v = minScore!;
+      final label =
+          v == v.roundToDouble() ? '${v.toInt()}' : v.toStringAsFixed(1);
+      parts.add('>=$label');
     }
-    final g = genreToken?.trim();
-    if (g != null && g.isNotEmpty) parts.add(g);
-    final c = countryToken?.trim();
-    if (c != null && c.isNotEmpty) parts.add(c);
-    return parts.where((p) => p.isNotEmpty).join(' ');
+    if (yearStart != null && yearEnd != null) {
+      if (yearStart == yearEnd) {
+        parts.add('$yearStart');
+      } else {
+        parts.add('$yearStart-$yearEnd');
+      }
+    }
+    return parts.join(' ');
   }
+
+  /// Alias for [composeSearchQuery] — pack structured query string.
+  String composeQuery(String query) => composeSearchQuery(query, this);
+
+  List<(String label, VoidCallback clear)> tokenActions(
+    void Function(SearchFilters) apply,
+  ) {
+    final out = <(String, VoidCallback)>[];
+    if (media == SearchMediaFilter.movie) {
+      out.add((
+        'Films',
+        () => apply(copyWith(media: SearchMediaFilter.all)),
+      ));
+    } else if (media == SearchMediaFilter.tv) {
+      out.add((
+        'Series',
+        () => apply(copyWith(media: SearchMediaFilter.all)),
+      ));
+    }
+    if (genreToken != null) {
+      final label = kSearchFilterGenres
+          .where((e) => e.$2 == genreToken)
+          .map((e) => e.$1)
+          .firstOrNull;
+      out.add((
+        label ?? genreToken!,
+        () => apply(copyWith(clearGenre: true)),
+      ));
+    }
+    if (countryToken != null) {
+      final label = kSearchFilterCountries
+          .where((e) => e.$2 == countryToken)
+          .map((e) => e.$1)
+          .firstOrNull;
+      out.add((
+        label ?? countryToken!,
+        () => apply(copyWith(clearCountry: true)),
+      ));
+    }
+    if (minScore != null) {
+      final v = minScore!;
+      final label =
+          v == v.roundToDouble() ? '≥${v.toInt()}' : '≥${v.toStringAsFixed(1)}';
+      out.add((label, () => apply(copyWith(clearMinScore: true))));
+    }
+    if (yearStart != null && yearEnd != null) {
+      final label =
+          yearStart == yearEnd ? '$yearStart' : '$yearStart–$yearEnd';
+      out.add((label, () => apply(copyWith(clearYears: true))));
+    }
+    return out;
+  }
+}
+
+String composeSearchQuery(String typed, SearchFilters filters) {
+  final q = typed.trim();
+  final suffix = filters.toQuerySuffix();
+  if (suffix.isEmpty) return q;
+  if (q.isEmpty) return suffix;
+  return '$q $suffix';
 }
 
 /// Filter chip strip paint — host injects tap/TV via [chipBuilder].

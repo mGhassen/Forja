@@ -108,9 +108,7 @@ class PlayerPausedHero extends StatelessWidget {
           children: [
             HeroTitle(
               title: movie.title,
-              logoUrl: movie.logoPath.isNotEmpty
-                  ? TmdbApi.getImageUrl(movie.logoPath)
-                  : null,
+              logoUrl: tmdbLogoImageUrlFromPath(movie.logoPath),
               style: HeroTitleStyle.details,
               tvDensity: ShellScope.metricsOf(context).usesTvDensity,
               plainTitle:

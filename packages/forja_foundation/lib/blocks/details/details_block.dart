@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/widgets/details/details_screen.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';
 
@@ -14,13 +13,17 @@ class DetailsBlock extends StatelessWidget {
     this.playRow,
     required this.body,
     this.scrollable = true,
+    this.scrollController,
+    this.physics,
     this.backgroundColor,
   });
 
-  final DetailsHero hero;
+  final Widget hero;
   final PlayRow? playRow;
   final Widget body;
   final bool scrollable;
+  final ScrollController? scrollController;
+  final ScrollPhysics? physics;
   final Color? backgroundColor;
 
   @override
@@ -44,7 +47,13 @@ class DetailsBlock extends StatelessWidget {
       ],
     );
 
-    final child = scrollable ? SingleChildScrollView(child: column) : column;
+    final child = scrollable
+        ? SingleChildScrollView(
+            controller: scrollController,
+            physics: physics,
+            child: column,
+          )
+        : column;
     final bg = backgroundColor ?? theme.bgDark;
     return ColoredBox(color: bg, child: child);
   }
@@ -62,9 +71,13 @@ class DetailsPageBlock extends StatelessWidget {
     this.onRetry,
     this.overlay,
     this.backgroundColor,
+    this.scrollController,
+    this.sectionSpacing,
+    this.loadingChild,
+    this.errorChild,
   });
 
-  final DetailsHero hero;
+  final Widget hero;
   final PlayRow? playRow;
   final List<Widget> sections;
   final bool loading;
@@ -72,20 +85,28 @@ class DetailsPageBlock extends StatelessWidget {
   final VoidCallback? onRetry;
   final Widget? overlay;
   final Color? backgroundColor;
+  final ScrollController? scrollController;
+  final double? sectionSpacing;
+  final Widget? loadingChild;
+  final Widget? errorChild;
 
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
     final bg = backgroundColor ?? theme.bgDark;
+    final gap = sectionSpacing ?? theme.spaceLg;
     return DetailsScreen(
       backgroundColor: bg,
       loading: loading,
       errorMessage: errorMessage,
       onRetry: onRetry,
+      loadingChild: loadingChild,
+      errorChild: errorChild,
       overlay: overlay,
       body: DetailsBlock(
         hero: hero,
         playRow: playRow,
+        scrollController: scrollController,
         backgroundColor: bg,
         body: Padding(
           padding: EdgeInsets.symmetric(
@@ -96,7 +117,7 @@ class DetailsPageBlock extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var i = 0; i < sections.length; i++) ...[
-                if (i > 0) SizedBox(height: theme.spaceLg),
+                if (i > 0) SizedBox(height: gap),
                 sections[i],
               ],
             ],

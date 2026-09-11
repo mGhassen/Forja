@@ -52,6 +52,7 @@ export 'package:forja_foundation/widgets/chrome/top_bar.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
 export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_shell.dart';
+export 'package:forja_foundation/widgets/chrome/catalog_body.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_list.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_section.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_menu.dart';

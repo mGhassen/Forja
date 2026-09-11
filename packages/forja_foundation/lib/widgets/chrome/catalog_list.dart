@@ -14,6 +14,9 @@ class CatalogList extends StatelessWidget {
     this.onDismissSidePanel,
     this.panelWidth = 380,
     this.useSideRail,
+    this.sideSplit = false,
+    this.listFlex = 60,
+    this.panelFlex = 40,
     this.padding,
   });
 
@@ -24,6 +27,11 @@ class CatalogList extends StatelessWidget {
   final VoidCallback? onDismissSidePanel;
   final double panelWidth;
   final bool? useSideRail;
+
+  /// When true and [sidePanelOpen], use a flex [Row] instead of overlay.
+  final bool sideSplit;
+  final int listFlex;
+  final int panelFlex;
   final EdgeInsetsGeometry? padding;
 
   @override
@@ -31,7 +39,7 @@ class CatalogList extends StatelessWidget {
     Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (header != null) header!,
+        ?header,
         Expanded(child: body),
       ],
     );
@@ -40,10 +48,20 @@ class CatalogList extends StatelessWidget {
       content = Padding(padding: padding!, child: content);
     }
 
-    if (sidePanel == null) return content;
+    if (sidePanel == null || !sidePanelOpen) return content;
+
+    if (sideSplit) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: listFlex, child: content),
+          Expanded(flex: panelFlex, child: sidePanel!),
+        ],
+      );
+    }
 
     return SidePanelOverlay(
-      open: sidePanelOpen,
+      open: true,
       panel: sidePanel!,
       onDismiss: onDismissSidePanel ?? () {},
       panelWidth: panelWidth,

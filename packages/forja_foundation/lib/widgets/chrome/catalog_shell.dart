@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_body.dart';
 
 /// Catalog hub page paint — loading / error / body slots (RFC-106 Zone A).
 ///
 /// Host wires MetaRuntime, layout walk, TV graph, and section builders into
-/// these slots.
+/// these slots. Prefer [CatalogBody] for scroll chrome when composing sections.
 class CatalogShell extends StatelessWidget {
   const CatalogShell({
     super.key,
@@ -23,6 +24,10 @@ class CatalogShell extends StatelessWidget {
     this.railOnLeading = true,
     this.layout,
     this.sectionBuilder,
+    this.sectionSliver,
+    this.scrollController,
+    this.bottomGap = 0,
+    this.emptyChild,
     this.wrapBody,
   });
 
@@ -39,9 +44,15 @@ class CatalogShell extends StatelessWidget {
   final double sideRailWidth;
   final bool railOnLeading;
 
-  /// Pack layout widgets — when set with [sectionBuilder], builds a list.
+  /// Pack layout widgets — when set with [sectionBuilder], builds via
+  /// [CatalogBody] (scroll + bottom gap).
   final List<Map<String, dynamic>>? layout;
   final Widget? Function(Map<String, dynamic> spec, int index)? sectionBuilder;
+  final Widget Function(BuildContext context, Widget section, int index)?
+      sectionSliver;
+  final ScrollController? scrollController;
+  final double bottomGap;
+  final Widget? emptyChild;
 
   /// Host TV / focus graph wrap around the resolved body.
   final Widget Function(Widget body)? wrapBody;
@@ -84,11 +95,15 @@ class CatalogShell extends StatelessWidget {
         final w = sectionBuilder!(layout![i], i);
         if (w != null) sections.add(w);
       }
-      content = sections.isEmpty
-          ? const SizedBox.shrink()
-          : ListView(children: sections);
+      content = CatalogBody(
+        sections: sections,
+        controller: scrollController,
+        bottomGap: bottomGap,
+        sectionSliver: sectionSliver,
+        emptyChild: emptyChild,
+      );
     } else {
-      content = const SizedBox.shrink();
+      content = emptyChild ?? const SizedBox.shrink();
     }
 
     final wrapped = wrapBody?.call(content) ?? content;

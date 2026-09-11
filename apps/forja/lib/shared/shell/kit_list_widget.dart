@@ -32,9 +32,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/hub/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
-
-export 'package:forja_foundation/widgets/chrome/catalog_list.dart'
-    show CatalogList;
+import 'package:forja_foundation/widgets/chrome/catalog_list.dart';
 
 /// Layout widget [`LayoutTypes.list`] — poster grid or dense list from a
 /// registered host list source (opaque `source` id and/or hub [pluginId]).
@@ -518,69 +516,48 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                   )
                 : _grid(context, source, entries);
         final panel = widget.sidePanel ?? _buildAutoPanel();
-        Widget listBody = body;
-        if (panel != null && _opensPanel) {
-          final wide = MediaQuery.sizeOf(context).width >= 900;
-          final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
-          if (useSideSplit) {
-            final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
-            final listFlex = 100 - panelFlex;
-            listBody = Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: listFlex, child: body),
-                Expanded(flex: panelFlex, child: panel),
-              ],
-            );
-          } else {
-            listBody = Stack(
-              children: [
-                body,
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.92,
-                        child: panel,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-        }
+        final sidePanelOpen = panel != null && _opensPanel;
+        final wide = MediaQuery.sizeOf(context).width >= 900;
+        final sideSplit = wide || ShellTokens.isAndroidTvDevice;
+        final panelFlex = ShellTokens.isAndroidTvDevice ? 50 : 40;
+        final listFlex = 100 - panelFlex;
         final chips = _dynamicKinds;
-        if (_layoutHasCategoryBar || !_autoPanel || chips.length <= 1) {
-          return listBody;
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ForjaChipRow(
-              tabId: widget.tabId,
-              rowId: widget.kindMenuId,
-              items: [
-                for (final id in ['all', ...chips])
-                  (
-                    id: id,
-                    label: id == 'all'
-                        ? 'All'
-                        : (id.isEmpty
-                            ? id
-                            : '${id[0].toUpperCase()}${id.substring(1)}'),
-                  ),
-              ],
-              selectedId: kind ?? 'all',
-              onSelect: (id) {
-                setState(() => _kindFilter = id == 'all' ? null : id);
-                scope?.onSelect(widget.kindMenuId, id, toggle: false);
-              },
-            ),
-            Expanded(child: listBody),
-          ],
+        final showChips =
+            !_layoutHasCategoryBar && _autoPanel && chips.length > 1;
+        return CatalogList(
+          body: body,
+          sidePanel: panel,
+          sidePanelOpen: sidePanelOpen,
+          sideSplit: sideSplit,
+          listFlex: listFlex,
+          panelFlex: panelFlex,
+          panelWidth: MediaQuery.sizeOf(context).width * 0.92,
+          onDismissSidePanel: () {
+            if (!mounted) return;
+            setState(() => _selected = null);
+          },
+          header: showChips
+              ? ForjaChipRow(
+                  tabId: widget.tabId,
+                  rowId: widget.kindMenuId,
+                  items: [
+                    for (final id in ['all', ...chips])
+                      (
+                        id: id,
+                        label: id == 'all'
+                            ? 'All'
+                            : (id.isEmpty
+                                ? id
+                                : '${id[0].toUpperCase()}${id.substring(1)}'),
+                      ),
+                  ],
+                  selectedId: kind ?? 'all',
+                  onSelect: (id) {
+                    setState(() => _kindFilter = id == 'all' ? null : id);
+                    scope?.onSelect(widget.kindMenuId, id, toggle: false);
+                  },
+                )
+              : null,
         );
       },
     );

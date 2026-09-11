@@ -20,10 +20,12 @@ String? tmdbLogoImageUrlFromPath(String rawPath) {
   final path = rawPath.trim();
   if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
   if (path.startsWith('http')) return path;
-  return TmdbApi.getImageUrl(path);
+  return null;
 }
 
 /// TMDB title logo for hero / loading chrome when [Movie.logoPath] is empty.
+///
+/// Returns absolute https only — relative API paths are not rewritten to a CDN.
 Future<String?> resolveTmdbLogoImageUrl(Movie movie) async {
   final fromMovie = tmdbLogoImageUrlFromPath(movie.logoPath);
   if (fromMovie != null) return fromMovie;
@@ -31,8 +33,7 @@ Future<String?> resolveTmdbLogoImageUrl(Movie movie) async {
   try {
     final logoPath =
         await TmdbApi().getLogoPath(movie.id, mediaType: movie.mediaType);
-    if (logoPath.isEmpty) return null;
-    return TmdbApi.getImageUrl(logoPath);
+    return tmdbLogoImageUrlFromPath(logoPath);
   } catch (_) {
     return null;
   }

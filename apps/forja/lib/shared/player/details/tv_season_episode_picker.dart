@@ -16,7 +16,6 @@ import 'package:forja/shared/player/details/episode_range_bar.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
-import 'package:rust/rust.dart';
 
 typedef SeasonSelectCallback = void Function(int season);
 typedef EpisodeSelectCallback = void Function(int episode);
@@ -498,11 +497,11 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   String? _seasonPosterUrl(int season) {
     final poster = widget.seasonPosters[season];
     if (poster != null && poster.isNotEmpty) {
-      return poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster);
+      return poster.startsWith('http') ? poster : null;
     }
     final fb = widget.fallbackPosterPath.trim();
     if (fb.isEmpty) return null;
-    return fb.startsWith('http') ? fb : TmdbApi.getImageUrl(fb);
+    return fb.startsWith('http') ? fb : null;
   }
 
   @override
@@ -1018,15 +1017,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        widget.thumbnail != null
+                        widget.thumbnail != null &&
+                                widget.thumbnail
+                                    .toString()
+                                    .startsWith('http')
                             ? SettledNetworkImage(
-                                imageUrl: widget.thumbnail
-                                        .toString()
-                                        .startsWith('http')
-                                    ? widget.thumbnail.toString()
-                                    : TmdbApi.getStillUrl(
-                                        widget.thumbnail.toString(),
-                                      ),
+                                imageUrl: widget.thumbnail.toString(),
                                 fit: BoxFit.cover,
                                 errorWidget: _thumbFallback(),
                               )

@@ -14,6 +14,7 @@ class SearchBlock extends StatelessWidget {
     this.hintText = 'Search',
     this.header,
     this.filters,
+    this.field,
   });
 
   final Widget results;
@@ -25,6 +26,9 @@ class SearchBlock extends StatelessWidget {
   final Widget? header;
   final Widget? filters;
 
+  /// Host-owned search field (TV browse/edit, tune button). Replaces default [Input].
+  final Widget? field;
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
@@ -32,23 +36,26 @@ class SearchBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (header != null) header!,
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            theme.spaceLg,
-            theme.spaceMd,
-            theme.spaceLg,
-            theme.spaceSm,
+        if (field != null)
+          field!
+        else
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              theme.spaceLg,
+              theme.spaceMd,
+              theme.spaceLg,
+              theme.spaceSm,
+            ),
+            child: Input(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: onChanged,
+              onSubmitted: onSubmitted,
+              hintText: hintText,
+              variant: InputVariant.search,
+              prefixIcon: const Icon(Icons.search),
+            ),
           ),
-          child: Input(
-            controller: controller,
-            focusNode: focusNode,
-            onChanged: onChanged,
-            onSubmitted: onSubmitted,
-            hintText: hintText,
-            variant: InputVariant.search,
-            prefixIcon: const Icon(Icons.search),
-          ),
-        ),
         if (filters != null) filters!,
         Expanded(child: results),
       ],

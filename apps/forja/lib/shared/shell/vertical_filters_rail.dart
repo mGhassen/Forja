@@ -278,10 +278,10 @@ class _TvSelectedFilterLogo extends StatelessWidget {
 
 /// Floating vertical filter panel beside the nav rail.
 ///
-/// DS target: [LogoMenuRail] + [VerticalMenu] from `package:forja_foundation`
-/// (see [VerticalFiltersSpec.toLogoMenuItems]). This host widget stays until
-/// pack SVG tiles, [PackAssets], tile colors, and TV focus graph can be
-/// expressed as props-only leading widgets on [LogoMenuRail].
+/// Menu paint is [LogoMenuRail] (itemBuilder for PackAssets + TV focus).
+/// No duplicate VerticalMenu / rail list outside [LogoMenuRail]. Panel shell
+/// (Material / shadow / TapRegion) and selection check badge stay host-owned.
+/// Registry: [VerticalFiltersRegistry] / [VerticalFiltersSpec] KEEP.
 class VerticalFiltersRail extends StatelessWidget {
   const VerticalFiltersRail({super.key, required this.tabId});
 

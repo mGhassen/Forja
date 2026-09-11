@@ -7,7 +7,6 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/horizontal_scroller.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:rust/rust.dart';
 
 class MediaDetailsCastSection extends StatelessWidget {
   const MediaDetailsCastSection({
@@ -106,11 +105,9 @@ class MediaDetailsCastSection extends StatelessWidget {
                       tvRowId: tvRowId != null ? rowId : null,
                       tvItemIndex: i,
                       child: ClipOval(
-                        child: profilePath.isNotEmpty
+                        child: profilePath.startsWith('http')
                             ? CachedNetworkImage(
-                                imageUrl: profilePath.startsWith('http')
-                                    ? profilePath
-                                    : TmdbApi.getProfileUrl(profilePath),
+                                imageUrl: profilePath,
                                 width: _avatarSize,
                                 height: _avatarSize,
                                 fit: BoxFit.cover,

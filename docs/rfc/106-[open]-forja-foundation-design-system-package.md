@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **1** ⏭️ Q1–Q12 |
-| **Current slice** | Part 1 ✅ · `shared/foundation/` deleted · A22 ✅ · A16 ✅ · A18 🔄 · A19 ⏭️ unsigned QA |
+| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **1** ⏭️ Q1–Q12 |
+| **Current slice** | Body evacuate code ✅ ([271](../issues/271-[open]-catalog-body-evacuate-foundation.md)) · A18 🔄 awaiting user Q1–Q12 · A19 ⏭️ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -63,6 +63,18 @@
 | 20 | R106-A20 | **G14-F** Docs/rules — migration guide, pack author note, design-system rules → package paths | ✅ |
 | 21 | R106-A21 | **G14-G** Hard invariants — compile every PR; no silent pack break; no delete-before-wire | ✅ |
 | 22 | R106-A22 | Stub tree deleted — `apps/forja/lib/shared/foundation/` gone; dart `rg` empty | ✅ |
+
+---
+
+## Acceptance (body evacuate — issue 271)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 23 | R106-A23 | KitShell body scroll/section chrome via CatalogBody / CatalogShell | ✅ |
+| 24 | R106-A24 | CatalogList / SidePanelOverlay wired from kit_list_widget | ✅ |
+| 25 | R106-A25 | Search page + single SearchFilters model in package | ✅ |
+| 26 | R106-A26 | Details body composition via DetailsPageBlock / DetailsScreen slots | ✅ |
+| 27 | R106-A27 | Vertical filters rail paint DS-first (LogoMenuRail); registry host | ✅ |
 
 ---
 
