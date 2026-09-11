@@ -3,9 +3,9 @@ import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
-import 'package:forja/shared/kit/kit_sources_panel.dart';
-import 'package:forja/shared/kit/meta_runtime.dart';
-import 'package:forja/shared/kit/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/kit_sources_panel.dart';
+import 'package:forja/shared/engine/hub/meta_runtime.dart';
+import 'package:forja/shared/engine/hub/kit_resolve_streams_hooks.dart';
 
 /// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095).
 ///

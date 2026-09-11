@@ -1,4 +1,4 @@
-import 'package:forja/shared/kit/meta_movie.dart';
+import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja_foundation/protocol/protocol.dart';

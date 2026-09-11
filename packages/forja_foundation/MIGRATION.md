@@ -182,7 +182,7 @@ Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB in
 
 ## `shared/kit` evacuate (checklist)
 
-`apps/forja/lib/shared/kit/` is a leftover dump. Every row must leave. Import the **package file**. Glue that cannot enter zone A goes to engine / player / shell / host services — not another kit folder.
+`apps/forja/lib/shared/kit/` is **gone**. Import the **file**. Glue that cannot enter zone A lives in engine / player / shell / host services — not another kit folder.
 
 **Legend:** ✅ moved · 🔄 this slice · ⬜ leftover
 
@@ -200,12 +200,18 @@ Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB in
 | `rotating_hero_backdrop.dart` | `package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart` | ✅ |
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
 | `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shared/shell/hero_pill_buttons.dart` | ✅ |
-| `cinematic_hero.dart` | replace gallery `widgets/catalog/cinematic_hero.dart`; host keeps Riverpod/`Movie` mapper only | ⬜ |
-| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` | `widgets/catalog/` + `components/poster_frame.dart` / `skeleton.dart` | ⬜ |
-| `kit_shell.dart` · `kit_layout_scope.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_stack_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_panel_host.dart` · `kit_panel_tabs.dart` · `kit_search_*.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_feed_chrome.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `kit_portal_list_panel.dart` · `kit_side_panel_overlay.dart` | `widgets/chrome/` + `blocks/shell` / `blocks/search` | ⬜ |
-| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_sections.dart` · `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play*.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | `blocks/details` + `widgets/details` + player glue | ⬜ |
-| `kit_sources*.dart` · `kit_resolve_panel_host.dart` | `widgets/sources/` + `shared/player/sources/` glue | ⬜ |
-| `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `kit_open.dart` · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_*.dart` · `kit_event_paint.dart` · `kit_category_circle_meta.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `cover_urls.dart` · `host_list_registry.dart` · `my_list_*` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `tmdb_paint_gate.dart` · `legacy_*.dart` · `search_recent_queries.dart` | `shared/engine/hub/` or `shared/engine/lists/` (no UI) | ⬜ |
+| `cinematic_hero.dart` | host composer: `package:forja/shared/shell/cinematic_hero.dart` (Riverpod/`Movie`/TV). Gallery stub stays `widgets/catalog/cinematic_hero.dart` | ✅ |
+| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` · `movie_atmosphere.dart` | host composers: `package:forja/shared/shell/<file>.dart`. Gallery rails stay `widgets/catalog/` + `components/poster_frame.dart` / `skeleton.dart` | ✅ |
+| `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_panel_tabs.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/<file>.dart` | ✅ |
+| `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/kit_category_circle_meta.dart` | ✅ |
+| `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
+| `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` | host chrome: `package:forja/shared/shell/<file>.dart` | ✅ |
+| `kit_panel_host.dart` · `kit_feed_chrome.dart` · `kit_top_bar_host_hooks.dart` · `kit_top_menu_registry.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | `package:forja/shared/player/details/<file>.dart` | ✅ |
+| `kit_details_sections.dart` · `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play.dart` · `kit_details_host_hooks.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `kit_sources*.dart` · `kit_resolve_panel_host.dart` | `package:forja/shared/player/sources/<file>.dart` | ✅ |
+| `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `kit_open.dart` · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_query.dart` · `kit_list_open_mode.dart` · `kit_event_paint.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `cover_urls.dart` · `host_list_registry.dart` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `legacy_*.dart` · `search_recent_queries.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `my_list_catalog_open.dart` · `my_list_catalog_source.dart` · `my_list_host.dart` | `package:forja/shared/engine/lists/<file>.dart` | ✅ |
 | `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop_selectable_title.dart` | ✅ |
 | `kit_focus.dart` | `package:forja/shared/shell/kit_focus.dart` | ✅ |
 | `forja_host_assets.dart` | `package:forja/shared/host/packs/forja_host_assets.dart` | ✅ |

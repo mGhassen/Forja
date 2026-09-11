@@ -1,6 +1,6 @@
-import 'package:forja/shared/kit/kit_details_meta.dart';
+import 'package:forja/shared/engine/hub/kit_details_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/kit/kit_details_host_hooks.dart';
+import 'package:forja/shared/engine/hub/kit_details_host_hooks.dart';
 import 'package:rust/rust.dart';
 
 /// TMDB enrich for kit details — host-owned (RFC-106 G11).

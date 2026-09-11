@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/kit/cover_urls.dart';
+import 'package:forja/shared/engine/hub/cover_urls.dart';
 
 void main() {
   test('normalizeCoverUrl rewrites media.themoviedb.org to image CDN', () {

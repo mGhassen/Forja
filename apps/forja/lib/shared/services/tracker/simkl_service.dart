@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/kit/plugin_nav.dart';
-import 'package:forja/shared/kit/legacy_list_item.dart';
+import 'package:forja/shared/engine/hub/plugin_nav.dart';
+import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';

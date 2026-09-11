@@ -26,7 +26,7 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 | Layer | Location | Use in widgets |
 |-------|----------|----------------|
 | **Shell / profile** | `shared/shell/`, `shell/adapters/` | `ShellScope.metricsOf`, `ShellScope.inputPolicyOf` — never `ShellTokens.isTvLayout` |
-| **Shared presentation** | `packages/forja_foundation` + `shared/kit/` + `shared/player/` | Reusable UI; screen passes data + callbacks |
+| **Shared presentation** | `packages/forja_foundation` + `shared/shell/` + `shared/player/` | Reusable UI; screen passes data + callbacks |
 | **Tab browse** | `features/<name>/` | Orchestrator screens (&lt;800 lines target), `widgets/`, `catalog/`, `controller/` |
 | **Media routes** | `features/media/` | TMDB-global details + Stremio catalog screens — entry via `AppRouter` |
 

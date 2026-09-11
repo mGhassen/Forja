@@ -3,7 +3,7 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/kit/kit_details_meta.dart';
+import 'package:forja/shared/engine/hub/kit_details_meta.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/features/iptv/open/iptv_open.dart';

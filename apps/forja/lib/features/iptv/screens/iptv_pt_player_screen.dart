@@ -38,7 +38,7 @@ import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
-import 'package:forja/shared/kit/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/engine/hub/kit_resolve_streams_hooks.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';

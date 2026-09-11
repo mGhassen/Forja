@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/kit/kit_iptv_play_hooks.dart';
+import 'package:forja/shared/engine/hub/kit_iptv_play_hooks.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';

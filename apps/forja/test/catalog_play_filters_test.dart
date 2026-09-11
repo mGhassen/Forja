@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/kit/pack_filters.dart';
-import 'package:forja/shared/kit/play_filters.dart';
+import 'package:forja/shared/engine/hub/pack_filters.dart';
+import 'package:forja/shared/engine/hub/play_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/kit/kit_sources_live_tv_browse.dart';
-import 'package:forja/shared/kit/kit_sources_panel.dart';
+import 'package:forja/shared/player/sources/kit_sources_live_tv_browse.dart';
+import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
 void main() {
   KitSourcesRow row({

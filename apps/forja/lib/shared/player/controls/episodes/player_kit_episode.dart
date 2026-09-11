@@ -1,4 +1,4 @@
-import 'package:forja/shared/kit/cover_urls.dart';
+import 'package:forja/shared/engine/hub/cover_urls.dart';
 import 'package:rust/rust.dart';
 
 /// KissKH CDN URLs and TMDB `/path.jpg` keys → loadable image URL.

@@ -14,7 +14,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 import 'package:forja/shared/player/details/episode_range_bar.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
-import 'package:forja/shared/kit/home_loading_skeleton.dart';
+import 'package:forja/shared/shell/home_loading_skeleton.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 

@@ -22,7 +22,7 @@ import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/chrome/shell_search_bar.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/shared/shell/letter_jump_scope.dart';
-import 'package:forja/shared/kit/kit_side_panel_overlay.dart';
+import 'package:forja_foundation/widgets/chrome/kit_side_panel_overlay.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_hold_accel.dart';

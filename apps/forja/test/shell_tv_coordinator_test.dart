@@ -12,7 +12,7 @@ import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_app_exit.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/kit/movie_poster_card.dart';
+import 'package:forja/shared/shell/movie_poster_card.dart';
 import 'package:rust/rust.dart';
 
 Widget _wrapTv(Widget child) {

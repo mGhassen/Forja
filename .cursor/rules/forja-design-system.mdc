@@ -8,7 +8,7 @@ alwaysApply: false
 
 **Source of truth (new components):** [`packages/forja_foundation`](../../packages/forja_foundation). Import the **file** you use — not `forja_foundation.dart` (gallery/test barrel). Never `hide Switch, Chip, …` against Material.
 
-Do **not** recreate `apps/forja/lib/shared/foundation/` or dump catalog UI in `shared/kit/`. Catalog composers are this package (`widgets/` / `components/` / `blocks/`). Shell chrome is `shared/shell/`.
+Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Catalog composers are this package (`widgets/` / `components/` / `blocks/`). Shell chrome is `shared/shell/`.
 
 Host-only APIs stay on host paths (`ForjaInteractive`, `ForjaCloseButton.compact`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
 
@@ -113,4 +113,4 @@ Forbidden on TV: raw `TextField` that becomes editable / opens IME when focused;
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
 - Ad-hoc `Switch(` / `SwitchListTile` color overrides — use `ForjaSwitch` / theme tokens
-- Duplicating hero title or meta rendering — use `shared/kit/` hero widgets (see `forja-shared-ui.mdc`)
+- Duplicating hero title or meta rendering — use `package:forja_foundation/widgets/details/` (see `forja-shared-ui.mdc`)

@@ -8,7 +8,7 @@ alwaysApply: true
 **Full model:** [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
 
 Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
-(`apps/forja/lib/shared/kit/**`, KitShell, `catalog_open`) must stay
+(`packages/forja_foundation` widgets/blocks, KitShell, `catalog_open`) must stay
 **pack-agnostic**.
 
 A hub pack may use **any** upstream catalog system (TMDB today, something else

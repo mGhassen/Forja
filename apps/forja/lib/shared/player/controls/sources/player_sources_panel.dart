@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:forja/shared/kit/meta_movie.dart';
+import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';

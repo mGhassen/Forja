@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/lists/list_providers.dart';
-import 'package:forja/shared/kit/my_list_catalog_source.dart';
+import 'package:forja/shared/engine/lists/my_list_catalog_source.dart';
 import 'package:forja/shared/engine/lists/my_list_merge.dart';
-import 'package:forja/shared/kit/legacy_list_item.dart';
+import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 
 void main() {
   tearDown(clearMyListEnrichCache);

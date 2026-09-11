@@ -8,7 +8,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/kit/plugin_nav.dart';
+import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.

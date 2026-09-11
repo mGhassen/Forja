@@ -8,7 +8,7 @@ import 'package:forja/shared/shell/forja_shell_profile.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/kit/movie_poster_card.dart';
+import 'package:forja/shared/shell/movie_poster_card.dart';
 import 'package:rust/rust.dart';
 
 Widget _wrapProfile({

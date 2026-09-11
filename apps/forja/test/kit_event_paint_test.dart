@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/kit/kit_event_paint.dart';
-import 'package:forja/shared/kit/kit_list_source.dart';
+import 'package:forja/shared/engine/hub/kit_event_paint.dart';
+import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 KitListEntry _entry({

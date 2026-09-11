@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/kit/meta_runtime.dart';
+import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/service.dart';

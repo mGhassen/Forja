@@ -17,7 +17,7 @@ import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja_foundation/widgets/details/watch_providers_row.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
-import 'package:forja/shared/kit/kit_details_play_row.dart';
+import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
