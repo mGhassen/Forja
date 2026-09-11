@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Check } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
 import { LiquidGlass } from '@/components/liquid-glass'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { useAuth } from '@/hooks/use-auth'
+import { useProfiles } from '@/hooks/use-profiles'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
@@ -68,6 +71,186 @@ function NavLink({
   )
 }
 
+function HeaderAccountMenu({
+  accountActive,
+  onNavigate,
+  variant = 'desktop',
+}: {
+  accountActive: boolean
+  onNavigate?: () => void
+  variant?: 'desktop' | 'mobile'
+}) {
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
+  const { profiles, activeProfile, selectProfile } = useProfiles()
+  const accountLabel = user?.email?.trim() || 'Account'
+  const profileLabel = activeProfile?.name?.trim() || 'No profile'
+
+  async function onSignOut() {
+    onNavigate?.()
+    await signOut({ scope: 'local' })
+    void navigate({ to: '/' })
+  }
+
+  if (variant === 'mobile') {
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-6">
+        <Link
+          to="/account/settings"
+          onClick={onNavigate}
+          className="flex min-w-0 flex-col"
+        >
+          <span className="truncate font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
+            {accountLabel}
+          </span>
+          <span className="mt-1 truncate font-disp text-[clamp(1.6rem,7vw,2.25rem)] font-bold uppercase leading-none tracking-[-0.03em] text-forja-green">
+            {profileLabel}
+          </span>
+        </Link>
+        <div className="flex flex-col gap-1 pt-2">
+          {profiles.map((profile) => {
+            const selected = profile.id === activeProfile?.id
+            return (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => {
+                  selectProfile(profile.id)
+                  onNavigate?.()
+                }}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl px-1 py-2 text-left transition-colors',
+                  selected ? 'text-[#EDE6DA]' : 'text-[rgba(237,230,218,0.55)]',
+                )}
+              >
+                <ProfileAvatar
+                  avatarKey={profile.avatar_key}
+                  name={profile.name}
+                  className="size-10 shrink-0 rounded-lg ring-1 ring-white/10"
+                />
+                <span className="min-w-0 flex-1 truncate font-disp text-lg uppercase tracking-tight">
+                  {profile.name}
+                </span>
+                {selected ? (
+                  <Check className="size-5 shrink-0 text-forja-green" />
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+        <Link
+          to="/account/profiles"
+          onClick={onNavigate}
+          className="pt-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[rgba(237,230,218,0.55)] transition-colors hover:text-forja-green"
+        >
+          Manage profiles
+        </Link>
+        <button
+          type="button"
+          onClick={() => void onSignOut()}
+          className="self-start font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[rgba(237,230,218,0.55)] transition-colors hover:text-forja-flame"
+        >
+          Log out
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group relative">
+      <Link
+        to="/account/settings"
+        data-hover=""
+        className={cn(
+          'flex max-w-44 flex-col items-end rounded-xl px-3 py-1.5 text-right transition-all duration-200',
+          accountActive
+            ? 'text-forja-green'
+            : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
+        )}
+      >
+        <span className="w-full truncate font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
+          {accountLabel}
+        </span>
+        <span
+          className={cn(
+            'mt-0.5 w-full truncate font-disp text-[13px] font-bold uppercase tracking-tight',
+            accountActive ? 'text-forja-green' : 'text-[#EDE6DA]',
+          )}
+        >
+          {profileLabel}
+        </span>
+      </Link>
+
+      <div
+        className={cn(
+          'invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition-[opacity,visibility] duration-150',
+          'pointer-events-none group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100',
+          'group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100',
+        )}
+      >
+        <div className="w-72 rounded-2xl border border-forja-border bg-[#121110] p-2 shadow-[0_28px_80px_-28px_rgba(0,0,0,0.9)]">
+          <p className="px-3 pb-1 pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
+            Switch profile
+          </p>
+          <div className="max-h-64 space-y-1 overflow-y-auto py-1">
+            {profiles.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-forja-muted">No profiles yet</p>
+            ) : (
+              profiles.map((profile) => {
+                const selected = profile.id === activeProfile?.id
+                return (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    onClick={() => selectProfile(profile.id)}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors',
+                      selected
+                        ? 'bg-forja-green/10 text-[#EDE6DA]'
+                        : 'text-[rgba(237,230,218,0.78)] hover:bg-white/6',
+                    )}
+                  >
+                    <ProfileAvatar
+                      avatarKey={profile.avatar_key}
+                      name={profile.name}
+                      className="size-10 shrink-0 rounded-xl ring-1 ring-white/10"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-disp text-base uppercase tracking-tight">
+                        {profile.name}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-forja-muted">
+                        {selected ? 'Active now' : 'Switch'}
+                      </span>
+                    </span>
+                    {selected ? (
+                      <Check className="size-4 shrink-0 text-forja-green" />
+                    ) : null}
+                  </button>
+                )
+              })
+            )}
+          </div>
+          <div className="mx-1 my-1 h-px bg-[rgba(237,230,218,0.1)]" />
+          <Link
+            to="/account/profiles"
+            className="block rounded-xl px-3 py-2.5 text-sm font-medium text-[#EDE6DA] transition-colors hover:bg-white/6"
+          >
+            Manage profiles
+          </Link>
+          <button
+            type="button"
+            onClick={() => void onSignOut()}
+            className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#EDE6DA] transition-colors hover:bg-white/6 hover:text-forja-flame"
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SiteHeader({ solid = false }: { solid?: boolean }) {
   const { user, loading } = useAuth()
   const [open, setOpen] = useState(false)
@@ -129,18 +312,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
             <div className="ml-auto hidden items-center gap-2 md:flex">
               {!loading && user ? (
-                <Link
-                  to="/account/settings"
-                  data-hover=""
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-xl px-3.5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-200',
-                    accountActive
-                      ? 'text-forja-green'
-                      : 'text-[rgba(237,230,218,0.55)] hover:bg-forja-green/12 hover:text-forja-green',
-                  )}
-                >
-                  Account
-                </Link>
+                <HeaderAccountMenu accountActive={accountActive} />
               ) : (
                 <Link
                   to="/login"
@@ -221,7 +393,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 
         <nav
           aria-label="Primary"
-          className="flex flex-1 flex-col justify-center gap-2 px-[6vw] pb-10"
+          className="flex flex-1 flex-col justify-center gap-2 overflow-y-auto px-[6vw] pb-10"
         >
           {LINKS.map((link) => (
             <NavLink
@@ -243,14 +415,17 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
             Get Forja
           </NavLink>
           {!loading && user ? (
-            <NavLink to="/account" onNavigate={close} variant="mobile">
-              Account
-            </NavLink>
+            <HeaderAccountMenu
+              accountActive={accountActive}
+              onNavigate={close}
+              variant="mobile"
+            />
           ) : (
             <NavLink to="/login" onNavigate={close} variant="mobile">
               Log in
             </NavLink>
-          )}        </nav>
+          )}
+        </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
           Free download
