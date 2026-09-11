@@ -104,3 +104,9 @@ Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (T
 ## Correction — kind icons and list search are pack chrome
 
 Host `kitMoodCircleMeta` only resolves pack **icon tokens** (`soccer`, `tv`, …). It does not map NFL / La Liga / WWE. `kindIcons` + search `placeholder` live on `hubs/live_sports/live_sports.js`. Horizon chip default is the pack `default` — host no longer hardcodes `airing|1h`. `KitScheduleEventSearch` is `KitListEventSearch`.
+
+---
+
+## Correction — panel tabs are pack chrome
+
+`kit.list.panelTabs` / `panelTab` declare Providers / Live TV (or any tabs). Host `KitSourcesPanel` default `browseCategoryTabIds` is empty. `KitResolvePanelHost` no longer owns `providers` / `live_tv` constants. IPTV adapter loads pack tab id `live_tv` → MetaRuntime `liveTv`.

@@ -5,37 +5,35 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/kit_live_boot.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
-/// Play / details entry for Live Sports meta (`open.surface: live`).
+/// Host route for `open.surface: live`.
 ///
-/// Cross-hub open switches to the Live Sports pack tab; [KitListWidget]
-/// consumes [pendingOpenMatchId] and opens the streams panel (RFC-073 A09).
+/// Switches to the hub tab that declares engine type `live_match`.
+/// [KitListWidget] consumes [pendingOpenEntryId] after the list loads.
 abstract final class LiveSurfaceOpen {
   LiveSurfaceOpen._();
 
   static const surface = 'live';
 
-  /// Pending fixture id from [openFromMeta] until the hub consumes it.
-  static String? pendingOpenMatchId;
+  static String? pendingOpenEntryId;
 
   static bool isLiveMeta(MetaItem item) =>
       item.open?.surface == surface || item.type == 'live_match';
 
   static void openFromMeta(BuildContext context, MetaItem item) {
     final id = (item.open?.id ?? item.id).trim();
-    pendingOpenMatchId = id.isEmpty ? null : id;
-    unawaited(_requestLiveTab());
+    pendingOpenEntryId = id.isEmpty ? null : id;
+    unawaited(_requestTab());
   }
 
-  static Future<void> _requestLiveTab() async {
+  static Future<void> _requestTab() async {
     final tab = await KitLiveBoot.resolveTabId();
     if (tab == null || tab.isEmpty) return;
     ShellBus.requestTab.value = tab;
   }
 
-  /// Hub calls after schedule load — returns and clears [pendingOpenMatchId].
-  static String? takePendingOpenMatchId() {
-    final id = pendingOpenMatchId;
-    pendingOpenMatchId = null;
+  static String? takePendingOpenEntryId() {
+    final id = pendingOpenEntryId;
+    pendingOpenEntryId = null;
     return id;
   }
 }

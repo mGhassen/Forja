@@ -5,7 +5,6 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/live/live_resolve_streams.dart';
 import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 import 'package:forja/shared/host/kit/meta_runtime.dart';
-import 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';
 import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
 
 /// IPTV / live resolve panel data — registered on [KitResolveStreamsHooks] (RFC-095).
@@ -22,7 +21,7 @@ abstract final class IptvResolveStreamsAdapter {
     void Function(List<KitSourcesRow> rows)? onPartial,
     bool force = false,
   }) async {
-    if (tabId == KitResolvePanelHost.liveTvTab) {
+    if (tabId == 'live_tv') {
       final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }

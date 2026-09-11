@@ -7,15 +7,13 @@ import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/host/kit/kit_match_details_page.dart';
+import 'package:forja/shared/host/kit/kit_panel_tabs.dart';
 
 /// Thin registry host — load/play via [KitResolveStreamsHooks] (RFC-095 D).
 final class KitResolvePanelHost implements KitPanelHost {
   const KitResolvePanelHost();
 
   static const instance = KitResolvePanelHost();
-
-  static const providersTab = 'providers';
-  static const liveTvTab = 'live_tv';
 
   /// Must match [KitLiveBoot.listSourceId] (`live_schedule`).
   @override
@@ -30,6 +28,7 @@ final class KitResolvePanelHost implements KitPanelHost {
   }) {
     return KitMatchDetailsPage(
       entry: entry,
+      layoutWidgets: layoutWidgets,
       refreshEpoch: refreshEpoch,
     );
   }
@@ -47,6 +46,7 @@ final class KitResolvePanelHost implements KitPanelHost {
     return _KitResolveStreamsPanel(
       key: ValueKey('live-panel-${entry.meta.id}'),
       entry: entry,
+      layoutWidgets: layoutWidgets,
       refreshEpoch: refreshEpoch,
       onClosed: onClosed,
       onPanelLeftEdge: onPanelLeftEdge,
@@ -86,12 +86,14 @@ class _KitResolveStreamsPanel extends StatefulWidget {
   const _KitResolveStreamsPanel({
     super.key,
     required this.entry,
+    required this.layoutWidgets,
     required this.refreshEpoch,
     this.onClosed,
     this.onPanelLeftEdge,
   });
 
   final KitListEntry entry;
+  final List<Map<String, dynamic>> layoutWidgets;
   final int refreshEpoch;
   final VoidCallback? onClosed;
   final VoidCallback? onPanelLeftEdge;
@@ -158,24 +160,18 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
     String subtitle,
     KitUrlHealthProbe? healthProbe,
   ) {
+    final chrome = kitPanelChromeFromLayouts(widget.layoutWidgets);
     return KitSourcesPanel(
       key: ValueKey(
         'live-panel-body-${widget.entry.meta.id}-${widget.refreshEpoch}',
       ),
       title: title.isEmpty ? 'Streams' : title,
       subtitle: subtitle.isEmpty ? null : subtitle,
-      tabs: const [
-        KitSourcesTab(
-          id: KitResolvePanelHost.providersTab,
-          label: 'Providers',
-        ),
-        KitSourcesTab(
-          id: KitResolvePanelHost.liveTvTab,
-          label: 'Live TV',
-        ),
+      tabs: [
+        for (final t in chrome.tabs) KitSourcesTab(id: t.id, label: t.label),
       ],
-      initialTabId: KitResolvePanelHost.providersTab,
-      browseCategoryTabIds: const {KitResolvePanelHost.liveTvTab},
+      initialTabId: chrome.initial,
+      browseCategoryTabIds: kitPanelBrowseTabIds(chrome.tabs),
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,

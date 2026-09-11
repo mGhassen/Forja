@@ -75,7 +75,7 @@ class KitSourcesPanel extends StatefulWidget {
     this.embedded = false,
     this.showTabs = true,
     this.onTabsLeftEdge,
-    this.browseCategoryTabIds = const {'live_tv'},
+    this.browseCategoryTabIds = const {},
     this.channelQuery,
     this.onChannelQueryChanged,
     this.showInlineSearch = true,

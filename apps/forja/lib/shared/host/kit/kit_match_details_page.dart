@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';
 import 'package:forja/shared/host/kit/kit_event_paint.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_panel_tabs.dart';
 import 'package:forja/shared/host/kit/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 
@@ -16,15 +17,17 @@ import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-/// Full-bleed live match details — [KitDetailsHero] + Providers / Live TV.
+/// Full-bleed list-entry details — [KitDetailsHero] + pack [panelTabs].
 class KitMatchDetailsPage extends StatefulWidget {
   const KitMatchDetailsPage({
     super.key,
     required this.entry,
+    this.layoutWidgets = const [],
     this.refreshEpoch = 0,
   });
 
   final KitListEntry entry;
+  final List<Map<String, dynamic>> layoutWidgets;
   final int refreshEpoch;
 
   @override
@@ -32,10 +35,7 @@ class KitMatchDetailsPage extends StatefulWidget {
 }
 
 class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
-  static const _providers = KitResolvePanelHost.providersTab;
-  static const _liveTv = KitResolvePanelHost.liveTvTab;
-
-  final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
+  final _backFocus = FocusNode(debugLabel: 'kit-match-details-back');
   KitUrlHealthProbe? _healthProbe;
   late String _tabId;
   bool _streamsVisible = false;
@@ -47,8 +47,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _tabId = _providers;
-    // Old live details auto-opened Providers on land.
+    _tabId = kitPanelChromeFromLayouts(widget.layoutWidgets).initial ?? '';
     _streamsVisible = true;
     final create = KitResolveStreamsHooks.createHealthProbe;
     _healthProbe = create?.call(
@@ -66,6 +65,9 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   }
 
   KitEventPaint get _paint => KitEventPaint.fromEntry(widget.entry);
+
+  ({List<KitPanelTabSpec> tabs, String? initial}) get _chrome =>
+      kitPanelChromeFromLayouts(widget.layoutWidgets);
 
   /// Catalog merge sum, or Providers sheet total once streams load.
   int? _providersViewerTotal;
@@ -98,12 +100,12 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
           ? null
           : (partial) {
               onPartial(partial);
-              if (tabId == _providers && mounted) {
+              if (mounted) {
                 _updateProvidersViewerTotal(partial);
               }
             },
     );
-    if (tabId == _providers && mounted) {
+    if (mounted) {
       _updateProvidersViewerTotal(rows);
     }
     return rows;
@@ -126,7 +128,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     setState(() {
       _tabId = id;
       _streamsVisible = true;
-      if (id != _liveTv) {
+      if (!kitPanelBrowseTabIds(_chrome.tabs).contains(id)) {
         _liveTvChannelQuery = '';
       }
     });
@@ -141,7 +143,10 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final viewport = MediaQuery.sizeOf(context);
     final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
     final probe = _healthProbe;
-    final showLiveTvSearch = _streamsVisible && _tabId == _liveTv;
+    final chrome = _chrome;
+    final browseIds = kitPanelBrowseTabIds(chrome.tabs);
+    final showBrowseSearch =
+        _streamsVisible && browseIds.contains(_tabId);
 
     if (policy.heroPlayAutoFocus && !_heroFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -160,15 +165,15 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             title: title,
             subtitle: m.categoryLabel,
             embedded: true,
-            tabs: const [
-              KitSourcesTab(id: _providers, label: 'Providers'),
-              KitSourcesTab(id: _liveTv, label: 'Live TV'),
+            tabs: [
+              for (final t in chrome.tabs)
+                KitSourcesTab(id: t.id, label: t.label),
             ],
             initialTabId: _tabId,
             showTabs: false,
             showInlineSearch: false,
-            channelQuery: _tabId == _liveTv ? _liveTvChannelQuery : '',
-            browseCategoryTabIds: const {_liveTv},
+            channelQuery: browseIds.contains(_tabId) ? _liveTvChannelQuery : '',
+            browseCategoryTabIds: browseIds,
             reloadNonce: _sourcesReloadNonce,
             onLoadingChanged: (loading) {
               if (!mounted || loading == _streamsLoading) return;
@@ -205,7 +210,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             height: viewport.height,
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: 2,
+              itemCount: chrome.tabs.length,
               onFocusUp: tvFocus ? () => _backFocus.requestFocus() : null,
               onFocusDown: tvFocus
                   ? () => SourcesPanelTv.focusListItem(
@@ -220,17 +225,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                 child: Row(
                   children: [
                     HeroPillSegmentedChoice<String>(
-                      segments: const [
-                        HeroPillSegment(
-                          value: _providers,
-                          label: 'Providers',
-                          icon: Icons.dns_rounded,
-                        ),
-                        HeroPillSegment(
-                          value: _liveTv,
-                          label: 'Live TV',
-                          icon: Icons.live_tv_rounded,
-                        ),
+                      segments: [
+                        for (final t in chrome.tabs)
+                          HeroPillSegment(
+                            value: t.id,
+                            label: t.label,
+                            icon: kitPanelTabIcon(t.icon),
+                          ),
                       ],
                       selected: _tabId,
                       onSelected: _selectTab,
@@ -247,7 +248,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                       tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
                       tvItemIndexStart: 0,
                     ),
-                    if (showLiveTvSearch) ...[
+                    if (showBrowseSearch) ...[
                       const SizedBox(width: 16),
                       KitSourcesExpandingSearch(
                         query: _liveTvChannelQuery,

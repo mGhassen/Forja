@@ -360,7 +360,7 @@ final class MetaFeedListSource extends KitListSource {
 
   @override
   String? takePendingSelectEntryId() =>
-      LiveSurfaceOpen.takePendingOpenMatchId();
+      LiveSurfaceOpen.takePendingOpenEntryId();
 
   @override
   void setupSideEffects(WidgetRef ref, String status) {}
