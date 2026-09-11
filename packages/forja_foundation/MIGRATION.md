@@ -10,7 +10,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
 4. Never import `package:forja/shared/foundation/**`. That tree is **deleted**. Do not recreate it.
-5. If the package is missing an API: **extend the package** or **move** to `shared/shell/`, `shared/engine/`, or `shared/host/kit|packs|update|account|watch`. Do **not** put pack surfaces in `shared/host/lists|live_sports|sources`. Do not keep the old foundation import.
+5. If the package is missing an API: **extend the package** (`widgets/` / `components/` / `blocks/` / `kit/`) or **move glue** to `shared/shell/`, `shared/engine/`, `shared/player/`, or `shared/host/{packs,update,account,watch}`. Do **not** put catalog UI in `shared/kit`, `shared/host/kit`, or `shared/foundation`. Those dumps are forbidden.
 
 `forja_foundation.dart` is a gallery/test barrel.
 
@@ -27,8 +27,10 @@ Every old symbol has **exactly one** New import.
 | Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, kit types, protocol, NetworkImage, props-only composers |
 | Host shell | `package:forja/shared/shell/<file>.dart` | ShellScope, TV, desktop chrome, toast, ForjaInteractive |
 | Engine | `package:forja/shared/engine/**` | rust-adjacent live models/schedule state, list-follow, torrent parse |
-| Player | `package:forja/shared/player/**` | torrent source panels (player UI) |
-| Host services | `package:forja/shared/host/kit/**` · `packs/**` · `update/**` · `account/**` · `watch/**` | generic catalog runtime + pack install + app update. **Never** `host/lists`, `host/live_sports`, `host/sources` |
+| Player | `package:forja/shared/player/**` | torrent source panels + media-details chrome (orchestration) |
+| Host services | `package:forja/shared/host/{packs,update,account,watch}/**` | pack install + app update + account + watch history |
+
+**Forbidden dumps:** `shared/kit/**`, `shared/host/kit/**`, `shared/foundation/**`, `shared/host/lists|live_sports|sources`. Catalog UI is this package.
 
 ---
 
@@ -154,13 +156,13 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | List-follow / merge | `package:forja/shared/engine/lists/**` |
 | Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `package:forja/shared/player/sources/**` |
-| Generic catalog kit (boot, event cards, resolve panel, my-list catalog) | `package:forja/shared/host/kit/**` (`KitEventPaint` from list rows — not `MatchEvent`) |
+| Generic catalog kit UI | `package:forja_foundation/widgets/**` · `blocks/**` · `kit/**` — see evacuate table. Glue: `shared/engine/hub/` |
 | Packs / PackAssets | `package:forja/shared/host/packs/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
 | Update dialog / banner | `package:forja/shared/host/update/**` |
 | Keychain consent | `package:forja/shared/host/account/**` |
 
-**Forbidden destinations:** `shared/host/lists/**`, `shared/host/live_sports/**`, `shared/host/sources/**` — pack surfaces, not host.
+**Forbidden destinations:** `shared/kit/**`, `shared/host/kit/**`, `shared/host/lists/**`, `shared/host/live_sports/**`, `shared/host/sources/**`.
 
 ---
 
@@ -172,20 +174,39 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | `kit_layout_map` | `package:forja_foundation/kit/kit_layout_map.dart` |
 | `Deeplink` / filter / protocol / pack_capabilities | `package:forja_foundation/protocol/<file>.dart` |
 | `normalizeCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
-| `resolveCoverUrl` | `package:forja/shared/host/kit/cover_urls.dart` — host TMDB relative-path, not the package util |
+| `resolveCoverUrl` | host TMDB relative-path — `shared/engine/hub/` or `shared/player/` when evacuated; package only has `normalizeCoverUrl` |
 
-Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …) are props-only gallery copies. Running catalog UI is `package:forja/shared/host/kit/**`. New work that is props-only imports the package file. Do not recreate `shared/foundation/` copies.
+Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB into props. Do not keep a parallel tree in `shared/kit`.
 
 ---
 
-## Kit runtime — moved off foundation
+## `shared/kit` evacuate (checklist)
 
-| Surface | New path |
-|---------|----------|
-| Catalog kit (shell, details, hero, search, layout, posters) | `package:forja/shared/host/kit/<file>.dart` |
-| Play / probe / stream loading | `package:forja/shared/playback/<file>.dart` |
-| Episode / media-details / sources TV | `package:forja/shared/player/details/<file>.dart` |
-| Vertical filters / letter jump | `package:forja/shared/shell/<file>.dart` |
+`apps/forja/lib/shared/kit/` is a leftover dump. Every row must leave. Import the **package file**. Glue that cannot enter zone A goes to engine / player / shell / host services — not another kit folder.
+
+**Legend:** ✅ moved · 🔄 this slice · ⬜ leftover
+
+| Old (`shared/kit/`) | New | Status |
+|---------------------|-----|--------|
+| `hero_overview_text.dart` | `package:forja_foundation/widgets/details/hero_overview_text.dart` | ✅ |
+| `hero_facts_panel.dart` | `package:forja_foundation/widgets/details/facts_panel.dart` (`FactsPanel` / `fromFields`) | ✅ |
+| `kit_details_facts_panel.dart` | same `FactsPanel(rows:)` | ✅ |
+| `hero_meta_line.dart` | `package:forja_foundation/widgets/details/meta_line.dart` (`MetaLine`) | ✅ |
+| `hero_title.dart` | `package:forja_foundation/widgets/details/hero_title.dart` — `String title` + logo; host passes `movie.title` + TV/selectable flags | ✅ |
+| `hero_utils.dart` | `package:forja_foundation/utils/hero_utils.dart` | ✅ |
+| `kit_hero_content_scrim.dart` | `package:forja_foundation/widgets/details/hero_content_scrim.dart` | ✅ |
+| `hero_banner.dart` · `hero_pill_buttons.dart` · `hero_watch_providers_row.dart` · `rotating_hero_backdrop.dart` | `widgets/details/` or `widgets/catalog/` | ⬜ |
+| `cinematic_hero.dart` | replace gallery `widgets/catalog/cinematic_hero.dart`; host keeps Riverpod/`Movie` mapper only | ⬜ |
+| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` | `widgets/catalog/` + `components/poster_frame.dart` / `skeleton.dart` | ⬜ |
+| `kit_shell.dart` · `kit_layout_scope.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_stack_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_panel_host.dart` · `kit_panel_tabs.dart` · `kit_search_*.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_feed_chrome.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `kit_portal_list_panel.dart` · `kit_side_panel_overlay.dart` | `widgets/chrome/` + `blocks/shell` / `blocks/search` | ⬜ |
+| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_sections.dart` · `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play*.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | `blocks/details` + `widgets/details` + player glue | ⬜ |
+| `kit_sources*.dart` · `kit_resolve_panel_host.dart` | `widgets/sources/` + `shared/player/sources/` glue | ⬜ |
+| `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `kit_open.dart` · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_*.dart` · `kit_event_paint.dart` · `kit_category_circle_meta.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `cover_urls.dart` · `host_list_registry.dart` · `my_list_*` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `tmdb_paint_gate.dart` · `legacy_*.dart` · `search_recent_queries.dart` | `shared/engine/hub/` or `shared/engine/lists/` (no UI) | ⬜ |
+| `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop_selectable_title.dart` | ✅ |
+| `kit_focus.dart` · `settled_network_image.dart` | `shared/shell/` or `components/network_image.dart` | ⬜ |
+| `forja_host_assets.dart` | `shared/host/packs/` or delete if unused | ⬜ |
+
+Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters stay `shared/shell/`.
 
 `apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 
@@ -260,7 +281,7 @@ Every inventory test that imported foundation chrome follows the **same** New pa
 `apps/forja/test/tv_focus_graph_test.dart`
 `apps/forja/test/tv_season_episode_picker_test.dart`
 
-Kit-runtime tests import `shared/host/kit/**`, `shared/engine/**`, `shared/player/**`, or `package:forja_foundation/<file>.dart` — never `shared/foundation/`.
+Kit-runtime tests import `package:forja_foundation/<file>.dart`, `shared/engine/**`, or `shared/player/**` — never `shared/foundation/` or new `shared/kit/` files.
 
 ---
 

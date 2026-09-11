@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/host/kit/details_fetch.dart';
-import 'package:forja/shared/host/kit/legacy_list_item.dart';
+import 'package:forja/shared/kit/details_fetch.dart';
+import 'package:forja/shared/kit/legacy_list_item.dart';
 import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';

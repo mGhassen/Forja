@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/kit/kit_list_source.dart';
+import 'package:forja/shared/kit/kit_list_source.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/host/kit/kit_list_event_query.dart';
+import 'package:forja/shared/kit/kit_list_event_query.dart';
 
 KitListEntry _entry({
   required String name,

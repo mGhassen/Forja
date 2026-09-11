@@ -13,8 +13,8 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 import 'package:forja/shared/player/details/episode_range_bar.dart';
-import 'package:forja/shared/host/kit/settled_network_image.dart';
-import 'package:forja/shared/host/kit/home_loading_skeleton.dart';
+import 'package:forja/shared/kit/settled_network_image.dart';
+import 'package:forja/shared/kit/home_loading_skeleton.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 

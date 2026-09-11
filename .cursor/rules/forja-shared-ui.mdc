@@ -15,7 +15,8 @@ Extract **presentation** into the design system; keep **state, fetching, navigat
 ## Folder map
 
 ```
-shared/host/kit/                 # catalog composers (hero, details, search, layout, posters)
+packages/forja_foundation/lib/widgets|components|blocks/  # catalog composers
+shared/kit/                  # LEFTOVER dump — evacuate per MIGRATION.md, do not add files
 shared/player/details/           # episode picker, media-details body/hero, sources TV
 shared/player/sources/           # torrent panels
 shared/playback/                 # play hooks, probe, stream loading
@@ -63,7 +64,7 @@ MediaDetailsScrollPage(
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
 
-Do **not** put app-shell or kit-host orchestration under DS `components/`. App frame → `lib/shell/`. Hub tab host → `shared/host/kit/`.
+Do **not** put app-shell orchestration under DS `components/`. App frame → `lib/shell/`. Hub catalog UI → `packages/forja_foundation` widgets/blocks. Glue only in engine/player.
 
 ## Do not
 

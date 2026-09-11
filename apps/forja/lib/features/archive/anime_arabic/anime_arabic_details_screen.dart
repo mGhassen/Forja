@@ -9,10 +9,10 @@ import 'package:forja/features/archive/anime_arabic/catalog/anime_arabic_service
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/host/kit/hero_pill_buttons.dart';
-import 'package:forja/shared/host/kit/kit_section.dart';
-import 'package:forja/shared/host/kit/kit_poster_card.dart';
-import 'package:forja/shared/host/kit/kit_details_play_row.dart';
+import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/kit/kit_section.dart';
+import 'package:forja/shared/kit/kit_poster_card.dart';
+import 'package:forja/shared/kit/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/media_details_body.dart';
 import 'package:forja/shared/player/details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';

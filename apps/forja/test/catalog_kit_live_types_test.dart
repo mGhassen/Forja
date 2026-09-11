@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja_foundation/kit/kit_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/host/kit/meta_feed_list_source.dart';
-import 'package:forja/shared/host/kit/host_list_registry.dart';
-import 'package:forja/shared/host/kit/kit_live_boot.dart';
+import 'package:forja/shared/kit/meta_feed_list_source.dart';
+import 'package:forja/shared/kit/host_list_registry.dart';
+import 'package:forja/shared/kit/kit_live_boot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

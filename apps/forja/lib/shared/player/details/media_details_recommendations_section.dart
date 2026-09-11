@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
-import 'package:forja/shared/host/kit/home_movie_row.dart';
+import 'package:forja/shared/kit/home_movie_row.dart';
 import 'package:rust/rust.dart';
 
 /// Horizontal "More Like This" row below media details hero.

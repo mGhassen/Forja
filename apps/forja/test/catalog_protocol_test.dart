@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/kit/chrome_filters.dart';
-import 'package:forja/shared/host/kit/forja_host_assets.dart';
-import 'package:forja/shared/host/kit/meta_cache.dart';
-import 'package:forja/shared/host/kit/meta_runtime.dart';
-import 'package:forja/shared/host/kit/pack_filters.dart';
-import 'package:forja/shared/host/kit/plugin_nav.dart';
+import 'package:forja/shared/kit/chrome_filters.dart';
+import 'package:forja/shared/kit/forja_host_assets.dart';
+import 'package:forja/shared/kit/meta_cache.dart';
+import 'package:forja/shared/kit/meta_runtime.dart';
+import 'package:forja/shared/kit/pack_filters.dart';
+import 'package:forja/shared/kit/plugin_nav.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/shell/vertical_filters.dart';
 import 'package:forja_foundation/protocol/deeplink.dart';

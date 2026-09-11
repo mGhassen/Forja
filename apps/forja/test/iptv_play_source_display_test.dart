@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/kit/kit_resolve_streams_hooks.dart';
 
 void main() {
   test('keeps full Xtream channel name (no callsign rewrite)', () {

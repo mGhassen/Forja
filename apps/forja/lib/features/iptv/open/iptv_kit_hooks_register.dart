@@ -10,8 +10,8 @@ import 'package:forja/features/iptv/open/live_play.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/host/kit/kit_iptv_play_hooks.dart';
-import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/kit/kit_iptv_play_hooks.dart';
+import 'package:forja/shared/kit/kit_resolve_streams_hooks.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext, RichMediaDetails;
 
 /// Boots IPTV play + resolve hooks so foundation kit stays feature-free (RFC-095).

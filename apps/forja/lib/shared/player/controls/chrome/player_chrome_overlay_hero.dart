@@ -107,14 +107,24 @@ class PlayerPausedHero extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             HeroTitle(
-              movie: movie,
+              title: movie.title,
               logoUrl: movie.logoPath.isNotEmpty
                   ? TmdbApi.getImageUrl(movie.logoPath)
                   : null,
               style: HeroTitleStyle.details,
+              tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+              plainTitle:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+              selectable: shellDesktopTextSelect(context),
             ),
             const SizedBox(height: 10),
-            HeroMetaLine(movie: movie, style: HeroMetaStyle.details),
+            MetaLine(
+              releaseDate: movie.releaseDate,
+              mediaType: movie.mediaType,
+              runtimeMinutes: movie.runtime,
+              voteAverage: movie.voteAverage,
+              genres: movie.genres,
+            ),
             if (episode != null) ...[
               const SizedBox(height: 6),
               Text(

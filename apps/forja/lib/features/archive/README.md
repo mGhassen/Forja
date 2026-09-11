@@ -2,7 +2,7 @@
 
 Shell tabs and verticals **removed from navigation**. Code is kept for reference or future restore — not part of the in-scope product surface.
 
-**Active features:** `account`, `iptv`, `live_sports`, `media`, `settings` + catalog hubs via `shared/host/kit/` (My List is a hub pack + `shared/engine/lists/` follow).
+**Active features:** `account`, `iptv`, `live_sports`, `media`, `settings` + catalog hubs via `shared/kit/` (My List is a hub pack + `shared/engine/lists/` follow).
 
 ## Archived tabs
 

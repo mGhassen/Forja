@@ -8,7 +8,7 @@ alwaysApply: true
 **Full model:** [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
 
 Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
-(`apps/forja/lib/shared/foundation/**`, KitShell, `catalog_open`) must stay
+(`apps/forja/lib/shared/kit/**`, KitShell, `catalog_open`) must stay
 **pack-agnostic**.
 
 A hub pack may use **any** upstream catalog system (TMDB today, something else
@@ -22,7 +22,7 @@ Hardcoding or branching on:
 - Scraper / source names: `larozaa`, `dimatoon`, `brstej`, …
 - Pack-specific `ids.*` keys to decide behavior (`numericId('anilist')`, `ids['larozaa']`, …)
 - **Upstream API clients in the host** — no `TmdbApi`, no `getTvSeasonDetails`, no title
-  search/match, no enrich logic keyed off `ids.tmdb` inside `shared/foundation/**`
+  search/match, no enrich logic keyed off `ids.tmdb` inside catalog kit / host
 
 **Wrong:** `switch (type) { case 'arabic': parse ids.larozaa / dimatoon / brstej }`  
 **Wrong:** `openAnimeDetails` only if `numericId('anilist')`  
@@ -81,8 +81,8 @@ absent and `type` is `movie`/`tv` (Home TMDB rows — not hub enrich).
 | Layer | May know scrapers / pack ids / upstream APIs |
 |-------|---------------------------------------------|
 | `plugins/hubs/**` JS | Yes — emit `open`, layout, enrich |
-| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work uses `shared/foundation` kit** |
-| `shared/foundation/**`, KitShell open path | **No** |
+| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work uses package widgets/blocks** |
+| `packages/forja_foundation` widgets/blocks, KitShell open path | **No** |
 
 ## Seed / nav
 

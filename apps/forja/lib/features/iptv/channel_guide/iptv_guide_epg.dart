@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
-import 'package:forja/shared/host/kit/hero_overview_text.dart';
+import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';

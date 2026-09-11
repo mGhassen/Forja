@@ -8,13 +8,15 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/host/kit/hero_facts_panel.dart';
-import 'package:forja/shared/host/kit/hero_meta_line.dart';
-import 'package:forja/shared/host/kit/hero_title.dart';
-import 'package:forja/shared/host/kit/hero_watch_providers_row.dart';
-import 'package:forja/shared/host/kit/rotating_hero_backdrop.dart';
-import 'package:forja/shared/host/kit/hero_overview_text.dart';
-import 'package:forja/shared/host/kit/kit_details_play_row.dart';
+import 'package:forja_foundation/widgets/details/facts_panel.dart';
+import 'package:forja_foundation/widgets/details/meta_line.dart';
+import 'package:forja_foundation/widgets/details/hero_title.dart';
+import 'package:forja/shared/shell/desktop_selectable_title.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/kit/hero_watch_providers_row.dart';
+import 'package:forja/shared/kit/rotating_hero_backdrop.dart';
+import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
+import 'package:forja/shared/kit/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -1115,8 +1117,13 @@ class _HeroLayout extends StatelessWidget {
       );
     }
 
-    final factsPanel = HeroFactsPanel(
-      movie: movie,
+    final factsPanel = FactsPanel.fromFields(
+      title: movie.title,
+      mediaType: movie.mediaType,
+      runtimeMinutes: movie.runtime,
+      releaseDate: movie.releaseDate,
+      seasonCount: movie.numberOfSeasons,
+      episodeCount: movie.numberOfEpisodes,
       status: status,
       budget: budget,
       revenue: revenue,
@@ -1265,6 +1272,9 @@ class _HeroMainColumn extends StatelessWidget {
     final hasDirector = director != null && director.isNotEmpty;
     final bounded = maxHeight != null && maxHeight!.isFinite && maxHeight! > 0;
     final hasProgress = positionMs != null && durationMs != null;
+    final tvDensity = ShellScope.metricsOf(context).usesTvDensity;
+    final plainTitle = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final selectable = shellDesktopTextSelect(context);
 
     var showDirector = hasDirector;
     var showGenres = movie.genres.isNotEmpty;
@@ -1349,16 +1359,22 @@ class _HeroMainColumn extends StatelessWidget {
             child: Align(
               alignment: Alignment.bottomLeft,
               child: HeroTitle(
-                movie: movie,
+                title: movie.title,
                 logoUrl: logoUrl,
                 slotHeight: titleHeight,
+                tvDensity: tvDensity,
+                plainTitle: plainTitle,
+                selectable: selectable,
               ),
             ),
           )
         else
           HeroTitle(
-            movie: movie,
+            title: movie.title,
             logoUrl: logoUrl,
+            tvDensity: tvDensity,
+            plainTitle: plainTitle,
+            selectable: selectable,
           ),
       if (showGenres) ...[
         const SizedBox(height: 10),
@@ -1376,8 +1392,12 @@ class _HeroMainColumn extends StatelessWidget {
       ],
       if (showMetaLine) ...[
         const SizedBox(height: 14),
-        HeroMetaLine(
-          movie: movie,
+        MetaLine(
+          releaseDate: movie.releaseDate,
+          mediaType: movie.mediaType,
+          runtimeMinutes: movie.runtime,
+          voteAverage: movie.voteAverage,
+          genres: movie.genres,
           certification: certification,
           imdbRating: imdbRating,
         ),

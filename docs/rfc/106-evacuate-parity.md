@@ -14,7 +14,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 
 | Old foundation surface | Must still work via | Host / stub | Status |
 |------------------------|---------------------|-------------|--------|
-| Live match details | Host + `DetailsBlock` | `host/kit/kit_match_details_page.dart` + `KitEventPaint` | ✅ |
+| Live match details | Host + `DetailsBlock` | `shared/kit/kit_match_details_page.dart` + `KitEventPaint` | ✅ |
 | Live schedule list/cards | `kit.list` `style: cards` + `KitEventPaint` | Generic kit list; no Live Sports hooks | ✅ |
 | Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | `vertical_filters*.dart` wraps DS `LogoMenuRail` + `VerticalMenu` | ✅ |
 | Sources / resolve panel | Kit hooks + SourcesPanel | Generic panel stays foundation; Live TV browse + `KitResolvePanelHost` → `host/sources/panel/` | ✅ |
@@ -83,9 +83,9 @@ See per-folder READMEs for leftover kit entanglement.
 | List-follow / merge | `shared/engine/lists/**` |
 | Torrent parse | `shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `shared/player/sources/**` |
-| Catalog boot / cards / resolve panel / my-list catalog / `plugin_nav` / MetaRuntime / `kit_shell` | `shared/host/kit/**` |
+| Catalog boot / cards / resolve panel / my-list catalog / `plugin_nav` / MetaRuntime / `kit_shell` | `shared/kit/**` |
 
-Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (TMDB enrich still debt).
+Catalog kit is `shared/kit/**`. Host services are `packs/`, `watch/`, `update/`, `account/`, plus `details/` (TMDB enrich still debt). Do not put catalog under `shared/host/`.
 
 ---
 

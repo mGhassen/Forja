@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/host/kit/plugin_nav.dart';
+import 'package:forja/shared/kit/plugin_nav.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';

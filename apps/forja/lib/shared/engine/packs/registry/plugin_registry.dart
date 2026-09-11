@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/host/kit/meta_cache.dart';
+import 'package:forja/shared/kit/meta_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';

@@ -54,8 +54,8 @@ packages/rust/     ← native playback / torrent / resolve engine
 | Layer | Path (typical) | May know pack/upstream? |
 |-------|----------------|-------------------------|
 | **Hub packs** | `plugins/hubs/**` | **Yes** — full |
-| **Catalog host** | `shared/foundation/**`, `KitShell`, `catalog_open` | **No** — render + route on `open.surface` only |
-| **Catalog kit play** | `shared/foundation/blocks/play/**` | **No** — build play args from `MetaItem` + `pluginId`; pass `MetaOpen` opaque |
+| **Catalog host** | `packages/forja_foundation` widgets/blocks + leftover `shared/kit` (evacuating) | **No** — render + route on `open.surface` only |
+| **Catalog kit play** | `shared/playback/**` + engine extract | **No** — build play args from `MetaItem` + `pluginId`; pass `MetaOpen` opaque |
 | **Playback** | `shared/playback/**` | **No** — generic VOD orchestration only (see playback rule) |
 | **Engine host** | `shared/engine/**` | Plugin ids + `engine.json` types for **extract**; map `MetaOpen` → JS context **here only** when calling `runPlugin` |
 | **Feature screens** | `features/anime`, `asian_drama`, … | Legacy; **new hub work uses catalog kit**, not new feature forks |

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/kit/kit_category_circle_meta.dart';
+import 'package:forja/shared/kit/kit_category_circle_meta.dart';
 
 void main() {
   group('catalogKitCategoryLabel', () {

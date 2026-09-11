@@ -8,12 +8,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/shell_search_bar.dart';
-import 'package:forja/shared/host/kit/kit_search_filters.dart';
+import 'package:forja/shared/kit/kit_search_filters.dart';
 
-import 'package:forja/shared/host/kit/search_recent_queries.dart';
+import 'package:forja/shared/kit/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/horizontal_scroller.dart';
-import 'package:forja/shared/host/kit/recent_search_helper_tile.dart';
+import 'package:forja/shared/kit/recent_search_helper_tile.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv_search_browse_overlay.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
