@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/foundation.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
+import 'package:forja/shared/host/kit/pack_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';

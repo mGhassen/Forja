@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/foundation/components/chrome/kit_filter_sheet_option.dart';
+import 'package:forja/shared/host/kit/kit_filter_sheet_option.dart';
 import 'package:forja/shared/engine/live/kit_schedule_window.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';

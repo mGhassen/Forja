@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
+import 'package:forja/shared/host/kit/pack_filters.dart';
+import 'package:forja/shared/shell/vertical_filters.dart';
+import 'package:forja/shared/shell/vertical_filters_rail.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';

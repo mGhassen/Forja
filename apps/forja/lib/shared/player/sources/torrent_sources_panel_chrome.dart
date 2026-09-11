@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/host/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_filters.dart';
 import 'package:forja/shared/shell/forja_loading_dots.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';

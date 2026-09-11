@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
-import 'package:forja/shared/foundation/lib/forja_host_assets.dart';
+import 'package:forja/shared/host/kit/forja_host_assets.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 

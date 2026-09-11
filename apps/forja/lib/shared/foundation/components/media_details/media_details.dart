@@ -17,4 +17,4 @@ export 'torrent_sources_panel_chrome.dart';
 export 'tv_season_episode_picker.dart';
 export 'watch_progress_bar.dart';
 export 'watch_series_progress.dart';
-export 'package:forja/shared/foundation/components/posters/movie_poster_card.dart';
+export 'package:forja/shared/host/kit/movie_poster_card.dart';

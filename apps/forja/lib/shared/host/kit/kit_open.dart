@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
+import 'package:forja/shared/host/kit/kit_details_screen.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/host/kit/meta_surface_open.dart';

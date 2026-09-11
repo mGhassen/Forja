@@ -6,7 +6,7 @@ import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.d
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/vertical_filters.dart';
 
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';

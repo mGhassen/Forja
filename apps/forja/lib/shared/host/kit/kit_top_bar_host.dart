@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/foundation/protocol/pack_capabilities.dart';
-import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
-import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
-import 'package:forja/shared/foundation/components/layout/kit_top_bar.dart';
-import 'package:forja/shared/foundation/components/layout/kit_top_menu_registry.dart';
+import 'package:forja/shared/host/kit/pack_filters.dart';
+import 'package:forja/shared/shell/vertical_filters.dart';
+import 'package:forja/shared/host/kit/kit_top_bar.dart';
+import 'package:forja/shared/host/kit/kit_top_menu_registry.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/host/kit/kit_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';

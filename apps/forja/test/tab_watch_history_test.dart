@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:rust/rust.dart';
 

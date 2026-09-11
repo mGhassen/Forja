@@ -12,7 +12,7 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/components/chrome/letter_jump_scope.dart';
+import 'package:forja/shared/shell/letter_jump_scope.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja/shared/shell/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

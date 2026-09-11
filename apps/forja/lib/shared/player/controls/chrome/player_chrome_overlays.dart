@@ -11,7 +11,7 @@ import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 
 export '../menus/player_menu_return_focus.dart';

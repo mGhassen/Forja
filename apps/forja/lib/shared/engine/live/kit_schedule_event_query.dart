@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
 
 /// Session-only Live Sports event search query (does not reload the feed).
 final kitScheduleEventQueryProvider = StateProvider<String>((ref) => '');

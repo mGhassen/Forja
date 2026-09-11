@@ -177,15 +177,16 @@ Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_h
 
 ---
 
-## Kit runtime — move to `host/kit` (not foundation)
+## Kit runtime — moved off foundation
 
-| File | New path |
-|------|----------|
-| `services/nav/plugin_nav.dart` | `package:forja/shared/host/kit/plugin_nav.dart` |
-| `services/meta/runtime.dart` / `cache.dart` | `package:forja/shared/host/kit/` |
-| `services/registry/*` | `package:forja/shared/host/kit/` |
-| `blocks/shell/kit_open.dart` / `kit_shell.dart` | `package:forja/shared/host/kit/` |
-| `kit_live_boot.dart` | `package:forja/shared/host/kit/kit_live_boot.dart` |
+| Surface | New path |
+|---------|----------|
+| Catalog kit (shell, details, hero, search, layout, posters) | `package:forja/shared/host/kit/<file>.dart` |
+| Play / probe / stream loading | `package:forja/shared/playback/<file>.dart` |
+| Episode / media-details / sources TV | `package:forja/shared/player/details/<file>.dart` |
+| Vertical filters / letter jump | `package:forja/shared/shell/<file>.dart` |
+
+Foundation copies are **export stubs**. Only `foundation.dart` barrel is still real. G14-E deletes the stub tree after Q1–Q12.
 
 ---
 

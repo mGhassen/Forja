@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
@@ -13,7 +13,7 @@ import 'package:forja/shared/player/screens/tv_player_screen.dart';
 import 'package:forja/shared/player/screens/desktop_player_screen.dart';
 
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/bus/shell_bus.dart';

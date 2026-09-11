@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_panel_host.dart';
+import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/host/kit/kit_match_details_page.dart';

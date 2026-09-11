@@ -25,7 +25,7 @@ import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/probe/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
@@ -68,7 +68,7 @@ import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart'
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/foundation/blocks/play/play_hooks.dart';
+import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 
 import 'package:forja/shell/routing/app_router.dart';

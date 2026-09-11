@@ -7,7 +7,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart'
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';

@@ -1,4 +1,4 @@
-import 'package:forja/shared/foundation/components/details/kit_sources.dart';
+import 'package:forja/shared/host/kit/kit_sources.dart';
 
 /// Settings wires playback toggles → [KitPanelSourceFlags] (RFC-095).
 abstract final class KitPanelSourceFlagsHooks {

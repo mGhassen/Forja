@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 import 'package:forja/shared/shell/forja_interactive.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';

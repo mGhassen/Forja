@@ -9,7 +9,7 @@ import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/engine/models/torrent_release_metadata.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';

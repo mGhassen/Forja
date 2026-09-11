@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
 
 /// Host adapters for [`KitTypes.list`] product branches (RFC-106 G11).
 ///

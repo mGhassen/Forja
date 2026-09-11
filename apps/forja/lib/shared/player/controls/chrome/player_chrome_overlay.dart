@@ -5,10 +5,10 @@ import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
-import 'package:forja/shared/foundation/components/hero/hero_meta_line.dart';
-import 'package:forja/shared/foundation/components/hero/hero_overview_text.dart';
-import 'package:forja/shared/foundation/components/hero/hero_title.dart';
-import 'package:forja/shared/foundation/components/media_details/watch_progress_bar.dart';
+import 'package:forja/shared/host/kit/hero_meta_line.dart';
+import 'package:forja/shared/host/kit/hero_overview_text.dart';
+import 'package:forja/shared/host/kit/hero_title.dart';
+import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:rust/rust.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';

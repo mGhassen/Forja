@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
+import 'package:forja/shared/host/kit/kit_sources_panel.dart';
 
 /// Props-only health probe surface for kit resolve panels (RFC-095).
 abstract class KitUrlHealthProbe implements Listenable {

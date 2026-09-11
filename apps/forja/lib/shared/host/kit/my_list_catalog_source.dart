@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/host/kit/my_list_catalog_open.dart';
 import 'package:forja/shared/engine/lists/my_list_merge.dart';
 import 'package:forja/shared/host/kit/my_list_host.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/host/kit/meta_runtime.dart';
-import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
+import 'package:forja/shared/host/kit/legacy_list_item.dart';
 import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_providers.dart';
 

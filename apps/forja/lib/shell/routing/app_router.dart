@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/foundation/blocks/details/kit_details_screen.dart';
+import 'package:forja/shared/host/kit/kit_details_screen.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
-import 'package:forja/shared/foundation/blocks/shell/legacy_movie_meta.dart';
+import 'package:forja/shared/host/kit/legacy_movie_meta.dart';
 import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
-import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';

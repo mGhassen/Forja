@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/host/kit/meta_cache.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/host/kit/live_surface_open.dart';

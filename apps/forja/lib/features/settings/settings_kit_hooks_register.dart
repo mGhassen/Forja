@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/shared/foundation/components/details/kit_sources.dart';
+import 'package:forja/shared/host/kit/kit_sources.dart';
 import 'package:forja/shared/host/kit/kit_panel_source_flags_hooks.dart';
 
 /// Settings → kit panel source flags (RFC-095).

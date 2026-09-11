@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/blocks/play/sources_request_context.dart';
-import 'package:forja/shared/foundation/blocks/play/stremio_stream_id.dart';
+import 'package:forja/shared/playback/sources_request_context.dart';
+import 'package:forja/shared/playback/stremio_stream_id.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 

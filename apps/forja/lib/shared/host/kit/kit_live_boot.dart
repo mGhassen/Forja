@@ -7,7 +7,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_catalog_filter_sheet.dart';
+import 'package:forja/shared/host/kit/kit_catalog_filter_sheet.dart';
 import 'package:forja/shared/host/kit/meta_feed_list_source.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';

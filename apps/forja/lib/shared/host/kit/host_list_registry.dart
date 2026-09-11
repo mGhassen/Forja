@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/components/layout/kit_panel_host.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_panel_host.dart';
 
 /// Host-side registration for `kit.list` backends + optional side panels.
 ///

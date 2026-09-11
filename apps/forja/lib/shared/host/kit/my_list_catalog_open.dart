@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
+import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/host/kit/plugin_nav.dart';
-import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
+import 'package:forja/shared/host/kit/legacy_list_item.dart';
 import 'package:forja/shared/host/kit/kit_open.dart';
 
 import 'package:forja/shared/host/kit/kit_list_status_button.dart';

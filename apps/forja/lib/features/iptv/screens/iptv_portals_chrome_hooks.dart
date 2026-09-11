@@ -8,7 +8,7 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
-import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.dart';
+import 'package:forja/shared/host/kit/kit_side_panel_overlay.dart';
 
 import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/host/kit/kit_live_boot.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/shared/foundation/blocks/play/play_context.dart';
+import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext, Movie;
 
