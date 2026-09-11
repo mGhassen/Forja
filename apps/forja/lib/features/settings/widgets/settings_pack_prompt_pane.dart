@@ -9,7 +9,7 @@ import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';

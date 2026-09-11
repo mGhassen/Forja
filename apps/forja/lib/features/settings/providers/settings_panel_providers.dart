@@ -9,7 +9,7 @@ import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
 import 'package:rust/rust.dart';

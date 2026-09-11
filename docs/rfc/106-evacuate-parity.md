@@ -70,3 +70,19 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | `apps/forja/lib/shared/host/account/` | macOS Keychain consent |
 
 See per-folder READMEs for leftover kit entanglement.
+
+---
+
+## Correction — pack surfaces are not host
+
+`host/lists`, `host/live_sports`, `host/sources` are **gone**. Those names are pack surfaces.
+
+| Was | Now |
+|-----|-----|
+| Match/schedule models + prefs | `shared/engine/live/**` |
+| List-follow / merge | `shared/engine/lists/**` |
+| Torrent parse | `shared/engine/models/torrent_release_metadata.dart` |
+| Torrent source panels | `shared/player/sources/**` |
+| Catalog boot / cards / resolve panel / my-list catalog / `plugin_nav` / MetaRuntime / `kit_shell` | `shared/host/kit/**` |
+
+Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (TMDB enrich still debt).

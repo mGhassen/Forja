@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/components/rows/kit_section.dart';
 import 'package:forja/shared/foundation/components/sections/continue_watching_section.dart';
 import 'package:forja/shared/foundation/blocks/play/play_resolve.dart';
 import 'package:forja/shared/foundation/services/watch/watch_history.dart';
-import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
+import 'package:forja/shared/host/kit/kit_open.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/live/live_feed_merge.dart';
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
-import 'package:forja/shared/host/live_sports/match_event.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 void main() {

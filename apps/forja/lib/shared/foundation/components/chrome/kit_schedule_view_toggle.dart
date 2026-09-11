@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/live_sports/chrome/...
-export 'package:forja/shared/host/live_sports/chrome/kit_schedule_view_toggle.dart';
+export 'package:forja/shared/host/kit/kit_schedule_view_toggle.dart';

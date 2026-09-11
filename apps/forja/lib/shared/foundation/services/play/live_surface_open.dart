@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/live_sports/...
-export 'package:forja/shared/host/live_sports/live_surface_open.dart';
+export 'package:forja/shared/host/kit/live_surface_open.dart';

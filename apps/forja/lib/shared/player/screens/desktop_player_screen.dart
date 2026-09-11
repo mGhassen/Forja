@@ -34,7 +34,7 @@ import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/foundation/components/playback/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/host/lists/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/lists/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';

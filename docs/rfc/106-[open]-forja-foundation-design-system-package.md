@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **5 / 7** acceptance (Part 2) · **1** ⏭️ shim death |
-| **Current slice** | Part 1 ✅ · exhaustive `MIGRATION.md` · call sites on package/shell/host (primitives + host-product files = re-export stubs) · dead `Forja*` button wrappers gone · A16 ✅ analyze clean (CI ban waits G14-E) · A18 🔄 unsigned QA · **shim death waits Q1–Q12** |
+| **Current slice** | Part 1 ✅ · pack surfaces out of `host/lists|live_sports|sources` → engine/player/`host/kit` · kit runtime (`plugin_nav`, MetaRuntime, `kit_shell`) in `host/kit` · A16 ✅ · A18 🔄 · **shim death waits Q1–Q12** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

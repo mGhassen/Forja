@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
-import 'package:forja/shared/host/sources/torrent/torrent_source_filters.dart';
+import 'package:forja/shared/player/sources/torrent_source_filters.dart';
 import 'package:rust/rust.dart';
 
 void main() {

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/lists/list_providers.dart';
-import 'package:forja/shared/host/lists/my_list_catalog_source.dart';
-import 'package:forja/shared/host/lists/my_list_merge.dart';
+import 'package:forja/shared/engine/lists/list_providers.dart';
+import 'package:forja/shared/host/kit/my_list_catalog_source.dart';
+import 'package:forja/shared/engine/lists/my_list_merge.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_list_item.dart';
 
 void main() {

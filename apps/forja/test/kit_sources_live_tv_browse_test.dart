@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/sources/panel/kit_sources_live_tv_browse.dart';
+import 'package:forja/shared/host/kit/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 
 void main() {

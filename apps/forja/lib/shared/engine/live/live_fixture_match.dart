@@ -1,5 +1,5 @@
-import 'package:forja/shared/host/live_sports/match_event.dart';
-import 'package:forja/shared/host/live_sports/match_team_parse.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
+import 'package:forja/shared/engine/live/match_team_parse.dart';
 
 /// Soft same-fixture check for schedule merge + Providers sibling resolve.
 ///

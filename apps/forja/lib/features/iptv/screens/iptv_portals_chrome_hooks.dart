@@ -10,8 +10,8 @@ import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:forja/shared/foundation/components/panel/kit_side_panel_overlay.dart';
 
-import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
-import 'package:forja/shared/host/live_sports/schedule/kit_live_boot.dart';
+import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
+import 'package:forja/shared/host/kit/kit_live_boot.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 
 /// IPTV data for pack-declared `kit.topBar` `action: portals` (+ list overlay).

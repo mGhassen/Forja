@@ -3,9 +3,9 @@ import 'package:forja/shared/engine/live/live_feed_merge.dart';
 import 'package:forja/shared/engine/live/live_merge_matching_gate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
-import 'package:forja/shared/host/live_sports/match_event.dart';
-import 'package:forja/shared/host/live_sports/schedule_sport_filter.dart';
-import 'package:forja/shared/host/live_sports/schedule/kit_schedule_window.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
+import 'package:forja/shared/engine/live/schedule_sport_filter.dart';
+import 'package:forja/shared/engine/live/kit_schedule_window.dart';
 
 /// Query for [aggregateLiveFeed] — catalog filter + schedule window.
 class LiveFeedQuery {

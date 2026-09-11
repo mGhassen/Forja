@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/lists/...
-export 'package:forja/shared/host/lists/my_list_catalog_source.dart';
+export 'package:forja/shared/host/kit/my_list_catalog_source.dart';

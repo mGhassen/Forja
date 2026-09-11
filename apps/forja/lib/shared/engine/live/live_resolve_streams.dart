@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/foundation/services/registry/kit_iptv_play_hooks.dart';
+import 'package:forja/shared/host/kit/kit_iptv_play_hooks.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
-import 'package:forja/shared/host/live_sports/match_event.dart';
-import 'package:forja/shared/host/live_sports/schedule_sport_filter.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
+import 'package:forja/shared/engine/live/schedule_sport_filter.dart';
 import 'package:rust/rust.dart'
     show BuiltInPlayerContext, SettingsService, StremioService;
 import 'package:forja/shared/shell/forja_toast.dart';

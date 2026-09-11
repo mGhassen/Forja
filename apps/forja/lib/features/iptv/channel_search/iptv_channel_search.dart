@@ -7,7 +7,7 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
-import 'package:forja/shared/host/live_sports/match_event.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
 import 'package:rust/rust.dart' show runLiveSportsFetchJson;
 
 /// Thin IPTV host glue for Live TV channel search (RFC-096).

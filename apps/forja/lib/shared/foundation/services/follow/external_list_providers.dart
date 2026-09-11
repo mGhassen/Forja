@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/lists/...
-export 'package:forja/shared/host/lists/external_list_providers.dart';
+export 'package:forja/shared/engine/lists/external_list_providers.dart';

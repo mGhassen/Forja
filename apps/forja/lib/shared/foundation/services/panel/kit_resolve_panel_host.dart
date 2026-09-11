@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/sources/panel/...
-export 'package:forja/shared/host/sources/panel/kit_resolve_panel_host.dart';
+export 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';

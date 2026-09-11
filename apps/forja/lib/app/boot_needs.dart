@@ -1,5 +1,5 @@
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';

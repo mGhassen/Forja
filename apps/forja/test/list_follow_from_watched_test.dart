@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/lists/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/lists/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
 void main() {

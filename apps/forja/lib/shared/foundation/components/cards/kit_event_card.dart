@@ -1,1 +1,1 @@
-export 'package:forja/shared/host/live_sports/cards/kit_event_card.dart';
+export 'package:forja/shared/host/kit/kit_event_card.dart';

@@ -12,7 +12,7 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';

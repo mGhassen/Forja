@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/live_sports/...
-export 'package:forja/shared/host/live_sports/schedule_sport_filter.dart';
+export 'package:forja/shared/engine/live/schedule_sport_filter.dart';

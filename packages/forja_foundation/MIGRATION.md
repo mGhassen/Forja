@@ -10,7 +10,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
 4. Never import `package:forja/shared/foundation/primitives/**` from app/feature/player/test code after this slice. Foundation primitives may exist only as **re-export stubs** until G14-E.
-5. If the package is missing an API the host uses: **extend the package** or **move the module** to `shared/shell/` or `shared/host/`. Do not keep the old foundation import.
+5. If the package is missing an API: **extend the package** or **move** to `shared/shell/`, `shared/engine/`, or `shared/host/kit|packs|update|account|watch`. Do **not** put pack surfaces in `shared/host/lists|live_sports|sources`. Do not keep the old foundation import.
 
 `forja_foundation.dart` is a gallery/test barrel.
 
@@ -24,10 +24,11 @@ Every old symbol has **exactly one** New import.
 
 | Bucket | Import prefix | What |
 |--------|---------------|------|
-| Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, kit types, protocol, NetworkImage (after host args) |
-| Host shell | `package:forja/shared/shell/<file>.dart` | ShellScope, shellScaled, TV browse, TV coordinators, desktop chrome, ForjaToast, shellFocusableTap, ForjaInteractive |
-| Host product | `package:forja/shared/host/**` | live sports, packs, lists, torrent, update, keychain (already evacuated) |
-| Kit runtime | `package:forja/shared/foundation/services/**` **until G14-E only** | listed below — not a dump for chrome |
+| Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, kit types, protocol, NetworkImage, props-only composers |
+| Host shell | `package:forja/shared/shell/<file>.dart` | ShellScope, TV, desktop chrome, toast, ForjaInteractive |
+| Engine | `package:forja/shared/engine/**` | rust-adjacent live models/schedule state, list-follow, torrent parse |
+| Player | `package:forja/shared/player/**` | torrent source panels (player UI) |
+| Host services | `package:forja/shared/host/kit/**` · `packs/**` · `update/**` · `account/**` · `watch/**` | generic catalog runtime + pack install + app update. **Never** `host/lists`, `host/live_sports`, `host/sources` |
 
 ---
 
@@ -144,19 +145,21 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 
 ---
 
-## Host product (already evacuated — import host, not foundation stubs)
+## Engine / player / host services (not pack folders)
 
 | Surface | New path |
 |---------|----------|
-| Live match / schedule / cards | `package:forja/shared/host/live_sports/**` |
+| Match / schedule models + prefs | `package:forja/shared/engine/live/**` |
+| List-follow / merge | `package:forja/shared/engine/lists/**` |
+| Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
+| Torrent source panels | `package:forja/shared/player/sources/**` |
+| Generic catalog kit (boot, cards, resolve panel, my-list catalog) | `package:forja/shared/host/kit/**` |
 | Packs / PackAssets | `package:forja/shared/host/packs/**` |
-| Follow / My List | `package:forja/shared/host/lists/**` |
-| Torrent panels | `package:forja/shared/host/sources/torrent/**` |
-| Live TV browse / resolve host | `package:forja/shared/host/sources/panel/**` |
-| TMDB enrich hooks | `package:forja/shared/host/details/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
 | Update dialog / banner | `package:forja/shared/host/update/**` |
 | Keychain consent | `package:forja/shared/host/account/**` |
+
+**Forbidden destinations:** `shared/host/lists/**`, `shared/host/live_sports/**`, `shared/host/sources/**` — pack surfaces, not host.
 
 ---
 
@@ -174,19 +177,15 @@ Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_h
 
 ---
 
-## Kit runtime — foundation until G14-E (listed, not a dump)
+## Kit runtime — move to `host/kit` (not foundation)
 
-These files stay under `package:forja/shared/foundation/services/**` (or blocks that **are** the runtime) until shim death. Chrome does not hide here.
-
-| File | Why |
-|------|-----|
-| `services/nav/plugin_nav.dart` | pack nav registry |
-| `services/meta/runtime.dart` / `cache.dart` | MetaRuntime |
-| `services/registry/host_list_registry.dart` | list sources |
-| `services/registry/kit_*_hooks.dart` | host hook registries |
-| `services/registry/meta_surface_open.dart` | open.surface routing |
-| `host/live_sports/schedule/kit_live_boot.dart` | live boot (already host) |
-| `blocks/shell/kit_open.dart` / `kit_shell.dart` | kit runtime + page template |
+| File | New path |
+|------|----------|
+| `services/nav/plugin_nav.dart` | `package:forja/shared/host/kit/plugin_nav.dart` |
+| `services/meta/runtime.dart` / `cache.dart` | `package:forja/shared/host/kit/` |
+| `services/registry/*` | `package:forja/shared/host/kit/` |
+| `blocks/shell/kit_open.dart` / `kit_shell.dart` | `package:forja/shared/host/kit/` |
+| `kit_live_boot.dart` | `package:forja/shared/host/kit/kit_live_boot.dart` |
 
 ---
 

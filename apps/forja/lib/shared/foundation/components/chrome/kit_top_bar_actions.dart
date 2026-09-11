@@ -8,7 +8,7 @@ import 'package:forja/shared/foundation/components/chrome/kit_schedule_view_togg
 import 'package:forja/shared/foundation/components/layout/kit_focus.dart';
 import 'package:forja/shared/foundation/components/layout/kit_layout_scope.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';
-import 'package:forja/shared/foundation/services/registry/kit_top_bar_host_hooks.dart';
+import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/foundation/services/schedule/kit_schedule_window.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

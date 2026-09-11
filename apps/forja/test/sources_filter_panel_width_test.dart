@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/host/sources/torrent/torrent_sources_panel.dart';
+import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 
 void main() {
   testWidgets('filterPanelWidthOf never wider than space left of Sources', (

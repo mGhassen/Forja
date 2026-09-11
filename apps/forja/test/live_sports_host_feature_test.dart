@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/services/registry/host_list_registry.dart';
-import 'package:forja/shared/host/live_sports/schedule/kit_live_boot.dart';
-import 'package:forja/shared/host/live_sports/schedule/kit_schedule_prefs.dart';
-import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
+import 'package:forja/shared/host/kit/host_list_registry.dart';
+import 'package:forja/shared/host/kit/kit_live_boot.dart';
+import 'package:forja/shared/engine/live/kit_schedule_prefs.dart';
+import 'package:forja/shared/host/kit/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';

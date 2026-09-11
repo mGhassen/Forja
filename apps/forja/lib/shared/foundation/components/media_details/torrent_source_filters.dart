@@ -1,1 +1,1 @@
-export 'package:forja/shared/host/sources/torrent/torrent_source_filters.dart';
+export 'package:forja/shared/player/sources/torrent_source_filters.dart';

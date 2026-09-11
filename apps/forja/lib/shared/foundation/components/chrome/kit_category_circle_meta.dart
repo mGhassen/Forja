@@ -1,2 +1,2 @@
 // Compatibility shim — RFC-106. Prefer shared/host/live_sports/...
-export 'package:forja/shared/host/live_sports/kit_category_circle_meta.dart';
+export 'package:forja/shared/host/kit/kit_category_circle_meta.dart';

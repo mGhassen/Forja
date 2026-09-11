@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/host/lists/list_follow.dart';
+import 'package:forja/shared/engine/lists/list_follow.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/host/live_sports/match_event.dart';
-import 'package:forja/shared/host/live_sports/stremio_live_meta.dart';
+import 'package:forja/shared/engine/live/match_event.dart';
+import 'package:forja/shared/engine/live/stremio_live_meta.dart';
 import 'package:rust/rust.dart'
     show SettingsService, StremioAddonFeatures, StremioService;
 

@@ -38,12 +38,12 @@ import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
-import 'package:forja/shared/foundation/services/registry/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 
-import 'package:forja/shared/host/sources/torrent/torrent_source_tiles.dart';
+import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
