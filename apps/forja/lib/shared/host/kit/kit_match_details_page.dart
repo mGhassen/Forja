@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';
-import 'package:forja/shared/host/kit/kit_event_card.dart';
+import 'package:forja/shared/host/kit/kit_event_paint.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/host/kit/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/host/kit/kit_sources_panel.dart';
-import 'package:forja/shared/engine/live/match_event.dart';
 
 import 'package:forja/shared/host/kit/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
@@ -66,13 +65,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     super.dispose();
   }
 
-  MatchEvent get _match => MatchEvent.fromLegacyRow(widget.entry.legacyRow);
+  KitEventPaint get _paint => KitEventPaint.fromEntry(widget.entry);
 
   /// Catalog merge sum, or Providers sheet total once streams load.
   int? _providersViewerTotal;
 
   List<String> get _metaParts {
-    final m = _match;
+    final m = _paint;
     final parts = <String>[];
     if (m.isLive) {
       parts.add('Live');
@@ -111,7 +110,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   }
 
   void _updateProvidersViewerTotal(List<KitSourcesRow> rows) {
-    final catalog = _match.viewers;
+    final catalog = _paint.viewers;
     final streamSum = rows.fold<int>(
       0,
       (n, r) => n + (r.viewerCount ?? 0),
@@ -135,7 +134,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final m = _match;
+    final m = _paint;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
     final backdrop = kitEventImageUrl(m.poster);

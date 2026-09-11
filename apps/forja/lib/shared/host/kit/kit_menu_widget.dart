@@ -40,6 +40,8 @@ class KitMenuWidget extends StatelessWidget {
       last: true,
     );
     final focusDown = kitFocusEdge(tabId, spec['focusDown']?.toString());
+    final focusLeft = kitFocusSide(tabId, spec['focusLeft']);
+    final focusRight = kitFocusSide(tabId, spec['focusRight']);
 
     final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final tabGap = useTv
@@ -84,6 +86,8 @@ class KitMenuWidget extends StatelessWidget {
                   rowId: _widgetId,
                   listIndex: i,
                   onDownEdge: focusDown ?? () {},
+                  onLeftEdge: i == 0 ? focusLeft : null,
+                  onRightEdge: i == _items.length - 1 ? focusRight : null,
                   focusNode: i == 0 ? firstFocusNode : null,
                 ),
               ],

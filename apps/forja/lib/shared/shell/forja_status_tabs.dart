@@ -18,6 +18,8 @@ class ForjaStatusTabs extends StatelessWidget {
     this.sortOrder = 1,
     this.onUp,
     this.onDown,
+    this.onLeft,
+    this.onRight,
     this.inShellTopBar = false,
   });
 
@@ -29,6 +31,8 @@ class ForjaStatusTabs extends StatelessWidget {
   final int sortOrder;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
+  final VoidCallback? onLeft;
+  final VoidCallback? onRight;
   final bool inShellTopBar;
 
   static const defaultTabs = [
@@ -124,6 +128,8 @@ class ForjaStatusTabs extends StatelessWidget {
       onTap: () => onSelect(tab.id),
       onUp: onUp,
       onDown: onDown,
+      onLeft: i == 0 ? onLeft : null,
+      onRight: i == statusTabs.length - 1 ? onRight : null,
     );
   }
 }
@@ -138,6 +144,8 @@ class _StatusTabFocus extends StatefulWidget {
     required this.onTap,
     this.onUp,
     this.onDown,
+    this.onLeft,
+    this.onRight,
   });
 
   final String label;
@@ -148,6 +156,8 @@ class _StatusTabFocus extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
+  final VoidCallback? onLeft;
+  final VoidCallback? onRight;
 
   @override
   State<_StatusTabFocus> createState() => _StatusTabFocusState();
@@ -185,6 +195,8 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
       tvItemIndex: widget.listIndex,
       onUpEdge: widget.onUp,
       onDownEdge: widget.onDown,
+      onLeftEdge: widget.onLeft,
+      onRightEdge: widget.onRight,
       onFocusChange: (f) => setState(() => _focused = f),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

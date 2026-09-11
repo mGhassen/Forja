@@ -11,7 +11,8 @@ import 'package:forja/shared/foundation/components/layout/kit_types.dart';
 import 'package:forja/shared/host/kit/kit_layout_scope.dart';
 import 'package:forja/shared/host/kit/meta_movie.dart';
 import 'package:forja/shared/host/kit/host_list_registry.dart';
-import 'package:forja/shared/host/kit/kit_list_host_hooks.dart';
+import 'package:forja/shared/host/kit/kit_event_card.dart';
+import 'package:forja/shared/host/kit/kit_event_paint.dart';
 import 'package:forja/shared/host/kit/kit_list_source.dart';
 import 'package:forja/shared/foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/forja_chip_row.dart';
@@ -20,6 +21,7 @@ import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
+import 'package:forja/shared/host/kit/kit_focus.dart';
 import 'package:forja/shared/host/kit/kit_list_event_query.dart';
 import 'package:forja/shared/host/kit/kit_list_open_mode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -89,6 +91,16 @@ class KitListWidget extends ConsumerStatefulWidget {
   String get statusTabId =>
       (layoutSpec['statusTab'] ?? 'status').toString();
   String get gridRowId => (layoutSpec['id'] ?? 'grid').toString();
+
+  String? get focusLeftId {
+    final raw = (layoutSpec['focusLeft'] ?? '').toString().trim();
+    return raw.isEmpty ? null : raw;
+  }
+
+  String? get focusRightId {
+    final raw = (layoutSpec['focusRight'] ?? '').toString().trim();
+    return raw.isEmpty ? null : raw;
+  }
 
   /// Pack layout defaults (overridden at runtime for `live_schedule` / openSetting).
   String get listStyle =>
@@ -224,6 +236,23 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   void _claimPanelProvidersFocus() {
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
     KitSourcesPanel.claimProvidersFocus();
+  }
+
+  VoidCallback? _packFocusLeft() =>
+      kitFocusSide(widget.tabId, widget.focusLeftId);
+
+  VoidCallback? _listRightEdge({
+    required bool selected,
+    required bool panelActive,
+    required bool atRightColumn,
+  }) {
+    final named = kitFocusSide(widget.tabId, widget.focusRightId);
+    if (named != null) {
+      if (panelActive) return selected ? named : null;
+      return atRightColumn ? named : null;
+    }
+    if (selected && panelActive) return _claimPanelProvidersFocus;
+    return null;
   }
 
   void _focusSelectedEvent() {
@@ -448,12 +477,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
           final kinds = <String>{};
           for (final e in page.entriesForKind(null)) {
             if (e.kind.isEmpty) continue;
-            final omit = source.omitKindIds.contains(e.kind) ||
-                (KitListHostHooks.omitKind?.call(
-                      widget.listSource,
-                      e.kind,
-                    ) ??
-                    false);
+            final omit = source.omitKindIds.contains(e.kind);
             if (!omit) kinds.add(e.kind);
           }
           final sorted = kinds.toList()..sort();
@@ -469,12 +493,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         final kind = scopeKind ?? _kindFilter;
         final eventQuery = ref.watch(kitListEventQueryProvider);
         final rawEntries = page.entriesForKind(kind);
-        final hooked = KitListHostHooks.filterEntries?.call(
-              widget.listSource,
-              rawEntries,
-              eventQuery,
-            );
-        final entries = hooked ?? kitListFilterEntries(rawEntries, eventQuery);
+        final entries = kitListFilterEntries(rawEntries, eventQuery);
         _consumePendingOpen(entries);
         if (entries.isEmpty) {
           return _emptyState(
@@ -658,8 +677,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             genres: meta.genres,
           ),
           airing: airing,
-          viewers: KitListHostHooks.entryViewers?.call(entry) ??
-              (entry.meta.viewers ?? 0),
+          viewers: KitEventPaint.fromEntry(entry).viewers,
           selected: selected,
           index: index,
           playable: true,
@@ -670,9 +688,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                   _focusRowLast(widget.kindMenuId) ||
                   _focusRow(widget.kindMenuId, 0)
               : null,
-          onRightEdge: selected && panelActive
-              ? _claimPanelProvidersFocus
-              : null,
+          onLeftEdge: _packFocusLeft(),
+          onRightEdge: _listRightEdge(
+            selected: selected,
+            panelActive: panelActive,
+            atRightColumn: true,
+          ),
           onTap: () => _openEntry(context, source, entry),
         );
       },
@@ -700,18 +721,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     List<KitListEntry> entries, {
     String? selectedId,
   }) {
-    final buildEntry = KitListHostHooks.buildCardsEntry;
-    final layoutFor = KitListHostHooks.cardsGridLayout;
-    if (buildEntry == null || layoutFor == null) {
-      return _grid(context, source, entries);
-    }
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final panelActive = widget.sidePanel != null || _autoPanel;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = layoutFor(
+        final grid = _eventCardsGrid(
           context,
-          maxWidth: constraints.maxWidth,
+          constraints.maxWidth,
           chromeTop: _hoistedTopBarInset(context),
         );
         return TvGrid(
@@ -751,24 +767,30 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                         final entry = entries[index];
                         final selected =
                             selectedId != null && selectedId == entry.meta.id;
-                        return buildEntry(
-                          context,
-                          entry: entry,
-                          index: index,
-                          columns: grid.columns,
-                          cardW: grid.cardW,
-                          cardH: grid.cardH,
+                        return KitEventCard(
+                          event: KitEventPaint.fromEntry(entry),
+                          width: grid.cardW,
+                          height: grid.cardH,
+                          gridIndex: index,
+                          gridColumns: grid.columns,
                           selected: selected,
-                          tabId: widget.tabId,
-                          gridRowId: widget.gridRowId,
+                          tvTabId: widget.tabId,
+                          tvRowId: widget.gridRowId,
                           onUpEdge: index < grid.columns
                               ? () =>
                                   _focusRowLast(widget.kindMenuId) ||
                                   _focusRow(widget.kindMenuId, 0)
                               : null,
-                          onRightEdge: selected && panelActive
-                              ? _claimPanelProvidersFocus
+                          onLeftEdge: index % grid.columns == 0
+                              ? _packFocusLeft()
                               : null,
+                          onRightEdge: _listRightEdge(
+                            selected: selected,
+                            panelActive: panelActive,
+                            atRightColumn: index % grid.columns ==
+                                    grid.columns - 1 ||
+                                index == entries.length - 1,
+                          ),
                           onTap: () => _openEntry(context, source, entry),
                         );
                       },
@@ -890,6 +912,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
               _focusRowLast(widget.statusTabId) ||
               _focusRow(widget.statusTabId, 0)
           : null,
+      onLeftEdge:
+          index % grid.columns == 0 ? _packFocusLeft() : null,
+      onRightEdge: _listRightEdge(
+        selected: false,
+        panelActive: false,
+        atRightColumn: index % grid.columns == grid.columns - 1,
+      ),
       onTap: () => _openEntry(context, source, entry),
     );
   }
@@ -937,23 +966,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   /// Live schedule / cards — skeleton rows (progress copy lives in top bar).
   Widget _scheduleLoadingSkeleton(BuildContext context) {
     if (_isMatchCards) {
-      final layoutFor = KitListHostHooks.cardsGridLayout;
       return LayoutBuilder(
         builder: (context, constraints) {
-          final grid = layoutFor?.call(
-                context,
-                maxWidth: constraints.maxWidth,
-                chromeTop: _hoistedTopBarInset(context),
-              ) ??
-              (
-                columns: 2,
-                cardW: 160.0,
-                cardH: 120.0,
-                gap: 8.0,
-                leading: 16.0,
-                rightPad: 16.0,
-                topPad: _hoistedTopBarInset(context) + 4,
-              );
+          final grid = _eventCardsGrid(
+            context,
+            constraints.maxWidth,
+            chromeTop: _hoistedTopBarInset(context),
+          );
           return homeLoadingShimmer(
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
@@ -1101,6 +1120,31 @@ class _HomeGrid {
   final double leading;
   final double rightPad;
   final double topPad;
+}
+
+_HomeGrid _eventCardsGrid(
+  BuildContext context,
+  double maxWidth, {
+  double chromeTop = 0,
+}) {
+  final minW = KitEventCard.cardWidth(context);
+  final minH = KitEventCard.cardHeight(context);
+  final gap = KitEventCard.gridGap(context);
+  final pad = shellHomeSectionHorizontalPadding(context);
+  final inner = math.max(0.0, maxWidth - pad * 2);
+  final columns =
+      math.max(1, ((inner + gap) / (minW + gap)).floor()).clamp(1, 8);
+  final cardW = columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+  final cardH = minW > 0 ? minH * (cardW / minW) : minH;
+  return _HomeGrid(
+    columns: columns,
+    cardW: cardW,
+    cardH: cardH,
+    gap: gap,
+    leading: pad,
+    rightPad: pad,
+    topPad: chromeTop + 4,
+  );
 }
 
 _HomeGrid _homeGrid(

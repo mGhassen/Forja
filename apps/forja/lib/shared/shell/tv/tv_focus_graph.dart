@@ -267,6 +267,8 @@ class TvChipStrip extends StatefulWidget {
     required this.resultsRowId,
     required this.builder,
     this.tabId,
+    this.onFocusLeft,
+    this.onFocusRight,
     this.registerWhen = tvFocusGraphShouldRegister,
   });
 
@@ -275,6 +277,8 @@ class TvChipStrip extends StatefulWidget {
   final int sortOrder;
   final int itemCount;
   final String resultsRowId;
+  final VoidCallback? onFocusLeft;
+  final VoidCallback? onFocusRight;
   final bool Function(BuildContext context) registerWhen;
 
   /// Builds the strip UI; use [edgesFor] for each chip index.
@@ -300,18 +304,22 @@ class _TvChipStripState extends State<TvChipStrip> {
   TvChipEdges _edgesFor(int index) {
     final tabId = _tabId;
     return TvChipEdges(
-      onLeft: shellTvChipLeftEdge(
-        context,
-        tabId: tabId,
-        rowId: widget.rowId,
-        index: index,
-      ),
-      onRight: shellTvChipRightEdge(
-        tabId: tabId,
-        rowId: widget.rowId,
-        index: index,
-        itemCount: widget.itemCount,
-      ),
+      onLeft: index <= 0 && widget.onFocusLeft != null
+          ? widget.onFocusLeft
+          : shellTvChipLeftEdge(
+              context,
+              tabId: tabId,
+              rowId: widget.rowId,
+              index: index,
+            ),
+      onRight: index >= widget.itemCount - 1 && widget.onFocusRight != null
+          ? widget.onFocusRight
+          : shellTvChipRightEdge(
+              tabId: tabId,
+              rowId: widget.rowId,
+              index: index,
+              itemCount: widget.itemCount,
+            ),
       onUp: () {
         ShellTvFocusCoordinator.moveVerticalInTab(
           tabId: tabId,

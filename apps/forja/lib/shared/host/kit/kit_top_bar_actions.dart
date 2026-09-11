@@ -71,6 +71,8 @@ class KitTopBarActions extends ConsumerWidget {
     // last: restore prior schedule/list index (↑ from match → Portals → ↓).
     final focusDown =
         kitFocusEdge(tabId, spec['focusDown']?.toString(), last: true);
+    final focusLeft = kitFocusSide(tabId, spec['focusLeft']);
+    final focusRight = kitFocusSide(tabId, spec['focusRight']);
     final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
     final catalogOptions = catalogsAsync.asData?.value ?? const [];
     final layoutHorizon = scope.selectedId('horizon') ??
@@ -102,6 +104,18 @@ class KitTopBarActions extends ConsumerWidget {
       }
     }
 
+    var planned = 0;
+    for (final a in leading) {
+      if (busy && _isRefreshAction(a)) continue;
+      planned++;
+    }
+    if (busy) planned++;
+    for (final a in trailing) {
+      if (busy && _isRefreshAction(a)) continue;
+      planned++;
+    }
+    final lastIndex = planned - 1;
+
     final built = <Widget>[];
     var index = 0;
     for (final a in leading) {
@@ -114,6 +128,8 @@ class KitTopBarActions extends ConsumerWidget {
         a,
         index: index,
         focusDown: focusDown,
+        focusLeft: index == 0 ? focusLeft : null,
+        focusRight: index == lastIndex ? focusRight : null,
         catalogOptions: catalogOptions,
         catalogPref: catalogPref,
         horizonPref: resolvedHorizon,
@@ -138,6 +154,8 @@ class KitTopBarActions extends ConsumerWidget {
         a,
         index: index,
         focusDown: focusDown,
+        focusLeft: index == 0 ? focusLeft : null,
+        focusRight: index == lastIndex ? focusRight : null,
         catalogOptions: catalogOptions,
         catalogPref: catalogPref,
         horizonPref: resolvedHorizon,
@@ -193,6 +211,8 @@ class KitTopBarActions extends ConsumerWidget {
     Map<String, dynamic> action, {
     required int index,
     required VoidCallback? focusDown,
+    required VoidCallback? focusLeft,
+    required VoidCallback? focusRight,
     required List<({String id, String label})> catalogOptions,
     required String? catalogPref,
     required String? horizonPref,
@@ -209,6 +229,8 @@ class KitTopBarActions extends ConsumerWidget {
         rowId: _widgetId,
         itemIndex: index,
         onDownEdge: focusDown,
+        onLeftEdge: focusLeft,
+        onRightEdge: focusRight,
       );
     }
 
@@ -223,8 +245,8 @@ class KitTopBarActions extends ConsumerWidget {
         rowId: _widgetId,
         itemIndex: index,
         onDownEdge: focusDown,
-        onLeftEdge: null,
-        onRightEdge: null,
+        onLeftEdge: focusLeft,
+        onRightEdge: focusRight,
       );
     }
 
@@ -244,6 +266,8 @@ class KitTopBarActions extends ConsumerWidget {
         tvRowId: _widgetId,
         tvItemIndex: index,
         onDownEdge: focusDown ?? () {},
+        onLeftEdge: focusLeft,
+        onRightEdge: focusRight,
         onTap: () => onRefresh?.call(),
       );
       if (updated.isEmpty) return chip;
@@ -289,6 +313,8 @@ class KitTopBarActions extends ConsumerWidget {
       tvRowId: _widgetId,
       tvItemIndex: index,
       onDownEdge: focusDown ?? () {},
+      onLeftEdge: focusLeft,
+      onRightEdge: focusRight,
       onTap: () => unawaited(
         isSchedule
             ? _onSchedule(

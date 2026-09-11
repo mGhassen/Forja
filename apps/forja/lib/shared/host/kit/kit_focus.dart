@@ -7,11 +7,18 @@ VoidCallback? kitFocusEdge(
   bool last = false,
 }) {
   if (rowId == null || rowId.isEmpty) return null;
+  final id = rowId.trim();
+  if (id.isEmpty) return null;
   return () {
     if (last) {
-      ShellTvFocusCoordinator.focusRowItemRemembered(tabId, rowId);
+      ShellTvFocusCoordinator.focusRowItemRemembered(tabId, id);
       return;
     }
-    ShellTvFocusCoordinator.focusRowItem(tabId, rowId, 0);
+    ShellTvFocusCoordinator.focusRowItem(tabId, id, 0);
   };
+}
+
+/// Pack `focusLeft` / `focusRight` — restore last index on the named row.
+VoidCallback? kitFocusSide(String tabId, Object? rowId) {
+  return kitFocusEdge(tabId, rowId?.toString(), last: true);
 }

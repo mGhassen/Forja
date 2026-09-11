@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **23 / 23** acceptance |
-| **Current slice** | Live Sports host evacuated to `shared/host/live_sports/` (RFC-090) |
+| **Progress** | **5 / 5** components · **23 / 23** acceptance (kit evacuation) · **1 / 1** acceptance (focus sides) |
+| **Current slice** | Pack `focusLeft` / `focusRight` — same named-row jump as ↑/↓ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 2 | R85-C02 | `HostListRegistry` outside kit — features register opaque source ids | ✅ |
 | 3 | R85-C03 | My List domain under `features/my_list/` | ✅ |
 | 4 | R85-C04 | Live Sports domain under `features/live_matches/` | ✅ |
+| 5 | R85-C05 | Kit chrome + `kit.list` honor pack `focusLeft` / `focusRight` via `kitFocusSide` | ✅ |
 
 ---
 
@@ -60,6 +61,14 @@
 | 21 | R85-A21 | Peer `shared/search/` + `components/search/` deleted — `SearchRecentQueries` + `RecentSearchHelperTile` live under `components/chrome/` with `kit_search_*` (not a service) | ✅ |
 | 22 | R85-A22 | Peer `shared/tv/` deleted — D-pad stack under `foundation/tv/` (`shell_tv_coordinator`, `shell_tv_focus`, `tv_focus_graph`, …); browse atoms stay in `primitives/tv/` | ✅ |
 | 23 | R85-A23 | Live Sports product host evacuated from `foundation/services/live/` → `shared/host/live_sports/`; kit uses `MetaSurfaceOpen` + `KitTopBarHostHooks` only (RFC-090) | ✅ |
+
+---
+
+## Acceptance (pack D-pad sides)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 24 | R85-A24 | `kit.menu` / `tabs` / `topBar` / `categoryBar` / `list` jump on ←/→ edge via pack `focusLeft` / `focusRight` (named row id); intra-row arrows stay host | ✅ |
 
 ---
 

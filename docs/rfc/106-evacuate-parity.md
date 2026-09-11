@@ -14,8 +14,8 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 
 | Old foundation surface | Must still work via | Host / stub | Status |
 |------------------------|---------------------|-------------|--------|
-| Live match details | Host + `DetailsBlock` | `host/live_sports/kit_match_details_page.dart` + foundation stub | ✅ |
-| Live schedule list/cards | Kit list + `KitListHostHooks` + `KitListLiveCards` | Cards/viewers/grid in host; kit builds layout only | ✅ |
+| Live match details | Host + `DetailsBlock` | `host/kit/kit_match_details_page.dart` + `KitEventPaint` | ✅ |
+| Live schedule list/cards | `kit.list` `style: cards` + `KitEventPaint` | Generic kit list; no Live Sports hooks | ✅ |
 | Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | `vertical_filters*.dart` wraps DS `LogoMenuRail` + `VerticalMenu` | ✅ |
 | Sources / resolve panel | Kit hooks + SourcesPanel | Generic panel stays foundation; Live TV browse + `KitResolvePanelHost` → `host/sources/panel/` | ✅ |
 | Follow / list status | Host data + ListStatus widgets | `host/lists/**` + follow stubs | ✅ |
@@ -33,7 +33,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | Surface | Expected open path |
 |---------|-------------------|
 | Live match details | Kit list → `KitMatchDetailsPage` via host |
-| Live schedule | `kit.list` `source: live_schedule` → `KitLiveBoot` + hooks |
+| Live schedule | `kit.list` `source: live_schedule` → `KitLiveBoot` + generic cards |
 | Follow / list | My List hub + `KitListStatusButton` |
 | Pack install | Settings Forja Packs + install banner |
 | App update / Keychain | `host/update/UpdateDialog` · `host/account` consent |
@@ -92,3 +92,9 @@ Host keeps only `kit/`, `packs/`, `watch/`, `update/`, `account/`, `details/` (T
 ## Correction — Live Sports UX is the pack
 
 `engine/live/kit_schedule_*` and `LiveSportsHubMergeUpgrade` are **deleted**. Horizon / view items live on `hubs/live_sports/live_sports.js`. Engine `LiveFeedQuery` takes opaque strings (`airing` / `h1`). `KitLiveBoot` only registers `live_schedule` + catalog options from the engine.
+
+---
+
+## Correction — cards are kit.list, not a Live Sports module
+
+`KitListLiveCards` / `KitListHostHooks` are **deleted**. `KitEventCard` / `KitMatchDetailsPage` paint from `KitListEntry` (`KitEventPaint`). `MatchEvent` stays in `engine/live` for merge/resolve/IPTV match. Badge URLs are pack-absolute — host `kitEventImageUrl` does not invent `streamed.pk`.

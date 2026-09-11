@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/live/match_event.dart';
+import 'package:forja/shared/host/kit/kit_event_paint.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -13,7 +13,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class KitEventCard extends StatefulWidget {
   const KitEventCard({
     super.key,
-    required this.match,
+    required this.event,
     required this.onTap,
     this.gridIndex,
     this.gridColumns,
@@ -29,7 +29,7 @@ class KitEventCard extends StatefulWidget {
     this.height,
   });
 
-  final MatchEvent match;
+  final KitEventPaint event;
   final VoidCallback onTap;
   final int? gridIndex;
   final int? gridColumns;
@@ -81,11 +81,11 @@ class _KitEventCardState extends State<KitEventCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  int get _viewers => widget.viewersOverride ?? widget.match.viewers;
+  int get _viewers => widget.viewersOverride ?? widget.event.viewers;
 
   @override
   Widget build(BuildContext context) {
-    final m = widget.match;
+    final m = widget.event;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final live = m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
@@ -100,7 +100,7 @@ class _KitEventCardState extends State<KitEventCard> {
     final viewers = _viewers;
     final posterUrl = kitEventImageUrl(m.poster);
     final time = kitEventTimeLabel(m);
-    final schedule = liveMatchScheduleLabel(m);
+    final schedule = kitEventScheduleLabel(m);
 
     final Widget card;
     if (tv) {
@@ -336,34 +336,6 @@ class _KitEventCardState extends State<KitEventCard> {
     );
   }
 }
-
-/// Resolve relative Streamed / pack badge paths to absolute URLs.
-String kitEventImageUrl(String path) {
-  if (path.isEmpty) return '';
-  if (path.startsWith('http')) return path;
-  const base = 'https://streamed.pk';
-  if (path.startsWith('/')) return '$base$path';
-  return '$base/api/images/badge/$path.webp';
-}
-
-String kitEventTimeLabel(MatchEvent m) {
-  if (m.isLive) return 'live';
-  if (m.dateMs <= 0) return '';
-  final dt = DateTime.fromMillisecondsSinceEpoch(m.dateMs);
-  if (dt.isAfter(DateTime.now())) {
-    return _clockHm(dt);
-  }
-  return '';
-}
-
-String liveMatchScheduleLabel(MatchEvent m) {
-  if (m.isAlwaysOn) return '';
-  if (m.dateMs <= 0) return '';
-  return _clockHm(DateTime.fromMillisecondsSinceEpoch(m.dateMs));
-}
-
-String _clockHm(DateTime dt) =>
-    '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
 class _TeamBadge extends StatelessWidget {
   const _TeamBadge({

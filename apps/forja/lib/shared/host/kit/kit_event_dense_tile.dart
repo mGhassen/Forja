@@ -20,6 +20,7 @@ class KitEventDenseTile extends StatefulWidget {
     this.tvTabId,
     this.tvRowId,
     this.onUpEdge,
+    this.onLeftEdge,
     this.onRightEdge,
   });
 
@@ -34,6 +35,7 @@ class KitEventDenseTile extends StatefulWidget {
   final String? tvTabId;
   final String? tvRowId;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
 
   @override
@@ -171,6 +173,7 @@ class _KitEventDenseTileState extends State<KitEventDenseTile> {
       tvItemIndex: tv ? widget.index : null,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onUpEdge: widget.onUpEdge,
+      onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),

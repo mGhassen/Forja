@@ -32,6 +32,8 @@ class KitPosterCard extends StatelessWidget {
     this.tvTabId,
     this.tvRowId,
     this.onUpEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.aspect = KitPosterAspect.portrait,
   });
 
@@ -49,6 +51,8 @@ class KitPosterCard extends StatelessWidget {
   final String? tvTabId;
   final String? tvRowId;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final VoidCallback onTap;
   final KitPosterAspect aspect;
 
@@ -96,6 +100,8 @@ class KitPosterCard extends StatelessWidget {
       tvZone: inGrid ? ShellTvZone.grid : ShellTvZone.row,
       tvItemIndex: listIndex ?? gridIndex,
       onUpEdge: onUpEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
       child: Container(
         width: cardWidth,
         height: cardHeight,

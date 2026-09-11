@@ -126,6 +126,8 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
       widget.spec['focusUp']?.toString(),
       last: true,
     );
+    final focusLeft = kitFocusSide(widget.tabId, widget.spec['focusLeft']);
+    final focusRight = kitFocusSide(widget.tabId, widget.spec['focusRight']);
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final resultsRowId =
         focusDownId.isEmpty ? '$_widgetId-results' : focusDownId;
@@ -210,6 +212,8 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
               sortOrder: widget.sortOrder,
               itemCount: kinds.length,
               resultsRowId: resultsRowId,
+              onFocusLeft: focusLeft,
+              onFocusRight: focusRight,
               builder: (context, edgesFor) => centeredRow(
                 edgesFor: edgesFor,
                 scaleToFit: true,

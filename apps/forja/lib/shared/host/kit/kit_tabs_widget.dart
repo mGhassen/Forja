@@ -38,6 +38,8 @@ class KitTabsWidget extends StatelessWidget {
       onSelect: (id) => scope.onSelect(_widgetId, id, toggle: false),
       onUp: kitFocusEdge(tabId, spec['focusUp']?.toString(), last: true),
       onDown: kitFocusEdge(tabId, spec['focusDown']?.toString()),
+      onLeft: kitFocusSide(tabId, spec['focusLeft']),
+      onRight: kitFocusSide(tabId, spec['focusRight']),
       inShellTopBar: inShellTopBar,
     );
   }

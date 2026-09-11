@@ -154,7 +154,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | List-follow / merge | `package:forja/shared/engine/lists/**` |
 | Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `package:forja/shared/player/sources/**` |
-| Generic catalog kit (boot, cards, resolve panel, my-list catalog) | `package:forja/shared/host/kit/**` |
+| Generic catalog kit (boot, event cards, resolve panel, my-list catalog) | `package:forja/shared/host/kit/**` (`KitEventPaint` from list rows — not `MatchEvent`) |
 | Packs / PackAssets | `package:forja/shared/host/packs/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
 | Update dialog / banner | `package:forja/shared/host/update/**` |

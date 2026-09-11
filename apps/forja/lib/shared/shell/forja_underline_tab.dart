@@ -19,6 +19,8 @@ class ForjaUnderlineTab extends StatefulWidget {
     required this.rowId,
     required this.listIndex,
     required this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
     this.focusNode,
   });
 
@@ -30,6 +32,8 @@ class ForjaUnderlineTab extends StatefulWidget {
   final String rowId;
   final int listIndex;
   final VoidCallback onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final FocusNode? focusNode;
 
   @override
@@ -138,6 +142,8 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         tvZone: ShellTvZone.row,
         tvItemIndex: widget.listIndex,
         onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
         focusNode: widget.focusNode,
         onFocusChange: (f) => setState(() => _focused = f),
         onHoverChange: (h) => setState(() => _hovered = h),

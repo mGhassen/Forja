@@ -8,8 +8,6 @@ import 'package:forja/shared/engine/live/match_event.dart';
 import 'package:forja/shared/host/kit/host_list_registry.dart';
 import 'package:forja/shared/host/kit/kit_catalog_filter_sheet.dart';
 import 'package:forja/shared/host/kit/kit_feed_chrome.dart';
-import 'package:forja/shared/host/kit/kit_list_host_hooks.dart';
-import 'package:forja/shared/host/kit/kit_list_live_cards.dart';
 import 'package:forja/shared/host/kit/kit_resolve_panel_host.dart';
 import 'package:forja/shared/host/kit/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/host/kit/live_surface_open.dart';
@@ -36,7 +34,6 @@ abstract final class KitLiveBoot {
     HostListRegistry.registerPanel(KitResolvePanelHost.instance);
     MetaSurfaceOpen.register(LiveSurfaceOpen.surface, LiveSurfaceOpen.openFromMeta);
     matchEventAiringOnlyLiveCheck = LivePluginEngine.cachedAiringOnlyLive;
-    KitListLiveCards.register();
     _registerTopBarHooks();
   }
 
@@ -109,6 +106,5 @@ abstract final class KitLiveBoot {
     MetaSurfaceOpen.unregister(LiveSurfaceOpen.surface);
     matchEventAiringOnlyLiveCheck = null;
     KitTopBarHostHooks.clear();
-    KitListHostHooks.clear();
   }
 }

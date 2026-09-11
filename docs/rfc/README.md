@@ -106,7 +106,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [083-[open]-…](083-[open]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | open | **9 / 9** · **25 / 25** | — |
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [084-[canceled]-…](canceled/084-[canceled]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | canceled | **Canceled** · superseded by [087](fixed/087-[fixed]-live-sports-pack-only.md) | — |
-| [085-[partial]-…](085-[partial]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | partial | **4 / 4** · **23 / 23** | — |
+| [085-[partial]-…](085-[partial]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | partial | **5 / 5** · **23 / 23** · **1 / 1** sides | — |
 | [086-[fixed]-…](fixed/086-[fixed]-addons-packs-feature-vs-navbar.md) | Addons/Packs flag features; Features flags navbar | v1.4 | fixed | **Complete** · **4 / 4** · **17 / 17** | — |
 | [087-[fixed]-…](fixed/087-[fixed]-live-sports-pack-only.md) | Live Sports pack-only (no host feature root) | v1.4 | fixed | **Complete** · **4 / 4** · **8 / 8** | — |
 | [088-[fixed]-…](fixed/088-[fixed]-my-list-pack-only.md) | My List pack-only (no host feature root) | v1.4 | fixed | **Complete** · **3 / 3** · **5 / 5** | — |
