@@ -10,7 +10,7 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/shell_search_bar.dart';
 import 'package:forja/shared/shell/kit_search_filters.dart';
 
-import 'package:forja/shared/engine/hub/search_recent_queries.dart';
+import 'package:forja/shared/host/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/horizontal_scroller.dart';
 import 'package:forja/shared/shell/recent_search_helper_tile.dart';

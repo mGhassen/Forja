@@ -27,7 +27,7 @@ export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
         streamSourceProgressKey;
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';

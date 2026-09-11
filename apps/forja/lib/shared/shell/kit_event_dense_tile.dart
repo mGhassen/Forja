@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/catalog/event_dense_tile.dart';
 
-/// Dense schedule/event row for [`KitTypes.list`] `style: list`.
-///
-/// Reads presentation only — no pack ids. Driven by title/meta/airing/viewers.
+export 'package:forja_foundation/widgets/catalog/event_dense_tile.dart'
+    show EventDenseTile, eventDenseMetaLine;
+
+/// Host TV/focus wrapper around [EventDenseTile].
 class KitEventDenseTile extends StatefulWidget {
   const KitEventDenseTile({
     super.key,
@@ -46,113 +47,18 @@ class _KitEventDenseTileState extends State<KitEventDenseTile> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _chrome => _focused || _hovered;
-
-  Color get _fill {
-    if (widget.selected) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.18);
-    }
-    if (_chrome) return ForjaShellColors.inkHover;
-    return Colors.transparent;
-  }
-
   @override
   Widget build(BuildContext context) {
     final tv = widget.tvTabId != null && widget.tvRowId != null;
-    final titleColor = !widget.playable
-        ? Colors.white54
-        : widget.selected
-            ? ForjaShellColors.brandGreen
-            : ForjaShellColors.textPrimary;
-    final titleWeight =
-        widget.selected || _chrome ? FontWeight.w700 : FontWeight.w600;
-    final accent = widget.selected
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.iconMuted;
-    final row = DecoratedBox(
-      decoration: BoxDecoration(
-        color: _fill,
-        border: Border(
-          left: BorderSide(
-            color: widget.selected
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 3,
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            if (widget.airing)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF22C55E),
-                  shape: BoxShape.circle,
-                ),
-              )
-            else
-              const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: titleColor,
-                      fontSize: 14,
-                      fontWeight: titleWeight,
-                    ),
-                  ),
-                  if (widget.meta.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        widget.meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (widget.viewers > 0)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  '${widget.viewers}',
-                  style: TextStyle(
-                    color: widget.selected
-                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
-                        : ForjaShellColors.textSecondary
-                            .withValues(alpha: 0.85),
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            if (widget.playable)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: accent,
-                  size: 20,
-                ),
-              ),
-          ],
-        ),
-      ),
+    final paint = EventDenseTile(
+      title: widget.title,
+      meta: widget.meta,
+      airing: widget.airing,
+      viewers: widget.viewers,
+      selected: widget.selected,
+      playable: widget.playable,
+      focused: _focused,
+      hovered: _hovered,
     );
 
     return shellFocusableTap(
@@ -177,44 +83,21 @@ class _KitEventDenseTileState extends State<KitEventDenseTile> {
       onRightEdge: widget.onRightEdge,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),
-      child: row,
+      child: paint,
     );
   }
 }
 
-/// Subtitle line for an event [MetaItem]-shaped presentation.
+/// Legacy alias for [eventDenseMetaLine].
 String kitEventDenseMetaLine({
   required bool airing,
   String? startsAt,
   String? badge,
   List<String> genres = const [],
-}) {
-  final parts = <String>[];
-  final sport = badge?.trim().isNotEmpty == true
-      ? badge!.trim()
-      : (genres.isNotEmpty ? genres.first.trim() : '');
-  if (sport.isNotEmpty) parts.add(sport);
-  if (airing) {
-    parts.add('Live');
-  } else if (startsAt != null && startsAt.trim().isNotEmpty) {
-    parts.add(_formatStartsAt(startsAt.trim()));
-  }
-  return parts.join(' · ');
-}
-
-String _formatStartsAt(String raw) {
-  final asInt = int.tryParse(raw);
-  if (asInt != null) {
-    final ms = asInt > 20000000000 ? asInt : asInt * 1000;
-    final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
-  }
-  final parsed = DateTime.tryParse(raw);
-  if (parsed != null) {
-    final local = parsed.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
-  return raw;
-}
+}) =>
+    eventDenseMetaLine(
+      airing: airing,
+      startsAt: startsAt,
+      badge: badge,
+      genres: genres,
+    );

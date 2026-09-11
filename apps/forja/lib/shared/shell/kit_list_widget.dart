@@ -7,8 +7,8 @@ import 'package:forja/shared/shell/kit_event_dense_tile.dart';
 import 'package:forja/shared/shell/kit_poster_card.dart';
 import 'package:forja/shared/player/details/kit_entry_details.dart';
 import 'package:forja/shared/engine/hub/kit_top_menu_registry.dart';
-import 'package:forja_foundation/kit/kit_types.dart';
-import 'package:forja_foundation/widgets/chrome/kit_layout_scope.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/shell/kit_event_card.dart';
@@ -20,8 +20,9 @@ import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
-import 'package:forja/shared/shell/kit_focus.dart';
+import 'package:forja/shared/shell/focus_edge.dart';
 import 'package:forja/shared/engine/hub/kit_list_event_query.dart';
 import 'package:forja/shared/engine/hub/kit_list_open_mode.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -31,9 +32,11 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/hub/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
-import 'package:rust/rust.dart';
 
-/// Layout widget [`KitTypes.list`] — poster grid or dense list from a
+export 'package:forja_foundation/widgets/chrome/catalog_list.dart'
+    show CatalogList;
+
+/// Layout widget [`LayoutTypes.list`] — poster grid or dense list from a
 /// registered host list source (opaque `source` id and/or hub [pluginId]).
 ///
 /// When a [KitPanelHost] is registered for [listSource], selection and
@@ -194,13 +197,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   bool get _layoutHasCategoryBar {
     var found = false;
-    walkKitWidgets(widget.layoutWidgets, (spec) {
+    walkLayoutWidgets(widget.layoutWidgets, (spec) {
       if (found) return;
-      final type = KitTypes.normalize(
+      final type = LayoutTypes.normalize(
         (spec['type'] ?? '').toString(),
         spec,
       );
-      if (type == KitTypes.categoryBar) found = true;
+      if (type == LayoutTypes.categoryBar) found = true;
     });
     return found;
   }
@@ -425,7 +428,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       );
     }
 
-    final scope = KitLayoutScope.maybeOf(context);
+    final scope = LayoutScope.maybeOf(context);
     final status =
         scope?.selectedId(widget.statusTabId) ??
         widget.layoutSpec['defaultStatus']?.toString() ??
@@ -894,7 +897,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }) {
     final meta = entry.meta;
     final status =
-        KitLayoutScope.maybeOf(context)?.selectedId(widget.statusTabId) ??
+        LayoutScope.maybeOf(context)?.selectedId(widget.statusTabId) ??
         'plantowatch';
     return KitPosterCard(
       imageUrl: kitListPosterUrl(meta),
@@ -1037,9 +1040,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     String? kindLabel;
     if (filtered) {
       final kindSpec =
-          KitLayoutScope.maybeOf(context)?.widgetSpecFor(widget.kindMenuId);
+          LayoutScope.maybeOf(context)?.widgetSpecFor(widget.kindMenuId);
       if (kindSpec != null) {
-        for (final tab in kitItemsFromSpec(kindSpec)) {
+        for (final tab in layoutItemsFromSpec(kindSpec)) {
           if (tab.id == kind) kindLabel = tab.label;
         }
       }
@@ -1177,9 +1180,7 @@ _HomeGrid _homeGrid(
 String kitListPosterUrl(MetaItem meta) {
   final poster = meta.poster;
   if (poster.isEmpty) return '';
-  if (poster.startsWith('http')) return poster;
-  if (poster.startsWith('/')) return TmdbApi.getImageUrl(poster);
-  return poster;
+  return resolveAbsoluteCoverUrl(poster);
 }
 
 /// Placeholder dense schedule row while live catalogs scrape.

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-import 'package:forja_foundation/kit/kit_types.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
 
 /// Pack-declared `kit.menu` / `kit.tabs` hoisted into the shell top bar.
 class KitTopMenuHandle {
@@ -68,16 +68,16 @@ abstract final class KitTopMenuRegistry {
 
     Map<String, dynamic>? menuSpec;
     Map<String, dynamic>? tabsSpec;
-    walkKitWidgets(widgets, (spec) {
-      final type = KitTypes.normalize(
+    walkLayoutWidgets(widgets, (spec) {
+      final type = LayoutTypes.normalize(
         (spec['type'] ?? '').toString(),
         spec,
       );
       // `hoist: false` keeps menu/tabs in the page body (under kit.topBar).
       if (spec['hoist'] == false) return;
-      if (type == KitTypes.menu && menuSpec == null) {
+      if (type == LayoutTypes.menu && menuSpec == null) {
         menuSpec = Map<String, dynamic>.from(spec);
-      } else if (type == KitTypes.tabs && tabsSpec == null) {
+      } else if (type == LayoutTypes.tabs && tabsSpec == null) {
         tabsSpec = Map<String, dynamic>.from(spec);
       }
     });

@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/recent_search_helper_tile.dart'
+    as foundation;
 
-/// Recent search row: select title to run the query; X deletes it.
-///
-/// Desktop hover matches recommendation rows (one full-row ink fill).
-/// On TV, Right from the title focuses the X; Left from X returns to the title;
-/// Right from X runs [onRightPastRemove] (usually film cards).
-class RecentSearchHelperTile extends StatefulWidget {
+/// Host TV/focus wrapper over foundation [RecentSearchHelperTile].
+class RecentSearchHelperTile extends StatelessWidget {
   const RecentSearchHelperTile({
     super.key,
     required this.title,
@@ -47,184 +43,90 @@ class RecentSearchHelperTile extends StatefulWidget {
   final double titleFontSizeSelected;
   final double verticalPadding;
 
-  @override
-  State<RecentSearchHelperTile> createState() => _RecentSearchHelperTileState();
-}
-
-class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
-  late final FocusNode _removeFocus;
-  bool _removeFocused = false;
-  bool _hovered = false;
-
-  String get _removeRowId => '${widget.tvRowId}-remove';
-
-  @override
-  void initState() {
-    super.initState();
-    _removeFocus = FocusNode(
-      debugLabel: 'recent-search-remove-${widget.tvTabId}-${widget.listIndex}',
-    );
-    _removeFocus.addListener(_onRemoveFocusChange);
-  }
-
-  @override
-  void dispose() {
-    _removeFocus.removeListener(_onRemoveFocusChange);
-    _removeFocus.dispose();
-    super.dispose();
-  }
-
-  void _onRemoveFocusChange() {
-    final focused = _removeFocus.hasFocus;
-    if (_removeFocused == focused) return;
-    setState(() => _removeFocused = focused);
-    widget.onFocusChange?.call(focused);
-  }
+  String get _removeRowId => '$tvRowId-remove';
 
   void _focusTitle() {
-    final node = widget.titleFocusNode;
+    final node = titleFocusNode;
     if (node != null && node.canRequestFocus) {
       node.requestFocus();
       return;
     }
-    ShellTvFocusCoordinator.focusRowItem(
-      widget.tvTabId,
-      widget.tvRowId,
-      widget.listIndex,
-    );
-  }
-
-  void _focusRemove() {
-    if (_removeFocus.canRequestFocus) {
-      _removeFocus.requestFocus();
-      return;
-    }
-    ShellTvFocusCoordinator.focusRowItem(
-      widget.tvTabId,
-      _removeRowId,
-      widget.listIndex,
-    );
+    ShellTvFocusCoordinator.focusRowItem(tvTabId, tvRowId, listIndex);
   }
 
   @override
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final mouseHover = policy.scaleOnHover;
-    final highlighted = widget.selected || _removeFocused;
-    // Desktop: same soft fill as recommendation InkWell hover (one row, not split).
-    final showHoverFill = mouseHover && _hovered;
-    final color = highlighted
-        ? ForjaShellColors.textPrimary
-        : ForjaShellColors.textSecondary;
-    final iconSize = highlighted ? 16.0 : 14.0;
-    final fontSize =
-        highlighted ? widget.titleFontSizeSelected : widget.titleFontSize;
 
-    Widget row = Row(
-      children: [
-        Expanded(
-          child: shellFocusableTap(
+    return foundation.RecentSearchHelperTile(
+      title: title,
+      selected: selected,
+      onSelect: onSelect,
+      onRemove: onRemove,
+      titleFocusNode: titleFocusNode,
+      scaleOnHover: policy.scaleOnHover,
+      titleFontSize: titleFontSize,
+      titleFontSizeSelected: titleFontSizeSelected,
+      verticalPadding: verticalPadding,
+      onFocusChange: onFocusChange,
+      titleInteractiveBuilder: ({
+        required child,
+        required onTap,
+        onFocusChange,
+        focusNode,
+      }) =>
+          shellFocusableTap(
             context: context,
-            onTap: widget.onSelect,
+            onTap: onTap,
             borderRadius: 4,
             scaleOnFocus: 1.0,
             navLeftAlways: true,
-            listIndex: widget.listIndex,
-            tvTabId: widget.tvTabId,
-            tvRowId: widget.tvRowId,
+            listIndex: listIndex,
+            tvTabId: tvTabId,
+            tvRowId: tvRowId,
             tvZone: ShellTvZone.chipStrip,
-            tvItemIndex: widget.listIndex,
-            focusNode: widget.titleFocusNode,
-            onUpEdge: widget.onUpEdge,
-            onDownEdge: widget.onDownEdge,
-            onRightEdge: _focusRemove,
+            tvItemIndex: listIndex,
+            focusNode: focusNode,
+            onUpEdge: onUpEdge,
+            onDownEdge: onDownEdge,
+            onRightEdge: () {
+              ShellTvFocusCoordinator.focusRowItem(
+                tvTabId,
+                _removeRowId,
+                listIndex,
+              );
+            },
             ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-            onFocusChange: widget.onFocusChange,
+            onFocusChange: onFocusChange,
             suppressInkHover: true,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.history,
-                    size: iconSize,
-                    color: color.withValues(
-                      alpha: highlighted ? 0.9 : 0.55,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: fontSize,
-                        fontWeight:
-                            highlighted ? FontWeight.w600 : FontWeight.w400,
-                        height: 1.25,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: child,
           ),
-        ),
-        shellFocusableTap(
-          context: context,
-          onTap: widget.onRemove,
-          borderRadius: 4,
-          scaleOnFocus: 1.0,
-          tvTabId: widget.tvTabId,
-          tvRowId: _removeRowId,
-          tvZone: ShellTvZone.chipStrip,
-          tvItemIndex: widget.listIndex,
-          focusNode: _removeFocus,
-          onUpEdge: widget.onUpEdge,
-          onDownEdge: widget.onDownEdge,
-          onLeftEdge: _focusTitle,
-          onRightEdge: widget.onRightPastRemove,
-          ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-          suppressInkHover: true,
-          child: SizedBox(
-            width: 36,
-            height: 32,
-            child: Center(
-              child: Icon(
-                Icons.close_rounded,
-                size: highlighted ? 18 : 16,
-                color: _removeFocused
-                    ? ForjaShellColors.textPrimary
-                    : ForjaShellColors.iconMuted,
-              ),
-            ),
+      removeInteractiveBuilder: ({
+        required child,
+        required onTap,
+        onFocusChange,
+        focusNode,
+      }) =>
+          shellFocusableTap(
+            context: context,
+            onTap: onTap,
+            borderRadius: 4,
+            scaleOnFocus: 1.0,
+            tvTabId: tvTabId,
+            tvRowId: _removeRowId,
+            tvZone: ShellTvZone.chipStrip,
+            tvItemIndex: listIndex,
+            focusNode: focusNode,
+            onUpEdge: onUpEdge,
+            onDownEdge: onDownEdge,
+            onLeftEdge: _focusTitle,
+            onRightEdge: onRightPastRemove,
+            ensureVisibleMode: ShellTvEnsureVisibleMode.row,
+            onFocusChange: onFocusChange,
+            suppressInkHover: true,
+            child: child,
           ),
-        ),
-      ],
-    );
-
-    row = Material(
-      color: showHoverFill ? ForjaShellColors.inkHover : Colors.transparent,
-      borderRadius: BorderRadius.circular(4),
-      clipBehavior: Clip.antiAlias,
-      child: row,
-    );
-
-    if (mouseHover) {
-      row = MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: row,
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: widget.verticalPadding),
-      child: row,
     );
   }
 }

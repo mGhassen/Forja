@@ -5,13 +5,16 @@ import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/shell/kit_search_page.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/meta_runtime.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_search_screen.dart';
+
+export 'package:forja_foundation/widgets/chrome/catalog_search_screen.dart'
+    show CatalogSearchScreen;
 
 /// Hub search backed by a catalog plugin `search` action.
 ///
-/// Feature chrome is capability-gated by the caller ([structuredSearch],
-/// [applyChromeFilters]) — never by pluginId / tabId.
+/// Host mapper — MetaRuntime + [openMetaItem] into [KitSearchPage].
 class KitSearchScreen extends StatelessWidget {
   const KitSearchScreen({
     super.key,
@@ -77,7 +80,7 @@ class KitSearchScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PlayerSurfaceChromeStub(
-      builder: (context) => KitSearchPage(
+      builder: (context) => CatalogSearchScreen(
         hintText: hintText,
         tvTabId: tabId,
         structuredSearch: structuredSearch,
@@ -90,6 +93,22 @@ class KitSearchScreen extends StatelessWidget {
             context,
             pluginId: pluginId,
             item: payload,
+          );
+        },
+        pageBuilder: ({
+          required onSearch,
+          required onOpen,
+          required hintText,
+          required structuredSearch,
+          loadRecommendations,
+        }) {
+          return KitSearchPage(
+            hintText: hintText,
+            tvTabId: tabId,
+            structuredSearch: structuredSearch,
+            onSearch: onSearch,
+            loadRecommendations: loadRecommendations ?? _recommendations,
+            onOpen: onOpen,
           );
         },
       ),

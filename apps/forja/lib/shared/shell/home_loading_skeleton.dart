@@ -1,22 +1,22 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
-
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/movie_poster_card.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart'
+    as ds;
 
-Widget homeLoadingShimmer(Widget child) {
-  return Shimmer.fromColors(
-    baseColor: AppTheme.bgCard,
-    highlightColor: ForjaShellColors.borderSubtle,
-    child: child,
-  );
-}
+export 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart'
+    show
+        HomeHubLoadingRowSpec,
+        kHomeHubDefaultLoadingRows,
+        kHomeHubAsianDramaLoadingRows;
+
+typedef HomeHubLoadingRowSpec = ds.HomeHubLoadingRowSpec;
+
+Widget homeLoadingShimmer(Widget child) => ds.homeLoadingShimmer(child);
 
 Widget homeTitleBarSkeleton(
   BuildContext context, {
@@ -26,15 +26,9 @@ Widget homeTitleBarSkeleton(
   final h = height ?? shellScaled(context, 18).clamp(10.0, 18.0);
   const minWidth = 60.0;
   final maxWidth = math.max(minWidth, width);
-  return Container(
-    height: h,
+  return ds.homeTitleBarSkeleton(
     width: shellScaled(context, width).clamp(minWidth, maxWidth),
-    decoration: BoxDecoration(
-      color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(
-        shellScaled(context, 6).clamp(3.0, 6.0),
-      ),
-    ),
+    height: h,
   );
 }
 
@@ -43,15 +37,10 @@ Widget homeCardSkeleton(
   double? width,
   double? height,
 }) {
-  final cardWidth = width ?? MoviePosterCard.cardWidth(context);
-  final cardHeight = height ?? MoviePosterCard.cardHeight(context);
-  return Container(
-    width: cardWidth,
-    height: cardHeight,
-    decoration: BoxDecoration(
-      color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(shellCardBorderRadius(context)),
-    ),
+  return ds.homeCardSkeleton(
+    width: width ?? MoviePosterCard.cardWidth(context),
+    height: height ?? MoviePosterCard.cardHeight(context),
+    borderRadius: shellCardBorderRadius(context),
   );
 }
 
@@ -79,50 +68,17 @@ Widget homeMovieRowSkeleton(
   final top = topPadding > 0
       ? topPadding
       : homeSectionTitleTop(context, compactTop: compactTop);
-  final height = cardHeight ?? MoviePosterCard.cardHeight(context);
-  final hPad = shellHomeSectionHorizontalPadding(context);
-
-  return Padding(
-    padding: EdgeInsets.only(top: top),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            hPad,
-            0,
-            hPad,
-            shellHomeSectionBottomGap(context),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              homeTitleBarSkeleton(context, width: titleWidth),
-              if (showSubtitle) ...[
-                SizedBox(height: shellScaled(context, 6).clamp(3.0, 6.0)),
-                homeTitleBarSkeleton(context, width: 90, height: 12),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(
-          height: height,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            itemCount: itemCount,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: shellMovieCardRowGap(context)),
-            itemBuilder: (_, _) => homeCardSkeleton(
-              context,
-              width: cardWidth,
-              height: height,
-            ),
-          ),
-        ),
-      ],
-    ),
+  return ds.homeMovieRowSkeleton(
+    titleWidth: titleWidth,
+    itemCount: itemCount,
+    showSubtitle: showSubtitle,
+    topPadding: top,
+    horizontalPadding: shellHomeSectionHorizontalPadding(context),
+    titleBottomGap: shellHomeSectionBottomGap(context),
+    cardGap: shellMovieCardRowGap(context),
+    cardWidth: cardWidth ?? MoviePosterCard.cardWidth(context),
+    cardHeight: cardHeight ?? MoviePosterCard.cardHeight(context),
+    borderRadius: shellCardBorderRadius(context),
   );
 }
 
@@ -130,66 +86,25 @@ Widget homeContinueWatchingSkeleton(
   BuildContext context, {
   bool compactTop = false,
 }) {
-  final top = homeSectionTitleTop(context, compactTop: compactTop);
-  final cardHeight = homeContinueWatchingCardHeight(context);
-  final cardWidth = homeContinueWatchingCardWidth(context);
-  final hPad = shellHomeSectionHorizontalPadding(context);
-
-  return homeLoadingShimmer(
-    Padding(
-      padding: EdgeInsets.only(top: top),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              hPad,
-              0,
-              hPad,
-              shellHomeSectionBottomGap(context),
-            ),
-            child: homeTitleBarSkeleton(context, width: 160),
-          ),
-          SizedBox(
-            height: cardHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: hPad),
-              itemCount: 4,
-              separatorBuilder: (_, _) =>
-                  SizedBox(width: shellMovieCardRowGap(context)),
-              itemBuilder: (_, _) => Container(
-                width: cardWidth,
-                decoration: BoxDecoration(
-                  color: AppTheme.bgCard,
-                  borderRadius: BorderRadius.circular(
-                    shellCardBorderRadius(context),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
+  return ds.homeContinueWatchingSkeleton(
+    topPadding: homeSectionTitleTop(context, compactTop: compactTop),
+    horizontalPadding: shellHomeSectionHorizontalPadding(context),
+    titleBottomGap: shellHomeSectionBottomGap(context),
+    cardGap: shellMovieCardRowGap(context),
+    cardWidth: homeContinueWatchingCardWidth(context),
+    cardHeight: homeContinueWatchingCardHeight(context),
+    borderRadius: shellCardBorderRadius(context),
   );
 }
 
 Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
-  return SizedBox(
-    height: MoviePosterCard.cardHeight(context),
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(
-        horizontal: shellHomeSectionHorizontalPadding(context),
-      ),
-      itemCount: itemCount,
-      separatorBuilder: (_, _) =>
-          SizedBox(width: shellMovieCardRowGap(context)),
-      itemBuilder: (_, _) => homeCardSkeleton(context),
-    ),
+  return ds.homeCatalogCardRowSkeleton(
+    itemCount: itemCount,
+    horizontalPadding: shellHomeSectionHorizontalPadding(context),
+    cardGap: shellMovieCardRowGap(context),
+    cardWidth: MoviePosterCard.cardWidth(context),
+    cardHeight: MoviePosterCard.cardHeight(context),
+    borderRadius: shellCardBorderRadius(context),
   );
 }
 
@@ -198,17 +113,11 @@ double homeCinematicHeroBodyHeight(
   required bool compact,
   bool pageBottomBleed = false,
 }) {
-  if (compact) {
-    final screenH = MediaQuery.sizeOf(context).height;
-    final target = screenH * ShellTokens.heroHeightFractionCompact;
-    return math.max(ShellTokens.heroMinHeightCompact, target);
-  }
-  if (pageBottomBleed) {
-    return MediaQuery.sizeOf(context).height *
-            ShellTokens.homeBackdropViewportFraction +
-        ShellTokens.homePageBottomSectionDownOffset;
-  }
-  return MediaQuery.sizeOf(context).height * shellHeroHeightFraction(context);
+  return ds.homeCinematicHeroBodyHeight(
+    screenHeight: MediaQuery.sizeOf(context).height,
+    compact: compact,
+    pageBottomBleed: pageBottomBleed,
+  );
 }
 
 Widget homeCinematicHeroShimmer(
@@ -225,31 +134,11 @@ Widget homeCinematicHeroShimmer(
         pageBottomBleed: pageBottomBleed && !compact,
       ) +
       MediaQuery.paddingOf(context).top;
-  return homeHubHeroShimmer(height: height);
+  return ds.homeHubHeroShimmer(height: height);
 }
 
-Widget homeHubHeroShimmer({required double height}) {
-  return homeLoadingShimmer(Container(height: height, color: AppTheme.bgCard));
-}
-
-typedef HomeHubLoadingRowSpec = ({double width, bool showSubtitle});
-
-const List<HomeHubLoadingRowSpec> kHomeHubDefaultLoadingRows = [
-  (width: 170, showSubtitle: false),
-  (width: 160, showSubtitle: false),
-  (width: 150, showSubtitle: false),
-  (width: 180, showSubtitle: false),
-  (width: 165, showSubtitle: false),
-];
-
-const List<HomeHubLoadingRowSpec> kHomeHubAsianDramaLoadingRows = [
-  (width: 180, showSubtitle: true),
-  (width: 150, showSubtitle: false),
-  (width: 140, showSubtitle: false),
-  (width: 160, showSubtitle: false),
-  (width: 130, showSubtitle: false),
-  (width: 145, showSubtitle: false),
-];
+Widget homeHubHeroShimmer({required double height}) =>
+    ds.homeHubHeroShimmer(height: height);
 
 SliverToBoxAdapter homeHubRowSliver(
   BuildContext context,
@@ -275,27 +164,16 @@ List<Widget> homeHubLoadingSlivers(
   double? catalogCardWidth,
   double? catalogCardHeight,
 }) {
-  final specs = rows ?? kHomeHubDefaultLoadingRows;
+  final specs = rows ?? ds.kHomeHubDefaultLoadingRows;
   return [
-    SliverToBoxAdapter(child: heroShimmer),
-    homeHubRowSliver(
-      context,
-      homeContinueWatchingSkeleton(context),
-      isFirstAfterHero: true,
-    ),
-    for (final spec in specs)
-      homeHubRowSliver(
-        context,
-        homeLoadingShimmer(
-          homeMovieRowSkeleton(
-            context,
-            titleWidth: spec.width,
-            showSubtitle: spec.showSubtitle,
-            cardWidth: catalogCardWidth,
-            cardHeight: catalogCardHeight,
-          ),
-        ),
-        isFirstAfterHero: false,
-      ),
+    for (final w in ds.homeHubLoadingSlivers(
+      heroShimmer: heroShimmer,
+      rows: specs,
+      catalogCardWidth: catalogCardWidth ?? MoviePosterCard.cardWidth(context),
+      catalogCardHeight:
+          catalogCardHeight ?? MoviePosterCard.cardHeight(context),
+      rowSpacing: shellHomeRowSpacing(context),
+    ))
+      w,
   ];
 }

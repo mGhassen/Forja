@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/widgets/chrome/top_bar_slots.dart';
 
 /// Shell page template — topBar + body + optional side rail (RFC-106 G6).
 class ShellBlock extends StatelessWidget {
@@ -12,7 +11,7 @@ class ShellBlock extends StatelessWidget {
     this.railOnLeading = true,
   });
 
-  final TopBarSlots? topBar;
+  final Widget? topBar;
   final Widget body;
   final Widget? sideRail;
   final double sideRailWidth;

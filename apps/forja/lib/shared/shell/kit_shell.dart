@@ -32,11 +32,11 @@ import 'package:forja/shared/engine/hub/pack_filters.dart';
 import 'package:forja/shared/shell/vertical_filters.dart';
 import 'package:forja/shared/shell/kit_list_widget.dart';
 import 'package:forja/shared/shell/kit_menu_widget.dart';
-import 'package:forja_foundation/widgets/chrome/kit_stack_widget.dart';
+import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:forja/shared/shell/kit_tabs_widget.dart';
 import 'package:forja/shared/engine/hub/kit_top_menu_registry.dart';
-import 'package:forja_foundation/kit/kit_types.dart';
-import 'package:forja_foundation/widgets/chrome/kit_layout_scope.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/shell/because_section.dart';
 import 'package:forja/shared/shell/continue_widget.dart';
 import 'package:forja/shared/engine/hub/kit_details_meta.dart';
@@ -52,7 +52,8 @@ import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/hub/kit_live_boot.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_shell.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.
 ///
@@ -293,8 +294,8 @@ class _KitShellState extends State<KitShell>
         _widgets = [
           for (final w in host) Map<String, dynamic>.from(w),
         ];
-        _layoutWidgetSpecs = kitWidgetSpecIndex(_widgets);
-        initKitTabSelections(_layoutSelections, _widgets);
+        _layoutWidgetSpecs = layoutWidgetSpecIndex(_widgets);
+        initLayoutTabSelections(_layoutSelections, _widgets);
       });
       KitTopMenuRegistry.syncFromLayout(
         tabId: _pageKey,
@@ -413,8 +414,8 @@ class _KitShellState extends State<KitShell>
     setState(() {
       _loading = false;
       _widgets = widgets;
-      _layoutWidgetSpecs = kitWidgetSpecIndex(widgets);
-      initKitTabSelections(_layoutSelections, widgets);
+      _layoutWidgetSpecs = layoutWidgetSpecIndex(widgets);
+      initLayoutTabSelections(_layoutSelections, widgets);
     });
     if (_pageUsesFeed) {
       unawaited(_ensureFeedLoaded());
@@ -438,9 +439,9 @@ class _KitShellState extends State<KitShell>
     markShellTabFresh();
   }
 
-  bool get _hasHostListWidget => KitTypes.treeContains(
+  bool get _hasHostListWidget => LayoutTypes.treeContains(
     _widgets,
-    slot: KitTypes.list,
+    slot: LayoutTypes.list,
   );
 
   void _onLayoutTabSelect(String widgetId, String value, {required bool toggle}) {
@@ -462,37 +463,37 @@ class _KitShellState extends State<KitShell>
   }) {
     final type = _layoutWidgetType(spec);
     switch (type) {
-      case KitTypes.stack:
+      case LayoutTypes.stack:
         return _buildStackWidget(spec, tvOrders: tvOrders);
-      case KitTypes.menu:
+      case LayoutTypes.menu:
         if (_menuIsHoisted(spec)) return null;
         return KitMenuWidget(
           tabId: _pageKey,
           spec: spec,
           sortOrder: stackIndex,
         );
-      case KitTypes.tabs:
+      case LayoutTypes.tabs:
         if (_tabsIsHoisted(spec)) return null;
         return KitTabsWidget(
           tabId: _pageKey,
           spec: spec,
           sortOrder: stackIndex,
         );
-      case KitTypes.topBar:
+      case LayoutTypes.topBar:
         return KitTopBarActions(
           tabId: _pageKey,
           spec: spec,
           sortOrder: stackIndex,
           onRefresh: () => unawaited(onShellTabRefresh(force: true)),
         );
-      case KitTypes.categoryBar:
+      case LayoutTypes.categoryBar:
         return KitCategoryBar(
           tabId: _pageKey,
           spec: spec,
           pluginId: widget.pluginId,
           sortOrder: stackIndex,
         );
-      case KitTypes.list:
+      case LayoutTypes.list:
         return _hostOrKitListWidget(spec, tvOrders: tvOrders);
       default:
         return _widgetFor(spec, tvOrders: tvOrders, prefetch: null);
@@ -510,7 +511,7 @@ class _KitShellState extends State<KitShell>
     final hoistPortals = wrap != null &&
         listSourceId == KitLiveBoot.listSourceId;
     if (!hoistPortals) {
-      return KitStackWidget(
+      return LayoutStack(
         spec: spec,
         childBuilder: (childSpec, index) => _buildLayoutWidget(
           childSpec,
@@ -545,7 +546,7 @@ class _KitShellState extends State<KitShell>
       childIndex++;
       if (child == null) continue;
 
-      if (type == KitTypes.topBar && content.isEmpty) {
+      if (type == LayoutTypes.topBar && content.isEmpty) {
         leading.add(child);
       } else {
         content.add(child);
@@ -605,7 +606,7 @@ class _KitShellState extends State<KitShell>
     for (final entry in raw) {
       if (entry is! Map) continue;
       final child = Map<String, dynamic>.from(entry);
-      if (_layoutWidgetType(child) != KitTypes.list) continue;
+      if (_layoutWidgetType(child) != LayoutTypes.list) continue;
       final id = (child['source'] ?? '').toString().trim();
       if (id.isNotEmpty) found = id;
     }
@@ -665,13 +666,13 @@ class _KitShellState extends State<KitShell>
 
   Widget? _resolveHostListBody() {
     Widget? host;
-    walkKitWidgets(_widgets, (spec) {
+    walkLayoutWidgets(_widgets, (spec) {
       if (host != null) return;
-      final type = KitTypes.normalize(
+      final type = LayoutTypes.normalize(
         (spec['type'] ?? '').toString(),
         spec,
       );
-      if (type != KitTypes.list) return;
+      if (type != LayoutTypes.list) return;
       host = _hostBodyForListSpec(spec);
     });
     return host;
@@ -679,13 +680,13 @@ class _KitShellState extends State<KitShell>
 
   bool get _hasRegisteredListPanel {
     var found = false;
-    walkKitWidgets(_widgets, (spec) {
+    walkLayoutWidgets(_widgets, (spec) {
       if (found) return;
-      final type = KitTypes.normalize(
+      final type = LayoutTypes.normalize(
         (spec['type'] ?? '').toString(),
         spec,
       );
-      if (type != KitTypes.list) return;
+      if (type != LayoutTypes.list) return;
       final sourceId = (spec['source'] ?? '').toString().trim();
       if (sourceId.isEmpty) return;
       if (HostListRegistry.resolvePanel(sourceId) != null) {
@@ -697,13 +698,13 @@ class _KitShellState extends State<KitShell>
 
   bool get _hasHostBodySource {
     var found = false;
-    walkKitWidgets(_widgets, (spec) {
+    walkLayoutWidgets(_widgets, (spec) {
       if (found) return;
-      final type = KitTypes.normalize(
+      final type = LayoutTypes.normalize(
         (spec['type'] ?? '').toString(),
         spec,
       );
-      if (type != KitTypes.list) return;
+      if (type != LayoutTypes.list) return;
       final sourceId = (spec['source'] ?? '').toString().trim();
       final source = HostListRegistry.resolve(
         sourceId: sourceId.isEmpty ? null : sourceId,
@@ -719,10 +720,10 @@ class _KitShellState extends State<KitShell>
     if (host != null) return host;
     if (_widgets.length != 1) return null;
     final root = _widgets.first;
-    if (!KitTypes.isCompositionRoot(root)) return null;
+    if (!LayoutTypes.isCompositionRoot(root)) return null;
     final body = _buildLayoutWidget(root, tvOrders: tvOrders);
     if (body == null) return null;
-    return KitLayoutScope(
+    return LayoutScope(
       selections: Map.unmodifiable(_layoutSelections),
       widgetSpecs: _layoutWidgetSpecs,
       onSelect: _onLayoutTabSelect,
@@ -1218,12 +1219,12 @@ class _KitShellState extends State<KitShell>
       case 'continue':
       case 'host.continue':
         return true;
-      case KitTypes.list:
-      case KitTypes.stack:
-      case KitTypes.menu:
-      case KitTypes.tabs:
-      case KitTypes.topBar:
-      case KitTypes.categoryBar:
+      case LayoutTypes.list:
+      case LayoutTypes.stack:
+      case LayoutTypes.menu:
+      case LayoutTypes.tabs:
+      case LayoutTypes.topBar:
+      case LayoutTypes.categoryBar:
         return true;
       default:
         return true;
@@ -1421,7 +1422,7 @@ class _KitShellState extends State<KitShell>
     final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     Widget moodChip({
-      required ShellMoodCircleLayout layout,
+      required MoodCircleLayout layout,
       required int i,
       TvChipEdges? edges,
     }) {
@@ -1454,7 +1455,7 @@ class _KitShellState extends State<KitShell>
     }
 
     Widget moodChipRow({
-      required ShellMoodCircleLayout layout,
+      required MoodCircleLayout layout,
       TvChipEdges Function(int index)? edgesFor,
       bool scaleToFit = false,
     }) {
@@ -1599,14 +1600,14 @@ class _KitShellState extends State<KitShell>
 
   String _layoutWidgetType(Map<String, dynamic> spec) {
     final raw = _rawLayoutWidgetType(spec);
-    final kit = KitTypes.normalize(raw, spec);
+    final kit = LayoutTypes.normalize(raw, spec);
     if (kit.startsWith('kit.')) return kit;
     // Section slots + aliases (watch_providers → vertical_filters, etc.).
-    if (kit == KitTypes.hero ||
-        kit == KitTypes.mood ||
-        kit == KitTypes.continueWatching ||
-        kit == KitTypes.because ||
-        kit == KitTypes.verticalFilters) {
+    if (kit == LayoutTypes.hero ||
+        kit == LayoutTypes.mood ||
+        kit == LayoutTypes.continueWatching ||
+        kit == LayoutTypes.because ||
+        kit == LayoutTypes.verticalFilters) {
       return kit;
     }
     return switch (raw) {
@@ -1635,7 +1636,7 @@ class _KitShellState extends State<KitShell>
           bleedRowId: heroBleedRowId,
           prefetch: prefetch,
         );
-      case KitTypes.row:
+      case LayoutTypes.row:
       case 'rail':
       case 'ranked':
         return _railSection(
@@ -1667,36 +1668,36 @@ class _KitShellState extends State<KitShell>
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,
         );
-      case KitTypes.list:
+      case LayoutTypes.list:
         return _hostOrKitListWidget(spec, tvOrders: tvOrders);
-      case KitTypes.stack:
+      case LayoutTypes.stack:
         return _buildStackWidget(spec, tvOrders: tvOrders);
-      case KitTypes.topBar:
+      case LayoutTypes.topBar:
         return KitTopBarActions(
           tabId: _pageKey,
           spec: spec,
           sortOrder: _tvOrder(tvOrders, id),
           onRefresh: () => unawaited(onShellTabRefresh(force: true)),
         );
-      case KitTypes.categoryBar:
+      case LayoutTypes.categoryBar:
         return KitCategoryBar(
           tabId: _pageKey,
           spec: spec,
           pluginId: widget.pluginId,
           sortOrder: _tvOrder(tvOrders, id),
         );
-      case KitTypes.menu:
-      case KitTypes.tabs:
-        if (slot == KitTypes.menu
+      case LayoutTypes.menu:
+      case LayoutTypes.tabs:
+        if (slot == LayoutTypes.menu
             ? _menuIsHoisted(spec)
             : _tabsIsHoisted(spec)) {
           return null;
         }
-        return KitLayoutScope(
+        return LayoutScope(
           selections: Map.unmodifiable(_layoutSelections),
           widgetSpecs: _layoutWidgetSpecs,
           onSelect: _onLayoutTabSelect,
-          child: slot == KitTypes.menu
+          child: slot == LayoutTypes.menu
               ? KitMenuWidget(
                   tabId: _pageKey,
                   spec: spec,
@@ -1725,11 +1726,13 @@ class _KitShellState extends State<KitShell>
   }
 
   Widget _buildCatalogBody(BuildContext context) {
-    final body = () {
-      final host = _resolveHostListBody();
-      if (host != null) return host;
-      if (_loading && _widgets.isEmpty) {
-        return CustomScrollView(
+    // Loading / error shells go through [CatalogShell] paint slots.
+    if (_loading && _widgets.isEmpty && _resolveHostListBody() == null) {
+      return CatalogShell(
+        backgroundColor: AppTheme.bgDark,
+        textDirection: _textDirection,
+        loading: true,
+        loadingChild: CustomScrollView(
           controller: _scroll,
           slivers: homeHubLoadingSlivers(
             context,
@@ -1738,15 +1741,29 @@ class _KitShellState extends State<KitShell>
               pageBottomBleed: _fullHeroBleed,
             ),
           ),
-        );
-      }
-      final error = _error;
-      if (error != null && _widgets.isEmpty) {
-        return ShellErrorRetryPanel(
+        ),
+        wrapBody: (body) => TvFocusGraph(tabId: _pageKey, child: body),
+      );
+    }
+    final error = _error;
+    if (error != null &&
+        _widgets.isEmpty &&
+        _resolveHostListBody() == null) {
+      return CatalogShell(
+        backgroundColor: AppTheme.bgDark,
+        textDirection: _textDirection,
+        errorMessage: error,
+        errorChild: ShellErrorRetryPanel(
           message: error,
           onRetry: () => unawaited(_loadLayout(forceRefresh: true)),
-        );
-      }
+        ),
+        wrapBody: (body) => TvFocusGraph(tabId: _pageKey, child: body),
+      );
+    }
+
+    final body = () {
+      final host = _resolveHostListBody();
+      if (host != null) return host;
 
       final bleedId = _bleedRailId;
       Map<String, dynamic>? bleedSpec;
@@ -1863,12 +1880,11 @@ class _KitShellState extends State<KitShell>
       );
     }();
 
-    return ColoredBox(
-      color: AppTheme.bgDark,
-      child: Directionality(
-        textDirection: _textDirection,
-        child: TvFocusGraph(tabId: _pageKey, child: body),
-      ),
+    return CatalogShell(
+      backgroundColor: AppTheme.bgDark,
+      textDirection: _textDirection,
+      body: body,
+      wrapBody: (b) => TvFocusGraph(tabId: _pageKey, child: b),
     );
   }
 }

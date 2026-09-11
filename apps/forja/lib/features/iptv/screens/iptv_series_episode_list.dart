@@ -10,8 +10,10 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/desktop_selectable_title.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
-import 'package:forja/shared/player/details/kit_details_hero.dart';
+import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/media_details_scroll_page.dart';
 import 'package:forja/shared/player/details/media_details_body.dart';
@@ -21,7 +23,6 @@ import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 
 Future<T?> openIptvSeriesEpisodeList<T>(
@@ -382,7 +383,7 @@ class _IptvSeriesEpisodeListScreenState
             topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
             backgroundColor: AppTheme.bgDark,
             sections: const [],
-            hero: KitDetailsHero(
+            hero: DetailsHero(
               backdropUrl: icon,
               backdropUrls: heroBackdrops,
               title: _displayTitle,
@@ -397,6 +398,11 @@ class _IptvSeriesEpisodeListScreenState
               ),
               showSeasonRail: multiSeason,
               pageBottomChild: episodePicker,
+              enableKenBurns: policy.kenBurnsBackdrop,
+              tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+              plainTitle: policy.useFocusableMoodChips,
+              selectableTitle: shellDesktopTextSelect(context),
+              factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
               actionRow: DetailsHeroTvActionScope(
                 tabId: MediaDetailsTv.tabId,
                 itemCount: 1,

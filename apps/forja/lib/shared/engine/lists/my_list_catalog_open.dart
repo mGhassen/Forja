@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/hub/legacy_list_item.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 
 import 'package:forja/shared/player/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/lists/my_list_host.dart';

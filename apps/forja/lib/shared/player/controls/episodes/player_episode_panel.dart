@@ -5,7 +5,7 @@ import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 import 'package:forja/shared/player/details/episode_range_bar.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';

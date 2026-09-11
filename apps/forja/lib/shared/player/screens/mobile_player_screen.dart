@@ -60,7 +60,7 @@ import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/controls/sources/player_sources_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_quality_menu.dart';

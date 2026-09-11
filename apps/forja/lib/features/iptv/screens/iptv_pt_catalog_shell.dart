@@ -58,7 +58,7 @@ class _IptvKitShell extends StatelessWidget {
                           ),
                       ],
                     )
-                  : KitSidePanelOverlay(
+                  : SidePanelOverlay(
                       open: ctrl.portalPanelOpen,
                       useSideRail: false,
                       panelWidth: MediaQuery.sizeOf(context).width * 0.92,

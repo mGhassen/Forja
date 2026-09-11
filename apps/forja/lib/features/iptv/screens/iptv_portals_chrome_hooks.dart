@@ -8,7 +8,7 @@ import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
-import 'package:forja_foundation/widgets/chrome/kit_side_panel_overlay.dart';
+import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/hub/kit_live_boot.dart';
@@ -157,13 +157,13 @@ class _IptvPortalsPanelHostState
       unawaited(_warnIfUnsupported(next));
     });
 
-    return KitSidePanelOverlay(
+    return SidePanelOverlay(
       open: ctrl.portalPanelOpen,
       panelWidth: _panelWidth,
       onDismiss: ctrl.closePortalPanel,
       panel: IptvPortalPanel(
         ctrl: ctrl,
-        width: KitSidePanelOverlay.defaultUseSideRail(context)
+        width: SidePanelOverlay.defaultUseSideRail(context)
             ? _panelWidth
             : MediaQuery.sizeOf(context).width * 0.92,
         onClose: ctrl.closePortalPanel,

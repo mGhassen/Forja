@@ -5,7 +5,7 @@ import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
 import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';

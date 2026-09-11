@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/kit_filter_sheet_option.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/shell/kit_filter_sheet_option.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Generic catalog picker — flat ListTile rows.
+export 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart'
+    show CatalogFilterSheet, showCatalogFilterSheet;
+
+/// Host TV wrapper — flat ListTile rows via [KitFilterSheetOption].
 Future<String?> showKitCatalogFilterSheet(
   BuildContext context, {
   required String current,

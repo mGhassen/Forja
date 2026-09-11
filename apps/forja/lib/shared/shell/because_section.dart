@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/hub/meta_movie.dart';
@@ -11,16 +10,16 @@ import 'package:forja/shared/shell/kit_section.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/catalog/because_section.dart' as ds;
 
-/// Layout widget type `because` — pack owns rail logic; host renders meta rows.
+/// Layout widget type `because` — pack owns rail logic; host maps into DS paint.
 class BecauseSection extends StatefulWidget {
   const BecauseSection({
     super.key,
@@ -35,7 +34,6 @@ class BecauseSection extends StatefulWidget {
   final String pluginId;
   final String tabId;
   final Map<String, dynamic> spec;
-  /// Shuffle control — between the previous rail and [tvRowOrder] cards.
   final int tvHeaderRowOrder;
   final int tvRowOrder;
   final KitRowPrefetchSlot? prefetchSlot;
@@ -173,8 +171,7 @@ class _BecauseSectionState extends State<BecauseSection> {
           final rowId = (widget.spec['id'] ?? 'because').toString();
           final headerRowId = '${rowId}_header';
           final seedTitle = _becauseSeedTitle(payload.heading);
-          final shuffleActive =
-              _shuffleHovered || _shuffleFocusNode.hasFocus;
+          final shuffleActive = _shuffleHovered || _shuffleFocusNode.hasFocus;
 
           Widget? shuffle;
           if (payload.canShuffle) {
@@ -235,76 +232,36 @@ class _BecauseSectionState extends State<BecauseSection> {
             );
           }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: shellSectionTitlePadding(context),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _BecauseSeedPoster(url: payload.seedPoster),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Because you watched',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            seedTitle.isEmpty ? 'recently' : seedTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ?shuffle,
-                  ],
-                ),
-              ),
-              KitSection<MetaItem>(
-                title: '',
-                items: payload.items,
-                embedded: true,
-                compactTop: true,
+          return ds.BecauseSection(
+            becauseTitle: seedTitle,
+            seedPosterUrl: payload.seedPoster,
+            titlePadding: shellSectionTitlePadding(context),
+            trailing: shuffle,
+            rail: KitSection<MetaItem>(
+              title: '',
+              items: payload.items,
+              embedded: true,
+              compactTop: true,
+              tvTabId: widget.tabId,
+              tvRowId: rowId,
+              tvRowOrder: widget.tvRowOrder,
+              cardBuilder: (context, item, index) => KitPosterCard(
+                imageUrl: item.poster,
+                title: item.name,
+                subtitle: kitPosterSubtitle(item),
+                rating: item.rating,
+                listIndex: index,
                 tvTabId: widget.tabId,
                 tvRowId: rowId,
-                tvRowOrder: widget.tvRowOrder,
-                cardBuilder: (context, item, index) => KitPosterCard(
-                  imageUrl: item.poster,
-                  title: item.name,
-                  subtitle: kitPosterSubtitle(item),
-                  rating: item.rating,
-                  listIndex: index,
-                  tvTabId: widget.tabId,
-                  tvRowId: rowId,
-                  onTap: () => unawaited(
-                    openMetaItem(
-                      context,
-                      pluginId: widget.pluginId,
-                      item: item,
-                    ),
+                onTap: () => unawaited(
+                  openMetaItem(
+                    context,
+                    pluginId: widget.pluginId,
+                    item: item,
                   ),
                 ),
               ),
-            ],
+            ),
           );
         },
       ),
@@ -319,37 +276,6 @@ String _becauseSeedTitle(String heading) {
     return trimmed.substring(prefix.length).trim();
   }
   return trimmed;
-}
-
-class _BecauseSeedPoster extends StatelessWidget {
-  const _BecauseSeedPoster({required this.url});
-
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 50,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: AppTheme.bgCard,
-        border: Border.all(
-          color: ForjaShellColors.borderSubtle,
-          width: 1.2,
-        ),
-      ),
-      child: url.isEmpty
-          ? const Icon(Icons.movie_outlined, color: Colors.white38, size: 18)
-          : CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => ColoredBox(color: AppTheme.bgCard),
-              errorWidget: (_, _, _) => ColoredBox(color: AppTheme.bgCard),
-            ),
-    );
-  }
 }
 
 class _BecausePayload {

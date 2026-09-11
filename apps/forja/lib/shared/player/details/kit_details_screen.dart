@@ -10,6 +10,7 @@ import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/shell/shell_error_retry_panel.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -22,7 +23,6 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
-import 'package:forja/shared/player/platform/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
@@ -30,10 +30,12 @@ import 'package:forja/shared/engine/hub/pack_filters.dart';
 import 'package:forja/shared/engine/hub/play_filters.dart';
 import 'package:forja/shared/shell/hero_pill_buttons.dart';
 import 'package:forja/shared/player/sources/kit_sources.dart';
-import 'package:forja/shared/player/details/kit_details_hero.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/kit_list_status_hero.dart';
 import 'package:forja/shared/player/details/media_details.dart';
+import 'package:forja/shared/shell/desktop_selectable_title.dart';
+import 'package:forja_foundation/widgets/details/details_hero.dart';
+import 'package:forja_foundation/widgets/details/details_screen.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
@@ -392,9 +394,6 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         _selectedEpisode = firstEp;
       });
       unawaited(_loadWatchProgress());
-      if (meta.numericId('tmdb') != null) {
-        unawaited(_loadTmdbUi(meta));
-      }
       if (widget.autoPlay) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
       }
@@ -459,7 +458,6 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       _iptvPortal = resolve == null ? null : await resolve(meta);
     }
     unawaited(_loadWatchProgress());
-    unawaited(_loadTmdbUi(meta));
     if (widget.autoPlay) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
     }
@@ -469,54 +467,6 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     if (!mounted || _autoPlayConsumed || _loading || _error != null) return;
     _autoPlayConsumed = true;
     _playSelected();
-  }
-
-  Future<void> _loadTmdbUi(MetaItem meta) async {
-    if (meta.numericId('tmdb') == null) return;
-    final results = await Future.wait<Object?>([
-      kitTmdbHeroBackdropUrls(meta),
-      kitLoadTmdbRich(meta),
-    ]);
-    if (!mounted) return;
-    final backdrops = results[0] as List<String>;
-    final rich = results[1] as RichMediaDetails?;
-    if (backdrops.isEmpty && rich == null) return;
-    setState(() {
-      if (backdrops.isNotEmpty) _heroBackdrops = backdrops;
-      if (rich != null) _rich = rich;
-    });
-    if (rich != null && rich.extras.trailers.isNotEmpty) {
-      YoutubeStreamService.prefetch(
-        rich.extras.trailers.map((t) => t.key),
-        limit: 1,
-      );
-    }
-    if (hubMetaIsIptv(meta)) {
-      unawaited(_loadIptvCatalogRecs(meta, rich));
-    }
-  }
-
-  Future<void> _loadIptvCatalogRecs(
-    MetaItem meta,
-    RichMediaDetails? rich,
-  ) async {
-    final load = KitIptvPlayHooks.loadCatalogRecs;
-    final portal = _iptvPortal ??
-        await KitIptvPlayHooks.resolvePortalFromMeta?.call(meta);
-    if (load == null || portal == null || rich == null) return;
-    try {
-      final hits = await load(
-        meta: meta,
-        portal: portal,
-        shelf: null,
-        rich: rich,
-      );
-      if (!mounted) return;
-      setState(() {
-        _iptvPortal = portal;
-        _iptvRecHits = hits;
-      });
-    } catch (_) {}
   }
 
   List<MediaTrailer> get _trailers =>
@@ -660,27 +610,24 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       builder: (context) => ValueListenableBuilder<AppThemePreset>(
         valueListenable: AppTheme.themeNotifier,
         builder: (context, _, _) {
-          return Scaffold(
+          return DetailsScreen(
             backgroundColor: AppTheme.bgDark,
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_loading)
-                  Center(
-                    child: CircularProgressIndicator(
-                      color: ForjaShellColors.sectionAccent,
-                    ),
-                  )
-                else if (_error != null)
-                  ShellErrorRetryPanel(
+            loading: _loading,
+            errorMessage: _error,
+            onRetry: _load,
+            loadingChild: Center(
+              child: CircularProgressIndicator(
+                color: ForjaShellColors.sectionAccent,
+              ),
+            ),
+            errorChild: _error == null
+                ? null
+                : ShellErrorRetryPanel(
                     message: _error!,
                     onRetry: _load,
-                  )
-                else
-                  _buildScrollLayout(),
-                MediaDetailsBackButton(focusNode: _backFocus),
-              ],
-            ),
+                  ),
+            body: (_loading || _error != null) ? null : _buildScrollLayout(),
+            overlay: MediaDetailsBackButton(focusNode: _backFocus),
           );
         },
       ),
@@ -691,7 +638,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     final show = _show;
     final videos = _videos;
     final seasons = hubSeasonNumbers(videos).toList()..sort();
-    final backdrop = kitImageUrl(
+    final backdrop = resolveAbsoluteCoverUrl(
       _heroBackdrops.isNotEmpty
           ? _heroBackdrops.first
           : (show.background.isNotEmpty ? show.background : show.poster),
@@ -913,7 +860,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
           ? DetailsTokens.bodyTopSpacingWithEpisodes
           : DetailsTokens.bodyTopSpacing,
       backgroundColor: AppTheme.bgDark,
-      hero: KitDetailsHero(
+      hero: DetailsHero(
         backdropUrl: backdrop,
         backdropUrls: backdropUrls,
         title: show.name,
@@ -924,8 +871,12 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
           if (show.releaseInfo.isNotEmpty) show.releaseInfo,
         ],
         rating: show.rating,
-        richFacts: _rich,
-        logoUrl: hubTmdbLogoUrl(_rich) ?? hubMetaLogoUrl(show),
+        facts: kitRichFactRows(
+          _rich,
+          positionMs: heroPosMs,
+          durationMs: heroDurMs,
+        ),
+        logoUrl: hubMetaLogoUrl(show),
         height: DetailsTokens.heroHeight(
           context,
           showEpisodeRail: hasEpisodes,
@@ -933,8 +884,17 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         ),
         pageBottomChild: episodePicker,
         showSeasonRail: seasons.length > 1,
-        positionMs: heroPosMs,
-        durationMs: heroDurMs,
+        progressBar: heroPosMs != null && heroDurMs != null
+            ? WatchProgressBar(
+                positionMs: heroPosMs,
+                durationMs: heroDurMs,
+              )
+            : null,
+        enableKenBurns: policy.kenBurnsBackdrop,
+        tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+        plainTitle: policy.useFocusableMoodChips,
+        selectableTitle: shellDesktopTextSelect(context),
+        factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
         actionRow: DetailsHeroTvActionScope(
           tabId: MediaDetailsTv.tabId,
           itemCount: heroActionCount,

@@ -1,21 +1,10 @@
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:rust/rust.dart';
 
-/// Strip a TMDB CDN URL (or keep a `/path`) for [Movie.posterPath].
-String catalogTmdbPath(String raw) {
-  final s = raw.trim();
-  if (s.isEmpty) return '';
-  if (s.startsWith('/')) return s;
-  final marker = '/t/p/';
-  final i = s.indexOf(marker);
-  if (i >= 0) {
-    final rest = s.substring(i + marker.length);
-    final slash = rest.indexOf('/');
-    if (slash >= 0) return rest.substring(slash);
-  }
-  final last = s.lastIndexOf('/');
-  if (last >= 0 && last < s.length - 1) return '/${s.substring(last + 1)}';
-  return s;
+/// Pack/cover URL for [Movie.posterPath] — absolute https as shipped by packs.
+String catalogPosterPathForMovie(String raw) {
+  return normalizeCoverUrl(raw.trim());
 }
 
 /// Stable negative id for hub meta without a numeric upstream id.
@@ -28,12 +17,6 @@ final Map<int, MetaItem> _metaItemByMovieId = {};
 /// Reverse lookup after [metaItemToMovie].
 MetaItem? metaItemForMovie(Movie movie) =>
     _metaItemByMovieId[movie.id];
-
-String catalogPosterPathForMovie(String raw) {
-  final s = raw.trim();
-  if (s.startsWith('http://') || s.startsWith('https://')) return s;
-  return catalogTmdbPath(s);
-}
 
 int? _numericOpenId(MetaItem item) {
   final open = item.open;
@@ -127,8 +110,8 @@ Movie? metaItemToMovie(MetaItem item) {
     id: id,
     imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
     title: item.name,
-    posterPath: catalogTmdbPath(item.poster),
-    backdropPath: catalogTmdbPath(item.background),
+    posterPath: catalogPosterPathForMovie(item.poster),
+    backdropPath: catalogPosterPathForMovie(item.background),
     voteAverage: item.rating ?? 0,
     releaseDate: item.releaseInfo,
     overview: item.description,

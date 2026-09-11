@@ -7,6 +7,9 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
+export 'package:forja_foundation/widgets/chrome/catalog_search_filters.dart'
+    show CatalogSearchFilters;
+
 enum SearchMediaFilter { all, movie, tv }
 
 /// Genre chips → parser aliases (single-select).

@@ -1,0 +1,169 @@
+/// Catalog layout — normalized widget types declared by hub packs.
+///
+/// Packs use `kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`, `kit.row`,
+/// `kit.topBar`, `kit.categoryBar` in `layout` widgets. Legacy aliases
+/// (`stack`, `tabs`, `rail`, `host.my_list`) normalize to the same slots.
+///
+/// Domain data is feature-owned: packs may pass an opaque [kit.list] `source`
+/// id — layout never names products.
+abstract final class LayoutTypes {
+  LayoutTypes._();
+
+  static const stack = 'kit.stack';
+  static const menu = 'kit.menu';
+  static const tabs = 'kit.tabs';
+  static const list = 'kit.list';
+  static const row = 'kit.row';
+  static const topBar = 'kit.topBar';
+  static const categoryBar = 'kit.categoryBar';
+
+  /// Layout composers (not composition roots — section slots).
+  static const hero = 'hero';
+  static const mood = 'mood';
+  static const continueWatching = 'continue';
+  static const because = 'because';
+  static const verticalFilters = 'vertical_filters';
+
+  /// Normalize pack [rawType] (+ optional [spec] for legacy `tabs` style).
+  static String normalize(String rawType, [Map<String, dynamic>? spec]) {
+    final t = rawType.trim();
+    if (t.isEmpty) return t;
+
+    if (t == 'tabs') {
+      final style = (spec?['style'] ?? '').toString();
+      return style == 'kind' ? menu : tabs;
+    }
+
+    return switch (t) {
+      'stack' || stack => stack,
+      'menu' || menu => menu,
+      'kit.tabs' || tabs => tabs,
+      'host.my_list' || 'my_list' || list => list,
+      'rail' || 'ranked' || row => row,
+      'topBar' || 'kit.top_bar' || topBar => topBar,
+      'categoryBar' || 'kit.category_bar' || 'kinds' || categoryBar =>
+        categoryBar,
+      'host.vertical_filters' ||
+      'watch_providers' ||
+      verticalFilters =>
+        verticalFilters,
+      'host.continue' || continueWatching => continueWatching,
+      'host.because' || because => because,
+      'cinematic_hero' || hero => hero,
+      mood => mood,
+      _ => t,
+    };
+  }
+
+  static bool isStack(String type) => normalize(type) == stack;
+
+  static bool isCompositionRoot(Map<String, dynamic> spec) {
+    final type = normalize((spec['type'] ?? '').toString(), spec);
+    if (type == stack && spec['expand'] == true) return true;
+    if (type == list) return true;
+    return false;
+  }
+
+  static bool treeContains(
+    Iterable<Map<String, dynamic>> roots, {
+    required String slot,
+    String? listSource,
+  }) {
+    var found = false;
+    walkLayoutWidgets(roots, (spec) {
+      if (found) return;
+      final type = normalize((spec['type'] ?? '').toString(), spec);
+      if (type != slot) return;
+      if (slot == list && listSource != null) {
+        final src = (spec['source'] ?? '').toString();
+        if (src != listSource) return;
+      }
+      found = true;
+    });
+    return found;
+  }
+}
+
+List<({String id, String label})> layoutItemsFromSpec(
+  Map<String, dynamic> spec,
+) {
+  final raw = spec['items'] ?? spec['tabs'];
+  if (raw is! List) return const [];
+  final out = <({String id, String label})>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final id = (item['id'] ?? '').toString().trim();
+    if (id.isEmpty) continue;
+    final label = (item['label'] ?? item['title'] ?? id).toString().trim();
+    out.add((id: id, label: label.isEmpty ? id : label));
+  }
+  return out;
+}
+
+void walkLayoutWidgets(
+  Iterable<Map<String, dynamic>> roots,
+  void Function(Map<String, dynamic> spec) visit,
+) {
+  void walk(Map<String, dynamic> spec) {
+    visit(spec);
+    if (!LayoutTypes.isStack((spec['type'] ?? '').toString())) return;
+    final children = spec['children'];
+    if (children is! List) return;
+    for (final child in children) {
+      if (child is Map) walk(Map<String, dynamic>.from(child));
+    }
+  }
+
+  for (final root in roots) {
+    walk(root);
+  }
+}
+
+Map<String, Map<String, dynamic>> layoutWidgetSpecIndex(
+  Iterable<Map<String, dynamic>> roots,
+) {
+  final index = <String, Map<String, dynamic>>{};
+  walkLayoutWidgets(roots, (spec) {
+    final id = (spec['id'] ?? '').toString().trim();
+    if (id.isNotEmpty) index[id] = spec;
+  });
+  return index;
+}
+
+void initLayoutTabSelections(
+  Map<String, String> selections,
+  Iterable<Map<String, dynamic>> roots,
+) {
+  walkLayoutWidgets(roots, (spec) {
+    final type = LayoutTypes.normalize(
+      (spec['type'] ?? '').toString(),
+      spec,
+    );
+    if (type == LayoutTypes.menu ||
+        type == LayoutTypes.tabs ||
+        type == LayoutTypes.categoryBar) {
+      final id = (spec['id'] ?? '').toString().trim();
+      if (id.isEmpty || selections.containsKey(id)) return;
+      final def = spec['default']?.toString();
+      if (def != null && def.isNotEmpty) {
+        selections[id] = def;
+      }
+      return;
+    }
+    if (type != LayoutTypes.topBar) return;
+    final actions = spec['actions'];
+    if (actions is! List) return;
+    for (final raw in actions) {
+      if (raw is! Map) continue;
+      final action = Map<String, dynamic>.from(raw);
+      final id = (action['id'] ?? '').toString().trim();
+      if (id.isEmpty || selections.containsKey(id)) continue;
+      final items = layoutItemsFromSpec(action);
+      if (items.isEmpty) continue;
+      final def = action['default']?.toString();
+      if (def != null && def.isNotEmpty) {
+        selections[id] = def;
+      }
+    }
+  });
+}

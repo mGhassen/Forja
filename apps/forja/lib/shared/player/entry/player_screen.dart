@@ -5,7 +5,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
 import 'package:forja/shared/player/screens/exo_player_screen.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';

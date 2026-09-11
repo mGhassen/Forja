@@ -401,7 +401,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         ? '$totalCount portal${totalCount == 1 ? '' : 's'}'
         : ctrl.statusText;
 
-    return KitPortalListPanel(
+    return PortalListPanel(
       width: widget.width,
       surfaceColor: IptvShellStyle.surface,
       focusNode: _panelFocus,

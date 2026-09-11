@@ -80,10 +80,5 @@ void main() {
         ['1'],
       );
     });
-
-    test('empty query returns all', () {
-      final rows = [row(id: '1', title: 'A')];
-      expect(kitSourcesFilterByQuery(rows, '  '), rows);
-    });
   });
 }

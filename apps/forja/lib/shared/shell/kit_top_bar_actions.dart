@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/shell/kit_filter_sheet_option.dart';
 import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
-import 'package:forja/shared/shell/kit_focus.dart';
-import 'package:forja_foundation/widgets/chrome/kit_layout_scope.dart';
+import 'package:forja/shared/shell/focus_edge.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/shell/kit_list_event_search.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
+
+export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart'
+    show TopBarActions;
 
 /// Dynamic catalog options from [KitTopBarHostHooks.loadCatalogOptions].
 final kitTopBarCatalogOptionsProvider =
@@ -67,7 +71,7 @@ class KitTopBarActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = _actions;
     if (actions.isEmpty) return const SizedBox.shrink();
-    final scope = KitLayoutScope.of(context);
+    final scope = LayoutScope.of(context);
     // last: restore prior schedule/list index (↑ from match → Portals → ↓).
     final focusDown =
         kitFocusEdge(tabId, spec['focusDown']?.toString(), last: true);
@@ -168,32 +172,22 @@ class KitTopBarActions extends ConsumerWidget {
 
     final itemCount = leadingCount + trailingBuilt.length;
     final chromeOrder = sortOrder < 0 ? sortOrder : -100 - sortOrder;
-    return TvKitRow(
-      tabId: tabId,
-      rowId: _widgetId,
-      sortOrder: chromeOrder,
-      itemCount: itemCount,
-      onFocusUp: () {},
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          ShellTokens.compactChromeLeadingInset(context),
-          ShellTokens.tabHeaderTopPadding,
-          ShellTokens.bodyHorizontalPadding,
-          4,
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < built.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              built[i],
-            ],
-            const Spacer(),
-            for (var t = 0; t < trailingBuilt.length; t++) ...[
-              const SizedBox(width: 8),
-              trailingBuilt[t],
-            ],
-          ],
-        ),
+    return TopBarActions(
+      leading: built,
+      trailing: trailingBuilt,
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        ShellTokens.tabHeaderTopPadding,
+        ShellTokens.bodyHorizontalPadding,
+        4,
+      ),
+      wrapRow: (child) => TvKitRow(
+        tabId: tabId,
+        rowId: _widgetId,
+        sortOrder: chromeOrder,
+        itemCount: itemCount,
+        onFocusUp: () {},
+        child: child,
       ),
     );
   }
@@ -207,7 +201,7 @@ class KitTopBarActions extends ConsumerWidget {
   Widget? _buildAction(
     BuildContext context,
     WidgetRef ref,
-    KitLayoutScope scope,
+    LayoutScope scope,
     Map<String, dynamic> action, {
     required int index,
     required VoidCallback? focusDown,
@@ -367,7 +361,7 @@ class KitTopBarActions extends ConsumerWidget {
       (action['default'] ?? '').toString().trim();
 
   String _chipLabel(
-    KitLayoutScope scope,
+    LayoutScope scope,
     Map<String, dynamic> action, {
     required List<({String id, String label})> catalogOptions,
   }) {
@@ -383,7 +377,7 @@ class KitTopBarActions extends ConsumerWidget {
     return base;
   }
 
-  bool _isSelected(KitLayoutScope scope, Map<String, dynamic> action) {
+  bool _isSelected(LayoutScope scope, Map<String, dynamic> action) {
     final id = (action['id'] ?? '').toString();
     final selected = scope.selectedId(id);
     if (selected == null || selected.isEmpty || selected == 'all') return false;
@@ -406,7 +400,7 @@ class KitTopBarActions extends ConsumerWidget {
     required List<({String id, String label})> catalogOptions,
   }) {
     final id = (action['id'] ?? '').toString();
-    final staticItems = kitItemsFromSpec(action);
+    final staticItems = layoutItemsFromSpec(action);
     if (id == 'catalog' || action['dynamicCatalogs'] == true) {
       return [
         (id: 'all', label: 'All', subtitle: 'Every enabled catalog'),
@@ -424,7 +418,7 @@ class KitTopBarActions extends ConsumerWidget {
 
   Future<void> _onCatalog(
     BuildContext context,
-    KitLayoutScope scope, {
+    LayoutScope scope, {
     required List<({String id, String label})> catalogOptions,
     required String? catalogPref,
   }) async {
@@ -459,7 +453,7 @@ class KitTopBarActions extends ConsumerWidget {
   Future<void> _onSchedule(
     BuildContext context,
     WidgetRef ref,
-    KitLayoutScope scope, {
+    LayoutScope scope, {
     required Map<String, dynamic> action,
     required String? horizonPref,
     required List<({String id, String label})> catalogOptions,
@@ -483,7 +477,7 @@ class KitTopBarActions extends ConsumerWidget {
   Future<void> _onAction(
     BuildContext context,
     WidgetRef ref,
-    KitLayoutScope scope,
+    LayoutScope scope,
     Map<String, dynamic> action, {
     required List<({String id, String label})> catalogOptions,
   }) async {

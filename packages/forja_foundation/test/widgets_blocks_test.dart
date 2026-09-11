@@ -11,25 +11,25 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  group('KitLayoutArtifact', () {
+  group('LayoutArtifact', () {
     test('maps kit.* and section slots', () {
-      expect(kitLayoutArtifactFor('kit.stack'), KitLayoutArtifact.stack);
-      expect(kitLayoutArtifactFor('menu'), KitLayoutArtifact.menu);
-      expect(kitLayoutArtifactFor('hero'), KitLayoutArtifact.hero);
-      expect(kitLayoutArtifactFor('mood'), KitLayoutArtifact.mood);
+      expect(layoutArtifactFor('kit.stack'), LayoutArtifact.stack);
+      expect(layoutArtifactFor('menu'), LayoutArtifact.menu);
+      expect(layoutArtifactFor('hero'), LayoutArtifact.hero);
+      expect(layoutArtifactFor('mood'), LayoutArtifact.mood);
       expect(
-        kitLayoutArtifactFor('continue'),
-        KitLayoutArtifact.continueWatching,
+        layoutArtifactFor('continue'),
+        LayoutArtifact.continueWatching,
       );
-      expect(kitLayoutArtifactFor('because'), KitLayoutArtifact.because);
+      expect(layoutArtifactFor('because'), LayoutArtifact.because);
       expect(
-        kitLayoutArtifactFor('vertical_filters'),
-        KitLayoutArtifact.verticalFilters,
+        layoutArtifactFor('vertical_filters'),
+        LayoutArtifact.verticalFilters,
       );
-      expect(kitLayoutArtifactFor('unknown.slot'), isNull);
-      expect(KitLayoutArtifact.hero.id, KitLayoutArtifactId.hero);
+      expect(layoutArtifactFor('unknown.slot'), isNull);
+      expect(LayoutArtifact.hero.id, LayoutArtifactId.hero);
       expect(
-        KitLayoutMap.slotToArtifactName[KitTypes.hero],
+        LayoutMap.slotToArtifactName[LayoutTypes.hero],
         contains('CatalogHeroSection'),
       );
     });
@@ -57,7 +57,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           const ShellBlock(
-            topBar: TopBarSlots(title: 'Home'),
+            topBar: TopBar(title: 'Home'),
             body: Center(child: Text('Body')),
           ),
         ),

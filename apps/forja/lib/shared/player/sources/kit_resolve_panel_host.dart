@@ -3,13 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/engine/hub/kit_panel_host.dart';
-import 'package:forja/shared/player/sources/kit_sources_panel.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/engine/hub/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/player/details/kit_match_details_page.dart';
-import 'package:forja_foundation/widgets/chrome/kit_panel_tabs.dart';
+import 'package:forja/shared/player/sources/kit_sources_panel.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
+
+export 'package:forja_foundation/widgets/sources/resolve_panel.dart'
+    show ResolvePanel;
 
 /// Thin registry host — load/play via [KitResolveStreamsHooks] (RFC-095 D).
+///
+/// Side panel chrome paint lives in [ResolvePanel]; this host maps hooks + TV.
 final class KitResolvePanelHost implements KitPanelHost {
   const KitResolvePanelHost();
 
@@ -63,8 +68,8 @@ final class KitResolvePanelHost implements KitPanelHost {
   }) async {
     final load = KitResolveStreamsHooks.loadTab;
     if (load == null) return const [];
-    final loadId = kitPanelTabLoadId(
-      kitPanelChromeFromLayouts(layoutWidgets).tabs,
+    final loadId = panelTabLoadId(
+      panelChromeFromLayouts(layoutWidgets).tabs,
       tabId,
     );
     return load(
@@ -165,7 +170,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
     String subtitle,
     KitUrlHealthProbe? healthProbe,
   ) {
-    final chrome = kitPanelChromeFromLayouts(widget.layoutWidgets);
+    final chrome = panelChromeFromLayouts(widget.layoutWidgets);
     return KitSourcesPanel(
       key: ValueKey(
         'live-panel-body-${widget.entry.meta.id}-${widget.refreshEpoch}',
@@ -177,7 +182,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
           KitSourcesTab(id: t.id, label: t.label, icon: t.icon),
       ],
       initialTabId: chrome.initial,
-      browseCategoryTabIds: kitPanelBrowseTabIds(chrome.tabs),
+      browseCategoryTabIds: panelBrowseTabIds(chrome.tabs),
       showInlineSearch: true,
       onClosed: widget.onClosed,
       onTabsLeftEdge: widget.onPanelLeftEdge,

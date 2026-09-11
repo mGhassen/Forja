@@ -14,6 +14,9 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/shared/engine/hub/kit_row_prefetch.dart';
 
+export 'package:forja_foundation/widgets/chrome/catalog_section.dart'
+    show CatalogSection;
+
 /// Fallback when the hub pack omits [pageSize] / [limit] / [perPage] everywhere.
 const int kMetaRailPageSizeHint = kMetaRailPageSizeFallback;
 

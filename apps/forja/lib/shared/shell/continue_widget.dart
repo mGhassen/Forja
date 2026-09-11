@@ -5,14 +5,19 @@ import 'package:forja/shared/shell/kit_poster_card.dart';
 import 'package:forja/shared/engine/hub/kit_details_play.dart';
 import 'package:forja/shared/engine/hub/kit_row_prefetch.dart';
 import 'package:forja/shared/shell/kit_section.dart';
-import 'package:forja/shared/shell/continue_watching_section.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/continue_watching_card.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
-import 'package:rust/rust.dart' show WatchHistoryService, canResumeFromSavedProgress;
+import 'package:forja_foundation/widgets/catalog/continue_section.dart';
+import 'package:rust/rust.dart'
+    show WatchHistoryService, canResumeFromSavedProgress;
 
 /// Layout widget type `continue` — pack-scoped [WatchHistory]; optional
 /// legacy Home TMDB [WatchHistoryService] when the pack requests it.
@@ -65,13 +70,9 @@ class _ContinueWidgetState extends State<ContinueWidget> {
     }
   }
 
-  void _onHistoryRevision() {
-    unawaited(_reload());
-  }
+  void _onHistoryRevision() => unawaited(_reload());
 
-  void _onViewportVisible() {
-    _activate(prefetch: false);
-  }
+  void _onViewportVisible() => _activate(prefetch: false);
 
   void _registerPrefetch() {
     final slot = widget.prefetchSlot;
@@ -221,17 +222,64 @@ class _ContinueWidgetState extends State<ContinueWidget> {
       ),
       prefetchSlot: widget.prefetchSlot,
       onVisible: _onViewportVisible,
-      builder: (_) => ContinueWatchingSection(
-        tabId: widget.tabId,
-        entries: _entries,
-        scrollController: _scroll,
-        resumingMetaId: _resumingMetaId,
-        onResume: _resume,
-        onRemove: _remove,
-        onOpenDetails: (e) => unawaited(_openDetails(e)),
-        tvRowOrder: widget.tvRowOrder,
-        tvFocusUp: widget.tvFocusUp,
-      ),
+      builder: (_) {
+        if (_entries.isEmpty) return const SizedBox.shrink();
+        final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
+        return TvKitRow(
+          tabId: widget.tabId,
+          rowId: 'continue-watching',
+          sortOrder: widget.tvRowOrder,
+          itemCount: _entries.length,
+          onFocusUp: widget.tvFocusUp,
+          child: ContinueSection(
+            scrollController: _scroll,
+            showScrollArrows: showArrows,
+            cardWidth: shellContinueWatchingCardWidth(context),
+            cardHeight: shellContinueWatchingCardHeight(context),
+            titlePadding: EdgeInsets.fromLTRB(
+              24,
+              shellSectionTitleTopCompact(context),
+              24,
+              16,
+            ),
+            rail: SizedBox(
+              height: shellContinueWatchingCardHeight(context),
+              child: FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: ListView.separated(
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  clipBehavior: Clip.none,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.sizeOf(context).width < 380
+                        ? 14.0
+                        : 24.0,
+                  ),
+                  itemCount: _entries.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  itemBuilder: (_, i) {
+                    return FocusTraversalOrder(
+                      order: NumericFocusOrder(i.toDouble()),
+                      child: HostContinueWatchingCard(
+                        tabId: widget.tabId,
+                        listIndex: i,
+                        entry: _entries[i],
+                        isLoading: _resumingMetaId != null &&
+                            _entries[i]['metaId']?.toString() ==
+                                _resumingMetaId,
+                        onTap: () => _resume(_entries[i]),
+                        onRemove: () => _remove(_entries[i]),
+                        onInfo: () => unawaited(_openDetails(_entries[i])),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

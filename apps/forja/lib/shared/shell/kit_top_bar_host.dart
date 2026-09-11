@@ -6,56 +6,15 @@ import 'package:forja/shared/engine/hub/pack_filters.dart';
 import 'package:forja/shared/shell/vertical_filters.dart';
 import 'package:forja/shared/shell/kit_top_bar.dart';
 import 'package:forja/shared/engine/hub/kit_top_menu_registry.dart';
+import 'package:forja/shared/engine/hub/open_catalog_search.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
-import 'package:forja/shared/shell/kit_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/chrome/kit_chrome_top_bar.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
-/// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
-///
-/// Pack capability [PackCapabilities.hostSearch] → shared host Search
-/// overlay (structured TMDB + addons). Otherwise pack `search` via
-/// [KitSearchScreen].
-Future<void> openKitSearch(
-  BuildContext context, {
-  required String pluginId,
-  required String tabId,
-  required String hintText,
-}) async {
-  final found = await PluginRegistry.instance.findPlugin(pluginId);
-  final plugin = found?.plugin;
-  if (plugin == null || !plugin.hasCapability(PackCapabilities.search)) {
-    return;
-  }
-  if (!context.mounted) return;
-
-  // Host Search overlay = Cmd+F surface (RFC-058 + Stremio addons).
-  if (plugin.hasCapability(PackCapabilities.hostSearch)) {
-    await AppRouter.openSearch(context);
-    return;
-  }
-
-  pushShellRoute(
-    context,
-    AppRouter.slideShellRoute(
-      (_) => KitSearchScreen(
-        pluginId: pluginId,
-        tabId: tabId,
-        hintText: hintText,
-        structuredSearch: plugin.hasCapability(
-          PackCapabilities.structuredSearch,
-        ),
-        applyChromeFilters: plugin.hasCapability(
-          PackCapabilities.filters,
-        ),
-      ),
-    ),
-  );
-}
+export 'package:forja/shared/engine/hub/open_catalog_search.dart'
+    show openCatalogSearch, openKitSearch;
 
 /// Generic catalog hub top bar — [tabId] resolves [pluginId] from nav registry.
 class PluginKitTopBar extends StatefulWidget {
@@ -83,8 +42,6 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
   @override
   void didUpdateWidget(covariant PluginKitTopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Shell reuses this State across hub tabs when unkeyed — never keep the
-    // previous tab's EnginePlugin (Home search/filters → Live Sports).
     if (oldWidget.tabId == widget.tabId) return;
     _plugin = null;
     _schedulePackFiltersLoad();
@@ -99,7 +56,6 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
   Future<void> _loadPluginAndFilters(String pluginId) async {
     final found = await PluginRegistry.instance.findPlugin(pluginId);
     if (!mounted) return;
-    // Drop stale results if the user switched tabs while findPlugin was in flight.
     if (PluginNavRegistry.pluginIdForTabSync(widget.tabId) != pluginId) {
       return;
     }
@@ -141,14 +97,12 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
     if (mounted) setState(() {});
   }
 
-  /// Only trust [_plugin] when it matches this tab's pack (guards State reuse).
   EnginePlugin? get _pluginForTab {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null || _plugin == null) return null;
     return _plugin!.id == pluginId ? _plugin : null;
   }
 
-  /// nav+layout hubs (Live Sports) own in-page chrome — no VOD Search/Films bar.
   bool _layoutOnlyHub(EnginePlugin? plugin) {
     if (plugin == null) return false;
     final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
@@ -192,7 +146,6 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
     final categories = PackFiltersRegistry.categoriesFor(pluginId);
     final menus = PackFiltersRegistry.menusFor(pluginId);
     final selectedMenu = ShellBus.hubSelectedMenuIdFor(widget.tabId);
-    // Drop stale menu id when this pack no longer declares it.
     final currentMenu = selectedMenu.value;
     if (currentMenu != null &&
         PackFiltersRegistry.menuById(pluginId, currentMenu) == null) {
@@ -209,7 +162,7 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
       onSearch: canSearch
           ? () {
               unawaited(
-                openKitSearch(
+                openCatalogSearch(
                   context,
                   pluginId: pluginId,
                   tabId: widget.tabId,

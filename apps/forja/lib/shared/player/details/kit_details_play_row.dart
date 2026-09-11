@@ -1,38 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/widgets/details/play_row.dart';
 
-/// Optionally scales hero action rows down on narrow viewports.
-///
-/// Pass [scaleDown]: false when the row must keep intrinsic size (e.g. live
-/// match Providers / Live TV + search).
-class DetailsHeroActionRowFit extends StatelessWidget {
-  const DetailsHeroActionRowFit({
-    super.key,
-    required this.child,
-    this.scaleDown = true,
-  });
+export 'package:forja_foundation/widgets/details/play_row.dart'
+    show DetailsHeroActionRowFit, DetailsUpcomingNotice, PlayRow;
 
-  final Widget child;
-  final bool scaleDown;
-
-  @override
-  Widget build(BuildContext context) {
-    final body = scaleDown
-        ? FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: child,
-          )
-        : child;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: body,
-    );
-  }
-}
+/// Soft upcoming chip — host alias for [DetailsUpcomingNotice].
+typedef KitDetailsUpcomingNotice = DetailsUpcomingNotice;
 
 /// Registers [MediaDetailsTv.heroRowId] for hub-style hero action clusters.
 class DetailsHeroTvActionScope extends StatelessWidget {
@@ -65,70 +41,7 @@ class DetailsHeroTvActionScope extends StatelessWidget {
   }
 }
 
-/// Soft “not playable yet” chip for hub details heroes (upcoming titles).
-///
-/// Height matches [ShellTokens.shellButtonHeight] so hero footer budget fits.
-class KitDetailsUpcomingNotice extends StatelessWidget {
-  const KitDetailsUpcomingNotice({
-    super.key,
-    this.releaseDateLabel,
-  });
-
-  static const double height = ShellTokens.shellButtonHeight;
-
-  /// Human premiere label (e.g. `Jun 14, 2026`), or null/empty if unknown.
-  final String? releaseDateLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final date = releaseDateLabel?.trim() ?? '';
-    final hasDate = date.isNotEmpty;
-    final label = hasDate ? 'Coming soon · $date' : 'Coming soon';
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 380),
-      child: SizedBox(
-        height: height,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(height / 2),
-            color: Colors.white.withValues(alpha: 0.08),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.schedule_rounded,
-                  color: Colors.amber.shade200,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.96),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Poppins',
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Primary play/resume row for hub details heroes.
+/// Primary play/resume row for hub details heroes (host Interactive / TV).
 ///
 /// Optional [onOpenSources] adds the white link Play (Torrents / Stremio /
 /// Nuvio / Forja), matching movie/TV details.

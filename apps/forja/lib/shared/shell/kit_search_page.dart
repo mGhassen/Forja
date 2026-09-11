@@ -13,34 +13,19 @@ import 'package:forja/shared/shell/tv_search_browse_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/kit_search_filters.dart';
-import 'package:forja/shared/engine/hub/search_recent_queries.dart';
+import 'package:forja/shared/host/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/recent_search_helper_tile.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_search_page.dart';
 
-class KitSearchResult {
-  const KitSearchResult({
-    required this.key,
-    required this.title,
-    required this.posterUrl,
-    this.backdropUrl,
-    this.subtitle,
-    this.rating,
-    required this.payload,
-  });
+export 'package:forja_foundation/widgets/chrome/catalog_search_page.dart'
+    show CatalogSearchResult;
 
-  final String key;
-  final String title;
-  final String posterUrl;
-  final String? backdropUrl;
-  final String? subtitle;
-  final double? rating;
-  final Object payload;
-}
-
+typedef KitSearchResult = CatalogSearchResult;
 typedef KitSearchQuery = Future<List<KitSearchResult>> Function(String query);
 typedef KitRecommendationsLoader = Future<List<String>> Function({
   required String query,

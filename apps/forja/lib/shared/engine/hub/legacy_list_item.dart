@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
@@ -69,11 +69,7 @@ ListFollowTarget? listFollowTargetFromLegacyItemSync(
 ) {
   final pluginId = item['pluginId']?.toString();
   if (pluginId == null || pluginId.isEmpty) return null;
-  if (legacyListStoredOpenRaw(item) == null &&
-      item['anilistId'] == null &&
-      item['kisskhId'] == null) {
-    return null;
-  }
+  if (legacyListStoredOpenRaw(item) == null) return null;
   final meta = metaItemFromLegacyListItem(item);
   return ListFollowTarget.fromMeta(pluginId: pluginId, meta: meta);
 }
@@ -115,19 +111,28 @@ Future<void> openLegacyListItem(
   final source = item['source']?.toString() ?? 'tmdb';
   if (source == 'tmdb' &&
       tmdbId != null &&
-      legacyListStoredOpenRaw(item) == null &&
-      item['anilistId'] == null &&
-      item['kisskhId'] == null) {
-    // Home TMDB rows without hub meta — legacy movie adapter.
+      legacyListStoredOpenRaw(item) == null) {
+    // Home TMDB rows without hub meta — open from stored fields (no TmdbApi).
     if (!context.mounted) return;
-    final details = await _loadTmdbMovie(item, tmdbId);
-    if (details != null && context.mounted) {
-      await AppRouter.openMovie(
-        context,
-        movie: details,
-        shellTabId: shellTabId,
-      );
-    }
+    final imdbId = item['imdbId']?.toString();
+    final mediaType = item['mediaType']?.toString() ?? 'movie';
+    final title = item['title']?.toString() ?? 'Unknown';
+    final poster = item['posterPath']?.toString() ?? '';
+    final backdrop = item['backdropPath']?.toString() ?? poster;
+    await AppRouter.openMovie(
+      context,
+      movie: Movie(
+        id: tmdbId,
+        imdbId: imdbId,
+        title: title,
+        posterPath: poster,
+        backdropPath: backdrop,
+        voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
+        releaseDate: item['releaseDate']?.toString() ?? '',
+        mediaType: mediaType == 'series' ? 'tv' : mediaType,
+      ),
+      shellTabId: shellTabId,
+    );
     return;
   }
 
@@ -144,23 +149,6 @@ Future<void> openLegacyListItem(
 
   final imdbId = item['imdbId']?.toString();
   final mediaType = item['mediaType']?.toString() ?? 'movie';
-  if (imdbId != null && imdbId.startsWith('tt')) {
-    try {
-      final movie = await TmdbApi().findByImdbId(
-        imdbId,
-        mediaType: mediaType == 'series' ? 'tv' : mediaType,
-      );
-      if (movie != null && context.mounted) {
-        await AppRouter.openMovie(
-          context,
-          movie: movie,
-          shellTabId: shellTabId,
-        );
-        return;
-      }
-    } catch (_) {}
-  }
-
   final title = item['title']?.toString() ?? 'Unknown';
   final poster = item['posterPath']?.toString() ?? '';
   if (!context.mounted) return;
@@ -180,21 +168,12 @@ Future<void> openLegacyListItem(
   );
 }
 
-Future<Movie?> _loadTmdbMovie(Map<String, dynamic> item, int tmdbId) async {
-  final api = TmdbApi();
-  final mt = item['mediaType']?.toString() ?? 'movie';
-  try {
-    return mt == 'tv' || mt == 'series'
-        ? await api.getTvDetails(tmdbId)
-        : await api.getMovieDetails(tmdbId);
-  } catch (_) {
-    return null;
-  }
-}
-
 String? _legacyListEngineType(Map<String, dynamic> item) {
-  if (item['anilistId'] != null) return 'anime';
-  if (item['kisskhId'] != null) return 'drama';
+  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
+  if (stored != null) {
+    final t = stored.effectiveExtract.resolveType;
+    if (t.isNotEmpty) return t;
+  }
   final mt = item['mediaType']?.toString() ?? '';
   if (mt == 'anime') return 'anime';
   if (mt == 'asian_drama' || mt == 'drama') return 'drama';
@@ -206,20 +185,14 @@ String _legacyListSurface(Map<String, dynamic> item) {
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
   if (stored != null) return stored.surface;
   final mt = item['mediaType']?.toString() ?? '';
-  if (item['anilistId'] != null || mt == 'anime') return 'anime';
-  if (item['kisskhId'] != null || mt == 'asian_drama' || mt == 'drama') {
-    return 'drama';
-  }
+  if (mt == 'anime') return 'anime';
+  if (mt == 'asian_drama' || mt == 'drama') return 'drama';
   return 'tmdb';
 }
 
 String _legacyListOpenId(Map<String, dynamic> item) {
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
   if (stored != null) return stored.id;
-  final kisskh = item['kisskhId'];
-  if (kisskh != null) return kisskh.toString();
-  final anilist = item['anilistId'];
-  if (anilist != null) return anilist.toString();
   final tmdb = item['tmdbId'];
   if (tmdb != null) return tmdb.toString();
   return item['metaId']?.toString() ?? '';
@@ -250,8 +223,6 @@ Map<String, dynamic> _legacyListExtractCtx(Map<String, dynamic> item) {
   }
 
   put('tmdbId', item['tmdbId']);
-  put('anilistId', item['anilistId']);
-  put('kisskhId', item['kisskhId']);
   put('malId', item['malId']);
 
   final ids = item['ids'];
@@ -282,8 +253,6 @@ Map<String, dynamic> _legacyListIds(Map<String, dynamic> item) {
   }
 
   put('tmdb', item['tmdbId']);
-  put('anilist', item['anilistId']);
-  put('kisskh', item['kisskhId']);
   put('imdb', item['imdbId']);
 
   final raw = item['ids'];

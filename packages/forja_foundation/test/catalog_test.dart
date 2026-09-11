@@ -240,21 +240,21 @@ void main() {
     });
   });
 
-  group('KitTypes.normalize', () {
+  group('LayoutTypes.normalize', () {
     test('maps legacy aliases', () {
-      expect(KitTypes.normalize('stack'), KitTypes.stack);
-      expect(KitTypes.normalize('menu'), KitTypes.menu);
-      expect(KitTypes.normalize('tabs'), KitTypes.tabs);
+      expect(LayoutTypes.normalize('stack'), LayoutTypes.stack);
+      expect(LayoutTypes.normalize('menu'), LayoutTypes.menu);
+      expect(LayoutTypes.normalize('tabs'), LayoutTypes.tabs);
       expect(
-        KitTypes.normalize('tabs', {'style': 'kind'}),
-        KitTypes.menu,
+        LayoutTypes.normalize('tabs', {'style': 'kind'}),
+        LayoutTypes.menu,
       );
-      expect(KitTypes.normalize('host.my_list'), KitTypes.list);
-      expect(KitTypes.normalize('rail'), KitTypes.row);
-      expect(KitTypes.normalize('topBar'), KitTypes.topBar);
-      expect(KitTypes.normalize('kinds'), KitTypes.categoryBar);
-      expect(KitTypes.normalize('kit.stack'), KitTypes.stack);
-      expect(KitTypes.normalize('custom.slot'), 'custom.slot');
+      expect(LayoutTypes.normalize('host.my_list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('rail'), LayoutTypes.row);
+      expect(LayoutTypes.normalize('topBar'), LayoutTypes.topBar);
+      expect(LayoutTypes.normalize('kinds'), LayoutTypes.categoryBar);
+      expect(LayoutTypes.normalize('kit.stack'), LayoutTypes.stack);
+      expect(LayoutTypes.normalize('custom.slot'), 'custom.slot');
     });
   });
 }

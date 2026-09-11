@@ -10,8 +10,8 @@ String normalizeCoverUrl(String raw) {
   return uri.replace(host: 'image.tmdb.org').toString();
 }
 
-/// Absolute `http(s)` URLs only. Relative `/path` keys stay unchanged —
-/// host [resolveCoverUrl] expands those via TMDB CDN.
+/// Absolute `http(s)` URLs only. Relative `/path` keys stay unchanged
+/// (invalid pack data — packs must ship absolute covers).
 String resolveAbsoluteCoverUrl(String raw) {
   final value = normalizeCoverUrl(raw.trim());
   if (value.isEmpty) return value;

@@ -1,16 +1,17 @@
-import 'package:forja/shared/engine/hub/cover_urls.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/meta_movie.dart';
 import 'package:forja/shared/shell/kit_poster_card.dart';
-import 'package:forja/shared/shell/kit_section.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/details/details_rails.dart';
+import 'package:forja_foundation/widgets/details/facts_panel.dart';
 import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
+import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/media_details_recommendations_section.dart';
 import 'package:forja/shared/player/details/media_details_cast_section.dart';
 import 'package:forja/shared/player/details/media_details_trailers_section.dart';
-import 'package:forja/shared/engine/hub/kit_details_host_hooks.dart';
 import 'package:rust/rust.dart';
 
 class KitDetailRailSection {
@@ -93,33 +94,40 @@ List<Widget> buildKitDetailRailSections({
     final rowOrder = order++;
     // Prefix so pack `recommendations` cannot collide with TMDB row ids.
     final rowId = 'pack:${rail.id}';
-    sections.add(
-      KitSection<MetaItem>(
-        title: rail.title,
-        items: rail.items,
-        embedded: true,
-        compactTop: true,
-        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-        tvRowId: rowId,
-        tvRowOrder: rowOrder,
-        tvFocusUp: sections.isEmpty ? firstMetaFocusUp : null,
-        cardBuilder: (ctx, item, index) => KitPosterCard(
-          imageUrl: item.poster,
-          title: item.name,
-          subtitle: kitPosterSubtitle(item),
-          rating: item.rating,
-          badge: kitPosterBadge(item, pluginId: pluginId),
+    final cards = <Widget>[
+      for (var index = 0; index < rail.items.length; index++)
+        KitPosterCard(
+          imageUrl: rail.items[index].poster,
+          title: rail.items[index].name,
+          subtitle: kitPosterSubtitle(rail.items[index]),
+          rating: rail.items[index].rating,
+          badge: kitPosterBadge(rail.items[index], pluginId: pluginId),
           listIndex: index,
           onTap: () => openMetaItem(
-            ctx,
+            context,
             pluginId: pluginId,
-            item: item,
+            item: rail.items[index],
           ),
           tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
           tvRowId: rowId,
         ),
-      ),
+    ];
+    Widget section = DetailsRailSection(
+      title: rail.title,
+      cards: cards,
+      compactTop: true,
     );
+    if (tvFocus) {
+      section = TvKitRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: rowId,
+        sortOrder: rowOrder,
+        itemCount: cards.length,
+        onFocusUp: sections.isEmpty ? firstMetaFocusUp : null,
+        child: section,
+      );
+    }
+    sections.add(section);
   }
   return sections;
 }
@@ -257,7 +265,7 @@ List<String> _packHeroBackdropUrls(MetaItem meta) {
 
   final urls = <String>[];
   void addUrl(String raw) {
-    final u = resolveCoverUrl(raw.trim());
+    final u = resolveAbsoluteCoverUrl(raw.trim());
     if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
   }
 
@@ -270,32 +278,41 @@ List<String> _packHeroBackdropUrls(MetaItem meta) {
   return out;
 }
 
-/// Immediate pack / enrich URLs — use before [kitTmdbHeroBackdropUrls] resolves.
+/// Pack / enrich URLs for hero backdrops.
 List<String> hubHeroBackdropUrls(MetaItem meta) =>
     _packHeroBackdropUrls(meta);
 
-/// TMDB backdrop fetch — host [KitDetailsHostHooks]; pack URLs if unregistered.
-Future<List<String>> kitTmdbHeroBackdropUrls(MetaItem meta) async {
-  final pack = _packHeroBackdropUrls(meta);
-  final hook = KitDetailsHostHooks.loadTmdbBackdropUrls;
-  if (hook == null) return pack;
-  return hook(meta, packUrls: pack);
-}
-
-/// TMDB rich details — host hook only (no TmdbApi in this file).
-Future<RichMediaDetails?> kitLoadTmdbRich(MetaItem meta) async {
-  final hook = KitDetailsHostHooks.loadTmdbRich;
-  if (hook == null) return null;
-  return hook(meta);
-}
-
-String? hubTmdbLogoUrl(RichMediaDetails? rich) {
-  final hook = KitDetailsHostHooks.tmdbLogoUrl;
-  if (hook != null) return hook(rich);
-  return null;
-}
-
 String? hubMetaLogoUrl(MetaItem meta) {
-  final u = resolveCoverUrl(meta.logo.trim());
+  final u = resolveAbsoluteCoverUrl(meta.logo.trim());
   return u.isEmpty ? null : u;
+}
+
+/// Host [RichMediaDetails] → foundation fact rows for [DetailsHero].
+List<MapEntry<String, String>> kitRichFactRows(
+  RichMediaDetails? rich, {
+  int? positionMs,
+  int? durationMs,
+}) {
+  if (rich == null) return const [];
+  final rows = factsRowsFromFields(
+    title: rich.movie.title,
+    mediaType: rich.movie.mediaType,
+    runtimeMinutes: rich.movie.runtime,
+    releaseDate: rich.movie.releaseDate,
+    seasonCount: rich.movie.numberOfSeasons,
+    episodeCount: rich.movie.numberOfEpisodes,
+    status: rich.extras.status,
+    budget: rich.extras.budget,
+    revenue: rich.extras.revenue,
+    languageCode: rich.extras.originalLanguage,
+    spokenLanguages: rich.extras.spokenLanguages,
+    productionCompanies: rich.extras.productionCompanies,
+    originCountries: rich.extras.originCountries,
+    lastAirDate: rich.extras.lastAirDate,
+    networks: rich.extras.networks,
+    creators: rich.extras.creators,
+    positionMs: positionMs,
+    durationMs: durationMs,
+  );
+  return [for (final r in rows) MapEntry(r.label, r.value)];
 }

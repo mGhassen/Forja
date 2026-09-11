@@ -30,7 +30,6 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/engine/hub/kit_live_boot.dart';
 import 'package:forja/shared/engine/lists/my_list_host.dart';
-import 'package:forja/shared/host/details/tmdb_details_enrich.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -151,7 +150,6 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   MyListHost.ensureRegistered();
   KitLiveBoot.ensureRegistered();
-  TmdbDetailsEnrich.ensureRegistered();
   IptvPortalsChromeHooks.ensureRegistered();
   IptvKitHooksRegister.ensureRegistered();
   SettingsKitHooksRegister.ensureRegistered();

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,11 +23,10 @@ bool isHomeTabWatchHistoryEntry(Map<String, dynamic> item) {
 bool isHomeWatchHistoryEntry(Map<String, dynamic> entry) =>
     entry['source'] == _homeWatchHistorySource;
 
-String _tmdbCoverUrl(String? path) {
+String _coverUrl(String? path) {
   final raw = (path ?? '').trim();
   if (raw.isEmpty) return '';
-  if (raw.startsWith('http')) return raw;
-  return TmdbApi.getImageUrl(raw);
+  return normalizeCoverUrl(raw);
 }
 
 Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item) {
@@ -36,8 +36,8 @@ Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item)
   final mediaType =
       item['mediaType'] as String? ?? (season != null ? 'tv' : 'movie');
   final uniqueId = item['uniqueId']?.toString() ?? '$tmdbId';
-  final poster = _tmdbCoverUrl(item['posterPath']?.toString());
-  final backdrop = _tmdbCoverUrl(
+  final poster = _coverUrl(item['posterPath']?.toString());
+  final backdrop = _coverUrl(
     (item['backdropPath']?.toString().trim().isNotEmpty ?? false)
         ? item['backdropPath']?.toString()
         : item['posterPath']?.toString(),

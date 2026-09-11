@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/shell/kit_menu_widget.dart';
 import 'package:forja/shared/shell/kit_tabs_widget.dart';
 import 'package:forja/shared/engine/hub/kit_top_menu_registry.dart';
-import 'package:forja_foundation/widgets/chrome/kit_layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/chrome/top_bar.dart';
 
-/// Shell top bar for pack-declared `kit.menu` + `kit.tabs` (same slot as
-/// [KitChromeTopBar] on browse hubs).
+export 'package:forja_foundation/widgets/chrome/top_bar.dart' show TopBar;
+
+/// Shell top bar for pack-declared `kit.menu` + `kit.tabs`.
 class KitTopBar extends StatelessWidget {
   const KitTopBar({super.key, required this.tabId});
 
@@ -24,13 +26,13 @@ class KitTopBar extends StatelessWidget {
         final tabsSpec = handle.tabsSpec;
         final barHeight = KitTopMenuRegistry.bodyTopInset(context, tabId);
 
-        return SafeArea(
-          bottom: false,
-          left: false,
-          right: false,
-          child: SizedBox(
-            height: barHeight,
-            child: KitLayoutScope(
+        return TopBar(
+          height: barHeight,
+          child: SafeArea(
+            bottom: false,
+            left: false,
+            right: false,
+            child: LayoutScope(
               selections: handle.selections,
               onSelect: handle.onSelect,
               widgetSpecs: handle.widgetSpecs,

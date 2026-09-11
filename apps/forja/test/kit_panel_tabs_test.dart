@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/widgets/chrome/kit_panel_tabs.dart';
+import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 
 void main() {
-  test('kitPanelTabsFromSpec reads pack tabs', () {
-    final tabs = kitPanelTabsFromSpec({
+  test('panelTabsFromSpec reads pack tabs', () {
+    final tabs = panelTabsFromSpec({
       'panelTab': 'alpha',
       'panelTabs': [
         {'id': 'alpha', 'label': 'Alpha', 'icon': 'dns'},
@@ -19,16 +19,16 @@ void main() {
     });
     expect(tabs.map((t) => t.id).toList(), ['alpha', 'beta']);
     expect(tabs.last.browse, isTrue);
-    expect(kitPanelDefaultTabId({'panelTab': 'alpha'}, tabs), 'alpha');
-    expect(kitPanelBrowseTabIds(tabs), {'beta'});
-    expect(kitPanelTabLoadId(tabs, 'beta'), 'loadBeta');
-    expect(kitPanelTabLoadId(tabs, 'alpha'), 'alpha');
+    expect(panelDefaultTabId({'panelTab': 'alpha'}, tabs), 'alpha');
+    expect(panelBrowseTabIds(tabs), {'beta'});
+    expect(panelTabLoadId(tabs, 'beta'), 'loadBeta');
+    expect(panelTabLoadId(tabs, 'alpha'), 'alpha');
     expect(kitPanelTabIcon('dns'), Icons.dns_rounded);
     expect(kitPanelTabIcon('tv'), Icons.live_tv_rounded);
   });
 
-  test('kitPanelChromeFromLayouts uses first kit.list with panelTabs', () {
-    final chrome = kitPanelChromeFromLayouts([
+  test('panelChromeFromLayouts uses first kit.list with panelTabs', () {
+    final chrome = panelChromeFromLayouts([
       {
         'type': 'kit.stack',
         'id': 'page',
@@ -52,7 +52,7 @@ void main() {
   });
 
   test('empty spec invents nothing', () {
-    expect(kitPanelTabsFromSpec({'source': 'test-feed'}), isEmpty);
-    expect(kitPanelChromeFromLayouts(const []).tabs, isEmpty);
+    expect(panelTabsFromSpec({'source': 'test-feed'}), isEmpty);
+    expect(panelChromeFromLayouts(const []).tabs, isEmpty);
   });
 }

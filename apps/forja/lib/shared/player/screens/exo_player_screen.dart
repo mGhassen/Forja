@@ -20,7 +20,7 @@ import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';

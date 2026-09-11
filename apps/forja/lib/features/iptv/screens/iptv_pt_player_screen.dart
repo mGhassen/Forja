@@ -52,7 +52,7 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';

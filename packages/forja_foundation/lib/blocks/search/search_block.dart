@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/input.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 
-/// Search page template — field + results child (RFC-106 G6).
+/// Search page template — field + optional filters + results (RFC-106 G6).
 class SearchBlock extends StatelessWidget {
   const SearchBlock({
     super.key,
@@ -13,6 +13,7 @@ class SearchBlock extends StatelessWidget {
     this.onSubmitted,
     this.hintText = 'Search',
     this.header,
+    this.filters,
   });
 
   final Widget results;
@@ -22,6 +23,7 @@ class SearchBlock extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final String hintText;
   final Widget? header;
+  final Widget? filters;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class SearchBlock extends StatelessWidget {
             prefixIcon: const Icon(Icons.search),
           ),
         ),
+        if (filters != null) filters!,
         Expanded(child: results),
       ],
     );

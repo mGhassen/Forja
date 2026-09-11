@@ -1,5 +1,4 @@
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/kit_open.dart';
 import 'package:rust/rust.dart';
 
 /// Legacy [Movie] → hub meta (host route/id scheme only — no plugin id).
@@ -13,10 +12,10 @@ MetaItem metaItemFromMovie(Movie movie) {
     id: 'tmdb:$mediaType:${movie.id}',
     type: mediaType,
     name: movie.title,
-    poster: catalogTmdbImagePath(movie.posterPath),
-    background: catalogTmdbImagePath(
-      movie.backdropPath.isNotEmpty ? movie.backdropPath : movie.posterPath,
-    ),
+    poster: movie.posterPath,
+    background: movie.backdropPath.isNotEmpty
+        ? movie.backdropPath
+        : movie.posterPath,
     description: movie.overview,
     releaseInfo: movie.releaseDate.length >= 4
         ? movie.releaseDate.substring(0, 4)

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/widgets/catalog/kit_category_circle_meta.dart';
-import 'package:forja/shared/shell/kit_focus.dart';
-import 'package:forja_foundation/widgets/chrome/kit_layout_scope.dart';
+import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja/shared/shell/focus_edge.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_mood_circle.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+export 'package:forja_foundation/widgets/chrome/category_bar.dart'
+    show CategoryBar, CategoryBarFromScope;
 
 /// Layout widget [`kit.categoryBar`] — [ShellMoodCircle] kind pickers.
 ///
@@ -55,8 +58,8 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
 
   @override
   Widget build(BuildContext context) {
-    final scope = KitLayoutScope.of(context);
-    final staticItems = kitItemsFromSpec(widget.spec);
+    final scope = LayoutScope.of(context);
+    final staticItems = layoutItemsFromSpec(widget.spec);
     final dynamic = widget.spec['dynamic'] == true;
     final sourceId = (widget.spec['source'] ?? '').toString().trim();
 

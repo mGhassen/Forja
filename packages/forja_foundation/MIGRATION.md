@@ -10,7 +10,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
 4. Never import `package:forja/shared/foundation/**`. That tree is **deleted**. Do not recreate it.
-5. If the package is missing an API: **extend the package** (`widgets/` / `components/` / `blocks/` / `kit/`) or **move glue** to `shared/shell/`, `shared/engine/`, `shared/player/`, or `shared/host/{packs,update,account,watch}`. Do **not** put catalog UI in `shared/kit`, `shared/host/kit`, or `shared/foundation`. Those dumps are forbidden.
+5. If the package is missing an API: **extend the package** (`widgets/` / `components/` / `blocks/` / `protocol/`) or **move glue** to `shared/shell/`, `shared/engine/`, `shared/player/`, or `shared/host/{packs,update,account,watch,search}`. Do **not** put catalog UI in `shared/kit`, `shared/host/kit`, or `shared/foundation`. Those dumps are forbidden.
 
 `forja_foundation.dart` is a gallery/test barrel.
 
@@ -24,7 +24,7 @@ Every old symbol has **exactly one** New import.
 
 | Bucket | Import prefix | What |
 |--------|---------------|------|
-| Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, kit types, protocol, NetworkImage, props-only composers |
+| Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, layout types (`LayoutTypes` / `LayoutMap`), protocol, NetworkImage, props-only composers |
 | Host shell | `package:forja/shared/shell/<file>.dart` | ShellScope, TV, desktop chrome, toast, ForjaInteractive |
 | Engine | `package:forja/shared/engine/**` | rust-adjacent live models/schedule state, list-follow, torrent parse |
 | Player | `package:forja/shared/player/**` | torrent source panels + media-details chrome (orchestration) |
@@ -170,13 +170,12 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 
 | Old | New |
 |-----|-----|
-| `KitTypes` | `package:forja_foundation/kit/kit_types.dart` |
-| `kit_layout_map` | `package:forja_foundation/kit/kit_layout_map.dart` |
+| `LayoutTypes` | `package:forja_foundation/protocol/layout_types.dart` |
+| `kit_layout_map` | `package:forja_foundation/protocol/layout_map.dart` |
 | `Deeplink` / filter / protocol / pack_capabilities | `package:forja_foundation/protocol/<file>.dart` |
-| `normalizeCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
-| `resolveCoverUrl` | host TMDB relative-path — `shared/engine/hub/` or `shared/player/` when evacuated; package only has `normalizeCoverUrl` |
+| `normalizeCoverUrl` / `resolveAbsoluteCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` — packs emit absolute https; **host `engine/hub/cover_urls.dart` is deleted** |
 
-Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB into props. Do not keep a parallel tree in `shared/kit`.
+Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV into props. Do not keep a parallel tree in `shared/kit`. Do not rewrite `/abc.jpg` via `TmdbApi` in host catalog paint.
 
 ---
 
@@ -200,23 +199,28 @@ Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB in
 | `rotating_hero_backdrop.dart` | `package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart` | ✅ |
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
 | `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shared/shell/hero_pill_buttons.dart` | ✅ |
-| `cinematic_hero.dart` | host composer: `package:forja/shared/shell/cinematic_hero.dart` (Riverpod/`Movie`/TV). Gallery stub stays `widgets/catalog/cinematic_hero.dart` | ✅ |
-| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` · `movie_atmosphere.dart` | host composers: `package:forja/shared/shell/<file>.dart`. Gallery rails stay `widgets/catalog/` + `components/poster_frame.dart` / `skeleton.dart` | ✅ |
-| `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_panel_tabs.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/<file>.dart` | ✅ |
-| `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/kit_category_circle_meta.dart` | ✅ |
+| `cinematic_hero.dart` | paint: `package:forja_foundation/widgets/catalog/cinematic_hero.dart` (absolute URL slides). Host TV/Interactive: `package:forja/shared/shell/cinematic_hero_interactive.dart`. Host mapper: `package:forja/shared/shell/cinematic_hero.dart` | ✅ |
+| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` · `movie_atmosphere.dart` | package: `widgets/catalog/*` (props). Host TV/focus mappers: `shared/shell/kit_*` · `continue_widget` · `movie_poster_card` · `shell_mood_circle` · `home_loading_skeleton` | ✅ |
+| `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_panel_tabs.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,panel_tabs,side_panel_overlay,portal_list_panel}.dart` | ✅ |
+| `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/category_circle_meta.dart` | ✅ |
 | `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
-| `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` | host chrome: `package:forja/shared/shell/<file>.dart` | ✅ |
+| `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` · `kit_chrome_top_bar.dart` | paint: `package:forja_foundation/widgets/chrome/<catalog_*,top_bar,hub_top_bar,…>.dart`; host mappers: `package:forja/shared/shell/<file>.dart` + `engine/hub/open_catalog_search.dart` | ✅ |
 | `kit_panel_host.dart` · `kit_feed_chrome.dart` · `kit_top_bar_host_hooks.dart` · `kit_top_menu_registry.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
-| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | `package:forja/shared/player/details/<file>.dart` | ✅ |
-| `kit_details_sections.dart` · `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play.dart` · `kit_details_host_hooks.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
-| `kit_sources*.dart` · `kit_resolve_panel_host.dart` | `package:forja/shared/player/sources/<file>.dart` | ✅ |
-| `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `kit_open.dart` · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_query.dart` · `kit_list_open_mode.dart` · `kit_event_paint.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `cover_urls.dart` · `host_list_registry.dart` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `legacy_*.dart` · `search_recent_queries.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `package:forja_foundation/widgets/details/{details_screen,details_hero,play_row,entry_details,match_details_page,list_status_*}.dart` + `blocks/details/details_block.dart`. Host MetaRuntime/TV/ListFollow mappers: `package:forja/shared/player/details/<file>.dart` | ✅ |
+| `kit_details_sections.dart` UI | `package:forja_foundation/widgets/details/details_rails.dart`; parse/fetch leftover: `package:forja/shared/engine/hub/kit_details_sections.dart` | ✅ |
+| `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `kit_details_host_hooks.dart` · host `tmdb_details_enrich.dart` | **deleted** — packs own enrich | ✅ |
+| `kit_sources*.dart` · `kit_resolve_panel_host.dart` | paint: `package:forja_foundation/widgets/sources/{sources_panel_chrome,live_tv_browse,resolve_panel}.dart`. Host TV/hooks: `package:forja/shared/player/sources/<file>.dart` | ✅ |
+| `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `catalog_open.dart` (was `kit_open`) · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_query.dart` · `kit_list_open_mode.dart` · `kit_event_paint.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `host_list_registry.dart` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `legacy_*.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
+| `cover_urls.dart` (host) | **deleted** — use `package:forja_foundation/utils/cover_urls.dart` | ✅ |
+| `search_recent_queries.dart` | `package:forja/shared/host/search/search_recent_queries.dart` | ✅ |
 | `my_list_catalog_open.dart` · `my_list_catalog_source.dart` · `my_list_host.dart` | `package:forja/shared/engine/lists/<file>.dart` | ✅ |
 | `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop_selectable_title.dart` | ✅ |
-| `kit_focus.dart` | `package:forja/shared/shell/kit_focus.dart` | ✅ |
+| `kit_focus.dart` | `package:forja/shared/shell/focus_edge.dart` | ✅ |
+| `lib/kit/kit_types.dart` · `kit_layout_map.dart` | `package:forja_foundation/protocol/{layout_types,layout_map}.dart` (`LayoutTypes` / `LayoutMap`) — `lib/kit/` deleted | ✅ |
 | `forja_host_assets.dart` | `package:forja/shared/host/packs/forja_host_assets.dart` | ✅ |
 
-Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters stay `shared/shell/`.
+Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters registry stays `shared/shell/` (paint via `LogoMenuRail`).
 
 `apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 

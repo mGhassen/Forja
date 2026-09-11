@@ -3,6 +3,15 @@
 Layout JSON types are **frozen**. The Dart design-system package cutover does
 **not** require pack JSON changes.
 
+## Art URLs (mandatory)
+
+`poster`, `background`, and `logo` on meta (and episode `videos[].thumbnail`)
+must be **absolute `https://` URLs**. Never emit relative TMDB paths like
+`/abc.jpg` or `/t/p/w500/…` — host will not resolve them via `TmdbApi`.
+
+Title logos: prefer English (or lang-null) from TMDB `images.logos`, as
+`https://image.tmdb.org/t/p/w500` + `file_path`.
+
 ## Keep emitting
 
 | Type | Host mounts |
@@ -23,4 +32,4 @@ Layout JSON types are **frozen**. The Dart design-system package cutover does
 Optional new alias `kit.verticalMenu` is **not** required.
 
 If a type string must change, land a forja-packs PR **before** removing the
-alias in `KitTypes.normalize`.
+alias in `LayoutTypes.normalize`.

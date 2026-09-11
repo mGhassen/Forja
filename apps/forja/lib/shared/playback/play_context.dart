@@ -1,5 +1,5 @@
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/player/controls/episodes/player_kit_episode.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:rust/rust.dart';
 
 /// Play args shared by kit details green Play and Sources panel.

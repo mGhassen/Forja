@@ -9,4 +9,5 @@ library;
 export 'package:forja_foundation/forja_foundation_primitives.dart';
 export 'package:forja_foundation/forja_foundation_kit.dart';
 export 'package:forja_foundation/widgets/widgets.dart';
-export 'package:forja_foundation/kit/kit.dart';
+export 'package:forja_foundation/protocol/layout_types.dart';
+export 'package:forja_foundation/protocol/layout_map.dart';

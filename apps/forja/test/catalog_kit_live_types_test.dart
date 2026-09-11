@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
-import 'package:forja_foundation/kit/kit_types.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/meta_feed_list_source.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
@@ -34,9 +34,9 @@ void main() {
         },
       ];
       expect(
-        KitTypes.treeContains(
+        LayoutTypes.treeContains(
           layout,
-          slot: KitTypes.list,
+          slot: LayoutTypes.list,
           listSource: KitLiveBoot.listSourceId,
         ),
         isTrue,
@@ -50,14 +50,14 @@ void main() {
     });
 
     test('generic kit types only — no product-named live slots', () {
-      expect(KitTypes.normalize('kit.stack'), KitTypes.stack);
-      expect(KitTypes.normalize('kit.list'), KitTypes.list);
-      expect(KitTypes.normalize('kit.topBar'), KitTypes.topBar);
+      expect(LayoutTypes.normalize('kit.stack'), LayoutTypes.stack);
+      expect(LayoutTypes.normalize('kit.list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('kit.topBar'), LayoutTypes.topBar);
       expect(
-        KitTypes.normalize('kit.categoryBar'),
-        KitTypes.categoryBar,
+        LayoutTypes.normalize('kit.categoryBar'),
+        LayoutTypes.categoryBar,
       );
-      expect(KitTypes.normalize('kit.live.mode'), 'kit.live.mode');
+      expect(LayoutTypes.normalize('kit.live.mode'), 'kit.live.mode');
     });
   });
 

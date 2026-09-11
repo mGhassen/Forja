@@ -10,7 +10,7 @@ export 'controls/chrome/player_status_roulette.dart';
 export 'controls/chrome/player_vod_tv_transport.dart';
 export 'controls/episodes/player_episode_menu.dart';
 export 'controls/episodes/player_episode_panel.dart';
-export 'controls/episodes/player_kit_episode.dart';
+export 'controls/episodes/catalog_episode.dart';
 export 'controls/menus/player_app_menu.dart';
 export 'controls/menus/player_audio_menu.dart';
 export 'controls/menus/player_menu_return_focus.dart';

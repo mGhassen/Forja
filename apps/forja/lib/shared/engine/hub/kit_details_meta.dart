@@ -1,6 +1,6 @@
-import 'package:forja/shared/engine/hub/cover_urls.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 
@@ -118,7 +118,7 @@ Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
   for (final v in videos) {
     final season = v.season ?? 1;
     final epNum = v.episode ?? 1;
-    final thumb = resolveCoverUrl(v.thumbnail.trim());
+    final thumb = resolveAbsoluteCoverUrl(v.thumbnail.trim());
     bySeason.putIfAbsent(season, () => []);
     bySeason[season]!.add({
       'episode_number': epNum,
@@ -141,8 +141,6 @@ List<MetaVideo> hubVideosForSeason(List<MetaVideo> videos, int season) {
       if ((v.season ?? 1) == season) v,
   ];
 }
-
-String kitImageUrl(String path) => resolveCoverUrl(path.trim());
 
 /// Keep list/seed artwork when `details` returns episodes but empty poster.
 MetaItem hubMergeDetailsSeed(

@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
-import 'package:forja/shared/engine/hub/kit_panel_host.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
+import 'package:forja_foundation/widgets/details/entry_details.dart';
 
-/// Generic kit entry details — full-page host for a [KitPanelHost] body.
-///
-/// Packs set `kit.list { open: "details" }`. Prefer [KitPanelHost.buildDetailsPage]
-/// when the feature owns cinematic chrome (Live Sports cards).
+/// Generic kit entry details — host wires list registry into [EntryDetails].
 class KitEntryDetailsPage extends StatelessWidget {
   const KitEntryDetailsPage({
     super.key,
@@ -40,7 +35,6 @@ class KitEntryDetailsPage extends StatelessWidget {
       layoutWidgets: layoutWidgets,
       refreshEpoch: refreshEpoch,
     );
-    // Shell overlay keeps the nav rail — never push on a root/tab navigator.
     return pushShellRoute<void>(
       context,
       AppRouter.slideShellRoute<void>(
@@ -64,64 +58,19 @@ class KitEntryDetailsPage extends StatelessWidget {
     final host = HostListRegistry.resolvePanel(listSourceId);
     final title = entry.meta.name.trim().isEmpty ? 'Details' : entry.meta.name;
 
-    return Scaffold(
-      backgroundColor: ForjaShellColors.surfaceElevated,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                ShellTokens.compactChromeLeadingInset(context),
-                8,
-                ShellTokens.bodyHorizontalPadding,
-                8,
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => maybePopShellOverlay(),
-                    icon: const Icon(Icons.arrow_back),
-                    color: ForjaShellColors.textPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: ForjaShellColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return EntryDetails(
+      title: title,
+      onBack: () => maybePopShellOverlay(),
+      body: host == null
+          ? null
+          : host.buildSidePanel(
+              context: context,
+              entry: entry,
+              layoutWidgets: layoutWidgets,
+              shellTabVisible: true,
+              refreshEpoch: refreshEpoch,
+              onClosed: () => maybePopShellOverlay(),
             ),
-            const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-            Expanded(
-              child: host == null
-                  ? const Center(
-                      child: Text(
-                        'No details panel for this list',
-                        style: TextStyle(color: ForjaShellColors.textSecondary),
-                      ),
-                    )
-                  : host.buildSidePanel(
-                      context: context,
-                      entry: entry,
-                      layoutWidgets: layoutWidgets,
-                      shellTabVisible: true,
-                      refreshEpoch: refreshEpoch,
-                      onClosed: () => maybePopShellOverlay(),
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

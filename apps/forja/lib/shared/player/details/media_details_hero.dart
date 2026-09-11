@@ -17,8 +17,9 @@ import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja_foundation/widgets/details/watch_providers_row.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
-import 'package:forja/shared/player/details/kit_details_play_row.dart';
+import 'package:forja_foundation/widgets/details/play_row.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
+import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:rust/rust.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -602,24 +603,23 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   }
 
   String get _backdropUrl {
-    final path = _effectiveBackdropPath;
-    return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
+    final path = _effectiveBackdropPath.trim();
+    return path.isEmpty ? '' : normalizeCoverUrl(path);
   }
 
-  /// Primary path + TMDB screenshots (skipped when a season override is pinned).
+  /// Primary path + screenshot URLs (absolute https from packs / Movie).
   List<String> get _backdropUrls {
     final override = widget.backdropPathOverride?.trim();
     if (override != null && override.isNotEmpty) {
-      final url = override.startsWith('http')
-          ? override
-          : TmdbApi.getBackdropUrl(override);
+      final url = normalizeCoverUrl(override);
       return url.isEmpty ? const [] : [url];
     }
     final urls = <String>[];
     void addPath(String path) {
       final p = path.trim();
       if (p.isEmpty) return;
-      urls.add(p.startsWith('http') ? p : TmdbApi.getBackdropUrl(p));
+      final url = normalizeCoverUrl(p);
+      if (url.isNotEmpty) urls.add(url);
     }
 
     addPath(widget.movie.backdropPath);
@@ -637,9 +637,11 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     return widget.movie.posterPath;
   }
 
-  String? get _logoUrl => widget.movie.logoPath.isNotEmpty
-      ? TmdbApi.getImageUrl(widget.movie.logoPath)
-      : null;
+  String? get _logoUrl {
+    final path = widget.movie.logoPath.trim();
+    if (path.isEmpty) return null;
+    return normalizeCoverUrl(path);
+  }
 
   int? get _positionMs {
     final p = widget.progress;

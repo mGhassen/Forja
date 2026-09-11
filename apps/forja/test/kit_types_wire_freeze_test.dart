@@ -1,76 +1,76 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/kit/kit_types.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
 
 /// RFC-106 G14-C — pack layout wire freeze.
 ///
 /// Hub packs emit these type strings. Normalize must stay stable across the
 /// foundation package cutover (aliases + `tabs` style kind→menu).
 void main() {
-  group('KitTypes.normalize pack wire freeze', () {
+  group('LayoutTypes.normalize pack wire freeze', () {
     test('stack aliases', () {
-      expect(KitTypes.normalize('kit.stack'), KitTypes.stack);
-      expect(KitTypes.normalize('stack'), KitTypes.stack);
+      expect(LayoutTypes.normalize('kit.stack'), LayoutTypes.stack);
+      expect(LayoutTypes.normalize('stack'), LayoutTypes.stack);
     });
 
     test('menu aliases', () {
-      expect(KitTypes.normalize('kit.menu'), KitTypes.menu);
-      expect(KitTypes.normalize('menu'), KitTypes.menu);
+      expect(LayoutTypes.normalize('kit.menu'), LayoutTypes.menu);
+      expect(LayoutTypes.normalize('menu'), LayoutTypes.menu);
     });
 
     test('list aliases', () {
-      expect(KitTypes.normalize('kit.list'), KitTypes.list);
-      expect(KitTypes.normalize('my_list'), KitTypes.list);
-      expect(KitTypes.normalize('host.my_list'), KitTypes.list);
+      expect(LayoutTypes.normalize('kit.list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('my_list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('host.my_list'), LayoutTypes.list);
     });
 
     test('row aliases', () {
-      expect(KitTypes.normalize('kit.row'), KitTypes.row);
-      expect(KitTypes.normalize('rail'), KitTypes.row);
-      expect(KitTypes.normalize('ranked'), KitTypes.row);
+      expect(LayoutTypes.normalize('kit.row'), LayoutTypes.row);
+      expect(LayoutTypes.normalize('rail'), LayoutTypes.row);
+      expect(LayoutTypes.normalize('ranked'), LayoutTypes.row);
     });
 
     test('topBar aliases', () {
-      expect(KitTypes.normalize('kit.topBar'), KitTypes.topBar);
-      expect(KitTypes.normalize('topBar'), KitTypes.topBar);
+      expect(LayoutTypes.normalize('kit.topBar'), LayoutTypes.topBar);
+      expect(LayoutTypes.normalize('topBar'), LayoutTypes.topBar);
     });
 
     test('categoryBar aliases', () {
-      expect(KitTypes.normalize('kit.categoryBar'), KitTypes.categoryBar);
-      expect(KitTypes.normalize('kinds'), KitTypes.categoryBar);
+      expect(LayoutTypes.normalize('kit.categoryBar'), LayoutTypes.categoryBar);
+      expect(LayoutTypes.normalize('kinds'), LayoutTypes.categoryBar);
     });
 
     test('tabs — default stays tabs; style kind → menu', () {
-      expect(KitTypes.normalize('tabs'), KitTypes.tabs);
-      expect(KitTypes.normalize('kit.tabs'), KitTypes.tabs);
+      expect(LayoutTypes.normalize('tabs'), LayoutTypes.tabs);
+      expect(LayoutTypes.normalize('kit.tabs'), LayoutTypes.tabs);
       expect(
-        KitTypes.normalize('tabs', {'style': 'kind'}),
-        KitTypes.menu,
+        LayoutTypes.normalize('tabs', {'style': 'kind'}),
+        LayoutTypes.menu,
       );
     });
 
     test('vertical_filters aliases → VerticalMenu path', () {
       expect(
-        KitTypes.normalize('vertical_filters'),
-        KitTypes.verticalFilters,
+        LayoutTypes.normalize('vertical_filters'),
+        LayoutTypes.verticalFilters,
       );
       expect(
-        KitTypes.normalize('host.vertical_filters'),
-        KitTypes.verticalFilters,
+        LayoutTypes.normalize('host.vertical_filters'),
+        LayoutTypes.verticalFilters,
       );
       expect(
-        KitTypes.normalize('watch_providers'),
-        KitTypes.verticalFilters,
+        LayoutTypes.normalize('watch_providers'),
+        LayoutTypes.verticalFilters,
       );
     });
 
     test('hero / mood / continue / because', () {
-      expect(KitTypes.normalize('hero'), KitTypes.hero);
-      expect(KitTypes.normalize('cinematic_hero'), KitTypes.hero);
-      expect(KitTypes.normalize('mood'), KitTypes.mood);
-      expect(KitTypes.normalize('continue'), KitTypes.continueWatching);
-      expect(KitTypes.normalize('host.continue'), KitTypes.continueWatching);
-      expect(KitTypes.normalize('because'), KitTypes.because);
-      expect(KitTypes.normalize('host.because'), KitTypes.because);
+      expect(LayoutTypes.normalize('hero'), LayoutTypes.hero);
+      expect(LayoutTypes.normalize('cinematic_hero'), LayoutTypes.hero);
+      expect(LayoutTypes.normalize('mood'), LayoutTypes.mood);
+      expect(LayoutTypes.normalize('continue'), LayoutTypes.continueWatching);
+      expect(LayoutTypes.normalize('host.continue'), LayoutTypes.continueWatching);
+      expect(LayoutTypes.normalize('because'), LayoutTypes.because);
+      expect(LayoutTypes.normalize('host.because'), LayoutTypes.because);
     });
   });
 }

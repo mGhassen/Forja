@@ -2,22 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/kit_resolve_panel_host.dart';
 import 'package:forja/shared/engine/hub/kit_event_paint.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
-import 'package:forja_foundation/widgets/chrome/kit_panel_tabs.dart';
+import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
 import 'package:forja/shared/engine/hub/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/shell/desktop_selectable_title.dart';
+import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/hero_pill_buttons.dart';
-import 'package:forja/shared/player/details/kit_details_hero.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-/// Full-bleed list-entry details — [KitDetailsHero] + pack [panelTabs].
+import 'package:forja_foundation/widgets/details/details_hero.dart';
+import 'package:forja_foundation/widgets/details/match_details_page.dart';
+
+/// Full-bleed list-entry details — [DetailsHero] + pack [panelTabs].
 class KitMatchDetailsPage extends StatefulWidget {
   const KitMatchDetailsPage({
     super.key,
@@ -47,7 +50,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _tabId = kitPanelChromeFromLayouts(widget.layoutWidgets).initial ?? '';
+    _tabId = panelChromeFromLayouts(widget.layoutWidgets).initial ?? '';
     _streamsVisible = true;
     final create = KitResolveStreamsHooks.createHealthProbe;
     _healthProbe = create?.call(
@@ -66,8 +69,8 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
 
   KitEventPaint get _paint => KitEventPaint.fromEntry(widget.entry);
 
-  ({List<KitPanelTabSpec> tabs, String? initial}) get _chrome =>
-      kitPanelChromeFromLayouts(widget.layoutWidgets);
+  ({List<PanelTabSpec> tabs, String? initial}) get _chrome =>
+      panelChromeFromLayouts(widget.layoutWidgets);
 
   /// Catalog merge sum, or Providers sheet total once streams load.
   int? _providersViewerTotal;
@@ -129,7 +132,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     setState(() {
       _tabId = id;
       _streamsVisible = true;
-      if (!kitPanelBrowseTabIds(_chrome.tabs).contains(id)) {
+      if (!panelBrowseTabIds(_chrome.tabs).contains(id)) {
         _liveTvChannelQuery = '';
       }
     });
@@ -145,7 +148,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
     final probe = _healthProbe;
     final chrome = _chrome;
-    final browseIds = kitPanelBrowseTabIds(chrome.tabs);
+    final browseIds = panelBrowseTabIds(chrome.tabs);
     final showBrowseSearch =
         _streamsVisible && browseIds.contains(_tabId);
 
@@ -196,12 +199,10 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             );
     }
 
-    return Scaffold(
+    return MatchDetailsPage(
       backgroundColor: AppTheme.bgDark,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          KitDetailsHero(
+      overlay: MediaDetailsBackButton(focusNode: _backFocus),
+      hero: DetailsHero(
             backdropUrl: backdrop,
             title: title,
             subtitle: m.categoryLabel,
@@ -209,6 +210,11 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             metaParts: _metaParts,
             overview: '',
             height: viewport.height,
+            enableKenBurns: policy.kenBurnsBackdrop,
+            tvDensity: ShellScope.metricsOf(context).usesTvDensity,
+            plainTitle: policy.useFocusableMoodChips,
+            selectableTitle: shellDesktopTextSelect(context),
+            factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
               itemCount: chrome.tabs.length,
@@ -293,9 +299,6 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
             contentScrim: true,
             belowActionRow: streamsPanel,
           ),
-          MediaDetailsBackButton(focusNode: _backFocus),
-        ],
-      ),
     );
   }
 }

@@ -14,6 +14,9 @@ import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
+export 'package:forja_foundation/widgets/chrome/event_list_search.dart'
+    show EventListSearch, EventListSearchToolIcon;
+
 const _kSearchCollapsed = 40.0;
 const _kSearchExpanded = 260.0;
 

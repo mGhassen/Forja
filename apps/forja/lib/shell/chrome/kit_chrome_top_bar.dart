@@ -16,6 +16,9 @@ import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart' show HubTopBar;
+
 /// Sentinel for the "All" entry in the categories popup menu.
 const catalogAllCategoriesSentinel = '__all__';
 

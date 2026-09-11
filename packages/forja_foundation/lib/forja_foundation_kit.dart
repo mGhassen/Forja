@@ -1,7 +1,8 @@
 /// Kit entry — protocol + kit + blocks (populated as layers land).
 library;
 
-export 'package:forja_foundation/kit/kit.dart';
+export 'package:forja_foundation/protocol/layout_types.dart';
+export 'package:forja_foundation/protocol/layout_map.dart';
 export 'package:forja_foundation/blocks/blocks.dart';
 export 'package:forja_foundation/protocol/protocol.dart';
 export 'package:forja_foundation/protocol/filter.dart';
