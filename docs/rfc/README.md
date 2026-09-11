@@ -127,7 +127,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |
 | [104-[fixed]-…](fixed/104-[fixed]-merge-live-sports-hubs.md) | Merge Live Sports hubs (list/cards + panel/details) | — | fixed | **Complete** · **5 / 5** · **8 / 8** | — |
 | [105-[fixed]-…](fixed/105-[fixed]-live-providers-plugin-search.md) | Providers — plugin-owned fixture search + progressive paint | — | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
-| [106-[open]-…](106-[open]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | open | **7 / 8** · **14 / 14** Part 1 · **5 / 7** Part 2 · 1 ⏭️ · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
+| [106-[open]-…](106-[open]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | open | **7 / 8** · **14 / 14** Part 1 · **6 / 8** Part 2 · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
 
 ## Related
 

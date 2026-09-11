@@ -17,11 +17,8 @@ Manual sign-off required. Automated gates below do **not** replace Q1–Q12.
 | Q11 | Archive screens that imported foundation | analyze on importers | ⬜ |
 | Q12 | Cold boot: nav from packs | — | ⬜ |
 
-## Before delete `shared/foundation/`
+## Shim tree
 
-1. All Q1–Q12 manual ✅
-2. `docs/rfc/106-export-inventory.txt` symbols resolvable from package or host
-3. `rg "package:forja/shared/foundation/" apps/forja --glob '*.dart'` → **empty** (stubs unused)
-4. Separate PR for shim death (G14-G #4)
+`apps/forja/lib/shared/foundation/` is **deleted** (A22). Dart `rg` empty.
 
-**Do not** delete the folder in the same PR as evacuate.
+Q1–Q12 below are still the visual sign-off (A18 / A19).

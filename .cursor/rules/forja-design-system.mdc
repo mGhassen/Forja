@@ -8,7 +8,7 @@ alwaysApply: false
 
 **Source of truth (new components):** [`packages/forja_foundation`](../../packages/forja_foundation). Import the **file** you use — not `forja_foundation.dart` (gallery/test barrel). Never `hide Switch, Chip, …` against Material.
 
-**Legacy (until Part 2 shim death — [RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md)):** `apps/forja/lib/shared/foundation/` — existing primitives/components/blocks keep working; migrate call sites to the package, then delete the shim tree.
+Do **not** recreate `apps/forja/lib/shared/foundation/`. Catalog runtime is `shared/host/kit/`. Shell chrome is `shared/shell/`.
 
 Host-only APIs stay on host paths (`ForjaInteractive`, `ForjaCloseButton.compact`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
 
@@ -17,7 +17,7 @@ Host-only APIs stay on host paths (`ForjaInteractive`, `ForjaCloseButton.compact
 | Buttons | `Button`, `ButtonGroup` — `package:forja_foundation/components/button.dart` |
 | Vertical flyout | `VerticalMenu.item` — `package:forja_foundation/components/vertical_menu.dart` |
 | Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/logo_menu_rail.dart` |
-| Kit layout types | `KitTypes` — `package:forja_foundation/kit/kit_types.dart` (app `kit_types.dart` re-exports) |
+| Kit layout types | `KitTypes` — `package:forja_foundation/kit/kit_types.dart` |
 
 ## Design alone / data alone (RFC-095)
 
@@ -113,4 +113,4 @@ Forbidden on TV: raw `TextField` that becomes editable / opens IME when focused;
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
 - Ad-hoc `Switch(` / `SwitchListTile` color overrides — use `ForjaSwitch` / theme tokens
-- Duplicating hero title or meta rendering — use `shared/foundation/components/hero/` (see `forja-shared-ui.mdc`)
+- Duplicating hero title or meta rendering — use `shared/host/kit/` hero widgets (see `forja-shared-ui.mdc`)

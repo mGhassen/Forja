@@ -9,7 +9,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 1. Import the **file**, never `package:forja_foundation/forja_foundation.dart`.
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
-4. Never import `package:forja/shared/foundation/**`. Stubs still exist until G14-E delete; app/test dart must not use them.
+4. Never import `package:forja/shared/foundation/**`. That tree is **deleted**. Do not recreate it.
 5. If the package is missing an API: **extend the package** or **move** to `shared/shell/`, `shared/engine/`, or `shared/host/kit|packs|update|account|watch`. Do **not** put pack surfaces in `shared/host/lists|live_sports|sources`. Do not keep the old foundation import.
 
 `forja_foundation.dart` is a gallery/test barrel.
@@ -273,4 +273,4 @@ rg "ForjaGhostButton|ForjaButton\(|ForjaButtonVariant" \
   apps/forja/lib/features apps/forja/lib/shell apps/forja/lib/shared/player
 ```
 
-All three empty. Stub tree under `shared/foundation/` is unused by dart. Delete that tree after Q1–Q12 (G14-E).
+All three empty. `apps/forja/lib/shared/foundation/` is **deleted**.

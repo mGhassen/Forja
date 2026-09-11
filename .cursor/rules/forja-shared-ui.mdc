@@ -8,33 +8,22 @@ alwaysApply: false
 
 Extract **presentation** into the design system; keep **state, fetching, navigation** in feature screens. No peer `shared/widgets/` package.
 
-**Source of truth (new):** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import via `package:forja_foundation/...` or `package:forja/shared/foundation/ds_bridge.dart`.
-
-**Legacy (Part 2 cutover):** `apps/forja/lib/shared/foundation/` (`primitives/` atoms, `components/` composers) until shim death ([RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md)).
+**Source of truth:** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import the file, not the gallery barrel.
 
 **Design alone / data alone:** DS `components/` / `widgets/` must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt. Host-only chrome (e.g. `VerticalFiltersRail` with `PackAssets`) documents the DS target (`LogoMenuRail`) until pack logos are props-only.
 
 ## Folder map
 
 ```
-shared/foundation/components/hero/            # titles, meta, cinematic hero, overview, banner
-shared/foundation/components/media_details/   # details page, cast/trailers, torrent sources, episodes
-shared/foundation/components/posters/         # rows, posters, atmosphere, loading skeleton
-shared/foundation/components/rows|cards|chrome/  # kit section / poster / search / portals chip
-shared/foundation/components/details/         # kit details chrome / play / sources
-shared/foundation/components/panel/           # sources panel, side overlay, portal list shell
-shared/foundation/primitives/chrome/          # focusable tap, scroller, overlays, mood chip
-shared/foundation/primitives/desktop/         # window chrome / focus / geometry
-shared/foundation/primitives/tv/              # browse text field, search overlay
-shared/foundation/components/update/          # update dialog + progress banner
-shared/foundation/components/packs/           # pack choice cards, install progress
-shared/foundation/primitives/brand/           # logo, splash logo, profile avatar
-shared/foundation/components/playback/        # stream/torrent loading, resolve failure
-shared/foundation/components/chrome/          # kit search page/filters, recent queries/tile, letter jump, status pin, portals chip
-shared/foundation/components/account/         # keychain consent
+shared/host/kit/                 # catalog composers (hero, details, search, layout, posters)
+shared/player/details/           # episode picker, media-details body/hero, sources TV
+shared/player/sources/           # torrent panels
+shared/playback/                 # play hooks, probe, stream loading
+shared/shell/                    # toast, TV, desktop chrome, vertical filters
+shared/host/packs|update|account|watch/
 ```
 
-Barrel: `media_details/media_details.dart` for details + torrent sources.
+Barrel: `package:forja/shared/player/details/media_details.dart` for details widgets.
 
 ## When to extract
 
@@ -74,7 +63,7 @@ MediaDetailsScrollPage(
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
 
-Do **not** put app-shell or kit-host orchestration under `components/` leaf folders. App frame → `lib/shell/`. Hub tab host → `shared/foundation/blocks/shell/`.
+Do **not** put app-shell or kit-host orchestration under DS `components/`. App frame → `lib/shell/`. Hub tab host → `shared/host/kit/`.
 
 ## Do not
 

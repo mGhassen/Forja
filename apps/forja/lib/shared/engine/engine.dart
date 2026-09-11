@@ -24,7 +24,5 @@ export 'packs/registry/plugin_script_disk_store.dart';
 export 'runtime/runtime.dart';
 export 'runtime/service.dart';
 
-/// Catalog hub wire types — `runCatalog` returns these envelopes. Cache /
-/// runtime / shell live behind `shared/foundation/catalog.dart` so the engine
-/// barrel stays widget-free.
-export '../foundation/protocol/protocol.dart';
+/// Catalog hub wire types — `runCatalog` returns these envelopes.
+export 'package:forja_foundation/protocol/protocol.dart';

@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# List public barrel exports for RFC-106 G14-A shim map.
+# List public package barrel exports (RFC-106).
 # Usage: scripts/foundation_export_inventory.sh [out_path]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/docs/rfc/106-export-inventory.txt}"
-
-FOUNDATION="$ROOT/apps/forja/lib/shared/foundation/foundation.dart"
-PRIMITIVES="$ROOT/apps/forja/lib/shared/foundation/primitives/primitives.dart"
+PKG="$ROOT/packages/forja_foundation/lib"
 
 mkdir -p "$(dirname "$OUT")"
 
@@ -19,18 +17,15 @@ mkdir -p "$(dirname "$OUT")"
   echo "# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo
 
-  echo "## foundation.dart"
-  echo "# $FOUNDATION"
-  rg '^export ' "$FOUNDATION" | sed 's/^export //; s/;$//' | sort
-  echo
-  echo "# count: $(rg -c '^export ' "$FOUNDATION" || true)"
-  echo
-
-  echo "## primitives.dart"
-  echo "# $PRIMITIVES"
-  rg '^export ' "$PRIMITIVES" | sed 's/^export //; s/;$//' | sort
-  echo
-  echo "# count: $(rg -c '^export ' "$PRIMITIVES" || true)"
+  for name in forja_foundation.dart forja_foundation_primitives.dart forja_foundation_kit.dart; do
+    file="$PKG/$name"
+    echo "## $name"
+    echo "# $file"
+    rg '^export ' "$file" | sed 's/^export //; s/;$//' | sort
+    echo
+    echo "# count: $(rg -c '^export ' "$file" || true)"
+    echo
+  done
 } >"$OUT"
 
 echo "Wrote $OUT"

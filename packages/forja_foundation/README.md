@@ -21,4 +21,4 @@ Tokens → theme → primitives → components → widgets → blocks, plus prot
 
 Part 1 scaffold: tokens (copied), `ForjaThemeExtension`, `Button` / `ButtonGroup` / `VerticalMenu`. See [MIGRATION.md](MIGRATION.md) and [RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md).
 
-App still owns `apps/forja/lib/shared/foundation/` until Part 2 cutover. Prefer new APIs via `package:forja_foundation` or the thin `ds_bridge.dart` / `compat_exports.dart` shims.
+App imports the **file** (`package:forja_foundation/components/button.dart`, …). Host catalog runtime lives in `apps/forja/lib/shared/host/kit/`. The old `shared/foundation/` tree is gone.

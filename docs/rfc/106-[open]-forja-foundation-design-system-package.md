@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **5 / 7** acceptance (Part 2) · **1** ⏭️ shim death |
-| **Current slice** | Part 1 ✅ · Live Sports chrome owned by pack · zero dart imports of `shared/foundation/` · A16 ✅ · A18 🔄 · **G14-E delete waits Q1–Q12** |
+| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **1** ⏭️ Q1–Q12 |
+| **Current slice** | Part 1 ✅ · `shared/foundation/` deleted · A22 ✅ · A16 ✅ · A18 🔄 · A19 ⏭️ unsigned QA |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -62,6 +62,7 @@
 | 19 | R106-A19 | **G14-E** QA Q1–Q12 green → shim death → delete `apps/forja/lib/shared/foundation/` | ⏭️ |
 | 20 | R106-A20 | **G14-F** Docs/rules — migration guide, pack author note, design-system rules → package paths | ✅ |
 | 21 | R106-A21 | **G14-G** Hard invariants — compile every PR; no silent pack break; no delete-before-wire | ✅ |
+| 22 | R106-A22 | Stub tree deleted — `apps/forja/lib/shared/foundation/` gone; dart `rg` empty | ✅ |
 
 ---
 
@@ -69,7 +70,7 @@
 
 Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`packages/forja_foundation`](../../packages/forja_foundation): tokens → theme → primitives → components → widgets → blocks, plus protocol/kit/platform/utils. One public widget per family (`Button`, `ButtonGroup`, `VerticalMenu`, …) with variants/sizes/slots. Product domain leaves the package for host adapters.
 
-**Part 1** builds the package (G0–G13). **Part 2** upgrades every consumer without loss (G14). Part 1 alone is not “done.” Shim death and deleting `shared/foundation/` wait for G14 QA.
+**Part 1** builds the package (G0–G13). **Part 2** upgrades every consumer without loss (G14). Shim tree is deleted (A22). Visual QA Q1–Q12 is still unsigned (A18 / A19).
 
 ### Goals
 
