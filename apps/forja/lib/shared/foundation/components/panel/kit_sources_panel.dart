@@ -6,7 +6,7 @@ import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';

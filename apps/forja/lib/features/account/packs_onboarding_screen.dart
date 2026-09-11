@@ -9,7 +9,7 @@ import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/foundation/components/packs/forja_pack_choice_cards.dart';
+import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/components/button.dart';

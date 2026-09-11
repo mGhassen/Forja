@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja/shared/host/packs/pack_assets.dart';
 
 class NavDestination {
   const NavDestination({

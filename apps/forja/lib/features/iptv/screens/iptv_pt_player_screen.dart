@@ -43,7 +43,7 @@ import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
 
-import 'package:forja/shared/foundation/components/media_details/torrent_source_tiles.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';

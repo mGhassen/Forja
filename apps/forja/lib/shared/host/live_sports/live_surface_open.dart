@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/live_sports/schedule/kit_live_boot.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 

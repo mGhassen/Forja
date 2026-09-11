@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
+import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Built-in app addons (Settings → Addons).

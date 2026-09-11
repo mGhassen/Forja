@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/components/layout/kit_types.dart';
+import 'package:forja_foundation/kit/kit_types.dart';
 
 /// RFC-106 G14-C — pack layout wire freeze.
 ///

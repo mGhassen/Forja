@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
-import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja/shared/host/packs/pack_assets.dart';
 
 /// Pack-relative file loader for the opaque live unlock runtime.
 ///

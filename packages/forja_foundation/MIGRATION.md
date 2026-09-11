@@ -63,6 +63,8 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, compact: true, onKeyEvent:)` |
 | `ForjaInteractive` | **not** Button — `package:forja/shared/shell/forja_interactive.dart` |
 
+`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` are **deleted**. Do not reintroduce them. `forja_buttons.dart` is an Interactive re-export only.
+
 Do **not** import `compat/legacy_buttons.dart` from app code. Rewrite constructors.
 
 `ForjaButton.activateOnKeyUp` — drop; TV activate is host `ShellInputPolicy` + `Button` focus. If a call site still needs key-up activate, keep that logic next to the call site, not a second button type.
@@ -165,7 +167,8 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | `KitTypes` | `package:forja_foundation/kit/kit_types.dart` |
 | `kit_layout_map` | `package:forja_foundation/kit/kit_layout_map.dart` |
 | `Deeplink` / filter / protocol / pack_capabilities | `package:forja_foundation/protocol/<file>.dart` |
-| `resolveCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
+| `normalizeCoverUrl` | `package:forja_foundation/utils/cover_urls.dart` |
+| `resolveCoverUrl` | stay on `package:forja/shared/foundation/lib/cover_urls.dart` until G14-E — host TMDB relative-path, not the package util |
 
 Package kit composers (`widgets/catalog/cinematic_hero.dart`, `details/details_hero.dart`, `details/play_row.dart`, `catalog/because_section.dart`, …): new work imports the package file. Live foundation copies stay until G14-E only if they still **are** the running implementation — do not add new imports of those foundation copies.
 

@@ -1,6 +1,6 @@
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/foundation/services/pack/pack_addon_settings_spec.dart';
-import 'package:forja/shared/foundation/services/pack/pack_settings_store.dart';
+import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
+import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
 
 /// Pack Setup toggle: collapse same fixture across catalogs (Catalog = All).
 ///

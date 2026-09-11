@@ -12,12 +12,11 @@ import 'package:forja/shell/frame/shell_scaffold.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_top_bar_host.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters_rail.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/components/chrome/pack_filters.dart';
 import 'package:forja/shared/foundation/components/chrome/vertical_filters.dart';
 import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
 import 'package:forja/shared/shell/forja_shell_platform.dart';
-import 'package:forja/shared/shell/forja_buttons.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
 import 'package:forja/shared/shell/forja_shell_profile.dart';
@@ -826,7 +825,7 @@ void main() {
   );
 
   testWidgets(
-    'ghost and plainIcon Buttons render without ForjaIconButton',
+    'ghost and plainIcon Buttons render',
     (tester) async {
       await pumpScaffold(
         tester,
@@ -852,7 +851,6 @@ void main() {
 
       expect(find.text('Watch Now'), findsOneWidget);
       expect(find.byType(Button), findsNWidgets(2));
-      expect(find.byType(ForjaIconButton), findsNothing);
     },
   );
 
@@ -883,7 +881,6 @@ void main() {
       );
 
       expect(find.byType(Button), findsNWidgets(2));
-      expect(find.byType(ForjaIconButton), findsNothing);
     },
   );
 

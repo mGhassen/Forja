@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/foundation/lib/pack_assets.dart';
+import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/foundation/lib/forja_host_assets.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_shell.dart';
 import 'package:forja/shared/engine/hub/hub_plugin_config.dart';

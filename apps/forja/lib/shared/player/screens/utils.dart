@@ -4,7 +4,7 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 export 'package:forja/shared/playback/probe/playback_stream_guards.dart'
     show

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/components/chrome/kit_category_circle_meta.dart';
+import 'package:forja/shared/host/live_sports/kit_category_circle_meta.dart';
 
 void main() {
   group('catalogKitCategoryLabel', () {

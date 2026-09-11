@@ -7,11 +7,11 @@ import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
+import 'package:forja/shared/host/live_sports/match_event.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_source_filters.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:rust/rust.dart';

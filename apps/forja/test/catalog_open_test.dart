@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/blocks/shell/legacy_movie_meta.dart';
 import 'package:forja/shared/foundation/blocks/shell/kit_open.dart';
 import 'package:rust/rust.dart';

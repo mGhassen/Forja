@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
-import 'package:forja/shared/foundation/services/schedule/kit_schedule_event_query.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/host/live_sports/schedule/kit_schedule_event_query.dart';
 
 KitListEntry _entry({
   required String name,

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/foundation/components/meta/meta_movie.dart';
 import 'package:forja/shared/foundation/blocks/play/play_resolve.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 void main() {
   group('catalogMovieIdForPlay', () {

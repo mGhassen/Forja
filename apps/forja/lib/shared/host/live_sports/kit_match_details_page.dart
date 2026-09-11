@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/sources/panel/kit_resolve_panel_host.dart';
-import 'package:forja/shared/foundation/components/cards/kit_event_card.dart';
+import 'package:forja/shared/host/live_sports/cards/kit_event_card.dart';
 import 'package:forja/shared/foundation/components/layout/kit_list_source.dart';
-import 'package:forja/shared/foundation/components/panel/kit_sources_live_tv_browse.dart';
+import 'package:forja/shared/host/sources/panel/kit_sources_live_tv_browse.dart';
 import 'package:forja/shared/foundation/components/panel/kit_sources_panel.dart';
 import 'package:forja/shared/host/live_sports/match_event.dart';
 

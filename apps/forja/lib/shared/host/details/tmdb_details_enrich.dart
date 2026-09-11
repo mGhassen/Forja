@@ -1,5 +1,5 @@
 import 'package:forja/shared/foundation/blocks/details/kit_details_meta.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/foundation/services/registry/kit_details_host_hooks.dart';
 import 'package:rust/rust.dart';
 

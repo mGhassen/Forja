@@ -13,7 +13,7 @@ import 'package:forja/shared/player/controls/sources/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';

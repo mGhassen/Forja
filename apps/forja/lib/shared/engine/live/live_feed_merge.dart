@@ -1,6 +1,6 @@
 import 'package:forja/shared/engine/live/live_fixture_match.dart';
-import 'package:forja/shared/foundation/lib/match_event.dart';
-import 'package:forja/shared/foundation/lib/schedule_sport_filter.dart';
+import 'package:forja/shared/host/live_sports/match_event.dart';
+import 'package:forja/shared/host/live_sports/schedule_sport_filter.dart';
 
 /// Broadcast channel names from a schedule row (`sportMatchGame` and/or top-level).
 List<String> liveBroadcastChannelsFromRow(Map<String, dynamic> row) {

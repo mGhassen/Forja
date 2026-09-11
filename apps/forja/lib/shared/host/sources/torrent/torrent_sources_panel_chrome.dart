@@ -4,7 +4,7 @@ import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/foundation/components/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_source_filters.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_source_filters.dart';
 import 'package:forja/shared/shell/forja_loading_dots.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';

@@ -6,7 +6,7 @@ import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/foundation/services/nav/plugin_nav.dart';
-import 'package:forja/shared/foundation/services/watch/watch_history.dart';
+import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';

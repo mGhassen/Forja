@@ -1,8 +1,8 @@
 /// Machine-readable EngineJS pack contracts — pack SDK `sdk/schema/*.json`.
 library;
 
-import 'package:forja/shared/foundation/lib/pack_assets.dart';
-import 'package:forja/shared/foundation/protocol/protocol.dart';
+import 'package:forja/shared/host/packs/pack_assets.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Validates pack manifests at install time (mirrors [manifest.schema.json]).
 abstract final class PluginContract {

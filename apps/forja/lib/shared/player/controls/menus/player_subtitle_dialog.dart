@@ -15,7 +15,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_sources_panel.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

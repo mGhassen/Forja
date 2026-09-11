@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/foundation/components/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/foundation/components/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/host/sources/torrent/torrent_release_metadata.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
