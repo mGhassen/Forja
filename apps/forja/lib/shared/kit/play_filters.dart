@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/kit/pack_filters.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/hero_pill_buttons.dart';
 
 /// Pack `filters` action — `play[]` grouped choice on hub details hero.
 class PlayFilterSpec {

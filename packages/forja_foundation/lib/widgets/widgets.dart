@@ -21,6 +21,7 @@ export 'package:forja_foundation/widgets/details/meta_line.dart';
 export 'package:forja_foundation/widgets/details/hero_title.dart';
 export 'package:forja_foundation/widgets/details/hero_content_scrim.dart';
 export 'package:forja_foundation/widgets/details/watch_providers_row.dart';
+export 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart';
 export 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';
 export 'package:forja_foundation/widgets/chrome/section_title.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar_slots.dart';

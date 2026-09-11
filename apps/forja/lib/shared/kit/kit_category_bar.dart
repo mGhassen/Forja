@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/kit/kit_category_circle_meta.dart';
-import 'package:forja/shared/kit/kit_focus.dart';
+import 'package:forja/shared/shell/kit_focus.dart';
 import 'package:forja/shared/kit/kit_layout_scope.dart';
 import 'package:forja/shared/kit/kit_list_source.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';

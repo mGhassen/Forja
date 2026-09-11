@@ -21,7 +21,7 @@ import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/kit/kit_feed_chrome.dart';
-import 'package:forja/shared/kit/kit_focus.dart';
+import 'package:forja/shared/shell/kit_focus.dart';
 import 'package:forja/shared/kit/kit_list_event_query.dart';
 import 'package:forja/shared/kit/kit_list_open_mode.dart';
 import 'package:forja/shared/theme/app_theme.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/hero_pill_buttons.dart';
 
 /// Optionally scales hero action rows down on narrow viewports.
 ///

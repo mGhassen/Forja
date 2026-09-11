@@ -199,7 +199,7 @@ Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB in
 | `hero_watch_providers_row.dart` | `package:forja_foundation/widgets/details/watch_providers_row.dart` | ✅ |
 | `rotating_hero_backdrop.dart` | `package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart` | ✅ |
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
-| `hero_pill_buttons.dart` | host for now — `ForjaInteractive` + TV focus; extract paint later | ⬜ |
+| `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shared/shell/hero_pill_buttons.dart` | ✅ |
 | `cinematic_hero.dart` | replace gallery `widgets/catalog/cinematic_hero.dart`; host keeps Riverpod/`Movie` mapper only | ⬜ |
 | `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` | `widgets/catalog/` + `components/poster_frame.dart` / `skeleton.dart` | ⬜ |
 | `kit_shell.dart` · `kit_layout_scope.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_stack_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_panel_host.dart` · `kit_panel_tabs.dart` · `kit_search_*.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_feed_chrome.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `kit_portal_list_panel.dart` · `kit_side_panel_overlay.dart` | `widgets/chrome/` + `blocks/shell` / `blocks/search` | ⬜ |
@@ -207,8 +207,8 @@ Package composers are the **running** UI. Host maps `Movie` / Riverpod / TMDB in
 | `kit_sources*.dart` · `kit_resolve_panel_host.dart` | `widgets/sources/` + `shared/player/sources/` glue | ⬜ |
 | `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `kit_open.dart` · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_*.dart` · `kit_event_paint.dart` · `kit_category_circle_meta.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `cover_urls.dart` · `host_list_registry.dart` · `my_list_*` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `tmdb_paint_gate.dart` · `legacy_*.dart` · `search_recent_queries.dart` | `shared/engine/hub/` or `shared/engine/lists/` (no UI) | ⬜ |
 | `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop_selectable_title.dart` | ✅ |
-| `kit_focus.dart` | `shared/shell/` | ⬜ |
-| `forja_host_assets.dart` | `shared/host/packs/` or delete if unused | ⬜ |
+| `kit_focus.dart` | `package:forja/shared/shell/kit_focus.dart` | ✅ |
+| `forja_host_assets.dart` | `package:forja/shared/host/packs/forja_host_assets.dart` | ✅ |
 
 Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters stay `shared/shell/`.
 

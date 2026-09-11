@@ -10,7 +10,7 @@ import 'package:forja/shared/kit/kit_resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/hero_pill_buttons.dart';
 import 'package:forja/shared/kit/kit_details_hero.dart';
 import 'package:forja/shared/kit/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';

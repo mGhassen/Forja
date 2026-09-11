@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/kit/kit_focus.dart';
+import 'package:forja/shared/shell/kit_focus.dart';
 import 'package:forja/shared/kit/kit_layout_scope.dart';
 import 'package:forja/shared/shell/forja_status_tabs.dart';
 

@@ -28,7 +28,7 @@ import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/kit/pack_filters.dart';
 import 'package:forja/shared/kit/play_filters.dart';
-import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/hero_pill_buttons.dart';
 import 'package:forja/shared/kit/kit_sources.dart';
 import 'package:forja/shared/kit/kit_details_hero.dart';
 import 'package:forja/shared/kit/kit_details_play_row.dart';

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/kit/kit_filter_sheet_option.dart';
 import 'package:forja/shared/kit/kit_feed_chrome.dart';
-import 'package:forja/shared/kit/kit_focus.dart';
+import 'package:forja/shared/shell/kit_focus.dart';
 import 'package:forja/shared/kit/kit_layout_scope.dart';
 import 'package:forja/shared/kit/kit_list_event_search.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';

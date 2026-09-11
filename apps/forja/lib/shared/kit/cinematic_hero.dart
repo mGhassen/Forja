@@ -16,7 +16,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/kit/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/hero_pill_buttons.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
 import 'package:forja/shared/shell/desktop_selectable_title.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
