@@ -10,6 +10,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
     required bool continuityProxy,
+    String? streamUrl,
   });
   int _continuityProxyMaxQueueBytes();
   void _onProxyUpstreamReconnected();
@@ -505,7 +506,11 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
           }
           await player.open(Media(playUrl, httpHeaders: headers));
           if (np is NativePlayer && _livePlaybackProfile) {
-            await _applyStreamLavfReconnect(np, continuityProxy: false);
+            await _applyStreamLavfReconnect(
+              np,
+              continuityProxy: false,
+              streamUrl: candidate.url,
+            );
           }
         }
         await player.play();

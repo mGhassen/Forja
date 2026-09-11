@@ -5,7 +5,11 @@ part of 'iptv_pt_player_screen.dart';
 
 mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   void _engineSetVolume(double volume);
-  Future<void> _applyStreamLavfReconnect(NativePlayer p, {required bool continuityProxy});
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    required bool continuityProxy,
+    String? streamUrl,
+  });
   bool get _livePlaybackProfile;
   bool get _useSoftwareDecode;
 
@@ -366,7 +370,14 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
 
       // FFmpeg reconnect — applied after open (proxy vs direct). VOD keeps direct.
       if (_s.widget.vodPlayback) {
-        await _applyStreamLavfReconnect(p, continuityProxy: false);
+        final url = _s._sources.isEmpty
+            ? null
+            : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
+        await _applyStreamLavfReconnect(
+          p,
+          continuityProxy: false,
+          streamUrl: url,
+        );
       }
 
       // MPEG-TS / HLS demux tuning.

@@ -697,9 +697,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
   /// macOS / Linux live: VideoToolbox / VAAPI one-shots after every CDN socket
-  /// close on Xtream/Stalker TS — software decode + continuity proxy there.
-  /// Forja Live / Stremio HLS (often demuxed CMAF / Brightcove) starves under
-  /// TextureSW (black + silent, empty-cache reopen). Keep VideoToolbox.
+  /// close on Xtream/Stalker **MPEG-TS** — software decode + continuity proxy.
+  /// HLS (Stremio, Forja Live, M3U `.m3u8`) starves under TextureSW (black +
+  /// silent, cache=0 forever) — keep VideoToolbox / VAAPI (issue 273).
   bool get _desktopLiveSoftwareDecode {
     if (widget.vodPlayback || kIsWeb) return false;
     if (!Platform.isMacOS && !Platform.isLinux) return false;
@@ -711,6 +711,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         kind == IptvLiveSourceKind.stremio) {
       return false;
     }
+    if (src != null && iptvUrlLooksLikeHls(src.url)) return false;
     return true;
   }
 
