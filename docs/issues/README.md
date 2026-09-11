@@ -276,6 +276,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [269-[open]-…](269-[open]-windows-iptv-portal-af-inet-dns64.md) | Windows IPTV portal AF_INET DNS (DNS64 residual) | P1 | High | open | 3/3 · A 0/1 | [261](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) |
 | [270-[fixed]-…](fixed/270-[fixed]-live-providers-resolve-empty-regression.md) | Live Sports Providers empty (resolve regression) | P0 | Critical | fixed | Complete · 5/5 · A 0/1 | [240](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) |
 | [271-[open]-…](271-[open]-catalog-body-evacuate-foundation.md) | Catalog body evacuate into forja_foundation | P1 | Medium | open | 7/7 · A 7/8 | [RFC-106](../rfc/106-[open]-forja-foundation-design-system-package.md) |
+| [272-[fixed]-…](fixed/272-[fixed]-iptv-hls-m3u-continuity-proxy-death-spiral.md) | IPTV HLS M3U channels fail via TS continuity proxy | P1 | High | fixed | Complete · 3/3 · A 0/2 | [208](fixed/208-[fixed]-iptv-stalker-misclassified-as-xtream-proxy.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

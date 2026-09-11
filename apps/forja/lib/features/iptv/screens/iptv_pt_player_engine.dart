@@ -424,7 +424,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         ...candidate.headers,
       };
       final kind = _liveSourceKindFor(candidate);
-      final useProxy = _livePlaybackProfile && kind.useContinuityProxy;
+      final useProxy = _livePlaybackProfile &&
+          iptvShouldUseContinuityProxy(kind: kind, url: candidate.url);
       var playUrl = candidate.url;
       if (useProxy) {
         final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(

@@ -18,6 +18,8 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/widgets/settings_pack_prompt_pane.dart';
+import 'package:forja/shared/engine/packs/install/pack_install_refs.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
@@ -189,8 +191,9 @@ class _SettingsForjaPacksSectionState
             SettingsTextField(
               controller: _engineController,
               label: 'Add pack',
-              hint: 'https://.../manifest.json',
-              onSubmitted: (_) => _installEnginePack(),
+              hint: 'Paste one or more manifest URLs / local paths',
+              maxLines: 4,
+              keyboardType: TextInputType.multiline,
             ),
             const SizedBox(height: 14),
             Row(
@@ -641,8 +644,15 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _installEnginePack() async {
-    final url = _engineController.text.trim();
-    if (url.isEmpty) return;
+    final refs = parsePackInstallRefs(_engineController.text);
+    if (refs.isEmpty) return;
+
+    if (refs.length > 1) {
+      await _openPasteBatchPrompt(refs);
+      return;
+    }
+
+    final url = refs.first;
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(url);
@@ -660,6 +670,32 @@ class _SettingsForjaPacksSectionState
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
+  }
+
+  Future<void> _openPasteBatchPrompt(List<String> refs) async {
+    final packs = await PluginRegistry.instance.listPacksRaw();
+    if (!mounted) return;
+    final installedUrls = <String>{};
+    for (final p in packs) {
+      if (p.plugins.isEmpty) continue;
+      if (await PluginRegistry.instance.packNeedsDiskInstall(p)) continue;
+      installedUrls.add(p.sourceUrl.trim());
+    }
+    if (!mounted) return;
+
+    final candidates = <PluginInstallCandidate>[
+      for (final url in refs)
+        PluginInstallCandidate(
+          manifestUrl: url,
+          displayName: packInstallRefDisplayName(url),
+          alreadyInstalled: installedUrls.contains(url),
+        ),
+    ];
+
+    _engineController.clear();
+    SettingsPackPromptDrill.open(
+      PluginBatchInstallPrompt(candidates: candidates),
+    );
   }
 
   Future<void> _removeEnginePack(EnginePack pack) async {

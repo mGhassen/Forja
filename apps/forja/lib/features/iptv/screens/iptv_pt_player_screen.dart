@@ -94,7 +94,7 @@ bool iptvExoUrlLooksLive(String url) {
 /// Live native playback profile — one MediaKit/Exo config per surface type,
 /// not inferred from URL shape.
 enum IptvLiveSourceKind {
-  /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy).
+  /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy when not HLS).
   iptvXtream,
 
   /// IPTV Live / Forja Sports Stalker (create_link; no continuity proxy).
@@ -106,10 +106,31 @@ enum IptvLiveSourceKind {
   /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
   liveEngine;
 
+  /// Kind allows the TS continuity proxy; still gated by [iptvShouldUseContinuityProxy].
   bool get useContinuityProxy => this == IptvLiveSourceKind.iptvXtream;
 }
 
-/// IPTV catalog / Forja Sports: Stalker create_link stays direct; Xtream/M3U use TS proxy.
+/// HLS masters/media playlists — short HTTP bodies, not a progressive TS pipe.
+@visibleForTesting
+bool iptvUrlLooksLikeHls(String url) {
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8');
+}
+
+/// Continuity proxy is for progressive MPEG-TS. HLS `.m3u8` must open direct —
+/// proxying them EOF after ~2 KiB then overlap-skip death-spirals (issue 272).
+@visibleForTesting
+bool iptvShouldUseContinuityProxy({
+  required IptvLiveSourceKind kind,
+  required String url,
+}) {
+  if (!kind.useContinuityProxy) return false;
+  if (iptvUrlLooksLikeHls(url)) return false;
+  return true;
+}
+
+/// IPTV catalog / Forja Sports: Stalker stays direct; Xtream/M3U TS use the
+/// continuity proxy; HLS channel URLs open direct regardless of portal kind.
 @visibleForTesting
 IptvLiveSourceKind iptvLiveSourceKindForPortal(IptvPortalPlatform platform) {
   return switch (platform) {

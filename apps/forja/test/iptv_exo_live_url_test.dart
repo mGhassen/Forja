@@ -63,6 +63,59 @@ void main() {
     });
   });
 
+  group('iptvShouldUseContinuityProxy', () {
+    test('Xtream / M3U progressive TS uses proxy', () {
+      expect(
+        iptvShouldUseContinuityProxy(
+          kind: IptvLiveSourceKind.iptvXtream,
+          url: 'http://portal.example/live/user/pass/1234.ts',
+        ),
+        isTrue,
+      );
+      expect(
+        iptvShouldUseContinuityProxy(
+          kind: IptvLiveSourceKind.iptvXtream,
+          url: 'http://portal.example/live/user/pass/1234',
+        ),
+        isTrue,
+      );
+    });
+
+    test('HLS channel URLs skip proxy (XUMO / M3U .m3u8)', () {
+      expect(
+        iptvShouldUseContinuityProxy(
+          kind: IptvLiveSourceKind.iptvXtream,
+          url:
+              'https://dbrb49pjoymg4.cloudfront.net/10001/99991635/hls/playlist.m3u8?ads.xumo_channelId=99991635',
+        ),
+        isFalse,
+      );
+      expect(
+        iptvUrlLooksLikeHls(
+          'https://dai.google.com/linear/hls/event/abc/master.m3u8',
+        ),
+        isTrue,
+      );
+    });
+
+    test('Stalker / stremio / liveEngine never use proxy', () {
+      expect(
+        iptvShouldUseContinuityProxy(
+          kind: IptvLiveSourceKind.iptvStalker,
+          url: 'http://portal.example/live.php?mac=1&play_token=2',
+        ),
+        isFalse,
+      );
+      expect(
+        iptvShouldUseContinuityProxy(
+          kind: IptvLiveSourceKind.stremio,
+          url: 'https://cdn.example/live/index.m3u8',
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('iptvIsHardOpenFail', () {
     test('Failed to open', () {
       expect(

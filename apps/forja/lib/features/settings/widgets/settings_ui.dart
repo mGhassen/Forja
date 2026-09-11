@@ -1873,6 +1873,7 @@ class SettingsTextField extends StatefulWidget {
     this.autofocus = false,
     this.onSubmitted,
     this.keyboardType,
+    this.maxLines = 1,
     this.maxLength,
     this.inputFormatters,
   });
@@ -1888,6 +1889,7 @@ class SettingsTextField extends StatefulWidget {
   final bool autofocus;
   final ValueChanged<String>? onSubmitted;
   final TextInputType? keyboardType;
+  final int maxLines;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
 
@@ -2120,14 +2122,20 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       // Belt-and-suspenders: even if edit focus leaks, no IME in browse.
       keyboardType: _browseOnly
           ? TextInputType.none
-          : (widget.keyboardType ?? TextInputType.text),
+          : (widget.keyboardType ??
+              (widget.maxLines > 1
+                  ? TextInputType.multiline
+                  : TextInputType.text)),
+      maxLines: widget.maxLines,
       maxLength: widget.maxLength,
       inputFormatters: widget.inputFormatters,
       onTap: _tv && !_editing ? _beginEditing : null,
-      onSubmitted: (value) {
-        if (_tv) _endEditing();
-        widget.onSubmitted?.call(value);
-      },
+      onSubmitted: widget.maxLines > 1
+          ? null
+          : (value) {
+              if (_tv) _endEditing();
+              widget.onSubmitted?.call(value);
+            },
       style: TextStyle(
         color: enabled
             ? ForjaShellColors.textPrimary
