@@ -354,10 +354,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
       final run = () async {
         final changed = await PluginNavRegistry.refresh();
         if (!mounted) return;
-        // Pack scripts can change without nav shape changes. Hub KitShell is
-        // keep-alive + 15m stale window — mark stale (and remount builders when
-        // nav actually changed) so returning to Home / Anime / … reloads rails.
-        _invalidateHubTabsAfterPackChange(remountBuilders: changed);
+        // Only remount / hard-refresh hubs when nav shape changed. Lean sync and
+        // unrelated pack notifies used to mark every hub stale → soft return
+        // wiped rails while the hero kept slides. Script/install wipes go through
+        // [PluginRegistry.hubFeedEpoch] → KitShell.
+        if (changed) {
+          _invalidateHubTabsAfterPackChange(remountBuilders: true);
+        }
         await _loadNavbarConfig();
       }();
       _hubNavReloadInFlight = run;

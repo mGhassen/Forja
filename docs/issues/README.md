@@ -121,7 +121,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [097-[open]-…](097-[open]-auto-watched-series-progress-details.md) | Auto watched + series % on details | P2 | Medium | open | 5/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [098-[open]-…](098-[open]-anime-details-season-chain.md) | Anime details AniList season chain | P2 | Medium | open | 7/8 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [099-[open]-…](099-[open]-profile-settings-cloud-master-local-cache.md) | Profile settings: cloud master, local cache | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [100-[open]-…](100-[open]-anime-details-cast-recs-trailers.md) | Anime details cast / recs / trailers | P2 | Medium | open | 5/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [100-[open]-…](100-[open]-anime-details-cast-recs-trailers.md) | Anime details cast / recs / trailers | P2 | Medium | open | 5/6 · A 1/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [101-[open]-…](101-[open]-player-back-lands-on-loading.md) | Player Back lands on stream loading | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [102-[open]-…](102-[open]-android-tv-exoplayer-tiled-frames.md) | Android TV ExoPlayer tiled / shifted frames | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [103-[open]-…](103-[open]-android-tv-anime-details-hero-focus.md) | Android TV anime details hero + focus chrome | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |

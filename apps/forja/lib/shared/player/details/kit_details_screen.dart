@@ -59,12 +59,18 @@ Future<T?> openKitDetails<T>(
   int? initialEpisode,
   Duration? startPosition,
   bool autoPlay = false,
-}) {
-  // Prefer the shell tab the user is on (e.g. My List), not the content hub
-  // that owns extract (Home/Anime). Otherwise overlay origin steals nav.
-  final tab = shellTabId ??
-      ShellBus.activeShellTabId ??
-      hubShellTabIdForPlugin(pluginId);
+}) async {
+  // Prefer the content hub that owns the title (Anime / Asian Drama / Home),
+  // not the browse tab you opened from (e.g. My List). Switch the rail to match.
+  final contentTab =
+      await resolveDetailsShellTabId(pluginId: pluginId, item: item);
+  final tab = contentTab ?? shellTabId ?? ShellBus.activeShellTabId;
+  if (tab != null &&
+      tab.isNotEmpty &&
+      ShellBus.activeShellTabId != tab) {
+    ShellBus.requestTab.value = tab;
+  }
+  if (!context.mounted) return null;
   return pushShellRoute<T>(
     context,
     AppRouter.slideShellRoute(

@@ -173,6 +173,35 @@ MetaItem hubMergeDetailsSeed(
 String? hubShellTabIdForPlugin(String pluginId) =>
     PluginNavRegistry.tabIdForPluginSync(pluginId);
 
+/// Shell tab for the hub that owns [item] (Anime / Asian Drama / Home / …).
+///
+/// Used when opening details so the nav rail matches the content hub, not the
+/// browse tab you tapped from (e.g. My List → Anime).
+Future<String?> resolveDetailsShellTabId({
+  required String pluginId,
+  required MetaItem item,
+}) async {
+  final fromPlugin = hubShellTabIdForPlugin(pluginId);
+  if (fromPlugin != null && fromPlugin.isNotEmpty) return fromPlugin;
+
+  final surface = item.open?.surface.trim() ?? '';
+  String? engineType;
+  if (surface == 'tmdb') {
+    final media = (item.tmdbMediaType ?? item.type).trim().toLowerCase();
+    engineType = media == 'tv' ? 'tv' : 'movie';
+  } else if (surface.isNotEmpty && surface != 'live') {
+    engineType = surface;
+  } else {
+    final t = item.type.trim();
+    if (t.isNotEmpty) engineType = t;
+  }
+  if (engineType == null || engineType.isEmpty) return null;
+  final hubPlugin =
+      await PluginNavRegistry.pluginIdForEngineType(engineType);
+  if (hubPlugin == null || hubPlugin.isEmpty) return null;
+  return hubShellTabIdForPlugin(hubPlugin);
+}
+
 /// Same contract as [MetaRuntime.metaTmdbEnriched] for a parsed meta.
 bool hubMetaTmdbEnriched(MetaItem meta) => MetaRuntime.metaTmdbEnriched(
       {

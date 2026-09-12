@@ -175,7 +175,7 @@ class _KitShellState extends State<KitShell>
       _verticalFiltersRevisionListener!,
     );
     KitTopMenuRegistry.revision.addListener(_onKitTopMenuRevision);
-    EngineService.changeNotifier.addListener(_onEnginePackChanged);
+    PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
     // MainScreen mounts under the splash Offstage. Layout before packs /
     // boot prefetch finish returns null → "tmdb did not answer layout" and
     // never recovers when MetaCache warms. Wait for splash dismiss (prefetch
@@ -210,9 +210,10 @@ class _KitShellState extends State<KitShell>
     setState(() {});
   }
 
-  /// Pack install / refresh / enable — keep-alive shell must drop memoized rails.
-  void _onEnginePackChanged() {
+  /// Hub MetaCache wipe for this plugin (install / script edit / remove).
+  void _onHubFeedEpoch() {
     if (!mounted) return;
+    if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
     PackFiltersRegistry.invalidate(widget.pluginId);
     markShellTabStale();
     _forceNextRails = true;
@@ -235,7 +236,7 @@ class _KitShellState extends State<KitShell>
   @override
   void dispose() {
     ShellBus.splashDismissed.removeListener(_onSplashDismissedForLayout);
-    EngineService.changeNotifier.removeListener(_onEnginePackChanged);
+    PluginRegistry.hubFeedEpoch.removeListener(_onHubFeedEpoch);
     KitTopMenuRegistry.revision.removeListener(_onKitTopMenuRevision);
     if (_verticalFiltersRevisionListener != null) {
       VerticalFiltersRegistry.revision.removeListener(
@@ -743,16 +744,22 @@ class _KitShellState extends State<KitShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    // Pack reload while on Settings sets [_forceNextRails]; tab show often
-    // calls refresh with force:false — keep the hard layout/rails refresh.
+    // Soft tab return / 15m stale: keep painted rails (hero already keeps
+    // slides). Hard only for re-tap, pull-to-refresh, hub feed epoch, filters.
     final hard = force || _forceNextRails;
+    if (!hard) {
+      if (_widgets.isEmpty) {
+        await _loadLayout(forceRefresh: false);
+      }
+      return;
+    }
     if ((_hasHostListWidget || _hasHostBodySource || _hasRegisteredListPanel) &&
         mounted) {
       setState(() => _hostRefreshEpoch++);
     }
-    _forceNextRails = hard;
+    _forceNextRails = true;
     _invalidateRailFutures();
-    await _loadLayout(forceRefresh: hard);
+    await _loadLayout(forceRefresh: true);
     if (!mounted) return;
     // Build after layout setState consumes [_forceNextRails] into new futures.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -974,19 +981,18 @@ class _KitShellState extends State<KitShell>
     bool forceRefresh = false,
     bool useFeedBatch = false,
   }) async {
+    // Feed-claimed rails never fan out to per-rail GraphQL. Empty / failed
+    // feed must stay empty — otherwise a 429 stampede hammers AniList again.
     if (useFeedBatch && _isPackFeedRail(spec)) {
       final railId = _packRailId(spec)!;
       final feed = await _ensureFeedLoaded(force: forceRefresh);
       final batched = feed[railId] ?? const [];
-      if (batched.isNotEmpty) {
-        final pageSize = _railPageSizeHint(spec);
-        return MetaRailPage(
-          items: batched,
-          pageSize: pageSize,
-          hasMore: batched.length >= pageSize,
-        );
-      }
-      // Partial/empty feed slice (e.g. spotlight missing) — direct rail fetch.
+      final pageSize = _railPageSizeHint(spec);
+      return MetaRailPage(
+        items: batched,
+        pageSize: pageSize,
+        hasMore: batched.length >= pageSize,
+      );
     }
     return _fetchRail(spec, forceRefresh: forceRefresh);
   }

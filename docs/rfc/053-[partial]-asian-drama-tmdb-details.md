@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **6 / 7** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **2 / 2** acceptance (catalog Sources) |
-| **Current slice** | More Like This kit open routes to TMDB plugin — enrich/images smoke still open |
+| **Progress** | **4 / 4** components · **6 / 7** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **2 / 2** acceptance (catalog Sources) · **1 / 1** acceptance (More Like This drama open) |
+| **Current slice** | More Like This resolves to KissKH drama details — enrich/images smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,6 +57,14 @@
 |--:|----|----|-----|
 | 1 | R53-A11 | When TMDB matches and a panel play source is on, white link Play opens Torrents/Stremio/Nuvio/Forja Sources for that title + selected episode | ✅ |
 | 2 | R53-A12 | KissKH `tmdbID` is parsed on cards/details and preferred over title search for enrich / Sources | ✅ |
+
+---
+
+## Acceptance (More Like This drama open)
+
+| # | ID | Description | Status |
+|--:|----|----|-----|
+| 1 | R53-A14 | TMDB More Like This titles resolve via KissKH search and open `open.surface: drama` (not Home TMDB) | ✅ |
 
 ---
 

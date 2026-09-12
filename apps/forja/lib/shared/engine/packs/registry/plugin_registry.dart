@@ -52,6 +52,38 @@ class PluginRegistry {
   static final ValueNotifier<String?> officialInstallError =
       ValueNotifier<String?>(null);
 
+  /// Bumped when hub [MetaCache] entries are wiped (install / script edit / remove).
+  /// KitShell listens here — not [changeNotifier] — so lean sync / provider packs
+  /// do not blank keep-alive hub rails on every notify.
+  static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
+
+  /// Plugin ids last wiped into [hubFeedEpoch]. Empty = all hubs.
+  static Set<String> _hubFeedEpochPlugins = {};
+
+  /// Whether the current [hubFeedEpoch] should invalidate [pluginId]'s rails.
+  static bool hubFeedEpochTouches(String pluginId) {
+    final id = pluginId.trim();
+    if (id.isEmpty) return false;
+    return _hubFeedEpochPlugins.isEmpty || _hubFeedEpochPlugins.contains(id);
+  }
+
+  static void bumpHubFeedEpoch({
+    Iterable<String>? pluginIds,
+    bool all = false,
+  }) {
+    if (all) {
+      _hubFeedEpochPlugins = {};
+    } else {
+      final next = {
+        for (final raw in pluginIds ?? const <String>[])
+          if (raw.trim().isNotEmpty) raw.trim(),
+      };
+      if (next.isEmpty) return;
+      _hubFeedEpochPlugins = next;
+    }
+    hubFeedEpoch.value++;
+  }
+
   Future<void>? _officialEnsureFuture;
   final Set<String> _scriptRepairAttempted = {};
 
@@ -1280,17 +1312,27 @@ class PluginRegistry {
       await PluginScriptDiskStore.saveEnginePackMeta(pack);
     }
     final hubSlot = forjaHqSlot(manifestUrl);
+    var hubCacheWipedAll = false;
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
-      MetaCache.instance.syncPackVersion(pack.packId, pack.version);
+      hubCacheWipedAll =
+          MetaCache.instance.syncPackVersion(pack.packId, pack.version);
     }
     // Scripts may change at the same semver — always drop cached catalog answers.
+    final wipedHubIds = <String>[];
     for (final p in pack.plugins) {
       MetaCache.instance.wipePlugin(p.id);
       _localScriptDigests.remove(p.id);
+      if (p.isKitPlugin) wipedHubIds.add(p.id);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
       MetaCache.instance.wipeAll();
+      hubCacheWipedAll = true;
+    }
+    if (hubCacheWipedAll) {
+      bumpHubFeedEpoch(all: true);
+    } else if (wipedHubIds.isNotEmpty) {
+      bumpHubFeedEpoch(pluginIds: wipedHubIds);
     }
     // Green Play / Sources RAM + resume extracts must not keep pre-update empties.
     _invalidatePlaybackCachesAfterPackChange();
@@ -1344,14 +1386,19 @@ class PluginRegistry {
     final all = await listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
+    final wipedHubIds = <String>[];
     for (final pack in victim) {
       await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
       for (final p in pack.plugins) {
         MetaCache.instance.wipePlugin(p.id);
+        if (p.isKitPlugin) wipedHubIds.add(p.id);
       }
     }
     await _savePacks(all);
     if (victim.isNotEmpty) {
+      if (wipedHubIds.isNotEmpty) {
+        bumpHubFeedEpoch(pluginIds: wipedHubIds);
+      }
       _invalidatePlaybackCachesAfterPackChange();
       notifyChanged();
     }
@@ -1701,6 +1748,7 @@ class PluginRegistry {
     if (prev == null) return;
     debugPrint('[engine] $id script changed — invalidating caches');
     MetaCache.instance.wipePlugin(id);
+    bumpHubFeedEpoch(pluginIds: [id]);
     _invalidatePlaybackCachesAfterPackChange();
     notifyChanged();
   }

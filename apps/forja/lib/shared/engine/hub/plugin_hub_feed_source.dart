@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/hub/catalog_list_open.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/hub/meta_runtime.dart';
+import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_providers.dart';
 
@@ -253,9 +254,14 @@ final hubPluginFeedProvider =
 
   var forceRefresh = ref.read(hubFeedForceRefreshProvider(pluginId));
   var rawItems = <Map<String, dynamic>>[];
+  final tabId = PluginNavRegistry.tabIdForPluginSync(pluginId);
+  final packSourceUrl = tabId == null
+      ? null
+      : PluginNavRegistry.packSourceUrlForTabSync(tabId);
   try {
     final env = await MetaRuntime.instance.run(
       pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
       action: 'feed',
       params: {
         'status': status,

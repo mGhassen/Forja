@@ -81,16 +81,20 @@ class MetaCache {
   void wipeAll() => _entries.clear();
 
   /// Drop everything when a hub pack version changes.
-  void syncPackVersion(String packId, String version) {
+  /// Returns true when entries were wiped.
+  bool syncPackVersion(String packId, String version) {
     final v = version.trim();
     final id = packId.trim();
-    if (v.isEmpty || id.isEmpty) return;
+    if (v.isEmpty || id.isEmpty) return false;
     final prev = _hubPackVersions[id];
+    var wiped = false;
     if (prev != null && prev != v) {
       debugPrint('[catalog] $id $prev → $v — cache wiped');
       wipeAll();
+      wiped = true;
     }
     _hubPackVersions[id] = v;
+    return wiped;
   }
 
   /// @Deprecated Prefer [syncPackVersion].
