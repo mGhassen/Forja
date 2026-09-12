@@ -312,40 +312,38 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             // Must go through [_forceLeavePlayer] - a direct pop skipped silence/stop
             // and left mpv audio playing (issue 059). Escape arm must not apply.
             onBack: _s._forceLeavePlayer,
-            trailing: ListenableBuilder(
-              listenable: SettingsService.inAppMiniPlayerNotifier,
-              builder: (context, _) => PlayerTopBarActions(
-                showPlayer: widget.onSwitchPlayer != null,
-                onPlayer: widget.onSwitchPlayer != null
-                    ? (anchorContext) =>
-                        unawaited(_s._showPlayerMenu(anchorContext))
-                    : null,
-                showCast:
-                    CastingService.instance.isAirPlayAvailable ||
-                    CastingService.instance.isChromecastAvailable,
-                onCast: () {
-                  showPlayerCastPicker(
-                    context,
-                    streamUrl: _s._currentUrl,
-                    title: widget.title,
-                    headers: widget.headers,
-                    statusController: _s._statusController,
-                  );
-                  _s._onMouseMove();
-                },
-                showInAppMini: InAppMiniPlayerController.settingEnabled,
-                onInAppMini: () {
-                  unawaited(InAppMiniPlayerController.instance.enter());
-                  _s._onMouseMove();
-                },
-                showPip: PipService.instance.isSupported,
-                pipActive: PipService.instance.isDesktopActive,
-                onPip: () async {
-                  await PipService.instance.toggle();
-                  if (mounted) setState(() {});
-                  _s._onMouseMove();
-                },
-              ),
+            trailing: PlayerTopBarActions(
+              showPlayer: widget.onSwitchPlayer != null,
+              onPlayer: widget.onSwitchPlayer != null
+                  ? (anchorContext) =>
+                      unawaited(_s._showPlayerMenu(anchorContext))
+                  : null,
+              showCast:
+                  CastingService.instance.isAirPlayAvailable ||
+                  CastingService.instance.isChromecastAvailable,
+              onCast: () {
+                showPlayerCastPicker(
+                  context,
+                  streamUrl: _s._currentUrl,
+                  title: widget.title,
+                  headers: widget.headers,
+                  statusController: _s._statusController,
+                );
+                _s._onMouseMove();
+              },
+              // Always on desktop — setting only gates Escape auto-demote.
+              showInAppMini: true,
+              onInAppMini: () {
+                unawaited(InAppMiniPlayerController.instance.enter());
+                _s._onMouseMove();
+              },
+              showPip: PipService.instance.isSupported,
+              pipActive: PipService.instance.isDesktopActive,
+              onPip: () async {
+                await PipService.instance.toggle();
+                if (mounted) setState(() {});
+                _s._onMouseMove();
+              },
             ),
           ),
         ),

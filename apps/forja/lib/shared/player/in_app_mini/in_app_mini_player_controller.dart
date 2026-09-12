@@ -35,7 +35,8 @@ class InAppMiniPlayerController {
 
   InAppMiniPlayerSession? get session => _session;
 
-  /// Whether Settings → Playback → In-app mini player is enabled (default off).
+  /// Whether Escape auto-demotes to mini (Settings → Playback → Escape to mini
+  /// player). Default off. Top-right mini button is always shown on desktop.
   static bool get settingEnabled =>
       SettingsService.inAppMiniPlayerNotifier.value;
 

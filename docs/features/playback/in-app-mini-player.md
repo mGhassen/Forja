@@ -4,15 +4,15 @@
 
 ## What it is
 
-When enabled, **Escape** (after the usual hide-chrome / leave-fullscreen steps) shrinks the movie or IPTV player to a corner widget inside Forja. Playback keeps going. The shell stays usable underneath. Distinct from [Picture-in-picture](picture-in-picture.md) (OS / always-on-top window).
+On desktop, the top-right **In-app mini player** button shrinks the movie or IPTV player to a corner widget inside Forja. Playback keeps going. The shell stays usable underneath. Distinct from [Picture-in-picture](picture-in-picture.md) (OS / always-on-top window).
+
+Optional **Settings → Addons → Playback → Escape to mini player** (off by default): after the usual hide-chrome / leave-fullscreen steps, **Escape** demotes to mini instead of arming leave.
 
 ## How to open it
 
-1. **Settings → Addons → Playback → In-app mini player** (desktop macOS / Windows only — not Android TV or phone) — **off by default**
-2. Play a movie, series, IPTV channel, or Live Sports stream
-3. Either:
-   - Click the **In-app mini player** button (top-right chrome, next to Cast / PiP), or
-   - Press **Escape** once to hide chrome (or leave fullscreen), then **Escape** again while chrome is hidden — demotes without pausing
+1. Play a movie, series, IPTV channel, or Live Sports stream on **desktop** (macOS / Windows — not Android TV or phone)
+2. Click the **In-app mini player** button (top-right chrome, next to Cast / PiP)
+3. Or, if **Escape to mini player** is on: press **Escape** once to hide chrome (or leave fullscreen), then **Escape** again while chrome is hidden — demotes without pausing
 
 ## What you can do
 
@@ -28,7 +28,7 @@ When enabled, **Escape** (after the usual hide-chrome / leave-fullscreen steps) 
 
 ## Tips
 
-- Off = Escape exits the player as before (double-confirm arm); the top-right mini button is hidden
+- The mini button is always on desktop chrome; **Escape to mini player** only changes Escape (off = double-confirm leave as before)
 - Does not use the player PiP button or Auto picture-in-picture
 - Android phone / TV: not in this slice
 

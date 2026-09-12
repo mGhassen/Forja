@@ -122,6 +122,7 @@ class HeroPillIconSlot {
     this.onTap,
     this.tooltip,
     this.label,
+    this.suppressActive = false,
   });
 
   final IconData? icon;
@@ -129,6 +130,9 @@ class HeroPillIconSlot {
   final VoidCallback? onTap;
   final String? tooltip;
   final String? label;
+
+  /// Menu open on desktop — keep the trigger idle while hovering menu rows.
+  final bool suppressActive;
 }
 
 /// Horizontal hero CTA cluster - spatial ←/→ on TV, no escape to catalog.
@@ -189,6 +193,7 @@ class HeroPillIconGroup extends StatelessWidget {
             icon: slots[i].icon,
             iconWidget: slots[i].iconWidget,
             onTap: slots[i].onTap,
+            suppressActive: slots[i].suppressActive,
             isFirst: i == 0,
             isLast: i == slots.length - 1,
             useTvCompact: useTvCompact,
@@ -374,6 +379,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     this.icon,
     this.iconWidget,
     this.onTap,
+    this.suppressActive = false,
     this.focusOrder,
     this.tvTabId,
     this.onUpEdge,
@@ -386,6 +392,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final IconData? icon;
   final Widget? iconWidget;
   final VoidCallback? onTap;
+  final bool suppressActive;
   final bool isFirst;
   final bool isLast;
   final bool useTvCompact;
@@ -441,13 +448,14 @@ class _HeroPillGroupedSlot extends StatelessWidget {
         hoverScale: 1,
         pressScale: 1,
         builder: (active, pressed) {
+          final lit = suppressActive ? false : active;
           return HeroPillGroupedSlotSurface(
             label: label,
             icon: icon,
             iconWidget: iconWidget,
-            active: active,
-            pressed: pressed,
-            compact: !active,
+            active: lit,
+            pressed: suppressActive ? false : pressed,
+            compact: !lit,
             isFirst: isFirst,
             isLast: isLast,
           );

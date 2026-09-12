@@ -103,7 +103,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [080-[open]-…](080-[open]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | open | **5 / 5** · **13 / 13** | — |
 | [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **6 / 6** | — |
 | [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **3 / 5** · **6 / 10** | — |
-| [083-[open]-…](083-[open]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | open | **9 / 9** · **25 / 25** | — |
+| [083-[open]-…](083-[open]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | open | **9 / 9** · **26 / 26** | — |
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [084-[canceled]-…](canceled/084-[canceled]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | canceled | **Canceled** · superseded by [087](fixed/087-[fixed]-live-sports-pack-only.md) | — |
 | [085-[partial]-…](085-[partial]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | partial | **5 / 5** · **23 / 23** · **1 / 1** sides | — |

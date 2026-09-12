@@ -333,6 +333,11 @@ class _ListStatusPinState extends State<ListStatusPin> {
   void _openMenu() {
     if (_entry != null || _busy) return;
     final overlay = Overlay.of(context, rootOverlay: true);
+    // Desktop: drop focus on the pin so InkWell / focus chrome doesn't stick
+    // while hovering menu rows.
+    if (widget.scaleOnHover) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {

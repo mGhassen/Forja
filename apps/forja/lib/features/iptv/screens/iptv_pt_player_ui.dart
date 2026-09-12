@@ -1635,11 +1635,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Widget _buildTopBar(bool compact) {
-    return ListenableBuilder(
-      listenable: SettingsService.inAppMiniPlayerNotifier,
-      builder: (context, _) => DesktopWindowChrome.wrapDragMove(
-        _buildTopBarActions(compact),
-      ),
+    return DesktopWindowChrome.wrapDragMove(
+      _buildTopBarActions(compact),
     );
   }
 
@@ -1647,9 +1644,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     // PiP is phone/desktop chrome - hide on leanback TV (matches VOD player).
     final showPip =
         PipService.instance.isSupported && iptvShowPointerChrome(context);
-    final showInAppMini =
-        iptvShowPointerChrome(context) &&
-        InAppMiniPlayerController.settingEnabled;
+    // Mini button always on desktop pointer chrome — setting only gates Escape.
+    final showInAppMini = iptvShowPointerChrome(context);
     final tv = iptvUseTvFocus(context);
     void downFromTop() {
       if (_showProgressChrome &&

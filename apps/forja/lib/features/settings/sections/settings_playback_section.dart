@@ -218,8 +218,8 @@ class _SettingsPlaybackSectionState
                 SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(
                 context,
-                'In-app mini player',
-                'Escape keeps a small player inside Forja while you browse. Off by default. Distinct from picture-in-picture.',
+                'Escape to mini player',
+                'When Escape would leave the player, demote to the in-app mini instead. Off by default. The top-right mini button always works. Distinct from picture-in-picture.',
                 snap.inAppMiniPlayer,
                 (val) async {
                   await _settings.setInAppMiniPlayer(val);

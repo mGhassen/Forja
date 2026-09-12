@@ -77,7 +77,7 @@ void main() {
     });
 
     test('legacy list row keeps pack tmdb open', () {
-      final meta = metaItemFromLegacyListItem({
+      final row = {
         'title': 'The Matrix',
         'tmdbId': 603,
         'mediaType': 'movie',
@@ -91,12 +91,64 @@ void main() {
             'ctx': {'tmdbId': 603},
           },
         },
-      });
+      };
+      final meta = metaItemFromLegacyListItem(row);
       expect(meta.open?.surface, 'tmdb');
       expect(meta.open?.id, '603');
       expect(legacyListTmdbId({'tmdbId': 603}), 603);
       expect(legacyListTmdbId({'tmdbId': '603'}), 603);
       expect(tmdbCatalogTypeToken(meta), 'movie');
+      expect(legacyListEngineType(row), 'movie');
+    });
+
+    test('legacy list engine type routes anime and drama hubs', () {
+      expect(
+        legacyListEngineType({
+          'mediaType': 'anime',
+          'anilistId': 42,
+          'open': {
+            'surface': 'anime',
+            'id': '42',
+            'extract': {'resolveType': 'anime', 'panelCategory': 'anime'},
+          },
+        }),
+        'anime',
+      );
+      expect(
+        legacyListEngineType({
+          'mediaType': 'asian_drama',
+          'kisskhId': 88,
+          'open': {
+            'surface': 'drama',
+            'id': '88',
+            'extract': {'resolveType': 'drama', 'panelCategory': 'drama'},
+          },
+        }),
+        'drama',
+      );
+      expect(
+        legacyListEngineType({'mediaType': 'anime', 'anilistId': 1}),
+        'anime',
+      );
+      expect(
+        legacyListEngineType({'mediaType': 'asian_drama', 'tmdbId': 9}),
+        'drama',
+      );
+      expect(
+        legacyListEngineType({'mediaType': 'tv', 'tmdbId': 1396}),
+        'tv',
+      );
+    });
+
+    test('legacy list invents anime open from mediaType when missing', () {
+      final open = metaOpenFromLegacyListItem({
+        'mediaType': 'anime',
+        'anilistId': 21,
+        'title': 'Test',
+      });
+      expect(open.surface, 'anime');
+      expect(open.id, '21');
+      expect(open.effectiveExtract.resolveType, 'anime');
     });
   });
 }

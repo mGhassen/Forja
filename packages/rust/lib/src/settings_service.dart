@@ -462,7 +462,8 @@ class SettingsService {
     autoPipOnDesktopSwitchNotifier.value = v;
   }
 
-  /// Escape → in-Forja mini player (default off). Distinct from OS/window PiP.
+  /// Escape → in-Forja mini (default off). Distinct from OS/window PiP.
+  /// Does not gate the top-right mini button (always on desktop).
   /// Desktop-only — always off on phone / Android TV (not shown in Settings).
   Future<bool> getInAppMiniPlayer() async {
     if (platformProfile != PlatformProfile.desktop) {

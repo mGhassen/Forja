@@ -393,6 +393,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
   final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
   FocusNode? _returnFocus;
+  bool _restoreFocusOnClose = false;
   bool _busy = false;
 
   bool get _open => _entry != null;
@@ -428,11 +429,13 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     _clearTvDismiss();
     _removeOverlay();
     widget.onMenuOpenChanged?.call(false);
-    final back = _returnFocus;
+    final back = _restoreFocusOnClose ? _returnFocus : null;
     _returnFocus = null;
+    _restoreFocusOnClose = false;
     if (mounted) setState(() {});
+    if (back == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (back != null && back.canRequestFocus) back.requestFocus();
+      if (back.canRequestFocus) back.requestFocus();
     });
   }
 
@@ -441,6 +444,15 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     final overlay = Overlay.of(context, rootOverlay: true);
     final policy = ShellScope.inputPolicyOf(context);
     _returnFocus = FocusManager.instance.primaryFocus;
+    // Desktop mouse: drop trigger focus so hover chrome doesn't stick while
+    // picking a menu row (rows paint via MouseRegion, not focus steal).
+    if (policy.scaleOnHover) {
+      _restoreFocusOnClose = false;
+      _returnFocus?.unfocus();
+      _returnFocus = null;
+    } else {
+      _restoreFocusOnClose = true;
+    }
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
@@ -521,6 +533,8 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
   @override
   Widget build(BuildContext context) {
     final tv = widget.tvTabId;
+    final suppressActive =
+        _open && ShellScope.inputPolicyOf(context).scaleOnHover;
     return CompositedTransformTarget(
       link: _link,
       child: ValueListenableBuilder<int>(
@@ -545,6 +559,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                   color: kitListStatusPinColor(status),
                 ),
                 onTap: (!widget.enabled || _busy) ? null : _toggle,
+                suppressActive: suppressActive,
               ),
             ],
           );

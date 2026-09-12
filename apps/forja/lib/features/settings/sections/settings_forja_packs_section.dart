@@ -46,13 +46,19 @@ class _SettingsForjaPacksSectionState
   bool _engineInstalling = false;
   bool _engineReloading = false;
   bool _engineUpdatingAll = false;
+  /// Snapshot while Reload / Update all / Download all runs — keeps rows still.
+  List<EnginePack>? _frozenPacksDuringBulk;
+  EnginePackUpdatesState? _frozenUpdatesDuringBulk;
+  final Map<String, Future<PackDeviceSnapshot>> _deviceStateFutures = {};
+
+  bool get _bulkPackBusy =>
+      _engineReloading ||
+      _engineUpdatingAll ||
+      (_engineInstalling && _frozenPacksDuringBulk != null);
 
   @override
   void initState() {
     super.initState();
-    PluginInstallCoordinator.instance.progress.addListener(
-      _onPluginInstallProgress,
-    );
     SettingsPackPromptDrill.current.addListener(_onPackPromptDrill);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -60,19 +66,44 @@ class _SettingsForjaPacksSectionState
     });
   }
 
-  void _onPluginInstallProgress() {
-    if (mounted) setState(() {});
-  }
-
   void _onPackPromptDrill() {
     if (mounted) setState(() {});
   }
 
+  void _beginBulkPackOp(List<EnginePack> packs) {
+    _frozenPacksDuringBulk = List<EnginePack>.from(packs);
+    _frozenUpdatesDuringBulk = ref.read(enginePackUpdatesProvider);
+  }
+
+  void _endBulkPackOp() {
+    _frozenPacksDuringBulk = null;
+    _frozenUpdatesDuringBulk = null;
+    _deviceStateFutures.clear();
+  }
+
+  Future<PackDeviceSnapshot> _deviceStateFuture({
+    required EnginePack pack,
+    EnginePackUpdateInfo? update,
+  }) {
+    final key =
+        '${pack.sourceUrl}\0${pack.plugins.length}\0${pack.version}\0'
+        '${update?.remoteVersion ?? ''}';
+    final hit = _deviceStateFutures[key];
+    if (hit != null) return hit;
+    _deviceStateFutures.removeWhere(
+      (k, _) => k.startsWith('${pack.sourceUrl}\0'),
+    );
+    final future = resolvePackDeviceState(
+      manifestUrl: pack.sourceUrl,
+      localPack: pack,
+      update: update,
+    );
+    _deviceStateFutures[key] = future;
+    return future;
+  }
+
   @override
   void dispose() {
-    PluginInstallCoordinator.instance.progress.removeListener(
-      _onPluginInstallProgress,
-    );
     SettingsPackPromptDrill.current.removeListener(_onPackPromptDrill);
     _engineController.dispose();
     super.dispose();
@@ -88,25 +119,39 @@ class _SettingsForjaPacksSectionState
       );
     }
 
-    final enginePacks = ref.watch(enginePacksProvider).valueOrNull ?? const [];
-    final packUpdates = ref.watch(enginePackUpdatesProvider);
+    final livePacks = ref.watch(enginePacksProvider).valueOrNull ?? const [];
+    final enginePacks = _frozenPacksDuringBulk ?? livePacks;
+    final liveUpdates = ref.watch(enginePackUpdatesProvider);
+    final packUpdates = _frozenUpdatesDuringBulk ?? liveUpdates;
+
+    // Bulk Reload/Update/Download: freeze the list — progress + changeNotifier
+    // would remount every FutureBuilder / ExpansionTile and stutter.
+    final packSection = _bulkPackBusy
+        ? _buildEnginePackSection(
+            enginePacks,
+            packUpdates,
+            installProgress: null,
+          )
+        : ListenableBuilder(
+            listenable: Listenable.merge([
+              PluginInstallCoordinator.instance.progress,
+              EngineService.changeNotifier,
+              RemotePackIntentStore.changeNotifier,
+            ]),
+            builder: (context, _) => _buildEnginePackSection(
+              enginePacks,
+              packUpdates,
+              installProgress:
+                  PluginInstallCoordinator.instance.progress.value,
+            ),
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
           label: 'Forja packs',
-          children: [
-            ListenableBuilder(
-              listenable: Listenable.merge([
-                PluginInstallCoordinator.instance.progress,
-                EngineService.changeNotifier,
-                RemotePackIntentStore.changeNotifier,
-              ]),
-              builder: (context, _) =>
-                  _buildEnginePackSection(enginePacks, packUpdates),
-            ),
-          ],
+          children: [packSection],
         ),
       ],
     );
@@ -114,10 +159,10 @@ class _SettingsForjaPacksSectionState
 
   Widget _buildEnginePackSection(
     List<EnginePack> packs,
-    EnginePackUpdatesState packUpdates,
-  ) {
+    EnginePackUpdatesState packUpdates, {
+    PluginInstallProgress? installProgress,
+  }) {
     final installError = EngineService.officialInstallError.value;
-    final installProgress = PluginInstallCoordinator.instance.progress.value;
     // Pending = lean stubs / empty script set. Reload = packs with scripts on disk.
     final downloadable = [
       for (final pack in packs)
@@ -248,6 +293,25 @@ class _SettingsForjaPacksSectionState
                 onCheckAgain: () =>
                     ref.read(enginePackUpdatesProvider.notifier).refresh(),
               ),
+              if (_bulkPackBusy) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+                  child: Text(
+                    _engineReloading
+                        ? 'Reloading packs…'
+                        : _engineUpdatingAll
+                            ? 'Updating packs…'
+                            : 'Downloading packs…',
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary.withValues(
+                        alpha: 0.9,
+                      ),
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
               SettingsEngineMiniLabel(
                 downloadable.isNotEmpty && reloadable.isEmpty
                     ? 'Pending downloads'
@@ -285,11 +349,7 @@ class _SettingsForjaPacksSectionState
           KeyedSubtree(
             key: ValueKey('engine-pack-${pack.sourceUrl}'),
             child: FutureBuilder<PackDeviceSnapshot>(
-              future: resolvePackDeviceState(
-                manifestUrl: pack.sourceUrl,
-                localPack: pack,
-                update: update,
-              ),
+              future: _deviceStateFuture(pack: pack, update: update),
               builder: (context, snap) {
                 final state = snap.data?.state;
                 if (state == PackDeviceState.pendingPurge) {
@@ -484,7 +544,10 @@ class _SettingsForjaPacksSectionState
 
   Future<void> _reloadAllEnginePacks(List<EnginePack> packs) async {
     if (packs.isEmpty || _engineReloading) return;
-    setState(() => _engineReloading = true);
+    setState(() {
+      _engineReloading = true;
+      _beginBulkPackOp(packs);
+    });
     var ok = 0;
     try {
       for (final pack in packs) {
@@ -493,7 +556,6 @@ class _SettingsForjaPacksSectionState
             pack.sourceUrl,
             isUpdate: true,
           );
-          ref.read(enginePackUpdatesProvider.notifier).clearFor(pack.sourceUrl);
           ok++;
         } catch (e) {
           if (!mounted) return;
@@ -507,13 +569,21 @@ class _SettingsForjaPacksSectionState
         ForjaToast.success(ok == 1 ? '1 pack reloaded' : '$ok packs reloaded');
       }
     } finally {
-      if (mounted) setState(() => _engineReloading = false);
+      if (mounted) {
+        setState(() {
+          _engineReloading = false;
+          _endBulkPackOp();
+        });
+      }
     }
   }
 
   Future<void> _downloadAllPendingPacks(List<EnginePack> packs) async {
     if (packs.isEmpty || _engineInstalling || _engineReloading) return;
-    setState(() => _engineInstalling = true);
+    setState(() {
+      _engineInstalling = true;
+      _beginBulkPackOp(packs);
+    });
     var ok = 0;
     final installed = <EnginePack>[];
     try {
@@ -543,7 +613,12 @@ class _SettingsForjaPacksSectionState
         );
       }
     } finally {
-      if (mounted) setState(() => _engineInstalling = false);
+      if (mounted) {
+        setState(() {
+          _engineInstalling = false;
+          _endBulkPackOp();
+        });
+      }
     }
   }
 
@@ -551,7 +626,12 @@ class _SettingsForjaPacksSectionState
     Map<String, EnginePackUpdateInfo> updates,
   ) async {
     if (updates.isEmpty || _engineUpdatingAll) return;
-    setState(() => _engineUpdatingAll = true);
+    final allPacks =
+        ref.read(enginePacksProvider).valueOrNull ?? const <EnginePack>[];
+    setState(() {
+      _engineUpdatingAll = true;
+      _beginBulkPackOp(allPacks);
+    });
     var ok = 0;
     try {
       for (final entry in updates.values) {
@@ -560,9 +640,6 @@ class _SettingsForjaPacksSectionState
             entry.sourceUrl,
             isUpdate: true,
           );
-          ref
-              .read(enginePackUpdatesProvider.notifier)
-              .clearFor(entry.sourceUrl);
           ok++;
         } catch (e) {
           if (!mounted) return;
@@ -576,7 +653,12 @@ class _SettingsForjaPacksSectionState
         ForjaToast.success(ok == 1 ? '1 pack updated' : '$ok packs updated');
       }
     } finally {
-      if (mounted) setState(() => _engineUpdatingAll = false);
+      if (mounted) {
+        setState(() {
+          _engineUpdatingAll = false;
+          _endBulkPackOp();
+        });
+      }
     }
   }
 

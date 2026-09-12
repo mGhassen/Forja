@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **25 / 25** acceptance |
-| **Current slice** | Desktop in-app mini shipped — keep-play · chrome auto-hide · Close top-right · invisible drag resize · phone deferred |
+| **Progress** | **9 / 9** components · **26 / 26** acceptance |
+| **Current slice** | Desktop in-app mini — button always on; Escape auto-demote optional |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -60,12 +60,13 @@
 | 23 | R83-A23 | Mini Close control is top-right (not bottom row) | ✅ |
 | 24 | R83-A24 | Mini has no visible top-left resize grip (fixed default corner size) | ✅ |
 | 25 | R83-A25 | Top-left corner drag still resizes 16:9 (~240–720px) with no visible grip icon | ✅ |
+| 26 | R83-A26 | Top-right mini button always on desktop chrome; `in_app_mini_player` only gates Escape auto-demote (Playback: Escape to mini player) | ✅ |
 
 ---
 
 ## Summary
 
-In-app mini player: Escape (when enabled) shrinks the player to a corner **inside** the Forja window so the shell stays browsable. Distinct from OS/desktop window PiP (`PipService`). Default setting **off**.
+In-app mini player: top-right button always demotes to a corner **inside** the Forja window. Escape demotes only when **Escape to mini player** is on (default **off**). Distinct from OS/desktop window PiP (`PipService`).
 
 ### Goals
 

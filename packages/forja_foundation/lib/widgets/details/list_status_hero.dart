@@ -28,6 +28,7 @@ class ListStatusHero extends StatefulWidget {
     BuildContext context, {
     required String? status,
     required VoidCallback? onTap,
+    required bool menuOpen,
   }) triggerBuilder;
 
   static int extraFocusSlots(bool menuOpen) => 0;
@@ -66,6 +67,9 @@ class _ListStatusHeroState extends State<ListStatusHero> {
   void _openMenu() {
     if (_entry != null || _busy || !widget.enabled) return;
     final overlay = Overlay.of(context, rootOverlay: true);
+    // Drop trigger focus so desktop hover chrome doesn't stick on the pin
+    // while picking a menu row (TV autofocus then lands on the panel).
+    FocusManager.instance.primaryFocus?.unfocus();
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
@@ -129,6 +133,7 @@ class _ListStatusHeroState extends State<ListStatusHero> {
         context,
         status: widget.currentStatus,
         onTap: (!widget.enabled || _busy) ? null : _toggle,
+        menuOpen: _open,
       ),
     );
   }

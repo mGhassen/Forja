@@ -83,7 +83,7 @@ class KitListStatusHeroPaint extends StatelessWidget {
       enabled: enabled,
       onMenuOpenChanged: onMenuOpenChanged,
       useFocusableChips: policy.useFocusableMoodChips,
-      triggerBuilder: (context, {required status, required onTap}) {
+      triggerBuilder: (context, {required status, required onTap, required menuOpen}) {
         return HeroPillIconGroup(
           tvTabId: tvTabId,
           tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
@@ -98,6 +98,7 @@ class KitListStatusHeroPaint extends StatelessWidget {
                 color: kitListStatusPinColor(status),
               ),
               onTap: onTap,
+              suppressActive: menuOpen && policy.scaleOnHover,
             ),
           ],
         );
