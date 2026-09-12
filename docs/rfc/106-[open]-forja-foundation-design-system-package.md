@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **0 / 3** acceptance (deeper paint) · **1** ⏭️ Q1–Q12 |
-| **Current slice** | Deeper paint evacuate ([272](../issues/272-[open]-catalog-deeper-evacuate-paint.md)) · A18 🔄 · A19 ⏭️ |
+| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **3 / 3** acceptance (deeper paint) · **1** ⏭️ Q1–Q12 |
+| **Current slice** | Deeper paint evacuate shipped ([277](../issues/fixed/277-[fixed]-catalog-deeper-evacuate-paint.md)) · A18 🔄 · A19 ⏭️ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -78,13 +78,13 @@
 
 ---
 
-## Acceptance (deeper paint evacuate — issue 272)
+## Acceptance (deeper paint evacuate — issue 277)
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 28 | R106-A28 | Search cards + filter lens painters in package; host thin mapper | ⬜ |
-| 29 | R106-A29 | KitSection thin CatalogSection mapper (< ~200 lines) | ⬜ |
-| 30 | R106-A30 | List grid/dense/empty chrome via CatalogList composers | ⬜ |
+| 28 | R106-A28 | Search cards + filter lens painters in package; host thin mapper | ✅ |
+| 29 | R106-A29 | KitSection thin CatalogSection mapper (< ~200 lines) | ✅ |
+| 30 | R106-A30 | List grid/dense/empty chrome via CatalogList composers | ✅ |
 
 ---
 
