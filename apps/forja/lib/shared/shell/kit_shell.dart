@@ -1924,7 +1924,12 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
   @override
   void didUpdateWidget(covariant _CatalogHeroSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.future != widget.future) unawaited(_load());
+    if (oldWidget.future != widget.future) {
+      // Drop sticky slides when chrome Films / Series / Categories changes the
+      // feed key — otherwise an empty filtered spotlight keeps the old anime.
+      _lastSlides = null;
+      unawaited(_load());
+    }
   }
 
   Future<void> _load() async {
@@ -1933,6 +1938,8 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
     try {
       var items = await widget.future;
       if (!mounted || gen != _gen) return;
+      // Soft refresh / transient empty only — never across filter epochs
+      // (`_lastSlides` cleared in [didUpdateWidget] when [future] identity changes).
       if (items.isEmpty && _lastSlides != null && _lastSlides!.isNotEmpty) {
         items = _lastSlides!;
       } else if (items.isNotEmpty) {

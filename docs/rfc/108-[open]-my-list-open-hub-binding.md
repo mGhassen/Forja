@@ -23,7 +23,7 @@
 | 2 | R108-C02 | Host `ListOpenBinding` resolve + bookmark cache | ✅ |
 | 3 | R108-C03 | Ambiguous / Open-with hub picker (desktop + touch) | ✅ |
 | 4 | R108-C04 | Cross-hub bind via hub `search` when ids incompatible | ✅ |
-| 5 | R108-C05 | Settings defaults per engine type | ✅ |
+| 5 | R108-C05 | My List **pack** settings (`hub_select`) for open defaults | ✅ |
 | 6 | R108-C06 | TV long-press Open-with + feature doc | ✅ |
 
 ---
@@ -71,7 +71,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 12 | R108-A12 | Settings → My List: default hub per **installed** engine type (nav labels; no fixed Films/Anime rows) | ✅ |
+| 12 | R108-A12 | My List pack settings: `hub_select` defaults (installed hub options; `listOpenDefault`) | ✅ |
 | 13 | R108-A13 | Defaults apply only when row has compatible ids and no stored binding | ✅ |
 | 14 | R108-A14 | TV long-press Open-with parity | ✅ |
 | 15 | R108-A15 | Feature doc describes open binding / Open with | ✅ |

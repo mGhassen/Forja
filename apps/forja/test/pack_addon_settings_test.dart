@@ -258,6 +258,35 @@ void main() {
       expect(PackAddonSettingsSpec.fromPlugin(plugin), isNull);
     });
 
+    test('parses hub_select with hubTypes (options resolved at render)', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'my-list-hub',
+        'name': 'My List',
+        'entry': 'm.js',
+        'kind': 'catalog',
+        'settings': {
+          'addon': 'my_list',
+          'group': 'Open hubs',
+          'fields': [
+            {
+              'id': 'openDefault.drama',
+              'type': 'hub_select',
+              'hubTypes': ['drama'],
+              'listOpenDefault': true,
+              'label': 'Asian Drama',
+              'default': '',
+            },
+          ],
+        },
+      });
+      final spec = PackAddonSettingsSpec.fromPlugin(plugin);
+      expect(spec, isNotNull);
+      expect(spec!.fields.single.type, PackAddonSettingsFieldType.hubSelect);
+      expect(spec.fields.single.hubTypes, ['drama']);
+      expect(spec.fields.single.listOpenDefault, isTrue);
+      expect(spec.fields.single.options, isEmpty);
+    });
+
     test('parses multi_select with options and default list', () {
       final plugin = EnginePlugin.fromJson({
         'id': 'hub-multi',

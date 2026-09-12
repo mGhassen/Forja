@@ -9,7 +9,15 @@ class PackAddonSettingsOption {
   final String label;
 }
 
-enum PackAddonSettingsFieldType { toggle, select, text, multiSelect, password }
+enum PackAddonSettingsFieldType {
+  toggle,
+  select,
+  text,
+  multiSelect,
+  password,
+  /// Options = installed details hubs (filtered by [PackAddonSettingsField.hubTypes]).
+  hubSelect,
+}
 
 class PackAddonSettingsField {
   const PackAddonSettingsField({
@@ -21,6 +29,8 @@ class PackAddonSettingsField {
     this.defaultString = '',
     this.defaultStringList = const [],
     this.options = const [],
+    this.hubTypes = const [],
+    this.listOpenDefault = false,
   });
 
   final String id;
@@ -34,6 +44,12 @@ class PackAddonSettingsField {
   final List<String> defaultStringList;
   final List<PackAddonSettingsOption> options;
 
+  /// Engine type tokens for [PackAddonSettingsFieldType.hubSelect].
+  final List<String> hubTypes;
+
+  /// When true, value also writes [ListOpenPrefs] for each [hubTypes] token.
+  final bool listOpenDefault;
+
   static PackAddonSettingsField? fromJson(Map<String, dynamic> j) {
     final id = (j['id'] ?? '').toString().trim();
     final label = (j['label'] ?? '').toString().trim();
@@ -46,6 +62,7 @@ class PackAddonSettingsField {
       'password' || 'secret' => PackAddonSettingsFieldType.password,
       'multi_select' || 'chips' || 'multiselect' =>
         PackAddonSettingsFieldType.multiSelect,
+      'hub_select' || 'hubselect' || 'hub' => PackAddonSettingsFieldType.hubSelect,
       _ => null,
     };
     if (type == null) return null;
@@ -66,6 +83,23 @@ class PackAddonSettingsField {
         options.isEmpty) {
       return null;
     }
+
+    final hubTypes = <String>[];
+    final hubRaw = j['hubTypes'] ?? j['hub_types'] ?? j['types'];
+    if (hubRaw is List) {
+      for (final e in hubRaw) {
+        final t = e.toString().trim();
+        if (t.isNotEmpty) hubTypes.add(t);
+      }
+    } else if (hubRaw is String && hubRaw.trim().isNotEmpty) {
+      hubTypes.add(hubRaw.trim());
+    }
+    if (type == PackAddonSettingsFieldType.hubSelect && hubTypes.isEmpty) {
+      return null;
+    }
+
+    final listOpenDefault = j['listOpenDefault'] == true ||
+        j['list_open_default'] == true;
 
     final subtitle = (j['subtitle'] ?? '').toString();
     var defaultBool = false;
@@ -92,6 +126,8 @@ class PackAddonSettingsField {
       defaultString: defaultString,
       defaultStringList: defaultStringList,
       options: options,
+      hubTypes: hubTypes,
+      listOpenDefault: listOpenDefault,
     );
   }
 }
@@ -174,6 +210,7 @@ class PackAddonSettingsSpec {
             type: switch (f.type) {
               PackAddonSettingsFieldType.toggle => 'toggle',
               PackAddonSettingsFieldType.select => 'select',
+              PackAddonSettingsFieldType.hubSelect => 'select',
               PackAddonSettingsFieldType.text => 'text',
               PackAddonSettingsFieldType.password => 'password',
               PackAddonSettingsFieldType.multiSelect => 'multi_select',

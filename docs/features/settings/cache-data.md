@@ -12,10 +12,6 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 ## What you can do
 
-### My List open hubs
-
-- One row per engine type declared by your **installed** details hubs (nav labels from those packs — not a fixed Films / Anime list). Pick the default hub for list rows of that type when nothing is saved yet. **Auto** uses the first matching hub. Change a saved choice later from My List with **Open with…** (right-click / long-press).
-
 ### Safe to clear
 
 - **Stream cache** — saved webstreaming stream URLs and seek buffers for **this profile / Guest** (plus idle torrent downloads on phone/desktop; torrent temp is shared on the device). Next Play re-resolves. Settings and continue watching stay.

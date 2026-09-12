@@ -5,7 +5,9 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
+import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
+import 'package:forja/shared/engine/lists/list_open_prefs.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/shell_focusable_tap.dart';
@@ -102,12 +104,9 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
               defaultValue: field.defaultBool,
             ),
           PackAddonSettingsFieldType.select ||
+          PackAddonSettingsFieldType.hubSelect ||
           PackAddonSettingsFieldType.text =>
-            await PackSettingsStore.getString(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultString,
-            ),
+            await _loadString(spec, field),
           PackAddonSettingsFieldType.password =>
             await PackSettingsStore.getSecret(
               spec.pluginId,
@@ -174,6 +173,24 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   static String _valueKey(String pluginId, String fieldId) =>
       '$pluginId::$fieldId';
 
+  Future<String> _loadString(
+    PackAddonSettingsSpec spec,
+    PackAddonSettingsField field,
+  ) async {
+    if (field.type == PackAddonSettingsFieldType.hubSelect &&
+        field.listOpenDefault &&
+        field.hubTypes.isNotEmpty) {
+      final fromPrefs =
+          await ListOpenPrefs.defaultPluginId(field.hubTypes.first);
+      if (fromPrefs != null && fromPrefs.isNotEmpty) return fromPrefs;
+    }
+    return PackSettingsStore.getString(
+      spec.pluginId,
+      field.id,
+      defaultValue: field.defaultString,
+    );
+  }
+
   Future<void> _setBool(
     PackAddonSettingsSpec spec,
     PackAddonSettingsField field,
@@ -190,6 +207,16 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     String value,
   ) async {
     await PackSettingsStore.setString(spec.pluginId, field.id, value);
+    if (field.type == PackAddonSettingsFieldType.hubSelect &&
+        field.listOpenDefault) {
+      final id = value.trim();
+      for (final t in field.hubTypes) {
+        await ListOpenPrefs.setDefaultPluginId(
+          t,
+          id.isEmpty ? null : id,
+        );
+      }
+    }
     if (!mounted) return;
     setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
@@ -252,6 +279,12 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
             final next = idByLabel[picked] ?? picked;
             unawaited(_setString(spec, field, next));
           },
+        );
+      case PackAddonSettingsFieldType.hubSelect:
+        return _HubSelectField(
+          field: field,
+          value: (_values[key] ?? field.defaultString).toString(),
+          onChanged: (next) => unawaited(_setString(spec, field, next)),
         );
       case PackAddonSettingsFieldType.text:
       case PackAddonSettingsFieldType.password:
@@ -389,6 +422,77 @@ class _MultiSelectChipsField extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _HubSelectField extends StatefulWidget {
+  const _HubSelectField({
+    required this.field,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final PackAddonSettingsField field;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_HubSelectField> createState() => _HubSelectFieldState();
+}
+
+class _HubSelectFieldState extends State<_HubSelectField> {
+  List<PackAddonSettingsOption> _options = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  @override
+  void didUpdateWidget(covariant _HubSelectField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.field.hubTypes.join() != widget.field.hubTypes.join()) {
+      unawaited(_load());
+    }
+  }
+
+  Future<void> _load() async {
+    final opts = await PackHubSelectOptions.optionsFor(widget.field);
+    if (!mounted) return;
+    setState(() {
+      _options = opts;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return SettingsSelectRow(
+        title: widget.field.label,
+        subtitle: widget.field.subtitle,
+        value: '…',
+        options: const ['…'],
+        onChanged: (_) {},
+      );
+    }
+    final id = widget.value;
+    final labelById = {for (final o in _options) o.id: o.label};
+    final idByLabel = {for (final o in _options) o.label: o.id};
+    final shown = labelById[id] ?? (id.isEmpty ? 'Auto' : id);
+    return SettingsSelectRow(
+      title: widget.field.label,
+      subtitle: widget.field.subtitle,
+      value: shown,
+      options: [for (final o in _options) o.label],
+      onChanged: (picked) {
+        if (picked == null) return;
+        final next = idByLabel[picked] ?? '';
+        widget.onChanged(next);
+      },
     );
   }
 }

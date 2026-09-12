@@ -21,7 +21,6 @@ import 'package:forja/features/settings/sections/settings_forja_packs_section.da
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
-import 'package:forja/features/settings/sections/settings_my_list_panel.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -328,7 +327,6 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
         ),
         if (widget.visibility.showIptvSettings)
           const SettingsIptvPortalsSection(),
-        const SettingsMyListPanel(),
         SettingsCacheDataSection(
           showIptvPortalCache: widget.visibility.showIptvSettings,
         ),
