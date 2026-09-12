@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_providers.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -58,6 +57,9 @@ class ListFollowTarget {
   }) {
     final open = meta.open;
     if (open == null) return null;
+    final fromIds = meta.numericId('tmdb');
+    final fromOpen =
+        open.surface.trim() == 'tmdb' ? open.idInt : null;
     return ListFollowTarget(
       pluginId: pluginId,
       open: open,
@@ -65,8 +67,11 @@ class ListFollowTarget {
       posterPath: meta.poster,
       voteAverage: meta.rating ?? 0,
       releaseDate: meta.releaseInfo,
-      tmdbId: meta.numericId('tmdb'),
-      tmdbMediaType: meta.tmdbMediaType,
+      tmdbId: fromIds ?? fromOpen,
+      tmdbMediaType: meta.tmdbMediaType ??
+          (open.surface.trim() == 'tmdb'
+              ? BookmarkStore.normalizeTmdbMediaType(meta.type)
+              : null),
       mediaType: meta.type,
     );
   }
@@ -80,7 +85,8 @@ class ListFollow {
   static ListFollowTarget resolveSimklTarget(ListFollowTarget t) {
     if (t.tmdbId != null) return t;
     if (t.resolvedMediaType != 'drama') return t;
-    final stored = BookmarkStore().itemOf(t.uniqueId);
+    final stored = BookmarkStore().resolve(uniqueId: t.uniqueId) ??
+        BookmarkStore().itemOf(t.uniqueId);
     final storedTmdb = stored?['tmdbId'] as int?;
     if (storedTmdb == null) return t;
     return t.copyWith(
@@ -100,12 +106,18 @@ class ListFollow {
       final sync = resolveSimklTarget(t);
       final keys = <String>{t.uniqueId};
       if (sync.tmdbId != null) {
-        keys.add(
-          BookmarkStore.movieId(sync.tmdbId!, sync.tmdbMediaType ?? 'tv'),
-        );
+        final mt = BookmarkStore.normalizeTmdbMediaType(
+              sync.tmdbMediaType ?? sync.resolvedMediaType,
+            ) ??
+            'tv';
+        keys.add(BookmarkStore.movieId(sync.tmdbId!, mt));
       }
       container?.read(bookmarkHiddenKeysProvider.notifier).addAll(keys);
-      await BookmarkStore().remove(t.uniqueId);
+      await BookmarkStore().remove(
+        t.uniqueId,
+        tmdbId: sync.tmdbId,
+        mediaType: sync.tmdbMediaType ?? sync.resolvedMediaType,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
@@ -161,10 +173,12 @@ class ListFollow {
   static Future<void> markWatchingOnPlay(ListFollowTarget raw) async {
     await BookmarkStore().ensureLoaded();
     final uid = raw.uniqueId;
-    if (BookmarkStore().contains(uid)) {
-      final status = BookmarkStore().statusOf(uid);
-      if (status != 'plantowatch') return;
-    }
+    final status = BookmarkStore().resolvedStatus(
+      uniqueId: uid,
+      tmdbId: raw.tmdbId,
+      mediaType: raw.tmdbMediaType ?? raw.resolvedMediaType,
+    );
+    if (status != null && status != 'plantowatch') return;
     await setStatus(raw, 'watching');
   }
 
@@ -247,7 +261,8 @@ class ListFollow {
       );
       return;
     }
-    final stored = BookmarkStore().itemOf(raw.uniqueId);
+    final stored = BookmarkStore().resolve(uniqueId: raw.uniqueId) ??
+        BookmarkStore().itemOf(raw.uniqueId);
     final tmdbId = raw.tmdbId ?? stored?['tmdbId'] as int?;
     final mt =
         raw.tmdbMediaType ?? stored?['tmdbMediaType']?.toString() ?? 'tv';
@@ -257,10 +272,6 @@ class ListFollow {
   }
 
   static void _invalidate(ProviderContainer? container) {
-    final c = container;
-    if (c == null) return;
-    try {
-      c.invalidate(simklWatchlistProvider);
-    } catch (_) {}
+    invalidateListHubFeeds(container);
   }
 }

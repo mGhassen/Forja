@@ -249,10 +249,16 @@ final hubPluginFeedProvider =
   final pluginId = key.pluginId;
   final status = key.status;
   final revision = ref.watch(bookmarkRevisionProvider);
+  ref.watch(listFeedEpochProvider);
   ref.watch(externalListsGateProvider);
   final hiddenKeys = ref.watch(bookmarkHiddenKeysProvider);
 
-  var forceRefresh = ref.read(hubFeedForceRefreshProvider(pluginId));
+  // Always bypass MetaCache — bookmarks/Simkl change under us; `_rev` alone
+  // still lost to soft tab stale + keep-alive until pull-to-refresh.
+  final forceFlag = ref.read(hubFeedForceRefreshProvider(pluginId));
+  if (forceFlag) {
+    ref.read(hubFeedForceRefreshProvider(pluginId).notifier).state = false;
+  }
   var rawItems = <Map<String, dynamic>>[];
   final tabId = PluginNavRegistry.tabIdForPluginSync(pluginId);
   final packSourceUrl = tabId == null
@@ -268,11 +274,8 @@ final hubPluginFeedProvider =
         'hiddenKeys': hiddenKeys.toList(),
         '_rev': revision,
       },
-      forceRefresh: forceRefresh,
+      forceRefresh: true,
     );
-    if (forceRefresh) {
-      ref.read(hubFeedForceRefreshProvider(pluginId).notifier).state = false;
-    }
     if (env.ok) {
       final items = env.data?['items'];
       if (items is List) {
@@ -292,9 +295,6 @@ final hubPluginFeedProvider =
     }
   } catch (e, st) {
     debugPrint('[hub-feed] $pluginId feed: $e\n$st');
-    if (forceRefresh) {
-      ref.read(hubFeedForceRefreshProvider(pluginId).notifier).state = false;
-    }
   }
   return rawItems;
 });
@@ -396,6 +396,7 @@ final class PluginHubFeedListSource extends KitListSource {
     clearPluginHubFeedEnrichCache(pluginId);
     ref.read(hubFeedForceRefreshProvider(pluginId).notifier).state = true;
     ref.invalidate(bookmarkRevisionProvider);
+    ref.read(listFeedEpochProvider.notifier).bump();
     ref.invalidate(simklWatchlistProvider);
     ref.invalidate(hubFeedEnrichEpochProvider(pluginId));
     ref.invalidate(hubPluginFeedProvider);
@@ -408,6 +409,13 @@ final class PluginHubFeedListSource extends KitListSource {
     KitListEntry entry,
   ) =>
       openCatalogListEntry(context, entry);
+
+  @override
+  Future<void> openEntryWithChoice(
+    BuildContext context,
+    KitListEntry entry,
+  ) =>
+      openCatalogListEntry(context, entry, forcePick: true);
 
   @override
   Widget? buildEntryPin(

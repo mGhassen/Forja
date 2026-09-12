@@ -5,14 +5,17 @@ import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 
 Map<String, dynamic> hubDetailsParams(MetaItem seed) {
-  final params = <String, dynamic>{'id': seed.id};
   final open = seed.open;
+  final openId = open?.id.trim() ?? '';
+  // Prefer pack handoff id — seed.id may be a list uniqueId (catalog_…).
+  final detailsId = openId.isNotEmpty ? openId : seed.id;
+  final params = <String, dynamic>{'id': detailsId};
   if (open == null) return params;
   for (final e in open.toJson().entries) {
     if (e.key == 'surface') continue;
     params[e.key] = e.value;
   }
-  params['id'] = seed.id;
+  params['id'] = detailsId;
   return params;
 }
 

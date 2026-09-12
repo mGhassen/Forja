@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
+import 'package:forja/shared/engine/lists/list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 
@@ -45,9 +45,11 @@ class ListFollowFromWatched {
     if (movie.mediaType != 'tv') return;
     await BookmarkStore().ensureLoaded();
     final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
-    final current = BookmarkStore().contains(uid)
-        ? BookmarkStore().statusOf(uid)
-        : null;
+    final current = BookmarkStore().resolvedStatus(
+      uniqueId: uid,
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+    );
     final to = nextStatus(
       current: current,
       watchedCount: watchedCount,
@@ -66,10 +68,11 @@ class ListFollowFromWatched {
     ProviderContainer? container,
   }) async {
     await BookmarkStore().ensureLoaded();
-    final uid = target.uniqueId;
-    final current = BookmarkStore().contains(uid)
-        ? BookmarkStore().statusOf(uid)
-        : null;
+    final current = BookmarkStore().resolvedStatus(
+      uniqueId: target.uniqueId,
+      tmdbId: target.tmdbId,
+      mediaType: target.tmdbMediaType ?? target.resolvedMediaType,
+    );
     final to = nextStatus(
       current: current,
       watchedCount: watchedCount,
@@ -122,10 +125,12 @@ class ListFollowFromWatched {
     if (movie.mediaType != 'movie') return;
     await BookmarkStore().ensureLoaded();
     final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
-    if (BookmarkStore().contains(uid)) {
-      final status = BookmarkStore().statusOf(uid);
-      if (status != 'plantowatch') return;
-    }
+    final status = BookmarkStore().resolvedStatus(
+      uniqueId: uid,
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+    );
+    if (status != null && status != 'plantowatch') return;
     await _setTmdbStatus(movie, 'watching', container: container);
   }
 
@@ -140,8 +145,12 @@ class ListFollowFromWatched {
     if (!isWatchFinished(positionMs, durationMs)) return;
     await BookmarkStore().ensureLoaded();
     final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
-    if (BookmarkStore().contains(uid) &&
-        BookmarkStore().statusOf(uid) == 'completed') {
+    if (BookmarkStore().resolvedStatus(
+          uniqueId: uid,
+          tmdbId: movie.id,
+          mediaType: movie.mediaType,
+        ) ==
+        'completed') {
       return;
     }
     await _setTmdbStatus(movie, 'completed', container: container);
@@ -194,7 +203,7 @@ class ListFollowFromWatched {
         to: to,
       );
     }
-    container?.invalidate(simklWatchlistProvider);
+    invalidateListHubFeeds(container);
     return ok;
   }
 

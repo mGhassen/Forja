@@ -89,6 +89,14 @@ abstract class KitListSource {
 
   Future<void> openEntry(BuildContext context, KitListEntry entry);
 
+  /// Secondary open — hub picker / rebind (RFC-108). Default: same as [openEntry]
+  /// with force pick when the source supports it.
+  Future<void> openEntryWithChoice(
+    BuildContext context,
+    KitListEntry entry,
+  ) =>
+      openEntry(context, entry);
+
   Widget? buildEntryPin(
     BuildContext context,
     KitListEntry entry,

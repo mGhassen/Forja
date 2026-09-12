@@ -78,6 +78,17 @@ class MetaCache {
     _entries.removeWhere((_, e) => e.pluginId == pluginId);
   }
 
+  /// Drop entries for one catalog [action] (`feed`, `rail`, …).
+  /// Key shape: `pluginId|pack|action|paramsHash|authSubject`.
+  void wipeAction(String action) {
+    final want = action.trim();
+    if (want.isEmpty) return;
+    _entries.removeWhere((key, _) {
+      final parts = key.split('|');
+      return parts.length >= 3 && parts[2] == want;
+    });
+  }
+
   void wipeAll() => _entries.clear();
 
   /// Drop everything when a hub pack version changes.

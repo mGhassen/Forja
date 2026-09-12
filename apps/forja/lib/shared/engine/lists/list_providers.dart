@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/hub/meta_cache.dart';
+import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:rust/rust.dart';
 
 /// Bumps when [BookmarkStore.changeNotifier] changes.
@@ -15,6 +17,30 @@ class BookmarkRevisionNotifier extends Notifier<int> {
     ref.onDispose(() => n.removeListener(listener));
     return n.value;
   }
+}
+
+/// Explicit bump after bookmark writes — My List feed must rebuild past MetaCache.
+final listFeedEpochProvider = NotifierProvider<ListFeedEpochNotifier, int>(
+  ListFeedEpochNotifier.new,
+);
+
+class ListFeedEpochNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+/// After a local bookmark write — bust MetaCache `feed` + list providers.
+/// Pin updates from [BookmarkStore] immediately; the grid must not keep a
+/// stale composed feed until pull-to-refresh.
+void invalidateListHubFeeds(ProviderContainer? container) {
+  MetaCache.instance.wipeAction('feed');
+  if (container == null) return;
+  try {
+    container.invalidate(simklWatchlistProvider);
+    container.read(listFeedEpochProvider.notifier).bump();
+  } catch (_) {}
 }
 
 /// Local bookmark rows (persist engine).

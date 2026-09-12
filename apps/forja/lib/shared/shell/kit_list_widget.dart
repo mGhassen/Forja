@@ -245,6 +245,19 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     source.openEntry(context, entry);
   }
 
+  void _openEntryWithChoice(
+    BuildContext context,
+    KitListSource source,
+    KitListEntry entry,
+  ) {
+    // Side-panel / details hosts keep primary open; Open-with is list grids.
+    if (_opensDetails || _autoPanel) {
+      _openEntry(context, source, entry);
+      return;
+    }
+    unawaited(source.openEntryWithChoice(context, entry));
+  }
+
   /// TV: after opening a match, land D-pad on Providers in the side panel.
   void _claimPanelProvidersFocus() {
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
@@ -915,6 +928,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         atRightColumn: index % grid.columns == grid.columns - 1,
       ),
       onTap: () => _openEntry(context, source, entry),
+      onLongPress: () => _openEntryWithChoice(context, source, entry),
     );
   }
 

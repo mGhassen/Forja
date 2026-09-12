@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/details/kit_list_status_pin.dart';
 import 'package:forja/shared/shell/hero_pill_buttons.dart';
 
-import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shared/engine/lists/list_providers.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
@@ -97,6 +96,9 @@ class KitListStatusButton extends StatelessWidget {
     if (followTarget != null) {
       return _WiredStatusPin(
         uniqueId: followTarget!.uniqueId,
+        tmdbId: followTarget!.tmdbId,
+        mediaType:
+            followTarget!.tmdbMediaType ?? followTarget!.resolvedMediaType,
         iconSize: iconSize,
         iconColor: iconColor,
         excludeFromTvTraversal: excludeFromTvTraversal,
@@ -113,6 +115,8 @@ class KitListStatusButton extends StatelessWidget {
     if (movie != null && !useHeartIcon) {
       return _WiredStatusPin(
         uniqueId: BookmarkStore.movieId(movie!.id, movie!.mediaType),
+        tmdbId: movie!.id,
+        mediaType: movie!.mediaType,
         iconSize: iconSize,
         iconColor: iconColor,
         excludeFromTvTraversal: excludeFromTvTraversal,
@@ -143,7 +147,11 @@ class KitListStatusButton extends StatelessWidget {
     if (to.isEmpty) {
       final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
       container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
-      await BookmarkStore().remove(uid);
+      await BookmarkStore().remove(
+        uid,
+        tmdbId: movie.id,
+        mediaType: movie.mediaType,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -152,7 +160,7 @@ class KitListStatusButton extends StatelessWidget {
           mediaType: movie.mediaType,
         );
       }
-      container?.invalidate(simklWatchlistProvider);
+      invalidateListHubFeeds(container);
       return ok;
     }
     await BookmarkStore().upsertMovie(
@@ -173,8 +181,8 @@ class KitListStatusButton extends StatelessWidget {
         mediaType: movie.mediaType,
         to: to,
       );
-      container?.invalidate(simklWatchlistProvider);
     }
+    invalidateListHubFeeds(container);
     return ok;
   }
 }
@@ -184,6 +192,8 @@ class _WiredStatusPin extends StatelessWidget {
   const _WiredStatusPin({
     required this.uniqueId,
     required this.onSetStatus,
+    this.tmdbId,
+    this.mediaType,
     this.iconSize,
     this.iconColor,
     this.excludeFromTvTraversal = false,
@@ -191,6 +201,8 @@ class _WiredStatusPin extends StatelessWidget {
   });
 
   final String uniqueId;
+  final int? tmdbId;
+  final String? mediaType;
   final Future<bool> Function(String to) onSetStatus;
   final double? iconSize;
   final Color? iconColor;
@@ -202,10 +214,12 @@ class _WiredStatusPin extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = BookmarkStore().contains(uniqueId);
-        final status = inList
-            ? BookmarkStore().statusOf(uniqueId)
-            : knownStatus;
+        final status = BookmarkStore().resolvedStatus(
+              uniqueId: uniqueId,
+              tmdbId: tmdbId,
+              mediaType: mediaType,
+            ) ??
+            knownStatus;
         return KitListStatusPin(
           currentStatus: status,
           iconSize: iconSize,
@@ -346,8 +360,16 @@ class BookmarkHeroIcon extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = BookmarkStore().contains(_uniqueId);
-        final status = inList ? BookmarkStore().statusOf(_uniqueId) : null;
+        final uid = _uniqueId;
+        final status = movie != null
+            ? BookmarkStore().resolvedStatus(
+                uniqueId: uid,
+                tmdbId: movie!.id,
+                mediaType: movie!.mediaType,
+              )
+            : (BookmarkStore().contains(uid)
+                ? BookmarkStore().statusOf(uid)
+                : null);
         return Icon(
           kitListStatusPinIcon(status),
           size: 20,
@@ -364,6 +386,8 @@ class KitListStatusControl extends StatefulWidget {
     super.key,
     required this.uniqueId,
     required this.onSetStatus,
+    this.tmdbId,
+    this.mediaType,
     this.tvTabId,
     this.tvItemIndexStart = 0,
     this.onUpEdge,
@@ -373,6 +397,8 @@ class KitListStatusControl extends StatefulWidget {
   });
 
   final String uniqueId;
+  final int? tmdbId;
+  final String? mediaType;
   final Future<bool> Function(String status) onSetStatus;
   final String? tvTabId;
   final int tvItemIndexStart;
@@ -476,12 +502,11 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                     child: ValueListenableBuilder<int>(
                       valueListenable: BookmarkStore.changeNotifier,
                       builder: (context, _, _) {
-                        final inList = BookmarkStore().contains(
-                          widget.uniqueId,
+                        final status = BookmarkStore().resolvedStatus(
+                          uniqueId: widget.uniqueId,
+                          tmdbId: widget.tmdbId,
+                          mediaType: widget.mediaType,
                         );
-                        final status = inList
-                            ? BookmarkStore().statusOf(widget.uniqueId)
-                            : null;
                         return KitListStatusPopupPanel(
                           currentStatus: status,
                           busy: _busy,
@@ -547,10 +572,11 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
       child: ValueListenableBuilder<int>(
         valueListenable: BookmarkStore.changeNotifier,
         builder: (context, _, _) {
-          final inList = BookmarkStore().contains(widget.uniqueId);
-          final status = inList
-              ? BookmarkStore().statusOf(widget.uniqueId)
-              : null;
+          final status = BookmarkStore().resolvedStatus(
+            uniqueId: widget.uniqueId,
+            tmdbId: widget.tmdbId,
+            mediaType: widget.mediaType,
+          );
           return HeroPillIconGroup(
             tvTabId: tv,
             tvRowId: tv != null ? MediaDetailsTv.heroRowId : null,
@@ -605,7 +631,11 @@ class BookmarkHeroStatusPill extends StatelessWidget {
     if (to.isEmpty) {
       final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
       container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
-      await BookmarkStore().remove(uid);
+      await BookmarkStore().remove(
+        uid,
+        tmdbId: movie.id,
+        mediaType: movie.mediaType,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -614,7 +644,7 @@ class BookmarkHeroStatusPill extends StatelessWidget {
           mediaType: movie.mediaType,
         );
       }
-      container?.invalidate(simklWatchlistProvider);
+      invalidateListHubFeeds(container);
       return ok;
     }
     await BookmarkStore().upsertMovie(
@@ -635,8 +665,8 @@ class BookmarkHeroStatusPill extends StatelessWidget {
         mediaType: movie.mediaType,
         to: to,
       );
-      container?.invalidate(simklWatchlistProvider);
     }
+    invalidateListHubFeeds(container);
     return ok;
   }
 
@@ -644,6 +674,8 @@ class BookmarkHeroStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return KitListStatusControl(
       uniqueId: BookmarkStore.movieId(movie.id, movie.mediaType),
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
       onSetStatus: (to) => _setStatus(context, to),
       tvTabId: tvTabId,
       tvItemIndexStart: tvItemIndexStart,

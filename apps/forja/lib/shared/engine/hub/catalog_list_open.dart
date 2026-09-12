@@ -8,8 +8,9 @@ import 'package:forja/shared/shell/forja_shell_layout.dart';
 
 Future<void> openCatalogListEntry(
   BuildContext context,
-  KitListEntry entry,
-) async {
+  KitListEntry entry, {
+  bool forcePick = false,
+}) async {
   if (!context.mounted) return;
   final shellTabId = ShellBus.activeShellTabId ?? '';
   if (shellTabId.isEmpty) return;
@@ -28,6 +29,7 @@ Future<void> openCatalogListEntry(
       context,
       item: row,
       shellTabId: shellTabId,
+      forcePick: forcePick,
     );
   }
 }

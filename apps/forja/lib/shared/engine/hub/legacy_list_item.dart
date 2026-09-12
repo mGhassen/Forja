@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_open.dart';
-import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/engine/lists/list_open_flow.dart';
 
 /// Prefer [metaOpen] / [open]; accept persisted [catalogOpen] from upsertCatalog.
 Object? legacyListStoredOpenRaw(Map<String, dynamic> item) =>
@@ -42,7 +41,6 @@ String? legacyListEngineType(Map<String, dynamic> item) {
 }
 
 /// `anime` / `drama` when the row is a hub bookmark — not Home/TMDB.
-@visibleForTesting
 String? legacyListHubEngineType(Map<String, dynamic> item) {
   final mt = item['mediaType']?.toString() ?? '';
   final kind = item['kind']?.toString() ?? '';
@@ -212,7 +210,6 @@ Map<String, dynamic> _legacyListExtractCtx(Map<String, dynamic> item) {
 
 /// Build [MetaOpen] from a stored row, including extract when missing.
 /// Hub anime/drama always wins over a conflicting `tmdb` open (wrong TMDB ids).
-@visibleForTesting
 MetaOpen metaOpenFromLegacyListItem(Map<String, dynamic> item) {
   final hub = legacyListHubEngineType(item);
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
@@ -348,53 +345,13 @@ Future<void> openLegacyListItem(
   BuildContext context, {
   required Map<String, dynamic> item,
   String? shellTabId,
+  bool forcePick = false,
 }) async {
-  final meta = metaItemFromLegacyListItem(item);
-  final open = meta.open;
-  final detailsPluginId = await resolveLegacyListDetailsPluginId(
-    item: item,
-    meta: meta,
-  );
-  if (!context.mounted) return;
-
-  if (open != null &&
-      metaOpenUsesKitDetails(open) &&
-      detailsPluginId != null &&
-      detailsPluginId.isNotEmpty) {
-    await openMetaItem(
-      context,
-      pluginId: detailsPluginId,
-      item: meta,
-      shellTabId: shellTabId,
-    );
-    return;
-  }
-
-  final tmdbId = legacyListTmdbId(item);
-  if (tmdbId == null ||
-      tmdbId <= 0 ||
-      detailsPluginId == null ||
-      detailsPluginId.isEmpty ||
-      !context.mounted) {
-    return;
-  }
-  final mediaType = item['mediaType']?.toString() ?? 'movie';
-  final movie = Movie(
-    id: tmdbId,
-    imdbId: item['imdbId']?.toString(),
-    title: item['title']?.toString() ?? 'Unknown',
-    posterPath: item['posterPath']?.toString() ?? '',
-    backdropPath: item['backdropPath']?.toString() ??
-        item['posterPath']?.toString() ??
-        '',
-    voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-    releaseDate: item['releaseDate']?.toString() ?? '',
-    mediaType: mediaType == 'series' ? 'tv' : mediaType,
-  );
-  await openMetaItem(
+  // RFC-108 — hub binding + picker. Falls through only if binding path no-ops.
+  await openListItemWithBinding(
     context,
-    pluginId: detailsPluginId,
-    item: metaItemFromMovie(movie),
+    item: item,
     shellTabId: shellTabId,
+    forcePick: forcePick,
   );
 }

@@ -12,6 +12,10 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 ## What you can do
 
+### My List open defaults
+
+- **Films / Series / Anime / Asian Drama** — pick which installed hub opens titles of that type when a list row has matching ids and no saved hub yet. **Auto** uses the first matching details hub. Change a saved choice later from My List with **Open with…** (right-click / long-press).
+
 ### Safe to clear
 
 - **Stream cache** — saved webstreaming stream URLs and seek buffers for **this profile / Guest** (plus idle torrent downloads on phone/desktop; torrent temp is shared on the device). Next Play re-resolves. Settings and continue watching stay.

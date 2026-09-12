@@ -43,6 +43,8 @@ class KitListStatusHero extends StatelessWidget {
     // Prefer the shared host control (bookmark listen + TV dismiss + toast).
     return KitListStatusControl(
       uniqueId: target.uniqueId,
+      tmdbId: target.tmdbId,
+      mediaType: target.tmdbMediaType ?? target.resolvedMediaType,
       onSetStatus: (to) => _setStatus(context, to),
       tvTabId: tvTabId,
       tvItemIndexStart: tvItemIndexStart,

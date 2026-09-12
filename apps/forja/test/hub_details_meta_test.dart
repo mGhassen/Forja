@@ -3,6 +3,37 @@ import 'package:forja/shared/engine/hub/kit_details_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 void main() {
+  group('hubDetailsParams', () {
+    test('prefers open.id over list uniqueId seed.id', () {
+      const seed = MetaItem(
+        id: 'catalog_kisskh-hub_18842',
+        type: 'drama',
+        name: 'Drama',
+        open: MetaOpen(
+          surface: 'drama',
+          id: '18842',
+          extract: MetaOpenExtract(
+            resolveType: 'drama',
+            panelCategory: 'drama',
+            ctx: {'kisskhId': 18842},
+          ),
+        ),
+      );
+      final params = hubDetailsParams(seed);
+      expect(params['id'], '18842');
+    });
+
+    test('falls back to seed.id when open.id empty', () {
+      const seed = MetaItem(
+        id: 'kisskh:99',
+        type: 'drama',
+        name: 'Drama',
+        open: MetaOpen(surface: 'drama', id: '  '),
+      );
+      expect(hubDetailsParams(seed)['id'], 'kisskh:99');
+    });
+  });
+
   group('hubMetaIsUpcoming', () {
     test('NOT_YET_RELEASED status is upcoming', () {
       const meta = MetaItem(
