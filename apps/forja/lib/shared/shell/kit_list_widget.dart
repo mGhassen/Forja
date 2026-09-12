@@ -33,6 +33,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/hub/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
+import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_list.dart';
 
 /// Layout widget [`LayoutTypes.list`] — poster grid or dense list from a
@@ -1174,40 +1175,23 @@ class _KitDenseRowSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Container(
+          Skeleton(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
+            borderRadius: BorderRadius.all(Radius.circular(4)),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 12,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 10,
-                  width: 140,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+                Skeleton(height: 12, width: double.infinity),
+                SizedBox(height: 6),
+                Skeleton(height: 10, width: 140),
               ],
             ),
           ),

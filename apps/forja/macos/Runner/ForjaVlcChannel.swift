@@ -61,33 +61,51 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   }
 
   private func loadLibrary() {
+    let appLib = "/Applications/VLC.app/Contents/MacOS/lib"
+    let appPlugins = "/Applications/VLC.app/Contents/MacOS/plugins"
     let candidates = [
-      "/Applications/VLC.app/Contents/MacOS/lib/libvlc.dylib",
+      "\(appLib)/libvlc.dylib",
       "/usr/local/lib/libvlc.dylib",
       "/opt/homebrew/lib/libvlc.dylib",
     ]
+
+    // Without this, libvlc_new returns null even when VLC.app is installed.
+    setenv("VLC_PLUGIN_PATH", appPlugins, 1)
+
     for path in candidates {
-      if let handle = dlopen(path, RTLD_NOW) {
-        libHandle = handle
-        libvlc_new = unsafeBitCast(dlsym(handle, "libvlc_new"), to: LibVlcNew?.self)
-        libvlc_release = unsafeBitCast(dlsym(handle, "libvlc_release"), to: LibVlcRelease?.self)
-        media_new = unsafeBitCast(dlsym(handle, "libvlc_media_new_location"), to: MediaNew?.self)
-        media_release = unsafeBitCast(dlsym(handle, "libvlc_media_release"), to: MediaRelease?.self)
-        media_add_option = unsafeBitCast(dlsym(handle, "libvlc_media_add_option"), to: MediaAddOption?.self)
-        player_new = unsafeBitCast(dlsym(handle, "libvlc_media_player_new"), to: PlayerNew?.self)
-        player_release = unsafeBitCast(dlsym(handle, "libvlc_media_player_release"), to: PlayerRelease?.self)
-        player_set_media = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_media"), to: PlayerSetMedia?.self)
-        player_play = unsafeBitCast(dlsym(handle, "libvlc_media_player_play"), to: PlayerPlay?.self)
-        player_stop = unsafeBitCast(dlsym(handle, "libvlc_media_player_stop"), to: PlayerStop?.self)
-        player_set_pause = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_pause"), to: PlayerSetPause?.self)
-        player_set_volume = unsafeBitCast(dlsym(handle, "libvlc_audio_set_volume"), to: PlayerSetVolume?.self)
-        player_set_nsobject = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_nsobject"), to: PlayerSetNsobject?.self)
-        if libvlc_new != nil, player_new != nil, media_new != nil {
-          instance = libvlc_new?(0, nil)
-          available = instance != nil
-        }
+      let dir = (path as NSString).deletingLastPathComponent
+      // libvlc @rpath → libvlccore; load core first with GLOBAL.
+      _ = dlopen("\(dir)/libvlccore.dylib", RTLD_NOW | RTLD_GLOBAL)
+
+      guard let handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL) else { continue }
+      libHandle = handle
+      libvlc_new = unsafeBitCast(dlsym(handle, "libvlc_new"), to: LibVlcNew?.self)
+      libvlc_release = unsafeBitCast(dlsym(handle, "libvlc_release"), to: LibVlcRelease?.self)
+      media_new = unsafeBitCast(dlsym(handle, "libvlc_media_new_location"), to: MediaNew?.self)
+      media_release = unsafeBitCast(dlsym(handle, "libvlc_media_release"), to: MediaRelease?.self)
+      media_add_option = unsafeBitCast(dlsym(handle, "libvlc_media_add_option"), to: MediaAddOption?.self)
+      player_new = unsafeBitCast(dlsym(handle, "libvlc_media_player_new"), to: PlayerNew?.self)
+      player_release = unsafeBitCast(dlsym(handle, "libvlc_media_player_release"), to: PlayerRelease?.self)
+      player_set_media = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_media"), to: PlayerSetMedia?.self)
+      player_play = unsafeBitCast(dlsym(handle, "libvlc_media_player_play"), to: PlayerPlay?.self)
+      player_stop = unsafeBitCast(dlsym(handle, "libvlc_media_player_stop"), to: PlayerStop?.self)
+      player_set_pause = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_pause"), to: PlayerSetPause?.self)
+      player_set_volume = unsafeBitCast(dlsym(handle, "libvlc_audio_set_volume"), to: PlayerSetVolume?.self)
+      player_set_nsobject = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_nsobject"), to: PlayerSetNsobject?.self)
+
+      guard libvlc_new != nil, player_new != nil, media_new != nil else { continue }
+
+      instance = libvlc_new?(0, nil)
+      available = instance != nil
+      if available {
+        NSLog("[ForjaVLC] libVLC ready (%@)", path)
         break
       }
+      NSLog("[ForjaVLC] libvlc_new failed for %@", path)
+    }
+
+    if !available {
+      NSLog("[ForjaVLC] not available — install VLC.app or Homebrew libvlc")
     }
   }
 
@@ -259,14 +277,7 @@ final class VlcSession {
       return
     }
     self.player = player
-    if let ua = headers["User-Agent"] ?? headers["user-agent"] {
-      let opt = ":http-user-agent=\(ua)"
-      opt.withCString { plugin.api.media_add_option?(media, $0) }
-    }
-    if let ref = headers["Referer"] ?? headers["referer"] {
-      let opt = ":http-referrer=\(ref)"
-      opt.withCString { plugin.api.media_add_option?(media, $0) }
-    }
+    applyMediaOptions(media: media, url: url, headers: headers, plugin: plugin)
     plugin.api.player_set_media?(player, media)
     plugin.api.media_release?(media)
     if let view {
@@ -276,6 +287,41 @@ final class VlcSession {
     _ = plugin.api.player_play?(player)
     plugin.emit(viewId: viewId, type: "ready")
     plugin.emit(viewId: viewId, type: "playing", value: true)
+  }
+
+  /// Live IPTV (esp. progressive MPEG-TS) needs loose clock + cache.
+  /// VideoToolbox + broken PCR → ~2–3s freezes ("no reference clock").
+  private func applyMediaOptions(
+    media: OpaquePointer,
+    url: String,
+    headers: [String: String],
+    plugin: ForjaVlcPlugin
+  ) {
+    func add(_ opt: String) {
+      opt.withCString { plugin.api.media_add_option?(media, $0) }
+    }
+
+    add(":network-caching=2000")
+    add(":live-caching=2000")
+    add(":clock-jitter=0")
+    add(":clock-synchro=0")
+    add(":drop-late-frames")
+    add(":skip-frames")
+    add(":no-audio-time-stretch")
+
+    let lower = url.lowercased()
+    let progressiveTs = lower.contains(".ts") && !lower.contains(".m3u8")
+    if progressiveTs {
+      // SW decode avoids VT timestamp conversion failures on Xtream TS.
+      add(":avcodec-hw=none")
+    }
+
+    if let ua = headers["User-Agent"] ?? headers["user-agent"] {
+      add(":http-user-agent=\(ua)")
+    }
+    if let ref = headers["Referer"] ?? headers["referer"] {
+      add(":http-referrer=\(ref)")
+    }
   }
 
   func play() {

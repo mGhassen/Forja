@@ -7,6 +7,7 @@
 #include <flutter/texture_registrar.h>
 
 #include <atomic>
+#include <cctype>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -271,6 +272,22 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
           if (!media) {
             result->Error("open_failed", "media_new failed");
             return;
+          }
+          // Live IPTV: loose clock + cache (PCR jitter freezes without this).
+          impl_->api.media_add_option(media, ":network-caching=2000");
+          impl_->api.media_add_option(media, ":live-caching=2000");
+          impl_->api.media_add_option(media, ":clock-jitter=0");
+          impl_->api.media_add_option(media, ":clock-synchro=0");
+          impl_->api.media_add_option(media, ":drop-late-frames");
+          impl_->api.media_add_option(media, ":skip-frames");
+          impl_->api.media_add_option(media, ":no-audio-time-stretch");
+          {
+            auto lower = url;
+            for (auto& c : lower) c = static_cast<char>(::tolower(c));
+            if (lower.find(".ts") != std::string::npos &&
+                lower.find(".m3u8") == std::string::npos) {
+              impl_->api.media_add_option(media, ":avcodec-hw=none");
+            }
           }
           if (args) {
             auto hit = args->find(flutter::EncodableValue("headers"));
