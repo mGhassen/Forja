@@ -1478,11 +1478,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
-            // VOD scrubber (films/series) or live EPG / live-edge track.
+            // VOD scrubber, native LIVE badge, or MediaKit live EPG track.
             if (_showProgressChrome)
               _isVodChrome
                   ? _buildSeekbar(compact)
-                  : _buildLiveProgressBar(compact),
+                  : (_s._avPlayerBackend || _s._vlcBackend)
+                      ? _buildNativeLiveStatusRow(compact)
+                      : _buildLiveProgressBar(compact),
             _buildBottomBar(compact),
           ],
         ),
@@ -1844,6 +1846,64 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     if (total <= 0) return 0;
     final elapsed = now.difference(e.start).inSeconds.clamp(0, total);
     return elapsed / total;
+  }
+
+  /// AVPlayer / VLC live: no playhead scrubber — LIVE + status dot only.
+  /// Green = playing · yellow = buffering/reconnect · red = stalled/error.
+  Widget _buildNativeLiveStatusRow(bool compact) {
+    final Color dot;
+    if (_s._buffering ||
+        (_s._statusBanner != null &&
+            (_s._statusBanner!.toLowerCase().contains('buffer') ||
+                _s._statusBanner!.toLowerCase().contains('reconnect') ||
+                _s._statusBanner!.toLowerCase().contains('switching')))) {
+      dot = const Color(0xFFF5C542); // yellow
+    } else if (_s._playing && _s._userPlayWhenReady) {
+      dot = ForjaShellColors.brandGreen;
+    } else {
+      dot = const Color(0xFFE25555); // red
+    }
+    final fontSize = compact ? 12.0 : 13.0;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 16 : 24,
+        vertical: compact ? 6 : 8,
+      ),
+      child: Row(
+        children: [
+          if ((_s._logoUrl ?? '').isNotEmpty) ...[
+            _buildChannelLogo(compact),
+            SizedBox(width: compact ? 10 : 16),
+          ],
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dot,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: dot.withValues(alpha: 0.55),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'LIVE',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+            ),
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
   }
 
   /// Live chrome: same logo + track + time row as VOD, driven by EPG when
