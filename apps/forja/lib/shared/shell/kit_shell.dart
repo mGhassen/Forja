@@ -348,6 +348,11 @@ class _KitShellState extends State<KitShell>
     if (!mounted) return;
 
     if (!envelope.ok) {
+      final raw = envelope.error;
+      debugPrint(
+        '[KitShell] ${widget.pluginId} layout failed: '
+        '${raw?.code.wire} ${raw?.message}',
+      );
       setState(() {
         _loading = false;
         _error = _errorMessage(envelope.error);
@@ -356,9 +361,12 @@ class _KitShellState extends State<KitShell>
     }
     final invalid = validateLayoutData(envelope.data);
     if (invalid != null) {
+      debugPrint(
+        '[KitShell] ${widget.pluginId} layout invalid: $invalid',
+      );
       setState(() {
         _loading = false;
-        _error = 'Layout from ${widget.pluginId} is invalid: $invalid';
+        _error = 'This hub’s layout is invalid.';
       });
       return;
     }
@@ -768,24 +776,10 @@ class _KitShellState extends State<KitShell>
     }
   }
 
-  String _errorMessage(MetaError? error) {
-    if (error == null) return 'Could not load ${widget.pluginId}';
-    final msg = error.message.trim();
-    if (msg.isNotEmpty) {
-      final lower = msg.toLowerCase();
-      if (lower.contains('temporarily disabled') ||
-          lower.contains('severe stability')) {
-        return 'Server is down';
-      }
-      return msg;
-    }
-    return switch (error.code) {
-      MetaErrorCode.authRequired => 'Sign in to use this hub',
-      MetaErrorCode.authExpired => 'Session expired. Sign in again.',
-      MetaErrorCode.rateLimit => 'Rate limited. Try again shortly.',
-      _ => 'Could not load ${widget.pluginId} (${error.code.wire})',
-    };
-  }
+  String _errorMessage(MetaError? error) => userFacingCatalogError(
+        error,
+        fallback: 'Couldn’t load this hub. Try again.',
+      );
 
   void _toastCatalogServerDown(String message) {
     ForjaToast.error(

@@ -102,6 +102,11 @@ class KitTopBarActions extends ConsumerWidget {
       if (raw.isNotEmpty) return raw;
       return 'Loading…';
     }();
+    final updatedLabel = busy
+        ? ''
+        : (KitTopBarHostHooks.readFeedUpdatedLabel?.call(ref, tabId: tabId) ??
+                '')
+            .trim();
 
     final leading = <Map<String, dynamic>>[];
     final trailing = <Map<String, dynamic>>[];
@@ -127,7 +132,7 @@ class KitTopBarActions extends ConsumerWidget {
     final built = <Widget>[];
     var index = 0;
     for (final a in leading) {
-      // Hide Refresh while scrape/search is busy — progress sits center-top.
+      // Hide Refresh while scrape/search is busy — status text sits center-top.
       if (busy && _isRefreshAction(a)) continue;
       final w = _buildAction(
         context,
@@ -170,14 +175,21 @@ class KitTopBarActions extends ConsumerWidget {
       }
     }
 
+    final Widget? centerStatus;
+    if (busy) {
+      centerStatus = _KitTopBarCatalogProgressChip(label: busyLabel);
+    } else if (updatedLabel.isNotEmpty) {
+      centerStatus = _KitTopBarUpdatedLabel(label: updatedLabel);
+    } else {
+      centerStatus = null;
+    }
+
     final itemCount = leadingCount + trailingBuilt.length;
     final chromeOrder = sortOrder < 0 ? sortOrder : -100 - sortOrder;
     return TopBarActions(
       leading: built,
       trailing: trailingBuilt,
-      center: busy
-          ? _KitTopBarCatalogProgressChip(label: busyLabel)
-          : null,
+      center: centerStatus,
       padding: EdgeInsets.fromLTRB(
         ShellTokens.compactChromeLeadingInset(context),
         ShellTokens.tabHeaderTopPadding,
@@ -257,12 +269,8 @@ class KitTopBarActions extends ConsumerWidget {
     final catalogSelected = KitTopBarHostHooks.catalogChipSelected;
 
     if (isRefresh) {
-      final updated =
-          (KitTopBarHostHooks.readFeedUpdatedLabel?.call(ref, tabId: tabId) ??
-                  '')
-              .trim();
-      final chip = ForjaActionChip(
-        label: updated.isEmpty ? '' : updated,
+      return ForjaActionChip(
+        label: 'Refresh',
         icon: icon ?? Icons.refresh_rounded,
         iconOnly: true,
         selected: false,
@@ -273,24 +281,6 @@ class KitTopBarActions extends ConsumerWidget {
         onLeftEdge: focusLeft,
         onRightEdge: focusRight,
         onTap: () => onRefresh?.call(),
-      );
-      if (updated.isEmpty) return chip;
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ExcludeFocus(
-            child: Text(
-              updated,
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          chip,
-        ],
       );
     }
 
@@ -688,6 +678,30 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Center-top idle status — e.g. `Updated just now` (Refresh icon stays leading).
+class _KitTopBarUpdatedLabel extends StatelessWidget {
+  const _KitTopBarUpdatedLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

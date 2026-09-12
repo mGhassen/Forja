@@ -79,6 +79,63 @@ class MetaError {
       };
 }
 
+/// User-facing catalog copy. Never leaks pack ids, HTTP status, or raw upstream text.
+String userFacingCatalogError(
+  MetaError? error, {
+  String fallback = 'Something went wrong. Try again.',
+}) {
+  if (error == null) return fallback;
+  final code = effectiveCatalogErrorCode(error);
+  final lower = error.message.toLowerCase();
+  if (lower.contains('temporarily disabled') ||
+      lower.contains('severe stability')) {
+    return 'Server is down. Try again later.';
+  }
+  return switch (code) {
+    MetaErrorCode.authRequired => 'Sign in to use this hub.',
+    MetaErrorCode.authExpired => 'Session expired. Sign in again.',
+    MetaErrorCode.rateLimit =>
+      'Too many requests. Wait a moment, then retry.',
+    MetaErrorCode.notFound => 'Nothing found.',
+    MetaErrorCode.invalidAction || MetaErrorCode.invalidParams =>
+      'This request isn’t supported.',
+    MetaErrorCode.unsupportedKit => 'This hub needs a newer Forja build.',
+    MetaErrorCode.cancelled => 'Request cancelled.',
+    MetaErrorCode.parse => 'Catalog response was invalid.',
+    MetaErrorCode.upstream => 'Couldn’t reach the catalog. Try again.',
+  };
+}
+
+/// Prefer explicit [MetaError.code]; upgrade generic upstream/parse when the
+/// message clearly signals rate-limit / auth.
+MetaErrorCode effectiveCatalogErrorCode(MetaError error) {
+  if (error.code != MetaErrorCode.upstream &&
+      error.code != MetaErrorCode.parse) {
+    return error.code;
+  }
+  final lower = error.message.toLowerCase();
+  if (lower.contains('429') ||
+      lower.contains('rate limit') ||
+      lower.contains('too many')) {
+    return MetaErrorCode.rateLimit;
+  }
+  if (lower.contains('401') ||
+      lower.contains('unauthorized') ||
+      lower.contains('auth expired') ||
+      lower.contains('session expired')) {
+    return MetaErrorCode.authExpired;
+  }
+  if (lower.contains('auth required') ||
+      lower.contains('sign in') ||
+      lower.contains('login required')) {
+    return MetaErrorCode.authRequired;
+  }
+  if (lower.contains('404') || lower.contains('not found')) {
+    return MetaErrorCode.notFound;
+  }
+  return error.code;
+}
+
 class MetaCacheHints {
   const MetaCacheHints({
     this.etag,

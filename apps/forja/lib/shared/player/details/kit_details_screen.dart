@@ -567,7 +567,11 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       );
       setState(() {
         _loading = false;
-        _error = notReady ?? env.error?.message ?? 'Failed to load details';
+        _error = notReady ??
+            userFacingCatalogError(
+              env.error,
+              fallback: 'Couldn’t load details. Try again.',
+            );
       });
       return;
     }
