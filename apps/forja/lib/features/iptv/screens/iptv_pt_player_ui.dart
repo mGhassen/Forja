@@ -108,6 +108,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final exoId = _s._exoViewId;
     if (_s._exoBackend) {
       if (exoId == null) return;
+    } else if (_s._avPlayerBackend || _s._vlcBackend) {
+      // Snapshot-only stats — no MediaKit/Exo probe handle.
     } else if (_s._player == null) {
       return;
     }
@@ -115,10 +117,14 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
+    final nativeLabel = _s._avPlayerBackend
+        ? 'AVPlayer'
+        : (_s._vlcBackend ? 'VLC (libVLC)' : null);
     IptvPlayerStatsPanel.show(
       context,
-      player: _s._exoBackend ? null : _s._player,
+      player: _s._mediaKitBackend ? _s._player : null,
       exoViewId: _s._exoBackend ? exoId : null,
+      nativeEngineLabel: nativeLabel,
       anchorContext: anchorContext,
       alignment: Alignment.topRight,
       margin: EdgeInsets.only(

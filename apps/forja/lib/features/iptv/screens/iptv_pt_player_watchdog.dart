@@ -244,6 +244,10 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
   bool get _mediaKitLiveProfile =>
       _livePlaybackProfile && _s._mediaKitBackend;
 
+  /// AVPlayer / VLC — no demuxer-cache or playhead ticks like mpv/Exo.
+  /// Stall reopen from empty cache / frozen position is wrong (false recovery).
+  bool get _nativeHlsEngine => _s._avPlayerBackend || _s._vlcBackend;
+
   bool get _playheadRecentlyMoved {
     if (!_s._playing) return false;
     // Position ticks and/or estimated-vf-fps pulse only — never demuxer
@@ -355,6 +359,10 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
 
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
+    // Native HLS engines: trust playing/ready events only (no cache metric).
+    if (_nativeHlsEngine) {
+      return _s._playing && _s._userPlayWhenReady;
+    }
     // HLS ABR probe: demuxer cache stays 0 while ffmpeg opens every variant —
     // do not treat that as dead (stall mode would soft-reopen and kill TLS).
     if (_hlsColdOpenHold) return true;
@@ -449,6 +457,11 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       }
 
       if (_s._socketTroublePending && _bufferedRecovery) return;
+
+      // AVPlayer / VLC: no MediaKit/Exo cache or position stream. Soft-reopen
+      // on "position frozen / cache empty" fights healthy native HLS (RFC-107).
+      // Recovery stays native error + startup failover only.
+      if (_nativeHlsEngine) return;
 
       // Continuity-proxy CDN reopen: show Buffering and wait for refill —
       // do not soft-reopen mid-skip (turns a micro-gap into full reconnect).

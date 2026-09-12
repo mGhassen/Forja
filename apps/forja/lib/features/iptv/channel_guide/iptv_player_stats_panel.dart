@@ -36,14 +36,27 @@ class IptvPlayerStatsPanel {
     required IptvPlayerStatsSnapshot Function() snapshot,
     Player? player,
     int? exoViewId,
+    /// When set (AVPlayer / VLC), show session snapshot without native probes.
+    String? nativeEngineLabel,
     BuildContext? anchorContext,
     Alignment alignment = Alignment.topRight,
     EdgeInsets margin = const EdgeInsets.only(top: 72, right: 16),
   }) {
     assert(
-      player != null || exoViewId != null,
-      'IptvPlayerStatsPanel needs MediaKit player or Exo viewId',
+      player != null || exoViewId != null || nativeEngineLabel != null,
+      'IptvPlayerStatsPanel needs MediaKit, Exo, or nativeEngineLabel',
     );
+    final Widget body;
+    if (player != null) {
+      body = _IptvMediaKitStatsBody(player: player, snapshot: snapshot);
+    } else if (exoViewId != null) {
+      body = _IptvExoStatsBody(viewId: exoViewId, snapshot: snapshot);
+    } else {
+      body = _IptvNativeSnapshotStatsBody(
+        engineLabel: nativeEngineLabel!,
+        snapshot: snapshot,
+      );
+    }
     PlayerPopupPanel.show(
       context: context,
       title: 'Stream stats',
@@ -55,15 +68,7 @@ class IptvPlayerStatsPanel {
       anchorContext: anchorContext,
       // Close first (Select dismisses); ↓ moves into the scrollable rows.
       autofocusClose: true,
-      child: player != null
-          ? _IptvMediaKitStatsBody(
-              player: player,
-              snapshot: snapshot,
-            )
-          : _IptvExoStatsBody(
-              viewId: exoViewId!,
-              snapshot: snapshot,
-            ),
+      child: body,
     );
   }
 }
@@ -398,6 +403,56 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
     if (secs > _maxSaneCacheAheadSecs) return null;
     if (secs < 60) return '${secs.toStringAsFixed(1)} s';
     return '${(secs / 60).toStringAsFixed(1)} min';
+  }
+}
+
+/// AVPlayer / VLC — session fields only (no demuxer / track probe API yet).
+class _IptvNativeSnapshotStatsBody extends StatefulWidget {
+  const _IptvNativeSnapshotStatsBody({
+    required this.engineLabel,
+    required this.snapshot,
+  });
+
+  final String engineLabel;
+  final IptvPlayerStatsSnapshot Function() snapshot;
+
+  @override
+  State<_IptvNativeSnapshotStatsBody> createState() =>
+      _IptvNativeSnapshotStatsBodyState();
+}
+
+class _IptvNativeSnapshotStatsBodyState
+    extends State<_IptvNativeSnapshotStatsBody> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snap = widget.snapshot();
+    return _StatsList(
+      rows: [
+        _StatRow('Engine', widget.engineLabel),
+        _StatRow('Playing', snap.playing ? 'yes' : 'no'),
+        _StatRow('Buffering', snap.buffering ? 'yes' : 'no'),
+        _StatRow('Source', snap.sourceLabel),
+        _StatRow('Volume', '${snap.volume.round()}%'),
+        if (snap.retryAttempt > 0)
+          _StatRow('Retries', '${snap.retryAttempt}'),
+      ],
+    );
   }
 }
 
