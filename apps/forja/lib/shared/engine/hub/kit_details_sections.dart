@@ -135,7 +135,10 @@ List<Widget> buildKitDetailRailSections({
 List<Widget> buildKitTmdbDetailSections({
   required BuildContext context,
   required String pluginId,
-  required RichMediaDetails? rich,
+  RichMediaDetails? rich,
+  List<Map<String, String>> cast = const [],
+  List<Map<String, String>> crew = const [],
+  List<MediaTrailer> trailers = const [],
   required bool tvFocus,
   int tvRowOrderBase = 0,
   VoidCallback? firstMetaFocusUp,
@@ -146,27 +149,28 @@ List<Widget> buildKitTmdbDetailSections({
   bool includeTrailers = true,
   bool includeRecommendations = true,
 }) {
-  if (rich == null &&
-      (recommendations == null || recommendations.isEmpty)) {
-    return const [];
-  }
-
-  final cast = includeCast
-      ? (rich?.extras.cast ?? const <Map<String, String>>[])
+  final resolvedCast = includeCast
+      ? (cast.isNotEmpty
+          ? cast
+          : (rich?.extras.cast ?? const <Map<String, String>>[]))
       : const <Map<String, String>>[];
-  final crew = includeCrew
-      ? _crewAsCast(rich?.extras.crew ?? const <Map<String, String>>[])
+  final resolvedCrew = includeCrew
+      ? (crew.isNotEmpty
+          ? _crewAsCast(crew)
+          : _crewAsCast(rich?.extras.crew ?? const <Map<String, String>>[]))
       : const <Map<String, String>>[];
-  final trailers = includeTrailers
-      ? (rich?.extras.trailers ?? const <MediaTrailer>[])
+  final resolvedTrailers = includeTrailers
+      ? (trailers.isNotEmpty
+          ? trailers
+          : (rich?.extras.trailers ?? const <MediaTrailer>[]))
       : const <MediaTrailer>[];
   final recs = !includeRecommendations
       ? const <Movie>[]
       : (recommendations ?? rich?.extras.recommendations ?? const <Movie>[]);
 
-  final showCast = cast.isNotEmpty;
-  final showCrew = crew.isNotEmpty;
-  final showTrailers = trailers.isNotEmpty;
+  final showCast = resolvedCast.isNotEmpty;
+  final showCrew = resolvedCrew.isNotEmpty;
+  final showTrailers = resolvedTrailers.isNotEmpty;
   final showRecs = recs.isNotEmpty;
   if (!showCast && !showCrew && !showTrailers && !showRecs) {
     return const [];
@@ -187,7 +191,7 @@ List<Widget> buildKitTmdbDetailSections({
   if (showCast) {
     sections.add(
       MediaDetailsCastSection(
-        cast: cast,
+        cast: resolvedCast,
         title: 'Characters',
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
         tvRowId: 'cast',
@@ -199,7 +203,7 @@ List<Widget> buildKitTmdbDetailSections({
   if (showCrew) {
     sections.add(
       MediaDetailsCastSection(
-        cast: crew,
+        cast: resolvedCrew,
         title: 'Crew',
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
         tvRowId: 'crew',
@@ -211,7 +215,7 @@ List<Widget> buildKitTmdbDetailSections({
   if (showTrailers) {
     sections.add(
       MediaDetailsTrailersSection(
-        trailers: trailers,
+        trailers: resolvedTrailers,
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
         tvRowId: 'trailers',
         tvRowOrder: trailersOrder!,
@@ -256,7 +260,7 @@ List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
 final _hubHeroBackdropCache = <String, List<String>>{};
 
 String _hubHeroCacheKey(MetaItem meta) =>
-    '${meta.id}|${meta.background}|${meta.bannerImage}|${meta.poster}';
+    '${meta.id}|${meta.background}|${meta.bannerImage}|${meta.poster}|${meta.backdrops.join(',')}';
 
 List<String> _packHeroBackdropUrls(MetaItem meta) {
   final cacheKey = _hubHeroCacheKey(meta);
@@ -272,6 +276,9 @@ List<String> _packHeroBackdropUrls(MetaItem meta) {
   addUrl(meta.background);
   addUrl(meta.bannerImage);
   addUrl(meta.poster);
+  for (final raw in meta.backdrops) {
+    addUrl(raw);
+  }
 
   final out = urls.take(12).toList();
   _hubHeroBackdropCache[cacheKey] = out;
@@ -285,6 +292,65 @@ List<String> hubHeroBackdropUrls(MetaItem meta) =>
 String? hubMetaLogoUrl(MetaItem meta) {
   final u = resolveAbsoluteCoverUrl(meta.logo.trim());
   return u.isEmpty ? null : u;
+}
+
+List<MediaTrailer> hubMetaTrailers(MetaItem meta) {
+  if (meta.trailers.isEmpty) return const [];
+  final out = <MediaTrailer>[];
+  final seen = <String>{};
+  for (final raw in meta.trailers) {
+    final key = (raw['key'] ?? '').toString().trim();
+    if (key.isEmpty || !seen.add(key)) continue;
+    out.add(
+      MediaTrailer(
+        key: key,
+        name: (raw['name'] ?? 'Trailer').toString(),
+        type: (raw['type'] ?? 'Trailer').toString(),
+        official: raw['official'] == true,
+        site: (raw['site'] ?? 'YouTube').toString(),
+      ),
+    );
+  }
+  return out;
+}
+
+/// Pack enrich fact bag → foundation fact rows for [DetailsHero].
+List<MapEntry<String, String>> kitPackFactRows(
+  MetaItem meta, {
+  int? positionMs,
+  int? durationMs,
+}) {
+  final facts = meta.facts;
+  if (facts == null || facts.isEmpty) return const [];
+  final rows = factsRowsFromFields(
+    title: meta.name,
+    mediaType: (facts['mediaType'] ?? meta.tmdbMediaType ?? '').toString(),
+    runtimeMinutes: (facts['runtimeMinutes'] as num?)?.toInt() ?? 0,
+    releaseDate: (facts['releaseDate'] ?? meta.premiereDate).toString(),
+    seasonCount: (facts['seasonCount'] as num?)?.toInt() ?? 0,
+    episodeCount: (facts['episodeCount'] as num?)?.toInt() ?? 0,
+    status: facts['status']?.toString(),
+    budget: (facts['budget'] as num?)?.toInt(),
+    revenue: (facts['revenue'] as num?)?.toInt(),
+    languageCode: facts['originalLanguage']?.toString(),
+    spokenLanguages: _stringList(facts['spokenLanguages']),
+    productionCompanies: _stringList(facts['productionCompanies']),
+    originCountries: _stringList(facts['originCountries']),
+    lastAirDate: facts['lastAirDate']?.toString(),
+    networks: _stringList(facts['networks']),
+    creators: _stringList(facts['creators']),
+    positionMs: positionMs,
+    durationMs: durationMs,
+  );
+  return [for (final r in rows) MapEntry(r.label, r.value)];
+}
+
+List<String> _stringList(dynamic raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final e in raw)
+      if (e.toString().trim().isNotEmpty) e.toString().trim(),
+  ];
 }
 
 /// Host [RichMediaDetails] → foundation fact rows for [DetailsHero].

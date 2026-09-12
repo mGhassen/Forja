@@ -473,6 +473,18 @@ class MetaRuntime {
     } else {
       final meta = enriched.data!['meta'];
       if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
+      final rails = enriched.data!['rails'];
+      if (rails is Map && rails.isNotEmpty) {
+        final existing = merged['rails'];
+        if (existing is Map && existing.isNotEmpty) {
+          merged['rails'] = <String, dynamic>{
+            for (final e in existing.entries) e.key.toString(): e.value,
+            for (final e in rails.entries) e.key.toString(): e.value,
+          };
+        } else {
+          merged['rails'] = Map<String, dynamic>.from(rails);
+        }
+      }
     }
     return merged;
   }

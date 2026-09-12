@@ -442,6 +442,11 @@ class MetaItem {
     this.listTarget,
     this.open,
     this.videos = const [],
+    this.cast = const [],
+    this.crew = const [],
+    this.trailers = const [],
+    this.facts,
+    this.backdrops = const [],
     this.airing,
     this.startsAt,
     this.viewers,
@@ -476,6 +481,15 @@ class MetaItem {
   final MetaOpen? open;
   /// Pack-owned episode list from `details` (opaque video ids for `stream`).
   final List<MetaVideo> videos;
+  /// Pack enrich people rows (`name` / `character`|`job` / `profilePath`).
+  final List<Map<String, String>> cast;
+  final List<Map<String, String>> crew;
+  /// Pack enrich trailers (`key` / `name` / `type` / `site` / `official`).
+  final List<Map<String, dynamic>> trailers;
+  /// Pack enrich fact bag for details hero (opaque keys).
+  final Map<String, dynamic>? facts;
+  /// Extra hero backdrops from pack enrich (absolute URLs).
+  final List<String> backdrops;
 
   /// Live Sports (RFC-071): match is currently airing / live.
   final bool? airing;
@@ -551,6 +565,20 @@ class MetaItem {
                   MetaVideo.fromJson(Map<String, dynamic>.from(e)),
             ]
           : const [],
+      cast: _stringMapList(j['cast']),
+      crew: _stringMapList(j['crew']),
+      trailers: _dynamicMapList(j['trailers']),
+      facts: j['facts'] is Map
+          ? Map<String, dynamic>.from(j['facts'] as Map)
+          : null,
+      backdrops: () {
+        final raw = j['backdrops'];
+        if (raw is! List) return const <String>[];
+        return [
+          for (final e in raw)
+            if (e.toString().trim().isNotEmpty) e.toString().trim(),
+        ];
+      }(),
       airing: airingRaw is bool
           ? airingRaw
           : (airingRaw == null
@@ -611,6 +639,11 @@ class MetaItem {
                 if (v.aired != null) 'aired': v.aired,
               },
           ],
+        if (cast.isNotEmpty) 'cast': cast,
+        if (crew.isNotEmpty) 'crew': crew,
+        if (trailers.isNotEmpty) 'trailers': trailers,
+        if (facts != null && facts!.isNotEmpty) 'facts': facts,
+        if (backdrops.isNotEmpty) 'backdrops': backdrops,
         if (airing != null) 'airing': airing,
         if (startsAt != null && startsAt!.isNotEmpty) 'starts_at': startsAt,
         if (viewers != null) 'viewers': viewers,
@@ -625,6 +658,11 @@ class MetaItem {
     String? logo,
     String? description,
     List<MetaVideo>? videos,
+    List<Map<String, String>>? cast,
+    List<Map<String, String>>? crew,
+    List<Map<String, dynamic>>? trailers,
+    Map<String, dynamic>? facts,
+    List<String>? backdrops,
     bool? airing,
     String? startsAt,
     int? viewers,
@@ -652,12 +690,37 @@ class MetaItem {
         listTarget: listTarget,
         open: open ?? open,
         videos: videos ?? this.videos,
+        cast: cast ?? this.cast,
+        crew: crew ?? this.crew,
+        trailers: trailers ?? this.trailers,
+        facts: facts ?? this.facts,
+        backdrops: backdrops ?? this.backdrops,
         airing: airing ?? this.airing,
         startsAt: startsAt ?? this.startsAt,
         viewers: viewers ?? this.viewers,
         mode: mode ?? this.mode,
         sources: sources ?? this.sources,
       );
+}
+
+List<Map<String, String>> _stringMapList(dynamic raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final e in raw)
+      if (e is Map)
+        {
+          for (final entry in e.entries)
+            entry.key.toString(): entry.value?.toString() ?? '',
+        },
+  ];
+}
+
+List<Map<String, dynamic>> _dynamicMapList(dynamic raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final e in raw)
+      if (e is Map) Map<String, dynamic>.from(e),
+  ];
 }
 
 class MetaFilterAst {

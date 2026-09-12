@@ -43,7 +43,6 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
     show
         MediaTrailer,
-        RichMediaDetails,
         WatchHistoryService,
         canResumeFromSavedProgress,
         isContinueWatchingRowEntry,
@@ -112,7 +111,6 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
   MetaItem? _detail;
   List<KitDetailRailSection> _packRails = const [];
   List<String> _heroBackdrops = const [];
-  RichMediaDetails? _rich;
   bool _loading = true;
   String? _error;
   int _selectedSeason = 1;
@@ -469,8 +467,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     _playSelected();
   }
 
-  List<MediaTrailer> get _trailers =>
-      _rich?.extras.trailers ?? const <MediaTrailer>[];
+  List<MediaTrailer> get _trailers => hubMetaTrailers(_show);
 
   void _openBestTrailer() {
     final trailers = _trailers;
@@ -479,8 +476,8 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       context,
       trailers: trailers,
       initialIndex: 0,
-      movie: _rich?.movie ?? metaItemToMovie(_show),
-      languageCode: _rich?.extras.originalLanguage,
+      movie: metaItemToMovie(_show),
+      languageCode: _show.facts?['originalLanguage']?.toString(),
     );
   }
 
@@ -779,7 +776,9 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     final identitySections = buildKitTmdbDetailSections(
       context: context,
       pluginId: widget.pluginId,
-      rich: _rich,
+      cast: show.cast,
+      crew: show.crew,
+      trailers: hubMetaTrailers(show),
       tvFocus: tvFocus,
       tvRowOrderBase: metaRowBase,
       firstMetaFocusUp: firstMetaFocusUp,
@@ -814,7 +813,6 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         : buildKitTmdbDetailSections(
             context: context,
             pluginId: widget.pluginId,
-            rich: _rich,
             tvFocus: tvFocus,
             tvRowOrderBase: recOrderBase,
             firstMetaFocusUp: identitySections.isEmpty &&
@@ -871,8 +869,8 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
           if (show.releaseInfo.isNotEmpty) show.releaseInfo,
         ],
         rating: show.rating,
-        facts: kitRichFactRows(
-          _rich,
+        facts: kitPackFactRows(
+          show,
           positionMs: heroPosMs,
           durationMs: heroDurMs,
         ),
