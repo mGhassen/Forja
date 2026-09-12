@@ -11,6 +11,9 @@ import 'package:forja_foundation/widgets/details/hero_title.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';
 
 /// Cinematic details hero — props + slots only (RFC-106 Zone A).
+///
+/// Title / actions chrome only. Body sections (episodes, cast, pack rails)
+/// live in the scroll page stack with [DetailsTokens.sectionSpacing].
 class DetailsHero extends StatelessWidget {
   const DetailsHero({
     super.key,
@@ -33,9 +36,7 @@ class DetailsHero extends StatelessWidget {
     this.height,
     this.progressBar,
     this.bodyOverlap,
-    this.pageBottomChild,
     this.seriesProgress,
-    this.showSeasonRail = false,
     this.chromeOnly = false,
     this.enableKenBurns = true,
     this.tvDensity = false,
@@ -72,10 +73,7 @@ class DetailsHero extends StatelessWidget {
   /// Host wires [WatchProgressBar] (or any progress paint).
   final Widget? progressBar;
   final double? bodyOverlap;
-  final Widget? pageBottomChild;
   final Widget? seriesProgress;
-  /// When false, hero bleed matches episodes-only height (no season posters).
-  final bool showSeasonRail;
 
   /// Title / meta / actions only — backdrop drawn elsewhere (e.g. live match
   /// detail with a full-bleed surface under a side streams rail).
@@ -93,29 +91,15 @@ class DetailsHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showEpisodeRail = pageBottomChild != null;
-    final h = height ??
-        DetailsTokens.heroHeight(
-          context,
-          showEpisodeRail: showEpisodeRail,
-          showSeasonRail: showSeasonRail,
-        );
-    final bleed = showEpisodeRail
-        ? DetailsTokens.episodeRailBleed(showSeasonRail: showSeasonRail)
-        : 0.0;
-    final totalH = h + bleed;
+    final h = height ?? DetailsTokens.heroHeight(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
-    final railGap = DetailsTokens.heroContentToRailGap(h);
-    final contentBottom = belowActionRow != null
-        ? bottomInset
-        : bleed + railGap + bottomInset;
 
     return SizedBox(
-      height: totalH,
+      height: h,
       width: double.infinity,
       child: ClipRect(
         child: Stack(
@@ -125,17 +109,15 @@ class DetailsHero extends StatelessWidget {
               DetailsHeroSurface(
                 backdropUrl: backdropUrl,
                 backdropUrls: backdropUrls,
-                height: totalH,
+                height: h,
                 bodyOverlap: bodyOverlap ?? DetailsTokens.heroBodyOverlap,
-                pageBottomChild: pageBottomChild,
-                showSeasonRail: showSeasonRail,
                 enableKenBurns: enableKenBurns,
               ),
             Positioned(
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: contentBottom,
+              bottom: bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final paddedContent = ConstrainedBox(
@@ -213,31 +195,6 @@ class DetailsHero extends StatelessWidget {
                 },
               ),
             ),
-            if (pageBottomChild != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: h,
-                bottom: 0,
-                child: Align(
-                  // Top of bleed = season-row Y (episode thumbs when no seasons).
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        0,
-                        DetailsTokens.episodeSectionTopPadding,
-                        0,
-                        DetailsTokens.episodeSectionBottomPadding,
-                      ),
-                      child: pageBottomChild!,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -253,8 +210,6 @@ class DetailsHeroSurface extends StatelessWidget {
     this.backdropUrls = const [],
     this.height,
     this.bodyOverlap,
-    this.pageBottomChild,
-    this.showSeasonRail = false,
     this.enableKenBurns = true,
   });
 
@@ -262,31 +217,18 @@ class DetailsHeroSurface extends StatelessWidget {
   final List<String> backdropUrls;
   final double? height;
   final double? bodyOverlap;
-  final Widget? pageBottomChild;
-  final bool showSeasonRail;
   final bool enableKenBurns;
 
   @override
   Widget build(BuildContext context) {
-    final showEpisodeRail = pageBottomChild != null;
-    final h = height ??
-        DetailsTokens.heroHeight(
-          context,
-          showEpisodeRail: showEpisodeRail,
-          showSeasonRail: showSeasonRail,
-        );
-    final bleed = showEpisodeRail
-        ? DetailsTokens.episodeRailBleed(showSeasonRail: showSeasonRail)
-        : 0.0;
-    final totalH = h + bleed;
+    final h = height ?? DetailsTokens.heroHeight(context);
     final shellBg = ForjaThemeExtension.of(context).bgDark;
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cinematicDesktop = viewportWidth >= 900;
     final resolvedOverlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
-    final pageBleed = bleed > 0;
 
     return SizedBox(
-      height: totalH,
+      height: h,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
@@ -308,8 +250,8 @@ class DetailsHeroSurface extends StatelessWidget {
               child: IgnorePointer(
                 child: _CinematicHeroBottomGradient(
                   shellBg: shellBg,
-                  overlap: pageBleed ? 0 : resolvedOverlap,
-                  softFade: pageBleed,
+                  overlap: resolvedOverlap,
+                  softFade: false,
                 ),
               ),
             ),
@@ -324,9 +266,9 @@ class DetailsHeroSurface extends StatelessWidget {
               left: 0,
               right: 0,
               bottom: 0,
-              height: pageBleed ? totalH * 0.42 : h * 0.55 + resolvedOverlap,
+              height: h * 0.55 + resolvedOverlap,
               child: IgnorePointer(
-                child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
+                child: _HeroBottomFade(shellBg: shellBg, soft: false),
               ),
             ),
         ],

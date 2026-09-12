@@ -219,6 +219,8 @@ class PluginInstallCoordinator {
     );
     return EngineService.instance.installWithProgress(
       manifestUrl,
+      // Reload / Update must not reuse on-disk scripts (stale hub layout).
+      forceNetwork: isUpdate,
       onFetchProgress: (tick) {
         _setProgress(
           PluginInstallProgress(

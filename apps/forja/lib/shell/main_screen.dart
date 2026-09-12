@@ -340,32 +340,35 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   Future<void>? _hubNavReloadInFlight;
+  bool _hubNavReloadQueued = false;
 
   Future<void> _refreshHubNavThenLoad() async {
-    final existing = _hubNavReloadInFlight;
-    if (existing != null) {
-      await existing;
-      if (!mounted) return;
-      await _loadNavbarConfig();
+    if (_hubNavReloadInFlight != null) {
+      // Bulk Reload notifies per pack — finish current pass, then run again so
+      // later packs still invalidate hub layout (not navbar-only).
+      _hubNavReloadQueued = true;
       return;
     }
-    final run = () async {
-      final changed = await PluginNavRegistry.refresh();
-      if (!mounted) return;
-      // Pack scripts can change without nav shape changes. Hub KitShell is
-      // keep-alive + 15m stale window — mark stale (and remount builders when
-      // nav actually changed) so returning to Home / Anime / … reloads rails.
-      _invalidateHubTabsAfterPackChange(remountBuilders: changed);
-      await _loadNavbarConfig();
-    }();
-    _hubNavReloadInFlight = run;
-    try {
-      await run;
-    } finally {
-      if (identical(_hubNavReloadInFlight, run)) {
-        _hubNavReloadInFlight = null;
+    do {
+      _hubNavReloadQueued = false;
+      final run = () async {
+        final changed = await PluginNavRegistry.refresh();
+        if (!mounted) return;
+        // Pack scripts can change without nav shape changes. Hub KitShell is
+        // keep-alive + 15m stale window — mark stale (and remount builders when
+        // nav actually changed) so returning to Home / Anime / … reloads rails.
+        _invalidateHubTabsAfterPackChange(remountBuilders: changed);
+        await _loadNavbarConfig();
+      }();
+      _hubNavReloadInFlight = run;
+      try {
+        await run;
+      } finally {
+        if (identical(_hubNavReloadInFlight, run)) {
+          _hubNavReloadInFlight = null;
+        }
       }
-    }
+    } while (_hubNavReloadQueued && mounted);
   }
 
   void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {

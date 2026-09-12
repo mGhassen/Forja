@@ -16,7 +16,6 @@ import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/media_details_scroll_page.dart';
-import 'package:forja/shared/player/details/media_details_body.dart';
 import 'package:forja/shared/player/details/tv_season_episode_picker.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
@@ -333,41 +332,38 @@ class _IptvSeriesEpisodeListScreenState
       });
     }
 
-    final episodePicker = MediaDetailsBody.padContent(
-      context,
-      TvSeasonEpisodePicker(
-        tmdbId: 0,
-        seasonCount: _pickerSeasonCount,
-        selectedSeason: _selectedSeasonIndex,
-        selectedEpisode: _selectedEpisode,
-        isLoadingSeason: false,
-        seasonData: null,
-        watchedEpisodes: const {},
-        fallbackPosterPath: widget.series.icon,
-        seasonPosters: {
-          for (var i = 0; i < _seasons.length; i++) i + 1: widget.series.icon,
-        },
-        customEpisodesBySeason: _episodeMaps(),
-        onSeasonSelected: (season) {
-          setState(() {
-            _selectedSeasonIndex = season;
-            final eps = _episodesForPickerSeason(season);
-            _selectedEpisode = eps.isEmpty ? 1 : eps.first.episode;
-          });
-        },
-        onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
-        onEpisodePlay: (ep) {
-          setState(() => _selectedEpisode = ep);
-          final hit = _episodeAt(_selectedSeasonIndex, ep);
-          if (hit != null) unawaited(_playEpisode(hit));
-        },
-        onToggleWatched: (_, _) {},
-        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-        tvSeasonRowId: multiSeason ? 'seasons' : null,
-        tvEpisodeRowId: 'episodes',
-        tvRowOrderBase: 0,
-        tvFocusUp: _revealedHeroPlayFocus,
-      ),
+    final episodePicker = TvSeasonEpisodePicker(
+      tmdbId: 0,
+      seasonCount: _pickerSeasonCount,
+      selectedSeason: _selectedSeasonIndex,
+      selectedEpisode: _selectedEpisode,
+      isLoadingSeason: false,
+      seasonData: null,
+      watchedEpisodes: const {},
+      fallbackPosterPath: widget.series.icon,
+      seasonPosters: {
+        for (var i = 0; i < _seasons.length; i++) i + 1: widget.series.icon,
+      },
+      customEpisodesBySeason: _episodeMaps(),
+      onSeasonSelected: (season) {
+        setState(() {
+          _selectedSeasonIndex = season;
+          final eps = _episodesForPickerSeason(season);
+          _selectedEpisode = eps.isEmpty ? 1 : eps.first.episode;
+        });
+      },
+      onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
+      onEpisodePlay: (ep) {
+        setState(() => _selectedEpisode = ep);
+        final hit = _episodeAt(_selectedSeasonIndex, ep);
+        if (hit != null) unawaited(_playEpisode(hit));
+      },
+      onToggleWatched: (_, _) {},
+      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+      tvSeasonRowId: multiSeason ? 'seasons' : null,
+      tvEpisodeRowId: 'episodes',
+      tvRowOrderBase: 0,
+      tvFocusUp: _revealedHeroPlayFocus,
     );
 
     return Scaffold(
@@ -380,9 +376,9 @@ class _IptvSeriesEpisodeListScreenState
             tvHeroPlayFocus: _heroPlayFocus,
             tvBackFocus: _backFocus,
             bodyOverlap: 0,
-            topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
+            topSpacing: DetailsTokens.bodyTopSpacing,
             backgroundColor: AppTheme.bgDark,
-            sections: const [],
+            sections: [episodePicker],
             hero: DetailsHero(
               backdropUrl: icon,
               backdropUrls: heroBackdrops,
@@ -391,13 +387,7 @@ class _IptvSeriesEpisodeListScreenState
               metaParts: _metaParts(),
               overview: '',
               facts: const [],
-              height: DetailsTokens.heroHeight(
-                context,
-                showEpisodeRail: true,
-                showSeasonRail: multiSeason,
-              ),
-              showSeasonRail: multiSeason,
-              pageBottomChild: episodePicker,
+              height: DetailsTokens.heroHeight(context),
               enableKenBurns: policy.kenBurnsBackdrop,
               tvDensity: ShellScope.metricsOf(context).usesTvDensity,
               plainTitle: policy.useFocusableMoodChips,

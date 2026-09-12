@@ -593,10 +593,12 @@ class EngineService {
   Future<EnginePack> installWithProgress(
     String manifestUrl, {
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+    bool forceNetwork = false,
   }) async {
     final pack = await PluginRegistry.instance.install(
       manifestUrl,
       onFetchProgress: onFetchProgress,
+      forceNetwork: forceNetwork,
     );
     await _syncHops(await PluginRegistry.instance.listPacksRaw());
     return pack;

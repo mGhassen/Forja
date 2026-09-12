@@ -84,7 +84,10 @@ double shellMovieCardRowGap(BuildContext context) =>
     ? ShellTokens.tvMovieCardRowGap
     : 14.0;
 
-/// Horizontal inset so TV focus scale + border stay inside layout bounds.
+/// Horizontal inset so leanback TV focus scale + border stay inside layout bounds.
+///
+/// Desktop hover must not use this as permanent padding ([FocusableControl]
+/// skips it when [ShellInputPolicy.scaleOnHover] is on).
 ///
 /// Pass [cardWidth] for non-poster cards (e.g. trailer thumbs); defaults to
 /// [shellMovieCardWidth].

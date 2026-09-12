@@ -51,9 +51,7 @@ class MediaDetailsHero extends StatefulWidget {
     this.creators = const [],
     this.watchProviders = const [],
     this.bodyOverlap,
-    this.pageBottomChild,
     this.seriesProgress,
-    this.showSeasonRail = false,
   });
 
   final Movie movie;
@@ -81,12 +79,8 @@ class MediaDetailsHero extends StatefulWidget {
   final List<String> creators;
   final List<WatchProvider> watchProviders;
   final double? bodyOverlap;
-  /// Rendered on the page backdrop below hero chrome (e.g. TV season rail).
-  final Widget? pageBottomChild;
   /// Series / season aggregate watched label (details only).
   final Widget? seriesProgress;
-  /// When false, hero bleed matches episodes-only height (no season posters).
-  final bool showSeasonRail;
 
   @override
   State<MediaDetailsHero> createState() => _MediaDetailsHeroState();
@@ -674,17 +668,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
 
   @override
   Widget build(BuildContext context) {
-    final showEpisodeRail = widget.pageBottomChild != null;
-    final h = widget.height ??
-        DetailsTokens.heroHeight(
-          context,
-          showEpisodeRail: showEpisodeRail,
-          showSeasonRail: widget.showSeasonRail,
-        );
-    final bleed = showEpisodeRail
-        ? DetailsTokens.episodeRailBleed(showSeasonRail: widget.showSeasonRail)
-        : 0.0;
-    final totalH = h + bleed;
+    final h = widget.height ?? DetailsTokens.heroHeight(context);
     final shellBg = _shellBg(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
@@ -695,7 +679,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final bodyOverlap =
         widget.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
-    final pageBleed = bleed > 0;
 
     return VisibilityDetector(
       key: ValueKey('media-hero-${widget.movie.id}'),
@@ -707,7 +690,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
         _syncTrailerPlayback();
       },
       child: SizedBox(
-        height: totalH,
+        height: h,
         width: double.infinity,
         child: ClipRect(
           child: Stack(
@@ -731,8 +714,8 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                     opacity: _showTrailer ? 0 : 1,
                     child: _CinematicHeroBottomGradient(
                       shellBg: shellBg,
-                      overlap: pageBleed ? 0 : bodyOverlap,
-                      softFade: pageBleed,
+                      overlap: bodyOverlap,
+                      softFade: false,
                     ),
                   ),
                 ),
@@ -815,12 +798,12 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: (pageBleed ? totalH * 0.42 : h * 0.55 + bodyOverlap),
+                height: h * 0.55 + bodyOverlap,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 600),
                     opacity: _showTrailer ? 0 : 1,
-                    child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
+                    child: _HeroBottomFade(shellBg: shellBg, soft: false),
                   ),
                 ),
               ),
@@ -828,9 +811,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: bleed +
-                  DetailsTokens.heroContentToRailGap(h) +
-                  bottomInset,
+              bottom: bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return Align(
@@ -886,31 +867,6 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                 },
               ),
             ),
-            if (widget.pageBottomChild != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: h,
-                bottom: 0,
-                child: Align(
-                  // Top of bleed = season-row Y (episode thumbs when no seasons).
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        0,
-                        DetailsTokens.episodeSectionTopPadding,
-                        0,
-                        DetailsTokens.episodeSectionBottomPadding,
-                      ),
-                      child: widget.pageBottomChild!,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

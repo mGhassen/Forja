@@ -590,11 +590,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final showFocusRing = widget.showFocusBorder &&
         ((flatMenuFocus && _isHovered && policy.scaleOnHover) ||
             policy.focusChromeVisible(context, focused: _isFocused));
+    // Horizontal bleed is for leanback TV so focus scale stays in layout.
+    // Desktop hover must not inset idle cards — scale overlaps neighbors instead.
     // 0 = caller already reserved scale room (e.g. a grid cell).
     final bleed = widget.showFocusBorder &&
             !flatMenuFocus &&
             !railFocus &&
-            widget.focusBleedWidth != 0
+            widget.focusBleedWidth != 0 &&
+            !policy.scaleOnHover
         ? shellMovieCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,

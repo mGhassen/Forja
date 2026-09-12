@@ -931,11 +931,14 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+    /// Settings Reload / Update: always hit the network (skip splash disk reuse).
+    bool forceNetwork = false,
   }) => _withInstallLock(
     () => _installUnlocked(
       manifestUrl,
       onScriptFetched: onScriptFetched,
       onFetchProgress: onFetchProgress,
+      forceNetwork: forceNetwork,
     ),
   );
 
@@ -943,6 +946,7 @@ class PluginRegistry {
     String manifestUrl, {
     void Function()? onScriptFetched,
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+    bool forceNetwork = false,
   }) async {
     final requestedUrl = manifestUrl.trim();
     manifestUrl = await _substituteUnreachableLocalManifest(requestedUrl);
@@ -1043,7 +1047,8 @@ class PluginRegistry {
 
     // Sign-out keeps JS under the profile scope but clears prefs. Prefer disk
     // before CDN so splash does not re-download every pack (issue 259).
-    if (!localCheckout) {
+    // Reload / Update pass [forceNetwork] so hub layout + scripts are not stale.
+    if (!localCheckout && !forceNetwork) {
       var reused = 0;
       for (final plugin in scriptsNeeded) {
         final body = await PluginScriptDiskStore.loadEngineScript(

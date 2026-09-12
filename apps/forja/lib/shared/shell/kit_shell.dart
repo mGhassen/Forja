@@ -735,13 +735,16 @@ class _KitShellState extends State<KitShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
+    // Pack reload while on Settings sets [_forceNextRails]; tab show often
+    // calls refresh with force:false — keep the hard layout/rails refresh.
+    final hard = force || _forceNextRails;
     if ((_hasHostListWidget || _hasHostBodySource || _hasRegisteredListPanel) &&
         mounted) {
       setState(() => _hostRefreshEpoch++);
     }
-    _forceNextRails = force;
+    _forceNextRails = hard;
     _invalidateRailFutures();
-    await _loadLayout(forceRefresh: force);
+    await _loadLayout(forceRefresh: hard);
     if (!mounted) return;
     // Build after layout setState consumes [_forceNextRails] into new futures.
     WidgetsBinding.instance.addPostFrameCallback((_) {

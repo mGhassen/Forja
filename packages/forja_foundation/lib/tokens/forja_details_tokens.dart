@@ -3,34 +3,24 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Layout constants for media-details surfaces (hero, body, sources panel).
 ///
+/// Details are a **section stack**: hero chrome (optional) then zero or more
+/// body sections. Packs may omit hero, episodes, or any rail — host only
+/// applies spacing rules, never row-type layout branches.
+///
 /// Content gutters reuse [ShellTokens] so details stay aligned with shell
 /// catalog rows and body max-width.
 abstract final class DetailsTokens {
-  /// Extra pull-up for movie details body (cast/trailers) - not used for TV episodes.
+  /// Extra pull-up for movie details body (cast/trailers) when the host opts in.
   static const double heroBodyOverlap = 120;
 
-  /// Backdrop band reserved for seasons + episodes under the hero chrome.
-  /// Same height with or without a season row so the first card row starts at
-  /// one Y (season posters when multi-season, episode thumbs when not).
-  static const double episodeBackdropBleed = 500;
-
-  /// Bleed under hero chrome for the episode picker.
-  static double episodeRailBleed({required bool showSeasonRail}) =>
-      episodeBackdropBleed;
-
-  /// Extra chrome above the rail so series/anime keep synopsis + Play.
-  /// Makes the hero stack slightly taller than the viewport (rows sit lower).
-  static const double episodeHeroChromeExtra = 100;
-  static const double episodeSectionTopPadding = 8;
-  static const double episodeSectionBottomPadding = 12;
   static const double heroContentTopInset = 88;
-
   static const double heroDescriptionWidthFraction = 0.40;
-  static const double bodyTopSpacing = 36;
 
-  /// Shared gap between details body sections (and episode rail → first section).
+  /// Gap after the hero before the first section, and between every section.
   static const double sectionSpacing = 48;
-  static const double bodyTopSpacingWithEpisodes = sectionSpacing;
+
+  /// Alias — first section under hero uses the same rhythm as between sections.
+  static const double bodyTopSpacing = sectionSpacing;
 
   /// Title → row gap inside cast / trailers / recommendations on details.
   static const double sectionTitleGap = 16;
@@ -68,63 +58,15 @@ abstract final class DetailsTokens {
   /// Cinematic hero band (~82% viewport) - see media-details feature doc.
   static const double heroViewportFraction = 0.82;
 
-  /// Floor for title/actions when the episode rail claims [episodeBackdropBleed].
-  static const double heroWithEpisodesMinFraction = 0.42;
-
-  /// Compact phones / short landscape (incl. 720p Android TV) need a taller
-  /// chrome floor - 0.42 leaves ~60–100px for the title/Play column after top
-  /// inset + rail gap, which zeros the title and drops synopsis.
-  static const double heroWithEpisodesMinFractionCompact = 0.58;
-
-  /// Viewports shorter than this use the compact chrome floor even when wide
-  /// (720p ATV is landscape but still tight for title + synopsis + Play).
-  static const double heroWithEpisodesShortViewportHeight = 900;
-
-  /// Gap between hero meta/actions and the episode rail (inside the bleed).
-  static double heroContentToRailGap(double heroChromeHeight) =>
-      heroChromeHeight < 480 ? 24.0 : 72.0;
-
-  /// Full on-screen backdrop band - title/actions + optional TV bleed.
-  static double heroBackdropBand(
+  /// Hero chrome height (title / actions only). Prefer [viewportHeight] from a
+  /// [LayoutBuilder] when the overlay width differs from [MediaQuery].
+  static double heroHeight(
     BuildContext context, {
     double? viewportHeight,
-    bool showEpisodeRail = false,
-    bool showSeasonRail = false,
   }) {
     final size = MediaQuery.sizeOf(context);
     final height = viewportHeight ?? size.height;
     final resolved = height.isFinite && height > 0 ? height : size.height;
-    if (!showEpisodeRail) {
-      return resolved * heroViewportFraction;
-    }
-    final compact = size.width < ShellTokens.shellNavCompactMaxWidth;
-    final shortViewport = resolved < heroWithEpisodesShortViewportHeight;
-    final minFraction = (compact || shortViewport)
-        ? heroWithEpisodesMinFractionCompact
-        : heroWithEpisodesMinFraction;
-    final bleed = episodeRailBleed(showSeasonRail: showSeasonRail);
-    // Chrome uses the viewport above the rail band so seasons/episodes sit
-    // near the bottom of the first screen instead of mid-hero. A small chrome
-    // boost keeps synopsis visible; the stack grows ~[episodeHeroChromeExtra].
-    return (resolved - bleed + episodeHeroChromeExtra).clamp(
-      resolved * minFraction,
-      resolved * heroViewportFraction,
-    );
-  }
-
-  /// Hero chrome height for media details - prefer [viewportHeight] from a [LayoutBuilder].
-  /// TV episode rails add [episodeRailBleed] below this in the hero stack.
-  static double heroHeight(
-    BuildContext context, {
-    double? viewportHeight,
-    bool showEpisodeRail = false,
-    bool showSeasonRail = false,
-  }) {
-    return heroBackdropBand(
-      context,
-      viewportHeight: viewportHeight,
-      showEpisodeRail: showEpisodeRail,
-      showSeasonRail: showSeasonRail,
-    );
+    return resolved * heroViewportFraction;
   }
 }

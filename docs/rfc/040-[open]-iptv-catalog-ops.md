@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **29 / 31** acceptance (dealPortal flag; AI deferred; Stalker note/expiry; probe tighten) |
-| **Current slice** | R40-A31 admin/worker alive tighten shipped ([RFC-075](fixed/075-[fixed]-iptv-portal-probe-detail.md)); AI extract still deferred |
+| **Progress** | **5 / 5** components · **30 / 32** acceptance (simple deal lotto; AI deferred) |
+| **Current slice** | R40-A32 deal lotto = inverse `dealt_count` only (no check freshness); AI extract still deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -62,6 +62,7 @@
 | 29 | R40-A29 | Admin Pool Check status: Stalker handshake + get_profile (not player_api); M3U playlist probe | ✅ |
 | 30 | R40-A30 | Stalker scrape expires → `note` + `expiry`; Pool card Note line; paste backfill for missing | ✅ |
 | 31 | R40-A31 | Admin + worker Check status alive = `auth=1` \|\| `status=active` only (no `user_info` false green) — [RFC-075](fixed/075-[fixed]-iptv-portal-probe-detail.md) | ✅ |
+| 32 | R40-A32 | `deal_iptv_portals` lotto = inverse `dealt_count` only (drop `last_checked_at` freshness); keep host diversity 2-pass; no expiry filter | ✅ |
 
 ---
 
@@ -69,7 +70,7 @@
 
 Move IPTV discovery off per-user Reddit scrape into a **central ops pipeline**: admin console + Rust worker write a shared catalog pool; users spend **credits** to **deal** portals (lottery pack) filtered by region. Same Supabase as Forja accounts/`iptv_portals` — no second database.
 
-**Deal lotto (R40-A21):** eligible = `catalog_pool` + `alive` + region + not already on profile. Weight = `1/(1+dealt_count)` × 1.5 if checked within 7 days. Draw via exponential race (`-ln(random())/weight`). Pass 1 prefers distinct hosts; pass 2 fills remaining. Empty pack refunds the credit.
+**Deal lotto (R40-A21 → R40-A32):** eligible = `catalog_pool` + `alive` + region + not already on profile. Weight = `1/(1+dealt_count)` (no check-freshness / expiry parse). Draw via exponential race (`-ln(random())/weight`). Pass 1 prefers distinct hosts; pass 2 fills remaining. Empty pack refunds the credit.
 
 ## Goals
 

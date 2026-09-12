@@ -844,43 +844,40 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     final heroActionCount = tvIndex;
 
     final episodePicker = hasEpisodes
-        ? MediaDetailsBody.padContent(
-            context,
-            TvSeasonEpisodePicker(
-              tmdbId: _watchedMediaId ?? 0,
-              seasonCount: seasons.length,
-              selectedSeason: _selectedSeason,
-              selectedEpisode: _selectedEpisode,
-              isLoadingSeason: false,
-              seasonData: null,
-              fallbackPosterPath: show.poster,
-              customEpisodesBySeason: hubEpisodeMaps(videos),
-              watchedEpisodes: _watchedEpisodes,
-              watchedCatalog: _watchedCatalog,
-              watchedSeasonForKeys: _watchedSeasonForKeys,
-              onToggleWatched: _toggleEpisodeWatched,
-              onSeasonToggleWatched: _watchedMediaId == null
-                  ? null
-                  : _toggleSeasonWatched,
-              onSeasonSelected: (season) {
-                final eps = hubVideosForSeason(videos, season);
-                setState(() {
-                  _selectedSeason = season;
-                  _selectedEpisode =
-                      eps.isEmpty ? 1 : (eps.first.episode ?? 1);
-                });
-              },
-              onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
-              onEpisodePlay: (ep) {
-                setState(() => _selectedEpisode = ep);
-                _playSelected();
-              },
-              tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-              tvSeasonRowId: 'seasons',
-              tvEpisodeRowId: 'episodes',
-              tvRowOrderBase: 0,
-              tvFocusUp: heroFocusUp,
-            ),
+        ? TvSeasonEpisodePicker(
+            tmdbId: _watchedMediaId ?? 0,
+            seasonCount: seasons.length,
+            selectedSeason: _selectedSeason,
+            selectedEpisode: _selectedEpisode,
+            isLoadingSeason: false,
+            seasonData: null,
+            fallbackPosterPath: show.poster,
+            customEpisodesBySeason: hubEpisodeMaps(videos),
+            watchedEpisodes: _watchedEpisodes,
+            watchedCatalog: _watchedCatalog,
+            watchedSeasonForKeys: _watchedSeasonForKeys,
+            onToggleWatched: _toggleEpisodeWatched,
+            onSeasonToggleWatched: _watchedMediaId == null
+                ? null
+                : _toggleSeasonWatched,
+            onSeasonSelected: (season) {
+              final eps = hubVideosForSeason(videos, season);
+              setState(() {
+                _selectedSeason = season;
+                _selectedEpisode =
+                    eps.isEmpty ? 1 : (eps.first.episode ?? 1);
+              });
+            },
+            onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
+            onEpisodePlay: (ep) {
+              setState(() => _selectedEpisode = ep);
+              _playSelected();
+            },
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvSeasonRowId: 'seasons',
+            tvEpisodeRowId: 'episodes',
+            tvRowOrderBase: 0,
+            tvFocusUp: heroFocusUp,
           )
         : null;
 
@@ -995,6 +992,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
                 : null,
           );
     final sections = [
+      if (episodePicker != null) episodePicker,
       ...identitySections,
       ...packMidSections,
       ...packRecSections,
@@ -1006,9 +1004,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       tvHeroPlayFocus: _heroPlayFocus,
       tvBackFocus: _backFocus,
       bodyOverlap: 0,
-      topSpacing: hasEpisodes
-          ? DetailsTokens.bodyTopSpacingWithEpisodes
-          : DetailsTokens.bodyTopSpacing,
+      topSpacing: DetailsTokens.bodyTopSpacing,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
         backdropUrl: backdrop,
@@ -1027,13 +1023,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
           durationMs: heroDurMs,
         ),
         logoUrl: hubMetaLogoUrl(show),
-        height: DetailsTokens.heroHeight(
-          context,
-          showEpisodeRail: hasEpisodes,
-          showSeasonRail: seasons.length > 1,
-        ),
-        pageBottomChild: episodePicker,
-        showSeasonRail: seasons.length > 1,
+        height: DetailsTokens.heroHeight(context),
         progressBar: heroPosMs != null && heroDurMs != null
             ? WatchProgressBar(
                 positionMs: heroPosMs,
