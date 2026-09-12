@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/lists/list_open_binding.dart';
 import 'package:forja/shared/engine/lists/list_open_picker.dart';
+import 'package:forja/shared/engine/lists/list_open_title_rank.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
@@ -135,14 +136,31 @@ Future<void> _bindCandidateAndOpen(
     final hits = await listOpenSearchHub(
       pluginId: candidate.pluginId,
       query: title,
+      yearHint: meta.releaseInfo.isNotEmpty
+          ? meta.releaseInfo
+          : meta.premiereDate,
     );
     if (!context.mounted) return;
     if (hits.isEmpty) {
       await listOpenShowEmptySearchToast(candidate.label);
       return;
     }
-    final hit = hits.length == 1
-        ? hits.first
+    final queryYear = listOpenParseYear(meta.releaseInfo) ??
+        listOpenParseYear(meta.premiereDate) ??
+        listOpenParseYear(title);
+    final top = hits.first;
+    final topYear = listOpenParseYear(
+      top.releaseInfo.isNotEmpty ? top.releaseInfo : top.premiereDate,
+    );
+    // Exact / same-token title → skip the picker.
+    final hit = hits.length == 1 ||
+            listOpenIsStrongTitleMatch(
+              title,
+              top.name,
+              queryYear: queryYear,
+              candidateYear: topYear,
+            )
+        ? top
         : await showListOpenSearchHitPicker(
             context,
             hits: hits,

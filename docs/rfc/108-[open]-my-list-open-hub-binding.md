@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **16 / 16** acceptance |
-| **Current slice** | All slices landed — open until manual QA of picker / TV long-press |
+| **Progress** | **6 / 6** components · **17 / 17** acceptance |
+| **Current slice** | Ranked Open-with title search — open until manual QA of picker / TV long-press |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,7 @@
 |--:|----|-------------|--------|
 | 10 | R108-A10 | Choosing a hub with incompatible ids runs hub `search` by title | ✅ |
 | 11 | R108-A11 | User picks a search hit → open cached on bookmark → details | ✅ |
+| 17 | R108-A17 | Open-with search ranks exact/near title first; year-stripped retry; strong match skips picker | ✅ |
 
 ---
 

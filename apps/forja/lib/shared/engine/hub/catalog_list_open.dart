@@ -24,6 +24,10 @@ Future<void> openCatalogListEntry(
       row['pluginId'] == null) {
     row['pluginId'] = entryPlugin;
   }
+  final known = entry.listStatus?.trim();
+  if (known != null && known.isNotEmpty && row['listStatus'] == null) {
+    row['listStatus'] = known;
+  }
   if (context.mounted) {
     await openLegacyListItem(
       context,

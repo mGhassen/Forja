@@ -44,7 +44,12 @@ PluginHubFeedPage pluginHubFeedPageFromRows(
   required bool loadingRemote,
 }) {
   final byKind = <String, List<KitListEntry>>{};
-  for (final row in rows) {
+  for (final raw in rows) {
+    final listStatus = raw['listStatus']?.toString() ?? status;
+    // Stamp tab status onto Simkl stubs so open/bind keeps Watching ≠ Plan to Watch.
+    final row = raw['listStatus'] != null
+        ? raw
+        : (Map<String, dynamic>.from(raw)..['listStatus'] = listStatus);
     final meta = metaItemFromLegacyListItem(row);
     final kind = (row['kind'] ?? row['type'] ?? 'movie').toString();
     final resolved = kind.isEmpty ? 'movie' : kind;
@@ -53,7 +58,7 @@ PluginHubFeedPage pluginHubFeedPageFromRows(
       legacyRow: row,
       kind: resolved,
       pluginId: row['pluginId']?.toString(),
-      listStatus: row['listStatus']?.toString() ?? status,
+      listStatus: listStatus,
     );
     (byKind[resolved] ??= []).add(entry);
   }

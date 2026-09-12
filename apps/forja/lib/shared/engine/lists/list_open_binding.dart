@@ -269,15 +269,28 @@ abstract final class ListOpenBinding {
     await BookmarkStore().ensureLoaded();
     final newUid = BookmarkStore.catalogEntryId(pluginId, open.id);
     final oldUid = item['uniqueId']?.toString();
-    final status = item['listStatus']?.toString() ??
-        (oldUid != null ? BookmarkStore().statusOf(oldUid) : null) ??
-        BookmarkStore.defaultStatus;
     final tmdb = legacyListTmdbId(item) ?? meta.numericId('tmdb');
     final tmdbMt = meta.tmdbMediaType ??
         item['tmdbMediaType']?.toString() ??
         (open.surface == 'tmdb'
             ? open.effectiveExtract.resolveType
             : null);
+    // Hub bind must not reset list status. Prefer an existing bookmark
+    // (tmdb_* or catalog_*), then the row's status (Simkl tab), then default.
+    final resolveMt = BookmarkStore.normalizeTmdbMediaType(
+          tmdbMt ?? item['mediaType']?.toString(),
+        ) ??
+        item['mediaType']?.toString();
+    final existingStatus = BookmarkStore().resolvedStatus(
+      uniqueId: (oldUid != null && oldUid.isNotEmpty) ? oldUid : newUid,
+      tmdbId: tmdb,
+      mediaType: resolveMt,
+    );
+    final rowStatus = item['listStatus']?.toString().trim();
+    final status = existingStatus ??
+        (rowStatus != null && rowStatus.isNotEmpty
+            ? rowStatus
+            : BookmarkStore.defaultStatus);
     if (oldUid != null && oldUid.isNotEmpty && oldUid != newUid) {
       await BookmarkStore().remove(oldUid);
     }
