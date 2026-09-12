@@ -82,7 +82,8 @@ String listStatusLabel(String? status, {String fallback = 'My List'}) {
   return fallback;
 }
 
-/// Always shows icon + label. Hover = background; selected = status color.
+/// Always shows icon + label. Hover/focus = status color + tint; selected =
+/// filled icon + weight (not color) so mouse menus don't look dual-focused.
 class ListStatusMenuRow extends StatefulWidget {
   const ListStatusMenuRow({
     super.key,
@@ -116,9 +117,9 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
   @override
   Widget build(BuildContext context) {
     final active = _active;
-    final accent = active
-        ? widget.statusColor
-        : (widget.selected ? widget.statusColor : Colors.white);
+    // Color only for the lit row (hover / D-pad). Selected stays readable via
+    // icon + weight so an autofocused row doesn't compete with mouse hover.
+    final accent = active ? widget.statusColor : Colors.white;
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
@@ -360,7 +361,8 @@ class _ListStatusPinState extends State<ListStatusPin> {
                   currentStatus: widget.currentStatus,
                   options: widget.options,
                   busy: _busy,
-                  tvFocus: widget.useFocusableChips,
+                  // Desktop hybrid: hover-only rows. D-pad autofocus = leanback.
+                  tvFocus: widget.useFocusableChips && !widget.scaleOnHover,
                   onSelect: _setStatus,
                 ),
               ),

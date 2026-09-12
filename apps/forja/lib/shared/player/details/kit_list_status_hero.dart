@@ -83,6 +83,7 @@ class KitListStatusHeroPaint extends StatelessWidget {
       enabled: enabled,
       onMenuOpenChanged: onMenuOpenChanged,
       useFocusableChips: policy.useFocusableMoodChips,
+      scaleOnHover: policy.scaleOnHover,
       triggerBuilder: (context, {required status, required onTap, required menuOpen}) {
         return HeroPillIconGroup(
           tvTabId: tvTabId,

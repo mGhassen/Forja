@@ -485,8 +485,10 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                         return KitListStatusPopupPanel(
                           currentStatus: status,
                           busy: _busy,
-                          tvFocus: policy.useFocusableMoodChips,
-                          autoFocusSelected: policy.useFocusableMoodChips,
+                          // Desktop hybrid has mood chips too — menu is mouse
+                          // hover only. D-pad autofocus is leanback-only.
+                          tvFocus: policy.leanbackOnly,
+                          autoFocusSelected: policy.leanbackOnly,
                           onSelect: _setStatus,
                         );
                       },

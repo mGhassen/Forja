@@ -13,6 +13,7 @@ class ListStatusHero extends StatefulWidget {
     this.enabled = true,
     this.onMenuOpenChanged,
     this.useFocusableChips = false,
+    this.scaleOnHover = true,
     this.menuOffset = const Offset(0, 46),
   });
 
@@ -21,6 +22,8 @@ class ListStatusHero extends StatefulWidget {
   final bool enabled;
   final ValueChanged<bool>? onMenuOpenChanged;
   final bool useFocusableChips;
+  /// Host maps [ShellInputPolicy.scaleOnHover] — false on leanback TV.
+  final bool scaleOnHover;
   final Offset menuOffset;
 
   /// Builds the hero trigger (host wraps Interactive / TV pills).
@@ -91,8 +94,10 @@ class _ListStatusHeroState extends State<ListStatusHero> {
                 child: ListStatusPopupPanel(
                   currentStatus: widget.currentStatus,
                   busy: _busy,
-                  tvFocus: widget.useFocusableChips,
-                  autoFocusSelected: widget.useFocusableChips,
+                  // Desktop hybrid: mouse hover only. Autofocus = leanback.
+                  tvFocus: widget.useFocusableChips && !widget.scaleOnHover,
+                  autoFocusSelected:
+                      widget.useFocusableChips && !widget.scaleOnHover,
                   onSelect: _setStatus,
                 ),
               ),
