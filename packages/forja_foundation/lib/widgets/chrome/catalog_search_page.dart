@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/search/search_block.dart';
+import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 
 /// Hub search result row model (Zone A — no host types).
@@ -26,6 +27,7 @@ class CatalogSearchResult {
 /// Catalog search page paint — field + results slots (Zone A).
 ///
 /// Host wires MetaRuntime / recent queries / TV into callbacks.
+/// Optional [backdropUrl] paints a wide-layout atmosphere stack behind slots.
 class CatalogSearchPage extends StatelessWidget {
   const CatalogSearchPage({
     super.key,
@@ -40,6 +42,7 @@ class CatalogSearchPage extends StatelessWidget {
     this.field,
     this.emptyChild,
     this.backgroundColor,
+    this.backdropUrl,
   });
 
   final Widget results;
@@ -56,9 +59,13 @@ class CatalogSearchPage extends StatelessWidget {
   final Widget? emptyChild;
   final Color? backgroundColor;
 
+  /// Wide layout atmosphere — poster/backdrop behind a left→right gradient.
+  final String? backdropUrl;
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final bg = backgroundColor ?? theme.bgDark;
     final block = SearchBlock(
       controller: controller,
       focusNode: focusNode,
@@ -71,17 +78,50 @@ class CatalogSearchPage extends StatelessWidget {
       results: results,
     );
 
-    return ColoredBox(
-      color: backgroundColor ?? theme.bgDark,
-      child: emptyChild == null
-          ? block
-          : Stack(
-              fit: StackFit.expand,
-              children: [
-                block,
-                emptyChild!,
-              ],
+    final content = emptyChild == null
+        ? block
+        : Stack(
+            fit: StackFit.expand,
+            children: [
+              block,
+              emptyChild!,
+            ],
+          );
+
+    final url = backdropUrl;
+    if (url == null || url.isEmpty) {
+      return ColoredBox(color: bg, child: content);
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: SettledNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+            errorWidget: const SizedBox.shrink(),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  theme.bgDark,
+                  theme.bgDark.withValues(alpha: 0.92),
+                  theme.bgDark.withValues(alpha: 0.55),
+                ],
+                stops: const [0.0, 0.42, 1.0],
+              ),
             ),
+          ),
+        ),
+        ColoredBox(color: Colors.transparent, child: content),
+      ],
     );
   }
 }

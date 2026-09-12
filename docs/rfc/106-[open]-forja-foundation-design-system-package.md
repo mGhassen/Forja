@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **1** ⏭️ Q1–Q12 |
-| **Current slice** | Body evacuate code ✅ ([271](../issues/271-[open]-catalog-body-evacuate-foundation.md)) · A18 🔄 awaiting user Q1–Q12 · A19 ⏭️ |
+| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **0 / 3** acceptance (deeper paint) · **1** ⏭️ Q1–Q12 |
+| **Current slice** | Deeper paint evacuate ([272](../issues/272-[open]-catalog-deeper-evacuate-paint.md)) · A18 🔄 · A19 ⏭️ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -75,6 +75,16 @@
 | 25 | R106-A25 | Search page + single SearchFilters model in package | ✅ |
 | 26 | R106-A26 | Details body composition via DetailsPageBlock / DetailsScreen slots | ✅ |
 | 27 | R106-A27 | Vertical filters rail paint DS-first (LogoMenuRail); registry host | ✅ |
+
+---
+
+## Acceptance (deeper paint evacuate — issue 272)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 28 | R106-A28 | Search cards + filter lens painters in package; host thin mapper | ⬜ |
+| 29 | R106-A29 | KitSection thin CatalogSection mapper (< ~200 lines) | ⬜ |
+| 30 | R106-A30 | List grid/dense/empty chrome via CatalogList composers | ⬜ |
 
 ---
 

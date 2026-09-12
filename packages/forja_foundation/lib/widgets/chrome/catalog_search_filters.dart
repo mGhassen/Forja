@@ -323,3 +323,5 @@ class CatalogSearchFilters extends StatelessWidget {
     );
   }
 }
+
+export 'package:forja_foundation/widgets/chrome/catalog_search_filter_lens.dart';

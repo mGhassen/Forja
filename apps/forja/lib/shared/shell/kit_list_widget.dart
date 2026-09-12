@@ -33,8 +33,9 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/hub/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
-import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_list.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 
 /// Layout widget [`LayoutTypes.list`] — poster grid or dense list from a
 /// registered host list source (opaque `source` id and/or hub [pluginId]).
@@ -658,18 +659,27 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     final leading = ShellTokens.compactChromeLeadingInset(context);
     final panelActive = widget.sidePanel != null || _autoPanel;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final list = ListView.separated(
+    return CatalogDenseList(
       controller: _scroll,
-      padding: EdgeInsets.fromLTRB(
-        leading,
-        4 + _hoistedTopBarInset(context),
-        ShellTokens.bodyHorizontalPadding,
-        shellTvKitScrollBottomGap(context),
-      ),
+      leading: leading,
+      topPadding: 4 + _hoistedTopBarInset(context),
+      trailing: ShellTokens.bodyHorizontalPadding,
+      bottomPadding: shellTvKitScrollBottomGap(context),
       itemCount: entries.length,
-      separatorBuilder: (_, _) => Divider(
-        height: 1,
-        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+      wrapScroll: (list) => TvGrid(
+        tabId: widget.tabId,
+        rowId: widget.gridRowId,
+        sortOrder: widget.tvRowOrder + 2,
+        columns: 1,
+        itemCount: entries.length,
+        onFocusUp: () =>
+            _focusRowLast(widget.kindMenuId) ||
+            _focusRow(widget.kindMenuId, 0),
+        child: _kitListScrollbar(
+          context,
+          interactive: !tv,
+          child: list,
+        ),
       ),
       itemBuilder: (context, index) {
         final entry = entries[index];
@@ -706,21 +716,6 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         );
       },
     );
-    return TvGrid(
-      tabId: widget.tabId,
-      rowId: widget.gridRowId,
-      sortOrder: widget.tvRowOrder + 2,
-      columns: 1,
-      itemCount: entries.length,
-      onFocusUp: () =>
-          _focusRowLast(widget.kindMenuId) ||
-          _focusRow(widget.kindMenuId, 0),
-      child: _kitListScrollbar(
-        context,
-        interactive: !tv,
-        child: list,
-      ),
-    );
   }
 
   Widget _matchCards(
@@ -733,82 +728,63 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     final panelActive = widget.sidePanel != null || _autoPanel;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _eventCardsGrid(
+        final layout = _eventCardsLayout(
           context,
           constraints.maxWidth,
           chromeTop: _hoistedTopBarInset(context),
         );
-        return TvGrid(
-          tabId: widget.tabId,
-          rowId: widget.gridRowId,
-          sortOrder: widget.tvRowOrder + 2,
-          columns: grid.columns,
+        return CatalogPosterGrid(
+          layout: layout,
+          controller: _scroll,
           itemCount: entries.length,
-          onFocusUp: () =>
-              _focusRowLast(widget.kindMenuId) ||
-              _focusRow(widget.kindMenuId, 0),
-          child: _kitListScrollbar(
-            context,
-            interactive: !tv,
-            child: CustomScrollView(
-              controller: _scroll,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              slivers: [
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    grid.leading,
-                    grid.topPad,
-                    grid.rightPad,
-                    shellTvKitScrollBottomGap(context),
-                  ),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: grid.columns,
-                      mainAxisSpacing: grid.gap,
-                      crossAxisSpacing: grid.gap,
-                      mainAxisExtent: grid.cardH,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final entry = entries[index];
-                        final selected =
-                            selectedId != null && selectedId == entry.meta.id;
-                        return KitEventCard(
-                          event: KitEventPaint.fromEntry(entry),
-                          width: grid.cardW,
-                          height: grid.cardH,
-                          gridIndex: index,
-                          gridColumns: grid.columns,
-                          selected: selected,
-                          tvTabId: widget.tabId,
-                          tvRowId: widget.gridRowId,
-                          onUpEdge: index < grid.columns
-                              ? () =>
-                                  _focusRowLast(widget.kindMenuId) ||
-                                  _focusRow(widget.kindMenuId, 0)
-                              : null,
-                          onLeftEdge: index % grid.columns == 0
-                              ? _packFocusLeft()
-                              : null,
-                          onRightEdge: _listRightEdge(
-                            selected: selected,
-                            panelActive: panelActive,
-                            atRightColumn: index % grid.columns ==
-                                    grid.columns - 1 ||
-                                index == entries.length - 1,
-                          ),
-                          onTap: () => _openEntry(context, source, entry),
-                        );
-                      },
-                      childCount: entries.length,
-                    ),
-                  ),
-                ),
-              ],
+          useAspectRatio: false,
+          bottomPadding: shellTvKitScrollBottomGap(context),
+          wrapScroll: (grid) => TvGrid(
+            tabId: widget.tabId,
+            rowId: widget.gridRowId,
+            sortOrder: widget.tvRowOrder + 2,
+            columns: layout.columns,
+            itemCount: entries.length,
+            onFocusUp: () =>
+                _focusRowLast(widget.kindMenuId) ||
+                _focusRow(widget.kindMenuId, 0),
+            child: _kitListScrollbar(
+              context,
+              interactive: !tv,
+              child: grid,
             ),
           ),
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            final selected =
+                selectedId != null && selectedId == entry.meta.id;
+            return KitEventCard(
+              event: KitEventPaint.fromEntry(entry),
+              width: layout.cardW,
+              height: layout.cardH,
+              gridIndex: index,
+              gridColumns: layout.columns,
+              selected: selected,
+              tvTabId: widget.tabId,
+              tvRowId: widget.gridRowId,
+              onUpEdge: index < layout.columns
+                  ? () =>
+                      _focusRowLast(widget.kindMenuId) ||
+                      _focusRow(widget.kindMenuId, 0)
+                  : null,
+              onLeftEdge: index % layout.columns == 0
+                  ? _packFocusLeft()
+                  : null,
+              onRightEdge: _listRightEdge(
+                selected: selected,
+                panelActive: panelActive,
+                atRightColumn: index % layout.columns ==
+                        layout.columns - 1 ||
+                    index == entries.length - 1,
+              ),
+              onTap: () => _openEntry(context, source, entry),
+            );
+          },
         );
       },
     );
@@ -843,51 +819,34 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _homeGrid(
+        final layout = _posterLayout(
           context,
           constraints.maxWidth,
           chromeTop: _hoistedTopBarInset(context),
         );
-        return TvGrid(
-          tabId: widget.tabId,
-          rowId: widget.gridRowId,
-          sortOrder: widget.tvRowOrder + 2,
-          columns: grid.columns,
+        return CatalogPosterGrid(
+          layout: layout,
+          controller: _scroll,
           itemCount: entries.length,
-          onFocusUp: () =>
-              _focusRowLast(widget.statusTabId) ||
-              _focusRow(widget.statusTabId, 0),
-          child: CustomScrollView(
-            controller: _scroll,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  grid.leading,
-                  grid.topPad,
-                  grid.rightPad,
-                  shellTvKitScrollBottomGap(context),
-                ),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: grid.columns,
-                    mainAxisSpacing: grid.gap,
-                    crossAxisSpacing: grid.gap,
-                    childAspectRatio: grid.cardW / grid.cardH,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final entry = entries[index];
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: _card(context, source, entry, index, grid: grid),
-                    );
-                  }, childCount: entries.length),
-                ),
-              ),
-            ],
+          bottomPadding: shellTvKitScrollBottomGap(context),
+          wrapScroll: (grid) => TvGrid(
+            tabId: widget.tabId,
+            rowId: widget.gridRowId,
+            sortOrder: widget.tvRowOrder + 2,
+            columns: layout.columns,
+            itemCount: entries.length,
+            onFocusUp: () =>
+                _focusRowLast(widget.statusTabId) ||
+                _focusRow(widget.statusTabId, 0),
+            child: grid,
           ),
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            return Align(
+              alignment: Alignment.topCenter,
+              child: _card(context, source, entry, index, layout: layout),
+            );
+          },
         );
       },
     );
@@ -898,7 +857,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     KitListSource source,
     KitListEntry entry,
     int index, {
-    required _HomeGrid grid,
+    required CatalogPosterGridLayout layout,
   }) {
     final meta = entry.meta;
     final status =
@@ -912,20 +871,20 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       badge: kitPosterBadge(meta),
       listPin: source.buildEntryPin(context, entry, status),
       gridIndex: index,
-      gridColumns: grid.columns,
+      gridColumns: layout.columns,
       tvTabId: widget.tabId,
       tvRowId: widget.gridRowId,
-      onUpEdge: index < grid.columns
+      onUpEdge: index < layout.columns
           ? () =>
               _focusRowLast(widget.statusTabId) ||
               _focusRow(widget.statusTabId, 0)
           : null,
       onLeftEdge:
-          index % grid.columns == 0 ? _packFocusLeft() : null,
+          index % layout.columns == 0 ? _packFocusLeft() : null,
       onRightEdge: _listRightEdge(
         selected: false,
         panelActive: false,
-        atRightColumn: index % grid.columns == grid.columns - 1,
+        atRightColumn: index % layout.columns == layout.columns - 1,
       ),
       onTap: () => _openEntry(context, source, entry),
       onLongPress: () => _openEntryWithChoice(context, source, entry),
@@ -938,32 +897,19 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _homeGrid(
+        final layout = _posterLayout(
           context,
           constraints.maxWidth,
           chromeTop: _hoistedTopBarInset(context),
         );
-        return homeLoadingShimmer(
-          GridView.builder(
-            padding: EdgeInsets.fromLTRB(
-              grid.leading,
-              grid.topPad,
-              grid.rightPad,
-              ShellTokens.bodyHorizontalPadding,
-            ),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: grid.columns,
-              mainAxisSpacing: grid.gap,
-              crossAxisSpacing: grid.gap,
-              childAspectRatio: grid.cardW / grid.cardH,
-            ),
-            itemCount: grid.columns * 2,
-            itemBuilder: (context, _) => DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppTheme.bgCard,
-                borderRadius: BorderRadius.circular(
-                  shellCardBorderRadius(context),
-                ),
+        return CatalogPosterLoadingGrid(
+          layout: layout,
+          shimmer: homeLoadingShimmer,
+          placeholder: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(
+                shellCardBorderRadius(context),
               ),
             ),
           ),
@@ -977,36 +923,26 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     if (_isMatchCards) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          final grid = _eventCardsGrid(
+          final layout = _eventCardsLayout(
             context,
             constraints.maxWidth,
             chromeTop: _hoistedTopBarInset(context),
           );
           final rows = constraints.maxHeight.isFinite
-              ? math.max(1, (constraints.maxHeight / (grid.cardH + grid.gap)).ceil())
+              ? math.max(
+                  1,
+                  (constraints.maxHeight / (layout.cardH + layout.gap)).ceil(),
+                )
               : 2;
-          return homeLoadingShimmer(
-            GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                grid.leading,
-                grid.topPad,
-                grid.rightPad,
-                ShellTokens.bodyHorizontalPadding,
-              ),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: grid.columns,
-                mainAxisSpacing: grid.gap,
-                crossAxisSpacing: grid.gap,
-                childAspectRatio: grid.cardW / grid.cardH,
-              ),
-              itemCount: grid.columns * rows.clamp(1, 4),
-              itemBuilder: (context, _) => DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.bgCard,
-                  borderRadius: BorderRadius.circular(
-                    shellCardBorderRadius(context),
-                  ),
+          return CatalogPosterLoadingGrid(
+            layout: layout,
+            rowCount: rows.clamp(1, 4),
+            shimmer: homeLoadingShimmer,
+            placeholder: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.bgCard,
+                borderRadius: BorderRadius.circular(
+                  shellCardBorderRadius(context),
                 ),
               ),
             ),
@@ -1014,33 +950,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         },
       );
     }
-    final leading = ShellTokens.compactChromeLeadingInset(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Dense row ≈ padding 20 + title/meta 28 + divider 1.
-        const rowExtent = 52.0;
-        final avail = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : MediaQuery.sizeOf(context).height * 0.55;
-        final count = math.max(4, (avail / rowExtent).floor()).clamp(4, 16);
-        return homeLoadingShimmer(
-          ListView.separated(
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              leading,
-              4 + _hoistedTopBarInset(context),
-              ShellTokens.bodyHorizontalPadding,
-              shellTvKitScrollBottomGap(context),
-            ),
-            itemCount: count,
-            separatorBuilder: (_, _) => Divider(
-              height: 1,
-              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-            ),
-            itemBuilder: (context, i) => _KitDenseRowSkeleton(index: i),
-          ),
-        );
-      },
+    return CatalogScheduleDenseSkeleton(
+      leading: ShellTokens.compactChromeLeadingInset(context),
+      topPadding: 4 + _hoistedTopBarInset(context),
+      trailing: ShellTokens.bodyHorizontalPadding,
+      bottomPadding: shellTvKitScrollBottomGap(context),
+      shimmer: homeLoadingShimmer,
     );
   }
 
@@ -1081,118 +996,47 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             : isLiveSchedule
                 ? 'Try Catalog → All, a wider Schedule window, or Refresh'
                 : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped';
-    return Padding(
-      padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                searching
-                    ? Icons.search_off_rounded
-                    : isLiveSchedule
-                        ? Icons.sports_rounded
-                        : Icons.bookmark_border_rounded,
-                size: 40,
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return CatalogListEmpty(
+      topPadding: _hoistedTopBarInset(context),
+      title: title,
+      subtitle: subtitle,
+      icon: searching
+          ? Icons.search_off_rounded
+          : isLiveSchedule
+              ? Icons.sports_rounded
+              : Icons.bookmark_border_rounded,
     );
   }
 }
 
-class _HomeGrid {
-  const _HomeGrid({
-    required this.columns,
-    required this.cardW,
-    required this.cardH,
-    required this.gap,
-    required this.leading,
-    required this.rightPad,
-    required this.topPad,
-  });
-
-  final int columns;
-  final double cardW;
-  final double cardH;
-  final double gap;
-  final double leading;
-  final double rightPad;
-  final double topPad;
-}
-
-_HomeGrid _eventCardsGrid(
+CatalogPosterGridLayout _eventCardsLayout(
   BuildContext context,
   double maxWidth, {
   double chromeTop = 0,
 }) {
-  final minW = KitEventCard.cardWidth(context);
-  final minH = KitEventCard.cardHeight(context);
-  final gap = KitEventCard.gridGap(context);
-  final pad = shellHomeSectionHorizontalPadding(context);
-  final inner = math.max(0.0, maxWidth - pad * 2);
-  final columns =
-      math.max(1, ((inner + gap) / (minW + gap)).floor()).clamp(1, 8);
-  final cardW = columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
-  final cardH = minW > 0 ? minH * (cardW / minW) : minH;
-  return _HomeGrid(
-    columns: columns,
-    cardW: cardW,
-    cardH: cardH,
-    gap: gap,
-    leading: pad,
-    rightPad: pad,
-    topPad: chromeTop + 4,
+  return CatalogPosterGridLayout.eventCards(
+    maxWidth: maxWidth,
+    minW: KitEventCard.cardWidth(context),
+    minH: KitEventCard.cardHeight(context),
+    gap: KitEventCard.gridGap(context),
+    pad: shellHomeSectionHorizontalPadding(context),
+    chromeTop: chromeTop,
   );
 }
 
-_HomeGrid _homeGrid(
+CatalogPosterGridLayout _posterLayout(
   BuildContext context,
   double maxWidth, {
   double chromeTop = 0,
 }) {
-  final cardW = shellPosterCardWidth(context);
-  final cardH = shellPosterCardHeight(context);
-  final gap = shellPosterCardRowGap(context);
-  final leading = ShellTokens.compactChromeLeadingInset(context);
-  final trailing = ShellTokens.bodyHorizontalPadding;
-  final inner = math.max(0.0, maxWidth - leading - trailing);
-  final columns = math.max(1, ((inner + gap) / (cardW + gap)).floor());
-  final gridW = columns * cardW + (columns - 1) * gap;
-  final rightPad = math.max(trailing, maxWidth - leading - gridW);
-  final topPad =
-      chromeTop + cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4;
-  return _HomeGrid(
-    columns: columns,
-    cardW: cardW,
-    cardH: cardH,
-    gap: gap,
-    leading: leading,
-    rightPad: rightPad,
-    topPad: topPad,
+  return CatalogPosterGridLayout.poster(
+    maxWidth: maxWidth,
+    cardW: shellPosterCardWidth(context),
+    cardH: shellPosterCardHeight(context),
+    gap: shellPosterCardRowGap(context),
+    leading: ShellTokens.compactChromeLeadingInset(context),
+    trailing: ShellTokens.bodyHorizontalPadding,
+    chromeTop: chromeTop,
   );
 }
 
@@ -1200,61 +1044,4 @@ String kitListPosterUrl(MetaItem meta) {
   final poster = meta.poster;
   if (poster.isEmpty) return '';
   return resolveAbsoluteCoverUrl(poster);
-}
-
-/// Placeholder dense schedule row while live catalogs scrape.
-/// Title / meta bars use fractional widths so they look like real match names
-/// instead of full-bleed slabs.
-class _KitDenseRowSkeleton extends StatelessWidget {
-  const _KitDenseRowSkeleton({this.index = 0});
-
-  final int index;
-
-  static const _titleFactors = [0.52, 0.68, 0.44, 0.61, 0.55, 0.74, 0.40, 0.63];
-  static const _metaFactors = [0.28, 0.36, 0.22, 0.42, 0.31, 0.25, 0.38, 0.33];
-
-  @override
-  Widget build(BuildContext context) {
-    final titleF = _titleFactors[index % _titleFactors.length];
-    final metaF = _metaFactors[index % _metaFactors.length];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          const Skeleton(
-            width: 8,
-            height: 8,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FractionallySizedBox(
-                  widthFactor: titleF,
-                  alignment: Alignment.centerLeft,
-                  child: const Skeleton(height: 12),
-                ),
-                const SizedBox(height: 6),
-                FractionallySizedBox(
-                  widthFactor: metaF,
-                  alignment: Alignment.centerLeft,
-                  child: const Skeleton(height: 10),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Skeleton(width: 28, height: 10),
-          const SizedBox(width: 8),
-          const Skeleton(
-            width: 16,
-            height: 16,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
-          ),
-        ],
-      ),
-    );
-  }
 }

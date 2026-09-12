@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **17 / 17** acceptance |
-| **Current slice** | Ranked Open-with title search — open until manual QA of picker / TV long-press |
+| **Progress** | **7 / 7** components · **20 / 20** acceptance |
+| **Current slice** | Single Open-in bind sheet — open until manual QA |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R108-C04 | Cross-hub bind via hub `search` when ids incompatible | ✅ |
 | 5 | R108-C05 | My List **pack** settings (`hub_select`) for open defaults | ✅ |
 | 6 | R108-C06 | TV long-press Open-with + feature doc | ✅ |
+| 7 | R108-C07 | Single **Open in…** bind sheet (hub chips + search + ranked hits) | ✅ |
 
 ---
 
@@ -80,9 +81,19 @@
 
 ---
 
+## Acceptance (slice 5 — bind sheet UX)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 18 | R108-A18 | One Open-in sheet replaces hub AlertDialog + match AlertDialog | ✅ |
+| 19 | R108-A19 | Sheet: title poster, hub chips, editable query, ranked hits with Best match | ✅ |
+| 20 | R108-A20 | Compatible hub shows direct Open row (no search list) | ✅ |
+
+---
+
 ## Summary
 
-My List must open titles into the right installed catalog hub without the pack inventing a hub inventory. Local Asian Drama / Anime bookmarks already carry opaque `open`; Simkl stubs are mostly TMDB. When binding is missing or ambiguous — or the user wants to rebind — the host shows a picker over installed `details` hubs (by `types[]` + nav label), caches `open` + `pluginId` on the bookmark, and supports cross-id bind via hub `search`.
+My List must open titles into the right installed catalog hub without the pack inventing a hub inventory. Local Asian Drama / Anime bookmarks already carry opaque `open`; Simkl stubs are mostly TMDB. When binding is missing or ambiguous — or the user wants to rebind — the host shows one **Open in…** sheet (hub chips + title search + ranked hits), caches `open` + `pluginId` on the bookmark, and supports cross-id bind via hub `search`.
 
 **Prerequisite:** details params must prefer `open.id` so list `uniqueId` (`catalog_<plugin>_<id>`) does not break KissKH / AniList details.
 

@@ -234,7 +234,9 @@ class CatalogSectionState<T> extends State<CatalogSection<T>> {
 
   Widget _buildLoaded(BuildContext context, List<T> items) {
     final title = widget.titleBuilder?.call(context, widget.title) ??
-        SectionTitle(widget.title);
+        (widget.embedded || widget.title.isEmpty
+            ? const SizedBox.shrink()
+            : SectionTitle(widget.title));
     final cards = <Widget>[
       for (var i = 0; i < items.length; i++)
         widget.cardBuilder(context, items[i], i),
@@ -252,7 +254,7 @@ class CatalogSectionState<T> extends State<CatalogSection<T>> {
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!widget.embedded) title,
+        title,
         scroller,
       ],
     );

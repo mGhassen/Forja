@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/horizontal_scroller.dart';
@@ -10,6 +8,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/home_loading_skeleton.dart';
 import 'package:forja/shared/shell/kit_poster_card.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_section.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:forja/shared/engine/hub/kit_row_prefetch.dart';
@@ -92,24 +91,13 @@ class KitSection<T> extends StatefulWidget {
 }
 
 class _KitSectionState<T> extends State<KitSection<T>> {
-  List<T>? _last;
-  List<T> _loaded = const [];
-  int _page = 0;
-  bool _visibleActivated = false;
-  bool _loading = false;
-  bool _loadingMore = false;
-  bool _hasMore = true;
-  int _loadGen = 0;
-  int? _resolvedPageSize;
+  final GlobalKey<CatalogSectionState<T>> _sectionKey =
+      GlobalKey<CatalogSectionState<T>>();
 
   @override
   void initState() {
     super.initState();
     _registerPrefetch();
-    final fetchPage = widget.fetchPage;
-    if (fetchPage != null && !widget.lazy) {
-      unawaited(_loadPage(1));
-    }
   }
 
   @override
@@ -117,12 +105,6 @@ class _KitSectionState<T> extends State<KitSection<T>> {
     super.didUpdateWidget(oldWidget);
     if (widget.prefetchSlot != null) {
       _registerPrefetch();
-    }
-    if (oldWidget.reloadToken != widget.reloadToken ||
-        oldWidget.lazy != widget.lazy ||
-        oldWidget.pageSizeHint != widget.pageSizeHint ||
-        oldWidget.holdEmptyStructure != widget.holdEmptyStructure) {
-      _softReload(keepVisible: widget.lazy && _visibleActivated);
     }
   }
 
@@ -133,96 +115,8 @@ class _KitSectionState<T> extends State<KitSection<T>> {
   }
 
   void _warmFromPrefetch() {
-    _activateFromLazyGate(prefetch: true);
-  }
-
-  void _activateFromLazyGate({required bool prefetch}) {
-    if (widget.fetchPage == null || !widget.lazy) return;
-    if (_visibleActivated) {
-      if (!prefetch) widget.prefetchSlot?.notifyVisible();
-      return;
-    }
-    setState(() => _visibleActivated = true);
-    unawaited(_loadPage(1));
+    _sectionKey.currentState?.activateLazy();
     widget.prefetchSlot?.notifyVisible();
-  }
-
-  /// Refetch while keeping the last painted row (chrome filter / Films / Series).
-  void _softReload({required bool keepVisible}) {
-    _loadGen++;
-    _loadingMore = false;
-    _hasMore = true;
-    if (!keepVisible) _visibleActivated = false;
-    final fetchPage = widget.fetchPage;
-    if (fetchPage != null && (!widget.lazy || _visibleActivated)) {
-      unawaited(_loadPage(1));
-    }
-  }
-
-  void _onVisibilityChanged(VisibilityInfo info) {
-    if (widget.fetchPage == null || !widget.lazy || _visibleActivated) return;
-    if (info.visibleFraction <= 0) return;
-    _activateFromLazyGate(prefetch: false);
-  }
-
-  List<T> _mergeItems(List<T> current, List<T> batch) {
-    final keyFn = widget.itemKey;
-    if (keyFn == null) return [...current, ...batch];
-    final seen = {for (final i in current) keyFn(i)};
-    final out = [...current];
-    for (final i in batch) {
-      if (seen.add(keyFn(i))) out.add(i);
-    }
-    return out;
-  }
-
-  int get _effectivePageSize =>
-      _resolvedPageSize ?? widget.pageSizeHint;
-
-  Future<void> _loadPage(int page, {bool append = false}) async {
-    final fetchPage = widget.fetchPage;
-    if (fetchPage == null) return;
-    if (append) {
-      if (_loadingMore || !_hasMore) return;
-      setState(() => _loadingMore = true);
-    } else {
-      setState(() => _loading = true);
-    }
-
-    final gen = _loadGen;
-    try {
-      final result = await fetchPage(page);
-      final batch = result.items;
-      if (result.pageSize != null && result.pageSize! > 0) {
-        _resolvedPageSize = result.pageSize;
-      }
-      if (!mounted || gen != _loadGen) return;
-      setState(() {
-        _loaded = append ? _mergeItems(_loaded, batch) : batch;
-        _page = page;
-        _loading = false;
-        _loadingMore = false;
-        _hasMore = result.hasMore ??
-            (batch.length >= _effectivePageSize);
-        _last = _loaded;
-      });
-      if (!append) widget.onFirstPageLoaded?.call(_loaded.length);
-    } catch (_) {
-      if (!mounted || gen != _loadGen) return;
-      setState(() {
-        _loading = false;
-        _loadingMore = false;
-        if (!append) _hasMore = false;
-      });
-      if (!append) widget.onFirstPageLoaded?.call(0);
-    }
-  }
-
-  void _onApproachingEnd() {
-    if (widget.fetchPage == null || !_hasMore || _loading || _loadingMore) {
-      return;
-    }
-    unawaited(_loadPage(_page + 1, append: true));
   }
 
   double _sectionTitleTop(BuildContext context) {
@@ -240,130 +134,109 @@ class _KitSectionState<T> extends State<KitSection<T>> {
             ? 180
             : widget.title.length * 11.0,
         cardWidth: KitPosterCard.cardWidth(context, aspect: widget.cardAspect),
-        cardHeight: KitPosterCard.cardHeight(context, aspect: widget.cardAspect),
+        cardHeight:
+            KitPosterCard.cardHeight(context, aspect: widget.cardAspect),
       ),
     );
   }
 
-  Widget _placeholder(BuildContext context) {
-    return SizedBox(
-      height: KitSection.sectionHeight(
+  @override
+  Widget build(BuildContext context) {
+    final horizontalPad = widget.embedded
+        ? 0.0
+        : shellHomeSectionHorizontalPadding(context);
+    final sectionTop = _sectionTitleTop(context);
+
+    return CatalogSection<T>(
+      key: _sectionKey,
+      title: widget.title,
+      future: widget.future,
+      fetchPage: widget.fetchPage,
+      items: widget.items,
+      lazy: widget.lazy,
+      pageSizeHint: widget.pageSizeHint,
+      itemKey: widget.itemKey,
+      compactTop: widget.compactTop,
+      embedded: widget.embedded,
+      onFirstPageLoaded: widget.onFirstPageLoaded,
+      reloadToken: widget.reloadToken,
+      holdEmptyStructure: widget.holdEmptyStructure,
+      placeholderHeight: KitSection.sectionHeight(
         context,
         compactTop: widget.compactTop,
         embedded: widget.embedded,
         cardAspect: widget.cardAspect,
       ),
-    );
-  }
-
-  Widget _buildRow(BuildContext context, List<T> list) {
-    if (list.isEmpty) return const SizedBox.shrink();
-
-    final sectionTop = _sectionTitleTop(context);
-    final horizontalPad = widget.embedded
-        ? 0.0
-        : shellHomeSectionHorizontalPadding(context);
-    final paginate = widget.fetchPage != null && _hasMore;
-
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (widget.title.isNotEmpty)
-          ShellSectionTitle(
-            title: widget.title,
-            padding: EdgeInsetsDirectional.only(
-              start: horizontalPad,
-              top: sectionTop,
-              end: horizontalPad,
-              bottom: widget.embedded
-                  ? DetailsTokens.sectionTitleGap
-                  : shellHomeSectionBottomGap(context),
-            ),
+      onVisible: () => widget.prefetchSlot?.notifyVisible(),
+      cardBuilder: (context, item, index) =>
+          widget.cardBuilder(context, item, index),
+      skeletonBuilder: _rowSkeleton,
+      titleBuilder: (context, title) {
+        if (title.isEmpty) return const SizedBox.shrink();
+        return ShellSectionTitle(
+          title: title,
+          padding: EdgeInsetsDirectional.only(
+            start: horizontalPad,
+            top: sectionTop,
+            end: horizontalPad,
+            bottom: widget.embedded
+                ? DetailsTokens.sectionTitleGap
+                : shellHomeSectionBottomGap(context),
           ),
-        FocusTraversalGroup(
+        );
+      },
+      scrollerBuilder: ({
+        required context,
+        required children,
+        required onApproachingEnd,
+      }) {
+        return FocusTraversalGroup(
           child: HorizontalScroller(
-            height: KitPosterCard.cardHeight(context, aspect: widget.cardAspect),
+            height: KitPosterCard.cardHeight(
+              context,
+              aspect: widget.cardAspect,
+            ),
             padding: EdgeInsets.symmetric(horizontal: horizontalPad),
-            itemCount: list.length,
-            onApproachingEnd: paginate ? _onApproachingEnd : null,
+            itemCount: children.length,
+            onApproachingEnd: widget.fetchPage != null ? onApproachingEnd : null,
             separatorBuilder: (_, _) => SizedBox(
               width: widget.showRank
                   ? shellScaled(context, 6).clamp(3.0, 6.0)
                   : shellPosterCardRowGap(context),
             ),
-            itemBuilder: (context, index) =>
-                widget.cardBuilder(context, list[index], index),
+            itemBuilder: (context, index) => children[index],
           ),
-        ),
-      ],
-    );
-
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    final rowId = widget.tvRowId;
-    if (tabId == null || rowId == null) return column;
-
-    return TvKitRow(
-      tabId: tabId,
-      rowId: rowId,
-      sortOrder: widget.tvRowOrder,
-      itemCount: list.length,
-      onFocusUp: widget.tvFocusUp,
-      child: column,
-    );
-  }
-
-  Widget _wrapLazyGate(BuildContext context, Widget child) {
-    if (widget.fetchPage == null || !widget.lazy) return child;
-    return VisibilityDetector(
-      key: ValueKey('hub-lazy:${widget.tvRowId ?? widget.title}'),
-      onVisibilityChanged: _onVisibilityChanged,
-      child: child,
-    );
-  }
-
-  Widget _buildPaged(BuildContext context) {
-    if (widget.lazy && !_visibleActivated) {
-      return _wrapLazyGate(context, _placeholder(context));
-    }
-
-    final list = _loaded;
-    if (list.isNotEmpty) {
-      return _wrapLazyGate(context, _buildRow(context, list));
-    }
-    if (_loading || widget.holdEmptyStructure) {
-      return _wrapLazyGate(context, _rowSkeleton(context));
-    }
-    return _wrapLazyGate(context, const SizedBox.shrink());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final staticItems = widget.items;
-    if (staticItems != null) {
-      return _buildRow(context, staticItems);
-    }
-
-    final fetchPage = widget.fetchPage;
-    if (fetchPage != null) {
-      return _buildPaged(context);
-    }
-
-    return FutureBuilder<List<T>>(
-      future: widget.future,
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          _last = snapshot.data;
-        }
-        final list = snapshot.data ?? _last ?? <T>[];
-        final loading = snapshot.connectionState == ConnectionState.waiting;
-
-        if (list.isNotEmpty) return _buildRow(context, list);
-
-        if (loading || !snapshot.hasData || widget.holdEmptyStructure) {
-          return _rowSkeleton(context);
-        }
-        return const SizedBox.shrink();
+        );
+      },
+      wrapRow: (child, {required itemCount}) {
+        final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+        final rowId = widget.tvRowId;
+        if (tabId == null || rowId == null) return child;
+        return TvKitRow(
+          tabId: tabId,
+          rowId: rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: itemCount,
+          onFocusUp: widget.tvFocusUp,
+          child: child,
+        );
+      },
+      lazyPlaceholder: (context, activate) {
+        return VisibilityDetector(
+          key: ValueKey('hub-lazy:${widget.tvRowId ?? widget.title}'),
+          onVisibilityChanged: (info) {
+            if (info.visibleFraction <= 0) return;
+            activate();
+          },
+          child: SizedBox(
+            height: KitSection.sectionHeight(
+              context,
+              compactTop: widget.compactTop,
+              embedded: widget.embedded,
+              cardAspect: widget.cardAspect,
+            ),
+          ),
+        );
       },
     );
   }

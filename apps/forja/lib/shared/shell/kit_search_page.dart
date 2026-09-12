@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,9 +20,12 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/recent_search_helper_tile.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_search_page.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_search_result_card.dart';
 
 export 'package:forja_foundation/widgets/chrome/catalog_search_page.dart'
     show CatalogSearchResult;
+export 'package:forja_foundation/widgets/chrome/catalog_search_result_card.dart'
+    show CatalogSearchResultCard, CatalogSearchSkeletonCard;
 
 typedef KitSearchResult = CatalogSearchResult;
 typedef KitSearchQuery = Future<List<KitSearchResult>> Function(String query);
@@ -977,100 +979,71 @@ class _KitSearchPageState extends State<KitSearchPage> {
     final focused = _focusedResult;
     final backdropUrl = focused?.backdropUrl ?? focused?.posterUrl;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (backdropUrl != null && backdropUrl.isNotEmpty)
-          Positioned.fill(
-            child: CachedNetworkImage(
-              imageUrl: backdropUrl,
-              fit: BoxFit.cover,
-              alignment: Alignment.centerRight,
-              errorWidget: (_, _, _) => const SizedBox.shrink(),
-            ),
-          ),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  AppTheme.bgDark,
-                  AppTheme.bgDark.withValues(alpha: 0.92),
-                  AppTheme.bgDark.withValues(alpha: 0.55),
-                ],
-                stops: const [0.0, 0.42, 1.0],
+    return CatalogSearchPage(
+      backdropUrl: backdropUrl,
+      backgroundColor: Colors.transparent,
+      hintText: widget.hintText,
+      field: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          ShellTokens.searchPageInset,
+          ShellTokens.searchPageInset,
+          ShellTokens.searchPageInset,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSearchField(context),
+            // Active filter tokens stay under the field; the lens itself
+            // lives in the left column (replaces helpers when open).
+            _buildFilterTokens(context),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+      results: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          ShellTokens.searchPageInset,
+          0,
+          ShellTokens.searchPageInset,
+          ShellTokens.searchPageInset,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _filtersOpen && widget.structuredSearch
+                    ? Align(
+                        key: const ValueKey('hub-search-filter-lens'),
+                        alignment: Alignment.topLeft,
+                        child: KitSearchFilterLens(
+                          open: true,
+                          filters: _filters,
+                          onFiltersChanged: _onFiltersChanged,
+                          onSubmit: _submitFilters,
+                          firstFocusNode: _filterLensFirstFocusNode,
+                          onUpFromFirst: _focusSearchFieldBrowse,
+                        ),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('hub-search-helpers'),
+                        child: _buildHelpersList(context),
+                      ),
               ),
             ),
-          ),
+            const SizedBox(width: ShellTokens.searchColumnGap),
+            Expanded(
+              flex: 7,
+              child: _buildResultsColumn(context),
+            ),
+          ],
         ),
-        CatalogSearchPage(
-          backgroundColor: Colors.transparent,
-          hintText: widget.hintText,
-          field: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              ShellTokens.searchPageInset,
-              ShellTokens.searchPageInset,
-              ShellTokens.searchPageInset,
-              0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildSearchField(context),
-                // Active filter tokens stay under the field; the lens itself
-                // lives in the left column (replaces helpers when open).
-                _buildFilterTokens(context),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-          results: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              ShellTokens.searchPageInset,
-              0,
-              ShellTokens.searchPageInset,
-              ShellTokens.searchPageInset,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _filtersOpen && widget.structuredSearch
-                        ? Align(
-                            key: const ValueKey('hub-search-filter-lens'),
-                            alignment: Alignment.topLeft,
-                            child: KitSearchFilterLens(
-                              open: true,
-                              filters: _filters,
-                              onFiltersChanged: _onFiltersChanged,
-                              onSubmit: _submitFilters,
-                              firstFocusNode: _filterLensFirstFocusNode,
-                              onUpFromFirst: _focusSearchFieldBrowse,
-                            ),
-                          )
-                        : KeyedSubtree(
-                            key: const ValueKey('hub-search-helpers'),
-                            child: _buildHelpersList(context),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: ShellTokens.searchColumnGap),
-                Expanded(
-                  flex: 7,
-                  child: _buildResultsColumn(context),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1448,7 +1421,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
             if (index >= _results.length) {
               return const Padding(
                 padding: EdgeInsets.all(4),
-                child: _KitSearchSkeletonCard(),
+                child: CatalogSearchSkeletonCard(),
               );
             }
             final item = _results[index];
@@ -1456,22 +1429,43 @@ class _KitSearchPageState extends State<KitSearchPage> {
             final firstRow = index ~/ gridColumns == 0;
             return Padding(
               padding: const EdgeInsets.all(4),
-              child: _KitSearchFilmCard(
-                result: item,
+              child: CatalogSearchResultCard.film(
+                title: item.title,
+                posterUrl: item.posterUrl,
+                subtitle: item.subtitle,
+                rating: item.rating,
                 selected: index == _gridFocusedIndex,
-                gridIndex: index,
-                onOpen: () => widget.onOpen(item),
-                onLeftEdge: firstColumn && tvFocus
-                    ? () => _focusHelperAtVisualLevelFromGrid(index)
-                    : null,
-                onUpEdge: firstRow && tvFocus ? _focusSearchFieldBrowse : null,
-                onFocusChange: (focused) {
-                  if (focused) {
-                    setState(() {
-                      _gridFocusedIndex = index;
-                      _helperFocusedIndex = null;
-                    });
-                  }
+                titleFontSize: shellHubCardTitleFontSize(context),
+                onTap: () => widget.onOpen(item),
+                interactiveBuilder: ({required child, required onTap}) {
+                  final grid = TvGridScope.maybeOf(context);
+                  final meta = grid?.metaFor(index);
+                  return shellFocusableTap(
+                    context: context,
+                    onTap: onTap,
+                    borderRadius: 14,
+                    showFocusBorder: true,
+                    onLeftEdge: firstColumn && tvFocus
+                        ? () => _focusHelperAtVisualLevelFromGrid(index)
+                        : null,
+                    onUpEdge:
+                        firstRow && tvFocus ? _focusSearchFieldBrowse : null,
+                    gridIndex: meta?.gridIndex ?? index,
+                    gridColumns: meta?.gridColumns,
+                    tvTabId: meta?.tvTabId,
+                    tvRowId: meta?.tvRowId,
+                    tvZone: meta?.tvZone ?? ShellTvZone.grid,
+                    tvItemIndex: meta?.tvItemIndex ?? index,
+                    onFocusChange: (focused) {
+                      if (focused) {
+                        setState(() {
+                          _gridFocusedIndex = index;
+                          _helperFocusedIndex = null;
+                        });
+                      }
+                    },
+                    child: child,
+                  );
                 },
               ),
             );
@@ -1523,15 +1517,26 @@ class _KitSearchPageState extends State<KitSearchPage> {
         if (i >= _results.length) {
           return const Align(
             alignment: Alignment.topCenter,
-            child: _KitSearchSkeletonCard(),
+            child: CatalogSearchSkeletonCard(),
           );
         }
         final item = _results[i];
         return Align(
           alignment: Alignment.topCenter,
-          child: _KitSearchCompactCard(
-            result: item,
+          child: CatalogSearchResultCard.compact(
+            title: item.title,
+            posterUrl: item.posterUrl,
+            subtitle: item.subtitle,
+            rating: item.rating,
             onTap: () => widget.onOpen(item),
+            interactiveBuilder: ({required child, required onTap}) =>
+                shellFocusableTap(
+              context: context,
+              onTap: onTap,
+              borderRadius: 12,
+              showFocusBorder: true,
+              child: child,
+            ),
           ),
         );
       },
@@ -1569,317 +1574,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
         if (effective.isEmpty) return;
         _performSearch(effective, recordRecent: false);
       },
-    );
-  }
-}
-
-class _KitSearchSkeletonCard extends StatelessWidget {
-  const _KitSearchSkeletonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KitSearchFilmCard extends StatelessWidget {
-  const _KitSearchFilmCard({
-    required this.result,
-    required this.selected,
-    required this.onOpen,
-    this.onFocusChange,
-    this.onLeftEdge,
-    this.onUpEdge,
-    this.gridIndex,
-  });
-
-  final KitSearchResult result;
-  final bool selected;
-  final VoidCallback onOpen;
-  final ValueChanged<bool>? onFocusChange;
-  final VoidCallback? onLeftEdge;
-  final VoidCallback? onUpEdge;
-  final int? gridIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final titleSize = shellHubCardTitleFontSize(context);
-    final grid = TvGridScope.maybeOf(context);
-    final index = gridIndex;
-    final meta = index != null ? grid?.metaFor(index) : null;
-
-    return shellFocusableTap(
-      context: context,
-      onTap: onOpen,
-      borderRadius: 14,
-      showFocusBorder: true,
-      onLeftEdge: onLeftEdge,
-      onUpEdge: onUpEdge,
-      gridIndex: meta?.gridIndex ?? index,
-      gridColumns: meta?.gridColumns,
-      tvTabId: meta?.tvTabId,
-      tvRowId: meta?.tvRowId,
-      tvZone: meta?.tvZone ?? ShellTvZone.grid,
-      tvItemIndex: meta?.tvItemIndex ?? index,
-      onFocusChange: onFocusChange,
-      child: SizedBox.expand(
-        child: AnimatedContainer(
-          duration: ShellTokens.navSelectionAnimation,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: selected ? Border.all(color: Colors.white, width: 2) : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
-                blurRadius: selected ? 20 : 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: AppTheme.bgDark,
-                  child: result.posterUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: result.posterUrl,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.medium,
-                          placeholder: (_, _) =>
-                              ColoredBox(color: AppTheme.bgDark),
-                          errorWidget: (_, _, _) => Center(
-                            child: Text(
-                              result.title,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white24,
-                              ),
-                            ),
-                          ),
-                        )
-                      : Center(
-                          child: Text(
-                            result.title,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white24,
-                            ),
-                          ),
-                        ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.black.withValues(alpha: 0.95),
-                      ],
-                      stops: const [0.0, 0.45, 0.8, 1.0],
-                    ),
-                  ),
-                ),
-                if (result.rating != null)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 12,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            result.rating!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  bottom: 10,
-                  left: 10,
-                  right: 10,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        result.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: titleSize,
-                          height: 1.2,
-                        ),
-                      ),
-                      if (result.subtitle != null &&
-                          result.subtitle!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          result.subtitle!,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KitSearchCompactCard extends StatelessWidget {
-  const _KitSearchCompactCard({
-    required this.result,
-    required this.onTap,
-  });
-
-  final KitSearchResult result;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardWidth = ShellTokens.searchCardWidthCompact;
-    final cardHeight = cardWidth * 1.5;
-
-    return shellFocusableTap(
-      context: context,
-      onTap: onTap,
-      borderRadius: 12,
-      showFocusBorder: true,
-      child: Container(
-        width: cardWidth,
-        height: cardHeight,
-        decoration: BoxDecoration(
-          color: AppTheme.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (result.posterUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: result.posterUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                errorWidget: (_, _, _) =>
-                    const Center(child: Icon(Icons.broken_image, color: Colors.white24)),
-              )
-            else
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    result.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ),
-            if (result.rating != null)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    result.rating!.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber,
-                    ),
-                  ),
-                ),
-              ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [Colors.black87, Colors.transparent],
-                  ),
-                ),
-                child: Text(
-                  result.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
