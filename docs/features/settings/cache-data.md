@@ -12,9 +12,9 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 ## What you can do
 
-### My List open defaults
+### My List open hubs
 
-- **Films / Series / Anime / Asian Drama** — pick which installed hub opens titles of that type when a list row has matching ids and no saved hub yet. **Auto** uses the first matching details hub. Change a saved choice later from My List with **Open with…** (right-click / long-press).
+- One row per engine type declared by your **installed** details hubs (nav labels from those packs — not a fixed Films / Anime list). Pick the default hub for list rows of that type when nothing is saved yet. **Auto** uses the first matching hub. Change a saved choice later from My List with **Open with…** (right-click / long-press).
 
 ### Safe to clear
 

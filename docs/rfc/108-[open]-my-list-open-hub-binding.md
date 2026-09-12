@@ -71,7 +71,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 12 | R108-A12 | Settings → My List: default hub per engine type | ✅ |
+| 12 | R108-A12 | Settings → My List: default hub per **installed** engine type (nav labels; no fixed Films/Anime rows) | ✅ |
 | 13 | R108-A13 | Defaults apply only when row has compatible ids and no stored binding | ✅ |
 | 14 | R108-A14 | TV long-press Open-with parity | ✅ |
 | 15 | R108-A15 | Feature doc describes open binding / Open with | ✅ |

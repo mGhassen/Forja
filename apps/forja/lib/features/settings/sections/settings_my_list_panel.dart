@@ -4,7 +4,10 @@ import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/lists/list_open_prefs.dart';
 import 'package:forja/shared/engine/models/models.dart';
 
-/// Default hub per engine type for My List open binding (RFC-108).
+/// My List open defaults — rows/options come from **installed** details hubs only.
+///
+/// No fixed Films / Anime / Asian Drama inventory. Engine-type tokens are the
+/// union of `types[]` on kit plugins that have `details` (pack-agnostic).
 class SettingsMyListPanel extends StatefulWidget {
   const SettingsMyListPanel({super.key});
 
@@ -13,10 +16,18 @@ class SettingsMyListPanel extends StatefulWidget {
 }
 
 class _SettingsMyListPanelState extends State<SettingsMyListPanel> {
-  static const _types = <String>['movie', 'tv', 'anime', 'drama'];
+  /// Opaque types that are not My List → details open targets.
+  static const _skipTypes = {
+    'list',
+    'live_match',
+    'live_sport',
+    'live',
+    'catalog',
+  };
 
   Map<String, String> _defaults = {};
   List<EnginePlugin> _hubs = const [];
+  List<String> _types = const [];
   bool _loading = true;
 
   @override
@@ -27,18 +38,27 @@ class _SettingsMyListPanelState extends State<SettingsMyListPanel> {
 
   Future<void> _reload() async {
     final hubs = <EnginePlugin>[];
+    final typeSet = <String>{};
     for (final pl in await PluginNavRegistry.listKitPlugins()) {
       if (!pl.hasCapability('details')) continue;
       if (pl.types.length == 1 && pl.types.first == 'list') continue;
       hubs.add(pl);
+      for (final t in pl.types) {
+        final token = t.trim();
+        if (token.isEmpty || _skipTypes.contains(token)) continue;
+        typeSet.add(token);
+      }
     }
     hubs.sort(
       (a, b) => _label(a).toLowerCase().compareTo(_label(b).toLowerCase()),
     );
+    final types = typeSet.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     final defaults = await ListOpenPrefs.allDefaults();
     if (!mounted) return;
     setState(() {
       _hubs = hubs;
+      _types = types;
       _defaults = defaults;
       _loading = false;
     });
@@ -58,6 +78,14 @@ class _SettingsMyListPanelState extends State<SettingsMyListPanel> {
         for (final pl in _hubs)
           if (pl.types.contains(type)) pl,
       ];
+
+  /// Prefer installed hub nav label(s) — never a hardcoded product taxonomy.
+  String _typeTitle(String type) {
+    final hubs = _hubsForType(type);
+    if (hubs.isEmpty) return type;
+    if (hubs.length == 1) return _label(hubs.first);
+    return hubs.map(_label).join(' · ');
+  }
 
   String _displayForType(String type) {
     final id = _defaults[type]?.trim() ?? '';
@@ -84,14 +112,6 @@ class _SettingsMyListPanelState extends State<SettingsMyListPanel> {
     await _reload();
   }
 
-  String _typeTitle(String type) => switch (type) {
-        'movie' => 'Films',
-        'tv' => 'Series',
-        'anime' => 'Anime',
-        'drama' => 'Asian Drama',
-        _ => type,
-      };
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -100,14 +120,35 @@ class _SettingsMyListPanelState extends State<SettingsMyListPanel> {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
+    if (_hubs.isEmpty || _types.isEmpty) {
+      return SettingsGroup(
+        label: 'My List open hubs',
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              'Install a catalog hub with details to link My List opens. '
+              'Defaults appear from whatever hubs you have enabled.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(
+                      alpha: 0.7,
+                    ),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return SettingsGroup(
-      label: 'My List open defaults',
+      label: 'My List open hubs',
       children: [
         for (final type in _types)
           SettingsSelectRow(
             title: _typeTitle(type),
             subtitle:
-                'Used when a list row has matching ids and no saved hub yet',
+                'Default for list rows of type “$type” when no hub is saved yet',
             value: _displayForType(type),
             options: [
               'Auto',
