@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:rust/rust.dart';
@@ -75,20 +76,27 @@ void main() {
       expect(tmdbCatalogTypeToken(meta), 'movie');
     });
 
-    test('tmdbCatalogTypeToken prefers tv media type', () {
-      final meta = MetaItem(
-        id: 'tmdb:tv:1396',
-        type: 'tv',
-        name: 'Breaking Bad',
-        tmdbMediaType: 'tv',
-        ids: const {'tmdb': '1396'},
-        open: const MetaOpen(
-          surface: 'tmdb',
-          id: '1396',
-          extras: {'mediaType': 'tv'},
-        ),
-      );
-      expect(tmdbCatalogTypeToken(meta), 'tv');
+    test('legacy list row keeps pack tmdb open', () {
+      final meta = metaItemFromLegacyListItem({
+        'title': 'The Matrix',
+        'tmdbId': 603,
+        'mediaType': 'movie',
+        'posterPath': '/p.jpg',
+        'open': {
+          'surface': 'tmdb',
+          'id': '603',
+          'extract': {
+            'resolveType': 'movie',
+            'panelCategory': 'movie',
+            'ctx': {'tmdbId': 603},
+          },
+        },
+      });
+      expect(meta.open?.surface, 'tmdb');
+      expect(meta.open?.id, '603');
+      expect(legacyListTmdbId({'tmdbId': 603}), 603);
+      expect(legacyListTmdbId({'tmdbId': '603'}), 603);
+      expect(tmdbCatalogTypeToken(meta), 'movie');
     });
   });
 }

@@ -219,10 +219,13 @@ void scheduleHubFeedEnrich(
     misses.add(row);
   }
   if (misses.isEmpty) return;
+  // Capture notifier while [ref] is still valid — do not ref.read after await
+  // (autoDispose feed rebuild → !_didChangeDependency).
+  final epoch = ref.read(hubFeedEnrichEpochProvider(pluginId).notifier);
   unawaited(() async {
     try {
       await _enrichRowsWithCache(pluginId, misses);
-      ref.read(hubFeedEnrichEpochProvider(pluginId).notifier).state++;
+      epoch.state++;
     } catch (e, st) {
       debugPrint('[hub-feed] background enrich failed: $e\n$st');
     } finally {
