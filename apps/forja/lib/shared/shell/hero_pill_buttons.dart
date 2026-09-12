@@ -447,15 +447,15 @@ class _HeroPillGroupedSlot extends StatelessWidget {
         tvMeta: tvMeta,
         hoverScale: 1,
         pressScale: 1,
+        suppressActive: suppressActive,
         builder: (active, pressed) {
-          final lit = suppressActive ? false : active;
           return HeroPillGroupedSlotSurface(
             label: label,
             icon: icon,
             iconWidget: iconWidget,
-            active: lit,
-            pressed: suppressActive ? false : pressed,
-            compact: !lit,
+            active: active,
+            pressed: pressed,
+            compact: !active,
             isFirst: isFirst,
             isLast: isLast,
           );

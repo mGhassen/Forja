@@ -444,15 +444,10 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     final overlay = Overlay.of(context, rootOverlay: true);
     final policy = ShellScope.inputPolicyOf(context);
     _returnFocus = FocusManager.instance.primaryFocus;
-    // Desktop mouse: drop trigger focus so hover chrome doesn't stick while
-    // picking a menu row (rows paint via MouseRegion, not focus steal).
-    if (policy.scaleOnHover) {
-      _restoreFocusOnClose = false;
-      _returnFocus?.unfocus();
-      _returnFocus = null;
-    } else {
-      _restoreFocusOnClose = true;
-    }
+    // Leanback: restore pin focus when the menu closes. Desktop: don't —
+    // the click gesture re-focuses the pin after sync unfocus; we clear it
+    // post-frame and keep suppressActive while open.
+    _restoreFocusOnClose = !policy.scaleOnHover;
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
@@ -509,6 +504,15 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     if (policy.useFocusableMoodChips) _registerTvDismiss();
     widget.onMenuOpenChanged?.call(true);
     setState(() {});
+    // Beat GestureDetector / Focus re-claim after the opening tap.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_open) return;
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus == null) return;
+      // Don't steal focus from the menu panel on TV.
+      if (!policy.scaleOnHover) return;
+      focus.unfocus();
+    });
   }
 
   void _toggle() {
@@ -533,8 +537,9 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
   @override
   Widget build(BuildContext context) {
     final tv = widget.tvTabId;
-    final suppressActive =
-        _open && ShellScope.inputPolicyOf(context).scaleOnHover;
+    // Always idle while the menu is open — including desktop hybrid where
+    // the opening tap re-focuses the pin after GestureDetector settles.
+    final suppressActive = _open;
     return CompositedTransformTarget(
       link: _link,
       child: ValueListenableBuilder<int>(

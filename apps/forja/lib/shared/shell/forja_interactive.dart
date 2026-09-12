@@ -21,6 +21,7 @@ class ForjaInteractive extends StatefulWidget {
     this.focusNode,
     this.onKeyEvent,
     this.tvMeta,
+    this.suppressActive = false,
   });
 
   final ForjaInteractiveBuilder builder;
@@ -32,6 +33,9 @@ class ForjaInteractive extends StatefulWidget {
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final ShellTvFocusMeta? tvMeta;
+
+  /// Force idle chrome (open menus, overlays) — ignores hover/focus paint.
+  final bool suppressActive;
 
   @override
   State<ForjaInteractive> createState() => _ForjaInteractiveState();
@@ -96,6 +100,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   @override
   void didUpdateWidget(covariant ForjaInteractive oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.suppressActive && !oldWidget.suppressActive) {
+      _hover = false;
+      _pressed = false;
+      _focused = false;
+      final node = _nodeFor(widget);
+      if (node != null && node.hasFocus) {
+        node.unfocus();
+      }
+    }
     if (oldWidget.focusNode == widget.focusNode &&
         oldWidget.onTap != widget.onTap) {
       _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
@@ -166,6 +179,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   }
 
   double _scaleFor(BuildContext context, ShellInputPolicy policy) {
+    if (widget.suppressActive) return 1.0;
     if (_pressed) return widget.pressScale;
     if (ShellInputPolicy.interactiveActive(
       policy,
@@ -178,13 +192,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     return 1.0;
   }
 
-  bool _activeFor(BuildContext context, ShellInputPolicy policy) =>
-      ShellInputPolicy.interactiveActive(
-        policy,
-        hovered: _hover,
-        focused: _focused,
-        context: context,
-      );
+  bool _activeFor(BuildContext context, ShellInputPolicy policy) {
+    if (widget.suppressActive) return false;
+    return ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hover,
+      focused: _focused,
+      context: context,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +217,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     );
 
     Widget interactive = MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
+      onEnter: (_) {
+        if (widget.suppressActive) return;
+        setState(() => _hover = true);
+      },
       onExit: (_) => setState(() {
         _hover = false;
         _pressed = false;
@@ -209,7 +228,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       cursor: SystemMouseCursors.click,
       child: widget.onTap != null
           ? GestureDetector(
-              onTapDown: (_) => setState(() => _pressed = true),
+              onTapDown: (_) {
+                if (widget.suppressActive) return;
+                setState(() => _pressed = true);
+              },
               onTapUp: (_) => setState(() => _pressed = false),
               onTapCancel: () => setState(() => _pressed = false),
               onTap: widget.onTap,
@@ -217,7 +239,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
               child: body,
             )
           : Listener(
-              onPointerDown: (_) => setState(() => _pressed = true),
+              onPointerDown: (_) {
+                if (widget.suppressActive) return;
+                setState(() => _pressed = true);
+              },
               onPointerUp: (_) => setState(() => _pressed = false),
               onPointerCancel: (_) => setState(() => _pressed = false),
               behavior: HitTestBehavior.translucent,
@@ -232,6 +257,19 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       debugLabel: _effectiveNode.debugLabel ?? 'forja-interactive',
       autofocus: widget.autoFocus,
       onFocusChange: (focused) {
+        if (widget.suppressActive) {
+          if (focused) {
+            _effectiveNode.unfocus();
+          }
+          if (_focused || _hover || _pressed) {
+            setState(() {
+              _focused = false;
+              _hover = false;
+              _pressed = false;
+            });
+          }
+          return;
+        }
         setState(() => _focused = focused);
         if (focused) {
           widget.tvMeta?.notifyFocused(_effectiveNode);

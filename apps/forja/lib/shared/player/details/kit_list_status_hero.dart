@@ -98,7 +98,7 @@ class KitListStatusHeroPaint extends StatelessWidget {
                 color: kitListStatusPinColor(status),
               ),
               onTap: onTap,
-              suppressActive: menuOpen && policy.scaleOnHover,
+              suppressActive: menuOpen,
             ),
           ],
         );

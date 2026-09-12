@@ -57,6 +57,9 @@ abstract final class DetailsTokens {
     return contentPaddingCompact;
   }
 
+  /// Left edge of the centered details content column for [viewportWidth].
+  /// Pass the overlay/stack width (rail already subtracted), not full-window
+  /// [MediaQuery] size — otherwise the nav rail is double-counted.
   static double contentLeftInset(double viewportWidth) {
     final padding = contentHorizontalPadding(viewportWidth);
     final columnWidth = viewportWidth < ShellTokens.bodyMaxWidthDesktop
@@ -64,11 +67,6 @@ abstract final class DetailsTokens {
         : ShellTokens.bodyMaxWidthDesktop;
     final sideGutter = (viewportWidth - columnWidth) / 2;
     return sideGutter + padding;
-  }
-
-  /// Back chevron on details overlays - matches hero title / body content inset.
-  static double backButtonLeftInset(BuildContext context) {
-    return contentLeftInset(MediaQuery.sizeOf(context).width);
   }
 
   /// Cinematic hero band (~82% viewport) - see media-details feature doc.
