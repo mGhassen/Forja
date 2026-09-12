@@ -26,10 +26,11 @@ class ParsedSearchQuery {
     this.minScore,
     this.maxScore,
     this.originCountry,
+    this.originalLanguage,
   });
 
   final String raw;
-  /// Text left after stripping year/range / score / type / country / genre tokens.
+  /// Text left after stripping year/range / score / type / country / lang / genre tokens.
   final String remainder;
   final int? year;
   final int? yearStart;
@@ -43,6 +44,8 @@ class ParsedSearchQuery {
   final double? maxScore;
   /// ISO 3166-1 alpha-2 when a country token was matched.
   final String? originCountry;
+  /// ISO 639-1 when a `lang:xx` token was matched.
+  final String? originalLanguage;
 
   bool get hasYear =>
       year != null || (yearStart != null && yearEnd != null);
@@ -56,8 +59,16 @@ class ParsedSearchQuery {
 
   bool get hasOriginCountry => originCountry != null;
 
+  bool get hasOriginalLanguage =>
+      originalLanguage != null && originalLanguage!.isNotEmpty;
+
   bool get hasStructuredFilters =>
-      hasYear || hasGenre || hasScore || hasMediaType || hasOriginCountry;
+      hasYear ||
+      hasGenre ||
+      hasScore ||
+      hasMediaType ||
+      hasOriginCountry ||
+      hasOriginalLanguage;
 
   bool get hasPersonCandidate => remainder.trim().length >= 2;
 
@@ -240,6 +251,11 @@ final _mediaTypeRe = RegExp(
   r'(?:^|\s)(films?|movies?|series|shows?|tv)(?=\s|$)',
   caseSensitive: false,
 );
+/// Lens / typed original-language filter (`lang:ja`).
+final _langTokenRe = RegExp(
+  r'(?:^|\s)lang:([a-z]{2})(?=\s|$)',
+  caseSensitive: false,
+);
 
 
 class _CountryAlias {
@@ -345,6 +361,14 @@ ParsedSearchQuery parseSearchQuery(String raw) {
   }
   working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
 
+  String? originalLanguage;
+  final langMatch = _langTokenRe.firstMatch(' $working ');
+  if (langMatch != null) {
+    originalLanguage = langMatch.group(1)!.toLowerCase();
+    working = (' $working ').replaceFirst(_langTokenRe, ' ');
+  }
+  working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
+
   String? originCountry;
   if (working.isNotEmpty) {
     final lower = working.toLowerCase();
@@ -402,6 +426,7 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     minScore: minScore,
     maxScore: maxScore,
     originCountry: originCountry,
+    originalLanguage: originalLanguage,
   );
 }
 

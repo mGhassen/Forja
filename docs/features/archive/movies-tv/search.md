@@ -10,7 +10,7 @@ Search combines TMDB results with installed Stremio addons that support search a
 
 On TMDB, Search also understands **structured queries**: a person name (`nolan`, `christopher nolan`), a genre (`horror`, `sci-fi`), a year (`2025`), a year range (`2020-2025`), a score (`>=8`, `>8 <9`, `8-9`), and type (`films` / `series`) — alone or combined (`>8 <9 2020-2025 films`). Those use TMDB discover under the hood and still show only movie/TV cards (not people).
 
-Tap the **tune** icon beside the search field to open the **filter lens**: All/Films/Series segment, a score scrub (≥), and a year-range timeline. Active filters show as ghost tokens you can clear. Addon sections search the title/person text only (they skip score/year/type tokens; filters-only queries stay on TMDB).
+Tap the **tune** icon beside the search field to open the **filter lens**: All/Films/Series segment, a score scrub (≥), year-range timeline, genre, country, and **language** (original language). Active filters show as ghost tokens you can clear. Addon sections search the title/person text only (they skip score/year/type/language tokens; filters-only queries stay on TMDB).
 
 ## How to open it
 

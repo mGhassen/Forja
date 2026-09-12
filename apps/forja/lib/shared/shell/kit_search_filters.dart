@@ -15,7 +15,8 @@ export 'package:forja_foundation/widgets/chrome/catalog_search_filters.dart'
         SearchMediaFilter,
         composeSearchQuery,
         kSearchFilterCountries,
-        kSearchFilterGenres;
+        kSearchFilterGenres,
+        kSearchFilterLanguages;
 
 class KitSearchFilterToken extends StatelessWidget {
   const KitSearchFilterToken({
@@ -868,9 +869,24 @@ class KitSearchFilterLens extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 14),
                       FocusTraversalOrder(
                         order: const NumericFocusOrder(6),
+                        child: _SearchFilterChipSection(
+                          title: 'Language',
+                          tvRowId: 'search_filter_language',
+                          options: kSearchFilterLanguages,
+                          selectedToken: filters.languageToken,
+                          onSelected: (token) => onFiltersChanged(
+                            token == filters.languageToken
+                                ? filters.copyWith(clearLanguage: true)
+                                : filters.copyWith(languageToken: token),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(7),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: shellFocusableTap(

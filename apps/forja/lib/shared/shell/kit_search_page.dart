@@ -963,7 +963,9 @@ class _KitSearchPageState extends State<KitSearchPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildSearchField(context),
-                _buildFilterChrome(context),
+                // Active filter tokens stay under the field; the lens itself
+                // lives in the left column (replaces helpers when open).
+                _buildFilterTokens(context),
                 const SizedBox(height: 24),
               ],
             ),
@@ -980,7 +982,28 @@ class _KitSearchPageState extends State<KitSearchPage> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: _buildHelpersList(context),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _filtersOpen && widget.structuredSearch
+                        ? Align(
+                            key: const ValueKey('hub-search-filter-lens'),
+                            alignment: Alignment.topLeft,
+                            child: KitSearchFilterLens(
+                              open: true,
+                              filters: _filters,
+                              onFiltersChanged: _onFiltersChanged,
+                              onSubmit: _submitFilters,
+                              firstFocusNode: _filterLensFirstFocusNode,
+                              onUpFromFirst: _focusSearchFieldBrowse,
+                            ),
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey('hub-search-helpers'),
+                            child: _buildHelpersList(context),
+                          ),
+                  ),
                 ),
                 const SizedBox(width: ShellTokens.searchColumnGap),
                 Expanded(
@@ -1102,6 +1125,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
     );
   }
 
+  /// Compact (phone) AppBar bottom — tokens + lens stacked under the field.
   Widget _buildFilterChrome(BuildContext context) {
     if (!widget.structuredSearch) return const SizedBox.shrink();
     final tokens = _filters.tokenActions(_onFiltersChanged);
@@ -1133,6 +1157,28 @@ class _KitSearchPageState extends State<KitSearchPage> {
           onUpFromFirst: _focusSearchFieldBrowse,
         ),
       ],
+    );
+  }
+
+  /// Ghost tokens under the search field when filters are active but lens closed.
+  Widget _buildFilterTokens(BuildContext context) {
+    if (!widget.structuredSearch) return const SizedBox.shrink();
+    if (_filtersOpen || !_filters.isActive) return const SizedBox.shrink();
+    final tokens = _filters.tokenActions(_onFiltersChanged);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < tokens.length; i++)
+            KitSearchFilterToken(
+              label: tokens[i].$1,
+              onClear: tokens[i].$2,
+              listIndex: i,
+            ),
+        ],
+      ),
     );
   }
 

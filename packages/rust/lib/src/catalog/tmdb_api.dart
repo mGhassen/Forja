@@ -318,6 +318,7 @@ class TmdbApi {
               minRating: parsed.minScore,
               maxRating: parsed.maxScore,
               withOriginCountry: parsed.originCountry,
+              language: parsed.originalLanguage,
               page: page,
             ),
           ),
@@ -338,6 +339,7 @@ class TmdbApi {
               minRating: parsed.minScore,
               maxRating: parsed.maxScore,
               withOriginCountry: parsed.originCountry,
+              language: parsed.originalLanguage,
               page: page,
             ),
           ),
@@ -354,7 +356,8 @@ class TmdbApi {
         bounds != null ||
         parsed.hasScore ||
         parsed.hasMediaType ||
-        parsed.hasOriginCountry) {
+        parsed.hasOriginCountry ||
+        parsed.hasOriginalLanguage) {
       if (parsed.hasGenre) {
         if (wantMovies && parsed.movieGenreIds.isNotEmpty) {
           addMovieDiscover(genres: parsed.movieGenreIds, people: personId);

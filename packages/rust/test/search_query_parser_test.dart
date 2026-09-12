@@ -134,5 +134,18 @@ void main() {
       expect(p.minScore, 8);
       expect(p.yearBounds, (2020, 2023));
     });
+
+    test('lang token', () {
+      final p = parseSearchQuery('lang:ja films');
+      expect(p.originalLanguage, 'ja');
+      expect(p.mediaType, 'movie');
+      expect(p.remainder, isEmpty);
+    });
+
+    test('lang with title remainder', () {
+      final p = parseSearchQuery('godzilla lang:ja');
+      expect(p.originalLanguage, 'ja');
+      expect(p.remainder, 'godzilla');
+    });
   });
 }

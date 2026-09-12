@@ -51,6 +51,26 @@ const kSearchFilterCountries = <(String label, String token)>[
   ('Thailand', 'thailand'),
 ];
 
+/// Original-language chips → `lang:<iso639-1>` (avoids clashing with country aliases).
+const kSearchFilterLanguages = <(String label, String token)>[
+  ('English', 'lang:en'),
+  ('Japanese', 'lang:ja'),
+  ('Korean', 'lang:ko'),
+  ('French', 'lang:fr'),
+  ('Spanish', 'lang:es'),
+  ('German', 'lang:de'),
+  ('Italian', 'lang:it'),
+  ('Portuguese', 'lang:pt'),
+  ('Chinese', 'lang:zh'),
+  ('Hindi', 'lang:hi'),
+  ('Arabic', 'lang:ar'),
+  ('Turkish', 'lang:tr'),
+  ('Thai', 'lang:th'),
+  ('Swedish', 'lang:sv'),
+  ('Norwegian', 'lang:no'),
+  ('Danish', 'lang:da'),
+];
+
 /// UI-driven Search filters — composed into the structured query string.
 class SearchFilters {
   const SearchFilters({
@@ -60,6 +80,7 @@ class SearchFilters {
     this.yearEnd,
     this.genreToken,
     this.countryToken,
+    this.languageToken,
   });
 
   final SearchMediaFilter media;
@@ -68,6 +89,7 @@ class SearchFilters {
   final int? yearEnd;
   final String? genreToken;
   final String? countryToken;
+  final String? languageToken;
 
   static const empty = SearchFilters();
 
@@ -77,7 +99,8 @@ class SearchFilters {
       yearStart == null &&
       yearEnd == null &&
       (genreToken == null || genreToken!.isEmpty) &&
-      (countryToken == null || countryToken!.isEmpty);
+      (countryToken == null || countryToken!.isEmpty) &&
+      (languageToken == null || languageToken!.isEmpty);
 
   /// Host structured-search lens: year range only counts when both ends set.
   bool get isActive =>
@@ -85,7 +108,8 @@ class SearchFilters {
       minScore != null ||
       (yearStart != null && yearEnd != null) ||
       genreToken != null ||
-      countryToken != null;
+      countryToken != null ||
+      languageToken != null;
 
   SearchFilters copyWith({
     SearchMediaFilter? media,
@@ -94,12 +118,14 @@ class SearchFilters {
     int? yearEnd,
     String? genreToken,
     String? countryToken,
+    String? languageToken,
     bool clearMinScore = false,
     bool clearYearStart = false,
     bool clearYearEnd = false,
     bool clearYears = false,
     bool clearGenre = false,
     bool clearCountry = false,
+    bool clearLanguage = false,
   }) {
     final clearY = clearYears || clearYearStart;
     final clearYe = clearYears || clearYearEnd;
@@ -110,6 +136,8 @@ class SearchFilters {
       yearEnd: clearYe ? null : (yearEnd ?? this.yearEnd),
       genreToken: clearGenre ? null : (genreToken ?? this.genreToken),
       countryToken: clearCountry ? null : (countryToken ?? this.countryToken),
+      languageToken:
+          clearLanguage ? null : (languageToken ?? this.languageToken),
     );
   }
 
@@ -126,6 +154,7 @@ class SearchFilters {
     }
     if (genreToken != null) parts.add(genreToken!);
     if (countryToken != null) parts.add(countryToken!);
+    if (languageToken != null) parts.add(languageToken!);
     if (minScore != null) {
       final v = minScore!;
       final label =
@@ -178,6 +207,16 @@ class SearchFilters {
       out.add((
         label ?? countryToken!,
         () => apply(copyWith(clearCountry: true)),
+      ));
+    }
+    if (languageToken != null) {
+      final label = kSearchFilterLanguages
+          .where((e) => e.$2 == languageToken)
+          .map((e) => e.$1)
+          .firstOrNull;
+      out.add((
+        label ?? languageToken!,
+        () => apply(copyWith(clearLanguage: true)),
       ));
     }
     if (minScore != null) {
