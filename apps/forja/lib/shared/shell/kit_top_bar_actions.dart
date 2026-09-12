@@ -219,6 +219,7 @@ class KitTopBarActions extends ConsumerWidget {
     final verb = _verb(action);
     final id = (action['id'] ?? '').toString();
     final isRefresh = verb == 'refresh' || id == 'refresh';
+    final isView = id == 'view' || verb == 'view' || verb == 'scheduleview';
     final isSchedule = id == 'horizon' || id == 'schedule' || id == 'time';
     final isCatalog = id == 'catalog' || action['dynamicCatalogs'] == true;
 
@@ -295,14 +296,44 @@ class KitTopBarActions extends ConsumerWidget {
       );
     }
 
+    if (isView) {
+      final key = kitChromeKeyForTab(tabId);
+      final override = key.isEmpty
+          ? ''
+          : ref.watch(kitListStyleOverrideProvider(key)).trim().toLowerCase();
+      final isCards = override == 'cards';
+      return ForjaActionChip(
+        label: isCards ? 'Cards view' : 'List view',
+        icon: isCards ? Icons.grid_view_rounded : Icons.view_list_rounded,
+        iconOnly: true,
+        selected: false,
+        tvTabId: tabId,
+        tvRowId: _widgetId,
+        tvItemIndex: index,
+        onDownEdge: focusDown ?? () {},
+        onLeftEdge: focusLeft,
+        onRightEdge: focusRight,
+        onTap: () {
+          if (key.isEmpty) return;
+          ref.read(kitListStyleOverrideProvider(key).notifier).state =
+              isCards ? 'list' : 'cards';
+        },
+      );
+    }
+
     final String label;
     final bool selected;
     if (isSchedule) {
-      label = _horizonChipLabel(action, horizonPref, catalogOptions);
-      final packDefault = _packActionDefault(action);
-      selected = horizonPref != null &&
-          horizonPref.isNotEmpty &&
-          horizonPref != packDefault;
+      final hookLabel = KitTopBarHostHooks.scheduleChipLabel;
+      label = hookLabel != null
+          ? hookLabel(horizonPref)
+          : _horizonChipLabel(action, horizonPref, catalogOptions);
+      final hookSelected = KitTopBarHostHooks.scheduleChipSelected;
+      selected = hookSelected != null
+          ? hookSelected(horizonPref)
+          : (horizonPref != null &&
+              horizonPref.isNotEmpty &&
+              horizonPref != _packActionDefault(action));
     } else if (isCatalog && catalogLabel != null) {
       label = catalogLabel(catalogPref, catalogOptions);
       selected = catalogSelected?.call(catalogPref) ?? false;
@@ -398,6 +429,8 @@ class KitTopBarActions extends ConsumerWidget {
       'search' => Icons.search,
       'filter' || 'catalog' => Icons.filter_list,
       'schedule' || 'time' || 'horizon' => Icons.schedule,
+      'view' || 'list' => Icons.view_list_rounded,
+      'cards' || 'grid' => Icons.grid_view_rounded,
       _ => null,
     };
   }
@@ -465,15 +498,35 @@ class KitTopBarActions extends ConsumerWidget {
     required String? horizonPref,
     required List<({String id, String label})> catalogOptions,
   }) async {
+    final current = ((horizonPref ?? '').trim().isNotEmpty
+            ? horizonPref!.trim()
+            : _packActionDefault(action))
+        .trim();
+    final opener = KitTopBarHostHooks.openScheduleSheet;
+    if (opener != null) {
+      await opener(
+        context,
+        currentPref:
+            current.isEmpty ? 'airing|1h' : current,
+        onChanged: (pref) {
+          if (!context.mounted) return;
+          scope.onSelect('horizon', pref, toggle: false);
+          final key = kitChromeKeyForTab(tabId);
+          if (key.isNotEmpty) {
+            ref.read(kitFeedHorizonPrefProvider(key).notifier).state = pref;
+          }
+        },
+      );
+      return;
+    }
+
     final items = _itemsFor(action, catalogOptions: catalogOptions);
     if (items.isEmpty) return;
     final picked = await _genericPicker(
       context,
       title: (action['label'] ?? 'Schedule').toString(),
       sheetId: 'horizon',
-      current: ((horizonPref ?? '').trim().isNotEmpty
-              ? horizonPref!.trim()
-              : _packActionDefault(action)),
+      current: current.isEmpty ? 'airing|1h' : current,
       items: items,
     );
     if (picked == null || !context.mounted) return;

@@ -77,7 +77,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
             ),
       trailing: widget.selected
           ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
-          : const Icon(Icons.chevron_right, color: Colors.white38),
+          : const SizedBox.shrink(),
       onTap: widget.tvFocus ? null : widget.onSelected,
     );
 

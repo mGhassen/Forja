@@ -5,6 +5,7 @@ import 'package:forja/shared/shell/focus_edge.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/horizontal_scroller.dart';
 import 'package:forja/shared/shell/shell_mood_circle.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
@@ -145,54 +146,52 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
     final resultsRowId =
         focusDownId.isEmpty ? '$_widgetId-results' : focusDownId;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: ShellTokens.compactChromeLeadingInset(context),
-        right: ShellTokens.bodyHorizontalPadding,
-        top: 2,
-        bottom: 10,
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final layout = ShellMoodCircleLayout.resolve(
-            context,
-            itemCount: kinds.length,
-            maxWidth: constraints.maxWidth,
-          );
+    // Fixed chip size — never FittedBox/forTv shrink. Overflow → scroll.
+    final layout = tvFocus
+        ? ShellMoodCircleLayout.tvScrollable
+        : ShellMoodCircleLayout.desktop;
+    final hPad = EdgeInsets.only(
+      left: ShellTokens.compactChromeLeadingInset(context),
+      right: ShellTokens.bodyHorizontalPadding,
+    );
 
-          Widget circleAt(int i, {TvChipEdges? edges}) {
-            final item = kinds[i];
-            final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
-            final on = selected == item.id;
-            return ShellMoodCircleItem(
-              layout: layout,
-              label: catalogKitCategoryLabel(item.id, label: item.label),
-              icon: meta.icon,
-              accent: meta.accent,
-              selected: on,
-              listIndex: i,
-              tvTabId: widget.tabId,
-              tvRowId: _widgetId,
-              onTap: () {
-                if (!on) {
-                  scope.onSelect(_widgetId, item.id, toggle: false);
-                } else if (tvFocus) {
-                  edges?.onSelectAlreadySelected();
-                }
-              },
-              onLeftEdge: edges?.onLeft,
-              onRightEdge: edges?.onRight,
-              onDownEdge: edges?.onDown ??
-                  kitFocusEdge(widget.tabId, focusDownId, last: true),
-              onUpEdge: focusUp ?? edges?.onUp,
-            );
+    Widget circleAt(int i, {TvChipEdges? edges}) {
+      final item = kinds[i];
+      final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
+      final on = selected == item.id;
+      return ShellMoodCircleItem(
+        layout: layout,
+        label: catalogKitCategoryLabel(item.id, label: item.label),
+        icon: meta.icon,
+        accent: meta.accent,
+        selected: on,
+        listIndex: i,
+        tvTabId: widget.tabId,
+        tvRowId: _widgetId,
+        onTap: () {
+          if (!on) {
+            scope.onSelect(_widgetId, item.id, toggle: false);
+          } else if (tvFocus) {
+            edges?.onSelectAlreadySelected();
           }
+        },
+        onLeftEdge: edges?.onLeft,
+        onRightEdge: edges?.onRight,
+        onDownEdge: edges?.onDown ??
+            kitFocusEdge(widget.tabId, focusDownId, last: true),
+        onUpEdge: focusUp ?? edges?.onUp,
+      );
+    }
 
-          Widget centeredRow({
-            TvChipEdges Function(int index)? edgesFor,
-            required bool scaleToFit,
-          }) {
-            final row = Row(
+    Widget centeredRow({TvChipEdges Function(int index)? edgesFor}) {
+      return SizedBox(
+        height: layout.rowHeight,
+        width: double.infinity,
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: Align(
+            alignment: Alignment.center,
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -201,22 +200,33 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
                   circleAt(i, edges: edgesFor?.call(i)),
                 ],
               ],
-            );
-            return SizedBox(
-              height: layout.rowHeight,
-              width: double.infinity,
-              child: FocusTraversalGroup(
-                policy: ReadingOrderTraversalPolicy(),
-                child: scaleToFit
-                    ? FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: row,
-                      )
-                    : Align(alignment: Alignment.center, child: row),
-              ),
-            );
-          }
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget scrollStrip({TvChipEdges Function(int index)? edgesFor}) {
+      return SizedBox(
+        height: layout.rowHeight,
+        child: HorizontalScroller(
+          height: layout.rowHeight,
+          padding: hPad,
+          itemCount: kinds.length,
+          separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
+          itemBuilder: (context, i) =>
+              circleAt(i, edges: edgesFor?.call(i)),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final avail = (constraints.maxWidth - hPad.horizontal)
+              .clamp(0.0, double.infinity);
+          final fits = layout.contentWidth(kinds.length) <= avail;
 
           if (tvFocus) {
             return TvChipStrip(
@@ -227,18 +237,16 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
               resultsRowId: resultsRowId,
               onFocusLeft: focusLeft,
               onFocusRight: focusRight,
-              builder: (context, edgesFor) => centeredRow(
-                edgesFor: edgesFor,
-                scaleToFit: true,
-              ),
+              builder: (context, edgesFor) => fits
+                  ? Padding(padding: hPad, child: centeredRow(edgesFor: edgesFor))
+                  : scrollStrip(edgesFor: edgesFor),
             );
           }
 
-          // Overflow: scale to fit and keep centered.
-          return centeredRow(
-            scaleToFit:
-                layout.contentWidth(kinds.length) > constraints.maxWidth,
-          );
+          if (fits) {
+            return Padding(padding: hPad, child: centeredRow());
+          }
+          return scrollStrip();
         },
       ),
     );

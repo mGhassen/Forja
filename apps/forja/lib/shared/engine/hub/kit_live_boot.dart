@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/live/kit_schedule_window.dart';
 import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
 import 'package:forja/shared/engine/live/live_plugin_engine.dart';
 import 'package:forja/shared/engine/live/live_stremio_catalog.dart';
 import 'package:forja/shared/engine/live/match_event.dart';
 import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/shell/kit_catalog_filter_sheet.dart';
+import 'package:forja/shared/shell/kit_schedule_window_sheet.dart';
 import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
 import 'package:forja/shared/player/sources/kit_resolve_panel_host.dart';
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
@@ -76,6 +78,41 @@ abstract final class KitLiveBoot {
       if (key.isEmpty) return;
       final container = ProviderScope.containerOf(context);
       container.read(kitFeedCatalogFilterProvider(key).notifier).state = filter;
+    };
+    KitTopBarHostHooks.openScheduleSheet =
+        (context, {required currentPref, required onChanged}) async {
+      final parsed =
+          kitScheduleWindowFromPref(currentPref) ?? kKitScheduleDefaultWindow;
+      var curStatus = parsed.status;
+      var curHorizon = parsed.horizon;
+      await showKitScheduleWindowSheet(
+        context,
+        status: curStatus,
+        horizon: curHorizon,
+        onChanged: ({
+          KitScheduleStatus? status,
+          KitScheduleHorizon? horizon,
+        }) {
+          if (status != null) curStatus = status;
+          if (horizon != null) curHorizon = horizon;
+          onChanged(
+            kitScheduleWindowPref(status: curStatus, horizon: curHorizon),
+          );
+        },
+      );
+    };
+    KitTopBarHostHooks.scheduleChipLabel = (pref) {
+      final window =
+          kitScheduleWindowFromPref(pref) ?? kKitScheduleDefaultWindow;
+      return kitScheduleChipLabel(
+        status: window.status,
+        horizon: window.horizon,
+      );
+    };
+    KitTopBarHostHooks.scheduleChipSelected = (pref) {
+      final window =
+          kitScheduleWindowFromPref(pref) ?? kKitScheduleDefaultWindow;
+      return window.status != KitScheduleStatus.airing;
     };
     KitTopBarHostHooks.readFeedBusy = (ref, {required tabId}) {
       final async = ref.watch(metaFeedCatalogProvider);
