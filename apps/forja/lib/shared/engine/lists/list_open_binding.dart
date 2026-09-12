@@ -4,6 +4,7 @@ import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/engine/lists/list_open_prefs.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
@@ -44,7 +45,6 @@ Set<String> listOpenIdentityTokens(
     if (surface == 'anime' ||
         surface == 'drama' ||
         surface == 'arabic' ||
-        surface == 'iptv' ||
         surface == 'shahid') {
       tokens.add(surface);
     }
@@ -108,9 +108,7 @@ abstract final class ListOpenBinding {
     final tokens = listOpenIdentityTokens(item, meta);
     final out = <ListOpenCandidate>[];
     for (final pl in await PluginNavRegistry.listKitPlugins()) {
-      if (!pl.hasCapability('details')) continue;
-      // Feed-only list hubs are not details targets.
-      if (pl.types.length == 1 && pl.types.first == 'list') continue;
+      if (!PackHubSelectOptions.isBrowseHub(pl)) continue;
       final compatible =
           tokens.isNotEmpty && _typesIntersect(pl.types, tokens);
       if (!allDetailsHubs && tokens.isNotEmpty && !compatible) continue;

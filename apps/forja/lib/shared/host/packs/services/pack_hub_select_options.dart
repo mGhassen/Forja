@@ -12,7 +12,17 @@ abstract final class PackHubSelectOptions {
     'live_sport',
     'live',
     'catalog',
+    'iptv',
   };
+
+  /// Shell browse hub: `nav` + `details`. Details-only packs (e.g. IPTV VOD) are not hubs.
+  static bool isBrowseHub(EnginePlugin pl) {
+    if (!pl.isKitPlugin || !pl.hasCapability('details')) return false;
+    if (pl.nav == null || pl.nav!.isEmpty) return false;
+    if (pl.types.every(skipTypes.contains)) return false;
+    if (pl.types.length == 1 && pl.types.first == 'list') return false;
+    return true;
+  }
 
   static String labelFor(EnginePlugin pl) {
     final nav = pl.nav;
@@ -24,7 +34,7 @@ abstract final class PackHubSelectOptions {
     return name.isNotEmpty ? name : pl.id;
   }
 
-  /// Auto + installed details hubs matching [field.hubTypes] (or all if empty).
+  /// Auto + installed browse hubs matching [field.hubTypes] (or all if empty).
   static Future<List<PackAddonSettingsOption>> optionsFor(
     PackAddonSettingsField field,
   ) async {
@@ -37,8 +47,7 @@ abstract final class PackHubSelectOptions {
     ];
     final hubs = <EnginePlugin>[];
     for (final pl in await PluginNavRegistry.listKitPlugins()) {
-      if (!pl.hasCapability('details')) continue;
-      if (pl.types.length == 1 && pl.types.first == 'list') continue;
+      if (!isBrowseHub(pl)) continue;
       if (want.isNotEmpty && !pl.types.any(want.contains)) continue;
       hubs.add(pl);
     }
