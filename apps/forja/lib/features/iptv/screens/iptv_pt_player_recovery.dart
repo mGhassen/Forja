@@ -418,6 +418,10 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } catch (_) {}
       return !_s._disposed;
     }
+    if (_s._avPlayerBackend || _s._vlcBackend) {
+      // Soft reopen reuses the same native session via open().
+      return !_s._disposed;
+    }
     if (mounted) setState(() => _s._playerReady = false);
     await WidgetsBinding.instance.endOfFrame;
     if (_s._disposed) return false;
@@ -480,6 +484,29 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } catch (_) {}
       return;
     }
+    if (_s._avPlayerBackend) {
+      await _s._avEventSub?.cancel();
+      _s._avEventSub = null;
+      final id = _s._avViewId;
+      _s._avViewId = null;
+      if (id == null) return;
+      try {
+        await AvPlayerBridge.dispose(id);
+      } catch (_) {}
+      return;
+    }
+    if (_s._vlcBackend) {
+      await _s._vlcEventSub?.cancel();
+      _s._vlcEventSub = null;
+      final id = _s._vlcViewId;
+      _s._vlcViewId = null;
+      _s._vlcTextureId = null;
+      if (id == null) return;
+      try {
+        await VlcPlayerBridge.dispose(id);
+      } catch (_) {}
+      return;
+    }
     if (!_s._playerAlive) return;
     _s._playerAlive = false;
     _s._uhdDiag?.cancel();
@@ -514,6 +541,29 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         } catch (_) {}
       }
       _s._exoViewId = null;
+      return;
+    }
+    if (_s._avPlayerBackend) {
+      await _s._avEventSub?.cancel();
+      _s._avEventSub = null;
+      if (_s._avViewId != null) {
+        try {
+          await AvPlayerBridge.dispose(_s._avViewId!);
+        } catch (_) {}
+      }
+      _s._avViewId = null;
+      return;
+    }
+    if (_s._vlcBackend) {
+      await _s._vlcEventSub?.cancel();
+      _s._vlcEventSub = null;
+      if (_s._vlcViewId != null) {
+        try {
+          await VlcPlayerBridge.dispose(_s._vlcViewId!);
+        } catch (_) {}
+      }
+      _s._vlcViewId = null;
+      _s._vlcTextureId = null;
       return;
     }
     if (!_s._playerAlive) return;

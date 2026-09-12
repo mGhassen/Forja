@@ -14,7 +14,7 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   bool get _useSoftwareDecode;
 
   Future<void> _tuneDesktopMediaKitAfterOpen() async {
-    if (_s._disposed || _s._exoBackend || _s._atvMediaKit) return;
+    if (_s._disposed || _s._exoBackend || _s._avPlayerBackend || _s._vlcBackend || _s._atvMediaKit) return;
     final player = _s._player;
     final p = player?.platform;
     if (player == null || p is! NativePlayer) return;
@@ -28,7 +28,7 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
 
     for (var i = 0; i < 12; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 250));
-      if (_s._disposed || _s._exoBackend) return;
+      if (_s._disposed || _s._exoBackend || _s._avPlayerBackend || _s._vlcBackend) return;
       if (!identical(_s._player, player)) return;
 
       try {

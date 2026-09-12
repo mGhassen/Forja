@@ -43,13 +43,19 @@ abstract final class PackHubFeatures {
       refreshAndActivateInstalled([pack]);
 
   /// Pack OFF / uninstall → drop that pack's hub tabs from Features / rail.
+  ///
+  /// One [SettingsService.setNavbarConfig] write (not N [setNavbarTabVisible]
+  /// notifies) so Settings → Forja Packs is not stormed off the shell mid-remove.
   static Future<void> deactivate(EnginePack pack) async {
     final tabs = hubTabIds(pack, requirePluginEnabled: false);
     if (tabs.isEmpty) return;
     final settings = SettingsService();
     noteNavigationDirty();
-    for (final id in tabs) {
-      await settings.setNavbarTabVisible(id, false);
+    final drop = tabs.toSet();
+    final current = await settings.getNavbarConfig();
+    final next = [for (final id in current) if (!drop.contains(id)) id];
+    if (next.length != current.length) {
+      await settings.setNavbarConfig(next);
     }
     await scheduleNavigationSyncPush();
   }

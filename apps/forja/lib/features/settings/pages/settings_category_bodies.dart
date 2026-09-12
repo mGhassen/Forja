@@ -65,24 +65,38 @@ Widget buildSettingsCategoryBody(
 }
 
 /// Pushed detail route for mobile / TV.
-class SettingsCategoryPage extends ConsumerWidget {
+class SettingsCategoryPage extends ConsumerStatefulWidget {
   const SettingsCategoryPage({super.key, required this.categoryId});
 
   final String categoryId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsCategoryPage> createState() =>
+      _SettingsCategoryPageState();
+}
+
+class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage> {
+  SettingsVisibility? _visibility;
+
+  @override
+  Widget build(BuildContext context) {
     final visibilityAsync = ref.watch(settingsVisibilityProvider);
-    // Keep last visibility while reloading — blanking the body remounts Addons
-    // mid-toggle and drops optimistic switch state (224).
-    final visibility = visibilityAsync.value;
+    ref.listen(settingsVisibilityProvider, (_, next) {
+      next.whenData((v) {
+        if (!mounted || _visibility == v) return;
+        setState(() => _visibility = v);
+      });
+    });
+    // Keep last visibility while navbar/pack reloads — blanking remounts the
+    // body and drops Forja Packs mid-remove (same as hub scaffold / 224).
+    final visibility = visibilityAsync.valueOrNull ?? _visibility;
     if (visibility == null) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
         body: SizedBox.expand(),
       );
     }
-    final meta = settingsCategoryById(categoryId, visibility);
+    final meta = settingsCategoryById(widget.categoryId, visibility);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ShellTvContainDpad(
@@ -91,11 +105,11 @@ class SettingsCategoryPage extends ConsumerWidget {
             policy: ReadingOrderTraversalPolicy(),
             child: SettingsAddonsAwareScaffold(
               categoryTitle: meta?.title ?? 'Settings',
-              categoryId: categoryId,
+              categoryId: widget.categoryId,
               categoryAdminOnly: meta?.adminOnly ?? false,
               categoryBack: true,
               scrollable: !(meta?.fillViewport ?? false),
-              child: buildSettingsCategoryBody(categoryId, visibility),
+              child: buildSettingsCategoryBody(widget.categoryId, visibility),
             ),
           ),
         ),

@@ -99,6 +99,85 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     _s._focusPlayerChrome();
   }
 
+  Future<void> _bootAvPlayer() async {
+    _s._avViewId = _IptvPtPlayerScreenState._nextNativeViewId++;
+    _s._avEventSub = AvPlayerBridge.eventsFor(_s._avViewId!).listen(_onNativeEngineEvent);
+    if (mounted) setState(() => _s._playerReady = true);
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _s._disposed) return;
+    await _openCurrent();
+    _armNativeStartupFailover();
+    _startWatchdog();
+    _s._scheduleHideControls();
+    _s._focusPlayerChrome();
+  }
+
+  Future<void> _bootVlcPlayer() async {
+    _s._vlcViewId = _IptvPtPlayerScreenState._nextNativeViewId++;
+    _s._vlcTextureId = await VlcPlayerBridge.create(_s._vlcViewId!);
+    if (_s._disposed) return;
+    _s._vlcEventSub =
+        VlcPlayerBridge.eventsFor(_s._vlcViewId!).listen(_onNativeEngineEvent);
+    if (mounted) setState(() => _s._playerReady = true);
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _s._disposed) return;
+    await _openCurrent();
+    _armNativeStartupFailover();
+    _startWatchdog();
+    _s._scheduleHideControls();
+    _s._focusPlayerChrome();
+  }
+
+  /// No first frame within ~25s → one engine hop (HLS live only).
+  void _armNativeStartupFailover() {
+    if (widget.vodPlayback) return;
+    final openedAt = _s._openedAt;
+    Future<void>.delayed(const Duration(seconds: 25), () {
+      if (_s._disposed || !mounted) return;
+      if (_s._openedAt != openedAt) return;
+      if (_s._playing || _s._engineFailoverUsed) return;
+      unawaited(_s._failoverIptvEngineOnce('startup timeout'));
+    });
+  }
+
+  void _onNativeEngineEvent(Map<dynamic, dynamic> event) {
+    if (_s._disposed || !mounted) return;
+    final type = event['type']?.toString() ?? '';
+    switch (type) {
+      case 'ready':
+        setState(() {
+          _s._buffering = false;
+          if (_s._retryAttempt > 0 || _s._lastRecoveryAt != null) {
+            _s._statusBanner = null;
+          }
+        });
+        _s._bufferingSince = null;
+        _noteVideoFrame(reason: '${_s._playerEngine.storageKey} ready');
+        break;
+      case 'playing':
+        final playing = event['value'] == true;
+        setState(() {
+          _s._playing = playing;
+          if (playing) _s._statusBanner = null;
+        });
+        if (playing) {
+          _noteVideoFrame(reason: '${_s._playerEngine.storageKey} playing');
+          unawaited(WakelockPlus.enable());
+        }
+        break;
+      case 'buffering':
+        final buffering = event['value'] == true;
+        if (buffering == _s._buffering) return;
+        setState(() => _s._buffering = buffering);
+        break;
+      case 'error':
+        final msg = event['value']?.toString() ?? 'engine error';
+        debugPrint('[IPTV ${_s._playerEngine.storageKey}] error: $msg');
+        unawaited(_s._failoverIptvEngineOnce(msg));
+        break;
+    }
+  }
+
   Future<void> _reopenAfterExoSurfaceFallback() async {
     if (_s._disposed || !mounted || _s._sources.isEmpty) return;
     final pos = _s._position;
@@ -349,6 +428,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _enginePlay() async {
     if (_s._exoBackend) {
       await ExoPlayerBridge.play(_s._exoViewId!);
+    } else if (_s._avPlayerBackend) {
+      await AvPlayerBridge.play(_s._avViewId!);
+    } else if (_s._vlcBackend) {
+      await VlcPlayerBridge.play(_s._vlcViewId!);
     } else {
       await _s._player!.play();
     }
@@ -357,6 +440,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _enginePause() async {
     if (_s._exoBackend) {
       await ExoPlayerBridge.pause(_s._exoViewId!);
+    } else if (_s._avPlayerBackend) {
+      await AvPlayerBridge.pause(_s._avViewId!);
+    } else if (_s._vlcBackend) {
+      await VlcPlayerBridge.pause(_s._vlcViewId!);
     } else {
       await _s._player!.pause();
     }
@@ -365,6 +452,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _engineSeek(Duration target) async {
     if (_s._exoBackend) {
       await ExoPlayerBridge.seekTo(_s._exoViewId!, target);
+    } else if (_s._avPlayerBackend || _s._vlcBackend) {
+      // Live HLS — seek not wired on AVPlayer/VLC IPTV path.
     } else {
       await _s._player!.seek(target);
     }
@@ -373,6 +462,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   void _engineSetVolume(double volume) {
     if (_s._exoBackend) {
       unawaited(ExoPlayerBridge.setVolume(_s._exoViewId!, volume / 100.0));
+    } else if (_s._avPlayerBackend) {
+      unawaited(AvPlayerBridge.setVolume(_s._avViewId!, volume / 100.0));
+    } else if (_s._vlcBackend) {
+      unawaited(VlcPlayerBridge.setVolume(_s._vlcViewId!, volume / 100.0));
     } else {
       _s._player!.setVolume(
         mpvVolumeForUi(volume, atvMediaKit: _s._atvMediaKit),
@@ -426,12 +519,12 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       };
       final kind = _liveSourceKindFor(candidate);
       final useProxy = _livePlaybackProfile &&
+          _s._mediaKitBackend &&
           iptvShouldUseContinuityProxy(kind: kind, url: candidate.url);
       var playUrl = candidate.url;
-      // MediaKit/mpv: Lume uses AVPlayer for HLS ABR. mpv stalls on DAI/XUMO
-      // masters — pin one media playlist ≤ ~3.5 Mbps before open.
+      // MediaKit/mpv only: pin one media playlist. AVPlayer/VLC/Exo do native ABR.
       if (!useProxy &&
-          !_s._exoBackend &&
+          _s._mediaKitBackend &&
           iptvUrlLooksLikeHls(playUrl)) {
         playUrl = await iptvResolveHlsPlayUrl(
           url: playUrl,
@@ -450,7 +543,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         playUrl = local.toString();
         debugPrint(
           '[IPTV Player] continuity proxy ($kind, '
-          '${_s._exoBackend ? 'exo' : 'lavf=off'}, '
+          '${_s._playerEngine.storageKey}, '
           'live=${_s._exoBackend ? iptvExoUrlLooksLive(candidate.url) : 'n/a'}, '
           'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
         );
@@ -482,6 +575,20 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
           live: live,
           maxVideoHeight: maxHeight,
           maxVideoBitrate: maxBitrate,
+        );
+      } else if (_s._avPlayerBackend) {
+        _s._cacheAheadSecs = 0;
+        await AvPlayerBridge.open(
+          viewId: _s._avViewId!,
+          url: playUrl,
+          headers: headers,
+        );
+      } else if (_s._vlcBackend) {
+        _s._cacheAheadSecs = 0;
+        await VlcPlayerBridge.open(
+          viewId: _s._vlcViewId!,
+          url: playUrl,
+          headers: headers,
         );
       } else {
         final player = _s._player;

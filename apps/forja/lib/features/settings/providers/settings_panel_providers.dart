@@ -689,9 +689,21 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   @override
   Future<List<EnginePack>> build() async {
     final n = EngineService.changeNotifier;
-    void listener() => ref.invalidateSelf();
+    // Keep prior packs painted — invalidateSelf flashes [] and remounts
+    // ExpansionTiles (kicks you out of the open pack row / Forja Packs pane).
+    var disposed = false;
+    void listener() {
+      Future.microtask(() {
+        if (disposed) return;
+        unawaited(reload());
+      });
+    }
+
     n.addListener(listener);
-    ref.onDispose(() => n.removeListener(listener));
+    ref.onDispose(() {
+      disposed = true;
+      n.removeListener(listener);
+    });
     return EngineService.instance.listUserPacks();
   }
 

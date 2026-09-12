@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
@@ -22,6 +23,7 @@ import 'package:forja/shared/engine/packs/install/pack_install_refs.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja_foundation/components/switch.dart';
@@ -280,106 +282,115 @@ class _SettingsForjaPacksSectionState
         final update = packUpdates.forPack(pack.sourceUrl);
         final deprecated = packUpdates.isDeprecated(pack.sourceUrl);
         rows.add(
-          FutureBuilder<PackDeviceSnapshot>(
-            future: resolvePackDeviceState(
-              manifestUrl: pack.sourceUrl,
-              localPack: pack,
-              update: update,
+          KeyedSubtree(
+            key: ValueKey('engine-pack-${pack.sourceUrl}'),
+            child: FutureBuilder<PackDeviceSnapshot>(
+              future: resolvePackDeviceState(
+                manifestUrl: pack.sourceUrl,
+                localPack: pack,
+                update: update,
+              ),
+              builder: (context, snap) {
+                final state = snap.data?.state;
+                if (state == PackDeviceState.pendingPurge) {
+                  return SettingsEnginePackPendingTile(
+                    packName: pack.name,
+                    sourceUrl: pack.sourceUrl,
+                    progress: installProgress,
+                    badge: 'Removed from profile',
+                    actionTooltip: 'Uninstall now',
+                    actionIcon: Icons.delete_outline,
+                    onAction: () => unawaited(_purgePackNow(pack)),
+                  );
+                }
+                if (state == PackDeviceState.deferred ||
+                    state == PackDeviceState.onProfileLean ||
+                    state == PackDeviceState.failed ||
+                    pack.plugins.isEmpty) {
+                  final badge = switch (state) {
+                    PackDeviceState.deferred => 'Install later',
+                    PackDeviceState.failed => 'Install failed',
+                    PackDeviceState.downloading => 'Downloading',
+                    _ => 'Pending download',
+                  };
+                  return SettingsEnginePackPendingTile(
+                    packName: pack.name,
+                    sourceUrl: pack.sourceUrl,
+                    progress: installProgress,
+                    badge: badge,
+                    actionTooltip: state == PackDeviceState.failed
+                        ? 'Retry download'
+                        : 'Download',
+                    actionIcon: Icons.download_rounded,
+                    onAction: () =>
+                        unawaited(_installNamedPack(pack.sourceUrl)),
+                    onRemove: () => _removeEnginePack(pack),
+                  );
+                }
+                final panelPlugins = [
+                  for (final p in pack.plugins)
+                    if (p.isHttp || p.isKitPlugin || p.isTorrent) p,
+                ];
+                if (panelPlugins.isEmpty) return const SizedBox.shrink();
+                final liveSportPlugins = [
+                  for (final p in panelPlugins)
+                    if (p.isLiveSportPlugin) p,
+                ];
+                final isLiveSportPack =
+                    liveSportPlugins.isNotEmpty &&
+                    liveSportPlugins.length == panelPlugins.length;
+                return isLiveSportPack
+                    ? SettingsLiveSportPackExpansion(
+                        pack: pack,
+                        plugins: liveSportPlugins,
+                        update: update,
+                        deprecated: deprecated,
+                        onHeaderActivate: () => unawaited(
+                          _togglePackEnabled(pack, enabled: !pack.enabled),
+                        ),
+                        trailing: _EnginePackActions(
+                          packEnabled: pack.enabled,
+                          update: update,
+                          onTogglePack: (val) => unawaited(
+                            _togglePackEnabled(pack, enabled: val),
+                          ),
+                          onRefresh: () => _refreshEnginePack(
+                            pack.sourceUrl,
+                            update: update,
+                          ),
+                          onRemove: () => _removeEnginePack(pack),
+                          showOfficialBadge: false,
+                        ),
+                      )
+                    : SettingsEnginePackExpansion(
+                        pack: pack,
+                        plugins: panelPlugins,
+                        groupKey: EngineCategories.groupKey,
+                        groupLabel: EngineCategories.groupLabel,
+                        groupOrder:
+                            EngineCategories.groupOrderFor(panelPlugins),
+                        installProgress: installProgress,
+                        update: update,
+                        deprecated: deprecated,
+                        onHeaderActivate: () => unawaited(
+                          _togglePackEnabled(pack, enabled: !pack.enabled),
+                        ),
+                        trailing: _EnginePackActions(
+                          packEnabled: pack.enabled,
+                          update: update,
+                          onTogglePack: (val) => unawaited(
+                            _togglePackEnabled(pack, enabled: val),
+                          ),
+                          onRefresh: () => _refreshEnginePack(
+                            pack.sourceUrl,
+                            update: update,
+                          ),
+                          onRemove: () => _removeEnginePack(pack),
+                          showOfficialBadge: false,
+                        ),
+                      );
+              },
             ),
-            builder: (context, snap) {
-              final state = snap.data?.state;
-              if (state == PackDeviceState.pendingPurge) {
-                return SettingsEnginePackPendingTile(
-                  packName: pack.name,
-                  sourceUrl: pack.sourceUrl,
-                  progress: installProgress,
-                  badge: 'Removed from profile',
-                  actionTooltip: 'Uninstall now',
-                  actionIcon: Icons.delete_outline,
-                  onAction: () => unawaited(_purgePackNow(pack)),
-                );
-              }
-              if (state == PackDeviceState.deferred ||
-                  state == PackDeviceState.onProfileLean ||
-                  state == PackDeviceState.failed ||
-                  pack.plugins.isEmpty) {
-                final badge = switch (state) {
-                  PackDeviceState.deferred => 'Install later',
-                  PackDeviceState.failed => 'Install failed',
-                  PackDeviceState.downloading => 'Downloading',
-                  _ => 'Pending download',
-                };
-                return SettingsEnginePackPendingTile(
-                  packName: pack.name,
-                  sourceUrl: pack.sourceUrl,
-                  progress: installProgress,
-                  badge: badge,
-                  actionTooltip: state == PackDeviceState.failed
-                      ? 'Retry download'
-                      : 'Download',
-                  actionIcon: Icons.download_rounded,
-                  onAction: () => unawaited(_installNamedPack(pack.sourceUrl)),
-                  onRemove: () => _removeEnginePack(pack),
-                );
-              }
-              final panelPlugins = [
-                for (final p in pack.plugins)
-                  if (p.isHttp || p.isKitPlugin || p.isTorrent) p,
-              ];
-              if (panelPlugins.isEmpty) return const SizedBox.shrink();
-              final liveSportPlugins = [
-                for (final p in panelPlugins)
-                  if (p.isLiveSportPlugin) p,
-              ];
-              final isLiveSportPack =
-                  liveSportPlugins.isNotEmpty &&
-                  liveSportPlugins.length == panelPlugins.length;
-              return isLiveSportPack
-                  ? SettingsLiveSportPackExpansion(
-                      pack: pack,
-                      plugins: liveSportPlugins,
-                      update: update,
-                      deprecated: deprecated,
-                      onHeaderActivate: () => unawaited(
-                        _togglePackEnabled(pack, enabled: !pack.enabled),
-                      ),
-                      trailing: _EnginePackActions(
-                        packEnabled: pack.enabled,
-                        update: update,
-                        onTogglePack: (val) => unawaited(
-                          _togglePackEnabled(pack, enabled: val),
-                        ),
-                        onRefresh: () =>
-                            _refreshEnginePack(pack.sourceUrl, update: update),
-                        onRemove: () => _removeEnginePack(pack),
-                        showOfficialBadge: false,
-                      ),
-                    )
-                  : SettingsEnginePackExpansion(
-                      pack: pack,
-                      plugins: panelPlugins,
-                      groupKey: EngineCategories.groupKey,
-                      groupLabel: EngineCategories.groupLabel,
-                      groupOrder: EngineCategories.groupOrderFor(panelPlugins),
-                      installProgress: installProgress,
-                      update: update,
-                      deprecated: deprecated,
-                      onHeaderActivate: () => unawaited(
-                        _togglePackEnabled(pack, enabled: !pack.enabled),
-                      ),
-                      trailing: _EnginePackActions(
-                        packEnabled: pack.enabled,
-                        update: update,
-                        onTogglePack: (val) => unawaited(
-                          _togglePackEnabled(pack, enabled: val),
-                        ),
-                        onRefresh: () =>
-                            _refreshEnginePack(pack.sourceUrl, update: update),
-                        onRemove: () => _removeEnginePack(pack),
-                        showOfficialBadge: false,
-                      ),
-                    );
-            },
           ),
         );
       }
@@ -635,8 +646,9 @@ class _SettingsForjaPacksSectionState
       await PendingRemotePurgeStore.clear(pack.sourceUrl);
       await PluginNavRegistry.refresh();
       if (!mounted) return;
+      ShellBus.settingsHubCategoryId.value = SettingsCategoryId.forjaPacks;
       scheduleForjaSyncPush();
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success('Pack uninstalled');
     } catch (e) {
       if (!mounted) return;
@@ -707,8 +719,11 @@ class _SettingsForjaPacksSectionState
       await DeferredRemoteInstallStore.clear(pack.sourceUrl);
       await PluginNavRegistry.refresh();
       if (!mounted) return;
+      // Stay on Forja Packs — remove used to invalidate the list (empty flash)
+      // and navbar storms could promote away from Settings.
+      ShellBus.settingsHubCategoryId.value = SettingsCategoryId.forjaPacks;
       scheduleForjaSyncPush();
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success('Pack removed');
     } catch (e) {
       if (!mounted) return;

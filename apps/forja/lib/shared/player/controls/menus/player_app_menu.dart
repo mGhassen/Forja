@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -72,33 +70,21 @@ class PlayerAppMenu {
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
         if (showExternal) const _SectionLabel('Built-in'),
-        if (Platform.isAndroid)
-          ...[
-            for (final engine in engines)
-              PlayerPopupOptionChip(
-                label: engine.displayName,
-                selected: usingBuiltIn && engine == builtInEngine,
-                expanded: true,
-                onTap: () async {
-                  onDismiss?.call();
-                  if (usingBuiltIn && engine == builtInEngine) {
-                    return;
-                  }
-                  await onSelect(builtInEngine: engine);
-                },
-              ),
-          ]
-        else
-          PlayerPopupOptionChip(
-            label: 'Built-in Player',
-            selected: usingBuiltIn,
-            expanded: true,
-            onTap: () async {
-              onDismiss?.call();
-              if (usingBuiltIn) return;
-              await onSelect(builtInEngine: builtInEngine);
-            },
-          ),
+        ...[
+          for (final engine in engines)
+            PlayerPopupOptionChip(
+              label: engine.displayName,
+              selected: usingBuiltIn && engine == builtInEngine,
+              expanded: true,
+              onTap: () async {
+                onDismiss?.call();
+                if (usingBuiltIn && engine == builtInEngine) {
+                  return;
+                }
+                await onSelect(builtInEngine: engine);
+              },
+            ),
+        ],
         if (showExternal) ...[
           const SizedBox(height: 14),
           const _SectionLabel('External app'),

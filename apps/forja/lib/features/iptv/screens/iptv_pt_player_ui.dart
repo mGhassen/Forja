@@ -1328,6 +1328,25 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         ),
       );
     }
+    if (_s._avPlayerBackend) {
+      return KeyedSubtree(
+        key: _s._videoViewKey,
+        child: AvPlayerView(
+          key: ValueKey('iptv-av-${_s._videoEpoch}'),
+          viewId: _s._avViewId!,
+        ),
+      );
+    }
+    if (_s._vlcBackend) {
+      return KeyedSubtree(
+        key: _s._videoViewKey,
+        child: VlcPlayerView(
+          key: ValueKey('iptv-vlc-${_s._videoEpoch}'),
+          viewId: _s._vlcViewId!,
+          textureId: _s._vlcTextureId,
+        ),
+      );
+    }
     return KeyedSubtree(
       key: _s._videoViewKey,
       child: Video(
@@ -1531,9 +1550,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _scheduleHideControls();
   }
 
-  BuiltInPlayerEngine get _builtInEngine => _s._exoBackend
-      ? BuiltInPlayerEngine.exoPlayer
-      : BuiltInPlayerEngine.mediaKit;
+  BuiltInPlayerEngine get _builtInEngine => _s._playerEngine;
 
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {
     _scheduleHideControls();

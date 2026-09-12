@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -24,11 +25,17 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
     return SettingsGroup(
       label: 'Player',
       children: [
-        if (Platform.isAndroid)
+        if (!kIsWeb &&
+            (Platform.isAndroid ||
+                Platform.isMacOS ||
+                Platform.isWindows ||
+                Platform.isLinux))
           settingsFocusableDropdown(
             context,
             'IPTV engine',
-            'Live channels only. Does not change Movies & series or Live Sports.',
+            Platform.isAndroid
+                ? 'Live channels only. Does not change Movies & series or Live Sports.'
+                : 'Live channels only. HLS prefers AVPlayer (Mac) or VLC (Windows) when available; MPEG-TS uses MediaKit.',
             snap.builtInEngineIptv.displayName,
             builtInPlayerEngineOptionsForUi.map((e) => e.displayName).toList(),
             (val) async {

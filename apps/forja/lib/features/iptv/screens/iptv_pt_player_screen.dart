@@ -63,6 +63,10 @@ import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
+import 'package:forja/shared/player/avplayer/av_player_view.dart';
+import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
+import 'package:forja/shared/player/vlc/vlc_player_view.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
@@ -669,13 +673,29 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _IptvPtPlayerUi
     implements InAppMiniPlayerSession {
   static int _nextExoViewId = 1;
+  static int _nextNativeViewId = 1;
 
-  /// When true, IPTV uses Media3 ExoPlayer; otherwise media_kit.
-  /// Android reads [engineContext] prefs at boot / Player menu.
-  bool _exoBackend = false;
+  /// Active built-in decoder for this player session.
+  BuiltInPlayerEngine _playerEngine = BuiltInPlayerEngine.mediaKit;
+
+  bool get _exoBackend => _playerEngine == BuiltInPlayerEngine.exoPlayer;
+  bool get _avPlayerBackend => _playerEngine == BuiltInPlayerEngine.avPlayer;
+  bool get _vlcBackend => _playerEngine == BuiltInPlayerEngine.vlc;
+  bool get _mediaKitBackend => _playerEngine == BuiltInPlayerEngine.mediaKit;
+
+  /// One automatic engine hop after hard open / no first frame (IPTV HLS).
+  bool _engineFailoverUsed = false;
+
   int? _exoViewId;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
   ExoAtvSurfaceFallback? _exoSurfaceFallback;
+
+  int? _avViewId;
+  StreamSubscription<Map<dynamic, dynamic>>? _avEventSub;
+
+  int? _vlcViewId;
+  int? _vlcTextureId;
+  StreamSubscription<Map<dynamic, dynamic>>? _vlcEventSub;
 
   Player? _player;
   VideoController? _controller;
@@ -1311,22 +1331,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
     final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
     if (_disposed || !mounted) return;
-    final forced = widget.forceBuiltInEngine;
-    if (forced != null && !kIsWeb && Platform.isAndroid) {
-      _exoBackend = forced == BuiltInPlayerEngine.exoPlayer;
-    } else if (!kIsWeb && Platform.isAndroid) {
-      final engine = await SettingsService().getBuiltInPlayerEngine(
-        context: widget.engineContext,
-      );
-      if (_disposed || !mounted) return;
-      // Honor per-surface pref (Movies → vod, Live IPTV → iptv).
-      _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
-    } else {
-      _exoBackend = false;
-    }
+    _playerEngine = await _resolveBootEngine();
+    if (_disposed || !mounted) return;
     // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
     _androidMediaKitSafeMode =
-        !_exoBackend &&
+        _mediaKitBackend &&
         !kIsWeb &&
         Platform.isAndroid &&
         !PlatformInfo.isAndroidTv;
@@ -1358,12 +1367,50 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       if (!_disposed && mounted && widget.onlineSubtitles) {
         _fetchOnlineSubtitles();
       }
+    } else if (_avPlayerBackend) {
+      await _bootAvPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
+    } else if (_vlcBackend) {
+      await _bootVlcPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
     } else {
       await _bootPlayer();
       if (!_disposed && mounted && widget.onlineSubtitles) {
         _fetchOnlineSubtitles();
       }
     }
+  }
+
+  /// Pick engine for this open: prefs + TS→MediaKit + VLC availability.
+  Future<BuiltInPlayerEngine> _resolveBootEngine() async {
+    final forced = widget.forceBuiltInEngine;
+    var engine = forced ??
+        await SettingsService().getBuiltInPlayerEngine(
+          context: widget.engineContext,
+        );
+    if (!engine.isAvailableOnCurrentPlatform) {
+      engine = BuiltInPlayerEngine.mediaKit;
+    }
+    final url = _sources.isNotEmpty ? _sources.first.url : '';
+    final isHls = iptvUrlLooksLikeHls(url);
+    // Progressive MPEG-TS / non-HLS live → MediaKit + continuity proxy only.
+    if (!widget.vodPlayback && !isHls) {
+      debugPrint(
+        '[IPTV Player] engine=mediakit (progressive TS / non-HLS)',
+      );
+      return BuiltInPlayerEngine.mediaKit;
+    }
+    if (engine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      debugPrint('[IPTV Player] VLC unavailable → MediaKit');
+      engine = BuiltInPlayerEngine.mediaKit;
+    }
+    debugPrint('[IPTV Player] engine=${engine.storageKey}');
+    return engine;
   }
 
   void _seedSubtitleQuery() {
@@ -1376,20 +1423,21 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _subQueryEpisode = widget.subtitleEpisode ?? cleaned.episode;
   }
 
-  /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
+  /// Hot-swap built-in engines from the in-player Player menu.
   /// Set [persist] false for one-shot recovery so IPTV Settings stay unchanged.
-  ///
-  /// Matches VOD [PlayerScreen] switch: full surface unmount → release without
-  /// blocking the UI isolate on MediaKit stop+dispose → cool-down → boot.
-  /// Both directions await [MpvExclusiveSession.prepareForVideoPlayer] capped
-  /// at 1.2s so MediaCodec detach cannot cross the ATV input-ANR window
-  /// (issue 128).
   Future<void> _switchBuiltInEngine(
     BuiltInPlayerEngine engine, {
     bool persist = true,
   }) async {
-    if (kIsWeb || !Platform.isAndroid) return;
-    final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
+    if (kIsWeb) return;
+    if (!engine.isAvailableOnCurrentPlatform) return;
+    if (engine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      if (mounted) {
+        ForjaToast.warning('VLC not found. Install VLC or use MediaKit.');
+      }
+      return;
+    }
     if (persist) {
       await SettingsService().setBuiltInPlayerEngine(
         engine,
@@ -1397,7 +1445,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       );
     }
     if (_disposed || !mounted) return;
-    if (wantExo == _exoBackend) return;
+    if (engine == _playerEngine) return;
 
     if (mounted) {
       setState(() {
@@ -1405,41 +1453,17 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _statusBanner = 'Switching player…';
       });
     }
-    // Let Video / ExoPlayerView unmount before tearing down the engine.
     await WidgetsBinding.instance.endOfFrame;
     if (_disposed || !mounted) return;
 
     await _releaseEngineForHotSwap();
     if (_disposed || !mounted) return;
 
-    // mediacodec_embed / Exo surface need a beat after unmount (issues 128/129).
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (_disposed || !mounted) return;
 
-    if (wantExo) {
-      // Exo does not share the mpv handle, but ATV MediaCodec is shared: Exo
-      // mounting over a live mediacodec_embed surface plays zoomed / cropped
-      // (issue 129) or audio-only black (133). Capped at 1.2s so the wait
-      // cannot cross the ATV input-ANR window (issue 128).
-      var racedMediaKit = false;
-      try {
-        racedMediaKit = await MpvExclusiveSession.instance
-            .prepareForVideoPlayer(
-              timeout: const Duration(milliseconds: 1200),
-            )
-            .timeout(const Duration(milliseconds: 1500));
-      } catch (_) {
-        racedMediaKit = MpvExclusiveSession.instance.hasPendingVideoDispose;
-      }
-      if (_disposed || !mounted) return;
-      // Wall-clock cool-down — do not await FFI (ANR).
-      await Future<void>.delayed(const Duration(milliseconds: 1500));
-      if (_disposed || !mounted) return;
-      _exoFitRemountAfterMediaKit = racedMediaKit;
-      _exoFitRemountDone = false;
-    } else {
-      // Cap MediaKit mount too — uncapped wait froze VOD on `[LAN] release`
-      // when prior dispose FFI stuck (issue 128 follow-up).
+    if (engine == BuiltInPlayerEngine.exoPlayer ||
+        engine == BuiltInPlayerEngine.mediaKit) {
       try {
         await MpvExclusiveSession.instance
             .prepareForVideoPlayer(
@@ -1448,20 +1472,32 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
             .timeout(const Duration(milliseconds: 1500));
       } catch (_) {}
       if (_disposed || !mounted) return;
+      if (engine == BuiltInPlayerEngine.exoPlayer) {
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (_disposed || !mounted) return;
+      }
     }
 
-    _exoBackend = wantExo;
-    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
+    _playerEngine = engine;
+    _androidMediaKitSafeMode = _mediaKitBackend && !PlatformInfo.isAndroidTv;
     _softwareDecodeForced =
         _windowsSoftwareDecode || _desktopLiveSoftwareDecode;
     _player = null;
     _controller = null;
     _exoViewId = null;
+    _avViewId = null;
+    _vlcViewId = null;
+    _vlcTextureId = null;
     _retryAttempt = 0;
     _playbackStopped = false;
 
+    debugPrint('[IPTV Player] engine=${engine.storageKey} (switch)');
     if (_exoBackend) {
       await _bootExoPlayer();
+    } else if (_avPlayerBackend) {
+      await _bootAvPlayer();
+    } else if (_vlcBackend) {
+      await _bootVlcPlayer();
     } else {
       await _bootPlayer();
     }
@@ -1477,6 +1513,24 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       if (id != null) {
         try {
           await ExoPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    if (_avPlayerBackend) {
+      final id = _avViewId;
+      if (id != null) {
+        try {
+          await AvPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    if (_vlcBackend) {
+      final id = _vlcViewId;
+      if (id != null) {
+        try {
+          await VlcPlayerBridge.pause(id);
         } catch (_) {}
       }
       return;
@@ -1519,16 +1573,15 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         (lower.contains('source error') && lower.contains('m3u8'));
   }
 
-  /// After format / hard-open errors, try the other Android engine once.
-  /// Live never auto-swaps — only the Player menu (or VOD hard-open) may.
+  /// After format / hard-open errors, try the other engine once.
+  /// Live: one failover hop (platform HLS → MediaKit). VOD may still swap Exo↔MK.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
-    if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
-      return;
-    }
+    if (_disposed || _formatEngineSwapped || kIsWeb) return;
     if (!widget.vodPlayback) {
-      debugPrint('[IPTV] skip format auto-swap on live ($reason)');
+      await _failoverIptvEngineOnce(reason);
       return;
     }
+    if (!Platform.isAndroid) return;
     _formatEngineSwapped = true;
     final next = _exoBackend
         ? BuiltInPlayerEngine.mediaKit
@@ -1536,6 +1589,39 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     debugPrint('[IPTV] format error → auto-swap to $next ($reason)');
     if (mounted) {
       setState(() => _statusBanner = 'Trying ${next.displayName}…');
+    }
+    await _switchBuiltInEngine(next, persist: false);
+  }
+
+  /// One-hop live HLS failover then stop (plan R107-A07).
+  Future<void> _failoverIptvEngineOnce(String reason) async {
+    if (_disposed || _engineFailoverUsed || widget.vodPlayback) return;
+    final url = _sources.isNotEmpty ? _sources[_sourceIdx].url : '';
+    if (!iptvUrlLooksLikeHls(url)) return;
+
+    BuiltInPlayerEngine? next;
+    if (_avPlayerBackend || _vlcBackend || _exoBackend) {
+      next = BuiltInPlayerEngine.mediaKit;
+    } else if (_mediaKitBackend) {
+      if (!kIsWeb && Platform.isMacOS && AvPlayerBridge.isSupported) {
+        next = BuiltInPlayerEngine.avPlayer;
+      } else if (!kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux) &&
+          await VlcPlayerBridge.isAvailable()) {
+        next = BuiltInPlayerEngine.vlc;
+      } else if (!kIsWeb && Platform.isAndroid) {
+        next = BuiltInPlayerEngine.exoPlayer;
+      }
+    }
+    if (next == null || next == _playerEngine) return;
+    _engineFailoverUsed = true;
+    _formatEngineSwapped = true;
+    debugPrint(
+      '[IPTV Player] failover ${_playerEngine.storageKey}→${next.storageKey} '
+      '($reason)',
+    );
+    if (mounted) {
+      setState(() => _statusBanner = 'Trying ${next!.displayName}…');
     }
     await _switchBuiltInEngine(next, persist: false);
   }

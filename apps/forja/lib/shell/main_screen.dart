@@ -456,10 +456,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // builders not ready) before the real Features rail lands. When feature
       // tabs appear while still on Settings, apply the starred default once
       // (same as profile switch) — issue 253.
+      // Do not promote when the user already opened Settings (pack remove /
+      // install must not yank Forja Packs → Home / IPTV).
       final promoteFromSettingsOnly = !hadFeatureTabs &&
           visible.isNotEmpty &&
           currentId == 'settings' &&
-          defaultTab != 'settings';
+          defaultTab != 'settings' &&
+          !_emptyFeaturesBodyDismissed;
       if (!_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly) {
         if (applyDefaultTab) {
           // Fresh tab trees for the incoming profile's settings/portals.

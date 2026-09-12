@@ -18,7 +18,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
   /// spike this into hours; those samples are discarded so Stable recovery
   /// does not treat a dead socket as "working".
   void _sampleDemuxerProgress() {
-    if (_s._exoBackend) return;
+    if (_s._exoBackend || _s._avPlayerBackend || _s._vlcBackend) return;
 
     if (_mediaKitLiveProfile && _s._playing && _shouldSampleLiveFramePulse()) {
       unawaited(_sampleLiveFramePulse());
@@ -241,7 +241,8 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
 
   /// Live Sports / Forja Live on MediaKit — playhead often stuck at 0 while
   /// HLS paints; do not treat idle position as a frozen feed.
-  bool get _mediaKitLiveProfile => _livePlaybackProfile && !_s._exoBackend;
+  bool get _mediaKitLiveProfile =>
+      _livePlaybackProfile && _s._mediaKitBackend;
 
   bool get _playheadRecentlyMoved {
     if (!_s._playing) return false;
