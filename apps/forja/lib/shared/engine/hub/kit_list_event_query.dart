@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
 
-/// Session-only list search query (does not reload the feed).
-final kitListEventQueryProvider = StateProvider<String>((ref) => '');
+/// Session-only list search query — per hub chrome key.
+final kitListEventQueryProvider =
+    StateProvider.family<String, String>((ref, chromeKey) => '');
 
-/// Whether the expanding search field is open on the kit top bar.
-final kitListEventSearchOpenProvider = StateProvider<bool>((ref) => false);
+/// Expanding search chrome open — per hub chrome key.
+final kitListEventSearchOpenProvider =
+    StateProvider.family<bool, String>((ref, chromeKey) => false);
 
 bool kitListEntryMatchesQuery(KitListEntry entry, String rawQuery) {
   final q = rawQuery.trim().toLowerCase();

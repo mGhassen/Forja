@@ -21,11 +21,14 @@ class DetailsRailSection extends StatelessWidget {
     super.key,
     required this.title,
     required this.cards,
+    required this.rowHeight,
     this.compactTop = true,
   });
 
   final String title;
   final List<Widget> cards;
+  /// Host passes portrait poster card height; a short fixed row clips to near-square.
+  final double rowHeight;
   final bool compactTop;
 
   @override
@@ -53,7 +56,7 @@ class DetailsRailSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 210,
+            height: rowHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
@@ -75,9 +78,11 @@ class DetailsRails extends StatelessWidget {
   const DetailsRails({
     super.key,
     required this.sections,
+    required this.rowHeight,
   });
 
   final List<DetailsRailSectionData> sections;
+  final double rowHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +94,7 @@ class DetailsRails extends StatelessWidget {
           DetailsRailSection(
             title: sections[i].title,
             cards: sections[i].cards,
+            rowHeight: rowHeight,
           ),
         ],
       ],

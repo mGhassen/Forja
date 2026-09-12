@@ -8,6 +8,7 @@ import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/forja_interactive.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/forja_shell_profile.dart';
@@ -795,11 +796,29 @@ class _IptvIconActionState extends State<IptvIconAction> {
   bool get _tvFocused =>
       iptvTvFocused(context, focused: _focused);
 
+  /// Idle: muted gray (or brand green when caller marks active).
+  /// Hover / TV focus: brand green. Never idle near-white accent.
+  Color get _idleColor {
+    final c = widget.color;
+    if (c == null) return ForjaShellColors.textSecondary;
+    if (c == IptvShellStyle.accent) return ForjaShellColors.brandGreen;
+    return c;
+  }
+
+  Color _fg({required bool active, required bool tvFocused}) {
+    if (tvFocused || active) return ForjaShellColors.brandGreen;
+    return _idleColor;
+  }
+
+  Widget _icon(Color fg) => Padding(
+        padding: const EdgeInsets.all(10),
+        child: Icon(widget.icon, color: fg, size: widget.iconSize),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final idle = widget.color ?? IptvShellStyle.accent;
-    final fg = iptvFocusFg(idle, active: _active, tvFocused: _tvFocused);
     if (iptvUseTvFocus(context)) {
+      final fg = _fg(active: _active, tvFocused: _tvFocused);
       return iptvTap(
         context: context,
         onTap: widget.onPressed,
@@ -815,17 +834,21 @@ class _IptvIconActionState extends State<IptvIconAction> {
         onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: Tooltip(
           message: widget.tooltip,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(widget.icon, color: fg, size: widget.iconSize),
-          ),
+          child: _icon(fg),
         ),
       );
     }
-    return IconButton(
-      tooltip: widget.tooltip,
-      onPressed: widget.onPressed,
-      icon: Icon(widget.icon, color: idle, size: widget.iconSize),
+    return ForjaInteractive(
+      onTap: widget.onPressed,
+      hoverScale: 1.08,
+      pressScale: 0.88,
+      builder: (hover, pressed) {
+        final fg = _fg(active: hover || pressed, tvFocused: false);
+        return Tooltip(
+          message: widget.tooltip,
+          child: _icon(fg),
+        );
+      },
     );
   }
 }

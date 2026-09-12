@@ -23,6 +23,7 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
+import 'package:forja/shared/engine/lists/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
@@ -42,6 +43,7 @@ import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
     show
+        EpisodeWatchedService,
         MediaTrailer,
         WatchHistoryService,
         canResumeFromSavedProgress,
@@ -118,6 +120,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
   final Map<String, String> _playFilterSelections = {};
   bool _detailsHeroInitialFocusDone = false;
   Map<String, dynamic>? _watchProgress;
+  Set<String> _watchedEpisodes = {};
   bool _autoPlayConsumed = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
   List<KitIptvRecHit> _iptvRecHits = const [];
@@ -136,6 +139,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
     unawaited(KitPanelSourceFlagsHooks.warm?.call(ref) ?? Future.value());
     unawaited(_ensurePackFilters());
     unawaited(_loadWatchProgress());
+    unawaited(_loadWatchedEpisodes());
     _loading = !hubMetaTmdbEnriched(widget.item);
     _load();
   }
@@ -222,6 +226,147 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
 
   void _onWatchHistoryChanged() {
     unawaited(_loadWatchProgress());
+    unawaited(_loadWatchedEpisodes());
+  }
+
+  /// TMDB Home: unscoped `{tmdb}_S{s}_E{e}`. Hubs: `{pluginId}_{open.id}_S1_E{e}`
+  /// (same keys as [hubEngineSaveProgressCallback] / play auto-mark).
+  int? get _watchedMediaId {
+    if (hubMetaUsesHomeWatchHistory(_show)) {
+      return _show.numericId('tmdb');
+    }
+    return _show.open?.idInt;
+  }
+
+  String? get _watchedCatalog {
+    if (hubMetaUsesHomeWatchHistory(_show)) return null;
+    if (_watchedMediaId == null) return null;
+    return widget.pluginId;
+  }
+
+  /// Hubs stamp season `1` in EpisodeWatchedService (play_hooks). TMDB uses real S#.
+  int? get _watchedSeasonForKeys =>
+      hubMetaUsesHomeWatchHistory(_show) ? null : 1;
+
+  int get _watchedTotalEpisodes {
+    final declared = _show.episodes;
+    if (declared != null && declared > 0) return declared;
+    return _videos.length;
+  }
+
+  Future<void> _loadWatchedEpisodes() async {
+    final mediaId = _watchedMediaId;
+    if (mediaId == null) {
+      if (!mounted) return;
+      setState(() => _watchedEpisodes = {});
+      return;
+    }
+    final set = await EpisodeWatchedService().getWatchedSet(
+      mediaId,
+      catalog: _watchedCatalog,
+    );
+    if (!mounted) return;
+    setState(() => _watchedEpisodes = set);
+  }
+
+  Future<void> _toggleEpisodeWatched(int season, int episode) async {
+    final mediaId = _watchedMediaId;
+    if (mediaId == null) return;
+    final catalog = _watchedCatalog;
+    final svc = EpisodeWatchedService();
+    await svc.toggle(mediaId, season, episode, catalog: catalog);
+    final watched = await svc.isWatched(
+      mediaId,
+      season,
+      episode,
+      catalog: catalog,
+    );
+    await _loadWatchedEpisodes();
+    await _applyListStatusAfterWatchedChange(episodeNowWatched: watched);
+    final listTarget = ListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: _show,
+    );
+    if (listTarget != null && catalog != null) {
+      unawaited(
+        ListFollow.syncEpisodeWatched(
+          listTarget,
+          episode: episode,
+          watched: watched,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleSeasonWatched(int season, List<int> episodes) async {
+    final mediaId = _watchedMediaId;
+    if (mediaId == null || episodes.isEmpty) return;
+    final catalog = _watchedCatalog;
+    final keySeason = _watchedSeasonForKeys ?? season;
+    final watched = await EpisodeWatchedService().toggleSeason(
+      mediaId,
+      keySeason,
+      episodes,
+      catalog: catalog,
+    );
+    if (!mounted) return;
+    await _loadWatchedEpisodes();
+    await _applyListStatusAfterWatchedChange(episodeNowWatched: watched);
+    final listTarget = ListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: _show,
+    );
+    if (listTarget != null && catalog != null) {
+      unawaited(
+        ListFollow.syncSeasonWatched(
+          listTarget,
+          episodes: episodes,
+          watched: watched,
+        ),
+      );
+    }
+  }
+
+  Future<void> _applyListStatusAfterWatchedChange({
+    required bool episodeNowWatched,
+  }) async {
+    final mediaId = _watchedMediaId;
+    if (mediaId == null) return;
+    final catalog = _watchedCatalog;
+    final watchedCount = _watchedEpisodes.length;
+    final total = _watchedTotalEpisodes;
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+
+    if (catalog == null) {
+      final movie = metaItemToMovie(_show);
+      if (movie == null || movie.mediaType != 'tv') return;
+      await ListFollowFromWatched.applyTmdb(
+        movie: movie,
+        watchedCount: watchedCount,
+        totalEpisodes: movie.numberOfEpisodes > 0
+            ? movie.numberOfEpisodes
+            : total,
+        episodeNowWatched: episodeNowWatched,
+        container: container,
+      );
+      return;
+    }
+
+    final listTarget = ListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: _show,
+    );
+    if (listTarget == null) return;
+    await ListFollowFromWatched.applyHub(
+      target: listTarget,
+      watchedCount: watchedCount,
+      totalEpisodes: total,
+      episodeNowWatched: episodeNowWatched,
+      container: container,
+    );
   }
 
   Future<void> _loadWatchProgress() async {
@@ -392,6 +537,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         _selectedEpisode = firstEp;
       });
       unawaited(_loadWatchProgress());
+      unawaited(_loadWatchedEpisodes());
       if (widget.autoPlay) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
       }
@@ -456,6 +602,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
       _iptvPortal = resolve == null ? null : await resolve(meta);
     }
     unawaited(_loadWatchProgress());
+    unawaited(_loadWatchedEpisodes());
     if (widget.autoPlay) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
     }
@@ -700,7 +847,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         ? MediaDetailsBody.padContent(
             context,
             TvSeasonEpisodePicker(
-              tmdbId: show.id.hashCode,
+              tmdbId: _watchedMediaId ?? 0,
               seasonCount: seasons.length,
               selectedSeason: _selectedSeason,
               selectedEpisode: _selectedEpisode,
@@ -708,8 +855,13 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
               seasonData: null,
               fallbackPosterPath: show.poster,
               customEpisodesBySeason: hubEpisodeMaps(videos),
-              watchedEpisodes: const {},
-              onToggleWatched: (season, episode) {},
+              watchedEpisodes: _watchedEpisodes,
+              watchedCatalog: _watchedCatalog,
+              watchedSeasonForKeys: _watchedSeasonForKeys,
+              onToggleWatched: _toggleEpisodeWatched,
+              onSeasonToggleWatched: _watchedMediaId == null
+                  ? null
+                  : _toggleSeasonWatched,
               onSeasonSelected: (season) {
                 final eps = hubVideosForSeason(videos, season);
                 setState(() {

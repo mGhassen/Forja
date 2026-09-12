@@ -829,7 +829,10 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               right: 0,
               top: heroContentTop,
               bottom: bleed +
-                  DetailsTokens.heroContentToRailGap(h) +
+                  DetailsTokens.heroContentToRailGap(
+                    h,
+                    showSeasonRail: widget.showSeasonRail,
+                  ) +
                   bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {

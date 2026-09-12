@@ -64,20 +64,21 @@ class MetaFeedCatalogNotifier
     // autoDispose drops the feed and Back from the player re-scrapes every catalog.
     ref.keepAlive();
 
-    final catalogFilter = ref.watch(kitFeedCatalogFilterProvider);
-    final horizonPref = ref.watch(kitFeedHorizonPrefProvider);
+    final hubId =
+        await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
+    if (hubId == null || hubId.isEmpty) {
+      return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
+    }
+    final chromeKey = kitChromeKey(pluginId: hubId);
+    final catalogFilter = ref.watch(kitFeedCatalogFilterProvider(chromeKey));
+    final horizonPref = ref.watch(kitFeedHorizonPrefProvider(chromeKey));
     final forceRefresh = ref.read(metaFeedForceRefreshProvider);
     final gen = ++_gen;
 
     // Yield before clearing — mutating StateProvider during create throws.
-    final hubId =
-        await PluginNavRegistry.pluginIdForEngineType(KitLiveBoot.engineType);
     if (forceRefresh) {
       clearLiveFeedSessionCache();
       ref.read(metaFeedForceRefreshProvider.notifier).state = false;
-    }
-    if (hubId == null || hubId.isEmpty) {
-      return const MetaFeedCatalogPage(entries: [], loadingRemote: false);
     }
 
     final query = LiveFeedQuery.fromHorizonPref(
@@ -342,20 +343,25 @@ final class MetaFeedListSource extends KitListSource {
 
   @override
   void onLayoutFilters(WidgetRef ref, Map<String, String> filters) {
-    final catalog = filters['catalog'];
-    if (catalog != null && catalog.isNotEmpty) {
-      final current = ref.read(kitFeedCatalogFilterProvider);
-      if (catalog != current) {
-        ref.read(kitFeedCatalogFilterProvider.notifier).state = catalog;
+    () async {
+      final hubId = await PluginNavRegistry.pluginIdForEngineType(engineType);
+      final key = kitChromeKey(pluginId: hubId);
+      if (key.isEmpty) return;
+      final catalog = filters['catalog'];
+      if (catalog != null && catalog.isNotEmpty) {
+        final current = ref.read(kitFeedCatalogFilterProvider(key));
+        if (catalog != current) {
+          ref.read(kitFeedCatalogFilterProvider(key).notifier).state = catalog;
+        }
       }
-    }
-    final horizon = filters['horizon'];
-    if (horizon != null && horizon.isNotEmpty) {
-      final current = ref.read(kitFeedHorizonPrefProvider);
-      if (horizon != current) {
-        ref.read(kitFeedHorizonPrefProvider.notifier).state = horizon;
+      final horizon = filters['horizon'];
+      if (horizon != null && horizon.isNotEmpty) {
+        final current = ref.read(kitFeedHorizonPrefProvider(key));
+        if (horizon != current) {
+          ref.read(kitFeedHorizonPrefProvider(key).notifier).state = horizon;
+        }
       }
-    }
+    }();
   }
 
   @override

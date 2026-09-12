@@ -152,10 +152,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       (_effectiveOpen.isEmpty && _isDenseList);
 
   void _resolveEffectiveLayout(WidgetRef ref) {
-    final pid = widget.pluginId.trim();
-    final override = pid.isEmpty
+    final key = kitChromeKey(pluginId: widget.pluginId);
+    final override = key.isEmpty
         ? ''
-        : ref.watch(kitListStyleOverrideProvider(pid)).trim().toLowerCase();
+        : ref.watch(kitListStyleOverrideProvider(key)).trim().toLowerCase();
     _effectiveStyle = (override.isEmpty ? widget.listStyle : override)
         .trim()
         .toLowerCase();
@@ -504,7 +504,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
-        final eventQuery = ref.watch(kitListEventQueryProvider);
+        final chromeKey = kitChromeKey(pluginId: widget.pluginId);
+        final eventQuery = chromeKey.isEmpty
+            ? ''
+            : ref.watch(kitListEventQueryProvider(chromeKey));
         final rawEntries = page.entriesForKind(kind);
         final entries = kitListFilterEntries(rawEntries, eventQuery);
         _consumePendingOpen(entries);

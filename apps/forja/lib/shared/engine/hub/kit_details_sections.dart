@@ -115,6 +115,7 @@ List<Widget> buildKitDetailRailSections({
     Widget section = DetailsRailSection(
       title: rail.title,
       cards: cards,
+      rowHeight: KitPosterCard.cardHeight(context),
       compactTop: true,
     );
     if (tvFocus) {

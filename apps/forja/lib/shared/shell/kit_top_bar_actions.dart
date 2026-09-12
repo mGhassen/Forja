@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/shell/kit_filter_sheet_option.dart';
 import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/shell/focus_edge.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/shell/kit_list_event_search.dart';
@@ -80,18 +79,23 @@ class KitTopBarActions extends ConsumerWidget {
     final focusRight = kitFocusSide(tabId, spec['focusRight']);
     final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
     final catalogOptions = catalogsAsync.asData?.value ?? const [];
+    final chromeKey = kitChromeKeyForTab(tabId);
     final layoutHorizon = scope.selectedId('horizon') ??
         scope.selectedId('schedule') ??
         scope.selectedId('time');
-    final horizonPref = ref.watch(kitFeedHorizonPrefProvider);
+    final horizonPref = chromeKey.isEmpty
+        ? ''
+        : ref.watch(kitFeedHorizonPrefProvider(chromeKey));
     final resolvedHorizon =
         (layoutHorizon == null || layoutHorizon.isEmpty)
             ? horizonPref
             : layoutHorizon;
     final layoutCatalog = scope.selectedId('catalog');
     final catalogPref =
-        KitTopBarHostHooks.readCatalogPref?.call(ref) ?? layoutCatalog;
-    final feedBusy = KitTopBarHostHooks.readFeedBusy?.call(ref);
+        KitTopBarHostHooks.readCatalogPref?.call(ref, tabId: tabId) ??
+            layoutCatalog;
+    final feedBusy =
+        KitTopBarHostHooks.readFeedBusy?.call(ref, tabId: tabId);
     final busy = feedBusy?.busy == true;
     final busyLabel = () {
       final raw = (feedBusy?.label ?? '').trim();
@@ -255,7 +259,9 @@ class KitTopBarActions extends ConsumerWidget {
 
     if (isRefresh) {
       final updated =
-          (KitTopBarHostHooks.readFeedUpdatedLabel?.call(ref) ?? '').trim();
+          (KitTopBarHostHooks.readFeedUpdatedLabel?.call(ref, tabId: tabId) ??
+                  '')
+              .trim();
       final chip = ForjaActionChip(
         label: updated.isEmpty ? '' : updated,
         icon: icon ?? Icons.refresh_rounded,
@@ -447,7 +453,7 @@ class KitTopBarActions extends ConsumerWidget {
     scope.onSelect('catalog', picked, toggle: false);
     final writer = KitTopBarHostHooks.writeCatalogFilter;
     if (writer != null) {
-      await writer(context, picked);
+      await writer(context, picked, tabId: tabId);
     }
   }
 
@@ -472,7 +478,10 @@ class KitTopBarActions extends ConsumerWidget {
     );
     if (picked == null || !context.mounted) return;
     scope.onSelect('horizon', picked, toggle: false);
-    ref.read(kitFeedHorizonPrefProvider.notifier).state = picked;
+    final key = kitChromeKeyForTab(tabId);
+    if (key.isNotEmpty) {
+      ref.read(kitFeedHorizonPrefProvider(key).notifier).state = picked;
+    }
   }
 
   Future<void> _onAction(
@@ -504,11 +513,9 @@ class KitTopBarActions extends ConsumerWidget {
     if (picked == null || !context.mounted) return;
     scope.onSelect(id, picked, toggle: false);
     if (id == 'view' || verb == 'view') {
-      final pluginId =
-          PluginNavRegistry.pluginIdForTabSync(tabId)?.trim() ?? '';
-      if (pluginId.isNotEmpty) {
-        ref.read(kitListStyleOverrideProvider(pluginId).notifier).state =
-            picked;
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isNotEmpty) {
+        ref.read(kitListStyleOverrideProvider(key).notifier).state = picked;
       }
     }
   }

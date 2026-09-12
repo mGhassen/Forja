@@ -109,7 +109,10 @@ class DetailsHero extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
-    final railGap = DetailsTokens.heroContentToRailGap(h);
+    final railGap = DetailsTokens.heroContentToRailGap(
+      h,
+      showSeasonRail: showSeasonRail,
+    );
     final contentBottom = belowActionRow != null
         ? bottomInset
         : bleed + railGap + bottomInset;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
 import 'package:forja/shared/engine/hub/kit_list_event_query.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -67,10 +68,13 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
 
   bool get _tv => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  String get _chromeKey => kitChromeKeyForTab(widget.tabId);
+
   @override
   void initState() {
     super.initState();
-    _ctrl.text = ref.read(kitListEventQueryProvider);
+    final key = kitChromeKeyForTab(widget.tabId);
+    _ctrl.text = key.isEmpty ? '' : ref.read(kitListEventQueryProvider(key));
     _anim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -81,7 +85,7 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
       reverseCurve: Curves.easeInCubic,
     );
     _anim.addStatusListener(_onExpandStatus);
-    if (ref.read(kitListEventSearchOpenProvider)) {
+    if (key.isNotEmpty && ref.read(kitListEventSearchOpenProvider(key))) {
       _anim.value = 1;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncTvFieldRegistration(open: true);
@@ -92,8 +96,10 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
 
   void _onExpandStatus(AnimationStatus status) {
     if (!mounted) return;
+    final key = _chromeKey;
     if (status == AnimationStatus.completed &&
-        ref.read(kitListEventSearchOpenProvider)) {
+        key.isNotEmpty &&
+        ref.read(kitListEventSearchOpenProvider(key))) {
       _syncTvFieldRegistration(open: true);
     }
   }
@@ -135,11 +141,16 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
   }
 
   void _setQuery(String value) {
-    ref.read(kitListEventQueryProvider.notifier).state = value;
+    final key = _chromeKey;
+    if (key.isEmpty) return;
+    ref.read(kitListEventQueryProvider(key).notifier).state = value;
   }
 
   void _setOpen(bool open) {
-    ref.read(kitListEventSearchOpenProvider.notifier).state = open;
+    final key = _chromeKey;
+    if (key.isNotEmpty) {
+      ref.read(kitListEventSearchOpenProvider(key).notifier).state = open;
+    }
     _syncTvFieldRegistration(open: open);
   }
 
@@ -148,7 +159,8 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
       unawaited(_openCompactDialog());
       return;
     }
-    if (ref.read(kitListEventSearchOpenProvider)) {
+    final key = _chromeKey;
+    if (key.isNotEmpty && ref.read(kitListEventSearchOpenProvider(key))) {
       _focusField(edit: _tv);
       return;
     }
@@ -164,7 +176,9 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
   Future<void> _openCompactDialog() async {
     if (_dialogOpen) return;
     _dialogOpen = true;
-    final initial = ref.read(kitListEventQueryProvider);
+    final key = _chromeKey;
+    final initial =
+        key.isEmpty ? '' : ref.read(kitListEventQueryProvider(key));
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) {
@@ -261,19 +275,25 @@ class _KitListEventSearchState extends ConsumerState<KitListEventSearch>
 
   @override
   Widget build(BuildContext context) {
-    final open = ref.watch(kitListEventSearchOpenProvider);
-    final query = ref.watch(kitListEventQueryProvider);
-    ref.listen<bool>(kitListEventSearchOpenProvider, (prev, next) {
-      if (prev == next) return;
-      _syncTvFieldRegistration(open: next);
-      if (next) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && ref.read(kitListEventSearchOpenProvider)) {
-            _syncTvFieldRegistration(open: true);
-          }
-        });
-      }
-    });
+    final key = _chromeKey;
+    final open = key.isEmpty
+        ? false
+        : ref.watch(kitListEventSearchOpenProvider(key));
+    final query =
+        key.isEmpty ? '' : ref.watch(kitListEventQueryProvider(key));
+    if (key.isNotEmpty) {
+      ref.listen<bool>(kitListEventSearchOpenProvider(key), (prev, next) {
+        if (prev == next) return;
+        _syncTvFieldRegistration(open: next);
+        if (next) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && ref.read(kitListEventSearchOpenProvider(key))) {
+              _syncTvFieldRegistration(open: true);
+            }
+          });
+        }
+      });
+    }
     if (_ctrl.text != query && !_fieldFocus.hasFocus) {
       _ctrl.value = TextEditingValue(
         text: query,

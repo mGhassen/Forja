@@ -25,10 +25,16 @@ typedef KitTopBarScheduleChipLabel = String Function(String? selectedPref);
 typedef KitTopBarScheduleChipSelected = bool Function(String? selectedPref);
 
 /// Optional live schedule pref from host state (overrides layout selection).
-typedef KitTopBarSchedulePrefReader = String? Function(WidgetRef ref);
+typedef KitTopBarSchedulePrefReader = String? Function(
+  WidgetRef ref, {
+  required String tabId,
+});
 
 /// Optional catalog chip filter from host state (overrides layout selection).
-typedef KitTopBarCatalogPrefReader = String? Function(WidgetRef ref);
+typedef KitTopBarCatalogPrefReader = String? Function(
+  WidgetRef ref, {
+  required String tabId,
+});
 
 typedef KitTopBarCatalogChipLabel = String Function(
   String? filter,
@@ -40,8 +46,9 @@ typedef KitTopBarCatalogChipSelected = bool Function(String? filter);
 /// Persist catalog chip pick (mirrors schedule sheet → prefs).
 typedef KitTopBarCatalogFilterWriter = Future<void> Function(
   BuildContext context,
-  String filter,
-);
+  String filter, {
+  required String tabId,
+});
 
 /// Pack-declared top-bar action (`action` / `id`) → host widget.
 ///
@@ -70,11 +77,15 @@ typedef KitListBodyWrapper = Widget Function(
 
 /// Live schedule scrape progress for the Refresh slot (label + busy).
 typedef KitTopBarFeedBusyReader = ({bool busy, String? label}) Function(
-  WidgetRef ref,
-);
+  WidgetRef ref, {
+  required String tabId,
+});
 
 /// Session scrape age for the Refresh slot (e.g. `Updated 3m ago`).
-typedef KitTopBarFeedUpdatedReader = String? Function(WidgetRef ref);
+typedef KitTopBarFeedUpdatedReader = String? Function(
+  WidgetRef ref, {
+  required String tabId,
+});
 
 abstract final class KitTopBarHostHooks {
   KitTopBarHostHooks._();

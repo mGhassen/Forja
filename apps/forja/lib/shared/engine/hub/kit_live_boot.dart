@@ -51,8 +51,10 @@ abstract final class KitLiveBoot {
       return out;
     };
     KitTopBarHostHooks.openCatalogSheet = showKitCatalogFilterSheet;
-    KitTopBarHostHooks.readCatalogPref = (ref) {
-      return ref.watch(kitFeedCatalogFilterProvider);
+    KitTopBarHostHooks.readCatalogPref = (ref, {required tabId}) {
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isEmpty) return 'all';
+      return ref.watch(kitFeedCatalogFilterProvider(key));
     };
     KitTopBarHostHooks.catalogChipLabel = (filter, options) {
       final id = (filter ?? 'all').trim();
@@ -69,11 +71,13 @@ abstract final class KitLiveBoot {
       final id = (filter ?? 'all').trim();
       return id.isNotEmpty && id != 'all';
     };
-    KitTopBarHostHooks.writeCatalogFilter = (context, filter) async {
+    KitTopBarHostHooks.writeCatalogFilter = (context, filter, {required tabId}) async {
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isEmpty) return;
       final container = ProviderScope.containerOf(context);
-      container.read(kitFeedCatalogFilterProvider.notifier).state = filter;
+      container.read(kitFeedCatalogFilterProvider(key).notifier).state = filter;
     };
-    KitTopBarHostHooks.readFeedBusy = (ref) {
+    KitTopBarHostHooks.readFeedBusy = (ref, {required tabId}) {
       final async = ref.watch(metaFeedCatalogProvider);
       final page = async.asData?.value;
       final busy = async.isLoading || (page?.loadingRemote ?? false);
@@ -83,9 +87,11 @@ abstract final class KitLiveBoot {
         label: scrape.isEmpty ? 'Loading…' : scrape,
       );
     };
-    KitTopBarHostHooks.readFeedUpdatedLabel = (ref) {
+    KitTopBarHostHooks.readFeedUpdatedLabel = (ref, {required tabId}) {
       ref.watch(metaFeedCatalogProvider);
-      final catalog = ref.watch(kitFeedCatalogFilterProvider);
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isEmpty) return null;
+      final catalog = ref.watch(kitFeedCatalogFilterProvider(key));
       return liveFeedSessionUpdatedLabel(catalog);
     };
   }
