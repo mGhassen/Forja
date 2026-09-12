@@ -3,12 +3,7 @@
   "layout": [
     {
       "type": "kit.list",
-      "id": "mylist",
-      "source": "host.my_list"
-    },
-    {
-      "type": "host.my_list",
-      "id": "legacy_list"
+      "id": "list_grid"
     },
     {
       "type": "host.continue",

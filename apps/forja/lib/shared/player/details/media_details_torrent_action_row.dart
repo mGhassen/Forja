@@ -260,7 +260,7 @@ class _MediaDetailsTorrentActionRowState
 
     // Glass hero pill (same as trash/trailer) + floating Overlay menu.
     children.add(
-      MyListHeroStatusPill(
+      BookmarkHeroStatusPill(
         movie: widget.movie,
         tvTabId: widget.tvTabId,
         tvItemIndexStart: tvIndex++,

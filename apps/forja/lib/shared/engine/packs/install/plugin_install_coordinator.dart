@@ -5,6 +5,7 @@ import 'package:forja/features/settings/settings_catalog.dart';
 
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
@@ -480,7 +481,7 @@ class PluginInstallCoordinator {
       } catch (e) {
         debugPrint('[PluginInstall] install failed ($url): $e');
         PluginRegistry.officialInstallError.value =
-            e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+            PackHttp.humanizeError(e, url);
       }
       completed++;
       _setProgress(

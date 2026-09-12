@@ -249,7 +249,7 @@ void main() {
         LayoutTypes.normalize('tabs', {'style': 'kind'}),
         LayoutTypes.menu,
       );
-      expect(LayoutTypes.normalize('host.my_list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('kit.list'), LayoutTypes.list);
       expect(LayoutTypes.normalize('rail'), LayoutTypes.row);
       expect(LayoutTypes.normalize('topBar'), LayoutTypes.topBar);
       expect(LayoutTypes.normalize('kinds'), LayoutTypes.categoryBar);

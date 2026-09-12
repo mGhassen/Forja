@@ -1,13 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/hub/details_fetch.dart';
-import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/lists/external_list_providers.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 
-/// Bumps My List + Simkl list buckets from episode watched marks / movie play.
+/// Bumps bookmark + Simkl list buckets from episode watched marks / movie play.
 ///
 /// History sync stays in [syncEpisodeWatchedToTrackers] /
 /// [ListFollow.syncEpisodeWatched]. This only moves list status:
@@ -46,10 +43,10 @@ class ListFollowFromWatched {
     ProviderContainer? container,
   }) async {
     if (movie.mediaType != 'tv') return;
-    await MyListService().ensureLoaded();
-    final uid = MyListService.movieId(movie.id, movie.mediaType);
-    final current = MyListService().contains(uid)
-        ? MyListService().statusOf(uid)
+    await BookmarkStore().ensureLoaded();
+    final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
+    final current = BookmarkStore().contains(uid)
+        ? BookmarkStore().statusOf(uid)
         : null;
     final to = nextStatus(
       current: current,
@@ -68,10 +65,10 @@ class ListFollowFromWatched {
     required bool episodeNowWatched,
     ProviderContainer? container,
   }) async {
-    await MyListService().ensureLoaded();
+    await BookmarkStore().ensureLoaded();
     final uid = target.uniqueId;
-    final current = MyListService().contains(uid)
-        ? MyListService().statusOf(uid)
+    final current = BookmarkStore().contains(uid)
+        ? BookmarkStore().statusOf(uid)
         : null;
     final to = nextStatus(
       current: current,
@@ -123,10 +120,10 @@ class ListFollowFromWatched {
     ProviderContainer? container,
   }) async {
     if (movie.mediaType != 'movie') return;
-    await MyListService().ensureLoaded();
-    final uid = MyListService.movieId(movie.id, movie.mediaType);
-    if (MyListService().contains(uid)) {
-      final status = MyListService().statusOf(uid);
+    await BookmarkStore().ensureLoaded();
+    final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
+    if (BookmarkStore().contains(uid)) {
+      final status = BookmarkStore().statusOf(uid);
       if (status != 'plantowatch') return;
     }
     await _setTmdbStatus(movie, 'watching', container: container);
@@ -141,10 +138,10 @@ class ListFollowFromWatched {
   }) async {
     if (movie.mediaType != 'movie') return;
     if (!isWatchFinished(positionMs, durationMs)) return;
-    await MyListService().ensureLoaded();
-    final uid = MyListService.movieId(movie.id, movie.mediaType);
-    if (MyListService().contains(uid) &&
-        MyListService().statusOf(uid) == 'completed') {
+    await BookmarkStore().ensureLoaded();
+    final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
+    if (BookmarkStore().contains(uid) &&
+        BookmarkStore().statusOf(uid) == 'completed') {
       return;
     }
     await _setTmdbStatus(movie, 'completed', container: container);
@@ -172,147 +169,13 @@ class ListFollowFromWatched {
     }
   }
 
-  static bool _staleMyListReconciled = false;
-
-  /// Watch marks / movie progress already say Completed, but My List still
-  /// shows Watching until details open — catch up without visiting each title.
-  static Future<int> reconcileStaleMyList({
-    ProviderContainer? container,
-    bool force = false,
-  }) async {
-    if (_staleMyListReconciled && !force) return 0;
-    _staleMyListReconciled = true;
-    await MyListService().ensureLoaded();
-    var bumped = 0;
-    final items = List<Map<String, dynamic>>.from(MyListService().items);
-    for (final item in items) {
-      final status = item['listStatus']?.toString() ?? '';
-      if (status == 'completed' || status == 'dropped' || status == 'hold') {
-        continue;
-      }
-      try {
-        if (await _reconcileStaleItem(item, container: container)) {
-          bumped++;
-        }
-      } catch (e) {
-        debugPrint('[ListFollow] stale reconcile skip ${item['uniqueId']}: $e');
-      }
-    }
-    if (bumped > 0) {
-      debugPrint('[ListFollow] Stale My List → Completed: $bumped');
-      container?.invalidate(simklWatchlistProvider);
-    }
-    return bumped;
-  }
-
-  static Future<bool> _reconcileStaleItem(
-    Map<String, dynamic> item, {
-    ProviderContainer? container,
-  }) async {
-    final mt = item['mediaType']?.toString() ?? '';
-    if (mt == 'movie') {
-      final tmdbId = item['tmdbId'] as int?;
-      if (tmdbId == null) return false;
-      final progress = await WatchHistoryService().getProgress(tmdbId);
-      if (progress == null) return false;
-      final pos = watchHistoryInt(progress['position']);
-      final dur = watchHistoryInt(progress['duration']);
-      if (!isWatchFinished(pos, dur)) return false;
-      final before = MyListService().statusOf(
-        MyListService.movieId(tmdbId, 'movie'),
-      );
-      await markMovieCompletedIfFinished(
-        _movieFromListItem(item, tmdbId),
-        positionMs: pos,
-        durationMs: dur,
-        container: container,
-      );
-      return before != 'completed';
-    }
-
-    if (mt == 'tv' || mt == 'series') {
-      final tmdbId = item['tmdbId'] as int?;
-      if (tmdbId == null) return false;
-      final watched = (await EpisodeWatchedService().getWatchedSet(
-        tmdbId,
-      )).length;
-      if (watched <= 0) return false;
-      final details = await TmdbApi().getTvDetails(tmdbId);
-      final total = details.numberOfEpisodes;
-      if (total <= 0 || watched < total) return false;
-      final uid = MyListService.movieId(tmdbId, 'tv');
-      final before = MyListService().contains(uid)
-          ? MyListService().statusOf(uid)
-          : null;
-      await applyTmdb(
-        movie: details,
-        watchedCount: watched,
-        totalEpisodes: total,
-        episodeNowWatched: true,
-        container: container,
-      );
-      return before != 'completed';
-    }
-
-    return _reconcileStaleHubItem(item, container: container);
-  }
-
-  static Future<bool> _reconcileStaleHubItem(
-    Map<String, dynamic> item, {
-    ProviderContainer? container,
-  }) async {
-    final target = await listFollowTargetFromLegacyItem(item);
-    if (target == null) return false;
-    final mediaId = target.mediaIdInt;
-    if (mediaId == null) return false;
-    final watched = (await EpisodeWatchedService().getWatchedSet(
-      mediaId,
-      catalog: target.pluginId,
-    )).length;
-    if (watched <= 0) return false;
-    final meta = await fetchMetaDetails(
-      pluginId: target.pluginId,
-      metaId: item['metaId']?.toString() ?? '${target.pluginId}:$mediaId',
-    );
-    final total = (meta?.videos.isNotEmpty ?? false)
-        ? meta!.videos.length
-        : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
-    if (total <= 0 || watched < total) return false;
-    final before = MyListService().contains(target.uniqueId)
-        ? MyListService().statusOf(target.uniqueId)
-        : null;
-    await reconcileHub(
-      target: target,
-      watchedCount: watched,
-      totalEpisodes: total,
-      container: container,
-    );
-    return before != 'completed';
-  }
-
-  static Movie _movieFromListItem(Map<String, dynamic> item, int tmdbId) {
-    return Movie(
-      id: tmdbId,
-      imdbId: item['imdbId']?.toString(),
-      title: item['title']?.toString() ?? '',
-      posterPath: item['posterPath']?.toString() ?? '',
-      backdropPath: '',
-      voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-      releaseDate: item['releaseDate']?.toString() ?? '',
-      overview: '',
-      genres: const [],
-      runtime: 0,
-      mediaType: 'movie',
-    );
-  }
-
   static Future<bool> _setTmdbStatus(
     Movie movie,
     String to, {
     ProviderContainer? container,
   }) async {
     if (to.isEmpty) return false;
-    await MyListService().upsertMovie(
+    await BookmarkStore().upsertMovie(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
       title: movie.title,

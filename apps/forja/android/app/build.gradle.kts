@@ -57,6 +57,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Isolate flutter run from the Play/shipped package (session, prefs, data).
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Forja Dev")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -65,6 +70,7 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            resValue("string", "app_name", "Forja")
         }
     }
 

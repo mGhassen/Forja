@@ -1,56 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:rust/rust.dart';
 
-/// Legacy My List / Simkl row → hub open (caller boundary — not pack ids).
-class LegacyListTarget {
-  const LegacyListTarget({
-    required this.pluginId,
-    required this.meta,
-  });
-
-  final String pluginId;
-  final MetaItem meta;
-}
-
 /// Prefer [metaOpen] / [open]; accept persisted [catalogOpen] from upsertCatalog.
 Object? legacyListStoredOpenRaw(Map<String, dynamic> item) =>
     item['metaOpen'] ?? item['open'] ?? item['catalogOpen'];
 
-/// Build [MetaOpen] from a stored row, including extract when missing.
-MetaOpen metaOpenFromLegacyListItem(Map<String, dynamic> item) {
-  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null && stored.extract != null) return stored;
-
-  final surface = stored?.surface ?? _legacyListSurface(item);
-  final id = stored?.id ?? _legacyListOpenId(item);
-  final ctx = _legacyListExtractCtx(item);
-  final resolveType = _legacyListResolveType(item, surface);
-  return MetaOpen(
-    surface: surface,
-    id: id,
-    extract: MetaOpenExtract(
-      resolveType: resolveType,
-      panelCategory: resolveType,
-      ctx: ctx,
-    ),
-    extras: stored?.extras ?? const {},
-  );
-}
-
+/// Row → [MetaItem]. Uses stored `open` only — never invents a hub surface.
 MetaItem metaItemFromLegacyListItem(Map<String, dynamic> item) {
-  final open = metaOpenFromLegacyListItem(item);
+  final open = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
   final pluginId = item['pluginId']?.toString();
   final metaId = item['metaId']?.toString() ??
       item['uniqueId']?.toString() ??
-      (pluginId != null ? '$pluginId:${open.id}' : open.id);
+      (pluginId != null && open != null
+          ? '$pluginId:${open.id}'
+          : item['tmdbId']?.toString() ?? '');
+  final ids = <String, dynamic>{};
+  if (item['tmdbId'] != null) ids['tmdb'] = item['tmdbId'].toString();
+  if (item['imdbId'] != null) ids['imdb'] = item['imdbId'].toString();
+  final rawIds = item['ids'];
+  if (rawIds is Map) {
+    for (final e in rawIds.entries) {
+      ids[e.key.toString()] = e.value;
+    }
+  }
   return MetaItem(
-    id: metaId,
-    type: item['mediaType']?.toString() ?? open.surface,
+    id: metaId.isEmpty ? 'unknown' : metaId,
+    type: item['mediaType']?.toString() ?? open?.surface ?? 'movie',
     name: item['title']?.toString() ?? 'Unknown',
     poster: item['posterPath']?.toString() ?? '',
     background: item['backdropPath']?.toString() ??
@@ -59,7 +38,7 @@ MetaItem metaItemFromLegacyListItem(Map<String, dynamic> item) {
     description: item['overview']?.toString() ?? '',
     releaseInfo: item['releaseDate']?.toString() ?? '',
     rating: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-    ids: _legacyListIds(item),
+    ids: ids,
     open: open,
   );
 }
@@ -67,39 +46,12 @@ MetaItem metaItemFromLegacyListItem(Map<String, dynamic> item) {
 ListFollowTarget? listFollowTargetFromLegacyItemSync(
   Map<String, dynamic> item,
 ) {
-  final pluginId = item['pluginId']?.toString();
+  final pluginId = item['pluginId']?.toString().trim();
   if (pluginId == null || pluginId.isEmpty) return null;
   if (legacyListStoredOpenRaw(item) == null) return null;
   final meta = metaItemFromLegacyListItem(item);
+  if (meta.open == null) return null;
   return ListFollowTarget.fromMeta(pluginId: pluginId, meta: meta);
-}
-
-Future<ListFollowTarget?> listFollowTargetFromLegacyItem(
-  Map<String, dynamic> item,
-) async {
-  final stored = listFollowTargetFromLegacyItemSync(item);
-  if (stored != null) return stored;
-  final resolved = await resolveLegacyListTarget(item);
-  if (resolved == null) return null;
-  return ListFollowTarget.fromMeta(
-    pluginId: resolved.pluginId,
-    meta: resolved.meta,
-  );
-}
-
-Future<LegacyListTarget?> resolveLegacyListTarget(
-  Map<String, dynamic> item,
-) async {
-  final pluginId = await PluginNavRegistry.resolveKitPluginId(
-    pluginId: item['pluginId']?.toString(),
-    tabId: item['hubTabId']?.toString(),
-    engineType: _legacyListEngineType(item),
-  );
-  if (pluginId == null || pluginId.isEmpty) return null;
-  return LegacyListTarget(
-    pluginId: pluginId,
-    meta: metaItemFromLegacyListItem(item),
-  );
 }
 
 Future<void> openLegacyListItem(
@@ -107,159 +59,40 @@ Future<void> openLegacyListItem(
   required Map<String, dynamic> item,
   String? shellTabId,
 }) async {
-  final tmdbId = item['tmdbId'] as int?;
-  final source = item['source']?.toString() ?? 'tmdb';
-  if (source == 'tmdb' &&
-      tmdbId != null &&
-      legacyListStoredOpenRaw(item) == null) {
-    // Home TMDB rows without hub meta — open from stored fields (no TmdbApi).
-    if (!context.mounted) return;
-    final imdbId = item['imdbId']?.toString();
-    final mediaType = item['mediaType']?.toString() ?? 'movie';
-    final title = item['title']?.toString() ?? 'Unknown';
-    final poster = item['posterPath']?.toString() ?? '';
-    final backdrop = item['backdropPath']?.toString() ?? poster;
-    await AppRouter.openMovie(
-      context,
-      movie: Movie(
-        id: tmdbId,
-        imdbId: imdbId,
-        title: title,
-        posterPath: poster,
-        backdropPath: backdrop,
-        voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-        releaseDate: item['releaseDate']?.toString() ?? '',
-        mediaType: mediaType == 'series' ? 'tv' : mediaType,
-      ),
-      shellTabId: shellTabId,
-    );
-    return;
-  }
-
-  final target = await resolveLegacyListTarget(item);
-  if (target != null && context.mounted) {
+  final pluginId = item['pluginId']?.toString().trim();
+  final meta = metaItemFromLegacyListItem(item);
+  final open = meta.open;
+  if (pluginId != null &&
+      pluginId.isNotEmpty &&
+      open != null &&
+      metaOpenUsesKitDetails(open) &&
+      context.mounted) {
     await openMetaItem(
       context,
-      pluginId: target.pluginId,
-      item: target.meta,
+      pluginId: pluginId,
+      item: meta,
       shellTabId: shellTabId,
     );
     return;
   }
 
-  final imdbId = item['imdbId']?.toString();
+  final tmdbId = item['tmdbId'] as int?;
+  if (tmdbId == null || !context.mounted) return;
   final mediaType = item['mediaType']?.toString() ?? 'movie';
-  final title = item['title']?.toString() ?? 'Unknown';
-  final poster = item['posterPath']?.toString() ?? '';
-  if (!context.mounted) return;
   await AppRouter.openMovie(
     context,
     movie: Movie(
-      id: tmdbId ?? title.hashCode,
-      imdbId: imdbId,
-      title: title,
-      posterPath: poster,
-      backdropPath: poster,
+      id: tmdbId,
+      imdbId: item['imdbId']?.toString(),
+      title: item['title']?.toString() ?? 'Unknown',
+      posterPath: item['posterPath']?.toString() ?? '',
+      backdropPath: item['backdropPath']?.toString() ??
+          item['posterPath']?.toString() ??
+          '',
       voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
       releaseDate: item['releaseDate']?.toString() ?? '',
       mediaType: mediaType == 'series' ? 'tv' : mediaType,
     ),
     shellTabId: shellTabId,
   );
-}
-
-String? _legacyListEngineType(Map<String, dynamic> item) {
-  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null) {
-    final t = stored.effectiveExtract.resolveType;
-    if (t.isNotEmpty) return t;
-  }
-  final mt = item['mediaType']?.toString() ?? '';
-  if (mt == 'anime') return 'anime';
-  if (mt == 'asian_drama' || mt == 'drama') return 'drama';
-  if (mt == 'movie' || mt == 'tv' || mt == 'series') return 'movie';
-  return mt.isNotEmpty ? mt : null;
-}
-
-String _legacyListSurface(Map<String, dynamic> item) {
-  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null) return stored.surface;
-  final mt = item['mediaType']?.toString() ?? '';
-  if (mt == 'anime') return 'anime';
-  if (mt == 'asian_drama' || mt == 'drama') return 'drama';
-  return 'tmdb';
-}
-
-String _legacyListOpenId(Map<String, dynamic> item) {
-  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null) return stored.id;
-  final tmdb = item['tmdbId'];
-  if (tmdb != null) return tmdb.toString();
-  return item['metaId']?.toString() ?? '';
-}
-
-String _legacyListResolveType(Map<String, dynamic> item, String surface) {
-  if (surface == 'tmdb') {
-    final mt = item['mediaType']?.toString() ?? 'movie';
-    return mt == 'tv' || mt == 'series' ? 'tv' : 'movie';
-  }
-  return surface;
-}
-
-Map<String, dynamic> _legacyListExtractCtx(Map<String, dynamic> item) {
-  final ctx = <String, dynamic>{};
-  void put(String key, dynamic value) {
-    if (value == null) return;
-    if (value is int) {
-      ctx[key] = value;
-      return;
-    }
-    if (value is num) {
-      ctx[key] = value.toInt();
-      return;
-    }
-    final parsed = int.tryParse(value.toString());
-    ctx[key] = parsed ?? value;
-  }
-
-  put('tmdbId', item['tmdbId']);
-  put('malId', item['malId']);
-
-  final ids = item['ids'];
-  if (ids is Map) {
-    for (final e in ids.entries) {
-      final k = e.key.toString();
-      if (k.isEmpty) continue;
-      final ck = k.endsWith('Id') ? k : '${k}Id';
-      ctx.putIfAbsent(ck, () {
-        final v = e.value;
-        if (v is int) return v;
-        if (v is num) return v.toInt();
-        return int.tryParse('$v') ?? v;
-      });
-    }
-  }
-
-  final openId = _legacyListOpenId(item);
-  if (ctx.isEmpty && openId.isNotEmpty) ctx['openId'] = openId;
-  return ctx;
-}
-
-Map<String, dynamic> _legacyListIds(Map<String, dynamic> item) {
-  final ids = <String, dynamic>{};
-  void put(String key, dynamic value) {
-    if (value == null) return;
-    ids[key] = value.toString();
-  }
-
-  put('tmdb', item['tmdbId']);
-  put('imdb', item['imdbId']);
-
-  final raw = item['ids'];
-  if (raw is Map) {
-    for (final e in raw.entries) {
-      ids[e.key.toString()] = e.value;
-    }
-  }
-  return ids;
 }

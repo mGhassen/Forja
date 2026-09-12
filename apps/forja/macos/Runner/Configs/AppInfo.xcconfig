@@ -10,7 +10,8 @@ PRODUCT_NAME = Forja
 // Dock / Finder display name
 PRODUCT_DISPLAY_NAME = Forja
 
-// The application's bundle identifier
+// Release identity. Debug/Profile override to com.forjahq.app.dev in
+// Forja.xcodeproj so flutter run does not share prefs/session with the shipped app.
 PRODUCT_BUNDLE_IDENTIFIER = com.forjahq.app
 
 // The copyright displayed in application information

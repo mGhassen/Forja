@@ -19,7 +19,7 @@ Title logos: prefer English (or lang-null) from TMDB `images.logos`, as
 | `kit.stack` / `stack` | composition root |
 | `kit.menu` / `menu` | menu |
 | `kit.tabs` / `tabs` | tabs (`style: kind` → menu) |
-| `kit.list` / `my_list` / `host.my_list` | list |
+| `kit.list` / `list` | list |
 | `kit.row` / `rail` / `ranked` | row |
 | `kit.topBar` / `topBar` | top bar |
 | `kit.categoryBar` / `kinds` | category bar |

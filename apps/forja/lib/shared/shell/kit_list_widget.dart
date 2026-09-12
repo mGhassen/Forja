@@ -14,6 +14,7 @@ import 'package:forja/shared/engine/hub/host_list_registry.dart';
 import 'package:forja/shared/shell/kit_event_card.dart';
 import 'package:forja/shared/engine/hub/kit_event_paint.dart';
 import 'package:forja/shared/engine/hub/kit_list_source.dart';
+import 'package:forja/shared/engine/hub/plugin_hub_feed_source.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/shell/forja_chip_row.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
@@ -177,10 +178,17 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     }
   }
 
-  KitListSource? _resolveSource() => HostListRegistry.resolve(
-        sourceId: widget.listSource.isEmpty ? null : widget.listSource,
-        pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
-      );
+  KitListSource? _resolveSource() {
+    final registered = HostListRegistry.resolve(
+      sourceId: widget.listSource.isEmpty ? null : widget.listSource,
+      pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
+    );
+    if (registered != null) return registered;
+    final pluginId = widget.pluginId.trim();
+    if (pluginId.isEmpty) return null;
+    // Pack-owned list feed — no host product registration required.
+    return PluginHubFeedListSource(pluginId);
+  }
 
   KitPanelHost? get _panelHost {
     final id = widget.listSource;
@@ -1208,6 +1216,3 @@ class _KitDenseRowSkeleton extends StatelessWidget {
     );
   }
 }
-
-/// @deprecated Use [kitListPosterUrl].
-String myListPosterUrl(MetaItem meta) => kitListPosterUrl(meta);

@@ -18,7 +18,7 @@ export 'src/engine_http.dart';
 export 'src/host_http.dart';
 export 'src/media_extra_request.dart';
 export 'src/episode_watched_service.dart';
-export 'src/my_list_service.dart';
+export 'src/bookmark_store.dart';
 export 'src/book_progress_service.dart';
 export 'src/models/movie.dart';
 export 'src/models/media_trailer.dart';

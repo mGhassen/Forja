@@ -34,7 +34,7 @@ class ListFollowTarget {
   String get resolvedMediaType =>
       mediaType ?? open.effectiveExtract.panelCategory;
 
-  String get uniqueId => MyListService.catalogEntryId(pluginId, open.id);
+  String get uniqueId => BookmarkStore.catalogEntryId(pluginId, open.id);
 
   int? get mediaIdInt => open.idInt;
 
@@ -80,7 +80,7 @@ class ListFollow {
   static ListFollowTarget resolveSimklTarget(ListFollowTarget t) {
     if (t.tmdbId != null) return t;
     if (t.resolvedMediaType != 'drama') return t;
-    final stored = MyListService().itemOf(t.uniqueId);
+    final stored = BookmarkStore().itemOf(t.uniqueId);
     final storedTmdb = stored?['tmdbId'] as int?;
     if (storedTmdb == null) return t;
     return t.copyWith(
@@ -94,18 +94,18 @@ class ListFollow {
     String to, {
     ProviderContainer? container,
   }) async {
-    await MyListService().ensureLoaded();
+    await BookmarkStore().ensureLoaded();
     final t = raw;
     if (to.isEmpty) {
       final sync = resolveSimklTarget(t);
       final keys = <String>{t.uniqueId};
       if (sync.tmdbId != null) {
         keys.add(
-          MyListService.movieId(sync.tmdbId!, sync.tmdbMediaType ?? 'tv'),
+          BookmarkStore.movieId(sync.tmdbId!, sync.tmdbMediaType ?? 'tv'),
         );
       }
-      container?.read(myListHiddenKeysProvider.notifier).addAll(keys);
-      await MyListService().remove(t.uniqueId);
+      container?.read(bookmarkHiddenKeysProvider.notifier).addAll(keys);
+      await BookmarkStore().remove(t.uniqueId);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
@@ -123,7 +123,7 @@ class ListFollow {
       _invalidate(container);
       return ok;
     }
-    await MyListService().upsertCatalog(
+    await BookmarkStore().upsertCatalog(
       pluginId: t.pluginId,
       open: t.open.toJson(),
       uniqueId: t.uniqueId,
@@ -159,10 +159,10 @@ class ListFollow {
   }
 
   static Future<void> markWatchingOnPlay(ListFollowTarget raw) async {
-    await MyListService().ensureLoaded();
+    await BookmarkStore().ensureLoaded();
     final uid = raw.uniqueId;
-    if (MyListService().contains(uid)) {
-      final status = MyListService().statusOf(uid);
+    if (BookmarkStore().contains(uid)) {
+      final status = BookmarkStore().statusOf(uid);
       if (status != 'plantowatch') return;
     }
     await setStatus(raw, 'watching');
@@ -247,7 +247,7 @@ class ListFollow {
       );
       return;
     }
-    final stored = MyListService().itemOf(raw.uniqueId);
+    final stored = BookmarkStore().itemOf(raw.uniqueId);
     final tmdbId = raw.tmdbId ?? stored?['tmdbId'] as int?;
     final mt =
         raw.tmdbMediaType ?? stored?['tmdbMediaType']?.toString() ?? 'tv';

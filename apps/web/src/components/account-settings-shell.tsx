@@ -3,8 +3,6 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Blocks,
-  Check,
-  ChevronDown,
   LayoutList,
   LogOut,
   MonitorSmartphone,
@@ -15,15 +13,6 @@ import { SiteHeader } from '@/components/site-header'
 import { RequireAuth } from '@/components/require-auth'
 import { useAuth } from '@/hooks/use-auth'
 import { useProfiles } from '@/hooks/use-profiles'
-import { ProfileAvatar } from '@/components/profile-avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 /** Nested under Addons hub — keep sidebar highlight on Addons. */
@@ -163,9 +152,8 @@ export function AccountSettingsShell({
 }: AccountSettingsShellProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
-  const { profiles, activeProfile, selectProfile, loading: profilesLoading } =
-    useProfiles()
+  const { signOut } = useAuth()
+  const { activeProfile } = useProfiles()
 
   async function onSignOut() {
     // Local only — keep the desktop app session alive.
@@ -178,125 +166,23 @@ export function AccountSettingsShell({
       <div className="min-h-screen">
         <SiteHeader solid />
         <main className="mx-auto max-w-6xl px-5 pb-16 pt-24 sm:px-6 sm:pt-28">
-          <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Link
-                to="/account/profiles"
-                className="flex size-9 items-center justify-center text-forja-muted hover:text-forja-text"
-                aria-label="Back to Who's watching"
-              >
-                <ArrowLeft className="size-5" />
-              </Link>
-              <div>
-                <h1 className="font-display text-2xl tracking-tight">
-                  {section === 'account' ? 'Account' : 'Profile settings'}
-                </h1>
-                <p className="mt-0.5 text-xs text-forja-muted">
-                  {section === 'account'
-                    ? 'Signed-in Forja account'
-                    : `Synced for ${activeProfile?.name ?? 'this profile'}`}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label="Active profile"
-                  disabled={profilesLoading || profiles.length === 0}
-                  className="group inline-flex min-w-62 items-center gap-3 rounded-2xl border border-[rgba(237,230,218,0.16)] bg-[#121110] py-2 pl-2 pr-3 text-left outline-none transition duration-200 hover:border-forja-green/45 hover:bg-[#161412] focus-visible:ring-2 focus-visible:ring-forja-green/60 disabled:opacity-50 data-[state=open]:border-forja-green/50 data-[state=open]:bg-[#161412]"
-                >
-                  {activeProfile ? (
-                    <ProfileAvatar
-                      avatarKey={activeProfile.avatar_key}
-                      name={activeProfile.name}
-                      className="size-14 shrink-0 rounded-[14px] shadow-[0_10px_28px_-16px_rgba(0,0,0,0.9)] ring-1 ring-white/10 transition duration-200 group-hover:scale-[1.03]"
-                    />
-                  ) : (
-                    <span className="size-14 shrink-0 rounded-[14px] bg-forja-elevated" />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="font-mono-ui block text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
-                      Watching as
-                    </span>
-                    <span className="mt-0.5 block truncate font-disp text-lg uppercase tracking-tight text-[#EDE6DA]">
-                      {activeProfile?.name ?? 'Profile'}
-                    </span>
-                  </span>
-                  <ChevronDown className="size-5 shrink-0 text-forja-muted transition group-data-[state=open]:rotate-180" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={10}
-                  className="w-76 rounded-2xl border-forja-border bg-[#121110] p-2 shadow-[0_28px_80px_-28px_rgba(0,0,0,0.9)]"
-                >
-                  <DropdownMenuLabel className="px-3 pb-1 pt-2 font-mono-ui text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
-                    Switch profile
-                  </DropdownMenuLabel>
-                  {user?.email ? (
-                    <p className="truncate px-3 pb-2 font-mono text-[12px] font-medium normal-case tracking-normal text-[rgba(237,230,218,0.72)]">
-                      {user.email}
-                    </p>
-                  ) : null}
-                  <DropdownMenuSeparator className="mx-1 bg-[rgba(237,230,218,0.1)]" />
-                  <div className="max-h-88 space-y-1 overflow-y-auto py-1">
-                    {profiles.map((profile) => {
-                      const selected = profile.id === activeProfile?.id
-                      return (
-                        <DropdownMenuItem
-                          key={profile.id}
-                          onSelect={() => selectProfile(profile.id)}
-                          className={cn(
-                            'cursor-pointer gap-3 rounded-xl px-2.5 py-2.5',
-                            selected
-                              ? 'bg-forja-green/10 text-[#EDE6DA] focus:bg-forja-green/14'
-                              : 'focus:bg-white/6',
-                          )}
-                        >
-                          <ProfileAvatar
-                            avatarKey={profile.avatar_key}
-                            name={profile.name}
-                            className="size-12 shrink-0 rounded-xl ring-1 ring-white/10"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-disp text-base uppercase tracking-tight">
-                              {profile.name}
-                            </span>
-                            <span className="mt-0.5 block text-[11px] text-forja-muted">
-                              {selected ? 'Active now' : 'Tap to switch'}
-                            </span>
-                          </span>
-                          {selected ? (
-                            <Check className="size-5 shrink-0 text-forja-green" />
-                          ) : null}
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </div>
-                  <DropdownMenuSeparator className="mx-1 bg-[rgba(237,230,218,0.1)]" />
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/account/profiles"
-                      className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium"
-                    >
-                      Manage profiles
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/account/settings/account"
-                      className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium"
-                    >
-                      Account settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => void onSignOut()}
-                    className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="mb-7 flex flex-wrap items-center gap-3">
+            <Link
+              to="/account/profiles"
+              className="flex size-9 items-center justify-center text-forja-muted hover:text-forja-text"
+              aria-label="Back to Who's watching"
+            >
+              <ArrowLeft className="size-5" />
+            </Link>
+            <div>
+              <h1 className="font-display text-2xl tracking-tight">
+                {section === 'account' ? 'Account' : 'Profile settings'}
+              </h1>
+              <p className="mt-0.5 text-xs text-forja-muted">
+                {section === 'account'
+                  ? 'Signed-in Forja account'
+                  : `Synced for ${activeProfile?.name ?? 'this profile'}`}
+              </p>
             </div>
           </div>
 

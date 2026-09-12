@@ -747,14 +747,14 @@ class _AddToKitListStatusButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = MyListService.movieId(movie.id, movie.mediaType);
+    final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(uid);
+        final inList = BookmarkStore().contains(uid);
         return GestureDetector(
           onTap: () async {
-            final added = await MyListService().toggleMovie(
+            final added = await BookmarkStore().toggleMovie(
               tmdbId: movie.id,
               imdbId: movie.imdbId,
               title: movie.title,

@@ -1,19 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
-import 'package:forja/shared/engine/hub/legacy_list_item.dart';
-import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How list buckets sync when the user connects or taps Sync Now.
 enum SimklListSyncMode {
-  /// Push device My List statuses to Simkl. Do not mirror Simkl-only titles
-  /// into the local cache (they still appear in My List while connected).
+  /// Push local bookmark statuses to Simkl. Do not mirror Simkl-only titles
+  /// into the local cache (pack feed still lists them while connected).
   keepLocal,
 
-  /// Overwrite local My List statuses from Simkl. No list export.
+  /// Overwrite local bookmark statuses from Simkl. No list export.
   useSimkl,
 
   /// Push local titles, then pull Simkl into local. Same title, different
@@ -622,11 +619,11 @@ class SimklService {
       _scrobble('stop', tmdbId: tmdbId, mediaType: mediaType, season: season, episode: episode);
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  I M P O R T   -   W A T C H L I S T   >   M Y   L I S T
+  //  I M P O R T   -   W A T C H L I S T   >   B O O K M A R K S
   // ═══════════════════════════════════════════════════════════════════════
 
-  /// Mirror Simkl list buckets onto local My List (backup if Simkl is removed).
-  Future<int> importWatchlistToMyList() async {
+  /// Mirror Simkl list buckets onto local bookmarks (backup if Simkl is removed).
+  Future<int> importWatchlistToBookmarks() async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
@@ -650,7 +647,7 @@ class SimklService {
             final title = show['title']?.toString() ?? 'Unknown';
             final mediaType = type == 'shows' ? 'tv' : 'movie';
             if (tmdbId == null) continue;
-            await MyListService().upsertMovie(
+            await BookmarkStore().upsertMovie(
               tmdbId: tmdbId,
               imdbId: imdbId,
               title: title,
@@ -661,11 +658,11 @@ class SimklService {
             imported++;
           }
         } catch (e) {
-          debugPrint('[Simkl] Import My List ($type/$status) error: $e');
+          debugPrint('[Simkl] Import bookmarks ($type/$status) error: $e');
         }
       }
     }
-    debugPrint('[Simkl] Mirrored $imported items to local My List');
+    debugPrint('[Simkl] Mirrored $imported items to local bookmarks');
     return imported;
   }
 
@@ -750,13 +747,13 @@ class SimklService {
         _minSyncInterval.inMilliseconds;
   }
 
-  /// Push local My List buckets to Simkl with each item's real [listStatus].
-  Future<int> exportMyListToWatchlist() async {
+  /// Push local bookmark buckets to Simkl with each item's real [listStatus].
+  Future<int> exportBookmarksToWatchlist() async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
-    await MyListService().ensureLoaded();
-    final items = MyListService().items;
+    await BookmarkStore().ensureLoaded();
+    final items = BookmarkStore().items;
     if (items.isEmpty) return 0;
 
     final movies = <Map<String, dynamic>>[];
@@ -765,7 +762,7 @@ class SimklService {
 
     for (final item in items) {
       final status =
-          item['listStatus']?.toString() ?? MyListService.defaultStatus;
+          item['listStatus']?.toString() ?? BookmarkStore.defaultStatus;
       final mt = item['mediaType']?.toString() ?? 'movie';
 
       if (mt == 'anime') {
@@ -808,12 +805,12 @@ class SimklService {
 
     switch (mode) {
       case SimklListSyncMode.useSimkl:
-        watchlistImported = await importWatchlistToMyList();
+        watchlistImported = await importWatchlistToBookmarks();
       case SimklListSyncMode.keepLocal:
-        watchlistExported = await exportMyListToWatchlist();
+        watchlistExported = await exportBookmarksToWatchlist();
       case SimklListSyncMode.merge:
-        watchlistExported = await exportMyListToWatchlist();
-        watchlistImported = await importWatchlistToMyList();
+        watchlistExported = await exportBookmarksToWatchlist();
+        watchlistImported = await importWatchlistToBookmarks();
     }
 
     final history = await syncHistoryOnly();
@@ -828,7 +825,7 @@ class SimklService {
     );
   }
 
-  /// Progress / completed / episodes only (no My List bucket push/pull).
+  /// Progress / completed / episodes only (no bookmark bucket push/pull).
   Future<SimklSyncResult> syncHistoryOnly() async {
     final watchingImported = await importWatchingProgress();
     final moviesImported = await importCompletedMovies();
@@ -987,10 +984,9 @@ class SimklService {
 
       for (final c in candidates) {
         if (imported >= _resumeImportCap) break;
-        final n = c.anime
-            ? await _importAnimeResume(c.item)
-            : await _importShowResume(c.item);
-        imported += n;
+        // Anime/drama hub CW needs pack `pluginId`+`open` — host does not invent hubs.
+        if (c.anime) continue;
+        imported += await _importShowResume(c.item);
       }
       debugPrint('[Simkl] Imported $imported watching resume items');
     } catch (e) {
@@ -1277,103 +1273,7 @@ class SimklService {
       imported++;
     }
 
-    if (await _seedDramaHubContinueFromSimkl(
-      tmdbId: tmdbId,
-      imdbId: imdbId,
-      title: title,
-      posterPath: art.poster,
-      backdropPath: art.backdrop,
-      episode: point.episode,
-      positionMs: positionMs,
-      durationMs: durationMs,
-    )) {
-      imported++;
-    }
     return imported > 0 ? 1 : 0;
-  }
-
-  /// Simkl TV resumes → Asian Drama hub CW (KissKh extract uses TMDB id).
-  Future<bool> _seedDramaHubContinueFromSimkl({
-    required int tmdbId,
-    String? imdbId,
-    required String title,
-    required String posterPath,
-    required String backdropPath,
-    required int episode,
-    required int positionMs,
-    required int durationMs,
-  }) async {
-    final hubPlugin =
-        await PluginNavRegistry.pluginIdForEngineType('drama') ?? '';
-    if (hubPlugin.isEmpty) return false;
-
-    final existing = await WatchHistory.getAll(hubPlugin);
-    final already = existing.any((entry) {
-      if (entry['metaId']?.toString() == '$hubPlugin:$tmdbId') return true;
-      final meta = WatchHistory.metaFromEntry(entry);
-      return meta?.numericId('tmdb') == tmdbId;
-    });
-    if (already) return false;
-
-    try {
-      final meta = metaItemFromLegacyListItem({
-        'pluginId': hubPlugin,
-        'tmdbId': tmdbId,
-        'imdbId': ?imdbId,
-        'mediaType': 'asian_drama',
-        'title': title,
-        'posterPath': posterPath,
-        'backdropPath': backdropPath,
-      });
-      await WatchHistory.record(
-        pluginId: hubPlugin,
-        meta: meta,
-        episodeNumber: episode,
-        position: Duration(milliseconds: positionMs),
-        duration: Duration(milliseconds: durationMs),
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[Simkl] Drama resume $tmdbId failed: $e');
-      return false;
-    }
-  }
-
-  Future<int> _importAnimeResume(Map<String, dynamic> item) async {
-    final media = _media(item);
-    final anilistId = _asInt(_ids(media)['anilist']);
-    final point = _resumePoint(item);
-    if (anilistId == null || point == null) return 0;
-    final hubPlugin =
-        await PluginNavRegistry.pluginIdForEngineType('anime') ?? '';
-    if (hubPlugin.isEmpty) return 0;
-    final existing = await WatchHistory.getAll(hubPlugin);
-    if (existing.any((e) => e['metaId'] == '$hubPlugin:$anilistId')) return 0;
-    try {
-      final title = (media['title'] as String?)?.trim() ?? 'Anime';
-      final meta = metaItemFromLegacyListItem({
-        ...item,
-        'pluginId': hubPlugin,
-        'anilistId': anilistId,
-        'mediaType': 'anime',
-        'title': title,
-      });
-      final runtimeMin = _asInt(media['runtime']) ?? 24;
-      final duration = Duration(minutes: runtimeMin);
-      await WatchHistory.record(
-        pluginId: hubPlugin,
-        meta: meta,
-        episodeNumber: point.episode,
-        position: Duration(
-          milliseconds: (duration.inMilliseconds * 0.05).round(),
-        ),
-        duration: duration,
-      );
-      return 1;
-    } catch (e) {
-      debugPrint('[Simkl] Anime resume $anilistId failed: $e');
-      return 0;
-    }
   }
 
   Future<Map<String, dynamic>> _fetchTmdbInfo(int tmdbId, String mediaType) async {

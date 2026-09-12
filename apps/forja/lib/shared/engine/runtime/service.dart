@@ -508,12 +508,12 @@ class EngineService {
       }
     }
 
-    // Home/TMDB: EngineJS-first. Live Sports / My List feed/rail call
-    // ctx.host.liveFeed / ctx.host.myList — EngineJS has no bridge (ok
+    // Home/TMDB: EngineJS-first. Live Sports / list hubs feed/rail call
+    // ctx.host.liveFeed / ctx.host.bookmarks|simkl — EngineJS has no bridge (ok
     // items:[] would skip flutter_js). layout / filters do not need the
     // bridge — keep EngineJS-first for those.
     final needsHostFeedBridge = (action == 'feed' || action == 'rail') &&
-        (plugin.needsLiveFeedHost || plugin.needsMyListHost);
+        (plugin.needsLiveFeedHost || plugin.needsListsHost);
     if (!needsHostFeedBridge) {
       final viaRust = await _runLiveEngineRustJs(
         plugin: plugin,
@@ -534,7 +534,7 @@ class EngineService {
       }
       if (gen != _catalogGeneration) return null;
     } else {
-      final bridge = plugin.needsMyListHost ? 'myList' : 'liveFeed';
+      final bridge = plugin.needsListsHost ? 'bookmarks+simkl' : 'liveFeed';
       debugPrint(
         '[catalog] ${plugin.id} $action needs $bridge — flutter_js',
       );

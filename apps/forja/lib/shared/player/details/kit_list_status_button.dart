@@ -37,7 +37,7 @@ void _toastStatusWrite(bool ok, String to) {
   }
 }
 
-/// Wired My List status pin — Riverpod / Simkl / [ListFollow] (RFC-095 data).
+/// Wired bookmark status pin — Riverpod / Simkl / [ListFollow].
 ///
 /// Presentational chrome: [KitListStatusPin].
 class KitListStatusButton extends StatelessWidget {
@@ -88,7 +88,7 @@ class KitListStatusButton extends StatelessWidget {
   /// Row cards: keep D-pad on the poster tile, not the overlay button.
   final bool excludeFromTvTraversal;
 
-  /// When local My List has no row yet (e.g. Simkl-only Watching tab), use this
+  /// When local bookmarks have no row yet (e.g. Simkl-only Watching tab), use this
   /// status for the pin icon/color until a write lands.
   final String? knownStatus;
 
@@ -112,7 +112,7 @@ class KitListStatusButton extends StatelessWidget {
     }
     if (movie != null && !useHeartIcon) {
       return _WiredStatusPin(
-        uniqueId: MyListService.movieId(movie!.id, movie!.mediaType),
+        uniqueId: BookmarkStore.movieId(movie!.id, movie!.mediaType),
         iconSize: iconSize,
         iconColor: iconColor,
         excludeFromTvTraversal: excludeFromTvTraversal,
@@ -141,9 +141,9 @@ class KitListStatusButton extends StatelessWidget {
       container = ProviderScope.containerOf(context, listen: false);
     } catch (_) {}
     if (to.isEmpty) {
-      final uid = MyListService.movieId(movie.id, movie.mediaType);
-      container?.read(myListHiddenKeysProvider.notifier).addAll({uid});
-      await MyListService().remove(uid);
+      final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
+      container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
+      await BookmarkStore().remove(uid);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -155,7 +155,7 @@ class KitListStatusButton extends StatelessWidget {
       container?.invalidate(simklWatchlistProvider);
       return ok;
     }
-    await MyListService().upsertMovie(
+    await BookmarkStore().upsertMovie(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
       title: movie.title,
@@ -179,7 +179,7 @@ class KitListStatusButton extends StatelessWidget {
   }
 }
 
-/// Listens to [MyListService] and fills [KitListStatusPin] props.
+/// Listens to [BookmarkStore] and fills [KitListStatusPin] props.
 class _WiredStatusPin extends StatelessWidget {
   const _WiredStatusPin({
     required this.uniqueId,
@@ -200,11 +200,11 @@ class _WiredStatusPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(uniqueId);
+        final inList = BookmarkStore().contains(uniqueId);
         final status = inList
-            ? MyListService().statusOf(uniqueId)
+            ? BookmarkStore().statusOf(uniqueId)
             : knownStatus;
         return KitListStatusPin(
           currentStatus: status,
@@ -242,14 +242,14 @@ class _LegacyTogglePin extends StatelessWidget {
 
   String get _uniqueId {
     if (movie != null) {
-      return MyListService.movieId(movie!.id, movie!.mediaType);
+      return BookmarkStore.movieId(movie!.id, movie!.mediaType);
     }
-    return MyListService.stremioItemId(stremioItem!);
+    return BookmarkStore.stremioItemId(stremioItem!);
   }
 
   Future<void> _toggle(BuildContext context) async {
     if (movie != null) {
-      final added = await MyListService().toggleMovie(
+      final added = await BookmarkStore().toggleMovie(
         tmdbId: movie!.id,
         imdbId: movie!.imdbId,
         title: movie!.title,
@@ -265,7 +265,7 @@ class _LegacyTogglePin extends StatelessWidget {
         );
       }
     } else if (stremioItem != null) {
-      final added = await MyListService().toggleStremioItem(stremioItem!);
+      final added = await BookmarkStore().toggleStremioItem(stremioItem!);
       if (context.mounted) {
         ForjaToast.success(
           added ? 'Added to My List' : 'Removed from My List',
@@ -286,9 +286,9 @@ class _LegacyTogglePin extends StatelessWidget {
     }
 
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(_uniqueId);
+        final inList = BookmarkStore().contains(_uniqueId);
         final icon = Icon(
           useHeartIcon
               ? (inList
@@ -321,12 +321,12 @@ class _LegacyTogglePin extends StatelessWidget {
   }
 }
 
-/// Dynamic icon for the grouped hero My List slice.
-class MyListHeroIcon extends StatelessWidget {
-  const MyListHeroIcon.movie({super.key, required this.movie})
+/// Dynamic icon for the grouped hero bookmark slice.
+class BookmarkHeroIcon extends StatelessWidget {
+  const BookmarkHeroIcon.movie({super.key, required this.movie})
     : stremioItem = null;
 
-  const MyListHeroIcon.stremio({
+  const BookmarkHeroIcon.stremio({
     super.key,
     required Map<String, dynamic> this.stremioItem,
   }) : movie = null;
@@ -336,18 +336,18 @@ class MyListHeroIcon extends StatelessWidget {
 
   String get _uniqueId {
     if (movie != null) {
-      return MyListService.movieId(movie!.id, movie!.mediaType);
+      return BookmarkStore.movieId(movie!.id, movie!.mediaType);
     }
-    return MyListService.stremioItemId(stremioItem!);
+    return BookmarkStore.stremioItemId(stremioItem!);
   }
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(_uniqueId);
-        final status = inList ? MyListService().statusOf(_uniqueId) : null;
+        final inList = BookmarkStore().contains(_uniqueId);
+        final status = inList ? BookmarkStore().statusOf(_uniqueId) : null;
         return Icon(
           kitListStatusPinIcon(status),
           size: 20,
@@ -467,13 +467,13 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                   child: Material(
                     color: Colors.transparent,
                     child: ValueListenableBuilder<int>(
-                      valueListenable: MyListService.changeNotifier,
+                      valueListenable: BookmarkStore.changeNotifier,
                       builder: (context, _, _) {
-                        final inList = MyListService().contains(
+                        final inList = BookmarkStore().contains(
                           widget.uniqueId,
                         );
                         final status = inList
-                            ? MyListService().statusOf(widget.uniqueId)
+                            ? BookmarkStore().statusOf(widget.uniqueId)
                             : null;
                         return KitListStatusPopupPanel(
                           currentStatus: status,
@@ -524,11 +524,11 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     return CompositedTransformTarget(
       link: _link,
       child: ValueListenableBuilder<int>(
-        valueListenable: MyListService.changeNotifier,
+        valueListenable: BookmarkStore.changeNotifier,
         builder: (context, _, _) {
-          final inList = MyListService().contains(widget.uniqueId);
+          final inList = BookmarkStore().contains(widget.uniqueId);
           final status = inList
-              ? MyListService().statusOf(widget.uniqueId)
+              ? BookmarkStore().statusOf(widget.uniqueId)
               : null;
           return HeroPillIconGroup(
             tvTabId: tv,
@@ -555,8 +555,8 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
 }
 
 /// Movie details hero — glass **+** + floating status menu.
-class MyListHeroStatusPill extends StatelessWidget {
-  const MyListHeroStatusPill({
+class BookmarkHeroStatusPill extends StatelessWidget {
+  const BookmarkHeroStatusPill({
     super.key,
     required this.movie,
     this.tvTabId,
@@ -581,9 +581,9 @@ class MyListHeroStatusPill extends StatelessWidget {
       container = ProviderScope.containerOf(context, listen: false);
     } catch (_) {}
     if (to.isEmpty) {
-      final uid = MyListService.movieId(movie.id, movie.mediaType);
-      container?.read(myListHiddenKeysProvider.notifier).addAll({uid});
-      await MyListService().remove(uid);
+      final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
+      container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
+      await BookmarkStore().remove(uid);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -595,7 +595,7 @@ class MyListHeroStatusPill extends StatelessWidget {
       container?.invalidate(simklWatchlistProvider);
       return ok;
     }
-    await MyListService().upsertMovie(
+    await BookmarkStore().upsertMovie(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
       title: movie.title,
@@ -621,7 +621,7 @@ class MyListHeroStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KitListStatusControl(
-      uniqueId: MyListService.movieId(movie.id, movie.mediaType),
+      uniqueId: BookmarkStore.movieId(movie.id, movie.mediaType),
       onSetStatus: (to) => _setStatus(context, to),
       tvTabId: tvTabId,
       tvItemIndexStart: tvItemIndexStart,
@@ -633,9 +633,9 @@ class MyListHeroStatusPill extends StatelessWidget {
   }
 }
 
-/// Hero-row My List slice inside [HeroPillIconGroup] (toggle only — Stremio).
-class MyListHeroPillButton {
-  MyListHeroPillButton._();
+/// Hero-row bookmark slice inside [HeroPillIconGroup] (toggle only — Stremio).
+class BookmarkHeroPillButton {
+  BookmarkHeroPillButton._();
 
   static Future<void> toggle(
     BuildContext context, {
@@ -643,7 +643,7 @@ class MyListHeroPillButton {
     Map<String, dynamic>? stremioItem,
   }) async {
     if (movie != null) {
-      final added = await MyListService().toggleMovie(
+      final added = await BookmarkStore().toggleMovie(
         tmdbId: movie.id,
         imdbId: movie.imdbId,
         title: movie.title,
@@ -659,7 +659,7 @@ class MyListHeroPillButton {
         );
       }
     } else if (stremioItem != null) {
-      final added = await MyListService().toggleStremioItem(stremioItem);
+      final added = await BookmarkStore().toggleStremioItem(stremioItem);
       if (context.mounted) {
         ForjaToast.success(
           added ? 'Added to My List' : 'Removed from My List',
@@ -675,7 +675,7 @@ class MyListHeroPillButton {
   }) {
     return HeroPillIconSlot(
       label: 'My List',
-      iconWidget: MyListHeroIcon.movie(movie: movie),
+      iconWidget: BookmarkHeroIcon.movie(movie: movie),
       onTap: () => toggle(context, movie: movie),
     );
   }
@@ -686,7 +686,7 @@ class MyListHeroPillButton {
   }) {
     return HeroPillIconSlot(
       label: 'My List',
-      iconWidget: MyListHeroIcon.stremio(stremioItem: stremioItem),
+      iconWidget: BookmarkHeroIcon.stremio(stremioItem: stremioItem),
       onTap: () => toggle(context, stremioItem: stremioItem),
     );
   }

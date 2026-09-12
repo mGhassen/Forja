@@ -84,7 +84,6 @@ List<EnginePlugin> loadAllHubPlugins() {
     'arabic',
     'cartoon',
     'aflem',
-    'my_list',
     'live_sports',
   ]) {
     final pack = EnginePack.fromJson(
@@ -741,7 +740,6 @@ void main() {
         'arabic',
         'cartoon',
         'aflem',
-        'my_list',
         'live_sports',
       ]) {
         final pack = EnginePack.fromJson(
@@ -766,8 +764,6 @@ void main() {
       expect(byRail['anime']!.pluginId, 'anilist');
       expect(byRail['asian_drama']!.pluginId, 'kisskh-hub');
       expect(byRail['arabic']!.pluginId, 'arabic-hub');
-      expect(byRail['mylist']!.pluginId, 'my-list-hub');
-      expect(byRail['mylist']!.icon, 'icons/nav.png');
       expect(byRail['live_sports']!.pluginId, 'live-sports-hub');
       expect(byRail['live_sports']!.icon, 'icons/nav.png');
       expect(byRail['cartoon']!.pluginId, 'dimatoon-hub');
@@ -782,7 +778,6 @@ void main() {
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.isKitTab('live_sports'), isFalse);
       expect(PluginNavRegistry.isKitTab('settings'), isFalse);
-      expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
       expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
       expect(
@@ -812,7 +807,6 @@ void main() {
         'arabic',
         'cartoon',
         'aflem',
-        'my_list',
         'live_sports',
       ]) {
         final pack = EnginePack.fromJson(
@@ -838,7 +832,6 @@ void main() {
       expect(byRail['anime']!.icon, 'icons/nav.png');
       expect(byRail['asian_drama']!.icon, 'icons/nav.png');
       expect(byRail['cartoon']!.icon, 'icons/nav.png');
-      expect(byRail['mylist']!.icon, 'icons/nav.png');
 
       for (final e in byRail.entries) {
         final s = e.value;

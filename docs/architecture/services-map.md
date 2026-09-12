@@ -36,7 +36,7 @@
 | Asian Drama | `asian_drama` | `KissKhService` → `kisskh` ✅ |
 | Live Sports | `live_sports` | `live-sports` ✅ |
 | IPTV | `iptv` | `iptv` Reddit + probe ✅ |
-| Lists | `mylist` | `MyListService`, watch history (host + engine) |
+| Lists | pack `nav.tabId` | `BookmarkStore`, watch history (host + engine) |
 | Settings | `settings` | Host prefs / platform |
 
 **Out of scope for now** — do not schedule Rust ports or tab UX work unless explicitly reopened:
@@ -149,7 +149,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
 | IPTV channel search (Live TV) | thin | hub `liveTv` → `ctx.host.iptv.searchChannels` → `IptvChannelSearch` | Pack triggers; host portal/Rust only | ✅ |
 | Portals chrome (design) | — | `foundation` `KitPortalsChip` / overlay / list panel + IPTV hooks | Props-only chip + panel; IPTV wires (RFC-095) | ✅ |
-| Kit list status (design/data) | — | `KitListStatusPin` + `services/follow/kit_list_status_button` | Props pin; follow wires Simkl (RFC-095 B) | ✅ |
+| Kit list status (design/data) | — | `KitListStatusPin` + `shared/player/details/kit_list_status_button` | Props pin; follow wires Simkl (RFC-095 B) | ✅ |
 | Kit IPTV / resolve hooks | — | `KitIptvPlayHooks` / `KitResolveStreamsHooks` / `KitPanelSourceFlagsHooks` | Features register at boot (RFC-095 C–D) | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
@@ -195,7 +195,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `SubtitleApi` + `SubtitleCatService`, `MysubsService` | `catalog/subtitle_*.dart` | C1/C2 subtitles | ✅ Engine |
 | `SettingsService` | `settings_service.dart` | C9 prefs | ✅ Engine |
 | `WatchHistoryService` | `watch_history_service.dart` | C9 history | ✅ Engine |
-| `MyListService` | `my_list_service.dart` | C9 lists | ✅ Engine |
+| Lists | `BookmarkStore` | C9 lists | ✅ Engine |
 | `BookProgressService` | `book_progress_service.dart` | C9 reading progress | ✅ Engine |
 | `EpisodeWatchedService` | `episode_watched_service.dart` | C9 + tracker sync callback | ✅ Engine |
 | `WebStreamrService` | `playback/providers/services/webstreamr_service.dart` | C2 direct streaming | ✅ Engine |
@@ -223,7 +223,7 @@ Cross-cutting only. Player / lists / live libs live under their domain folders.
 | Service | Path |
 |---------|------|
 | `ExternalPlayerService`, `PipService`, `PlayerPoolService`, … | `shared/player/platform/` |
-| `ListFollow`, `ListFollowFromWatched` | `shared/foundation/services/follow/` |
+| `ListFollow`, `ListFollowFromWatched` | `shared/engine/lists/` |
 | `MatchStreams`, `LiveMatchesEngine`, IPTV sports match, … | `shared/foundation/services/live/` |
 
 ---

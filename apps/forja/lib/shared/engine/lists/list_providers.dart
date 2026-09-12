@@ -1,15 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 
-/// Bumps when [MyListService.changeNotifier] changes.
-final myListRevisionProvider = NotifierProvider<MyListRevisionNotifier, int>(
-  MyListRevisionNotifier.new,
+/// Bumps when [BookmarkStore.changeNotifier] changes.
+final bookmarkRevisionProvider = NotifierProvider<BookmarkRevisionNotifier, int>(
+  BookmarkRevisionNotifier.new,
 );
 
-class MyListRevisionNotifier extends Notifier<int> {
+class BookmarkRevisionNotifier extends Notifier<int> {
   @override
   int build() {
-    final n = MyListService.changeNotifier;
+    final n = BookmarkStore.changeNotifier;
     void listener() => state = n.value;
     n.addListener(listener);
     ref.onDispose(() => n.removeListener(listener));
@@ -17,20 +17,20 @@ class MyListRevisionNotifier extends Notifier<int> {
   }
 }
 
-/// My List tab items (backend remains [MyListService]).
-final myListItemsProvider = Provider<List<Map<String, dynamic>>>((ref) {
-  ref.watch(myListRevisionProvider);
-  return MyListService().items;
+/// Local bookmark rows (persist engine).
+final bookmarkItemsProvider = Provider<List<Map<String, dynamic>>>((ref) {
+  ref.watch(bookmarkRevisionProvider);
+  return BookmarkStore().items;
 });
 
-/// Keys hidden from the My List grid until Simkl refetch catches up after a
-/// local remove (e.g. `tmdb_movie_123`, `anilist_456`, `kisskh_789`).
-final myListHiddenKeysProvider =
-    NotifierProvider<MyListHiddenKeysNotifier, Set<String>>(
-      MyListHiddenKeysNotifier.new,
+/// Keys hidden from a list grid until Simkl refetch catches up after a local
+/// remove (e.g. `tmdb_movie_123`, `open:anime:123`).
+final bookmarkHiddenKeysProvider =
+    NotifierProvider<BookmarkHiddenKeysNotifier, Set<String>>(
+      BookmarkHiddenKeysNotifier.new,
     );
 
-class MyListHiddenKeysNotifier extends Notifier<Set<String>> {
+class BookmarkHiddenKeysNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
 
@@ -44,26 +44,21 @@ class MyListHiddenKeysNotifier extends Notifier<Set<String>> {
     if (changed) state = next;
   }
 
-  /// Keep hides only for ids still present in [cards] (Simkl lag). Drop the
-  /// rest — Simkl confirmed the remove.
+  /// Keep hides only for ids still present in [cards] (Simkl lag).
   void retainOnlyPresentIn(Iterable<Map<String, dynamic>> cards) {
     if (state.isEmpty) return;
     final present = <String>{};
     for (final c in cards) {
-      present.addAll(myListItemHideKeys(c));
+      present.addAll(bookmarkItemHideKeys(c));
     }
     final next = state.intersection(present);
     if (next.length != state.length) state = next;
   }
 }
 
-/// Stable identity keys for a My List / Simkl card row.
-Set<String> myListItemHideKeys(Map<String, dynamic> item) {
+/// Stable identity keys for a bookmark / Simkl card row.
+Set<String> bookmarkItemHideKeys(Map<String, dynamic> item) {
   final keys = <String>{};
-  final anilist = item['anilistId'];
-  if (anilist is int) keys.add('anilist_$anilist');
-  final kisskh = item['kisskhId'];
-  if (kisskh is int) keys.add('kisskh_$kisskh');
   final open = item['metaOpen'] ?? item['open'] ?? item['catalogOpen'];
   if (open is Map) {
     final surface = open['surface']?.toString().trim() ?? '';
@@ -77,14 +72,14 @@ Set<String> myListItemHideKeys(Map<String, dynamic> item) {
     final mt = item['mediaType']?.toString() ?? 'movie';
     if (mt == 'asian_drama') {
       final tmt = item['tmdbMediaType']?.toString() ?? 'tv';
-      keys.add(MyListService.movieId(tmdb, tmt == 'movie' ? 'movie' : 'tv'));
+      keys.add(BookmarkStore.movieId(tmdb, tmt == 'movie' ? 'movie' : 'tv'));
     } else if (mt == 'anime') {
-      // Anime cards are keyed by AniList; skip tmdb.
+      // Anime cards are keyed by open surface; skip bare tmdb.
     } else {
       final norm = (mt == 'tv' || mt == 'series' || mt == 'shows')
           ? 'tv'
           : 'movie';
-      keys.add(MyListService.movieId(tmdb, norm));
+      keys.add(BookmarkStore.movieId(tmdb, norm));
     }
   }
   return keys;

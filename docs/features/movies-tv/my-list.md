@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a **hub pack** (ForjaHQ My List) — same class as Home or Live Sports. The pack declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid. Pack **`feed`** composes the grid via MetaRuntime (`ctx.host.myList.load`); the host keeps local bookmarks and Simkl sync behind that bridge. There is no host My List feature tab without the hub pack.
+My List is a **hub pack** you install — same class as Home or Live Sports. It shows kind filters and status tabs in the shell top bar plus a poster grid of your bookmarks. Local bookmarks and Simkl stay on the device; the pack composes what you see.
 
 ## How to open it
 
@@ -17,7 +17,7 @@ Install and enable the **ForjaHQ My List** hub pack, then show **My List** under
 - Open a title — stays on **My List** in the nav (details overlay; not a jump to Home / Anime). On **TV**, entering the tab focuses the first kind tab. **↓** goes to status then the grid; arrow keys move between posters; **←** from the first column returns to the nav rail. Anime and Asian Drama reopen with that hub’s details and stream providers (not Home / TMDB)
 - Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. Click the active status again to remove it; the card leaves that tab right away (Completed / On Hold / Dropped included) without reloading the whole grid. Local status wins over a slow Simkl refresh or Simkl rewriting Completed on still-airing shows back to Watching.
 - Playing a **movie** adds it as **Watching** (or upgrades Plan to Watch). Finishing ≥85% moves it to **Completed**. TV / Anime / Asian Drama still follow episode watched marks for those buckets
-- Asian Drama titles have their own kind filter (KissKH and drama hub bookmarks). Unmatched KissKH titles stay local and still show while Simkl is connected
+- Asian Drama titles have their own kind filter. Unmatched titles stay local and still show while Simkl is connected
 - Disconnect Simkl and the local buckets are still there
 
 ## Tips

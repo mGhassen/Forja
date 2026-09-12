@@ -19,8 +19,7 @@ void main() {
 
     test('list aliases', () {
       expect(LayoutTypes.normalize('kit.list'), LayoutTypes.list);
-      expect(LayoutTypes.normalize('my_list'), LayoutTypes.list);
-      expect(LayoutTypes.normalize('host.my_list'), LayoutTypes.list);
+      expect(LayoutTypes.normalize('kit.list'), LayoutTypes.list);
     });
 
     test('row aliases', () {

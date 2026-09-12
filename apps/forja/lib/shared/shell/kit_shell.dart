@@ -137,7 +137,7 @@ class _KitShellState extends State<KitShell>
   /// Bumped when rail/feed memo is cleared so [KitSection] soft-reloads.
   int _railReloadEpoch = 0;
 
-  /// Bumped on shell tab refresh for host-owned widgets (My List).
+  /// Bumped on shell tab refresh for kit.list / pack feed widgets.
   int _hostRefreshEpoch = 0;
 
   final Map<String, String> _layoutSelections = {};
@@ -1792,7 +1792,7 @@ class _KitShellState extends State<KitShell>
       );
       final bleedRowId = bleed == null ? null : (bleed['id'] ?? '').toString();
 
-      // Full-page stack / host.my_list — Column+Expanded, not a sliver adapter.
+      // Full-page stack / kit.list — Column+Expanded, not a sliver adapter.
       final fullPage = _fullPageLayoutBody(tvOrders: tvOrders);
       if (fullPage != null) return fullPage;
 

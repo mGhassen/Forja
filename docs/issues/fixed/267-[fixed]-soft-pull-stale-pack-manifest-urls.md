@@ -40,6 +40,8 @@ After packs moved to `forja-packs` (admin `plugin_packs.manifest_url` updated), 
 
 **Fix:** remap lean rows through published catalog by opaque slot, then migrate remote→remote same-slot URL changes (cloud URL wins). Readable local checkouts still win. After migrate adds, push Forja so profile membership stores the new URLs.
 
+**Superseded (catalog rewrite):** [275](275-[fixed]-soft-pull-rewrites-pack-urls-through-catalog.md) deleted `rewriteLeanUrlsThroughCatalog` — soft-pull must not invent catalog URLs. Same-slot remote→remote migrate in `applyLeanManifestUrls` remains.
+
 ### Related
 
 - [RFC-074](../../rfc/074-[open]-remote-profile-plugin-install.md)

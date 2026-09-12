@@ -195,35 +195,6 @@ void main() {
       expect(packs.single.plugins, isEmpty);
     });
 
-    test('rewriteLeanUrlsThroughCatalog remaps same-slot retired hosts', () {
-      const oldUrl =
-          'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/catalog/manifest.json';
-      const newUrl =
-          'https://raw.githubusercontent.com/mGhassen/forja-packs/main/catalog/manifest.json';
-      final rows = PluginRegistry.rewriteLeanUrlsThroughCatalog(
-        [
-          {'manifestUrl': oldUrl, 'name': 'Catalog'},
-          {
-            'manifestUrl': 'https://community.example/custom/manifest.json',
-            'name': 'Custom',
-          },
-        ],
-        [
-          const OfficialForjaHqPack(
-            id: 'catalog',
-            name: 'Catalog',
-            manifestUrl: newUrl,
-          ),
-        ],
-      );
-      expect(rows, hasLength(2));
-      expect(rows[0]['manifestUrl'], newUrl);
-      expect(
-        rows[1]['manifestUrl'],
-        'https://community.example/custom/manifest.json',
-      );
-    });
-
     test('keeps readable local checkout when cloud omits it', () async {
       final dir = await Directory.systemTemp.createTemp('lean_local_keep_');
       final manifest = File('${dir.path}/manifest.json');

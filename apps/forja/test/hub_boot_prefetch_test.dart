@@ -11,16 +11,16 @@ void main() {
       expect(BootNeeds.isHubNavId('test_hub_a'), isTrue);
       expect(BootNeeds.isHubNavId('test_hub_b'), isTrue);
       expect(BootNeeds.isHubNavId('unknown_hub'), isFalse);
-      expect(BootNeeds.isHubNavId('mylist'), isFalse);
+      expect(BootNeeds.isHubNavId('lists_tab'), isFalse);
       expect(BootNeeds.isHubNavId('iptv'), isFalse);
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 
       expect(BootNeeds.isVodNavId('test_hub_a'), isTrue);
       // Features rail slot awaiting pack nav (not yet contributed).
-      expect(BootNeeds.isVodNavId('mylist'), isTrue);
+      expect(BootNeeds.isVodNavId('lists_tab'), isTrue);
       expect(BootNeeds.isVodNavId('anime'), isTrue);
       expect(BootNeeds.isVodNavId('iptv'), isFalse);
-      expect(BootNeeds.isVodNavId('live_sports'), isFalse);
+      expect(BootNeeds.isVodNavId('live_sports'), isTrue);
       expect(BootNeeds.isVodNavId('settings'), isFalse);
     });
 

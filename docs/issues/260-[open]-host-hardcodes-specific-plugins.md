@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **3 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,7 +22,7 @@
 |--:|----|-------------|--------|
 | 1 | I260-T01 | Live unlock: remove host streamed / ppv / watchfooty / GOAT API branches — opaque pack modules only | ✅ |
 | 2 | I260-T02 | Delete official hub inventories (`official_forjahq_packs`, `officialPackIdForSlot` maps) — remote catalog / pack `id` only | ✅ |
-| 3 | I260-T03 | My List / follow: drop first-class `anilistId` / `kisskhId` / `my-list-hub` — opaque `open` + id bag | ⬜ |
+| 3 | I260-T03 | My List / follow: drop first-class `anilistId` / `kisskhId` / `my-list-hub` — opaque `open` + id bag; host is `bookmarks` + `simkl` bridges only | ✅ |
 | 4 | I260-T04 | Playback headers / ProviderRuntimeConfig: no Dart `if (kisskh|videasy|dimatoon)` — packs own knobs ([255](255-[open]-provider-runtime-config-builtins-debt.md)) | ⬜ |
 | 5 | I260-T05 | Kit details: stop host `TmdbApi` rich enrich — pack enrich companions only | ⬜ |
 | 6 | I260-T06 | Host tests: synthetic fixtures only — no `plugins/hubs/**` / `loadAllForjaHqPlugins` oracles | ⬜ |
@@ -52,7 +52,7 @@ Audit (2026-09-09): root app still points at specific plugins. Direction is inve
 |------|-------------|
 | Live unlock kinds | ~~Dart `resolveStreamed`/`resolvePpv`/`watchfooty` switch~~ **I260-T01 ✅** — pack JS + opaque `ctx.live.*` only. Residual: `withWftyPlaybackReferer` + `nativeUnlock` as resolveSource token |
 | VOD provider branches | `provider_runtime_config.dart`, `player/screens/utils.dart`, `playback_stream_guards.dart` — kisskh / videasy / dimatoon / hianime |
-| My List / open ids | `my_list_*.dart`, `legacy_list_item.dart`, `sources_request_context.dart`, rust `my_list_service.dart` — `anilistId` / `kisskhId` / `my-list-hub` |
+| My List / open ids | ~~`my_list_*.dart` / `my-list-hub` / `host.myList`~~ **I260-T03 ✅** — pack feed + `ctx.host.bookmarks` / `ctx.host.simkl`; `BookmarkStore` persist; residual: legacy rows may still carry old id fields; `sources_request_context` pack branches remain under T04 |
 | Host TMDB enrich | `kit_details_sections.dart`, `kit_details_screen.dart` |
 
 ### HIGH (inventories)

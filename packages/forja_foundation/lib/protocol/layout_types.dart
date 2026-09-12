@@ -2,7 +2,7 @@
 ///
 /// Packs use `kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`, `kit.row`,
 /// `kit.topBar`, `kit.categoryBar` in `layout` widgets. Legacy aliases
-/// (`stack`, `tabs`, `rail`, `host.my_list`) normalize to the same slots.
+/// (`stack`, `tabs`, `rail`) normalize to the same slots.
 ///
 /// Domain data is feature-owned: packs may pass an opaque [kit.list] `source`
 /// id — layout never names products.
@@ -38,7 +38,7 @@ abstract final class LayoutTypes {
       'stack' || stack => stack,
       'menu' || menu => menu,
       'kit.tabs' || tabs => tabs,
-      'host.my_list' || 'my_list' || list => list,
+      'kit.list' || list => list,
       'rail' || 'ranked' || row => row,
       'topBar' || 'kit.top_bar' || topBar => topBar,
       'categoryBar' || 'kit.category_bar' || 'kinds' || categoryBar =>

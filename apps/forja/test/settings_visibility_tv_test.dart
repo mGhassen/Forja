@@ -57,7 +57,7 @@ void main() {
       final service = SettingsService();
       // Seed shell migration markers so getNavbarConfig won't rewrite our nav.
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
       await service.setPlaySourceTorrentEnabled(true);
       await service.setPlaySourceStremioEnabled(true);
       await service.setPlaySourceNuvioEnabled(true);
@@ -108,7 +108,7 @@ void main() {
 
       final service = SettingsService();
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
       await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
       await LanPrefs.instance.setToken('test-token');
       await service.setPlaySourceTorrentEnabled(true);
@@ -140,7 +140,7 @@ void main() {
 
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-    await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+    await service.setNavbarConfig(['home', 'anime', 'iptv', 'lists']);
     await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
     await LanPrefs.instance.setToken('test-token');
     await service.setPlaySourceTorrentEnabled(true);

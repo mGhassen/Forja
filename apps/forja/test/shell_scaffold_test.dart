@@ -1010,7 +1010,7 @@ void main() {
     expect(navDestinations.containsKey('iptv'), isTrue);
     expect(navDestinations.containsKey('live_sports'), isFalse);
     expect(navDestinations.containsKey('settings'), isTrue);
-    expect(navDestinations.containsKey('mylist'), isFalse);
+    expect(navDestinations.containsKey('lists'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
     // Fresh install rail is empty (RFC-081) — IPTV / hubs via Addons / packs.
     expect(SettingsService.defaultVisibleNavIds, isEmpty);

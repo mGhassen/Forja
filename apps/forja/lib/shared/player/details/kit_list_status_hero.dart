@@ -40,7 +40,7 @@ class KitListStatusHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prefer the shared host control (MyList listen + TV dismiss + toast).
+    // Prefer the shared host control (bookmark listen + TV dismiss + toast).
     return KitListStatusControl(
       uniqueId: target.uniqueId,
       onSetStatus: (to) => _setStatus(context, to),
@@ -53,7 +53,7 @@ class KitListStatusHero extends StatelessWidget {
   }
 }
 
-/// Optional props-only path (no MyList listen) for synthetic previews.
+/// Optional props-only path (no bookmark listen) for synthetic previews.
 class KitListStatusHeroPaint extends StatelessWidget {
   const KitListStatusHeroPaint({
     super.key,

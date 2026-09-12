@@ -417,10 +417,18 @@ void main() {
       expect(
         PluginRegistry.hostNavId(
           sourceUrl:
-              'https://raw.githubusercontent.com/ForjaHQ/Forja/main/plugins/hubs/my_list/manifest.json',
+              'https://example.com/plugins/hubs/user_lists/manifest.json',
           authorTabId: '',
         ),
-        'mylist',
+        'user_lists',
+      );
+      expect(
+        PluginRegistry.hostNavId(
+          sourceUrl:
+              'https://example.com/plugins/hubs/user_lists/manifest.json',
+          authorTabId: 'lists',
+        ),
+        'lists',
       );
       const community = 'https://cdn.example.com/packs/my-anime/manifest.json';
       expect(

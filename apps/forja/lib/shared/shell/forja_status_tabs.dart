@@ -6,7 +6,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 
-/// Shared status strip for My List (Plan / Watching / …).
+/// Shared status strip for bookmark / list hubs (Plan / Watching / …).
 class ForjaStatusTabs extends StatelessWidget {
   const ForjaStatusTabs({
     super.key,
@@ -47,7 +47,7 @@ class ForjaStatusTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final statusTabs = tabs ?? defaultTabs;
-    final tvRowId = rowId ?? kCatalogMyListStatusRowId;
+    final tvRowId = rowId ?? kKitStatusTabsRowId;
     return TvKitRow(
       tabId: tabId,
       rowId: tvRowId,
@@ -214,5 +214,4 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
   }
 }
 
-const kCatalogMyListStatusRowId = 'tabs';
-const kCatalogMyListKindRowId = 'kind';
+const kKitStatusTabsRowId = 'tabs';

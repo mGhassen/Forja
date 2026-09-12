@@ -100,7 +100,7 @@ abstract final class PluginNavRegistry {
     // Lean / not-yet-scannable ForjaHQ packs still own a host tab via URL
     // slot. Once a pack contributes `nav`, only [hostNavId] (author tabId or
     // slot when omitted) counts — never also keep the bare folder slot, or
-    // `my_list` ghosts survive next to real `mylist` and paint Material apps.
+    // Stale folder-slot ids next to author tabIds paint Material apps.
     final packsWithNav = {
       for (final h in hubs) h.$1.sourceUrl,
     };
@@ -115,8 +115,8 @@ abstract final class PluginNavRegistry {
         ),
       );
     }
-    // Soft-pull may still carry folder slots (`my_list`) while destinations
-    // use `nav.tabId` (`mylist`). Remap before keep/drop so My List is not
+    // Soft-pull may still carry folder slots while destinations
+    // use author `nav.tabId` when set. Remap before keep/drop so hubs are not
     // stripped as "uninstalled".
     final slotToCanonical = <String, String>{};
     for (final (pack, _, nav) in hubs) {
@@ -580,7 +580,7 @@ abstract final class PluginNavRegistry {
     _tabPackUrls = tabPackUrls;
     _seeded = true;
 
-    // Folder slot ≠ author `nav.tabId` (e.g. my_list → mylist). Soft-pull /
+    // Folder slot may differ from author `nav.tabId`. Soft-pull /
     // lean boot can leave the slot in Features visibleIds; destinations are
     // keyed by hostNavId only → Material apps glyph on the rail.
     final remapped = await _remapForjaHqSlotAliasesInNavbar(hubs: hubs);
@@ -694,7 +694,7 @@ abstract final class PluginNavRegistry {
   }
 
   /// Destination for a rail id, including ForjaHQ folder-slot aliases
-  /// (`my_list` → `mylist` destination) so a stale visibleId never paints
+  /// (folder slot → author tabId) so a stale visibleId never paints
   /// Material [ForjaHostAssets.defaultNavIcon] / apps glyphs.
   static NavDestination? destinationFor(String id) {
     _ensureSeeded();

@@ -24,7 +24,7 @@ Treat every pack as **replaceable, renameable, and absent**. A user may install 
 
 | Do not | Why |
 |--------|-----|
-| Hardcode hub slot / tab inventories (`home`, `anime`, `asian_drama`, `arabic`, `live_sports`, `my_list`→`mylist`, …) | Pack folder names are community inventory |
+| Hardcode hub slot / tab inventories (`home`, `anime`, `asian_drama`, …) | Pack folder names are community inventory |
 | Map official slot → Features id tables in Dart | Packs declare `nav.tabId` / host uses opaque URL slot only |
 | Branch host behavior on plugin ids (`kisskh`, `tmdb`, `anilist`, `forjahq-*`) | Pack ids are not host API |
 | Seed nav / Features / PlatformDefaults with shipped hub lists | Empty host; packs register via `nav` on install |

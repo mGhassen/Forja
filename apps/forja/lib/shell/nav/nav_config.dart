@@ -55,7 +55,7 @@ Map<String, NavDestination> get navDestinations => {
 };
 
 /// Resolve a rail id to a destination, including ForjaHQ slot→`nav.tabId`
-/// aliases (`my_list` → My List pack destination).
+/// aliases (folder slot → author `nav.tabId` destination).
 NavDestination? navDestinationFor(String id) {
   if (archivedNavIds.contains(id)) return null;
   final core = coreNavDestinations[id];

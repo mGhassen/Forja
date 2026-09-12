@@ -494,7 +494,7 @@ class _StremioSearchCard extends StatelessWidget {
             Positioned(
               bottom: 30,
               right: 5,
-              child: _AddToMyListStremioButton(item: item),
+              child: _AddToBookmarkStremioButton(item: item),
             ),
           ],
         ),
@@ -513,14 +513,14 @@ class _AddToKitListStatusButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = MyListService.movieId(movie.id, movie.mediaType);
+    final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(uid);
+        final inList = BookmarkStore().contains(uid);
         return GestureDetector(
           onTap: () async {
-            final added = await MyListService().toggleMovie(
+            final added = await BookmarkStore().toggleMovie(
               tmdbId: movie.id,
               imdbId: movie.imdbId,
               title: movie.title,
@@ -554,20 +554,20 @@ class _AddToKitListStatusButton extends StatelessWidget {
   }
 }
 
-class _AddToMyListStremioButton extends StatelessWidget {
+class _AddToBookmarkStremioButton extends StatelessWidget {
   final Map<String, dynamic> item;
-  const _AddToMyListStremioButton({required this.item});
+  const _AddToBookmarkStremioButton({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final uid = MyListService.stremioItemId(item);
+    final uid = BookmarkStore.stremioItemId(item);
     return ValueListenableBuilder<int>(
-      valueListenable: MyListService.changeNotifier,
+      valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
-        final inList = MyListService().contains(uid);
+        final inList = BookmarkStore().contains(uid);
         return GestureDetector(
           onTap: () async {
-            final added = await MyListService().toggleStremioItem(item);
+            final added = await BookmarkStore().toggleStremioItem(item);
             if (context.mounted) {
               ForjaToast.success(
                 added ? 'Added to My List' : 'Removed from My List',

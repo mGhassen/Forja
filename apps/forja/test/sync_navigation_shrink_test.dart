@@ -51,7 +51,7 @@ void main() {
               'anime',
               'iptv',
               'live_sports',
-              'mylist',
+              'lists',
             ],
           },
           {
@@ -60,7 +60,7 @@ void main() {
               'anime',
               'iptv',
               'live_sports',
-              'mylist',
+              'lists',
             ],
           },
         ),
@@ -129,7 +129,7 @@ void main() {
         'visibleIds': ['iptv'],
       };
       final remote = {
-        'visibleIds': ['home', 'asian_drama', 'anime', 'mylist'],
+        'visibleIds': ['home', 'asian_drama', 'anime', 'lists'],
       };
       expect(
         SyncDomainBridge.navigationWouldShrinkCloud(remote, local),

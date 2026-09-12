@@ -12,6 +12,7 @@ import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
+import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
@@ -85,7 +86,8 @@ class PluginRegistry {
   Future<http.Response> _httpGet(Uri uri) async {
     final c = debugHttpClient;
     if (c != null) return c.get(uri);
-    return http.get(uri);
+    // System DNS first; DoH via 1.1.1.1 when lookup fails (hotspot DNS).
+    return PackHttp.get(uri);
   }
 
   static File? _asLocalFile(String url) {
@@ -144,17 +146,19 @@ class PluginRegistry {
       }
       return file.readAsBytes();
     }
-    final resp = await _httpGet(Uri.parse(url)).timeout(
-      const Duration(seconds: 45),
-      onTimeout: () => throw TimeoutException('plugin fetch $url'),
-    );
-    if (resp.statusCode == 404 || resp.statusCode == 410) {
-      throw ManifestGoneException(url, statusCode: resp.statusCode);
+    try {
+      final resp = await _httpGet(Uri.parse(url));
+      if (resp.statusCode == 404 || resp.statusCode == 410) {
+        throw ManifestGoneException(url, statusCode: resp.statusCode);
+      }
+      if (resp.statusCode != 200) {
+        throw Exception('HTTP ${resp.statusCode}');
+      }
+      return resp.bodyBytes;
+    } catch (e) {
+      if (e is ManifestGoneException) rethrow;
+      throw Exception(PackHttp.humanizeError(e, url));
     }
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}');
-    }
-    return resp.bodyBytes;
   }
 
   /// Path-pattern helper for Settings grouping — not pack inventory.
@@ -177,7 +181,7 @@ class PluginRegistry {
   /// - Hub tree URL → `nav.tabId` if set, else opaque `forjaHqSlot` path segment
   /// - Community / arbitrary URL → `p_<urlHash>` (+ optional local label)
   /// Never map slot names in Dart — packs that need a stable id ≠ folder declare
-  /// `nav.tabId` (e.g. My List folder `my_list` → `"tabId": "mylist"`).
+  /// `nav.tabId` when folder slot ≠ preferred Features id.
   static String hostNavId({
     required String sourceUrl,
     required String authorTabId,
@@ -842,7 +846,7 @@ class PluginRegistry {
         }
         _clearOfficialInstallError();
       } catch (e) {
-        final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+        final msg = PackHttp.humanizeError(e);
         officialInstallError.value = msg;
         notifyChanged();
         debugPrint('[engine] pack hydrate failed: $msg');
@@ -1733,49 +1737,6 @@ class PluginRegistry {
       packPluginFromPacks(await listPacksRaw(), pluginId, sourceUrl: sourceUrl);
 
   Future<void>? _hydrateLeanInFlight;
-
-  /// Rewrite lean `manifestUrl`s to published catalog URLs when the opaque
-  /// [forjaHqSlot] matches. Profile rows may still hold a retired host
-  /// (e.g. old monorepo GitHub path) after admin moves `plugin_packs.manifest_url`.
-  static List<Map<String, dynamic>> rewriteLeanUrlsThroughCatalog(
-    Iterable<Map<String, dynamic>> rows,
-    Iterable<OfficialForjaHqPack> catalog,
-  ) {
-    final slotToUrl = <String, String>{};
-    for (final pack in catalog) {
-      final url = pack.manifestUrl.trim();
-      if (url.isEmpty) continue;
-      final slot = forjaHqSlot(url);
-      if (slot == null) continue;
-      slotToUrl[slot] = url;
-    }
-    if (slotToUrl.isEmpty) {
-      return [
-        for (final raw in rows)
-          if (raw is Map<String, dynamic>)
-            Map<String, dynamic>.from(raw)
-          else if (raw is Map)
-            Map<String, dynamic>.from(raw),
-      ];
-    }
-    final out = <Map<String, dynamic>>[];
-    for (final raw in rows) {
-      if (raw is! Map) continue;
-      final row = Map<String, dynamic>.from(raw);
-      final url = (row['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty) {
-        out.add(row);
-        continue;
-      }
-      final slot = forjaHqSlot(url);
-      final catalogUrl = slot == null ? null : slotToUrl[slot];
-      if (catalogUrl != null && catalogUrl != url) {
-        row['manifestUrl'] = catalogUrl;
-      }
-      out.add(row);
-    }
-    return out;
-  }
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
   ///

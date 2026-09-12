@@ -29,7 +29,7 @@ double shellTvSafeHorizontalInsetRight(BuildContext context) {
   );
 }
 
-/// Wide hub/search/mylist layout (nav-rail spacing, two-column search, dense grids).
+/// Wide hub/search/lists layout (nav-rail spacing, two-column search, dense grids).
 bool shellUsesWideLayout(BuildContext context) {
   final profile = ShellScope.profileOf(context);
   if (profile != ShellProfile.mobile) return true;

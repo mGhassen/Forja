@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/lists/list_follow.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart'
     show KitDetailsUpcomingNotice, DetailsHeroTvActionScope;
 import 'package:forja/shared/player/details/kit_list_status_button.dart'
-    show MyListHeroStatusPill;
+    show BookmarkHeroStatusPill;
 import 'package:forja/shared/player/details/kit_list_status_hero.dart';
 import 'package:forja/shared/shell/desktop_selectable_title.dart';
 import 'package:forja/shared/shell/forja_shell_layout.dart';
@@ -285,7 +285,7 @@ class _CinematicHeroInteractiveState extends State<CinematicHeroInteractive> {
           : null,
     );
     final listAction = extras?.movie != null
-        ? MyListHeroStatusPill(
+        ? BookmarkHeroStatusPill(
             movie: extras!.movie!,
             tvTabId: focusable && tvNav ? tabId : null,
             tvItemIndexStart: focusable && tvNav ? 1 : 0,

@@ -98,7 +98,7 @@ These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In |
 | [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
 
-My List hub pack `plugins/hubs/my_list` + list services in [`shared/foundation/services/follow/`](../../apps/forja/lib/shared/foundation/services/follow/) (RFC-088 — no `features/my_list/` root).
+My List hub pack (`forja-packs` `hubs/my_list`) + host `BookmarkStore` / `ListFollow` in [`shared/engine/lists/`](../../apps/forja/lib/shared/engine/lists/) (no `features/my_list/` root).
 
 ---
 

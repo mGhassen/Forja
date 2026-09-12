@@ -1563,20 +1563,6 @@ class SettingsService {
   static const List<String> defaultVisibleNavIds =
       PlatformDefaults.defaultNavIds;
 
-  /// Pre–RFC-081 first-run rail (hub pack tab ids baked into platform defaults).
-  /// Legacy shell migrations rewrite *to* this list — never to host-only defaults
-  /// — so upgrades do not strip Home / Anime / … from untouched installs.
-  static const List<String> _legacyPackSeededDefaultNavIds = [
-    'home',
-    'asian_drama',
-    'anime',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
-
-
-
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
       return ids;
@@ -1586,69 +1572,6 @@ class SettingsService {
     migrated[1] = 'search';
     return migrated;
   }
-
-  /// Prior Android TV defaults — migrate to [_legacyPackSeededDefaultNavIds].
-  static const List<List<String>> _legacyAndroidTvNavOrders = [
-    [
-      'home',
-      'search',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-    [
-      'home',
-      'search',
-      'asian_drama',
-      'anime',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-    [
-      'search',
-      'home',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'mylist',
-    ],
-  ];
-
-  static bool _isLegacyAndroidTvNav(List<String> ids) {
-    for (final legacy in _legacyAndroidTvNavOrders) {
-      if (listEquals(ids, legacy)) return true;
-    }
-    return false;
-  }
-
-  static bool _isLegacyPlatformDefaultNav(List<String> ids) =>
-      _isLegacyDefaultNav(ids) || _isLegacyAndroidTvNav(ids);
-
-  /// Interim default from shell 089 before Asian Drama was ordered ahead of Anime.
-  static const List<String> _legacyAnimeBeforeAsianDramaNavIds = [
-    'search',
-    'home',
-    'anime',
-    'asian_drama',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
-
-  /// Default before Search was withheld from the shell (shell 090 era).
-  static const List<String> _legacySearchInDefaultNavIds = [
-    'search',
-    'home',
-    'asian_drama',
-    'anime',
-    'iptv',
-    'live_sports',
-    'mylist',
-  ];
 
   static int initialShellTabIndex(
     List<String> visibleIds, {
@@ -1690,16 +1613,6 @@ class SettingsService {
     if (await getDefaultNavTab() == tabId) return;
     await kvSetString(_defaultNavTabKey, tabId);
     navbarChangeNotifier.value++;
-  }
-
-  static bool _isLegacyDefaultNav(List<String> ids) {
-    if (ids.length == 2) {
-      return ids[0] == 'home' && ids[1] == 'search';
-    }
-    if (ids.length == 3) {
-      return ids[0] == 'home' && ids[1] == 'search' && ids[2] == 'mylist';
-    }
-    return false;
   }
 
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
@@ -2116,34 +2029,16 @@ class SettingsService {
     }
 
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell080Key)) {
-      await kvSetStringList(_navbarConfigKey, const ['home', 'search']);
+      await kvSetStringList(_navbarConfigKey, const []);
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
       await kvSetString(_navbarShell080Key, '1');
     }
     if (!skipLegacyMigrations && !await kvHasKey(_navbarShell081Key)) {
-      final raw = await kvHasKey(_navbarConfigKey)
-          ? await kvGetStringList(_navbarConfigKey, fallback: const [])
-          : List<String>.from(defaultVisibleNavIds);
-      final updated = raw.where((id) => allNavIds.contains(id)).toList();
-      if (!updated.contains('mylist')) {
-        final searchIdx = updated.indexOf('search');
-        if (searchIdx >= 0) {
-          updated.insert(searchIdx + 1, 'mylist');
-        } else {
-          updated.add('mylist');
-        }
-      }
-      await kvSetStringList(_navbarConfigKey, updated);
+      // Retired: once force-inserted pack tab ids. Leave stored prefs alone.
       await kvSetString(_navbarShell081Key, '1');
     }
     if (!await kvHasKey(_navbarShell084Key)) {
-      final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-      if (_isLegacyDefaultNav(raw)) {
-        await kvSetStringList(
-          _navbarConfigKey,
-          List<String>.from(_legacyPackSeededDefaultNavIds),
-        );
-      }
+      // Retired: once rewrote untouched defaults to a pack-seeded rail.
       await kvSetString(_navbarShell084Key, '1');
     }
     if (!await kvHasKey(_navbarShell085Key)) {
@@ -2177,52 +2072,19 @@ class SettingsService {
       await kvSetString(_navbarShell087Key, '1');
     }
     if (!await kvHasKey(_navbarShell088Key)) {
-      if (platformProfile == PlatformProfile.androidTv &&
-          await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (_isLegacyAndroidTvNav(raw)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: pack-seeded Android TV rewrite.
       await kvSetString(_navbarShell088Key, '1');
     }
     if (!await kvHasKey(_navbarShell089Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (_isLegacyPlatformDefaultNav(raw)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: pack-seeded platform default rewrite.
       await kvSetString(_navbarShell089Key, '1');
     }
     if (!await kvHasKey(_navbarShell090Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (listEquals(raw, _legacyAnimeBeforeAsianDramaNavIds)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: anime/asian_drama order rewrite to pack-seeded rail.
       await kvSetString(_navbarShell090Key, '1');
     }
     if (!await kvHasKey(_navbarShell091Key)) {
-      if (await kvHasKey(_navbarConfigKey)) {
-        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-        if (listEquals(raw, _legacySearchInDefaultNavIds)) {
-          await kvSetStringList(
-            _navbarConfigKey,
-            List<String>.from(_legacyPackSeededDefaultNavIds),
-          );
-        }
-      }
+      // Retired: search-in-default rewrite to pack-seeded rail.
       await kvSetString(_navbarShell091Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
