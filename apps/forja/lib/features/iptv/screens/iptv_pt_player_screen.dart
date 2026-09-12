@@ -1796,8 +1796,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     if (_isDesktop) {
-      // Exit host fullscreen only — never unmaximize (issue 196 / Windows
-      // restore-frame reset). PiP leave still restores its own saved bounds.
+      // Exit host fullscreen only when this session has a windowed snapshot
+      // (issue 196 / already-fullscreen keep). PiP leave still restores its
+      // own saved bounds.
       Future.microtask(() async {
         try {
           if (PipService.instance.isDesktopActive) {

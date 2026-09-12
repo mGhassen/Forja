@@ -15,6 +15,11 @@ import 'package:window_manager/window_manager.dart';
 /// Entering host fullscreen captures the current frame; leaving always
 /// restores that snapshot (windowed size/place, or maximized) — never a
 /// full-screen work-area frame.
+///
+/// [beginPlayerSession] snapshots the windowed frame when play starts. Leave
+/// exits OS fullscreen only when that snapshot exists (session started
+/// windowed, or FS was entered during play). Already-fullscreen at open →
+/// no snapshot → back keeps fullscreen.
 class DesktopWindowGeometry {
   DesktopWindowGeometry._();
 
@@ -26,10 +31,13 @@ class DesktopWindowGeometry {
 
   static Timer? _saveDebounce;
 
-  /// Frame captured immediately before we enter host fullscreen.
+  /// Frame captured for the current player session (windowed / maximized).
   static Rect? _preFullscreenBounds;
   static bool _preFullscreenMaximized = false;
   static bool _hasPreFullscreenSnapshot = false;
+
+  /// True between [beginPlayerSession] and [leavePlayerChrome] / [abandonPlayerSession].
+  static bool _playerSessionActive = false;
 
   static bool get isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -122,15 +130,54 @@ class DesktopWindowGeometry {
     _hasPreFullscreenSnapshot = true;
   }
 
+  static void _clearPreFullscreenSnapshot() {
+    _hasPreFullscreenSnapshot = false;
+    _preFullscreenBounds = null;
+    _preFullscreenMaximized = false;
+  }
+
+  /// Keep the session restore target in sync if the user resizes while playing
+  /// windowed (green-button FS still restores the latest frame).
+  static void noteWindowedFrameIfSession() {
+    if (!isDesktop || !_playerSessionActive) return;
+    unawaited(() async {
+      try {
+        if (await windowManager.isFullScreen()) return;
+        await _capturePreFullscreen();
+      } catch (_) {}
+    }());
+  }
+
+  /// Snapshot windowed geometry when a player surface activates (depth 0→1).
+  /// Idempotent for in-app mini expand (same session).
+  static Future<void> beginPlayerSession() async {
+    if (!isDesktop) return;
+    if (_playerSessionActive) return;
+    _playerSessionActive = true;
+    try {
+      if (await windowManager.isFullScreen()) {
+        _clearPreFullscreenSnapshot();
+      } else {
+        await _capturePreFullscreen();
+      }
+    } catch (_) {}
+  }
+
+  /// Drop session bookkeeping when dispose skips [leavePlayerChrome].
+  /// Does not touch the window.
+  static void abandonPlayerSession() {
+    if (!_playerSessionActive) return;
+    _playerSessionActive = false;
+    _clearPreFullscreenSnapshot();
+  }
+
   /// After leaving OS fullscreen, force the pre-FS windowed/maximized frame.
   /// Windows often restores to the work-area "full" size otherwise.
   static Future<void> _restorePreFullscreen() async {
     if (!_hasPreFullscreenSnapshot) return;
     final bounds = _preFullscreenBounds;
     final wasMaximized = _preFullscreenMaximized;
-    _hasPreFullscreenSnapshot = false;
-    _preFullscreenBounds = null;
-    _preFullscreenMaximized = false;
+    _clearPreFullscreenSnapshot();
     if (bounds == null) return;
 
     // Let the OS finish leaving fullscreen before we setSize.
@@ -150,17 +197,22 @@ class DesktopWindowGeometry {
     await windowManager.setPosition(Offset(bounds.left, bounds.top));
   }
 
-  /// Drop OS fullscreen and restore the pre-fullscreen windowed size/place
-  /// (or maximized). Never leave the user on a full work-area frame.
+  /// Exit OS fullscreen only when we have a pre-play windowed snapshot (this
+  /// session started windowed / entered FS during play). Already-fullscreen at
+  /// open has no snapshot — leave fullscreen alone.
   static Future<void> leavePlayerChrome() async {
     if (!isDesktop) return;
     try {
-      if (await windowManager.isFullScreen()) {
+      if (await windowManager.isFullScreen() && _hasPreFullscreenSnapshot) {
         await windowManager.setFullScreen(false);
         await _restorePreFullscreen();
       }
       scheduleSave();
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _playerSessionActive = false;
+      _clearPreFullscreenSnapshot();
+    }
   }
 
   /// Enter/leave host fullscreen. Enter snapshots the current frame; leave
@@ -170,6 +222,10 @@ class DesktopWindowGeometry {
     if (isFull) {
       await windowManager.setFullScreen(false);
       await _restorePreFullscreen();
+      // Re-arm snapshot so a later leave still knows the windowed frame.
+      if (_playerSessionActive) {
+        await _capturePreFullscreen();
+      }
       scheduleSave();
       return false;
     }
@@ -190,6 +246,9 @@ class DesktopWindowGeometry {
     if (!await windowManager.isFullScreen()) return;
     await windowManager.setFullScreen(false);
     await _restorePreFullscreen();
+    if (_playerSessionActive) {
+      await _capturePreFullscreen();
+    }
     scheduleSave();
   }
 }

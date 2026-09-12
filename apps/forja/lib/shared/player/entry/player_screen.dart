@@ -18,6 +18,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/shell/desktop_window_geometry.dart';
 import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:forja/shared/shell/loading_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -200,6 +201,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     ShellBus.leavePlayerSurface();
+    DesktopWindowGeometry.abandonPlayerSession();
     site111477_proxy.retainForExternalHandoff = false;
     TorrentStreamService().retainForExternalHandoff = false;
     if (site111477_proxy.is111477ProxyRunning) {

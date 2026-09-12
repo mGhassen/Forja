@@ -346,16 +346,28 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   }
 
   @override
-  void onWindowResize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowResize() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowMove() => DesktopWindowGeometry.scheduleSave();
+  void onWindowMove() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowMaximize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowMaximize() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
-  void onWindowUnmaximize() => DesktopWindowGeometry.scheduleSave();
+  void onWindowUnmaximize() {
+    DesktopWindowGeometry.scheduleSave();
+    DesktopWindowGeometry.noteWindowedFrameIfSession();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

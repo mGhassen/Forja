@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/shell/kit_filter_sheet_option.dart';
 import 'package:forja/shared/engine/hub/kit_feed_chrome.dart';
+import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/shell/focus_edge.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/shell/kit_list_event_search.dart';
@@ -503,7 +504,12 @@ class KitTopBarActions extends ConsumerWidget {
     if (picked == null || !context.mounted) return;
     scope.onSelect(id, picked, toggle: false);
     if (id == 'view' || verb == 'view') {
-      ref.read(kitListStyleOverrideProvider.notifier).state = picked;
+      final pluginId =
+          PluginNavRegistry.pluginIdForTabSync(tabId)?.trim() ?? '';
+      if (pluginId.isNotEmpty) {
+        ref.read(kitListStyleOverrideProvider(pluginId).notifier).state =
+            picked;
+      }
     }
   }
 

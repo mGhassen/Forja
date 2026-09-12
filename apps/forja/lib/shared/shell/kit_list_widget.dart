@@ -152,7 +152,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       (_effectiveOpen.isEmpty && _isDenseList);
 
   void _resolveEffectiveLayout(WidgetRef ref) {
-    final override = ref.watch(kitListStyleOverrideProvider).trim().toLowerCase();
+    final pid = widget.pluginId.trim();
+    final override = pid.isEmpty
+        ? ''
+        : ref.watch(kitListStyleOverrideProvider(pid)).trim().toLowerCase();
     _effectiveStyle = (override.isEmpty ? widget.listStyle : override)
         .trim()
         .toLowerCase();

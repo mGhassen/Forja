@@ -226,6 +226,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _loadGeneration++;
     unawaited(_teardownPlayer());
     ShellBus.leavePlayerSurface();
+    DesktopWindowGeometry.abandonPlayerSession();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
     _backFocus.dispose();

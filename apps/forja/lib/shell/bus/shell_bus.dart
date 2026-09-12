@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/shell/vertical_filters.dart';
+import 'package:forja/shared/shell/desktop_window_geometry.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
@@ -417,6 +420,7 @@ class ShellBus {
     _playerSurfaceDepth++;
     _syncPlayerSurfaceActive();
     if (becameActive) {
+      unawaited(DesktopWindowGeometry.beginPlayerSession());
       cancelBackgroundWorkForPlayback();
       _schedulePlaybackImageTrim();
       // Defer tab purge past the current build/layout phase (same as surface

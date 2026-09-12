@@ -79,10 +79,6 @@ class _PortalsChipState extends State<PortalsChip> {
     final tvFocused = widget.tvFocus && _focused;
     final showHighlight = widget.selected || _active;
 
-    final minW = widget.compact ? _height : 156.0;
-    final maxW = widget.compact
-        ? (_revealSeats ? 96.0 : _height)
-        : (_revealSeats ? 300.0 : 260.0);
     final chipRadius = BorderRadius.circular(_radius);
     final borderColor = tvFocused
         ? ForjaShellColors.brandGreen
@@ -97,82 +93,85 @@ class _PortalsChipState extends State<PortalsChip> {
         : _active
             ? Colors.white
             : Colors.white60;
+    final hPad = widget.compact ? 10.0 : 14.0;
 
-    final chip = AnimatedContainer(
+    // Intrinsic width only — no minWidth sponge. Seats add real layout width
+    // so the trailing top-bar row pushes Search/Sort left (right edge stays).
+    final chip = AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      height: _height,
-      constraints: BoxConstraints(minWidth: minW, maxWidth: maxW),
-      padding: EdgeInsets.symmetric(horizontal: widget.compact ? 10 : 14),
-      decoration: BoxDecoration(
-        color: tvFocused
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : showHighlight
-                ? Colors.white
-                    .withValues(alpha: widget.selected ? 0.14 : 0.10)
-                : Colors.white.withValues(alpha: 0.06),
-        borderRadius: chipRadius,
-        border: Border.fromBorderSide(side),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (widget.hasPortal)
-            ClipRect(
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.centerRight,
-                widthFactor: _revealSeats ? 1 : 0,
-                child: Padding(
-                  padding: EdgeInsets.only(right: widget.compact ? 6 : 8),
-                  child: _seats(),
-                ),
+      alignment: Alignment.centerRight,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        height: _height,
+        // Compact idle stays a square hit target; seats widen past that.
+        constraints: widget.compact && !_revealSeats
+            ? const BoxConstraints(minWidth: _height)
+            : const BoxConstraints(),
+        padding: EdgeInsets.symmetric(horizontal: hPad),
+        decoration: BoxDecoration(
+          color: tvFocused
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : showHighlight
+                  ? Colors.white
+                      .withValues(alpha: widget.selected ? 0.14 : 0.10)
+                  : Colors.white.withValues(alpha: 0.06),
+          borderRadius: chipRadius,
+          border: Border.fromBorderSide(side),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (widget.hasPortal && _revealSeats) ...[
+              _seats(),
+              SizedBox(width: widget.compact ? 6 : 8),
+            ],
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: Center(
+                child: widget.hasPortal
+                    ? _statusDot()
+                    : Icon(
+                        Icons.add_link_rounded,
+                        size: 16,
+                        color: tvFocused
+                            ? ForjaShellColors.brandGreen
+                            : _active
+                                ? Colors.white
+                                : _accent,
+                      ),
               ),
             ),
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: Center(
-              child: widget.hasPortal
-                  ? _statusDot()
-                  : Icon(
-                      Icons.add_link_rounded,
-                      size: 16,
-                      color: tvFocused
-                          ? ForjaShellColors.brandGreen
-                          : _active
-                              ? Colors.white
-                              : _accent,
-                    ),
-            ),
-          ),
-          if (!widget.compact) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                widget.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: fg,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
+            if (!widget.compact) ...[
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: fg,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Icon(
-              widget.selected
-                  ? Icons.expand_less_rounded
-                  : Icons.expand_more_rounded,
-              size: 18,
-              color: fgMuted,
-            ),
+              const SizedBox(width: 6),
+              Icon(
+                widget.selected
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                size: 18,
+                color: fgMuted,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
 
