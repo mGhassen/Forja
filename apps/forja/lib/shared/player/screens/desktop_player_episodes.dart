@@ -1192,6 +1192,14 @@ mixin _DesktopPlayerEpisodes
       anchorContext: anchorContext,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
+      surface: BuiltInPlayerMenuSurface.catalogVod,
+      streamUrl: _s._currentUrl ?? widget.mediaPath,
+      torrentLocalhost: isLocalTorrentStreamUrl(
+        _s._currentUrl ?? widget.mediaPath,
+      ),
+      needsWidevine: (widget.sources ?? const []).any((s) => s.hasDrm),
+      separateAudioUrl:
+          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
       onSelect: ({builtInEngine, externalPlayer}) {
         if (externalPlayer != null) {
           final target = _externalHandoffTarget();

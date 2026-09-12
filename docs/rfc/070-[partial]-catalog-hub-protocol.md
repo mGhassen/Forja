@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **4 / 4** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) · **3 / 3** acceptance (layout `dir` RTL/LTR) |
-| **Current slice** | Layout envelope `dir` — KitShell browse Directionality; Arabic-family packs RTL |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **3 / 3** acceptance (pack-owned nav icons) · **4 / 4** acceptance (disk-cached hub nav icons) · **2 / 2** acceptance (host IPTV nav asset) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **3 / 3** acceptance (host search engine) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) · **3 / 3** acceptance (layout `dir` RTL/LTR) |
+| **Current slice** | Host search engine behind kit (`host_search`) — archive Search UI not restored |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -210,6 +210,18 @@ Pack `capabilities` activate hub Search chrome — host uses `EnginePlugin.hasCa
 
 ---
 
+## Acceptance (host search engine behind kit)
+
+Archive Search tab deleted; engine lives on host; screen stays hub kit chrome.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A84 | `HostSearchEngine` in `shared/host/search/` — progressive TMDB structured + VOD Stremio addons (ex-archive providers) | ✅ |
+| 2 | R70-A85 | Capability `host_search` → [KitSearchScreen] + host engine (not archived `SearchScreen`); pack-only hubs keep MetaRuntime `search` | ✅ |
+| 3 | R70-A86 | Kit search progressive emit paints TMDB first then addon rows; Cmd+F / top-bar same `openCatalogSearch` entry | ✅ |
+
+---
+
 ## Acceptance (My List host slice)
 
 Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugin.
@@ -351,10 +363,10 @@ Hub search **capabilities** (manifest `capabilities[]` — host never hardcodes 
 
 | Capability | Host |
 |---|---|
-| `search` | Top-bar Search + pack [KitSearchScreen] (or host overlay if `host_search`) |
-| `host_search` | Shared host Search overlay (Cmd+F / RFC-058 + addons) — top-bar and shortcut same entry |
+| `search` | Top-bar Search + pack [KitSearchScreen] |
+| `host_search` | Same kit screen; host TMDB + Stremio addon engine (progressive) instead of pack-only MetaRuntime `search` |
 | `filters` | Browse chrome AST also applied on pack search params |
-| `structured_search` | Tune / filter lens on kit pack search; pack parses RFC-058 query tokens |
+| `structured_search` | Tune / filter lens on kit search; pack and/or host engine parse RFC-058 query tokens |
 
 Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`, `host.popular_asian`, …
 

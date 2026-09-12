@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
 import 'package:forja/shared/shell/kit_search_screen.dart';
@@ -9,8 +7,9 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
 ///
-/// Pack `search` → [KitSearchScreen]. Legacy `host_search` (archived Search tab)
-/// also uses kit search — structured host overlay lives in `apps/archive`.
+/// Screen is always [KitSearchScreen] (hub pack chrome). Pack `host_search`
+/// turns on the host TMDB + Stremio addon engine behind that screen; otherwise
+/// MetaRuntime pack `search` runs.
 Future<void> openCatalogSearch(
   BuildContext context, {
   required String pluginId,
@@ -31,6 +30,7 @@ Future<void> openCatalogSearch(
         pluginId: pluginId,
         tabId: tabId,
         hintText: hintText,
+        hostSearch: plugin.hasCapability(PackCapabilities.hostSearch),
         structuredSearch: plugin.hasCapability(
           PackCapabilities.structuredSearch,
         ),

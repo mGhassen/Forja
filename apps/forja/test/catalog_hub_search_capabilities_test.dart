@@ -39,6 +39,7 @@ void main() {
       ]);
       expect(p.hasCapability(PackCapabilities.hostSearch), isTrue);
       expect(p.hasCapability(PackCapabilities.structuredSearch), isTrue);
+      expect(p.hasCapability(PackCapabilities.search), isTrue);
     });
 
     test('missing search capability is false', () {

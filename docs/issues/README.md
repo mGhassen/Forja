@@ -280,6 +280,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [273-[fixed]-…](fixed/273-[fixed]-iptv-hls-cold-open-watchdog-kill.md) | IPTV HLS cold open killed by stall soft-reopen | P0 | Critical | fixed | Complete · 7/7 · A 0/2 | [272](fixed/272-[fixed]-iptv-hls-m3u-continuity-proxy-death-spiral.md) |
 | [274-[fixed]-…](fixed/274-[fixed]-debug-release-shared-session.md) | Debug + release share session / local data | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [275-[fixed]-…](fixed/275-[fixed]-soft-pull-rewrites-pack-urls-through-catalog.md) | Soft-pull rewrites pack URLs through catalog | P0 | Critical | fixed | Complete · 3/3 · A 1/1 | [267](fixed/267-[fixed]-soft-pull-stale-pack-manifest-urls.md) |
+| [276-[fixed]-…](fixed/276-[fixed]-host-search-engine-behind-kit.md) | Host search engine behind hub kit screen | P1 | High | fixed | Complete · 3/3 · A 3/3 | [RFC-070](../rfc/070-[partial]-catalog-hub-protocol.md) |
 | [246-[fixed]-…](fixed/246-[fixed]-home-layout-race-on-cold-open.md) | Home “did not answer layout” on cold open | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [231-[fixed]-…](fixed/231-[fixed]-kit-shell-swallows-feed-failure.md) | KitShell swallows hub feed failure (blank Anime hub) | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |
 | [232-[fixed]-…](fixed/232-[fixed]-exo-quality-menu-all-selected.md) | Exo Quality menu marks every variant selected | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |

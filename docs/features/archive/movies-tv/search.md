@@ -14,7 +14,7 @@ Tap the **tune** icon beside the search field to open the **filter lens**: All/F
 
 ## How to open it
 
-From **Home**, tap top-bar **Search** or use **Cmd/Ctrl+F** — both open this overlay (TMDB structured search + Stremio addons). The Home hub pack declares `host_search` so those entry points stay the same. Anime / Asian Drama top-bar Search stays pack-only hub search. The Search nav tab is temporarily hidden from the shell and Settings → Features.
+From **Home**, tap top-bar **Search** or use **Cmd/Ctrl+F** — both open hub kit search with the host TMDB + Stremio addon engine (`host_search`). Anime / Asian Drama top-bar Search stays pack-only hub search. The old dedicated Search nav tab is archived.
 
 ## What you can do
 

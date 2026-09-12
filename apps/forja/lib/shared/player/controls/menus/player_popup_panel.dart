@@ -472,7 +472,16 @@ playerPopupSelectChrome({
   required bool selected,
   required bool highlight,
   bool failed = false,
+  bool disabled = false,
 }) {
+  if (disabled) {
+    return (
+      bg: PlayerPopupTokens.cardBg,
+      border: PlayerPopupTokens.border,
+      borderWidth: 1,
+      labelFg: Colors.white.withValues(alpha: 0.38),
+    );
+  }
   if (failed) {
     return (
       bg: const Color(0xFFEF4444).withValues(alpha: 0.08),
@@ -978,6 +987,8 @@ class PlayerPopupOptionChip extends StatefulWidget {
     this.onTap,
     this.expanded = false,
     this.grouped = false,
+    this.subtitle,
+    this.disabled = false,
   });
 
   final String label;
@@ -987,6 +998,10 @@ class PlayerPopupOptionChip extends StatefulWidget {
 
   /// Side-by-side group (On/Off, Fit) — skip the list-row bottom gap.
   final bool grouped;
+
+  /// Secondary line (e.g. why an engine is unavailable for this stream).
+  final String? subtitle;
+  final bool disabled;
 
   @override
   State<PlayerPopupOptionChip> createState() => _PlayerPopupOptionChipState();
@@ -1002,13 +1017,14 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
     final selected = widget.selected;
-    final highlight = _focused || _hovered;
+    final highlight = !widget.disabled && (_focused || _hovered);
     final chromeDuration = input.instantChrome
         ? Duration.zero
         : const Duration(milliseconds: 120);
     final chrome = playerPopupSelectChrome(
       selected: selected,
       highlight: highlight,
+      disabled: widget.disabled,
     );
     final radius = widget.grouped
         ? PlayerPopupTokens.chipRadius
@@ -1016,6 +1032,43 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
     final padding = widget.grouped
         ? const EdgeInsets.symmetric(horizontal: 11, vertical: 8)
         : PlayerPopupTokens.selectCardPadding;
+    final subtitle = widget.subtitle?.trim();
+    final hasSubtitle = subtitle != null && subtitle.isNotEmpty;
+
+    Widget labelColumn() {
+      final title = Text(
+        widget.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: chrome.labelFg,
+          fontSize: 13,
+          fontWeight: highlight || selected
+              ? FontWeight.w600
+              : FontWeight.w500,
+        ),
+      );
+      if (!hasSubtitle) return title;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          title,
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: chrome.labelFg.withValues(alpha: 0.72),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+            ),
+          ),
+        ],
+      );
+    }
 
     final chip = Material(
       color: chrome.bg,
@@ -1044,32 +1097,10 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
                 widget.expanded ? MainAxisSize.max : MainAxisSize.min,
             children: [
               if (widget.expanded)
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: chrome.labelFg,
-                      fontSize: 13,
-                      fontWeight: highlight || selected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                    ),
-                  ),
-                )
+                Expanded(child: labelColumn())
               else
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: chrome.labelFg,
-                    fontSize: 13,
-                    fontWeight: highlight || selected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                  ),
-                ),
-              if (selected) ...[
+                labelColumn(),
+              if (selected && !widget.disabled) ...[
                 const SizedBox(width: 8),
                 const Icon(
                   Icons.check_rounded,

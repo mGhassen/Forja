@@ -7,6 +7,7 @@ import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/external_player_handoff_screen.dart';
+import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 import 'package:forja/shared/player/screens/exo_player_screen.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';
 import 'package:forja/shared/player/screens/tv_player_screen.dart';
@@ -333,6 +334,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (builtInEngine == null) return;
     if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
 
+    final unfit = builtInPlayerEngineUnsuitableReason(
+      builtInEngine,
+      surface: BuiltInPlayerMenuSurface.catalogVod,
+      streamUrl: streamUrl ?? _sessionStreamUrl,
+      torrentLocalhost: isLocalTorrentStreamUrl(
+        streamUrl ?? _sessionStreamUrl,
+      ),
+      needsWidevine: _sessionNeedsWidevine(),
+      separateAudioUrl:
+          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
+    );
+    if (unfit != null) {
+      if (mounted) ForjaToast.info(unfit);
+      return;
+    }
+
     await SettingsService().setBuiltInPlayerEngine(
       builtInEngine,
       context: BuiltInPlayerContext.vod,
@@ -430,6 +447,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         playerName: _externalPlayerName,
         launched: _externalLaunched,
         builtInEngine: _builtInEngine,
+        streamUrl: _externalStreamUrl ?? _sessionStreamUrl,
+        torrentLocalhost: isLocalTorrentStreamUrl(
+          _externalStreamUrl ?? _sessionStreamUrl,
+        ),
+        needsWidevine: _sessionNeedsWidevine(),
+        separateAudioUrl:
+            widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
         onRelaunch: _launchExternal,
         onSwitchBuiltIn: () async {
           site111477_proxy.retainForExternalHandoff = false;

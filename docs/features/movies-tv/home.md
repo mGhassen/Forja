@@ -16,7 +16,7 @@ Tap **Home** in the navigation bar (first tab by default).
 - **Films / TV Shows / Categories** (desktop / TV / phone hero menu) refetch Home rails via Catalog Shell filters into the pack (`type` / genre). With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit type; **Categories** lists full TMDB genres (Action, Documentary, Horror, …) and refilters the hero, Featured, Popular, mood results, and the rest — **not** the three rotating genre rows at the bottom (those keep their own genre). Pick **All** to clear.
 - **Watch services** — on **desktop**, hover **Home** in the nav for ~1s to open a floating streaming-service panel beside the rail; leave the panel / Home for ~1s to hide it. On **Android TV**, hold **OK** on Home for ~500ms (or long-press on phone). The selected service appears as a mark before **Films**. *(Provider filtering of Catalog Shell rails is not wired yet — logo chrome only.)*
 - Open a poster or hero **View details** for the normal movie/TV details page (Sources / play). Glass **+** on the hero opens Plan to Watch / Watching / … (Simkl when connected).
-- Search from the Home top-bar **Search** tab or **Cmd+F** / **Ctrl+F** — same overlay (structured TMDB queries + tune filter lens + Stremio addon sections). The Home pack declares `host_search` so both entry points share that surface.
+- Search from the Home top-bar **Search** tab or **Cmd+F** / **Ctrl+F** — same hub kit search overlay. The Home pack declares `host_search` so results use the host engine (structured TMDB + Stremio addon catalogs) with the tune filter lens; Anime / Asian Drama stay pack-only title search.
 - Resume from **Continue watching** (host watch history).
 
 ## Setup (if needed)

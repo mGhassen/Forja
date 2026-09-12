@@ -1699,6 +1699,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       anchorContext: anchorContext,
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
+      surface: BuiltInPlayerMenuSurface.catalogVod,
+      streamUrl: _currentUrl ??
+          (_sources.isNotEmpty ? _sources[_sourceIndex].url : widget.mediaPath),
+      torrentLocalhost: isLocalTorrentStreamUrl(
+        _currentUrl ??
+            (_sources.isNotEmpty
+                ? _sources[_sourceIndex].url
+                : widget.mediaPath),
+      ),
+      needsWidevine: (_currentSources ?? widget.sources ?? const [])
+          .any((s) => s.hasDrm),
+      separateAudioUrl:
+          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
       onSelect: ({builtInEngine, externalPlayer}) async {
         // Soft-stop before parent unmounts us — MediaCodec release in dispose
         // mid-switch ANRs ATV (issue 128). stop() keeps the player instance.

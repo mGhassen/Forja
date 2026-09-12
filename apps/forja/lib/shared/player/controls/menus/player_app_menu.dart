@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
+export 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
+import 'package:forja/shared/shell/forja_toast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -35,6 +38,11 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     BuildContext? anchorContext,
     bool centered = false,
+    BuiltInPlayerMenuSurface? surface,
+    String streamUrl = '',
+    bool torrentLocalhost = false,
+    bool needsWidevine = false,
+    bool separateAudioUrl = false,
   }) {
     PlayerPopupPanel.show(
       context: context,
@@ -48,6 +56,11 @@ class PlayerAppMenu {
         externalPlayerName: externalPlayerName,
         onSelect: onSelect,
         onDismiss: PlayerPopupPanel.dismiss,
+        surface: surface,
+        streamUrl: streamUrl,
+        torrentLocalhost: torrentLocalhost,
+        needsWidevine: needsWidevine,
+        separateAudioUrl: separateAudioUrl,
       ),
     );
   }
@@ -59,6 +72,11 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     VoidCallback? onDismiss,
     ScrollPhysics? physics,
+    BuiltInPlayerMenuSurface? surface,
+    String streamUrl = '',
+    bool torrentLocalhost = false,
+    bool needsWidevine = false,
+    bool separateAudioUrl = false,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
     // Never omit MediaKit from this menu (see .cursor/rules/no-hide-as-fix.mdc).
@@ -70,21 +88,37 @@ class PlayerAppMenu {
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
         if (showExternal) const _SectionLabel('Built-in'),
-        ...[
-          for (final engine in engines)
-            PlayerPopupOptionChip(
-              label: engine.displayName,
-              selected: usingBuiltIn && engine == builtInEngine,
-              expanded: true,
-              onTap: () async {
-                onDismiss?.call();
-                if (usingBuiltIn && engine == builtInEngine) {
-                  return;
-                }
-                await onSelect(builtInEngine: engine);
-              },
-            ),
-        ],
+        ...engines.map((engine) {
+          final reason = surface == null
+              ? null
+              : builtInPlayerEngineUnsuitableReason(
+                  engine,
+                  surface: surface,
+                  streamUrl: streamUrl,
+                  torrentLocalhost: torrentLocalhost,
+                  needsWidevine: needsWidevine,
+                  separateAudioUrl: separateAudioUrl,
+                );
+          final disabled = reason != null;
+          return PlayerPopupOptionChip(
+            label: engine.displayName,
+            subtitle: reason,
+            disabled: disabled,
+            selected: usingBuiltIn && engine == builtInEngine,
+            expanded: true,
+            onTap: () async {
+              if (disabled) {
+                ForjaToast.info(reason!);
+                return;
+              }
+              onDismiss?.call();
+              if (usingBuiltIn && engine == builtInEngine) {
+                return;
+              }
+              await onSelect(builtInEngine: engine);
+            },
+          );
+        }),
         if (showExternal) ...[
           const SizedBox(height: 14),
           const _SectionLabel('External app'),

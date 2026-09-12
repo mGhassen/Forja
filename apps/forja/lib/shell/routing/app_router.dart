@@ -18,7 +18,9 @@ import 'package:forja/shared/shell/loading_overlay.dart';
 import 'package:forja/shared/shell/forja_shell_platform.dart';
 import 'package:forja/shared/shell/forja_shell_scope.dart';
 import 'package:forja/shared/shell/forja_shell_profile.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
 /// Central navigation for cross-feature routes (details, player).
 class AppRouter {
   AppRouter._();
@@ -217,14 +219,17 @@ class AppRouter {
   }
 
   static Future<T?> openSearch<T>(BuildContext context) async {
-    final tabId = await SettingsService().getDefaultNavTab();
+    final tabId = ShellBus.activeShellTabId ??
+        await SettingsService().getDefaultNavTab();
     final pluginId = await PluginNavRegistry.resolveKitPluginId(tabId: tabId);
     if (pluginId == null || !context.mounted) return null;
+    final label =
+        PluginNavRegistry.destinations[tabId]?.label ?? 'Search';
     await openCatalogSearch(
       context,
       pluginId: pluginId,
       tabId: tabId,
-      hintText: 'Search',
+      hintText: 'Search $label…',
     );
     return null;
   }

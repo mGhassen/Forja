@@ -27,6 +27,13 @@ export 'package:forja_foundation/widgets/chrome/catalog_search_page.dart'
 
 typedef KitSearchResult = CatalogSearchResult;
 typedef KitSearchQuery = Future<List<KitSearchResult>> Function(String query);
+typedef KitSearchProgressive = Future<void> Function(
+  String query,
+  void Function(
+    List<KitSearchResult> results, {
+    required bool done,
+  }) emit,
+);
 typedef KitRecommendationsLoader = Future<List<String>> Function({
   required String query,
   required List<KitSearchResult> results,
@@ -46,6 +53,7 @@ class KitSearchPage extends StatefulWidget {
     required this.onSearch,
     required this.onOpen,
     required this.loadRecommendations,
+    this.onSearchProgressive,
     this.structuredSearch = false,
     this.debounceMs = 500,
   });
@@ -53,6 +61,10 @@ class KitSearchPage extends StatefulWidget {
   final String hintText;
   final String tvTabId;
   final KitSearchQuery onSearch;
+
+  /// Progressive host search (TMDB then addons). When set, used instead of
+  /// awaiting a single [onSearch] future.
+  final KitSearchProgressive? onSearchProgressive;
   final KitSearchOpen onOpen;
   final KitRecommendationsLoader loadRecommendations;
 
@@ -420,6 +432,24 @@ class _KitSearchPageState extends State<KitSearchPage> {
       _recordRecentQuery(query);
     }
     try {
+      final progressive = widget.onSearchProgressive;
+      if (progressive != null) {
+        await progressive(query, (results, {required done}) {
+          if (gen != _searchGeneration || !mounted) return;
+          setState(() {
+            _results = results;
+            _isSearching = !done;
+            _error = null;
+          });
+          if (done) {
+            _loadRecommendations(query: query, results: results);
+            _scheduleFocusOnResultCardIfPending();
+          } else if (results.isNotEmpty) {
+            _scheduleFocusOnResultCardIfPending();
+          }
+        });
+        return;
+      }
       final results = await widget.onSearch(query);
       if (gen != _searchGeneration || !mounted) return;
       setState(() {

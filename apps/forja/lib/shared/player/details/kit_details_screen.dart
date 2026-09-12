@@ -1030,6 +1030,14 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
                 durationMs: heroDurMs,
               )
             : null,
+        seriesProgress: !_isMovie &&
+                _watchedEpisodes.isNotEmpty &&
+                _watchedTotalEpisodes > 0
+            ? WatchSeriesProgress(
+                watched: _watchedEpisodes.length,
+                total: _watchedTotalEpisodes,
+              )
+            : null,
         enableKenBurns: policy.kenBurnsBackdrop,
         tvDensity: ShellScope.metricsOf(context).usesTvDensity,
         plainTitle: policy.useFocusableMoodChips,

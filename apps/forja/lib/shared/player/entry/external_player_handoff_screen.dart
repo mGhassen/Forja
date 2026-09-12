@@ -25,6 +25,10 @@ class ExternalPlayerHandoffScreen extends StatefulWidget {
     required this.onRelaunch,
     required this.onSwitchBuiltIn,
     required this.onSelectPlayer,
+    this.streamUrl = '',
+    this.torrentLocalhost = false,
+    this.needsWidevine = false,
+    this.separateAudioUrl = false,
   });
 
   final String title;
@@ -34,6 +38,10 @@ class ExternalPlayerHandoffScreen extends StatefulWidget {
   final VoidCallback onRelaunch;
   final VoidCallback onSwitchBuiltIn;
   final PlayerMenuSelectHandler onSelectPlayer;
+  final String streamUrl;
+  final bool torrentLocalhost;
+  final bool needsWidevine;
+  final bool separateAudioUrl;
 
   @override
   State<ExternalPlayerHandoffScreen> createState() =>
@@ -116,6 +124,10 @@ class _ExternalPlayerHandoffScreenState
                                 key: const ValueKey('picker'),
                                 playerName: widget.playerName,
                                 builtInEngine: widget.builtInEngine,
+                                streamUrl: widget.streamUrl,
+                                torrentLocalhost: widget.torrentLocalhost,
+                                needsWidevine: widget.needsWidevine,
+                                separateAudioUrl: widget.separateAudioUrl,
                                 onSelectPlayer: widget.onSelectPlayer,
                                 onCancel: () =>
                                     setState(() => _pickingPlayer = false),
@@ -283,12 +295,20 @@ class _PlayerPickerBody extends StatelessWidget {
     required this.builtInEngine,
     required this.onSelectPlayer,
     required this.onCancel,
+    this.streamUrl = '',
+    this.torrentLocalhost = false,
+    this.needsWidevine = false,
+    this.separateAudioUrl = false,
   });
 
   final String playerName;
   final BuiltInPlayerEngine builtInEngine;
   final PlayerMenuSelectHandler onSelectPlayer;
   final VoidCallback onCancel;
+  final String streamUrl;
+  final bool torrentLocalhost;
+  final bool needsWidevine;
+  final bool separateAudioUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -335,6 +355,11 @@ class _PlayerPickerBody extends StatelessWidget {
             builtInEngine: builtInEngine,
             externalPlayerName: playerName,
             physics: const NeverScrollableScrollPhysics(),
+            surface: BuiltInPlayerMenuSurface.catalogVod,
+            streamUrl: streamUrl,
+            torrentLocalhost: torrentLocalhost,
+            needsWidevine: needsWidevine,
+            separateAudioUrl: separateAudioUrl,
             onSelect: ({builtInEngine, externalPlayer}) async {
               onCancel();
               await onSelectPlayer(

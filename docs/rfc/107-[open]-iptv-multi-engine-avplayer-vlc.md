@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **11 / 12** acceptance (1 manual QA) |
-| **Current slice** | Engines wired — manual Mac/Win XUMO QA open |
+| **Progress** | **7 / 7** components · **13 / 14** acceptance (1 manual QA) |
+| **Current slice** | Engine fit greying shipped — manual Mac/Win XUMO QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R107-C04 | IPTV player backend branches (AVPlayer / VLC / Exo / MediaKit) | ✅ |
 | 5 | R107-C05 | HLS auto-route + one-hop engine failover | ✅ |
 | 6 | R107-C06 | Feature docs + changelog | ✅ |
+| 7 | R107-C07 | In-player engine fit: grey + reason (no hide) | ✅ |
 
 ---
 
@@ -44,6 +45,8 @@
 | 10 | R107-A10 | Feature docs list engines per OS | ✅ |
 | 11 | R107-A11 | Changelog Add bullets for AVPlayer (Mac) / VLC (Windows) | ✅ |
 | 12 | R107-A12 | Manual QA: Mac AVPlayer + Win VLC XUMO/CBS; Xtream TS MediaKit | ⬜ |
+| 13 | R107-A13 | Player menu greys AVPlayer/VLC on catalog VOD + MPEG-TS IPTV with reason | ✅ |
+| 14 | R107-A14 | Hot-swap / select blocked for unsuitable engines (toast); MediaKit stays | ✅ |
 
 ---
 

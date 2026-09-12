@@ -1568,6 +1568,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       anchorContext: anchorContext,
       usingBuiltIn: true,
       builtInEngine: _builtInEngine,
+      surface: widget.vodPlayback
+          ? BuiltInPlayerMenuSurface.iptvVod
+          : BuiltInPlayerMenuSurface.iptvLive,
+      streamUrl:
+          _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : '',
       onSelect: ({builtInEngine, externalPlayer}) async {
         if (builtInEngine != null) {
           await _s._switchBuiltInEngine(

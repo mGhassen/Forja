@@ -1431,6 +1431,18 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }) async {
     if (kIsWeb) return;
     if (!engine.isAvailableOnCurrentPlatform) return;
+    final url = _sources.isNotEmpty ? _sources[_sourceIdx].url : '';
+    final unfit = builtInPlayerEngineUnsuitableReason(
+      engine,
+      surface: widget.vodPlayback
+          ? BuiltInPlayerMenuSurface.iptvVod
+          : BuiltInPlayerMenuSurface.iptvLive,
+      streamUrl: url,
+    );
+    if (unfit != null) {
+      if (mounted) ForjaToast.info(unfit);
+      return;
+    }
     if (engine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
       if (mounted) {
