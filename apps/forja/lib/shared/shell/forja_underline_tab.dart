@@ -135,7 +135,7 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
         context: context,
         onTap: widget.onTap,
         borderRadius: 4,
-        scaleOnFocus: ShellTokens.focusActiveScale,
+        scaleOnFocus: 1.0,
         listIndex: widget.listIndex,
         tvTabId: widget.tabId,
         tvRowId: widget.rowId,

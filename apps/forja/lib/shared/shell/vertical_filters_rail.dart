@@ -217,6 +217,7 @@ class VerticalFilterTopBarLogo extends StatelessWidget {
         }
         return ForjaInteractive(
           onTap: () => VerticalFiltersRegistry.onTopLogoTap(tabId),
+          hoverScale: 1.0,
           builder: (_, _) => VerticalFilterLogoMark(
             option: option,
             packSourceUrl: spec.packSourceUrl,
@@ -258,6 +259,7 @@ class _TvSelectedFilterLogo extends StatelessWidget {
       context: context,
       focusNode: focusNode,
       listIndex: listIndex,
+      scaleOnFocus: 1.0,
       onTap: () => VerticalFiltersRegistry.onTopLogoTap(tabId),
       onDownEdge: onDownEdge,
       onRightEdge: () {
@@ -462,10 +464,11 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
                 ),
               ],
             ),
-            clipBehavior: Clip.antiAlias,
+            clipBehavior: Clip.none,
             child: FocusTraversalGroup(
               policy: OrderedTraversalPolicy(),
               child: SingleChildScrollView(
+                clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(
                   vertical: ShellTokens.shellProviderRailPadV,
                   horizontal: ShellTokens.shellProviderRailPadH,
@@ -473,6 +476,8 @@ class _VerticalFiltersPanelState extends State<_VerticalFiltersPanel> {
                 child: LogoMenuRail(
                   width: ShellTokens.shellProviderRailWidth -
                       ShellTokens.shellProviderRailPadH * 2,
+                  backgroundColor: Colors.transparent,
+                  clipBehavior: Clip.none,
                   items: items,
                   selectedId: widget.selectedId,
                   onSelect: (id) => VerticalFiltersRegistry.toggleOption(

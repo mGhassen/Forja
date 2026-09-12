@@ -188,6 +188,7 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
       context: context,
       onTap: widget.onTap,
       borderRadius: 0,
+      scaleOnFocus: 1.0,
       listIndex: widget.listIndex,
       tvTabId: widget.tabId,
       tvRowId: widget.rowId,

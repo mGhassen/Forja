@@ -11,12 +11,16 @@ class VerticalMenu extends StatelessWidget {
     this.width = 220,
     this.padding,
     this.backgroundColor,
+    this.clipBehavior = Clip.antiAlias,
   });
 
   final List<Widget> children;
   final double width;
   final EdgeInsetsGeometry? padding;
   final Color? backgroundColor;
+
+  /// Host rails that hover-scale tiles need [Clip.none] so scale can paint into pad.
+  final Clip clipBehavior;
 
   /// One selectable row in a [VerticalMenu].
   static Widget item({
@@ -43,7 +47,7 @@ class VerticalMenu extends StatelessWidget {
     return Material(
       color: backgroundColor ?? const Color(0xFF141414),
       borderRadius: BorderRadius.circular(theme.radiusMd),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: clipBehavior,
       child: SizedBox(
         width: width,
         child: Padding(

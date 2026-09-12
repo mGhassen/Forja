@@ -187,6 +187,7 @@ class _BecauseSectionState extends State<BecauseSection> {
                 context: context,
                 focusNode: _shuffleFocusNode,
                 borderRadius: 20,
+                scaleOnFocus: 1.0,
                 onTap: _shuffle,
                 onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
                   widget.tabId,

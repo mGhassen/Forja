@@ -30,6 +30,8 @@ class LogoMenuRail extends StatelessWidget {
     required this.onSelect,
     this.visible = true,
     this.width = 220,
+    this.backgroundColor,
+    this.clipBehavior = Clip.antiAlias,
     this.itemBuilder,
   });
 
@@ -38,6 +40,10 @@ class LogoMenuRail extends StatelessWidget {
   final ValueChanged<String> onSelect;
   final bool visible;
   final double width;
+  final Color? backgroundColor;
+
+  /// See [VerticalMenu.clipBehavior] — [Clip.none] for hover-scale host rails.
+  final Clip clipBehavior;
 
   /// Optional override for each row (focus nodes, TV). Defaults to [VerticalMenu.item].
   final Widget Function(BuildContext context, LogoMenuItem item, bool selected)?
@@ -49,6 +55,8 @@ class LogoMenuRail extends StatelessWidget {
 
     return VerticalMenu(
       width: width,
+      backgroundColor: backgroundColor,
+      clipBehavior: clipBehavior,
       children: [
         for (final item in items)
           itemBuilder?.call(context, item, item.id == selectedId) ??

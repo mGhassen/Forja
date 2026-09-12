@@ -82,8 +82,8 @@ String listStatusLabel(String? status, {String fallback = 'My List'}) {
   return fallback;
 }
 
-/// Always shows icon + label. Hover/focus = status color + tint; selected =
-/// filled icon + weight (not color) so mouse menus don't look dual-focused.
+/// Always shows icon + label. Selected uses status color so the current list
+/// status is obvious at open. Hover / D-pad focus gets a stronger tint.
 class ListStatusMenuRow extends StatefulWidget {
   const ListStatusMenuRow({
     super.key,
@@ -117,16 +117,20 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
   @override
   Widget build(BuildContext context) {
     final active = _active;
-    // Color only for the lit row (hover / D-pad). Selected stays readable via
-    // icon + weight so an autofocused row doesn't compete with mouse hover.
-    final accent = active ? widget.statusColor : Colors.white;
+    final selected = widget.selected;
+    // Hover / D-pad wins the strong tint. Selected (idle) still uses status
+    // color — desktop has no autofocus, so weight-only was invisible.
+    final lit = active || selected;
+    final accent = lit ? widget.statusColor : Colors.white;
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       color: active
           ? widget.statusColor.withValues(alpha: 0.12)
-          : Colors.transparent,
+          : selected
+              ? widget.statusColor.withValues(alpha: 0.08)
+              : Colors.transparent,
       child: Row(
         children: [
           Icon(widget.icon, size: 16, color: accent),
@@ -138,7 +142,7 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
-                fontWeight: widget.selected || active
+                fontWeight: selected || active
                     ? FontWeight.w700
                     : FontWeight.w500,
                 color: accent,

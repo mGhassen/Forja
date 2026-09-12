@@ -9,7 +9,6 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja/shared/shell/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class IptvChannelSearchOverlay extends StatefulWidget {
   const IptvChannelSearchOverlay({
     super.key,
@@ -514,12 +513,9 @@ class _SearchResultTileState extends State<_SearchResultTile> {
         widget.onHover();
       },
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
-        scale: widget.focused ? ShellTokens.focusActiveScale : 1.0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.centerLeft,
-        child: InkWell(
+      // No hover/focus scale — panel ClipRRect would clip the lift into the pad.
+      // Green left bar + fill already mark focus.
+      child: InkWell(
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -578,7 +574,6 @@ class _SearchResultTileState extends State<_SearchResultTile> {
             ],
           ),
         ),
-      ),
       ),
     );
   }
