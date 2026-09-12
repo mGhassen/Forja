@@ -118,7 +118,6 @@ class KitTopBarActions extends ConsumerWidget {
       if (busy && _isRefreshAction(a)) continue;
       planned++;
     }
-    if (busy) planned++;
     for (final a in trailing) {
       if (busy && _isRefreshAction(a)) continue;
       planned++;
@@ -128,7 +127,7 @@ class KitTopBarActions extends ConsumerWidget {
     final built = <Widget>[];
     var index = 0;
     for (final a in leading) {
-      // Hide Refresh while scrape/search is busy — progress chip goes trailing.
+      // Hide Refresh while scrape/search is busy — progress sits center-top.
       if (busy && _isRefreshAction(a)) continue;
       final w = _buildAction(
         context,
@@ -150,10 +149,6 @@ class KitTopBarActions extends ConsumerWidget {
     }
     final leadingCount = built.length;
     final trailingBuilt = <Widget>[];
-    if (busy) {
-      trailingBuilt.add(_KitTopBarCatalogProgressChip(label: busyLabel));
-      index++;
-    }
     for (final a in trailing) {
       if (busy && _isRefreshAction(a)) continue;
       final w = _buildAction(
@@ -180,6 +175,9 @@ class KitTopBarActions extends ConsumerWidget {
     return TopBarActions(
       leading: built,
       trailing: trailingBuilt,
+      center: busy
+          ? _KitTopBarCatalogProgressChip(label: busyLabel)
+          : null,
       padding: EdgeInsets.fromLTRB(
         ShellTokens.compactChromeLeadingInset(context),
         ShellTokens.tabHeaderTopPadding,
@@ -641,7 +639,7 @@ class KitTopBarActions extends ConsumerWidget {
   }
 }
 
-/// Replaces top-bar Refresh while live catalogs scrape / merge.
+/// Center-top scrape progress — spinner left, label right.
 class _KitTopBarCatalogProgressChip extends StatelessWidget {
   const _KitTopBarCatalogProgressChip({required this.label});
 
@@ -649,14 +647,15 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final maxW = (MediaQuery.sizeOf(context).width * 0.42).clamp(160.0, 360.0);
     return ExcludeFocus(
       child: Tooltip(
         message: label,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 280),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
@@ -679,6 +678,7 @@ class _KitTopBarCatalogProgressChip extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: 11.5,

@@ -968,6 +968,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             constraints.maxWidth,
             chromeTop: _hoistedTopBarInset(context),
           );
+          final rows = constraints.maxHeight.isFinite
+              ? math.max(1, (constraints.maxHeight / (grid.cardH + grid.gap)).ceil())
+              : 2;
           return homeLoadingShimmer(
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
@@ -983,7 +986,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
                 crossAxisSpacing: grid.gap,
                 childAspectRatio: grid.cardW / grid.cardH,
               ),
-              itemCount: grid.columns * 2,
+              itemCount: grid.columns * rows.clamp(1, 4),
               itemBuilder: (context, _) => DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppTheme.bgCard,
@@ -998,22 +1001,32 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
       );
     }
     final leading = ShellTokens.compactChromeLeadingInset(context);
-    return homeLoadingShimmer(
-      ListView.separated(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          leading,
-          4 + _hoistedTopBarInset(context),
-          ShellTokens.bodyHorizontalPadding,
-          shellTvKitScrollBottomGap(context),
-        ),
-        itemCount: 10,
-        separatorBuilder: (_, _) => Divider(
-          height: 1,
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-        ),
-        itemBuilder: (context, _) => const _KitDenseRowSkeleton(),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Dense row ≈ padding 20 + title/meta 28 + divider 1.
+        const rowExtent = 52.0;
+        final avail = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.sizeOf(context).height * 0.55;
+        final count = math.max(4, (avail / rowExtent).floor()).clamp(4, 16);
+        return homeLoadingShimmer(
+          ListView.separated(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              leading,
+              4 + _hoistedTopBarInset(context),
+              ShellTokens.bodyHorizontalPadding,
+              shellTvKitScrollBottomGap(context),
+            ),
+            itemCount: count,
+            separatorBuilder: (_, _) => Divider(
+              height: 1,
+              color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+            ),
+            itemBuilder: (context, i) => _KitDenseRowSkeleton(index: i),
+          ),
+        );
+      },
     );
   }
 
@@ -1176,30 +1189,55 @@ String kitListPosterUrl(MetaItem meta) {
 }
 
 /// Placeholder dense schedule row while live catalogs scrape.
+/// Title / meta bars use fractional widths so they look like real match names
+/// instead of full-bleed slabs.
 class _KitDenseRowSkeleton extends StatelessWidget {
-  const _KitDenseRowSkeleton();
+  const _KitDenseRowSkeleton({this.index = 0});
+
+  final int index;
+
+  static const _titleFactors = [0.52, 0.68, 0.44, 0.61, 0.55, 0.74, 0.40, 0.63];
+  static const _metaFactors = [0.28, 0.36, 0.22, 0.42, 0.31, 0.25, 0.38, 0.33];
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    final titleF = _titleFactors[index % _titleFactors.length];
+    final metaF = _metaFactors[index % _metaFactors.length];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Skeleton(
+          const Skeleton(
             width: 8,
             height: 8,
             borderRadius: BorderRadius.all(Radius.circular(4)),
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Skeleton(height: 12, width: double.infinity),
-                SizedBox(height: 6),
-                Skeleton(height: 10, width: 140),
+                FractionallySizedBox(
+                  widthFactor: titleF,
+                  alignment: Alignment.centerLeft,
+                  child: const Skeleton(height: 12),
+                ),
+                const SizedBox(height: 6),
+                FractionallySizedBox(
+                  widthFactor: metaF,
+                  alignment: Alignment.centerLeft,
+                  child: const Skeleton(height: 10),
+                ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          const Skeleton(width: 28, height: 10),
+          const SizedBox(width: 8),
+          const Skeleton(
+            width: 16,
+            height: 16,
+            borderRadius: BorderRadius.all(Radius.circular(4)),
           ),
         ],
       ),
