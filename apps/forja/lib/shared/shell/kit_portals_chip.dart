@@ -80,6 +80,9 @@ class KitPortalsChip extends StatelessWidget {
             context: context,
             onTap: onTap,
             borderRadius: 8,
+            // Top-bar chip: seats grow left via layout — never center-scale
+            // (that overlaps Search/Sort without pushing them).
+            scaleOnFocus: 1.0,
             tvZone: tvZone,
             tvTabId: tvTabId,
             tvRowId: tvRowId,

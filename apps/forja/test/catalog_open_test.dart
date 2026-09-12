@@ -150,5 +150,43 @@ void main() {
       expect(open.id, '21');
       expect(open.effectiveExtract.resolveType, 'anime');
     });
+
+    test('hub drama wins over conflicting tmdb open', () {
+      final open = metaOpenFromLegacyListItem({
+        'mediaType': 'drama',
+        'title': 'My Bias, My Boss',
+        'tmdbId': 999, // wrong Home id must not win
+        'uniqueId': 'catalog_kisskh-hub_18842',
+        'open': {
+          'surface': 'tmdb',
+          'id': '999',
+          'extract': {
+            'resolveType': 'movie',
+            'panelCategory': 'movie',
+            'ctx': {'tmdbId': 999},
+          },
+        },
+      });
+      expect(open.surface, 'drama');
+      expect(open.id, '18842');
+      expect(legacyListHubEngineType({
+        'mediaType': 'asian_drama',
+        'tmdbId': 999,
+        'open': {
+          'surface': 'tmdb',
+          'id': '999',
+          'extract': {'resolveType': 'movie', 'panelCategory': 'movie'},
+        },
+      }), 'drama');
+      expect(legacyListEngineType({
+        'mediaType': 'drama',
+        'kisskhId': 18842,
+        'open': {
+          'surface': 'tmdb',
+          'id': '999',
+          'extract': {'resolveType': 'movie', 'panelCategory': 'movie'},
+        },
+      }), 'drama');
+    });
   });
 }

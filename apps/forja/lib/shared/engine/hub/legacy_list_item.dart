@@ -17,48 +17,140 @@ int? legacyListTmdbId(Map<String, dynamic> item) {
   return int.tryParse('$raw');
 }
 
-/// Engine type for details plugin resolve — from pack `open`, else mediaType.
+/// Engine type for details plugin resolve — hub mediaType wins over a stale
+/// `open.surface: tmdb` (bad KissKH/Simkl TMDB ids must not force Home details).
 @visibleForTesting
 String? legacyListEngineType(Map<String, dynamic> item) {
+  final hub = legacyListHubEngineType(item);
+  if (hub != null) return hub;
+
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
   if (stored != null) {
-    final t = stored.effectiveExtract.resolveType.trim();
-    if (t.isNotEmpty) return t;
     final surface = stored.surface.trim();
-    if (surface == 'anime') return 'anime';
-    if (surface == 'drama') return 'drama';
     if (surface == 'tmdb') {
       final mt = item['mediaType']?.toString() ?? 'movie';
       return mt == 'tv' || mt == 'series' ? 'tv' : 'movie';
     }
+    final t = stored.effectiveExtract.resolveType.trim();
+    if (t.isNotEmpty && t != 'tmdb') return t;
   }
   final mt = item['mediaType']?.toString() ?? '';
-  if (mt == 'anime') return 'anime';
-  if (mt == 'asian_drama' || mt == 'drama') return 'drama';
   if (mt == 'movie' || mt == 'tv' || mt == 'series') {
     return mt == 'tv' || mt == 'series' ? 'tv' : 'movie';
   }
   return mt.isNotEmpty ? mt : null;
 }
 
-String _legacyListSurface(Map<String, dynamic> item) {
-  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null) return stored.surface;
+/// `anime` / `drama` when the row is a hub bookmark — not Home/TMDB.
+@visibleForTesting
+String? legacyListHubEngineType(Map<String, dynamic> item) {
   final mt = item['mediaType']?.toString() ?? '';
-  if (mt == 'anime') return 'anime';
-  if (mt == 'asian_drama' || mt == 'drama') return 'drama';
+  final kind = item['kind']?.toString() ?? '';
+  if (mt == 'anime' || kind == 'anime') return 'anime';
+  if (mt == 'asian_drama' ||
+      mt == 'drama' ||
+      kind == 'asian_drama' ||
+      kind == 'drama') {
+    return 'drama';
+  }
+
+  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
+  if (stored != null) {
+    final surface = stored.surface.trim();
+    if (surface == 'anime') return 'anime';
+    if (surface == 'drama') return 'drama';
+    final ctx = stored.extract?.ctx;
+    if (ctx != null) {
+      if (ctx['anilistId'] != null || ctx['anilist'] != null) return 'anime';
+      if (ctx['kisskhId'] != null || ctx['kisskh'] != null) return 'drama';
+    }
+  }
+
+  if (item['anilistId'] != null) return 'anime';
+  if (item['kisskhId'] != null) return 'drama';
+  final ids = item['ids'];
+  if (ids is Map) {
+    if (ids['anilist'] != null) return 'anime';
+    if (ids['kisskh'] != null) return 'drama';
+  }
+  return null;
+}
+
+String _legacyListSurface(Map<String, dynamic> item) {
+  final hub = legacyListHubEngineType(item);
+  if (hub == 'anime') return 'anime';
+  if (hub == 'drama') return 'drama';
+  final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
+  if (stored != null && stored.surface.trim().isNotEmpty) {
+    return stored.surface;
+  }
   return 'tmdb';
 }
 
+String? _legacyListOpenIdFromUniqueId(String? uniqueId) {
+  final uid = uniqueId?.trim() ?? '';
+  // catalog_<pluginId>_<openId> — pluginId may contain hyphens (kisskh-hub).
+  final match = RegExp(r'^catalog_(.+)_([^_]+)$').firstMatch(uid);
+  final id = match?.group(2)?.trim();
+  if (id == null || id.isEmpty) return null;
+  return id;
+}
+
 String _legacyListOpenId(Map<String, dynamic> item) {
+  final hub = legacyListHubEngineType(item);
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null && stored.id.trim().isNotEmpty) return stored.id;
-  final anilist = item['anilistId'] ?? (item['ids'] is Map ? item['ids']['anilist'] : null);
+  if (hub != null && stored != null && stored.surface.trim() == hub) {
+    if (stored.id.trim().isNotEmpty) return stored.id;
+  }
+  if (hub == 'anime') {
+    final anilist =
+        item['anilistId'] ?? (item['ids'] is Map ? item['ids']['anilist'] : null);
+    if (anilist != null) return anilist.toString();
+    final ctxId = stored?.extract?.ctx['anilistId'];
+    if (ctxId != null) return ctxId.toString();
+    final fromUid = _legacyListOpenIdFromUniqueId(item['uniqueId']?.toString());
+    if (fromUid != null) return fromUid;
+  }
+  if (hub == 'drama') {
+    final kisskh =
+        item['kisskhId'] ?? (item['ids'] is Map ? item['ids']['kisskh'] : null);
+    if (kisskh != null) return kisskh.toString();
+    final ctxId = stored?.extract?.ctx['kisskhId'];
+    if (ctxId != null) return ctxId.toString();
+    if (stored != null &&
+        stored.surface.trim() == 'drama' &&
+        stored.id.trim().isNotEmpty) {
+      return stored.id;
+    }
+    final fromUid = _legacyListOpenIdFromUniqueId(item['uniqueId']?.toString());
+    if (fromUid != null) return fromUid;
+  }
+  // catalog_<pluginId>_<openId> — recover hub id when open was overwritten to tmdb
+  final pluginId = item['pluginId']?.toString().trim() ?? '';
+  final uid = item['uniqueId']?.toString() ?? '';
+  if (hub != null && pluginId.isNotEmpty) {
+    final prefix = 'catalog_${pluginId}_';
+    if (uid.startsWith(prefix)) {
+      final recovered = uid.substring(prefix.length);
+      if (recovered.isNotEmpty) return recovered;
+    }
+  }
+  if (stored != null &&
+      stored.id.trim().isNotEmpty &&
+      stored.surface.trim() != 'tmdb') {
+    return stored.id;
+  }
+  final anilist =
+      item['anilistId'] ?? (item['ids'] is Map ? item['ids']['anilist'] : null);
   if (anilist != null) return anilist.toString();
-  final kisskh = item['kisskhId'] ?? (item['ids'] is Map ? item['ids']['kisskh'] : null);
+  final kisskh =
+      item['kisskhId'] ?? (item['ids'] is Map ? item['ids']['kisskh'] : null);
   if (kisskh != null) return kisskh.toString();
-  final tmdb = item['tmdbId'];
-  if (tmdb != null) return tmdb.toString();
+  if (hub == null) {
+    final tmdb = item['tmdbId'];
+    if (tmdb != null) return tmdb.toString();
+    if (stored != null && stored.id.trim().isNotEmpty) return stored.id;
+  }
   return item['metaId']?.toString() ?? item['uniqueId']?.toString() ?? '';
 }
 
@@ -108,22 +200,34 @@ Map<String, dynamic> _legacyListExtractCtx(Map<String, dynamic> item) {
 
   final openId = _legacyListOpenId(item);
   if (ctx.isEmpty && openId.isNotEmpty) ctx['openId'] = openId;
+  final hub = legacyListHubEngineType(item);
+  if (hub == 'drama' && ctx['kisskhId'] == null && openId.isNotEmpty) {
+    put('kisskhId', openId);
+  }
+  if (hub == 'anime' && ctx['anilistId'] == null && openId.isNotEmpty) {
+    put('anilistId', openId);
+  }
   return ctx;
 }
 
 /// Build [MetaOpen] from a stored row, including extract when missing.
+/// Hub anime/drama always wins over a conflicting `tmdb` open (wrong TMDB ids).
 @visibleForTesting
 MetaOpen metaOpenFromLegacyListItem(Map<String, dynamic> item) {
+  final hub = legacyListHubEngineType(item);
   final stored = MetaOpen.fromJson(legacyListStoredOpenRaw(item));
-  if (stored != null && stored.extract != null) return stored;
+  if (hub == null && stored != null && stored.extract != null) return stored;
 
-  final surface = stored?.surface.trim().isNotEmpty == true
-      ? stored!.surface
-      : _legacyListSurface(item);
-  final id = stored?.id.trim().isNotEmpty == true
-      ? stored!.id
-      : _legacyListOpenId(item);
+  final surface = hub ??
+      (stored?.surface.trim().isNotEmpty == true
+          ? stored!.surface
+          : _legacyListSurface(item));
+  final id = _legacyListOpenId(item);
   final resolveType = _legacyListResolveType(item, surface);
+  final baseExtras = Map<String, dynamic>.from(stored?.extras ?? const {});
+  if (surface == 'tmdb') {
+    baseExtras['mediaType'] = resolveType == 'tv' ? 'tv' : 'movie';
+  }
   return MetaOpen(
     surface: surface,
     id: id.isEmpty ? 'unknown' : id,
@@ -132,11 +236,7 @@ MetaOpen metaOpenFromLegacyListItem(Map<String, dynamic> item) {
       panelCategory: resolveType,
       ctx: _legacyListExtractCtx(item),
     ),
-    extras: {
-      ...?stored?.extras,
-      if (surface == 'tmdb')
-        'mediaType': resolveType == 'tv' ? 'tv' : 'movie',
-    },
+    extras: baseExtras,
   );
 }
 
@@ -209,12 +309,23 @@ Future<bool> _pluginHasDetails(String pluginId) async {
   return false;
 }
 
-/// Details plugin for a list row — anime / drama / TMDB by `open` + mediaType.
+/// Details plugin for a list row — anime / drama / TMDB by hub type + `open`.
 /// Never uses the browse list hub (feed-only) as the details plugin.
 Future<String?> resolveLegacyListDetailsPluginId({
   required Map<String, dynamic> item,
   required MetaItem meta,
 }) async {
+  final hub = legacyListHubEngineType(item);
+  if (hub == 'anime' || hub == 'drama') {
+    final fromRow = item['pluginId']?.toString().trim();
+    if (fromRow != null &&
+        fromRow.isNotEmpty &&
+        await _pluginHasDetails(fromRow)) {
+      return fromRow;
+    }
+    return PluginNavRegistry.pluginIdForEngineType(hub!);
+  }
+
   final open = meta.open;
   final surface = open?.surface.trim() ?? '';
   if (surface == 'tmdb') {
