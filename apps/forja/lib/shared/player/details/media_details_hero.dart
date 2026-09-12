@@ -829,10 +829,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               right: 0,
               top: heroContentTop,
               bottom: bleed +
-                  DetailsTokens.heroContentToRailGap(
-                    h,
-                    showSeasonRail: widget.showSeasonRail,
-                  ) +
+                  DetailsTokens.heroContentToRailGap(h) +
                   bottomInset,
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -893,9 +890,11 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
               Positioned(
                 left: 0,
                 right: 0,
+                top: h,
                 bottom: 0,
                 child: Align(
-                  alignment: Alignment.bottomCenter,
+                  // Top of bleed = season-row Y (episode thumbs when no seasons).
+                  alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
                       maxWidth: ShellTokens.bodyMaxWidthDesktop,

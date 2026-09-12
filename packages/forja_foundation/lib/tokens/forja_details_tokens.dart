@@ -10,21 +10,16 @@ abstract final class DetailsTokens {
   static const double heroBodyOverlap = 120;
 
   /// Backdrop band reserved for seasons + episodes under the hero chrome.
-  /// Tall enough for season posters + episode cards so the rail does not
-  /// overflow upward and cover the hero image.
+  /// Same height with or without a season row so the first card row starts at
+  /// one Y (season posters when multi-season, episode thumbs when not).
   static const double episodeBackdropBleed = 500;
-
-  /// Episodes-only rail (no season posters) — title + episode cards + padding.
-  static const double episodeBackdropBleedEpisodesOnly = 280;
 
   /// Bleed under hero chrome for the episode picker.
   static double episodeRailBleed({required bool showSeasonRail}) =>
-      showSeasonRail ? episodeBackdropBleed : episodeBackdropBleedEpisodesOnly;
+      episodeBackdropBleed;
 
-  /// Extra chrome above the rail so multi-season series keep synopsis + Play.
+  /// Extra chrome above the rail so series/anime keep synopsis + Play.
   /// Makes the hero stack slightly taller than the viewport (rows sit lower).
-  /// Not used for single-season — that path uses a compact chrome floor so the
-  /// episode row sits under Play instead of the bottom of a full-viewport hero.
   static const double episodeHeroChromeExtra = 100;
   static const double episodeSectionTopPadding = 8;
   static const double episodeSectionBottomPadding = 12;
@@ -86,13 +81,8 @@ abstract final class DetailsTokens {
   static const double heroWithEpisodesShortViewportHeight = 900;
 
   /// Gap between hero meta/actions and the episode rail (inside the bleed).
-  static double heroContentToRailGap(
-    double heroChromeHeight, {
-    bool showSeasonRail = true,
-  }) {
-    if (!showSeasonRail) return 24.0;
-    return heroChromeHeight < 480 ? 24.0 : 72.0;
-  }
+  static double heroContentToRailGap(double heroChromeHeight) =>
+      heroChromeHeight < 480 ? 24.0 : 72.0;
 
   /// Full on-screen backdrop band - title/actions + optional TV bleed.
   static double heroBackdropBand(
@@ -113,16 +103,8 @@ abstract final class DetailsTokens {
         ? heroWithEpisodesMinFractionCompact
         : heroWithEpisodesMinFraction;
     final bleed = episodeRailBleed(showSeasonRail: showSeasonRail);
-    if (!showSeasonRail) {
-      // Single-season: compact chrome so Episodes sits under Play, not at the
-      // bottom of a full-viewport hero with a huge empty mid band.
-      return (resolved * minFraction).clamp(
-        360.0,
-        resolved * heroViewportFraction,
-      );
-    }
-    // Multi-season: chrome uses the viewport above the rail band so
-    // seasons/episodes sit near the bottom of the first screen. A small chrome
+    // Chrome uses the viewport above the rail band so seasons/episodes sit
+    // near the bottom of the first screen instead of mid-hero. A small chrome
     // boost keeps synopsis visible; the stack grows ~[episodeHeroChromeExtra].
     return (resolved - bleed + episodeHeroChromeExtra).clamp(
       resolved * minFraction,

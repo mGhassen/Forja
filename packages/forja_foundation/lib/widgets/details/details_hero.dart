@@ -109,10 +109,7 @@ class DetailsHero extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
-    final railGap = DetailsTokens.heroContentToRailGap(
-      h,
-      showSeasonRail: showSeasonRail,
-    );
+    final railGap = DetailsTokens.heroContentToRailGap(h);
     final contentBottom = belowActionRow != null
         ? bottomInset
         : bleed + railGap + bottomInset;
@@ -220,9 +217,11 @@ class DetailsHero extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
+                top: h,
                 bottom: 0,
                 child: Align(
-                  alignment: Alignment.bottomCenter,
+                  // Top of bleed = season-row Y (episode thumbs when no seasons).
+                  alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
                       maxWidth: ShellTokens.bodyMaxWidthDesktop,
