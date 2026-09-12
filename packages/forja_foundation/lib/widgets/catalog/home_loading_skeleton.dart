@@ -70,7 +70,7 @@ Widget homeCardSkeleton({
   );
 }
 
-Widget homeMovieRowSkeleton({
+Widget homePosterRowSkeleton({
   double titleWidth = 140,
   int itemCount = 5,
   bool showSubtitle = false,
@@ -264,7 +264,7 @@ List<Widget> homeHubLoadingSlivers({
       SliverToBoxAdapter(child: SizedBox(height: rowSpacing)),
       SliverToBoxAdapter(
         child: homeLoadingShimmer(
-          homeMovieRowSkeleton(
+          homePosterRowSkeleton(
             titleWidth: specs[i].width,
             showSubtitle: specs[i].showSubtitle,
             cardWidth: catalogCardWidth ?? 120,

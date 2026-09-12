@@ -58,7 +58,7 @@ class MediaDetailsRecommendationsSection extends StatelessWidget {
               padding: EdgeInsets.zero,
               itemCount: movies.length,
               separatorBuilder: (_, _) =>
-                  SizedBox(width: shellMovieCardRowGap(context)),
+                  SizedBox(width: shellPosterCardRowGap(context)),
               itemBuilder: (context, index) {
                 return MoviePosterCard(
                   movie: movies[index],

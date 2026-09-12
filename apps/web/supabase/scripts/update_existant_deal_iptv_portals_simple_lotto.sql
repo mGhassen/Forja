@@ -1,5 +1,8 @@
 -- Hot-apply: same body as migrations/20260912103200_deal_iptv_portals_simple_lotto.sql
--- Run in Studio SQL when you cannot migrate yet. Do not edit after apply — ship via migration.
+-- Run in Studio SQL when you cannot migrate yet.
+
+-- Deal lotto: whole catalog pool, weight by host, no alive/region filter.
+-- Pass 1 = one portal per host; pass 2 fills if thin.
 
 create or replace function public.deal_iptv_portals(
   p_profile_id uuid,
@@ -14,21 +17,20 @@ as $$
 declare
   actor uuid := auth.uid();
   n integer := greatest(1, least(coalesce(p_count, 5), 20));
-  region text := upper(trim(coalesce(p_region, 'ANY')));
   bal integer;
   feats jsonb;
   slots integer;
-  cand_ids uuid[];
-  cand_hosts text[];
-  assigned_ids uuid[] := '{}';
-  used_hosts text[] := '{}';
-  assigned integer := 0;
+  host_list text[];
+  host_len integer;
   pass integer;
   i integer;
-  cand_len integer;
+  dealt_host text;
   dealt_portal_id uuid;
   inserted integer;
+  assigned integer := 0;
+  assigned_ids uuid[] := '{}';
 begin
+  -- p_region: kept for RPC compat; not used.
   if actor is null then
     raise exception 'not authenticated';
   end if;
@@ -72,66 +74,80 @@ begin
   where id = actor;
 
   insert into public.iptv_credit_ledger (account_id, delta, reason, created_by)
-  values (actor, -1, format('deal %s x%s', region, n), actor);
+  values (actor, -1, format('deal x%s', n), actor);
 
-  select
-    array_agg(c.id order by c.lotto),
-    array_agg(c.host order by c.lotto)
-  into cand_ids, cand_hosts
+  -- Lotto hosts that still have ≥1 unassigned pool portal for this profile.
+  -- Weight = inverse sum(dealt_count) for that host across the catalog pool.
+  select array_agg(x.host order by x.lotto)
+  into host_list
   from (
     select
-      p.id,
-      coalesce(
-        nullif(
-          lower(
-            split_part(
-              split_part(
-                regexp_replace(
-                  regexp_replace(trim(p.url), '^\s*https?://', '', 'i'),
-                  '^[^/@]+@',
-                  ''
-                ),
-                '/',
-                1
-              ),
-              '?',
-              1
-            )
-          ),
-          ''
-        ),
-        p.id::text
-      ) as host,
+      h.host,
       (
         -ln(greatest(random(), 1e-15))
-        / (1.0 / (1.0 + coalesce(p.dealt_count, 0)::double precision))
+        / (1.0 / (1.0 + h.host_dealt))
       ) as lotto
-    from public.iptv_portals p
-    where p.catalog_pool is true
-      and p.alive is true
-      and (region = 'ANY' or p.region_primary = region or region = any (p.region_tags))
-      and not exists (
-        select 1
-        from public.user_iptv_portals u
-        where u.profile_id = p_profile_id
-          and u.portal_id = p.id
-      )
-  ) c;
+    from (
+      select
+        coalesce(
+          nullif(trim(p.url_host), ''),
+          public.iptv_portal_url_host(p.url),
+          p.id::text
+        ) as host,
+        sum(coalesce(p.dealt_count, 0))::double precision as host_dealt
+      from public.iptv_portals p
+      where p.catalog_pool is true
+      group by 1
+    ) h
+    where exists (
+      select 1
+      from public.iptv_portals e
+      where e.catalog_pool is true
+        and coalesce(
+          nullif(trim(e.url_host), ''),
+          public.iptv_portal_url_host(e.url),
+          e.id::text
+        ) = h.host
+        and not exists (
+          select 1
+          from public.user_iptv_portals u
+          where u.profile_id = p_profile_id
+            and u.portal_id = e.id
+        )
+    )
+  ) x;
 
-  cand_len := coalesce(array_length(cand_ids, 1), 0);
+  host_len := coalesce(array_length(host_list, 1), 0);
 
   for pass in 1..2 loop
     exit when assigned >= n;
-    for i in 1..cand_len loop
+    for i in 1..host_len loop
       exit when assigned >= n;
-      if cand_ids[i] = any (assigned_ids) then
-        continue;
-      end if;
-      if pass = 1 and cand_hosts[i] = any (used_hosts) then
-        continue;
-      end if;
+      dealt_host := host_list[i];
+      dealt_portal_id := null;
 
-      dealt_portal_id := cand_ids[i];
+      select e.id
+      into dealt_portal_id
+      from public.iptv_portals e
+      where e.catalog_pool is true
+        and coalesce(
+          nullif(trim(e.url_host), ''),
+          public.iptv_portal_url_host(e.url),
+          e.id::text
+        ) = dealt_host
+        and not (e.id = any (assigned_ids))
+        and not exists (
+          select 1
+          from public.user_iptv_portals u
+          where u.profile_id = p_profile_id
+            and u.portal_id = e.id
+        )
+      order by random()
+      limit 1;
+
+      if dealt_portal_id is null then
+        continue;
+      end if;
 
       insert into public.user_iptv_portals (
         account_id, profile_id, portal_id, portal_name, favorite,
@@ -141,9 +157,9 @@ begin
       on conflict (profile_id, portal_id) do nothing;
       get diagnostics inserted = row_count;
 
+      assigned_ids := array_append(assigned_ids, dealt_portal_id);
+
       if inserted = 0 then
-        assigned_ids := array_append(assigned_ids, dealt_portal_id);
-        used_hosts := array_append(used_hosts, cand_hosts[i]);
         continue;
       end if;
 
@@ -151,8 +167,6 @@ begin
       set dealt_count = dealt_count + 1, updated_at = now()
       where id = dealt_portal_id;
 
-      assigned_ids := array_append(assigned_ids, dealt_portal_id);
-      used_hosts := array_append(used_hosts, cand_hosts[i]);
       assigned := assigned + 1;
       return next dealt_portal_id;
     end loop;
@@ -164,7 +178,7 @@ begin
     where id = actor;
     insert into public.iptv_credit_ledger (account_id, delta, reason, created_by)
     values (actor, 1, 'deal refund — empty pool', actor);
-    raise exception 'no portals available for region %', region;
+    raise exception 'no portals available';
   end if;
 end;
 $$;

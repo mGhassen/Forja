@@ -316,7 +316,7 @@ abstract final class ShellTokens {
   static const double tvHomeSectionTitleTop = 24;
   static const double tvHomeSectionHeaderHeight = 26;
   static const double tvHomeSectionBottomGap = 14;
-  static const double tvMovieCardRowGap = 12;
+  static const double tvPosterCardRowGap = 12;
 
   /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;

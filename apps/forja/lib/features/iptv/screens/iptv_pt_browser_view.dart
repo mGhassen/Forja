@@ -1598,9 +1598,9 @@ class _BrowserViewState extends State<_BrowserView> {
       builder: (ctx, c) {
         final tv = ShellScope.metricsOf(ctx).usesTvDensity;
         // Desktop: ~165px target → more columns, smaller live tiles.
-        final cardW = tv ? shellMovieCardWidth(ctx) : 180.0;
-        final cardH = shellMovieCardHeight(ctx);
-        final gap = tv ? shellMovieCardRowGap(ctx) : 10.0;
+        final cardW = tv ? shellPosterCardWidth(ctx) : 180.0;
+        final cardH = shellPosterCardHeight(ctx);
+        final gap = tv ? shellPosterCardRowGap(ctx) : 10.0;
         final hPad = tv ? 8.0 : 16.0;
         final cross = tv
             ? ((c.maxWidth - hPad + gap) / (cardW + gap)).floor().clamp(1, 24)

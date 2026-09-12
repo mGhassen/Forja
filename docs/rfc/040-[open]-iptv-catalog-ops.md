@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **5 / 5** components · **30 / 32** acceptance (simple deal lotto; AI deferred) |
-| **Current slice** | R40-A32 deal lotto = inverse `dealt_count` only (no check freshness); AI extract still deferred |
+| **Current slice** | R40-A32 host-weighted deal lotto (no alive/region); AI extract still deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -62,7 +62,7 @@
 | 29 | R40-A29 | Admin Pool Check status: Stalker handshake + get_profile (not player_api); M3U playlist probe | ✅ |
 | 30 | R40-A30 | Stalker scrape expires → `note` + `expiry`; Pool card Note line; paste backfill for missing | ✅ |
 | 31 | R40-A31 | Admin + worker Check status alive = `auth=1` \|\| `status=active` only (no `user_info` false green) — [RFC-075](fixed/075-[fixed]-iptv-portal-probe-detail.md) | ✅ |
-| 32 | R40-A32 | `deal_iptv_portals` lotto = inverse `dealt_count` only (drop `last_checked_at` freshness); keep host diversity 2-pass; no expiry filter | ✅ |
+| 32 | R40-A32 | `deal_iptv_portals` host lotto — weight by host `sum(dealt_count)`; no alive/region/check-freshness; 1 portal/host then fill | ✅ |
 
 ---
 
@@ -70,7 +70,7 @@
 
 Move IPTV discovery off per-user Reddit scrape into a **central ops pipeline**: admin console + Rust worker write a shared catalog pool; users spend **credits** to **deal** portals (lottery pack) filtered by region. Same Supabase as Forja accounts/`iptv_portals` — no second database.
 
-**Deal lotto (R40-A21 → R40-A32):** eligible = `catalog_pool` + `alive` + region + not already on profile. Weight = `1/(1+dealt_count)` (no check-freshness / expiry parse). Draw via exponential race (`-ln(random())/weight`). Pass 1 prefers distinct hosts; pass 2 fills remaining. Empty pack refunds the credit.
+**Deal lotto (R40-A21 → R40-A32):** eligible = `catalog_pool` + not already on profile (no alive/region). Weight hosts by `1/(1+sum(dealt_count))`. Draw hosts via exponential race; pass 1 one portal per host (mixed servers/platforms); pass 2 fills. Empty pack refunds the credit.
 
 ## Goals
 

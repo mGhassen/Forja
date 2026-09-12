@@ -163,7 +163,7 @@ class _BecauseSectionState extends State<BecauseSection> {
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting &&
               !snap.hasData) {
-            return homeLoadingShimmer(homeMovieRowSkeleton(context));
+            return homeLoadingShimmer(homePosterRowSkeleton(context));
           }
           final payload = snap.data ?? const _BecausePayload.empty();
           if (payload.items.isEmpty) return const SizedBox.shrink();

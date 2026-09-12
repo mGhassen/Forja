@@ -55,7 +55,7 @@ double homeContinueWatchingCardWidth(BuildContext context) =>
 double homeContinueWatchingCardHeight(BuildContext context) =>
     shellContinueWatchingCardHeight(context);
 
-Widget homeMovieRowSkeleton(
+Widget homePosterRowSkeleton(
   BuildContext context, {
   bool compactTop = false,
   double titleWidth = 140,
@@ -68,14 +68,14 @@ Widget homeMovieRowSkeleton(
   final top = topPadding > 0
       ? topPadding
       : homeSectionTitleTop(context, compactTop: compactTop);
-  return ds.homeMovieRowSkeleton(
+  return ds.homePosterRowSkeleton(
     titleWidth: titleWidth,
     itemCount: itemCount,
     showSubtitle: showSubtitle,
     topPadding: top,
     horizontalPadding: shellHomeSectionHorizontalPadding(context),
     titleBottomGap: shellHomeSectionBottomGap(context),
-    cardGap: shellMovieCardRowGap(context),
+    cardGap: shellPosterCardRowGap(context),
     cardWidth: cardWidth ?? MoviePosterCard.cardWidth(context),
     cardHeight: cardHeight ?? MoviePosterCard.cardHeight(context),
     borderRadius: shellCardBorderRadius(context),
@@ -90,7 +90,7 @@ Widget homeContinueWatchingSkeleton(
     topPadding: homeSectionTitleTop(context, compactTop: compactTop),
     horizontalPadding: shellHomeSectionHorizontalPadding(context),
     titleBottomGap: shellHomeSectionBottomGap(context),
-    cardGap: shellMovieCardRowGap(context),
+    cardGap: shellPosterCardRowGap(context),
     cardWidth: homeContinueWatchingCardWidth(context),
     cardHeight: homeContinueWatchingCardHeight(context),
     borderRadius: shellCardBorderRadius(context),
@@ -101,7 +101,7 @@ Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
   return ds.homeCatalogCardRowSkeleton(
     itemCount: itemCount,
     horizontalPadding: shellHomeSectionHorizontalPadding(context),
-    cardGap: shellMovieCardRowGap(context),
+    cardGap: shellPosterCardRowGap(context),
     cardWidth: MoviePosterCard.cardWidth(context),
     cardHeight: MoviePosterCard.cardHeight(context),
     borderRadius: shellCardBorderRadius(context),

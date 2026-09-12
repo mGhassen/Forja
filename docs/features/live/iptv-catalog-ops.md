@@ -68,7 +68,7 @@ cargo run -p iptv-worker -- scrape --verify
 
 Requires account feature **`dealPortal`** (default off; admin enables via Accounts → Features) **and** at least 1 credit. Authenticated users call RPC `deal_iptv_portals(profile_id, region, count)` (default region `ANY`, count `5`). Burns **1 credit**, assigns up to N alive pool portals into `user_iptv_portals`. RPC raises `deal portal not enabled` when the flag is off.
 
-**Lotto:** weighted random among eligible pool rows (`1/(1+dealt_count)` — less-dealt win more often). Prefers distinct hosts in the pack, then fills if the pool is thin. Empty pack refunds the credit. No expiry parse and no “recently checked” boost.
+**Lotto:** weighted by **host** (`url_host`) — less-dealt servers win more often. Pass 1 picks one portal per host (so a pack mixes servers / platforms); pass 2 fills if the pool is thin. Eligible = catalog pool and not already on the profile (no `alive` / region / expiry filter). Empty pack refunds the credit.
 
 In the Forja app: IPTV → Portals → **Deal** (hidden unless `dealPortal` is on) — one tap spends 1 credit for up to 5 portals (region `ANY`). Account → IPTV on the web shows the credit balance only when Deal is enabled (deal itself stays in-app).
 

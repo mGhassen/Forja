@@ -67,7 +67,7 @@ class KitEventCard extends StatefulWidget {
   }
 
   static double gridGap(BuildContext context) =>
-      shellMovieCardRowGap(context).clamp(8.0, 12.0);
+      shellPosterCardRowGap(context).clamp(8.0, 12.0);
 
   @override
   State<KitEventCard> createState() => _KitEventCardState();

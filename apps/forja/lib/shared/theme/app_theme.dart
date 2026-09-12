@@ -397,7 +397,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final box = context.findRenderObject();
     final h = box is RenderBox && box.hasSize
         ? box.size.height
-        : shellMovieCardHeight(context);
+        : shellPosterCardHeight(context);
     final bleed = widget.showFocusBorder && widget.scaleOnFocus > 1.0
         ? h * (widget.scaleOnFocus - 1) / 2 + 2.5
         : (widget.showFocusBorder ? 2.5 : 0.0);
@@ -598,7 +598,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             !railFocus &&
             widget.focusBleedWidth != 0 &&
             !policy.scaleOnHover
-        ? shellMovieCardFocusBleed(
+        ? shellCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,
             cardWidth: widget.focusBleedWidth,

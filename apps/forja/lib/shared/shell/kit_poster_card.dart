@@ -61,7 +61,7 @@ class KitPosterCard extends StatelessWidget {
     if (aspect == KitPosterAspect.landscape) {
       return shellContinueWatchingCardWidth(context);
     }
-    return shellMovieCardWidth(context);
+    return shellPosterCardWidth(context);
   }
 
   static double cardHeight(
@@ -71,7 +71,7 @@ class KitPosterCard extends StatelessWidget {
     if (aspect == KitPosterAspect.landscape) {
       return shellContinueWatchingCardHeight(context);
     }
-    return shellMovieCardHeight(context);
+    return shellPosterCardHeight(context);
   }
 
   @override

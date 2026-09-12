@@ -233,7 +233,7 @@ class _KitSectionState<T> extends State<KitSection<T>> {
 
   Widget _rowSkeleton(BuildContext context) {
     return homeLoadingShimmer(
-      homeMovieRowSkeleton(
+      homePosterRowSkeleton(
         context,
         compactTop: widget.compactTop,
         titleWidth: widget.title.length > 12
@@ -290,7 +290,7 @@ class _KitSectionState<T> extends State<KitSection<T>> {
             separatorBuilder: (_, _) => SizedBox(
               width: widget.showRank
                   ? shellScaled(context, 6).clamp(3.0, 6.0)
-                  : shellMovieCardRowGap(context),
+                  : shellPosterCardRowGap(context),
             ),
             itemBuilder: (context, index) =>
                 widget.cardBuilder(context, list[index], index),

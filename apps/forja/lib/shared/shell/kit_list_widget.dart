@@ -1147,9 +1147,9 @@ _HomeGrid _homeGrid(
   double maxWidth, {
   double chromeTop = 0,
 }) {
-  final cardW = shellMovieCardWidth(context);
-  final cardH = shellMovieCardHeight(context);
-  final gap = shellMovieCardRowGap(context);
+  final cardW = shellPosterCardWidth(context);
+  final cardH = shellPosterCardHeight(context);
+  final gap = shellPosterCardRowGap(context);
   final leading = ShellTokens.compactChromeLeadingInset(context);
   final trailing = ShellTokens.bodyHorizontalPadding;
   final inner = math.max(0.0, maxWidth - leading - trailing);

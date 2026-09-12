@@ -36,15 +36,15 @@ bool shellUsesWideLayout(BuildContext context) {
   return MediaQuery.sizeOf(context).width > ShellTokens.musicDesktopBreakpoint;
 }
 
-double shellMovieCardWidth(BuildContext context) {
+double shellPosterCardWidth(BuildContext context) {
   if (ShellScope.profileOf(context) == ShellProfile.mobile) {
     return MediaQuery.sizeOf(context).width > 900 ? 190.0 : 165.0;
   }
-  return ShellScope.metricsOf(context).homeMovieCardWidth;
+  return ShellScope.metricsOf(context).posterCardWidth;
 }
 
-double shellMovieCardHeight(BuildContext context) =>
-    (shellMovieCardWidth(context) * 1.5).roundToDouble();
+double shellPosterCardHeight(BuildContext context) =>
+    (shellPosterCardWidth(context) * 1.5).roundToDouble();
 
 double shellContinueWatchingCardWidth(BuildContext context) =>
     ShellScope.metricsOf(context).continueWatchingCardWidth;
@@ -79,9 +79,9 @@ double shellHeroHeightFraction(BuildContext context) =>
     ? ShellTokens.tvHeroHeightFraction
     : ShellTokens.heroHeightFractionDesktop;
 
-double shellMovieCardRowGap(BuildContext context) =>
+double shellPosterCardRowGap(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvMovieCardRowGap
+    ? ShellTokens.tvPosterCardRowGap
     : 14.0;
 
 /// Horizontal inset so leanback TV focus scale + border stay inside layout bounds.
@@ -89,16 +89,15 @@ double shellMovieCardRowGap(BuildContext context) =>
 /// Desktop hover must not use this as permanent padding ([FocusableControl]
 /// skips it when [ShellInputPolicy.scaleOnHover] is on).
 ///
-/// Pass [cardWidth] for non-poster cards (e.g. trailer thumbs); defaults to
-/// [shellMovieCardWidth].
-double shellMovieCardFocusBleed(
+/// Pass [cardWidth] for the scaled control; defaults to catalog poster width.
+double shellCardFocusBleed(
   BuildContext context, {
   double scaleOnFocus = ShellTokens.focusActiveScale,
   double? cardWidth,
 }) {
   const borderWidth = 1.5;
   if (scaleOnFocus <= 1.0) return borderWidth + 1;
-  final w = cardWidth ?? shellMovieCardWidth(context);
+  final w = cardWidth ?? shellPosterCardWidth(context);
   return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
 }
 
@@ -149,7 +148,7 @@ double shellHeroMinHeight(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity ? 400.0 : 320.0;
 
 double shellSearchGridCardWidth(BuildContext context) =>
-    shellMovieCardWidth(context);
+    shellPosterCardWidth(context);
 
 int shellGridCrossAxisCount(
   BuildContext context, {
@@ -169,8 +168,8 @@ bool shellIptvUsesWideLayout(BuildContext context) =>
 double shellLayoutScale(BuildContext context) {
   if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
   final raw =
-      ShellScope.metricsOf(context).homeMovieCardWidth /
-      ShellMetrics.desktop.homeMovieCardWidth;
+      ShellScope.metricsOf(context).posterCardWidth /
+      ShellMetrics.desktop.posterCardWidth;
   return math.max(ShellTokens.tvLayoutScaleFloor, raw);
 }
 

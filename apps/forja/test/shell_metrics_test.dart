@@ -13,7 +13,7 @@ void main() {
     const desktop = ShellMetrics.desktop;
     const tv = ShellMetrics.tv;
 
-    expect(tv.homeMovieCardWidth, lessThan(desktop.homeMovieCardWidth));
+    expect(tv.posterCardWidth, lessThan(desktop.posterCardWidth));
     expect(tv.continueWatchingCardWidth, lessThan(desktop.continueWatchingCardWidth));
     expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
     expect(desktop.usesTvDensity, isFalse);
@@ -22,9 +22,9 @@ void main() {
   });
 
   test('mobile metrics row exists with compact card width', () {
-    expect(ShellMetrics.mobile.homeMovieCardWidth, 165);
-    expect(ShellMetrics.desktop.homeMovieCardWidth, 190);
-    expect(ShellMetrics.tv.homeMovieCardWidth, 90);
+    expect(ShellMetrics.mobile.posterCardWidth, 165);
+    expect(ShellMetrics.desktop.posterCardWidth, 190);
+    expect(ShellMetrics.tv.posterCardWidth, 90);
   });
 
   test('input policies match profile expectations', () {

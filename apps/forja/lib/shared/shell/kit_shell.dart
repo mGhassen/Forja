@@ -2055,12 +2055,12 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
       onVisible: () => unawaited(_load()),
       builder: (activated) {
         if (!activated || (_loading && _items.isEmpty)) {
-          return homeLoadingShimmer(homeMovieRowSkeleton(context));
+          return homeLoadingShimmer(homePosterRowSkeleton(context));
         }
         final items = _items;
         if (items.isEmpty) {
           if (widget.holdEmptyStructure) {
-            return homeLoadingShimmer(homeMovieRowSkeleton(context));
+            return homeLoadingShimmer(homePosterRowSkeleton(context));
           }
           return const SizedBox.shrink();
         }
@@ -2080,7 +2080,7 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
                   end: pad,
                   bottom: widget.showRank
                       ? shellScaled(context, 6).clamp(3.0, 6.0)
-                      : shellMovieCardRowGap(context),
+                      : shellPosterCardRowGap(context),
                 ),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,

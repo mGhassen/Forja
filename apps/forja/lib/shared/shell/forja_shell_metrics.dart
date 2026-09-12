@@ -3,7 +3,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Profile-specific layout sizes. Shared colors/typography stay in [ForjaShellColors].
 class ShellMetrics {
   const ShellMetrics({
-    required this.homeMovieCardWidth,
+    required this.posterCardWidth,
     required this.continueWatchingCardWidth,
     required this.continueWatchingCardHeight,
     required this.hubCardTitleFontSize,
@@ -28,7 +28,7 @@ class ShellMetrics {
     required this.navRailBottomPadding,
   });
 
-  final double homeMovieCardWidth;
+  final double posterCardWidth;
   final double continueWatchingCardWidth;
   final double continueWatchingCardHeight;
   final double hubCardTitleFontSize;
@@ -53,7 +53,7 @@ class ShellMetrics {
   final double navRailBottomPadding;
 
   static const mobile = ShellMetrics(
-    homeMovieCardWidth: 165,
+    posterCardWidth: 165,
     continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthCompact,
     continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightCompact,
     hubCardTitleFontSize: 13,
@@ -79,7 +79,7 @@ class ShellMetrics {
   );
 
   static const desktop = ShellMetrics(
-    homeMovieCardWidth: 190,
+    posterCardWidth: 190,
     continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthDesktop,
     continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightDesktop,
     hubCardTitleFontSize: 14,
@@ -106,7 +106,7 @@ class ShellMetrics {
 
   /// Leanback density - ~90px cards; rows fill the body edge-to-edge after the nav rail.
   static const tv = ShellMetrics(
-    homeMovieCardWidth: 90,
+    posterCardWidth: 90,
     continueWatchingCardWidth: 140,
     continueWatchingCardHeight: 140 * 9 / 16,
     hubCardTitleFontSize: 12,

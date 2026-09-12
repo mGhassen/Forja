@@ -35,10 +35,10 @@ class MoviePosterCard extends StatelessWidget {
   final String? tvTabId;
   final String? tvRowId;
 
-  static double cardWidth(BuildContext context) => shellMovieCardWidth(context);
+  static double cardWidth(BuildContext context) => shellPosterCardWidth(context);
 
   static double cardHeight(BuildContext context) =>
-      shellMovieCardHeight(context);
+      shellPosterCardHeight(context);
 
   static String imageUrlFor(Movie movie) {
     if (movie.posterPath.isEmpty) return '';
