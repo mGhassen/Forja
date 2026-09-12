@@ -27,13 +27,16 @@ export 'package:forja_foundation/widgets/chrome/catalog_search_page.dart'
 
 typedef KitSearchResult = CatalogSearchResult;
 typedef KitSearchQuery = Future<List<KitSearchResult>> Function(String query);
+typedef KitSearchEmit = void Function(
+  List<KitSearchResult> results, {
+  required bool done,
+  bool canLoadMore,
+});
 typedef KitSearchProgressive = Future<void> Function(
   String query,
-  void Function(
-    List<KitSearchResult> results, {
-    required bool done,
-  }) emit,
+  KitSearchEmit emit,
 );
+typedef KitSearchLoadMore = Future<void> Function(KitSearchEmit emit);
 typedef KitRecommendationsLoader = Future<List<String>> Function({
   required String query,
   required List<KitSearchResult> results,
@@ -54,6 +57,7 @@ class KitSearchPage extends StatefulWidget {
     required this.onOpen,
     required this.loadRecommendations,
     this.onSearchProgressive,
+    this.onSearchLoadMore,
     this.structuredSearch = false,
     this.debounceMs = 500,
   });
@@ -65,6 +69,9 @@ class KitSearchPage extends StatefulWidget {
   /// Progressive host search (TMDB then addons). When set, used instead of
   /// awaiting a single [onSearch] future.
   final KitSearchProgressive? onSearchProgressive;
+
+  /// Next TMDB page on scroll (host search; capped, not infinite).
+  final KitSearchLoadMore? onSearchLoadMore;
   final KitSearchOpen onOpen;
   final KitRecommendationsLoader loadRecommendations;
 
@@ -89,9 +96,13 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   Timer? _debounce;
   String _query = '';
+  /// Last composed query that ran a search (typed + filter tokens).
+  String _activeSearchQuery = '';
   int _searchGeneration = 0;
   int _recommendGeneration = 0;
   bool _isSearching = false;
+  bool _loadingMore = false;
+  bool _canLoadMore = false;
   String? _error;
   List<KitSearchResult> _results = [];
 
@@ -120,6 +131,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
     ShellBus.registerFindShortcutHandler(_handleFindShortcut);
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
+    _resultsScrollController.addListener(_onResultsScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
@@ -334,6 +346,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
     _filterLensFirstFocusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
+    _resultsScrollController.removeListener(_onResultsScroll);
     _resultsScrollController.dispose();
     super.dispose();
   }
@@ -395,6 +408,9 @@ class _KitSearchPageState extends State<KitSearchPage> {
       setState(() {
         _results = [];
         _isSearching = false;
+        _loadingMore = false;
+        _canLoadMore = false;
+        _activeSearchQuery = '';
         _pendingGridFocusIndex = null;
       });
       _loadRecommendations();
@@ -415,6 +431,40 @@ class _KitSearchPageState extends State<KitSearchPage> {
     });
   }
 
+  void _onResultsScroll() {
+    if (!_canLoadMore || _loadingMore || _isSearching) return;
+    if (widget.onSearchLoadMore == null) return;
+    if (!_resultsScrollController.hasClients) return;
+    final pos = _resultsScrollController.position;
+    if (pos.maxScrollExtent <= 0) return;
+    if (pos.pixels < pos.maxScrollExtent - 320) return;
+    unawaited(_loadMoreResults());
+  }
+
+  Future<void> _loadMoreResults() async {
+    final loadMore = widget.onSearchLoadMore;
+    if (loadMore == null) return;
+    if (!_canLoadMore || _loadingMore || _isSearching) return;
+    final gen = _searchGeneration;
+    setState(() => _loadingMore = true);
+    try {
+      await loadMore((results, {required done, bool canLoadMore = false}) {
+        if (gen != _searchGeneration || !mounted) return;
+        setState(() {
+          _results = results;
+          _canLoadMore = canLoadMore;
+          _loadingMore = false;
+          _isSearching = !done;
+        });
+      });
+    } catch (_) {
+      if (gen != _searchGeneration || !mounted) return;
+      setState(() => _loadingMore = false);
+    }
+    if (!mounted || gen != _searchGeneration) return;
+    if (_loadingMore) setState(() => _loadingMore = false);
+  }
+
   Future<void> _performSearch(
     String query, {
     bool recordRecent = true,
@@ -422,8 +472,11 @@ class _KitSearchPageState extends State<KitSearchPage> {
     if (query.isEmpty) return;
     final gen = ++_searchGeneration;
     setState(() {
+      _activeSearchQuery = query;
       _results = [];
       _isSearching = true;
+      _loadingMore = false;
+      _canLoadMore = false;
       _error = null;
       _helperFocusedIndex = null;
       _gridFocusedIndex = 0;
@@ -434,11 +487,12 @@ class _KitSearchPageState extends State<KitSearchPage> {
     try {
       final progressive = widget.onSearchProgressive;
       if (progressive != null) {
-        await progressive(query, (results, {required done}) {
+        await progressive(query, (results, {required done, bool canLoadMore = false}) {
           if (gen != _searchGeneration || !mounted) return;
           setState(() {
             _results = results;
             _isSearching = !done;
+            _canLoadMore = canLoadMore;
             _error = null;
           });
           if (done) {
@@ -455,6 +509,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
       setState(() {
         _results = results;
         _isSearching = false;
+        _canLoadMore = false;
       });
       _loadRecommendations(query: query, results: results);
       _scheduleFocusOnResultCardIfPending();
@@ -462,6 +517,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
       if (gen != _searchGeneration || !mounted) return;
       setState(() {
         _isSearching = false;
+        _canLoadMore = false;
         _error = 'Search failed';
       });
     }
@@ -1335,10 +1391,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   Widget _buildResultsColumn(BuildContext context) {
-    if (_query.isEmpty) {
+    final active = _activeSearchQuery.trim();
+    if (active.isEmpty) {
       return Align(
         alignment: Alignment.topLeft,
-        child: _buildEmpty(hint: 'Start typing to search'),
+        child: _buildEmpty(
+          hint: _filtersOpen
+              ? 'Set filters, then tap Search'
+              : 'Start typing to search',
+        ),
       );
     }
     if (_error != null) {
@@ -1361,6 +1422,8 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
     const gridColumns = 4;
     final tvFocus = _tvFocus(context);
+    final skeletonCount = _loadingMore ? gridColumns : 0;
+    final itemCount = _results.length + skeletonCount;
 
     return TvGrid(
       tabId: widget.tvTabId,
@@ -1380,8 +1443,14 @@ class _KitSearchPageState extends State<KitSearchPage> {
             crossAxisSpacing: 14,
             childAspectRatio: 2 / 3,
           ),
-          itemCount: _results.length,
+          itemCount: itemCount,
           itemBuilder: (context, index) {
+            if (index >= _results.length) {
+              return const Padding(
+                padding: EdgeInsets.all(4),
+                child: _KitSearchSkeletonCard(),
+              );
+            }
             final item = _results[index];
             final firstColumn = index % gridColumns == 0;
             final firstRow = index ~/ gridColumns == 0;
@@ -1414,8 +1483,16 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   Widget _buildCompactBody(BuildContext context) {
     final effective = _effectiveSearchQuery();
+    final active = _activeSearchQuery.trim();
     if (_error != null) return _buildError();
-    if (effective.isEmpty) return _buildEmpty();
+    if (active.isEmpty && effective.isEmpty) return _buildEmpty();
+    if (active.isEmpty) {
+      return _buildEmpty(
+        hint: _filtersOpen
+            ? 'Set filters, then tap Search'
+            : 'Start typing to search',
+      );
+    }
     if (_isSearching && _results.isEmpty) {
       return Center(
         child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
@@ -1428,8 +1505,11 @@ class _KitSearchPageState extends State<KitSearchPage> {
     final cardWidth = ShellTokens.searchCardWidthCompact;
     final cardHeight = cardWidth * 1.5;
     final padding = ShellTokens.homeSectionHorizontalPadding;
+    const skeletonCount = 4;
+    final itemCount = _results.length + (_loadingMore ? skeletonCount : 0);
 
     return GridView.builder(
+      controller: _resultsScrollController,
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(padding, 12, padding, 24),
       gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
@@ -1438,8 +1518,14 @@ class _KitSearchPageState extends State<KitSearchPage> {
         crossAxisSpacing: 12,
         childAspectRatio: cardWidth / cardHeight,
       ),
-      itemCount: _results.length,
+      itemCount: itemCount,
       itemBuilder: (_, i) {
+        if (i >= _results.length) {
+          return const Align(
+            alignment: Alignment.topCenter,
+            child: _KitSearchSkeletonCard(),
+          );
+        }
         final item = _results[i];
         return Align(
           alignment: Alignment.topCenter,
@@ -1465,7 +1551,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
           const SizedBox(height: 16),
           Text(
             hint ??
-                (_query.isEmpty
+                (_activeSearchQuery.trim().isEmpty
                     ? 'Search for your favorite content'
                     : 'No results found'),
             style: const TextStyle(color: Colors.white38),
@@ -1483,6 +1569,29 @@ class _KitSearchPageState extends State<KitSearchPage> {
         if (effective.isEmpty) return;
         _performSearch(effective, recordRecent: false);
       },
+    );
+  }
+}
+
+class _KitSearchSkeletonCard extends StatelessWidget {
+  const _KitSearchSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: Colors.white.withValues(alpha: 0.06),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
     );
   }
 }

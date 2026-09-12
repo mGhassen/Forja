@@ -14,7 +14,7 @@ Tap the **tune** icon beside the search field to open the **filter lens**: All/F
 
 ## How to open it
 
-From **Home**, tap top-bar **Search** or use **Cmd/Ctrl+F** — both open hub kit search with the host TMDB + Stremio addon engine (`host_search`). Anime / Asian Drama top-bar Search stays pack-only hub search. The old dedicated Search nav tab is archived.
+From **Home**, tap top-bar **Search** or use **Cmd/Ctrl+F** — both open hub kit search with the host TMDB + Stremio addon engine (`host_search`). Filter-only queries work after Submit on the filter lens (no typed title required). TMDB starts with one page; scrolling loads more (up to five) with skeleton cards. Anime / Asian Drama top-bar Search stays pack-only hub search. The old dedicated Search nav tab is archived.
 
 ## What you can do
 

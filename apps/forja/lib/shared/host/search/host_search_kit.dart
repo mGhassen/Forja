@@ -78,24 +78,49 @@ KitSearchResult _stremioResult(
   );
 }
 
+void _emitHost(
+  HostSearchState state,
+  void Function(
+    List<KitSearchResult> results, {
+    required bool done,
+    bool canLoadMore,
+  }) emit,
+) {
+  emit(
+    kitResultsFromHostSearch(state),
+    done: state.done,
+    canLoadMore: state.canLoadMore,
+  );
+}
+
 /// Progressive host search for [KitSearchPage.onSearchProgressive].
 Future<void> runHostKitSearch(
   String query,
   void Function(
     List<KitSearchResult> results, {
     required bool done,
+    bool canLoadMore,
   }) emit, {
   HostSearchEngine? engine,
 }) async {
   final host = engine ?? HostSearchEngine();
   await host.run(
     query,
-    onUpdate: (state) {
-      emit(
-        kitResultsFromHostSearch(state),
-        done: state.done,
-      );
-    },
+    onUpdate: (state) => _emitHost(state, emit),
+  );
+}
+
+/// Next TMDB page for the active host search (scroll).
+Future<void> runHostKitSearchLoadMore(
+  void Function(
+    List<KitSearchResult> results, {
+    required bool done,
+    bool canLoadMore,
+  }) emit, {
+  required HostSearchEngine engine,
+}) async {
+  await engine.loadMoreTmdb(
+    onUpdate: (state) => _emitHost(state, emit),
   );
 }
 

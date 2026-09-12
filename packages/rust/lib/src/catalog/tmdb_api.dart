@@ -264,9 +264,13 @@ class TmdbApi {
   }
 
   /// Title multi-search plus discover for year / genre / person (e.g. `nolan 2022-2025`, `horror 2025`).
-  Future<List<Movie>> searchStructured(String query) async {
+  ///
+  /// [page] is the TMDB page for multi + discover (20 items each). Callers that
+  /// want more results request page 2…N on scroll (host search caps at 5).
+  Future<List<Movie>> searchStructured(String query, {int page = 1}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
+    final pageNum = page < 1 ? 1 : page;
 
     final parsed = parseSearchQuery(trimmed);
     final bounds = parsed.yearBounds;
@@ -280,13 +284,11 @@ class TmdbApi {
     }
 
     final multiFutures = <Future<List<Movie>>>[
-      safe(() => searchMulti(trimmed)),
-      safe(() => searchMulti(trimmed, page: 2)),
+      safe(() => searchMulti(trimmed, page: pageNum)),
     ];
     if (parsed.remainder.isNotEmpty &&
         parsed.remainder.toLowerCase() != trimmed.toLowerCase()) {
-      multiFutures.add(safe(() => searchMulti(parsed.remainder)));
-      multiFutures.add(safe(() => searchMulti(parsed.remainder, page: 2)));
+      multiFutures.add(safe(() => searchMulti(parsed.remainder, page: pageNum)));
     }
 
     int? personId;
@@ -301,50 +303,42 @@ class TmdbApi {
 
     final discoverFutures = <Future<List<Movie>>>[];
 
-    // TMDB returns 20/page; desktop grid is 4 cols → page1≈5 rows.
-    // Fetch a second page for +5 rows on filter/discover results.
-    const discoverPages = 2;
-
     void addMovieDiscover({List<int>? genres, int? people}) {
-      for (var page = 1; page <= discoverPages; page++) {
-        discoverFutures.add(
-          safe(
-            () => discoverMovies(
-              genres: genres,
-              withPeople: people,
-              year: singleYear,
-              releaseDateGte: singleYear == null ? gte : null,
-              releaseDateLte: singleYear == null ? lte : null,
-              minRating: parsed.minScore,
-              maxRating: parsed.maxScore,
-              withOriginCountry: parsed.originCountry,
-              language: parsed.originalLanguage,
-              page: page,
-            ),
+      discoverFutures.add(
+        safe(
+          () => discoverMovies(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
+            language: parsed.originalLanguage,
+            page: pageNum,
           ),
-        );
-      }
+        ),
+      );
     }
 
     void addTvDiscover({List<int>? genres, int? people}) {
-      for (var page = 1; page <= discoverPages; page++) {
-        discoverFutures.add(
-          safe(
-            () => discoverTvShows(
-              genres: genres,
-              withPeople: people,
-              year: singleYear,
-              releaseDateGte: singleYear == null ? gte : null,
-              releaseDateLte: singleYear == null ? lte : null,
-              minRating: parsed.minScore,
-              maxRating: parsed.maxScore,
-              withOriginCountry: parsed.originCountry,
-              language: parsed.originalLanguage,
-              page: page,
-            ),
+      discoverFutures.add(
+        safe(
+          () => discoverTvShows(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
+            language: parsed.originalLanguage,
+            page: pageNum,
           ),
-        );
-      }
+        ),
+      );
     }
 
     final wantMovies =

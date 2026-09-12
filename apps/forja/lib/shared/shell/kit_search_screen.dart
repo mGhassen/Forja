@@ -183,6 +183,12 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
                       emit,
                       engine: engine,
                     ),
+            onSearchLoadMore: engine == null
+                ? null
+                : (emit) => runHostKitSearchLoadMore(
+                      emit,
+                      engine: engine,
+                    ),
             loadRecommendations: loadRecommendations ??
                 (host ? hostKitRecommendations : _packRecommendations),
             onOpen: onOpen,
