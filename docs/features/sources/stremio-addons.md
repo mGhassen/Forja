@@ -13,7 +13,7 @@ Each installed addon is assigned to one or both features:
 | Chip | Where it runs |
 |------|----------------|
 | **Sources** | Search · TMDB details Sources · VOD stream chips |
-| **Live Sports** | Live Sports → Servers → **Stremio** (sport catalogs + HLS) |
+| **Live Sports** | Live Sports → **Catalog** chip (sport schedules + Providers streams) |
 
 Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highfly.dev/configure)) default to **Live Sports**. Movie/series addons default to **Sources**. You can change the chips anytime.
 
@@ -40,7 +40,7 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 3. Open **Settings → Addons → Stremio**, paste, and tap Install
 4. Confirm the **Sources** / **Live Sports** chips — sport addons should have **Live Sports** on
 5. Use the switch next to trash to turn an addon off without uninstalling
-6. For Live Sports: open **Live Sports → Servers → Stremio**
+6. For Live Sports: open the tab — **Catalog** lists the addon name after install (no restart); pick it for that schedule
 
 ## Tips
 

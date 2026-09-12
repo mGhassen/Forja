@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:forja_foundation/components/skeleton.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
@@ -169,20 +171,34 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   @override
   void didUpdateWidget(SourcesPanelChrome oldWidget) {
     super.didUpdateWidget(oldWidget);
+    var forceReload = false;
     if (oldWidget.title != widget.title ||
         oldWidget.subtitle != widget.subtitle) {
       _rowsByTab.clear();
       _errorByTab.clear();
-      if (_tabId.isNotEmpty) unawaited(_ensureLoaded(_tabId, force: true));
+      forceReload = true;
     }
     if (widget.reloadNonce != oldWidget.reloadNonce &&
         widget.reloadNonce != 0) {
-      if (_tabId.isNotEmpty) unawaited(_ensureLoaded(_tabId, force: true));
+      forceReload = true;
+    }
+    // Defer like [initState] — sync _ensureLoaded/_emitLoading here marks the
+    // parent dirty while LayoutBuilder is still updating this subtree.
+    if (forceReload && _tabId.isNotEmpty) {
+      final tabId = _tabId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _tabId == tabId) {
+          unawaited(_ensureLoaded(tabId, force: true));
+        }
+      });
     }
     if (widget.initialTabId != null &&
         widget.initialTabId != oldWidget.initialTabId &&
         widget.initialTabId != _tabId) {
-      _selectTab(widget.initialTabId!);
+      final next = widget.initialTabId!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _selectTab(next);
+      });
     }
     if (widget.channelQuery != null &&
         widget.channelQuery != oldWidget.channelQuery) {
@@ -238,7 +254,19 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   }
 
   void _emitLoading(bool loading) {
-    widget.onLoadingChanged?.call(loading);
+    final cb = widget.onLoadingChanged;
+    if (cb == null) return;
+    // Parents typically setState — never invoke during build/update/layout.
+    final phase = WidgetsBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      cb(loading);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      cb(loading);
+    });
   }
 
   void _selectTab(String id) {
@@ -391,12 +419,14 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
             ),
           if (loading) ...[
             if (showSearch) const SizedBox(width: 10),
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: ForjaShellColors.sectionAccent,
+            ExcludeFocus(
+              child: Text(
+                _browseActive ? 'Matching Live TV…' : 'Fetching streams…',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -419,8 +449,9 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
     required List<SourcesRow> rows,
   }) {
     if (loading && rows.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+      return _SourcesLoadingSkeleton(
+        embedded: widget.embedded,
+        usesTvDensity: widget.usesTvDensity,
       );
     }
     if (error != null && rows.isEmpty) {
@@ -768,6 +799,98 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Empty-load placeholder — two stream-card skeletons (wide: side by side).
+class _SourcesLoadingSkeleton extends StatelessWidget {
+  const _SourcesLoadingSkeleton({
+    required this.embedded,
+    required this.usesTvDensity,
+  });
+
+  final bool embedded;
+  final bool usesTvDensity;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = embedded &&
+            !usesTvDensity &&
+            constraints.maxWidth >= 720;
+        final cards = [
+          const _SourcesStreamCardSkeleton(titleFactor: 0.62, metaFactor: 0.34),
+          const _SourcesStreamCardSkeleton(titleFactor: 0.48, metaFactor: 0.28),
+        ];
+        if (wide) {
+          return Align(
+            alignment: Alignment.topCenter,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 10),
+                Expanded(child: cards[1]),
+              ],
+            ),
+          );
+        }
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              cards[0],
+              const SizedBox(height: 10),
+              cards[1],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SourcesStreamCardSkeleton extends StatelessWidget {
+  const _SourcesStreamCardSkeleton({
+    required this.titleFactor,
+    required this.metaFactor,
+  });
+
+  final double titleFactor;
+  final double metaFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.07),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FractionallySizedBox(
+            widthFactor: titleFactor,
+            alignment: Alignment.centerLeft,
+            child: const Skeleton(height: 13),
+          ),
+          const SizedBox(height: 8),
+          FractionallySizedBox(
+            widthFactor: metaFactor,
+            alignment: Alignment.centerLeft,
+            child: const Skeleton(height: 10),
+          ),
+          const SizedBox(height: 8),
+          const Skeleton(width: 72, height: 9),
+        ],
       ),
     );
   }

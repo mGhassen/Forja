@@ -21,7 +21,9 @@ abstract final class IptvResolveStreamsAdapter {
     void Function(List<KitSourcesRow> rows)? onPartial,
     bool force = false,
   }) async {
-    if (tabId == 'liveTv') {
+    // Pack chrome id is `live_tv`; loader action is `liveTv` (panelTabLoadId).
+    // Accept both so a missing layout map never cancels an in-flight Live TV search.
+    if (tabId == 'liveTv' || tabId == 'live_tv') {
       final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }

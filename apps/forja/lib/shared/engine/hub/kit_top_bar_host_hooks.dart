@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Optional host hooks for [`kit.topBar`] catalog / schedule actions.
 ///
-/// Packs declare action ids (`catalog`, `horizon`, …). Product sheets and
-/// dynamic catalog lists register here — foundation never imports them.
+/// Packs declare action ids (`catalog`, `horizon`, …). Catalog actions may
+/// list opaque `deps` (e.g. `['stremio']`) so the host reloads dynamic
+/// options when those revision tokens bump. Product sheets and dynamic
+/// catalog lists register here — foundation never imports them.
 typedef KitTopBarCatalogOptionsLoader = Future<List<({String id, String label})>>
     Function();
 

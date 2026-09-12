@@ -9,6 +9,7 @@ import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja/shared/shell/kit_list_event_search.dart';
 import 'package:forja/shared/shell/forja_action_chip.dart';
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
+import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -17,9 +18,43 @@ import 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart'
     show TopBarActions;
 
+/// Opaque pack `deps` on catalog actions (`deps: ['stremio']`, …).
+///
+/// Host maps known tokens to revision watches — unknown tokens are ignored.
+List<String> kitTopBarCatalogDeps(List<Map<String, dynamic>> actions) {
+  final out = <String>{};
+  for (final a in actions) {
+    final id = (a['id'] ?? '').toString();
+    final isCatalog = id == 'catalog' || a['dynamicCatalogs'] == true;
+    if (!isCatalog) continue;
+    final raw = a['deps'];
+    if (raw is! List) continue;
+    for (final d in raw) {
+      final s = d?.toString().trim().toLowerCase() ?? '';
+      if (s.isNotEmpty) out.add(s);
+    }
+  }
+  final list = out.toList()..sort();
+  return list;
+}
+
+String kitTopBarCatalogDepsKey(List<String> deps) => deps.join(',');
+
 /// Dynamic catalog options from [KitTopBarHostHooks.loadCatalogOptions].
-final kitTopBarCatalogOptionsProvider =
-    FutureProvider.autoDispose<List<({String id, String label})>>((ref) async {
+///
+/// [depsKey] is sorted pack `deps` joined by `,` (empty = no revision watches).
+final kitTopBarCatalogOptionsProvider = FutureProvider.autoDispose
+    .family<List<({String id, String label})>, String>((ref, depsKey) async {
+  for (final d in depsKey.split(',')) {
+    final token = d.trim();
+    if (token.isEmpty) continue;
+    switch (token) {
+      case 'stremio':
+        ref.watch(addonRevisionProvider);
+      default:
+        break;
+    }
+  }
   final loader = KitTopBarHostHooks.loadCatalogOptions;
   if (loader == null) return const [];
   return loader();
@@ -77,7 +112,8 @@ class KitTopBarActions extends ConsumerWidget {
         kitFocusEdge(tabId, spec['focusDown']?.toString(), last: true);
     final focusLeft = kitFocusSide(tabId, spec['focusLeft']);
     final focusRight = kitFocusSide(tabId, spec['focusRight']);
-    final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider);
+    final depsKey = kitTopBarCatalogDepsKey(kitTopBarCatalogDeps(actions));
+    final catalogsAsync = ref.watch(kitTopBarCatalogOptionsProvider(depsKey));
     final catalogOptions = catalogsAsync.asData?.value ?? const [];
     final chromeKey = kitChromeKeyForTab(tabId);
     final layoutHorizon = scope.selectedId('horizon') ??

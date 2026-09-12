@@ -20,7 +20,6 @@ bool liveCatalogEventsSoftMatch({
   bool alwaysOnA = false,
   bool alwaysOnB = false,
 }) {
-  if (alwaysOnA || alwaysOnB) return false;
   if (idA.isNotEmpty && idB.isNotEmpty && idA == idB) return true;
 
   // Prefer soft team equality. Do not use matchTextKey pair keys — those
@@ -40,9 +39,14 @@ bool liveCatalogEventsSoftMatch({
       homeB.isNotEmpty &&
       awayB.isNotEmpty;
   if (haveTeams) {
+    // Dateless schedule rows with sources[] are isAlwaysOn — still merge when
+    // both sides parse as the same fixture pair (kickoff missing ≠ 24/7).
     return liveTeamPairSoftEqual(homeA, awayA, homeB, awayB) &&
         liveEventDatesCloseEnough(dateMsA, dateMsB);
   }
+
+  // True 24/7 / always-on without a team pair must not collapse via title keys.
+  if (alwaysOnA || alwaysOnB) return false;
 
   if (liveEventSessionSoftEqual(titleA, titleB) &&
       liveEventDatesCloseEnough(dateMsA, dateMsB)) {
@@ -74,7 +78,6 @@ String? liveEventMergeBucketKey({
   required String title,
   bool alwaysOn = false,
 }) {
-  if (alwaysOn) return null;
   final (home, away) = resolveLiveMatchTeams(
     homeTeam: homeTeam,
     awayTeam: awayTeam,
@@ -83,9 +86,12 @@ String? liveEventMergeBucketKey({
   final homeTok = liveTeamMatchTokens(home);
   final awayTok = liveTeamMatchTokens(away);
   if (homeTok.isNotEmpty && awayTok.isNotEmpty) {
+    // Team pair even when isAlwaysOn (dateless + sources) so soft-match runs.
     final pair = [homeTok.first, awayTok.first]..sort();
     return 'c:${pair.join('|')}';
   }
+  // Real 24/7 without teams — keep out of coarse title buckets.
+  if (alwaysOn) return null;
   final titleKey = matchTextKey(title);
   if (titleKey.isEmpty) return null;
   return 'n:$titleKey';

@@ -44,7 +44,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
   bool _streamsVisible = false;
   bool _heroFocusDone = false;
   String _liveTvChannelQuery = '';
-  bool _streamsLoading = false;
+  bool _streamsLoading = true;
   int _sourcesReloadNonce = 0;
 
   @override
@@ -267,28 +267,30 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                       ),
                     ],
                     const Spacer(),
-                    Button(
-                      variant: ButtonVariant.plainIcon,
-                      size: ButtonSize.icon,
-                      icon: Icons.refresh_rounded,
-                      tooltip: 'Reload',
-                      color: ForjaShellColors.textSecondary,
-                      iconSize: 20,
-                      onPressed: _streamsLoading
-                          ? null
-                          : () => setState(() => _sourcesReloadNonce++),
-                    ),
-                    if (_streamsLoading) ...[
-                      const SizedBox(width: 10),
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: ForjaShellColors.sectionAccent,
+                    if (_streamsLoading)
+                      ExcludeFocus(
+                        child: Text(
+                          browseIds.contains(_tabId)
+                              ? 'Matching Live TV…'
+                              : 'Fetching streams…',
+                          style: TextStyle(
+                            color: ForjaShellColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                      )
+                    else
+                      Button(
+                        variant: ButtonVariant.plainIcon,
+                        size: ButtonSize.icon,
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Reload',
+                        color: ForjaShellColors.textSecondary,
+                        iconSize: 20,
+                        onPressed: () =>
+                            setState(() => _sourcesReloadNonce++),
                       ),
-                    ],
                   ],
                 ),
               ),

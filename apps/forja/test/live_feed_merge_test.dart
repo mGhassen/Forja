@@ -71,6 +71,44 @@ void main() {
         isFalse,
       );
     });
+
+    test('dateless always-on fixture still soft-matches dated sibling', () {
+      // Catalog rows with sources[] and dateMs==0 are isAlwaysOn — must not
+      // block team-pair merge (Fulham at Liverpool vs Liverpool - Fulham).
+      expect(
+        liveCatalogEventsSoftMatch(
+          idA: 'a',
+          titleA: 'Fulham at Liverpool',
+          homeTeamA: null,
+          awayTeamA: null,
+          dateMsA: DateTime(2026, 9, 12, 15).millisecondsSinceEpoch,
+          idB: 'b',
+          titleB: 'Liverpool - Fulham',
+          homeTeamB: null,
+          awayTeamB: null,
+          dateMsB: 0,
+          alwaysOnB: true,
+        ),
+        isTrue,
+      );
+      expect(
+        liveCatalogEventsSoftMatch(
+          idA: 'a',
+          titleA: 'Sky Sports Main Event',
+          homeTeamA: null,
+          awayTeamA: null,
+          dateMsA: 0,
+          idB: 'b',
+          titleB: 'Sky Sports Main Event',
+          homeTeamB: null,
+          awayTeamB: null,
+          dateMsB: 0,
+          alwaysOnA: true,
+          alwaysOnB: true,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('mergeLiveFeedMatchingRows', () {
@@ -185,6 +223,40 @@ void main() {
         },
       ]);
       expect(merged, hasLength(2));
+    });
+
+    test('collapses dated PPV at-home with dateless dash sibling', () {
+      final kick = DateTime(2026, 9, 12, 15).millisecondsSinceEpoch;
+      final merged = mergeLiveFeedMatchingRows([
+        {
+          'id': '1',
+          'title': 'Fulham at Liverpool',
+          'category': 'Premier League',
+          'date': kick,
+          'airing': true,
+          'poster': 'https://example.com/crest.png',
+          'viewers': 32219,
+          'sources': [
+            {'source': 'ppv', 'id': '1'},
+          ],
+        },
+        {
+          'id': '2',
+          'title': 'Liverpool - Fulham',
+          'category': 'Football',
+          'airing': true,
+          'sources': [
+            {'source': 'streamed', 'id': '2'},
+          ],
+        },
+      ]);
+      expect(merged, hasLength(1));
+      expect(merged.first['viewers'], 32219);
+      expect(
+        (merged.first['category'] as String).toLowerCase(),
+        contains('premier'),
+      );
+      expect(merged.first['sources'], hasLength(2));
     });
 
     test('unions broadcastChannels from guide sibling onto stream card', () {
