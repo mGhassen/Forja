@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/hub/kit_list_source.dart';
-import 'package:forja/shared/engine/hub/host_list_registry.dart';
+import 'package:forja/shared/host/layout/kit/kit_list_source.dart';
+import 'package:forja/shared/engine/runtime/host_list_registry.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja_foundation/widgets/details/entry_details.dart';

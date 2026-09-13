@@ -371,20 +371,13 @@ class PlayerStreamMenu {
 
   static SourceDomain _resolveProviderDomain(
     Movie? movie,
-    Map<String, dynamic> providers,
+    Map<String, dynamic> _,
   ) {
-    if (providers.keys.any((k) {
-      final id = k.trim().toLowerCase();
-      return id == 'kisskh' || id.startsWith('kisskh.');
-    })) {
-      return SourceDomain.asianDrama;
-    }
-    final media = movie?.mediaType.toLowerCase() ?? '';
-    if (media == 'anime') return SourceDomain.anime;
+    // Opaque mediaType only — no pack-id sniffing (RFC-109).
     return SourceDomain.fromMediaType(movie?.mediaType);
   }
 
-  /// Per-title scope for reliability scores (film / episode / anime). Asian drama → null.
+  /// Per-title scope for reliability scores (film / episode). Asian drama → null.
   static ProviderScoreScope? scoreScope({
     Movie? movie,
     Map<String, dynamic>? providers,
@@ -395,24 +388,18 @@ class PlayerStreamMenu {
   }) {
     if (movie == null) return null;
     final prov = providers ?? const <String, dynamic>{};
-
-    final active = (activeProvider ?? '').trim().toLowerCase();
-    if (active == 'kisskh' || active.startsWith('kisskh.')) return null;
-    if (prov.isNotEmpty &&
-        prov.keys.every((k) {
-          final id = k.trim().toLowerCase();
-          return id == 'kisskh' || id.startsWith('kisskh.');
-        })) {
-      return null;
-    }
-
     final domain = _resolveProviderDomain(movie, prov);
     if (domain == SourceDomain.asianDrama) return null;
 
     if (domain == SourceDomain.anime || hubEpisodeNumber != null) {
-      final anilistId = movie.id < 0 ? -movie.id : movie.id;
+      final contentId = movie.id < 0 ? -movie.id : movie.id;
       final ep = (hubEpisodeNumber ?? selectedEpisode ?? 1).toInt();
-      return ProviderScoreScope.anime(anilistId: anilistId, episode: ep);
+      // Episode-scoped score key (catalog id opaque — not pack-named).
+      return ProviderScoreScope.tv(
+        tmdbId: contentId,
+        season: selectedSeason ?? 1,
+        episode: ep,
+      );
     }
 
     if (movie.mediaType == 'tv') {

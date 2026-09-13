@@ -93,12 +93,12 @@ class EnginePlugin {
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isKitPlugin => kind == 'catalog';
 
-  /// Hub feed that calls `ctx.host.liveFeed.load` (Live Sports packs).
-  /// EngineJS has no liveFeed bridge yet — [EngineService.runCatalog] must use
+  /// Hub feed that calls `ctx.host.feed.load` (Live Sports packs; `liveFeed` alias deprecated).
+  /// EngineJS has no feed bridge yet — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout/filters).
   bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
 
-  /// Hub feed that calls `ctx.host.bookmarks` / `ctx.host.simkl` (list packs).
+  /// Hub feed that calls `ctx.host.store` / `ctx.host.simkl` (list packs; `bookmarks` alias).
   /// EngineJS has no host bridges — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout).
   bool get needsListsHost => isKitPlugin && types.contains('list');
@@ -494,7 +494,6 @@ class EnginePack {
       'hubs/home/manifest.json': 'home',
       'hubs/manifest.json': 'home',
       'iptv/vod/manifest.json': 'iptv-vod',
-      'hubs/iptv/manifest.json': 'iptv-vod',
     };
     for (final e in core.entries) {
       if (path.endsWith(e.key)) return e.value;

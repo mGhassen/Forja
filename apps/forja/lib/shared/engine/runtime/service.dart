@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
+import 'package:forja/shared/engine/runtime/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
-import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
-import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
+import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
+import 'package:forja/shared/engine/feeds/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';

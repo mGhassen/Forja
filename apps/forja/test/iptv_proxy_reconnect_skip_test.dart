@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv_proxy_reconnect_skip.dart';
+import 'package:forja/shared/host/portals_ui/iptv_proxy_reconnect_skip.dart';
 
 void main() {
   group('iptvProxyReconnectSkipBytes', () {

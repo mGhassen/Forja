@@ -246,15 +246,6 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
-  // Legacy KissKh CDN sniff - only when provider identity is unknown.
-  if (policy == null && streamUrl != null && _isKissKhCdnStream(streamUrl)) {
-    final ref = take('Referer', 'referer') ?? '';
-    if (ref.isEmpty || _isKissKhCdnStream(ref) || !ref.contains('kisskh')) {
-      putCanonical('Referer', 'referer', 'https://kisskh.co/');
-      putCanonical('Origin', 'origin', 'https://kisskh.co');
-    }
-  }
-
   // Vidsrc CloudStream (`/pl/…/master.m3u8?token=`): master/variant 200 with
   // any headers, but leaf `page-N.html` segments return CF 403 when Referer or
   // Origin is set. Browser players use referrerpolicy=no-referrer - strip both
@@ -331,15 +322,6 @@ Map<String, String> resolvePlaybackHttpHeaders(
   return out;
 }
 
-bool _isKissKhCdnStream(String url) {
-  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  // cdnvideo*.shop (legacy) · streamingcdn*.site (current HLS) · kisskh hosts
-  return host.contains('cdnvideo') ||
-      host.contains('streamingcdn') ||
-      host.contains('kisskh');
-}
-
 /// Accept any host in the same provider family as [policyHost].
 bool _refererMatchesPolicyFamily(String refHost, String policyHost) {
   if (refHost.isEmpty || policyHost.isEmpty) return false;
@@ -356,7 +338,12 @@ bool _refererMatchesPolicyFamily(String refHost, String policyHost) {
       (refHost.contains('allmanga') || refHost.contains('allanime'))) {
     return true;
   }
-  if (policyHost.contains('kisskh') && refHost.contains('kisskh')) {
+  // Shared registrable label (e.g. kisskh.co ↔ kisskh.nl) — host family only.
+  final policyLabel = policyHost.split('.').firstWhere(
+        (p) => p.isNotEmpty,
+        orElse: () => '',
+      );
+  if (policyLabel.length >= 4 && refHost.contains(policyLabel)) {
     return true;
   }
   return false;

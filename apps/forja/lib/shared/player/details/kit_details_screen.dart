@@ -2,34 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/hub/kit_details_meta.dart';
-import 'package:forja/shared/engine/hub/kit_details_play.dart';
-import 'package:forja/shared/engine/hub/kit_details_sections.dart';
-import 'package:forja/shared/engine/hub/kit_details_stremio.dart';
+import 'package:forja/shared/host/layout/kit/kit_details_meta.dart';
+import 'package:forja/shared/host/layout/kit/kit_details_play.dart';
+import 'package:forja/shared/host/layout/kit/kit_details_sections.dart';
+import 'package:forja/shared/host/layout/kit/kit_details_stremio.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
-import 'package:forja/shared/engine/hub/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/meta_movie.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
-import 'package:forja/shared/engine/hub/meta_runtime.dart';
+import 'package:forja/shared/engine/runtime/plugin_actions.dart';
 import 'package:forja/shared/shell/feedback/shell_error_retry_panel.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/engine/hub/kit_iptv_play_hooks.dart';
-import 'package:forja/shared/engine/hub/kit_panel_source_flags_hooks.dart';
+import 'package:forja/shared/host/layout/kit/kit_iptv_play_hooks.dart';
+import 'package:forja/shared/host/layout/kit/kit_panel_source_flags_hooks.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
-import 'package:forja/shared/engine/lists/list_follow.dart';
-import 'package:forja/shared/engine/lists/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/engine/hub/pack_filters.dart';
-import 'package:forja/shared/engine/hub/play_filters.dart';
-import 'package:forja/shared/shell/focus/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/play_filters.dart';
+import 'package:forja/shared/host/layout/hero_pill_buttons.dart';
 import 'package:forja/shared/player/sources/kit_sources.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/kit_list_status_hero.dart';
@@ -915,9 +915,7 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
             : _revealedDetailsHeroPlayFocus);
 
     // Episodes own 0..(multi-season ? 1 : 0). Body rails continue after.
-    // Order: Characters/Crew/Trailers → other pack rails → More Like This last.
-    // Home used to put pack recommendations above Cast, so ↑ from Characters
-    // landed on More Like This.
+    // Packs emit cast/crew/trailers/recs as rails — host does not invent TMDB sections.
     final metaRowBase = !hasEpisodes
         ? 0
         : (seasons.length > 1 ? 2 : 1);
@@ -932,28 +930,15 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
         ? _iptvRecHits.map((h) => h.movie).toList()
         : null;
 
-    final identitySections = buildKitTmdbDetailSections(
-      context: context,
-      pluginId: widget.pluginId,
-      cast: show.cast,
-      crew: show.crew,
-      trailers: hubMetaTrailers(show),
-      tvFocus: tvFocus,
-      tvRowOrderBase: metaRowBase,
-      firstMetaFocusUp: firstMetaFocusUp,
-      includeRecommendations: false,
-    );
     final packMidSections = buildKitDetailRailSections(
       context: context,
       pluginId: widget.pluginId,
       rails: packOther,
       tvFocus: tvFocus,
-      tvRowOrderBase: metaRowBase + identitySections.length,
-      firstMetaFocusUp:
-          identitySections.isEmpty ? firstMetaFocusUp : null,
+      tvRowOrderBase: metaRowBase,
+      firstMetaFocusUp: firstMetaFocusUp,
     );
-    final recOrderBase =
-        metaRowBase + identitySections.length + packMidSections.length;
+    final recOrderBase = metaRowBase + packMidSections.length;
     final packRecSections = hasPackRecs
         ? buildKitDetailRailSections(
             context: context,
@@ -961,52 +946,45 @@ class _KitDetailsScreenState extends ConsumerState<KitDetailsScreen> {
             rails: packRecs,
             tvFocus: tvFocus,
             tvRowOrderBase: recOrderBase,
-            firstMetaFocusUp: identitySections.isEmpty &&
-                    packMidSections.isEmpty
-                ? firstMetaFocusUp
-                : null,
+            firstMetaFocusUp:
+                packMidSections.isEmpty ? firstMetaFocusUp : null,
           )
         : const <Widget>[];
-    final tmdbRecSections = hasPackRecs
-        ? const <Widget>[]
-        : buildKitTmdbDetailSections(
-            context: context,
-            pluginId: widget.pluginId,
-            tvFocus: tvFocus,
-            tvRowOrderBase: recOrderBase,
-            firstMetaFocusUp: identitySections.isEmpty &&
-                    packMidSections.isEmpty
-                ? firstMetaFocusUp
-                : null,
-            includeCast: false,
-            includeCrew: false,
-            includeTrailers: false,
-            includeRecommendations: true,
-            recommendations: iptvRecs,
-            onRecommendationTap: isIptv && _iptvPortal != null
-                ? (movie) {
-                    final open = KitIptvPlayHooks.openVodStream;
-                    if (open == null) return;
-                    for (final hit in _iptvRecHits) {
-                      if (hit.movie.id != movie.id) continue;
-                      unawaited(
-                        open(
-                          context,
-                          stream: hit.stream,
-                          portal: _iptvPortal!,
-                        ),
-                      );
-                      break;
-                    }
-                  }
-                : null,
-          );
+    final iptvRecSections = !hasPackRecs &&
+            iptvRecs != null &&
+            iptvRecs.isNotEmpty
+        ? <Widget>[
+            MediaDetailsRecommendationsSection(
+              movies: iptvRecs,
+              onMovieTap: (movie) {
+                final open = KitIptvPlayHooks.openVodStream;
+                final portal = _iptvPortal;
+                if (open == null || portal == null) return;
+                for (final hit in _iptvRecHits) {
+                  if (hit.movie.id != movie.id) continue;
+                  unawaited(
+                    open(
+                      context,
+                      stream: hit.stream,
+                      portal: portal,
+                    ),
+                  );
+                  break;
+                }
+              },
+              tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+              tvRowId: 'recommendations',
+              tvRowOrder: recOrderBase,
+              tvFocusUp:
+                  packMidSections.isEmpty ? firstMetaFocusUp : null,
+            ),
+          ]
+        : const <Widget>[];
     final sections = [
       if (episodePicker != null) episodePicker,
-      ...identitySections,
       ...packMidSections,
       ...packRecSections,
-      ...tmdbRecSections,
+      ...iptvRecSections,
     ];
 
     return MediaDetailsScrollPage(

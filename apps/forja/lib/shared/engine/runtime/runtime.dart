@@ -7,11 +7,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
-import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
-import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
-import 'package:forja/shared/engine/live/live_goat_unlock.dart';
-import 'package:forja/shared/engine/live/pack_unlock_files.dart';
-import 'package:forja/features/iptv/channel_search/iptv_channel_search.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/store/engine_store.dart';
+import 'package:forja/shared/engine/feeds/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
+import 'package:forja/shared/engine/unlock/goat_unlock.dart';
+import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
+import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -307,6 +309,52 @@ class EngineRuntime {
       return null;
     });
 
+    br('CacheGet', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final v = EngineCache.instance.get(
+          (m['namespace'] ?? '').toString(),
+          (m['key'] ?? '').toString(),
+        );
+        if (v == null) return '';
+        return jsonEncode(v);
+      } catch (_) {
+        return '';
+      }
+    });
+
+    br('CacheSet', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final value = m['value'];
+        if (value == null) return null;
+        Duration? ttl;
+        final ttlRaw = m['ttlMs'];
+        if (ttlRaw is num && ttlRaw > 0) {
+          ttl = Duration(milliseconds: ttlRaw.toInt());
+        }
+        EngineCache.instance.set(
+          (m['namespace'] ?? '').toString(),
+          (m['key'] ?? '').toString(),
+          value,
+          ttl: ttl,
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('CacheInvalidate', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final key = (m['key'] ?? '').toString().trim();
+        EngineCache.instance.invalidate(
+          (m['namespace'] ?? '').toString(),
+          key.isEmpty ? null : key,
+        );
+      } catch (_) {}
+      return null;
+    });
+
     br('BookmarksListStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -317,7 +365,52 @@ class EngineRuntime {
             ? Map<String, dynamic>.from(queryRaw)
             : <String, dynamic>{};
         final gen = _fetchGeneration;
-        unawaited(_dispatchBookmarksList(id: id, query: query, gen: gen));
+        unawaited(_dispatchStoreList(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('StoreListStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final queryRaw = m['query'];
+        final query = queryRaw is Map
+            ? Map<String, dynamic>.from(queryRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(_dispatchStoreList(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('StoreUpsertStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final key = (m['key'] ?? '').toString();
+        final dataRaw = m['data'];
+        final data = dataRaw is Map
+            ? Map<String, dynamic>.from(dataRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchStoreUpsert(id: id, key: key, data: data, gen: gen),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('StoreRemoveStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final key = (m['key'] ?? '').toString();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchStoreRemove(id: id, key: key, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -1134,7 +1227,7 @@ class EngineRuntime {
           return search(primary).then(function(hit){ return hit || search(secondary); });
         }
       };
-      h.liveFeed = {
+      h.feed = {
         load: function(query) {
           return new Promise(function(resolve) {
             var id = ++globalThis.__engineLiveFeedSeq;
@@ -1148,19 +1241,75 @@ class EngineRuntime {
           });
         }
       };
-      h.bookmarks = {
+      // Deprecated (RFC-109): use ctx.host.feed.load — temporary alias.
+      h.liveFeed = h.feed;
+      h.cache = {
+        get: function(namespace, key) {
+          var raw = sendMessage('CacheGet', JSON.stringify({
+            namespace: String(namespace == null ? '' : namespace),
+            key: String(key == null ? '' : key)
+          })) || '';
+          if (!raw) return null;
+          try { return JSON.parse(raw); } catch (e) { return null; }
+        },
+        set: function(namespace, key, value, opts) {
+          var o = opts == null ? {} : opts;
+          sendMessage('CacheSet', JSON.stringify({
+            namespace: String(namespace == null ? '' : namespace),
+            key: String(key == null ? '' : key),
+            value: value,
+            ttlMs: o.ttlMs == null ? null : o.ttlMs
+          }));
+        },
+        invalidate: function(namespace, key) {
+          sendMessage('CacheInvalidate', JSON.stringify({
+            namespace: String(namespace == null ? '' : namespace),
+            key: key == null ? '' : String(key)
+          }));
+        }
+      };
+      h.store = {
         list: function(query) {
           return new Promise(function(resolve) {
-            var id = ++globalThis.__engineBookmarksSeq;
-            globalThis.__engineBookmarksPending[id] = function(env) {
+            var id = ++globalThis.__engineStoreSeq;
+            globalThis.__engineStorePending[id] = function(env) {
               resolve(env && Array.isArray(env.rows) ? env.rows : []);
             };
-            sendMessage('BookmarksListStart', JSON.stringify({
+            sendMessage('StoreListStart', JSON.stringify({
               id: id,
               query: query == null ? {} : query
             }));
           });
+        },
+        upsert: function(key, data) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineStoreSeq;
+            globalThis.__engineStorePending[id] = function(env) {
+              resolve(!!(env && env.ok));
+            };
+            sendMessage('StoreUpsertStart', JSON.stringify({
+              id: id,
+              key: String(key == null ? '' : key),
+              data: data == null ? {} : data
+            }));
+          });
+        },
+        remove: function(key) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineStoreSeq;
+            globalThis.__engineStorePending[id] = function(env) {
+              resolve(!!(env && env.ok));
+            };
+            sendMessage('StoreRemoveStart', JSON.stringify({
+              id: id,
+              key: String(key == null ? '' : key)
+            }));
+          });
         }
+      };
+      // Temporary alias — prefer ctx.host.store.list (RFC-109).
+      h.bookmarks = {
+        list: function(query) { return h.store.list(query); }
       };
       h.simkl = {
         isLoggedIn: function() {
@@ -1185,7 +1334,7 @@ class EngineRuntime {
           });
         }
       };
-      h.iptv = {
+      h.portals = {
         searchChannels: function(opts) {
           return new Promise(function(resolve) {
             var id = ++globalThis.__engineIptvSearchSeq;
@@ -1203,6 +1352,8 @@ class EngineRuntime {
           });
         }
       };
+      // Temporary product alias — prefer ctx.host.portals.searchChannels.
+      h.iptv = h.portals;
       return h;
     })(),
     hop: globalThis.__engineHop,
@@ -1539,7 +1690,7 @@ class EngineRuntime {
     _resolveLiveFeed(id: id, gen: gen, rows: rows);
   }
 
-  Future<void> _dispatchBookmarksList({
+  Future<void> _dispatchStoreList({
     required int id,
     required Map<String, dynamic> query,
     required int gen,
@@ -1547,27 +1698,52 @@ class EngineRuntime {
     if (gen != _fetchGeneration) return;
     List<Map<String, dynamic>> rows = const [];
     try {
-      final store = BookmarkStore();
-      await store.ensureLoaded();
       final status = (query['status'] ?? query['listStatus'] ?? '')
           .toString()
           .trim();
-      final all = [
-        for (final e in store.items) Map<String, dynamic>.from(e),
-      ];
-      if (status.isEmpty) {
-        rows = all;
-      } else {
-        rows = [
-          for (final e in all)
-            if ((e['listStatus']?.toString() ?? 'plantowatch') == status) e,
-        ];
-      }
+      rows = await EngineStore.instance.list(
+        status: status.isEmpty ? null : status,
+      );
     } catch (e, st) {
-      _forjaRuntimeLog('bookmarks.list failed: $e\n$st');
+      _forjaRuntimeLog('store.list failed: $e\n$st');
     }
     if (gen != _fetchGeneration) return;
-    _resolveBookmarks(id: id, gen: gen, rows: rows);
+    _resolveStore(id: id, gen: gen, envelope: {'rows': rows});
+  }
+
+  Future<void> _dispatchStoreUpsert({
+    required int id,
+    required String key,
+    required Map<String, dynamic> data,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    var ok = false;
+    try {
+      await EngineStore.instance.upsert(key, data);
+      ok = true;
+    } catch (e, st) {
+      _forjaRuntimeLog('store.upsert failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveStore(id: id, gen: gen, envelope: {'ok': ok});
+  }
+
+  Future<void> _dispatchStoreRemove({
+    required int id,
+    required String key,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    var ok = false;
+    try {
+      await EngineStore.instance.remove(key);
+      ok = true;
+    } catch (e, st) {
+      _forjaRuntimeLog('store.remove failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveStore(id: id, gen: gen, envelope: {'ok': ok});
   }
 
   Future<void> _dispatchSimklLoggedIn({
@@ -1642,22 +1818,22 @@ class EngineRuntime {
     _evalOn(
       rt,
       'try { globalThis.__engineLiveFeedResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
-      sourceUrl: 'engine://liveFeed/$id',
+      sourceUrl: 'engine://feed/$id',
     );
   }
 
-  void _resolveBookmarks({
+  void _resolveStore({
     required int id,
     required int gen,
-    required List<Map<String, dynamic>> rows,
+    required Map<String, dynamic> envelope,
   }) {
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
     if (rt == null) return;
     _evalOn(
       rt,
-      'try { globalThis.__engineBookmarksResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
-      sourceUrl: 'engine://bookmarks/$id',
+      'try { globalThis.__engineStoreResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://store/$id',
     );
   }
 
@@ -2134,11 +2310,11 @@ class EngineRuntime {
     var p = globalThis.__engineLiveFeedPending[id];
     if (p) { delete globalThis.__engineLiveFeedPending[id]; p(envelope); }
   };
-  globalThis.__engineBookmarksPending = globalThis.__engineBookmarksPending || {};
-  globalThis.__engineBookmarksSeq = globalThis.__engineBookmarksSeq || 0;
-  globalThis.__engineBookmarksResolve = function(id, envelope){
-    var p = globalThis.__engineBookmarksPending[id];
-    if (p) { delete globalThis.__engineBookmarksPending[id]; p(envelope); }
+  globalThis.__engineStorePending = globalThis.__engineStorePending || {};
+  globalThis.__engineStoreSeq = globalThis.__engineStoreSeq || 0;
+  globalThis.__engineStoreResolve = function(id, envelope){
+    var p = globalThis.__engineStorePending[id];
+    if (p) { delete globalThis.__engineStorePending[id]; p(envelope); }
   };
   globalThis.__engineSimklPending = globalThis.__engineSimklPending || {};
   globalThis.__engineSimklSeq = globalThis.__engineSimklSeq || 0;

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
-import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
+import 'package:forja/shared/engine/portals/models.dart';
 
 void main() {
   test('encode/decode round-trips categories and streams', () {

@@ -1,5 +1,5 @@
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
@@ -68,11 +68,12 @@ class BootNeeds {
   bool get needsForjaPluginWarm =>
       catalogTab || engine || torrent || nuvio || pendingPackDisk;
 
-  /// Any Features rail slot that is not host-core IPTV / Live / Settings.
+  /// Any Features rail slot that is not Settings (and not archived).
   ///
   /// Includes hub ids whose packs are not contributed yet (lean stubs) — same
   /// set MainScreen paints with placeholder icons. Do **not** require
   /// [PluginNavRegistry.isKitTab] / [PluginNavRegistry.isContributed].
+  /// IPTV / Live Sports pack tabs count here once visible (RFC-109).
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
     if (id == 'settings') return false;

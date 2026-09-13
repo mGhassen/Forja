@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live/live_feed_aggregate.dart';
+import 'package:forja/shared/engine/feeds/live_feed_aggregate.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/meta_feed_list_source.dart';
-import 'package:forja/shared/engine/hub/host_list_registry.dart';
-import 'package:forja/shared/engine/hub/kit_live_boot.dart';
+import 'package:forja/shared/engine/runtime/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/live_surface_open.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -12,8 +11,8 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     HostListRegistry.debugReset();
-    KitLiveBoot.debugReset();
-    KitLiveBoot.ensureRegistered();
+    LiveSurfaceOpen.debugReset();
+    LiveSurfaceOpen.ensureRegistered();
   });
 
   group('live_schedule kit.list source', () {
@@ -37,16 +36,16 @@ void main() {
         LayoutTypes.treeContains(
           layout,
           slot: LayoutTypes.list,
-          listSource: KitLiveBoot.listSourceId,
+          listSource: LiveSurfaceOpen.listSourceId,
         ),
         isTrue,
       );
       expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
-      final source = HostListRegistry.resolve(sourceId: 'live_schedule');
-      expect(source, isNotNull);
-      expect(source, same(MetaFeedListSource.liveSchedule));
-      expect(source!.wantsHostBody, isFalse);
-      expect(source.id, KitLiveBoot.listSourceId);
+      // Pack MetaRuntime feed — no special host list source registration.
+      expect(
+        HostListRegistry.resolve(sourceId: 'live_schedule'),
+        isNull,
+      );
     });
 
     test('generic kit types only — no product-named live slots', () {
@@ -152,10 +151,6 @@ void main() {
         ),
         isTrue,
       );
-    });
-
-    test('MetaFeedListSource resolves live_schedule id', () {
-      expect(MetaFeedListSource.liveSchedule.id, 'live_schedule');
     });
   });
 }

@@ -5,11 +5,12 @@ alwaysApply: true
 
 # Catalog hubs — host is generic
 
-**Full model:** [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
+**Full model:** [pack-product host](./forja-pack-product-host.mdc) · [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
 
-Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
-(`packages/forja_foundation` widgets/blocks, KitShell, `catalog_open`) must stay
-**pack-agnostic**.
+Hub packs live in **forja-packs** `hubs/**` (not in the Flutter binary). Layout widgets and the
+layout runner live in **`packages/forja_foundation`**. The Flutter host (`apps/forja`) only
+mounts the foundation layout runner and runs generic plugin actions — it must stay
+**pack-agnostic** and must **not** keep catalog widgets under `shared/shell`.
 
 A hub pack may use **any** upstream catalog system (TMDB today, something else
 tomorrow). The host must not assume which one.
@@ -30,14 +31,17 @@ Hardcoding or branching on:
 **Wrong:** host `loadTmdbSeasonExtras` to patch `meta.videos` after details  
 **Wrong:** seeding Feature docs / shell with scraper hostnames as Dart constants for open
 
-### Allowed in host (render-only)
+### Allowed in host (opaque passthrough only)
 
 - Read **opaque fields** plugins already put on meta (`poster`, `background`, `videos`,
   `tmdbMediaType`, `ids` map) — do not interpret them to call upstream APIs
-- `resolveCoverUrl` / `kitImageUrl` — turn plugin-supplied absolute URLs (or legacy
-  relative paths) into loadable image URLs; no match/search/enrich
-- `MetaRuntime` **pipe enrich** — run companion plugin declared on source (`enrich` field);
-  host merges returned `meta` / `items`; host does not implement enrich itself
+- Mount foundation layout runner for pack `nav` — **no** `kit_*` product widgets in `shared/shell`
+- Generic plugin action runner + enrich pipe — host merges returned `meta` / `items`;
+  host does not implement enrich itself
+- Cover URL helpers that only normalize absolute/relative URLs — no match/search/enrich
+
+**Wrong:** keeping `KitShell` / `kit_top_bar` / catalog paint in `apps/forja/lib/shared/shell/`  
+**Right:** foundation widgets + `PackLayoutHost` mount ([RFC-109](../../docs/rfc/109-[open]-forja-pack-product-host.md))
 
 ## Enrich companions (plugin-owned)
 
@@ -45,7 +49,7 @@ Source plugins declare a companion, e.g. `"enrich": "anime-enrich-tmdb"`.
 
 | Concern | Owner |
 |--------|--------|
-| Match upstream title → external id | `plugins/hubs/**/enrich_*.js` + `_kit.js` |
+| Match upstream title → external id | `forja-packs/hubs/**/enrich_*.js` + `_kit.js` |
 | Poster / backdrop / logo / synopsis | enrich plugin mutates `meta` |
 | Episode `videos[].thumbnail` / title / overview | enrich plugin mutates `meta.videos` on `details` |
 | Cast / trailers / recommendations rows | enrich plugin adds `details.rails` or meta fields — **not** host `TmdbApi` |

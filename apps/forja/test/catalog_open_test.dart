@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/legacy_list_item.dart';
-import 'package:forja/shared/engine/hub/legacy_movie_meta.dart';
-import 'package:forja/shared/engine/hub/catalog_open.dart';
+import 'package:forja/shared/engine/store/legacy_list_item.dart';
+import 'package:forja/shared/engine/runtime/legacy_movie_meta.dart';
+import 'package:forja/shared/engine/runtime/catalog_open.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -101,11 +101,10 @@ void main() {
       expect(legacyListEngineType(row), 'movie');
     });
 
-    test('legacy list engine type routes anime and drama hubs', () {
+    test('legacy list engine type uses opaque open surface', () {
       expect(
         legacyListEngineType({
           'mediaType': 'anime',
-          'anilistId': 42,
           'open': {
             'surface': 'anime',
             'id': '42',
@@ -117,7 +116,6 @@ void main() {
       expect(
         legacyListEngineType({
           'mediaType': 'asian_drama',
-          'kisskhId': 88,
           'open': {
             'surface': 'drama',
             'id': '88',
@@ -126,13 +124,14 @@ void main() {
         }),
         'drama',
       );
+      // Without open — opaque mediaType only (no pack id inference).
       expect(
-        legacyListEngineType({'mediaType': 'anime', 'anilistId': 1}),
+        legacyListEngineType({'mediaType': 'anime'}),
         'anime',
       );
       expect(
         legacyListEngineType({'mediaType': 'asian_drama', 'tmdbId': 9}),
-        'drama',
+        'asian_drama',
       );
       expect(
         legacyListEngineType({'mediaType': 'tv', 'tmdbId': 1396}),
@@ -140,22 +139,21 @@ void main() {
       );
     });
 
-    test('legacy list invents anime open from mediaType when missing', () {
+    test('legacy list does not invent hub open from pack ids', () {
       final open = metaOpenFromLegacyListItem({
         'mediaType': 'anime',
         'anilistId': 21,
         'title': 'Test',
       });
-      expect(open.surface, 'anime');
-      expect(open.id, '21');
-      expect(open.effectiveExtract.resolveType, 'anime');
+      // No stored open → tmdb surface fallback (opaque), not anime invent.
+      expect(open.surface, 'tmdb');
     });
 
-    test('hub drama wins over conflicting tmdb open', () {
+    test('stored open wins — no hub scent override of tmdb', () {
       final open = metaOpenFromLegacyListItem({
         'mediaType': 'drama',
         'title': 'My Bias, My Boss',
-        'tmdbId': 999, // wrong Home id must not win
+        'tmdbId': 999,
         'uniqueId': 'catalog_kisskh-hub_18842',
         'open': {
           'surface': 'tmdb',
@@ -167,26 +165,19 @@ void main() {
           },
         },
       });
-      expect(open.surface, 'drama');
-      expect(open.id, '18842');
-      expect(legacyListHubEngineType({
-        'mediaType': 'asian_drama',
-        'tmdbId': 999,
-        'open': {
-          'surface': 'tmdb',
-          'id': '999',
-          'extract': {'resolveType': 'movie', 'panelCategory': 'movie'},
-        },
-      }), 'drama');
-      expect(legacyListEngineType({
-        'mediaType': 'drama',
-        'kisskhId': 18842,
-        'open': {
-          'surface': 'tmdb',
-          'id': '999',
-          'extract': {'resolveType': 'movie', 'panelCategory': 'movie'},
-        },
-      }), 'drama');
+      expect(open.surface, 'tmdb');
+      expect(open.id, '999');
+      expect(
+        legacyListEngineType({
+          'mediaType': 'drama',
+          'open': {
+            'surface': 'tmdb',
+            'id': '999',
+            'extract': {'resolveType': 'movie', 'panelCategory': 'movie'},
+          },
+        }),
+        'movie',
+      );
     });
   });
 }

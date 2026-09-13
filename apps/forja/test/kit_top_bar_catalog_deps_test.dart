@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/chrome/kit_top_bar_actions.dart';
+import 'package:forja/shared/host/layout/chrome/kit_top_bar_actions.dart';
 
 void main() {
   test('kitTopBarCatalogDeps reads opaque deps from catalog actions', () {

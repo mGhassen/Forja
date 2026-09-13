@@ -4,14 +4,14 @@
 
 ## What it is
 
-Live Sports is a **hub pack** (ForjaHQ Live Sports) — same class as Anime or Asian Drama. The tab mounts **KitShell** from pack `nav` + `layout`, composing generic kit primitives:
+Live Sports is a **hub pack** you install (pack-product host — same class as Anime or Asian Drama). The tab mounts from pack `nav` + `layout`, composing generic kit primitives:
 
 - **Top bar** — pack `kit.topBar` actions: Catalog / Schedule / Refresh (left), then **Search**, **List/Cards** icon, and **Portals** (trailing). Host only paints verbs the pack lists — it does not inject chrome.
 - **Category bar** — sport mood circles with icons (dynamic from the schedule)
 - **List** — dense match rows or landscape cards (toggle from the top bar; default **List**)
 - **Streams** — Providers / Live TV in a **side panel** or a **detail page** (pack Setup → **Open matches in**; default side panel)
 
-Host only registers opaque schedule/stream adapters (`live_schedule`) via generic kit boot (`KitLiveBoot`) — MetaRuntime `feed` on the hub pack, resolve panel, and IPTV channel search under `features/iptv/channel_search/` (RFC-096). The hub pack declares Search / view / Portals in `kit.topBar` (`trailing: true`). Host paints those verbs via kit primitives + `packActionBuilders['portals']` (IPTV data) — it does **not** inject trailing chrome. Portals panel shell is foundation design (`KitPortalsChip` / `KitSidePanelOverlay`); play/resolve via `IptvKitHooksRegister` (RFC-095).
+Host registers thin live adapters via `LiveSurfaceOpen` (resolve panel + `open.surface: live` + top-bar catalog/schedule hooks). Schedule rows come from pack MetaRuntime `feed` (`PluginHubFeedListSource` — no host product list boot). Portal channel search is a generic `ctx.host.portals.searchChannels` capability ([RFC-109](../../rfc/109-[open]-forja-pack-product-host.md)). The hub pack declares Search / view / Portals in `kit.topBar` (`trailing: true`). Host paints those verbs via foundation/layout primitives + pack action builders — it does **not** inject trailing chrome. Play/resolve via portals hooks.
 
 Schedules and streams come from installed **live_sport** plugins (Catalog / Providers capability toggles in Settings). Schedule capability is fixtures only — it does not unlock play. Resolve capability **lists** mirrors in Providers; unlock to native play runs when you tap a row. **Live TV** still matches your Xtream/Stalker/M3U portals to the fixture. Install and enable the hub pack under **Settings → Forja Packs** — that is the product on/off.
 

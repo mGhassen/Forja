@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv_atv_live_cache.dart';
+import 'package:forja/shared/host/portals_ui/iptv_atv_live_cache.dart';
 
 void main() {
   test('ATV live cache: UHD shares FHD bytes (no 150MB open spike)', () {

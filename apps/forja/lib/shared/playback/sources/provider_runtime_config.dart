@@ -764,6 +764,12 @@ class ProviderRuntimeSnapshot {
         // Anime opens with providerId use playbackPolicyFor and ignore these.
         cdnRefererRules: const [
           CdnRefererRule(
+            hostContains: ['cdnvideo', 'streamingcdn'],
+            referer: 'https://kisskh.co/',
+            origin: 'https://kisskh.co',
+            acceptRefererContains: ['kisskh'],
+          ),
+          CdnRefererRule(
             hostContains: [
               'mewstream',
               'nekostream',

@@ -1,0 +1,79 @@
+import 'dart:async';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shared/host/portals_ui/controller/iptv_controller.dart';
+import 'package:forja/shared/engine/portals/iptv_portal_share.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/host/portals_ui/iptv_shell_style.dart';
+import 'package:forja/shared/host/portals_ui/iptv_tv_focus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shared/host/portals_ui/screens/iptv_portals_top_bar_button.dart';
+import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/components/button.dart';
+import 'package:forja/shared/shell/focus/forja_interactive.dart';
+import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/sync/sync.dart';
+part 'iptv_catalog_top_bar.dart';
+part 'iptv_catalog_portal_panel.dart';
+part 'iptv_catalog_portal_form.dart';
+part 'iptv_catalog_portal_widgets.dart';
+
+/// Colored Live / Movies / Series shelf - same hues as the old section tiles.
+class _IptvSectionShelfSpec {
+  const _IptvSectionShelfSpec({
+    required this.section,
+    required this.label,
+    required this.icon,
+    required this.colors,
+  });
+
+  final IptvSection section;
+  final String label;
+  final IconData icon;
+  final List<Color> colors;
+
+  /// Shelf pill gradients - Live only: drop the near-black tile stop.
+  List<Color> get shelfGradientColors => section == IptvSection.live
+      ? const [Color(0xFFEF4444), Color(0xFF7C2D12)]
+      : colors;
+}
+
+const _kSectionShelf = <_IptvSectionShelfSpec>[
+  _IptvSectionShelfSpec(
+    section: IptvSection.live,
+    label: 'Live',
+    icon: Icons.live_tv_rounded,
+    colors: [Color(0xFFEF4444), Color(0xFF7C2D12)],
+  ),
+  _IptvSectionShelfSpec(
+    section: IptvSection.vod,
+    label: 'Movies',
+    icon: Icons.movie_rounded,
+    colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+  ),
+  _IptvSectionShelfSpec(
+    section: IptvSection.series,
+    label: 'Series',
+    icon: Icons.video_library_rounded,
+    colors: [Color(0xFF1CE783), Color(0xFF13AA2E)],
+  ),
+];
+
+const _kShelfTabHeight = 36.0;
+const _kShelfTabRadius = 8.0;
+const _kSearchCollapsed = 40.0;
+const _kSearchExpanded = 260.0;

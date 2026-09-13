@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live/live_feed_bridge_nest.dart';
+import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
 
 void main() {
   test('withHubLiveFeedBridge nests and clears', () async {

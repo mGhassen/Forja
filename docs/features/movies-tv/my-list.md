@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a **hub pack** you install — same class as Home or Live Sports. It shows kind filters and status tabs in the shell top bar plus a poster grid of your bookmarks. Local bookmarks and Simkl stay on the device; the pack composes what you see.
+My List is a **hub pack** you install (pack-product host — same class as Home or Live Sports). It shows kind filters and status tabs in the shell top bar plus a poster grid of your bookmarks. Local bookmarks and Simkl stay on the device; the pack composes what you see via the host store bridge.
 
 ## How to open it
 

@@ -14,7 +14,7 @@ On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope fo
 | Search | `search` | archived / out of TV polish unless restored |
 | Anime | `anime` | KitShell via hub pack (`plugins/hubs/anime`) |
 | Asian Drama | `asian_drama` | KitShell via hub pack (`plugins/hubs/asian_drama`) |
-| IPTV | `iptv` | `features/iptv/screens/iptv_pt_screen.dart` |
+| IPTV | `iptv` | pack `nav` + interim `shared/host/portals_ui/screens/iptv_pt_screen.dart` |
 | Live Sports | `live_sports` / `live_sports_cards` | KitShell via hub pack (`plugins/hubs/live_sports`, `live_sports_cards`) |
 | Lists | pack `nav.tabId` | KitShell via installed Lists hub pack |
 | Settings | `settings` | `features/settings/settings_screen.dart` |

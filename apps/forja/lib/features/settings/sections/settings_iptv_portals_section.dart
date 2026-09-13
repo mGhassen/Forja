@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/features/iptv/data/iptv_portal_csv.dart';
-import 'package:forja/features/iptv/data/storage.dart';
+import 'package:forja/shared/engine/portals/iptv_portal_csv.dart';
+import 'package:forja/shared/engine/portals/storage.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';

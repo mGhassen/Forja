@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/hub/legacy_list_item.dart';
-import 'package:forja/shared/engine/lists/list_open_binding.dart';
+import 'package:forja/shared/engine/store/legacy_list_item.dart';
+import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('listOpenIdentityTokens', () {
-    test('drama row yields drama token', () {
+    test('drama row yields drama token from open.surface', () {
       final item = {
         'mediaType': 'asian_drama',
         'uniqueId': 'catalog_kisskh-hub_18842',

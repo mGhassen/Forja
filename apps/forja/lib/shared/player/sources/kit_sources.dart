@@ -6,7 +6,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
-import 'package:forja/shared/engine/hub/catalog_extract_context.dart';
+import 'package:forja/shared/engine/runtime/catalog_extract_context.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';

@@ -25,7 +25,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | Torrent sources UI | Player sources | `shared/player/sources/**` | ✅ |
 | Watch history | App prefs store | `shared/host/watch/watch_history.dart` (leftover path) | ✅ |
 | TMDB / enrich images | Pack enrich companions | Pack `enrich` + kit render-only | ✅ |
-| MetaRuntime / plugin_nav / HostListRegistry | Boot registration | `shared/engine/hub/**` + shell kit | ✅ |
+| MetaRuntime / plugin_nav / HostListRegistry | Boot registration | `shared/engine/runtime/**` + host layout kit | ✅ |
 | Deeplink `forja://catalog/...` | Package protocol | `forja_foundation/protocol` | ✅ |
 
 ---

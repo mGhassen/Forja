@@ -5,16 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
-import 'package:forja/shared/shell/kit/kit_shell.dart';
+import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/host/layout/pack_layout_host.dart';
+import 'package:forja/shared/host/layout/kit/kit_shell.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/shell/chrome/vertical_filters.dart';
+import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/frame/shell_empty_features_screen.dart';
-import 'package:forja/shared/shell/chrome/kit_top_bar_host.dart';
+import 'package:forja/shared/host/layout/chrome/kit_top_bar_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/platform/shell_find_shortcut.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
@@ -123,6 +124,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       }
       final key = _keyForTab(id);
       final child = builder();
+      // PackLayoutHost extends KitShell — keyed mount for ShellTabRefresh.
       if (child is KitShell) {
         return _tabWithKey(key, child);
       }
@@ -137,11 +139,20 @@ class _MainScreenState extends ConsumerState<MainScreen>
     return tab;
   }
 
-  /// Hub [KitShell] must own the tab [GlobalKey] so [ShellTabRefresh] works.
+  /// Hub [PackLayoutHost] must own the tab [GlobalKey] so [ShellTabRefresh] works.
   Widget _tabWithKey(GlobalKey<State<StatefulWidget>>? key, Widget child) {
     if (key == null) return child;
+    if (child is PackLayoutHost) {
+      return PackLayoutHost(
+        key: key,
+        pluginId: child.pluginId,
+        tabId: child.tabId,
+        packSourceUrl: child.packSourceUrl,
+        hostLayout: child.hostLayout,
+      );
+    }
     if (child is KitShell) {
-      return KitShell(
+      return PackLayoutHost(
         key: key,
         pluginId: child.pluginId,
         tabId: child.tabId,

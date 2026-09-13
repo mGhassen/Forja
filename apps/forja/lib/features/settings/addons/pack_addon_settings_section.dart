@@ -7,7 +7,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
 import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
-import 'package:forja/shared/engine/lists/list_open_prefs.dart';
+import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';

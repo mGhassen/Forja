@@ -1,9 +1,10 @@
 library;
 
-export 'hub/catalog_extract_context.dart';
-export 'live/live_goat_unlock.dart';
-export 'live/pack_unlock_files.dart';
-export 'live/live_sport_capabilities.dart';
+export 'cache/engine_cache.dart';
+export 'runtime/catalog_extract_context.dart';
+export 'unlock/goat_unlock.dart';
+export 'unlock/pack_unlock_files.dart';
+export 'feeds/live_sport_capabilities.dart';
 export 'models/categories.dart';
 export 'models/ids.dart';
 export 'models/lean_apply_result.dart';
@@ -23,6 +24,8 @@ export 'packs/registry/plugin_registry.dart';
 export 'packs/registry/plugin_script_disk_store.dart';
 export 'runtime/runtime.dart';
 export 'runtime/service.dart';
+export 'store/engine_store.dart';
+export 'portals/portals.dart';
 
 /// Catalog hub wire types — `runCatalog` returns these envelopes.
 export 'package:forja_foundation/protocol/protocol.dart';

@@ -3,14 +3,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/hub/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/chrome_filters.dart';
 import 'package:forja/shared/host/packs/forja_host_assets.dart';
-import 'package:forja/shared/engine/hub/meta_cache.dart';
-import 'package:forja/shared/engine/hub/meta_runtime.dart';
-import 'package:forja/shared/engine/hub/pack_filters.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/runtime/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
-import 'package:forja/shared/shell/chrome/vertical_filters.dart';
+import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
 import 'package:forja_foundation/protocol/deeplink.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -381,38 +381,38 @@ void main() {
   });
 
   group('cache', () {
-    setUp(MetaCache.instance.wipeAll);
+    setUp(EngineCache.instance.wipeCatalog);
 
     test('key is stable across param order', () {
-      final a = MetaCache.keyFor(
+      final a = EngineCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'rail': 'trending', 'limit': 20},
       );
-      final b = MetaCache.keyFor(
+      final b = EngineCache.keyFor(
         pluginId: 'anilist',
         action: 'rail',
         params: {'limit': 20, 'rail': 'trending'},
       );
       expect(a, b);
-      expect(a, startsWith('anilist|rail|'));
+      expect(a, startsWith('anilist||rail|'));
     });
 
     test('auth subject and params change the key', () {
-      final base = MetaCache.keyFor(pluginId: 'p', action: 'rail');
+      final base = EngineCache.keyFor(pluginId: 'p', action: 'rail');
       expect(
-        MetaCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
+        EngineCache.keyFor(pluginId: 'p', action: 'rail', authSubject: 'u1'),
         isNot(base),
       );
       expect(
-        MetaCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
+        EngineCache.keyFor(pluginId: 'p', action: 'rail', params: {'a': 1}),
         isNot(base),
       );
     });
 
     test('honours maxAge then the swr window', () {
       const key = 'k';
-      MetaCache.instance.put(
+      EngineCache.instance.putEntry(
         key: key,
         pluginId: 'anilist',
         data: const {'items': []},
@@ -421,7 +421,7 @@ void main() {
           swr: Duration(minutes: 5),
         ),
       );
-      final entry = MetaCache.instance.get(key)!;
+      final entry = EngineCache.instance.getEntry(key)!;
       expect(entry.isFresh, isTrue);
       expect(entry.isExpired, isFalse);
 
@@ -438,24 +438,24 @@ void main() {
     });
 
     test('wipePlugin drops only that plugin', () {
-      MetaCache.instance.put(
+      EngineCache.instance.putEntry(
         key: 'a',
         pluginId: 'anilist',
         data: const {},
       );
-      MetaCache.instance.put(key: 'b', pluginId: 'kisskh-hub', data: const {});
-      MetaCache.instance.wipePlugin('anilist');
-      expect(MetaCache.instance.get('a'), isNull);
-      expect(MetaCache.instance.get('b'), isNotNull);
+      EngineCache.instance.putEntry(key: 'b', pluginId: 'kisskh-hub', data: const {});
+      EngineCache.instance.wipePlugin('anilist');
+      expect(EngineCache.instance.getEntry('a'), isNull);
+      expect(EngineCache.instance.getEntry('b'), isNotNull);
     });
 
     test('pack version change wipes everything', () {
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
-      MetaCache.instance.put(key: 'a', pluginId: 'anilist', data: const {});
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.0');
-      expect(MetaCache.instance.get('a'), isNotNull);
-      MetaCache.instance.syncPackVersion('forjahq-home', '1.0.1');
-      expect(MetaCache.instance.get('a'), isNull);
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      EngineCache.instance.putEntry(key: 'a', pluginId: 'anilist', data: const {});
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.0');
+      expect(EngineCache.instance.getEntry('a'), isNotNull);
+      EngineCache.instance.syncPackVersion('forjahq-home', '1.0.1');
+      expect(EngineCache.instance.getEntry('a'), isNull);
     });
   });
 
@@ -711,12 +711,16 @@ void main() {
       );
     });
 
-    test('legacy hubs/iptv manifest url maps to iptv-vod slot', () {
+    test('hubs/iptv manifest url is hub slot iptv (RFC-109)', () {
       expect(
         PluginRegistry.forjaHqSlot(
           '/Users/me/Forja/plugins/hubs/iptv/manifest.json',
         ),
-        'iptv-vod',
+        'iptv',
+      );
+      expect(
+        PluginRegistry.isHubManifestSlot('iptv'),
+        isTrue,
       );
       expect(
         PluginRegistry.isHubManifestSlot('iptv-vod'),
@@ -774,11 +778,11 @@ void main() {
       // Packs omit tabId — chrome id comes from install URL slot.
       expect(byRail['home']!.tabId, isEmpty);
 
-      // Host seed empty — Live Sports is pack-owned (RFC-087).
+      // Host seed empty — Live Sports / IPTV are pack-owned (RFC-087 / RFC-109).
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.isKitTab('live_sports'), isFalse);
       expect(PluginNavRegistry.isKitTab('settings'), isFalse);
-      expect(PluginNavRegistry.isContributed('iptv'), isTrue);
+      expect(PluginNavRegistry.isContributed('iptv'), isFalse);
       expect(PluginNavRegistry.isContributed('live_sports'), isFalse);
       expect(
         PluginNavRegistry.featureTabIds(),
@@ -788,7 +792,7 @@ void main() {
         PluginNavRegistry.featureTabIds(
           availableAddonFeatureIds: const ['iptv'],
         ),
-        contains('iptv'),
+        isNot(contains('iptv')),
       );
       expect(
         PluginNavRegistry.featureTabIds(

@@ -107,8 +107,8 @@ Checklist (paths only — migrate batches tick these):
 - [x] `apps/forja/lib/features/settings/widgets/settings_plugin_install_progress.dart`
 - [x] `apps/forja/lib/features/settings/widgets/settings_ui.dart`
 - [ ] `apps/forja/lib/shared/engine/engine.dart`
-- [ ] `apps/forja/lib/shared/engine/hub/catalog_extract_context.dart`
-- [ ] `apps/forja/lib/shared/engine/hub/hub_plugin_config.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/catalog_extract_context.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/plugin_config.dart`
 - [ ] `apps/forja/lib/shared/engine/lists/my_list_feed_aggregate.dart`
 - [ ] `apps/forja/lib/shared/engine/live/live_feed_aggregate.dart`
 - [ ] `apps/forja/lib/shared/engine/live/live_feed_merge.dart`
@@ -117,7 +117,7 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/lib/shared/engine/live/live_plugin_engine.dart`
 - [x] `apps/forja/lib/shared/engine/live/live_resolve_streams.dart`
 - [ ] `apps/forja/lib/shared/engine/live/live_stremio_catalog.dart`
-- [ ] `apps/forja/lib/shared/engine/live/pack_unlock_files.dart`
+- [ ] `apps/forja/lib/shared/engine/unlock/pack_unlock_files.dart`
 - [ ] `apps/forja/lib/shared/engine/models/models.dart`
 - [ ] `apps/forja/lib/shared/engine/packs/install/forja_plugin_deeplink.dart`
 - [ ] `apps/forja/lib/shared/engine/packs/install/plugin_install_coordinator.dart`

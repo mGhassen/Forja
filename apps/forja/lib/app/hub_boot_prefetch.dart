@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja_foundation/protocol/filter.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/hub/meta_runtime.dart';
-import 'package:forja/shared/engine/hub/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/chrome_filters.dart';
 import 'package:rust/rust.dart';
 
-/// Prefetch default hub layout + first-paint rails into [MetaCache].
+/// Prefetch default hub layout + first-paint rails into [EngineCache].
 ///
 /// Driven by pack `layout` (`feed: true` or widgets above Continue) — never a
 /// hardcoded home/anime/asian_drama rail list.

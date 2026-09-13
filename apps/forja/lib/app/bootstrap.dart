@@ -10,8 +10,8 @@ import 'package:logging/logging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/features/iptv/open/iptv_kit_hooks_register.dart';
-import 'package:forja/features/iptv/screens/iptv_portals_chrome_hooks.dart';
+import 'package:forja/shared/host/portals_ui/open/iptv_kit_hooks_register.dart';
+import 'package:forja/shared/host/portals_ui/screens/iptv_portals_chrome_hooks.dart';
 import 'package:forja/features/settings/settings_kit_hooks_register.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
@@ -26,7 +26,7 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
-import 'package:forja/shared/engine/hub/kit_live_boot.dart';
+import 'package:forja/shared/engine/runtime/live_surface_open.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -139,7 +139,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   EpisodeWatchedService().syncHandler = syncEpisodeWatchedToTrackers;
   BookmarkStore().syncAddHandler = syncBookmarkAddToTrackers;
   BookmarkStore().syncRemoveHandler = syncBookmarkRemoveFromTrackers;
-  KitLiveBoot.ensureRegistered();
+  LiveSurfaceOpen.ensureRegistered();
   IptvPortalsChromeHooks.ensureRegistered();
   IptvKitHooksRegister.ensureRegistered();
   SettingsKitHooksRegister.ensureRegistered();

@@ -1,0 +1,254 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja/shared/shell/focus/focus_edge.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja/shared/host/layout/kit/kit_list_source.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/shell/catalog/shell_mood_circle.dart';
+import 'package:forja/shared/engine/runtime/host_list_registry.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+export 'package:forja_foundation/widgets/chrome/category_bar.dart'
+    show CategoryBar, CategoryBarFromScope;
+
+/// Layout widget [`kit.categoryBar`] — [ShellMoodCircle] kind pickers.
+///
+/// Spec:
+/// ```json
+/// {
+///   "type": "kit.categoryBar",
+///   "id": "kind",
+///   "items": [{ "id": "all", "label": "All" }],
+///   "source": "live_schedule",
+///   "dynamic": true
+/// }
+/// ```
+///
+/// When [dynamic] is true and [source] resolves a [KitListSource], unique
+/// entry kinds are appended after static [items] (with an `all` chip first).
+class KitCategoryBar extends ConsumerStatefulWidget {
+  const KitCategoryBar({
+    super.key,
+    required this.tabId,
+    required this.spec,
+    this.pluginId = '',
+    this.sortOrder = 0,
+  });
+
+  final String tabId;
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final int sortOrder;
+
+  @override
+  ConsumerState<KitCategoryBar> createState() => _KitCategoryBarState();
+}
+
+class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
+  KitListPage? _dynamicPage;
+
+  String get _widgetId => (widget.spec['id'] ?? 'kind').toString();
+
+  void _applyPage(KitListPage? page) {
+    if (!mounted || identical(page, _dynamicPage)) return;
+    setState(() => _dynamicPage = page);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = LayoutScope.of(context);
+    final staticItems = layoutItemsFromSpec(widget.spec);
+    final dynamic = widget.spec['dynamic'] == true;
+    final sourceId = (widget.spec['source'] ?? '').toString().trim();
+
+    final kindIcons = kitCategoryBarKindIcons(widget.spec);
+    var kinds = <({String id, String label, String? icon})>[
+      for (final i in staticItems)
+        (id: i.id, label: i.label, icon: kindIcons[i.id.toLowerCase()]),
+    ];
+
+    if (dynamic) {
+      final source = HostListRegistry.resolve(
+        sourceId: sourceId.isEmpty ? null : sourceId,
+        pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
+      );
+      if (source != null) {
+        final status =
+            scope.selectedId('status') ??
+            widget.spec['defaultStatus']?.toString() ??
+            'plantowatch';
+        // Do not [watchPage] here — KitListWidget watches the same provider.
+        // Dual watch flushes listeners mid-list-build → markNeedsBuild during build.
+        source.listenPage(ref, status, (async) {
+          // Keep last kinds during reload — null page collapses the bar and
+          // the Expanded list jumps into that gap (cards flash over chrome).
+          final page = async.asData?.value ?? async.valueOrNull;
+          if (page == null) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _applyPage(page);
+          });
+        });
+        final seedPage = source.readPage(ref, status);
+        final seed = seedPage.asData?.value ?? seedPage.valueOrNull;
+        if (_dynamicPage == null && seed != null) {
+          _dynamicPage = seed;
+        }
+        final page = _dynamicPage;
+        if (page != null) {
+          final found = <String>{};
+          for (final e in page.entriesForKind(null)) {
+            final k = e.kind.trim();
+            if (k.isEmpty || k == 'all' || k == 'live_match') continue;
+            found.add(k);
+          }
+          final sorted = found.toList()..sort();
+          final haveAll = kinds.any((i) => i.id == 'all');
+          if (!haveAll) {
+            kinds = [
+              (
+                id: 'all',
+                label: 'All',
+                icon: kindIcons['all'] ?? 'grid',
+              ),
+              ...kinds,
+            ];
+          }
+          final existing = {for (final i in kinds) i.id};
+          for (final id in sorted) {
+            if (existing.contains(id)) continue;
+            kinds.add((
+              id: id,
+              label: catalogKitCategoryLabel(id),
+              icon: kindIcons[id.toLowerCase()],
+            ));
+          }
+        }
+      }
+    }
+
+    if (kinds.isEmpty) return const SizedBox.shrink();
+
+    final selected = scope.selectedId(_widgetId) ??
+        widget.spec['default']?.toString() ??
+        kinds.first.id;
+    final focusDownId = (widget.spec['focusDown'] ?? '').toString().trim();
+    final focusUp = kitFocusEdge(
+      widget.tabId,
+      widget.spec['focusUp']?.toString(),
+      last: true,
+    );
+    final focusLeft = kitFocusSide(widget.tabId, widget.spec['focusLeft']);
+    final focusRight = kitFocusSide(widget.tabId, widget.spec['focusRight']);
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final resultsRowId =
+        focusDownId.isEmpty ? '$_widgetId-results' : focusDownId;
+
+    // Fixed chip size — never FittedBox/forTv shrink. Overflow → scroll.
+    final layout = tvFocus
+        ? ShellMoodCircleLayout.tvScrollable
+        : ShellMoodCircleLayout.desktop;
+    final hPad = EdgeInsets.only(
+      left: ShellTokens.compactChromeLeadingInset(context),
+      right: ShellTokens.bodyHorizontalPadding,
+    );
+
+    Widget circleAt(int i, {TvChipEdges? edges}) {
+      final item = kinds[i];
+      final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
+      final on = selected == item.id;
+      return ShellMoodCircleItem(
+        layout: layout,
+        label: catalogKitCategoryLabel(item.id, label: item.label),
+        icon: meta.icon,
+        accent: meta.accent,
+        selected: on,
+        listIndex: i,
+        tvTabId: widget.tabId,
+        tvRowId: _widgetId,
+        onTap: () {
+          if (!on) {
+            scope.onSelect(_widgetId, item.id, toggle: false);
+          } else if (tvFocus) {
+            edges?.onSelectAlreadySelected();
+          }
+        },
+        onLeftEdge: edges?.onLeft,
+        onRightEdge: edges?.onRight,
+        onDownEdge: edges?.onDown ??
+            kitFocusEdge(widget.tabId, focusDownId, last: true),
+        onUpEdge: focusUp ?? edges?.onUp,
+      );
+    }
+
+    Widget centeredRow({TvChipEdges Function(int index)? edgesFor}) {
+      return SizedBox(
+        height: layout.rowHeight,
+        width: double.infinity,
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: Align(
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < kinds.length; i++) ...[
+                  if (i > 0) SizedBox(width: layout.horizontalGap),
+                  circleAt(i, edges: edgesFor?.call(i)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget scrollStrip({TvChipEdges Function(int index)? edgesFor}) {
+      return SizedBox(
+        height: layout.rowHeight,
+        child: HorizontalScroller(
+          height: layout.rowHeight,
+          padding: hPad,
+          itemCount: kinds.length,
+          separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
+          itemBuilder: (context, i) =>
+              circleAt(i, edges: edgesFor?.call(i)),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final avail = (constraints.maxWidth - hPad.horizontal)
+              .clamp(0.0, double.infinity);
+          final fits = layout.contentWidth(kinds.length) <= avail;
+
+          if (tvFocus) {
+            return TvChipStrip(
+              tabId: widget.tabId,
+              rowId: _widgetId,
+              sortOrder: widget.sortOrder,
+              itemCount: kinds.length,
+              resultsRowId: resultsRowId,
+              onFocusLeft: focusLeft,
+              onFocusRight: focusRight,
+              builder: (context, edgesFor) => fits
+                  ? Padding(padding: hPad, child: centeredRow(edgesFor: edgesFor))
+                  : scrollStrip(edgesFor: edgesFor),
+            );
+          }
+
+          if (fits) {
+            return Padding(padding: hPad, child: centeredRow());
+          }
+          return scrollStrip();
+        },
+      ),
+    );
+  }
+}

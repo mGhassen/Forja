@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/lists/list_open_title_rank.dart';
+import 'package:forja/shared/engine/store/list_open_title_rank.dart';
 
 void main() {
   group('listOpenTitleKey', () {

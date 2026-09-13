@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv_hls_play_url.dart';
+import 'package:forja/shared/host/portals_ui/iptv_hls_play_url.dart';
 
 void main() {
   group('iptvStripHlsAdPlaceholders', () {

@@ -1619,15 +1619,13 @@ class SettingsService {
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
-  /// Live Sports is pack-owned (RFC-087 / RFC-093) — not gated here.
-  static const Set<String> addonGatedNavIds = {
-    'iptv',
-  };
+  /// Live Sports / IPTV are pack-owned (RFC-087 / RFC-109) — not gated here.
+  static const Set<String> addonGatedNavIds = {};
 
   /// Host shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// Live Sports tab id comes from pack `nav` only (RFC-087).
+  /// Live Sports / IPTV tab ids come from pack `nav` only.
   /// Archived tabs live under `apps/archive/` — keep out of [allNavIds].
   static const Set<String> archivedNavIds = {
     'search',
@@ -1644,9 +1642,7 @@ class SettingsService {
     'anime_arabic',
   };
 
-  static const List<String> _baseAllNavIds = [
-    'iptv',
-  ];
+  static const List<String> _baseAllNavIds = [];
 
   static bool _isArchivedNavId(String id) => archivedNavIds.contains(id);
 

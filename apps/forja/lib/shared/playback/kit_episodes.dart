@@ -1,5 +1,5 @@
-import 'package:forja/shared/engine/hub/kit_details_meta.dart';
-import 'package:forja/shared/engine/hub/details_fetch.dart';
+import 'package:forja/shared/host/layout/kit/kit_details_meta.dart';
+import 'package:forja/shared/engine/runtime/details_fetch.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';

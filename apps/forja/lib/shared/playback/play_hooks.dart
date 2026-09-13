@@ -2,8 +2,8 @@ import 'package:forja/shared/playback/play_session.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
-import 'package:forja/shared/engine/lists/list_follow.dart';
-import 'package:forja/shared/engine/lists/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
 /// Hub tab media types — episodic catalog rows, not Home TMDB watch history.

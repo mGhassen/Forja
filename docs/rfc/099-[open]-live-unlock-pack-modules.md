@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **12 / 13** acceptance |
+| **Progress** | **4 / 4** components · **12 / 13** acceptance · **0 / 1** pack-product pointer |
 | **Current slice** | Opaque `runUnlock` + pack sugar ([260](../issues/260-[open]-host-hardcodes-specific-plugins.md)) · A09 smoke ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -50,6 +50,14 @@
 | 11 | R99-A11 | Pack prelude installs goatUnlock/gasmUnlock/sportsEmbedUnlock sugar + recipe `files[]` | ✅ |
 | 12 | R99-A12 | Unlock files resolve via calling `packSourceUrl` + relative paths (no goat bundle discovery) | ✅ |
 | 13 | R99-A13 | Host playback path does not hardcode sportsembed/wfty Referer — pack resolve owns headers | ✅ |
+
+---
+
+## Acceptance (pack-product host pointer)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R99-A14 | Unlock lives under generic `engine/unlock` (no `engine/live` product folder) per [RFC-109](109-[open]-forja-pack-product-host.md) | ⬜ |
 
 ---
 

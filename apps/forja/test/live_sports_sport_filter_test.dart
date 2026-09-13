@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/live/schedule_sport_filter.dart';
+import 'package:forja/shared/engine/feeds/schedule_sport_filter.dart';
 
 void main() {
   group('normalizeLiveSportId', () {

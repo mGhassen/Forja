@@ -5,16 +5,17 @@ alwaysApply: true
 
 # Plugins are community-owned — Forja does not know plugins
 
-Index: [external plugins vs host](./forja-external-plugins-host.mdc) · [catalog hubs](./catalog-hub-host-generic.mdc) · [host tests](./forja-host-tests-no-pack-contracts.mdc)
+Index: [pack-product host](./forja-pack-product-host.mdc) · [external plugins vs host](./forja-external-plugins-host.mdc) · [catalog hubs](./catalog-hub-host-generic.mdc) · [host tests](./forja-host-tests-no-pack-contracts.mdc)
 
 ## Model
 
 | Tree | Role |
 |------|------|
-| `apps/forja/`, `packages/rust/` | **Host / foundation** — generic runtime, kit, player, engine contracts |
-| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community packs** — separate repo; not part of the host binary |
+| `apps/forja/`, `packages/rust/` | **Host** — app frame + generic engines only ([pack-product host](./forja-pack-product-host.mdc)) |
+| `packages/forja_foundation` | **Foundation** — widgets + layout runner (packs use via layout JSON) |
+| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community packs** — all product; separate repo; not part of the host binary |
 
-The root app ships **infrastructure to install, run, and render plugins**. It does **not** ship knowledge of which packs exist.
+The root app ships **infrastructure to install and run plugins**. It does **not** ship knowledge of which packs exist, and does **not** own product UI (hub / IPTV / Live / My List screens).
 
 Treat every pack as **replaceable, renameable, and absent**. A user may install zero official hubs and only community packs. Local/dev: `FORJA_PACKS_ROOT` or sibling `forja-packs/` checkout.
 
@@ -44,8 +45,9 @@ Treat every pack as **replaceable, renameable, and absent**. A user may install 
 
 - Parse **opaque** manifest fields, `nav`, `open.surface`, kit layout
 - Path mechanics: `forjaHqSlot(url)` → last path segment (any string)
-- Pack **kind** buckets from URL tree shape (`providers`, `hubs`, `live`, …) as install UI grouping — not a hub name allowlist
-- Host **route surfaces** (`open.surface`) as kit destinations — not permission to list which packs exist
+- Pack **kind** buckets from URL tree shape (`providers`, `hubs`, `livesports`, `iptv`, `torrent`, …) as install UI grouping — not a hub name allowlist
+- Host **route surfaces** (`open.surface`) as opaque destinations — not permission to list which packs exist
+- Product UI and layout widgets live in packs + `forja_foundation` — see [pack-product host](./forja-pack-product-host.mdc)
 
 ---
 

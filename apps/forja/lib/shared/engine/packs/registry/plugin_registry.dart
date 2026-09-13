@@ -4,11 +4,10 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/hub/meta_cache.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
-import 'package:forja/shared/engine/live/live_sport_capabilities.dart';
+import 'package:forja/shared/engine/feeds/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
@@ -52,7 +51,7 @@ class PluginRegistry {
   static final ValueNotifier<String?> officialInstallError =
       ValueNotifier<String?>(null);
 
-  /// Bumped when hub [MetaCache] entries are wiped (install / script edit / remove).
+  /// Bumped when hub [EngineCache] entries are wiped (install / script edit / remove).
   /// KitShell listens here — not [changeNotifier] — so lean sync / provider packs
   /// do not blank keep-alive hub rails on every notify.
   static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
@@ -1315,18 +1314,18 @@ class PluginRegistry {
     var hubCacheWipedAll = false;
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
       hubCacheWipedAll =
-          MetaCache.instance.syncPackVersion(pack.packId, pack.version);
+          EngineCache.instance.syncPackVersion(pack.packId, pack.version);
     }
     // Scripts may change at the same semver — always drop cached catalog answers.
     final wipedHubIds = <String>[];
     for (final p in pack.plugins) {
-      MetaCache.instance.wipePlugin(p.id);
+      EngineCache.instance.wipePlugin(p.id);
       _localScriptDigests.remove(p.id);
       if (p.isKitPlugin) wipedHubIds.add(p.id);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
-      MetaCache.instance.wipeAll();
+      EngineCache.instance.wipeCatalog();
       hubCacheWipedAll = true;
     }
     if (hubCacheWipedAll) {
@@ -1390,7 +1389,7 @@ class PluginRegistry {
     for (final pack in victim) {
       await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
       for (final p in pack.plugins) {
-        MetaCache.instance.wipePlugin(p.id);
+        EngineCache.instance.wipePlugin(p.id);
         if (p.isKitPlugin) wipedHubIds.add(p.id);
       }
     }
@@ -1747,7 +1746,7 @@ class PluginRegistry {
     _localScriptDigests[id] = digest;
     if (prev == null) return;
     debugPrint('[engine] $id script changed — invalidating caches');
-    MetaCache.instance.wipePlugin(id);
+    EngineCache.instance.wipePlugin(id);
     bumpHubFeedEpoch(pluginIds: [id]);
     _invalidatePlaybackCachesAfterPackChange();
     notifyChanged();

@@ -19,9 +19,12 @@ packages/forja_foundation/lib/widgets|components|blocks/  # catalog composers
 shared/player/details/           # episode picker, media-details body/hero, kit details
 shared/player/sources/           # torrent + kit sources panels
 shared/playback/                 # play hooks, probe, stream loading
-shared/shell/{core,chrome,kit,catalog,focus,feedback,desktop,brand,tv}/
-shared/engine/hub/               # MetaRuntime, plugin_nav, kit open / filters
-shared/engine/lists/             # list-follow + my-list catalog
+shared/shell/{core,chrome,focus,feedback,desktop,brand,tv}/
+shared/engine/runtime/           # MetaRuntime (plugin_actions), plugin_nav, catalog open / filters
+shared/engine/store/             # EngineStore + list follow / open binding
+shared/engine/feeds/             # schedule aggregate / merge / resolve (generic)
+shared/host/lists_ui/            # list open picker / bind sheet / Riverpod providers
+shared/host/layout/              # kit glue + PackLayoutHost
 shared/host/packs|update|account|watch/
 ```
 

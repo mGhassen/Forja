@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/hub/host_list_registry.dart';
-import 'package:forja/shared/engine/hub/kit_live_boot.dart';
-import 'package:forja/shared/engine/hub/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/live_surface_open.dart';
+import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +12,9 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     HostListRegistry.debugReset();
-    KitLiveBoot.debugReset();
+    LiveSurfaceOpen.debugReset();
     PluginNavRegistry.seedBuiltIns();
-    KitLiveBoot.ensureRegistered();
+    LiveSurfaceOpen.ensureRegistered();
   });
 
   test('live_sports is pack-owned — not core shell without a hub', () {
@@ -26,7 +26,16 @@ void main() {
     expect(SettingsService.addonGatedNavIds, isNot(contains('live_sports')));
   });
 
-  test('Features inventory omits iptv until Addons activates it', () {
+  test('iptv is pack-owned — not core shell without a hub (RFC-109)', () {
+    expect(PluginNavRegistry.coreShellNavIds, isNot(contains('iptv')));
+    expect(PluginNavRegistry.isContributed('iptv'), isFalse);
+    expect(PluginNavRegistry.isKitTab('iptv'), isFalse);
+    expect(coreNavDestinations.containsKey('iptv'), isFalse);
+    expect(coreNavTabBuilders.containsKey('iptv'), isFalse);
+    expect(SettingsService.addonGatedNavIds, isNot(contains('iptv')));
+  });
+
+  test('Features inventory omits pack tabs until contributed', () {
     final off = PluginNavRegistry.featureTabIds();
     expect(off, isNot(contains('iptv')));
     expect(off, isNot(contains('live_sports')));
@@ -36,7 +45,7 @@ void main() {
     final on = PluginNavRegistry.featureTabIds(
       availableAddonFeatureIds: const ['iptv'],
     );
-    expect(on, contains('iptv'));
+    expect(on, isNot(contains('iptv')));
     expect(on, isNot(contains('live_sports')));
     expect(on, isNot(contains('settings')));
   });
@@ -46,21 +55,20 @@ void main() {
     final ids = PluginNavRegistry.featureTabIds(
       availableAddonFeatureIds: const ['iptv'],
     );
-    expect(ids, containsAll(['iptv', 'test_hub_a']));
+    expect(ids, contains('test_hub_a'));
+    expect(ids, isNot(contains('iptv')));
     expect(ids, isNot(contains('settings')));
   });
 
-  test('live_schedule registers list source without host body', () {
-    final source = HostListRegistry.resolve(sourceId: 'live_schedule');
-    expect(source, isNotNull);
-    expect(source!.wantsHostBody, isFalse);
+  test('live_schedule has no special host list source', () {
+    expect(HostListRegistry.resolve(sourceId: 'live_schedule'), isNull);
     expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
   });
 
   test('live_schedule registers streams panel host', () {
-    final panel = HostListRegistry.resolvePanel(KitLiveBoot.listSourceId);
+    final panel = HostListRegistry.resolvePanel(LiveSurfaceOpen.listSourceId);
     expect(panel, isNotNull);
-    expect(panel!.listSourceId, KitLiveBoot.listSourceId);
+    expect(panel!.listSourceId, LiveSurfaceOpen.listSourceId);
   });
 
   test('hub pack contributes live_sports kit tab', () {
@@ -80,5 +88,24 @@ void main() {
     expect(navTabBuilders.containsKey('live_sports'), isTrue);
     expect(PluginNavRegistry.builders.containsKey('live_sports'), isTrue);
     expect(navDestinations['live_sports']?.label, 'Live Sports');
+  });
+
+  test('hub pack contributes iptv kit tab via PackLayoutHost', () {
+    PluginNavRegistry.seedTestHubNav(
+      destinations: {
+        'iptv': const NavDestination(
+          id: 'iptv',
+          icon: Icons.live_tv_outlined,
+          activeIcon: Icons.live_tv,
+          label: 'IPTV',
+        ),
+      },
+      tabPluginIds: const {'iptv': 'iptv-hub'},
+    );
+    expect(PluginNavRegistry.isKitTab('iptv'), isTrue);
+    expect(PluginNavRegistry.isContributed('iptv'), isTrue);
+    expect(navTabBuilders.containsKey('iptv'), isTrue);
+    expect(PluginNavRegistry.builders.containsKey('iptv'), isTrue);
+    expect(navDestinations['iptv']?.label, 'IPTV');
   });
 }

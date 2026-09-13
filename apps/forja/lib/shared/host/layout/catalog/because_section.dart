@@ -1,0 +1,300 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja/shared/engine/runtime/meta_movie.dart';
+import 'package:forja/shared/host/layout/kit/kit_poster_card.dart';
+import 'package:forja/shared/engine/runtime/chrome_filters.dart';
+import 'package:forja/shared/host/layout/kit/kit_row_prefetch.dart';
+import 'package:forja/shared/host/layout/kit/kit_section.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/engine/runtime/plugin_actions.dart';
+import 'package:forja/shared/host/watch/watch_history.dart';
+import 'package:forja/shared/engine/runtime/catalog_open.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_layout.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/host/layout/catalog/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/catalog/because_section.dart' as ds;
+
+/// Layout widget type `because` — pack owns rail logic; host maps into DS paint.
+class BecauseSection extends StatefulWidget {
+  const BecauseSection({
+    super.key,
+    required this.pluginId,
+    required this.tabId,
+    required this.spec,
+    this.tvHeaderRowOrder = 0,
+    this.tvRowOrder = 0,
+    this.prefetchSlot,
+  });
+
+  final String pluginId;
+  final String tabId;
+  final Map<String, dynamic> spec;
+  final int tvHeaderRowOrder;
+  final int tvRowOrder;
+  final KitRowPrefetchSlot? prefetchSlot;
+
+  @override
+  State<BecauseSection> createState() => _BecauseSectionState();
+}
+
+class _BecauseSectionState extends State<BecauseSection> {
+  Future<_BecausePayload>? _future;
+  int _shuffleKey = 0;
+  int _epoch = 0;
+  bool _viewportActivated = false;
+  bool _shuffleHovered = false;
+  final FocusNode _shuffleFocusNode = FocusNode(debugLabel: 'because-shuffle');
+
+  @override
+  void initState() {
+    super.initState();
+    _registerPrefetch();
+    WatchHistory.revision.addListener(_onHistoryRevision);
+    _shuffleFocusNode.addListener(_onShuffleFocusChanged);
+  }
+
+  void _onShuffleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onHistoryRevision() {
+    if (_viewportActivated) _reload();
+  }
+
+  void _onViewportVisible() {
+    _activate(prefetch: false);
+  }
+
+  void _registerPrefetch() {
+    final slot = widget.prefetchSlot;
+    if (slot == null) return;
+    slot.lane.register(slot.index, () => _activate(prefetch: true));
+  }
+
+  void _activate({required bool prefetch}) {
+    if (_viewportActivated) {
+      if (!prefetch) widget.prefetchSlot?.notifyVisible();
+      return;
+    }
+    setState(() => _viewportActivated = true);
+    _reload();
+    widget.prefetchSlot?.notifyVisible();
+  }
+
+  @override
+  void dispose() {
+    WatchHistory.revision.removeListener(_onHistoryRevision);
+    _shuffleFocusNode.removeListener(_onShuffleFocusChanged);
+    _shuffleFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant BecauseSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.prefetchSlot != null) {
+      _registerPrefetch();
+    }
+    if (oldWidget.spec != widget.spec ||
+        oldWidget.pluginId != widget.pluginId ||
+        oldWidget.tabId != widget.tabId) {
+      _reload();
+    }
+  }
+
+  void _reload() {
+    final epoch = ++_epoch;
+    setState(() {
+      _future = _load().then((payload) {
+        if (!mounted || epoch != _epoch) return const _BecausePayload.empty();
+        return payload;
+      });
+    });
+  }
+
+  Future<_BecausePayload> _load() async {
+    final rawParams = widget.spec['params'];
+    final params = <String, dynamic>{
+      if (rawParams is Map) ...Map<String, dynamic>.from(rawParams),
+      'rail': (widget.spec['rail'] ?? 'because').toString(),
+      'shuffleKey': _shuffleKey,
+      'resumeSeeds': await catalogResumeSeeds(widget.pluginId),
+    };
+    final envelope = await MetaRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: (widget.spec['action'] ?? 'rail').toString().trim(),
+      params: catalogParamsWithFilters(
+        params,
+        filters: catalogChromeFilters(
+          tabId: widget.tabId,
+          pluginId: widget.pluginId,
+        ),
+      ),
+    );
+    if (!envelope.ok) return const _BecausePayload.empty();
+    final data = envelope.data ?? const {};
+    return _BecausePayload(
+      heading: (data['heading'] ?? widget.spec['title'] ?? '').toString(),
+      seedPoster: (data['seedPoster'] ?? '').toString(),
+      canShuffle: data['canShuffle'] == true,
+      items: envelope.items,
+    );
+  }
+
+  void _shuffle() {
+    setState(() => _shuffleKey++);
+    _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KitLazyViewportGate(
+      detectorKey: ValueKey('because:${widget.tabId}:${widget.spec['id']}'),
+      placeholderHeight: KitSection.sectionHeight(context),
+      prefetchSlot: widget.prefetchSlot,
+      onVisible: _onViewportVisible,
+      builder: (_) => FutureBuilder<_BecausePayload>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting &&
+              !snap.hasData) {
+            return homeLoadingShimmer(homePosterRowSkeleton(context));
+          }
+          final payload = snap.data ?? const _BecausePayload.empty();
+          if (payload.items.isEmpty) return const SizedBox.shrink();
+
+          final rowId = (widget.spec['id'] ?? 'because').toString();
+          final headerRowId = '${rowId}_header';
+          final seedTitle = _becauseSeedTitle(payload.heading);
+          final shuffleActive = _shuffleHovered || _shuffleFocusNode.hasFocus;
+
+          Widget? shuffle;
+          if (payload.canShuffle) {
+            final cardsLast = ShellTvFocusCoordinator.rowHandle(
+                  widget.tabId,
+                  rowId,
+                )?.lastFocusedIndex ??
+                0;
+            shuffle = MouseRegion(
+              onEnter: (_) => setState(() => _shuffleHovered = true),
+              onExit: (_) => setState(() => _shuffleHovered = false),
+              child: shellFocusableTap(
+                context: context,
+                focusNode: _shuffleFocusNode,
+                borderRadius: 20,
+                scaleOnFocus: 1.0,
+                onTap: _shuffle,
+                onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
+                  widget.tabId,
+                  rowId,
+                  cardsLast,
+                ),
+                tvTabId: widget.tabId,
+                tvRowId: headerRowId,
+                tvZone: ShellTvZone.row,
+                tvItemIndex: 0,
+                child: AnimatedScale(
+                  scale: shuffleActive ? 1.08 : 1.0,
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOutCubic,
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: shuffleActive
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                      ),
+                      child: Icon(
+                        Icons.shuffle_rounded,
+                        size: 24,
+                        color: shuffleActive
+                            ? Colors.white
+                            : ForjaShellColors.iconMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            shuffle = TvKitRow(
+              tabId: widget.tabId,
+              rowId: headerRowId,
+              sortOrder: widget.tvHeaderRowOrder,
+              itemCount: 1,
+              child: shuffle,
+            );
+          }
+
+          return ds.BecauseSection(
+            becauseTitle: seedTitle,
+            seedPosterUrl: payload.seedPoster,
+            titlePadding: shellSectionTitlePadding(context),
+            trailing: shuffle,
+            rail: KitSection<MetaItem>(
+              title: '',
+              items: payload.items,
+              embedded: true,
+              compactTop: true,
+              tvTabId: widget.tabId,
+              tvRowId: rowId,
+              tvRowOrder: widget.tvRowOrder,
+              cardBuilder: (context, item, index) => KitPosterCard(
+                imageUrl: item.poster,
+                title: item.name,
+                subtitle: kitPosterSubtitle(item),
+                rating: item.rating,
+                listIndex: index,
+                tvTabId: widget.tabId,
+                tvRowId: rowId,
+                onTap: () => unawaited(
+                  openMetaItem(
+                    context,
+                    pluginId: widget.pluginId,
+                    item: item,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+String _becauseSeedTitle(String heading) {
+  const prefix = 'Because you watched ';
+  final trimmed = heading.trim();
+  if (trimmed.startsWith(prefix)) {
+    return trimmed.substring(prefix.length).trim();
+  }
+  return trimmed;
+}
+
+class _BecausePayload {
+  const _BecausePayload({
+    required this.heading,
+    required this.seedPoster,
+    required this.canShuffle,
+    required this.items,
+  });
+
+  const _BecausePayload.empty()
+      : heading = '',
+        seedPoster = '',
+        canShuffle = false,
+        items = const [];
+
+  final String heading;
+  final String seedPoster;
+  final bool canShuffle;
+  final List<MetaItem> items;
+}

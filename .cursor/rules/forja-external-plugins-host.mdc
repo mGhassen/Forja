@@ -5,11 +5,12 @@ alwaysApply: true
 
 # External plugins and the Flutter host
 
-Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc) · [host tests — no pack contracts](./forja-host-tests-no-pack-contracts.mdc)
+Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [pack-product host](./forja-pack-product-host.mdc) · [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc) · [host tests — no pack contracts](./forja-host-tests-no-pack-contracts.mdc)
 
 ## What “external plugins” means
 
-**Forja does not know plugins.** See [forja-plugins-community-owned.mdc](./forja-plugins-community-owned.mdc).
+**Forja does not know plugins.** See [forja-plugins-community-owned.mdc](./forja-plugins-community-owned.mdc).  
+**Root owns no product UI.** See [forja-pack-product-host.mdc](./forja-pack-product-host.mdc).
 
 Official packs live in the sibling **[forja-packs](https://github.com/mGhassen/forja-packs)**
 repo — **not** compiled into the Flutter binary, and **not** a host inventory.
@@ -19,10 +20,11 @@ Local/dev: set `FORJA_PACKS_ROOT` or clone `forja-packs` next to Forja. The app
 
 | Pack tree (`forja-packs`) | Role | Host entry |
 |-----------------------------|------|------------|
-| `hubs/**` | Browse catalogs (any hub the user installs) | `MetaRuntime.run(pluginId, action, …)` |
+| `hubs/**` | Browse catalogs (any hub the user installs) | Generic plugin action runner + foundation layout mount |
 | `providers/**` | Stream extractors | `EngineService.runPlugin(…)` |
-| `live/**` | Live matches / schedules | Engine live APIs |
-| `catalog/**` | Stremio-style catalog addons | Engine catalog |
+| `livesports/**` | Live schedule / resolve modules | Generic unlock + plugin run (no host live product) |
+| `iptv/**` | IPTV VOD details / portal-related packs | Generic `ctx.host.portals.*` |
+| `torrent/**` | Torrent indexers | Engine torrent APIs |
 
 Each pack has `manifest.json` → plugin ids, `engine.json` **types**, optional `nav`
 (tabId, icon), and JS handlers. Those ids are **pack-owned**, never Dart allowlists.
@@ -54,7 +56,7 @@ packages/rust/     ← native playback / torrent / resolve engine
 | Layer | Path (typical) | May know pack/upstream? |
 |-------|----------------|-------------------------|
 | **Hub packs** | `plugins/hubs/**` | **Yes** — full |
-| **Catalog host** | `packages/forja_foundation` widgets/blocks + `shared/shell` / `shared/engine/hub` glue | **No** — render + route on `open.surface` only |
+| **Catalog host** | `packages/forja_foundation` widgets/blocks + `shared/host/layout` / `shared/engine/runtime` glue | **No** — render + route on `open.surface` only |
 | **Catalog kit play** | `shared/playback/**` + engine extract | **No** — build play args from `MetaItem` + `pluginId`; pass `MetaOpen` opaque |
 | **Playback** | `shared/playback/**` | **No** — generic VOD orchestration only (see playback rule) |
 | **Engine host** | `shared/engine/**` | Plugin ids + `engine.json` types for **extract**; map `MetaOpen` → JS context **here only** when calling `runPlugin` |
