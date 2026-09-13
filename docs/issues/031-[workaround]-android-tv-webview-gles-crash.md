@@ -51,7 +51,10 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 
 **Native (boot):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/ForjaApplication.kt) + [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/WebViewTvWorkaround.kt) — software warm-up; boot skips `setWebContentsDebuggingEnabled` on TV.
 
-**Stream play (TV — no headless WebView):** [`atv_webview_guard.dart`](../../apps/forja/lib/shared/webview/atv_webview_guard.dart) blocks `StreamExtractor`, `AmriExtractor`, and Videasy WASM WebView on TV. [`tv_stream_fallback.dart`](../../apps/forja/lib/shared/playback/tv_stream_fallback.dart) resolves via WebStreamr / Vidsrc / 111477. Details webstreaming extraction prioritizes Rust providers on TV.
+**Stream play (TV — no headless WebView extractors):** ATV stream play uses
+[`tv_stream_fallback.dart`](../../apps/forja/lib/shared/playback/tv_stream_fallback.dart)
+(WebStreamr / Vidsrc / 111477). Details webstreaming extraction prioritizes Rust
+providers on TV. (Old `atv_webview_guard.dart` removed — no remaining callers.)
 
 **Emulator dev (embedded WebView — trailers/live):** [`scripts/atv-run.sh`](../../scripts/atv-run.sh) writes `/data/local/tmp/webview-command-line` with `--disable-gpu` before `flutter run`.
 

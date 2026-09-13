@@ -7,7 +7,7 @@ Supabase Auth + `user_settings` / `profile_settings` blob sync. See [RFC-006](..
 | Folder | Owns |
 |--------|------|
 | `api/` | `SyncService` — session, profiles, settings / IPTV RPCs |
-| `auth/` | Desktop browser handoff, TV device link, Turnstile |
+| `auth/` | Desktop browser handoff, TV device link |
 | `bridge/` | Local ↔ cloud domain export/import (`SyncDomainBridge`, packs onboard store) |
 | `models/` | Account feature flags |
 | `providers/` | Riverpod notifiers / revisions |
@@ -20,8 +20,6 @@ Import via `package:forja/shared/sync/sync.dart` unless a deep import is require
 - Optional: `FORJA_WEB_URL` for desktop **Web login** / signup links (local
   `http://127.0.0.1:3000` in root `.env`; **required** GitHub secret for release —
   must be the deployed portal, not localhost)
-- Optional: `TURNSTILE_SITE_KEY` for in-app Turnstile when Auth captcha is enabled
-  (same public key as `VITE_TURNSTILE_SITE_KEY`; local dummy in `.env.example`)
 
 ## Auth handoff
 

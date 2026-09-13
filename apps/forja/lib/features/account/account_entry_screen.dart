@@ -44,8 +44,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   int _wordIndex = 0;
   Timer? _wordTimer;
   Completer<void>? _webCancel;
-  String? _captchaToken;
-  int _captchaKey = 0;
 
   late final AnimationController _breathe;
   late final AnimationController _enter;
@@ -153,14 +151,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       });
       return;
     }
-    if (ForjaCaptcha.isConfigured &&
-        (_captchaToken == null || _captchaToken!.isEmpty)) {
-      setState(() {
-        _message = 'Complete the captcha check, then try again.';
-        _messageIsError = true;
-      });
-      return;
-    }
 
     setState(() {
       _busy = true;
@@ -170,7 +160,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       final response = await SyncService.instance.signInWithPassword(
         email: email,
         password: password,
-        captchaToken: _captchaToken,
       );
       if (!mounted) return;
       if (response.session == null) {
@@ -187,8 +176,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       setState(() {
         _message = error.message;
         _messageIsError = true;
-        _captchaToken = null;
-        _captchaKey++;
       });
     } catch (_) {
       if (!mounted) return;
@@ -196,8 +183,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
         _message =
             'Could not connect to Forja. Check your connection and retry.';
         _messageIsError = true;
-        _captchaToken = null;
-        _captchaKey++;
       });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -206,23 +191,13 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   Future<void> _passkeyLogin() async {
     if (!ForjaPasskeys.supported) return;
-    if (ForjaCaptcha.isConfigured &&
-        (_captchaToken == null || _captchaToken!.isEmpty)) {
-      setState(() {
-        _message = 'Complete the captcha check, then try again.';
-        _messageIsError = true;
-      });
-      return;
-    }
 
     setState(() {
       _passkeyBusy = true;
       _message = null;
     });
     try {
-      final response = await SyncService.instance.signInWithPasskey(
-        captchaToken: _captchaToken,
-      );
+      final response = await SyncService.instance.signInWithPasskey();
       if (!mounted) return;
       if (response.session == null) {
         setState(() {
@@ -237,8 +212,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       setState(() {
         _message = error.message;
         _messageIsError = true;
-        _captchaToken = null;
-        _captchaKey++;
       });
     } catch (error) {
       if (!mounted) return;
@@ -246,8 +219,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       setState(() {
         _message = ForjaPasskeys.userMessage(error);
         _messageIsError = true;
-        _captchaToken = null;
-        _captchaKey++;
       });
     } finally {
       if (mounted) setState(() => _passkeyBusy = false);
@@ -325,12 +296,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   /// so Cancel / guest stay available if the browser never returns.
   bool get _formLocked => _busy || _webBusy || _passkeyBusy || _mfaBusy;
   bool get _passwordLocked => _busy || _passkeyBusy || _mfaBusy;
-  bool get _captchaReady =>
-      !ForjaCaptcha.isConfigured ||
-      (_captchaToken != null && _captchaToken!.isNotEmpty);
-  bool get _canSubmitPassword => !_formLocked && _captchaReady;
-  bool get _canSubmitPasskey =>
-      ForjaPasskeys.supported && !_formLocked && _captchaReady;
+  bool get _canSubmitPassword => !_formLocked;
+  bool get _canSubmitPasskey => ForjaPasskeys.supported && !_formLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -556,20 +523,6 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                       ),
                     ),
                   ),
-                  if (ForjaCaptcha.isConfigured)
-                    IgnorePointer(
-                      ignoring: _formLocked,
-                      child: Opacity(
-                        opacity: _formLocked ? 0.55 : 1,
-                        child: TurnstileCaptcha(
-                          key: ValueKey(_captchaKey),
-                          onToken: (token) {
-                            if (!mounted) return;
-                            setState(() => _captchaToken = token);
-                          },
-                        ),
-                      ),
-                    ),
                 ],
                 if (_message != null) ...[
                   const SizedBox(height: 16),

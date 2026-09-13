@@ -27,10 +27,6 @@ class SettingsService {
     _platformProfile = profile;
   }
 
-  /// Run headless WebView stream extractors on Android TV (issue 031 workaround).
-  /// `true` = do not skip (dev testing). `false` = skip WebView sniffers on TV.
-  static bool allowAndroidTvHeadlessWebViewExtractors = true;
-
   PlatformDefaults get _defaults =>
       PlatformDefaults.forProfile(_platformProfile);
 

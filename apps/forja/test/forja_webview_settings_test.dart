@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:forja/shared/webview/forja_webview_settings.dart';
-import 'package:rust/rust.dart';
 
 void main() {
   group('patchTvWebViewSettings', () {
@@ -48,30 +46,6 @@ void main() {
       // Must not throw - forjaWebViewSettings used to call settings.copy(),
       // which deserializes blockers and bangs on Android.
       expect(() => forjaWebViewSettings(patched), returnsNormally);
-    });
-  });
-
-  group('isAndroidTvHeadlessWebViewBlocked', () {
-    tearDown(() {
-      SettingsService.configurePlatformProfile(PlatformProfile.phone);
-      SettingsService.allowAndroidTvHeadlessWebViewExtractors = true;
-    });
-
-    test('false on phone profile', () {
-      SettingsService.configurePlatformProfile(PlatformProfile.phone);
-      expect(isAndroidTvHeadlessWebViewBlocked, isFalse);
-    });
-
-    test('true on androidTv profile when extractors disallowed', () {
-      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-      SettingsService.allowAndroidTvHeadlessWebViewExtractors = false;
-      expect(isAndroidTvHeadlessWebViewBlocked, isTrue);
-    });
-
-    test('false on androidTv when allowAndroidTvHeadlessWebViewExtractors', () {
-      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-      SettingsService.allowAndroidTvHeadlessWebViewExtractors = true;
-      expect(isAndroidTvHeadlessWebViewBlocked, isFalse);
     });
   });
 

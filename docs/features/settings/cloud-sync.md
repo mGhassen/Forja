@@ -84,23 +84,21 @@ Not synced — device-specific or sensitive:
   offers the official ForjaHQ bundle, Community Packs, or Skip (see
   [Forja Packs](forja-packs.md)). Guest gets the same packs step once per
   device (local flag). Device-link sessions show as **Forja Android TV** under
-  Account → Connections. From **Settings → Profile & account** (guest), you can
-  still sign in with email and password (Cloudflare Turnstile when Auth captcha
-  is configured), **Sign in with passkey** on macOS and Windows (Touch ID /
-  Windows Hello), or **Web login** in the browser (one portal tab; the app
-  finishes when you sign in there — no second localhost page). After Web login
-  handoff the portal mints a **separate** session for the desktop app and
-  **stays signed in** in the browser. Optional **Google OAuth** appears on web
-  login when configured. Optional **authenticator (TOTP)** is under web
-  **Account** — after you enable it, sign-in asks for a 6-digit code (Web login
-  completes MFA in the browser before minting the desktop session; in-app
-  password sign-in shows the same challenge). Portal **Sign out** clears this
-  browser only; **Account → Connections** lists every active session (device,
-  location with flag, IP, signed-in / last active) and can revoke one or
-  **Sign out all devices** (including the desktop app). Already signed in on the
-  portal? Web login skips the credentials form and finishes the handoff (or use
-  **Return to Forja**). Create accounts only on the web (`/signup`). Forgot
-  password is web-only: `/forgot-password` → `/reset-password`.
+  Account → Connections. From **Settings → Profile & account** (guest): desktop
+  uses **code / QR** device link; mobile can use email/password, **passkey**
+  (macOS / Windows), or **Web login** (one portal tab; the app finishes when you
+  sign in there). After Web login handoff the portal mints a **separate** session
+  for the desktop app and **stays signed in** in the browser. Optional **Google
+  OAuth** appears on web login when configured. Optional **authenticator (TOTP)**
+  is under web **Account** — Web login completes MFA in the browser before
+  minting the desktop session. Portal **Sign out** clears this browser only;
+  **Account → Connections** lists every active session (device, location with
+  flag, IP, signed-in / last active) and can revoke one or **Sign out all
+  devices** (including the desktop app). Already signed in on the portal? Web
+  login skips the credentials form and finishes the handoff (or use **Return to
+  Forja**). Create accounts only on the web (`/signup`). Forgot password is
+  web-only: `/forgot-password` → `/reset-password`. Captcha (Turnstile) is
+  web-portal only — the Flutter app does not embed it.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**
@@ -188,31 +186,17 @@ Optional portal origin for **Web login** / signup links:
 --dart-define=FORJA_WEB_URL=https://your-portal.example
 ```
 
-When Supabase Auth captcha is enabled, also pass the public Turnstile site key
-(same value as `VITE_TURNSTILE_SITE_KEY` on the web portal):
-
-```text
---dart-define=TURNSTILE_SITE_KEY=…
-```
-
-Local always-pass dummy: `1x00000000000000000000AA` (matches
-`apps/web/supabase/config.toml`). Hosted projects need the real widget site key
-that matches the Auth captcha secret.
-
-Put the same keys in repo-root `.env` (see `.env.example`) so local
+Put Supabase + portal keys in repo-root `.env` (see `.env.example`) so local
 `flutter run --dart-define-from-file=../../.env` picks them up. Local default
 portal is `http://127.0.0.1:3000`. **Release / CI** must set GitHub secret
 `FORJA_WEB_URL` to the deployed portal (Vercel URL, custom domain, etc.) —
-builds fail if it is missing or still localhost. Set optional secret
-`TURNSTILE_SITE_KEY` so in-app password login works when Auth captcha is on.
-This does **not** go in `apps/web/.env` alone (that file configures the portal;
-the desktop app needs its own dart-defines).
+builds fail if it is missing or still localhost.
 
 Web uses `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in `apps/web/.env`.
-For signup/sign-in captcha, also set `VITE_TURNSTILE_SITE_KEY` (Cloudflare Turnstile
-site key) on the web and the matching `TURNSTILE_SITE_KEY` for Flutter.
-Local dummy keys are documented in `apps/web/.env.example` and root `.env.example`.
-Local Flutter development can load the repo-root `.env` directly:
+For signup/sign-in captcha on the **portal only**, set `VITE_TURNSTILE_SITE_KEY`
+(Cloudflare Turnstile site key). Local dummy keys are documented in
+`apps/web/.env.example`. Local Flutter development can load the repo-root `.env`
+directly:
 
 ```text
 flutter run -d macos --dart-define-from-file=../../.env
