@@ -29,18 +29,14 @@ bool addonMasterEnabled({
     SettingsAddonId.stremio => snap?.playSourceStremio ?? false,
     SettingsAddonId.nuvio => snap?.playSourceNuvio ?? false,
     SettingsAddonId.debrid => debridEnabled,
-    SettingsAddonId.iptv => visibility.iptvNav,
     SettingsAddonId.lan => lanEnabled,
     _ => false,
   };
 }
 
-/// Nav id for Addons-gated host features (RFC-086). Live Sports is pack-only
-/// (RFC-093) — no host addon feature id.
-String? addonFeatureNavId(String addonId) => switch (addonId) {
-  SettingsAddonId.iptv => 'iptv',
-  _ => null,
-};
+/// Nav id for Addons-gated host features (RFC-086).
+/// IPTV / Live Sports are pack-only — no host addon feature id.
+String? addonFeatureNavId(String addonId) => null;
 
 /// Writes Addons master enable — call from the row OK / click.
 ///
@@ -68,7 +64,6 @@ Future<bool> setAddonMasterEnabled(
     }
   }
 
-  final featureNavId = addonFeatureNavId(addonId);
   switch (addonId) {
     case SettingsAddonId.torrent:
       notePreferencesDirty();
@@ -87,22 +82,6 @@ Future<bool> setAddonMasterEnabled(
       ref
           .read(settingsDebridProvider.notifier)
           .patch((s) => s.copyWith(useDebrid: val));
-    case SettingsAddonId.iptv:
-      noteNavigationDirty();
-      await settings.setAddonFeatureEnabled(featureNavId!, val);
-      await settings.setNavbarTabVisible(featureNavId, val);
-      if (val) {
-        // Deactivate clears EPG; turning IPTV back on restores the platform
-        // default so NOW/NEXT does not stay stuck off.
-        final epgOn = PlatformDefaults.forProfile(
-          SettingsService.platformProfile,
-        ).iptvEpgEnabled;
-        notePreferencesDirty();
-        await settings.setIptvEpgEnabled(epgOn);
-        await notifier.patch((s) => s.copyWith(iptvEpgEnabled: epgOn));
-      } else {
-        await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
-      }
     case SettingsAddonId.lan:
       await LanPrefs.instance.setLanServerEnabled(val);
   }
@@ -111,11 +90,7 @@ Future<bool> setAddonMasterEnabled(
     await deactivateAddonChildren(addonId);
   }
 
-  if (featureNavId != null) {
-    await scheduleAddonFeatureAndNavSyncPush();
-  } else {
-    schedulePreferencesSyncPush();
-  }
+  schedulePreferencesSyncPush();
   return true;
 }
 

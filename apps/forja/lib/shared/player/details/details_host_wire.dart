@@ -12,7 +12,7 @@ import 'package:forja_foundation/widgets/details/facts_panel.dart';
 import 'package:forja_foundation/widgets/details/pack_detail_meta.dart';
 import 'package:rust/rust.dart';
 
-export 'package:forja_foundation/protocol/meta_details.dart';
+export 'package:forja/shared/player/details/details_meta.dart';
 export 'package:forja_foundation/widgets/details/pack_detail_meta.dart';
 
 String? hubShellTabIdForPlugin(String pluginId) =>

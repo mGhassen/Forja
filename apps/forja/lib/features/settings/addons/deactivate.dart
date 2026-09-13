@@ -17,8 +17,6 @@ Future<void> deactivateAddonChildren(String addonId) async {
     case SettingsAddonId.torrent:
       await _disablePacksOfKind(PluginRegistry.packKindTorrent);
       await TorrentStreamService().stop();
-    case SettingsAddonId.iptv:
-      await _disableIptv();
     case SettingsAddonId.lan:
       await LanServerService.instance.stop();
     case SettingsAddonId.debrid:
@@ -61,12 +59,4 @@ Future<void> _disablePacksOfKind(String kind) async {
       enabled: false,
     );
   }
-}
-
-Future<void> _disableIptv() async {
-  final settings = SettingsService();
-  // Cleared while IPTV is off; [setAddonMasterEnabled] restores the platform
-  // default when IPTV is turned back on (avoids sticky-off NOW/NEXT).
-  await settings.setIptvEpgEnabled(false);
-  await _disablePacksOfKind(PluginRegistry.packKindIptv);
 }

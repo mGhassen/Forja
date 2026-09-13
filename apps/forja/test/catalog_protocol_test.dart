@@ -64,15 +64,9 @@ Map<String, dynamic> loadHubPackManifest(String packDir) {
   );
 }
 
-/// `iptv/vod/manifest.json` — IPTV VOD details pack (not a hub tab).
-Map<String, dynamic> loadIptvVodPackManifest() {
-  final root = _packsRoot();
-  expect(root, isNotNull, reason: 'forja-packs not found');
-  final file = File('$root/iptv/vod/manifest.json');
-  expect(file.existsSync(), isTrue, reason: 'missing ${file.path}');
-  return Map<String, dynamic>.from(
-    jsonDecode(file.readAsStringSync()) as Map,
-  );
+/// `hubs/iptv/manifest.json` — full IPTV pack (hub + VOD details).
+Map<String, dynamic> loadIptvHubPackManifest() {
+  return loadHubPackManifest('iptv');
 }
 
 List<EnginePlugin> loadAllHubPlugins() {
@@ -85,6 +79,7 @@ List<EnginePlugin> loadAllHubPlugins() {
     'cartoon',
     'aflem',
     'live_sports',
+    'iptv',
   ]) {
     final pack = EnginePack.fromJson(
       loadHubPackManifest(dir),
@@ -92,11 +87,6 @@ List<EnginePlugin> loadAllHubPlugins() {
     );
     out.addAll(pack.plugins);
   }
-  final iptv = EnginePack.fromJson(
-    loadIptvVodPackManifest(),
-    sourceUrl: 'file:///plugins/iptv/vod/manifest.json',
-  );
-  out.addAll(iptv.plugins);
   return out;
 }
 
@@ -678,37 +668,41 @@ void main() {
       );
     });
 
-    test('iptv vod pack is under plugins/iptv/vod, not hubs', () {
+    test('iptv hub pack includes nav + vod details + enrich', () {
       final iptv = EnginePack.fromJson(
-        loadIptvVodPackManifest(),
-        sourceUrl: 'file:///plugins/iptv/vod/manifest.json',
+        loadIptvHubPackManifest(),
+        sourceUrl: 'file:///plugins/hubs/iptv/manifest.json',
       );
-      expect(iptv.packId, 'forjahq-iptv-vod');
-      expect(iptv.plugins.map((p) => p.id), ['iptv-vod', 'iptv-enrich-tmdb']);
+      expect(iptv.packId, 'forjahq-iptv');
+      expect(
+        iptv.plugins.map((p) => p.id),
+        ['iptv-hub', 'iptv-vod', 'iptv-enrich-tmdb'],
+      );
       expect(
         PluginRegistry.forjaHqSlot(
-          '/Users/me/Forja/plugins/iptv/vod/manifest.json',
+          '/Users/me/Forja/plugins/hubs/iptv/manifest.json',
         ),
-        'iptv-vod',
+        'iptv',
       );
       expect(
         PluginRegistry.packKindKey(iptv),
-        PluginRegistry.packKindIptv,
+        PluginRegistry.packKindHubs,
       );
-      expect(
-        PluginRegistry.packKindInfo(iptv),
-        'IPTV · Iptv Vod',
-      );
+      final hub = iptv.plugins.firstWhere((p) => p.id == 'iptv-hub');
+      expect(hub.hasCapability('nav'), isTrue);
+      expect(hub.nav?['tabId'], 'iptv');
+      expect(hub.settings?['addon'], 'iptv');
+      final vod = iptv.plugins.firstWhere((p) => p.id == 'iptv-vod');
+      expect(vod.hasCapability('details'), isTrue);
+      expect(vod.hasCapability('nav'), isFalse);
       for (final plugin in iptv.plugins) {
         expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
         expect(plugin.types, contains('iptv'), reason: plugin.id);
-        expect(plugin.hasCapability('nav'), isFalse, reason: plugin.id);
       }
-      expect(File('../../plugins/iptv/vod/iptv_vod.js').existsSync(), isTrue);
-      expect(
-        File('../../plugins/iptv/vod/enrich_tmdb.js').existsSync(),
-        isTrue,
-      );
+      final root = _packsRoot();
+      expect(root, isNotNull);
+      expect(File('$root/hubs/iptv/iptv_vod.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/enrich_tmdb.js').existsSync(), isTrue);
     });
 
     test('hubs/iptv manifest url is hub slot iptv (RFC-109)', () {
@@ -722,6 +716,7 @@ void main() {
         PluginRegistry.isHubManifestSlot('iptv'),
         isTrue,
       );
+      // Legacy VOD-only slot still recognized for soft-pull of old installs.
       expect(
         PluginRegistry.isHubManifestSlot('iptv-vod'),
         isFalse,
@@ -729,8 +724,9 @@ void main() {
     });
 
     test('iptv-vod details returns protocol envelope array', () {
-      final src =
-          File('../../plugins/iptv/vod/iptv_vod.js').readAsStringSync();
+      final root = _packsRoot();
+      expect(root, isNotNull);
+      final src = File('$root/hubs/iptv/iptv_vod.js').readAsStringSync();
       expect(src, isNot(contains('iptvVodDetails(params)[0]')));
       expect(src, contains('return Promise.resolve(iptvVodDetails(params));'));
     });

@@ -489,9 +489,11 @@ class MetaItem {
     this.rating,
     this.releaseInfo = '',
     this.premiereDate = '',
+    this.premiereLabel = '',
     this.genres = const [],
     this.badge,
     this.status,
+    this.upcoming,
     this.episodes,
     this.bannerImage = '',
     this.tmdbMediaType,
@@ -523,10 +525,14 @@ class MetaItem {
   final String releaseInfo;
   /// ISO premiere / first-air date (`YYYY-MM-DD`) for upcoming titles.
   final String premiereDate;
+  /// Pack-emitted display label for premiere (e.g. `Jun 14, 2026`).
+  final String premiereLabel;
   final List<String> genres;
   final String? badge;
   /// Hub status wire (`RELEASING`, `NOT_YET_RELEASED`, …).
   final String? status;
+  /// Pack-emitted show-level “Coming soon” — host only reads this.
+  final bool? upcoming;
   final int? episodes;
   /// Ultrawide banner — hero uses `fitWidth` when set (pre-cutover).
   final String bannerImage;
@@ -600,11 +606,22 @@ class MetaItem {
       releaseInfo: (j['releaseInfo'] ?? '').toString(),
       premiereDate: (j['premiereDate'] ?? j['premiere_date'] ?? '')
           .toString(),
+      premiereLabel: (j['premiereLabel'] ?? j['premiere_label'] ?? '')
+          .toString(),
       genres: genresRaw is List
           ? genresRaw.map((e) => e.toString()).toList()
           : const [],
       badge: j['badge']?.toString(),
       status: j['status']?.toString(),
+      upcoming: () {
+        final u = j['upcoming'];
+        if (u is bool) return u;
+        if (u == null) return null;
+        final s = u.toString().trim().toLowerCase();
+        if (s == 'true' || s == '1') return true;
+        if (s == 'false' || s == '0') return false;
+        return null;
+      }(),
       episodes: (j['episodes'] as num?)?.toInt(),
       bannerImage: (j['bannerImage'] ?? '').toString(),
       tmdbMediaType: j['tmdbMediaType']?.toString(),
@@ -673,9 +690,11 @@ class MetaItem {
         if (rating != null) 'rating': rating,
         if (releaseInfo.isNotEmpty) 'releaseInfo': releaseInfo,
         if (premiereDate.isNotEmpty) 'premiereDate': premiereDate,
+        if (premiereLabel.isNotEmpty) 'premiereLabel': premiereLabel,
         if (genres.isNotEmpty) 'genres': genres,
         if (badge != null) 'badge': badge,
         if (status != null && status!.isNotEmpty) 'status': status,
+        if (upcoming != null) 'upcoming': upcoming,
         if (episodes != null) 'episodes': episodes,
         if (bannerImage.isNotEmpty) 'bannerImage': bannerImage,
         if (tmdbMediaType != null && tmdbMediaType!.isNotEmpty)
@@ -738,9 +757,11 @@ class MetaItem {
         rating: rating,
         releaseInfo: releaseInfo,
         premiereDate: premiereDate,
+        premiereLabel: premiereLabel,
         genres: genres,
         badge: badge,
         status: status,
+        upcoming: upcoming,
         episodes: episodes,
         bannerImage: bannerImage,
         tmdbMediaType: tmdbMediaType,

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **20 / 25** acceptance (code) · **5** 🔄 |
-| **Current slice** | A33: Live Sports paint/search out of foundation — pack `liveSportsShapeRow` owns flat paint |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **3 / 3** IPTV unified pack |
+| **Current slice** | A35–A37: single IPTV hub pack (nav + VOD + settings); catalog replaces iptv-vod |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -80,6 +80,17 @@
 | 11 | R109-A31 | No `engine/runtime/list/` — kit.list host wire in `host/layout/list`; Live Sports paint/search/schedule in pack | ✅ |
 | 12 | R109-A32 | `plugin_feed_source` / Riverpod list open mode stay host layout debt until pack owns feed | 🔄 |
 | 13 | R109-A33 | Foundation has no Live Sports product (`list_event_paint` / `match` / `schedule_window` / `kit_list_entry`) — pack emits flat paint + `searchText` | ✅ |
+| 14 | R109-A34 | Details upcoming/premiereLabel emitted by pack `hubStampDetailsPaint`; host reads only; foundation `meta_details` deleted | ✅ |
+
+---
+
+## Acceptance (IPTV unified pack)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A35 | `forja-packs/hubs/iptv` ships hub nav + `iptv-vod` details + enrich in one pack | ✅ |
+| 2 | R109-A36 | Official catalog publishes `hubs/iptv` (`plugin_packs.id=iptv`); `iptv-vod` catalog row removed | ✅ |
+| 3 | R109-A37 | Host Addons IPTV row pack-only (`settings.addon`); `addonGatedNavIds` empty; install activates tab | ✅ |
 
 ---
 
@@ -277,9 +288,9 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 | Deleted | `apps/forja/lib/shared/engine/portals/` · `apps/forja/lib/shared/host/portals_ui/` |
 | Host bridges | `ctx.host.http.request` · `ctx.host.vault.get/set/remove` · `ctx.host.playback.open` |
 | Match helpers | Relocated to `engine/runtime/match/` (not IPTV product) |
-| IPTV pack | `forja-packs/hubs/iptv` v1.1.0 — settings portal fields, Xtream live categories/channels, `searchChannels`, `open.surface: stream` |
+| IPTV pack | `forja-packs/hubs/iptv` v1.2.0 — hub nav + portal VOD details + enrich + settings; catalog id `iptv` |
 | live_sports | Live TV → `plugin.run(iptv-hub, searchChannels)`; empty sources if no iptv pack |
-| Settings | IPTV addon = pack fields + player prefs; CSV portal section removed |
+| Settings | IPTV Addons row only when pack installed (pack `settings.addon`); player prefs still under that page; no host Addons master toggle / `addonGatedNavIds` |
 | Sync | Host IptvStore push/pull stubbed — pack vault is local SoT |
 
 | Still open | Detail |
@@ -388,3 +399,19 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 |------------|--------|
 | A30 | Stremio details + host rail wire |
 | `meta_details` in foundation | still hub-shaped — later peel |
+
+---
+
+## Wave J notes (details paint → packs)
+
+| Done | Detail |
+|------|--------|
+| Pack | `hubs/_shared/details_paint.js` (`hubStampDetailsPaint`) synced into each hub `_kit.js`; stamped on `hubOk('details')` + `hubItems` → `upcoming`, `premiereLabel` |
+| Protocol | `MetaItem.upcoming` · `MetaItem.premiereLabel` |
+| Host | `player/details/details_meta.dart` reads pack fields only |
+| Deleted | `forja_foundation/protocol/meta_details.dart` |
+
+| Still open | Detail |
+|------------|--------|
+| A30 | Stremio details load still host |
+| `pack_detail_meta` | generic rails/facts/backdrops readers — keep |

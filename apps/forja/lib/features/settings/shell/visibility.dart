@@ -1,4 +1,5 @@
 import 'package:forja/app/boot_needs.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/nav/nav_config.dart';
@@ -146,7 +147,9 @@ class SettingsVisibility {
       showPlaySourceEngineToggle: await PlaySourceEffective.showEngineToggle(),
       lanPlaySourcesEditable: lanEditable,
       vodTab: nav.any(BootNeeds.isVodNavId),
-      iptvNav: await s.isAddonFeatureEnabled('iptv'),
+      // Pack-owned (RFC-109): hub contribution, or rail still has the tab.
+      iptvNav:
+          PluginNavRegistry.isContributed('iptv') || nav.contains('iptv'),
     );
   }
 }

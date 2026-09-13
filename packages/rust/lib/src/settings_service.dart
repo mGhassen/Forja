@@ -794,8 +794,8 @@ class SettingsService {
 
   Future<bool> isAddonFeatureEnabled(String featureId) async {
     await ensureAddonFeaturesMigratedFromNav();
-    // Live Sports is pack-only (RFC-093) — never gate on retired KV.
-    if (featureId == liveSportsAddonFeatureId) {
+    // Live Sports / IPTV are pack-only — never gate on retired Addons KV.
+    if (featureId == liveSportsAddonFeatureId || featureId == 'iptv') {
       return false;
     }
     final key = _addonFeatureKey(featureId);
@@ -807,7 +807,7 @@ class SettingsService {
 
   Future<void> setAddonFeatureEnabled(String featureId, bool enabled) async {
     await ensureAddonFeaturesMigratedFromNav();
-    if (featureId == liveSportsAddonFeatureId) {
+    if (featureId == liveSportsAddonFeatureId || featureId == 'iptv') {
       return;
     }
     final key = _addonFeatureKey(featureId);
@@ -1615,16 +1615,13 @@ class SettingsService {
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
-  /// Live Sports is pack-only (RFC-093) — not gated here.
-  /// IPTV stays Addons-gated (`addon_feature_iptv`) even when the rail tab
-  /// comes from the IPTV hub pack (RFC-109).
-  static const Set<String> addonGatedNavIds = {'iptv'};
+  /// Live Sports / IPTV are pack-only (RFC-093 / RFC-109) — not gated here.
+  static const Set<String> addonGatedNavIds = <String>{};
 
   /// Host shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// Live Sports tab id comes from pack `nav` only. IPTV is Addons-gated
-  /// ([addonGatedNavIds]) and may also appear via pack `nav`.
+  /// Live Sports / IPTV tab ids come from pack `nav` only.
   /// Archived tabs live under `apps/archive/` — keep out of [allNavIds].
   static const Set<String> archivedNavIds = {
     'search',

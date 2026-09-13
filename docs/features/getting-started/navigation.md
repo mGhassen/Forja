@@ -4,11 +4,11 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** are host-owned core tabs that stay off until **Settings → Addons** (turning an Addons switch on also puts the tab on the rail by default; **Features** hides or reorders after that). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, Shahid, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and the pack enable path defaults the rail **on** the first time. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** appear when you install their hub packs (Forja Packs / Official) — each pack’s `nav` contributes the tab and turns the rail on by default; **Features** hides or reorders after that. Other **catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, Shahid, كرتون, Kids, …) work the same way. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
-The tab bar is always visible after the app finishes loading. On first sign-in, hub tabs (Home, Anime, …) appear once catalog packs finish installing. Turn on **IPTV** or **Live Sports** from Settings → Addons when you want those tabs. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
+The tab bar is always visible after the app finishes loading. On first sign-in, hub tabs (Home, Anime, IPTV, Live Sports, …) appear once their packs finish installing. The **profile avatar** is always pinned at the bottom of the desktop rail, opens Settings, and cannot be hidden from the navbar list.
 
 ## What you can do
 
@@ -54,9 +54,9 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 
 ## Available tabs
 
-**Default (fresh install):** Settings only. **Addons:** turn on IPTV / Live Sports when you want them (rail on by default). **After hub packs install / enable:** those hub tabs land on the rail by default (typical official bundle: Home · Asian Drama · Anime · My List, plus optional Arabic / Aflem / Shahid / كرتون / Kids). Use **Features** to hide or reorder.
+**Default (fresh install):** Settings only. **After hub packs install / enable:** those hub tabs land on the rail by default (typical official bundle: Home · Asian Drama · Anime · My List; optional **IPTV**, Live Sports, Arabic / Aflem / Shahid / كرتون / Kids). Use **Features** to hide or reorder.
 
-Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **Shahid** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
+Hub tabs (**Home**, **Anime**, **Asian Drama**, **IPTV**, **Live Sports**, **Arabic** / **Aflem** / **Shahid** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel. **IPTV** settings (portals, live player prefs) live under **Addons → IPTV** only while the IPTV pack is installed.
 
 **Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic — see [archive](../archive/README.md).
 

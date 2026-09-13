@@ -35,7 +35,7 @@ import 'package:forja/shared/engine/runtime/nav/top_menu_registry.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
-import 'package:forja_foundation/protocol/meta_details.dart';
+import 'package:forja/shared/player/details/details_meta.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja_foundation/kit/row_prefetch.dart';
 

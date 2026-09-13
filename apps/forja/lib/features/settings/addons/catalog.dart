@@ -10,6 +10,9 @@ import 'package:forja/shared/sync/sync.dart';
 /// enabled plugins, never hardcoded pack ids in this catalog.
 abstract final class SettingsAddonId {
   static const playback = 'playback';
+
+  /// Pack-owned bucket id (`settings.addon: "iptv"` on the IPTV hub).
+  /// Not a host built-in Addons row — appears only when the pack is installed.
   static const iptv = 'iptv';
   static const torrent = 'torrent';
   static const stremio = 'stremio';
@@ -59,12 +62,6 @@ const List<SettingsAddonMeta> kSettingsAddons = [
     subtitle: 'Quality, audio, auto-play',
     icon: Icons.play_circle_outline_rounded,
     hasToggle: false,
-  ),
-  SettingsAddonMeta(
-    id: SettingsAddonId.iptv,
-    title: 'IPTV',
-    subtitle: 'Portals, EPG, live quality',
-    icon: Icons.live_tv_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.torrent,

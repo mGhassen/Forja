@@ -807,7 +807,7 @@ abstract final class PluginNavRegistry {
   /// First enabled hub whose pack declares [typeToken] in `engine.types`.
   ///
   /// Prefers source plugins (`details` / `nav` / `feed`) over enrich-only
-  /// companions (`iptv-vod` before `iptv-enrich-tmdb`, etc.).
+  /// companions (`iptv-vod` before `iptv-enrich-tmdb` in the IPTV hub pack, etc.).
   static Future<String?> pluginIdForEngineType(String typeToken) async {
     final want = typeToken.trim();
     if (want.isEmpty) return null;
