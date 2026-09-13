@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/hub/visibility.dart';
-import 'package:forja/features/settings/categories/engine_plugin_pack.dart';
+import 'package:forja/features/settings/categories/packs/engine_plugin_pack.dart';
 import 'package:forja/features/settings/chrome/settings_ui.dart';
 
 import 'package:forja/shared/nuvio/nuvio.dart';

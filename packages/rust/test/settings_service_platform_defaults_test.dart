@@ -32,6 +32,7 @@ void main() {
   setUp(() async {
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
     SettingsService.resetNavbarLockForTest();
+    SettingsService.resetAddonFeatureMemoryForTest();
     await openFreshStore();
   });
 

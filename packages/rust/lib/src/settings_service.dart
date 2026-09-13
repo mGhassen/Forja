@@ -1615,13 +1615,16 @@ class SettingsService {
   /// Host tabs gated by Settings → Addons unlock flags (RFC-086).
   /// [ensureNavIdsKnown] must not auto-insert these; Addons ON / Features
   /// hide write visibility explicitly.
-  /// Live Sports / IPTV are pack-owned (RFC-087 / RFC-109) — not gated here.
-  static const Set<String> addonGatedNavIds = {};
+  /// Live Sports is pack-only (RFC-093) — not gated here.
+  /// IPTV stays Addons-gated (`addon_feature_iptv`) even when the rail tab
+  /// comes from the IPTV hub pack (RFC-109).
+  static const Set<String> addonGatedNavIds = {'iptv'};
 
   /// Host shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
-  /// Live Sports / IPTV tab ids come from pack `nav` only.
+  /// Live Sports tab id comes from pack `nav` only. IPTV is Addons-gated
+  /// ([addonGatedNavIds]) and may also appear via pack `nav`.
   /// Archived tabs live under `apps/archive/` — keep out of [allNavIds].
   static const Set<String> archivedNavIds = {
     'search',
@@ -1831,6 +1834,12 @@ class SettingsService {
   static void resetNavbarLockForTest() {
     _navbarExclusiveTail = Future<void>.value();
     _navbarVisibleMemory = null;
+  }
+
+  /// Test-only: drop in-memory addon feature overrides between stores.
+  @visibleForTesting
+  static void resetAddonFeatureMemoryForTest() {
+    _addonFeatureMemory.clear();
   }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.

@@ -37,6 +37,8 @@ void main() {
   setUp(() async {
     PlatformPlayback.clearOverride();
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    SettingsService.resetNavbarLockForTest();
+    SettingsService.resetAddonFeatureMemoryForTest();
     PlaySourceEffective.debugForceLanDesktopOnline = null;
     await openFreshStore();
   });

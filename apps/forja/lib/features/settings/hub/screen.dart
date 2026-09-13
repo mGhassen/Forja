@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/categories/bodies.dart';
+import 'package:forja/features/settings/categories/router.dart';
 import 'package:forja/features/settings/hub/scaffold.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';

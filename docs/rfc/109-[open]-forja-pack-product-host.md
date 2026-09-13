@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **17 / 20** acceptance (code) · **3** 🔄 |
-| **Current slice** | A26/A28 landed — no `host/catalog`; layout = PackLayoutHost + hooks + `pack_layout_host_wire.dart`; search painters → `host_search_wire.dart` |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **18 / 22** acceptance (code) · **4** 🔄 |
+| **Current slice** | A29: engine/details evacuated — protocol meta in foundation; Stremio/host rail wire still debt (A30) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -75,6 +75,8 @@
 | 6 | R109-A26 | Public `host/layout/` = PackLayoutHost + thin hooks only (`private/` residual Riverpod adapters) | ✅ |
 | 7 | R109-A27 | IPTV hub pack browse+play via http/vault/playback (Xtream live MVP) | ✅ |
 | 8 | R109-A28 | Host catalog/search MetaItem adapters absorbed into foundation (no `host/catalog` rename residue) | ✅ |
+| 9 | R109-A29 | No `engine/runtime/details/` — meta protocol helpers in foundation; host wire beside PackDetailsHost only | ✅ |
+| 10 | R109-A30 | Stremio details load + rail open/TV wire stay host debt (`player/details/details_stremio` · `details_host_wire`) until pack owns surface | 🔄 |
 
 ---
 
@@ -339,3 +341,17 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 |------------|--------|
 | Fat host wires | `pack_details_host` / list status button / match page still MetaRuntime + store + TV |
 | `kit_details_play_row` | Thin HeroPill / TV scope — not pure paint |
+
+---
+
+## Wave G notes (`engine/runtime/details` evacuate)
+
+| Done | Detail |
+|------|--------|
+| Deleted | `apps/forja/lib/shared/engine/runtime/details/` |
+| Foundation | `protocol/meta_details.dart` (upcoming / params / episode maps / surface flags) · `widgets/details/pack_detail_meta.dart` (rails parse / backdrops / facts) |
+| Host debt left | `player/details/details_fetch.dart` (MetaRuntime run) · `details_stremio.dart` · `details_host_wire.dart` (nav tab resolve / rail open+TV / rust trailers) |
+
+| Still open | Detail |
+|------------|--------|
+| A30 | Stremio details + host rail wire → pack surface or thinner host callbacks |
