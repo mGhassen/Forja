@@ -1159,9 +1159,9 @@ class _KitSectionState<T> extends State<KitSection<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalPad = widget.embedded
-        ? 0.0
-        : shellHomeSectionHorizontalPadding(context);
+    // embedded only skips title top spacing — rail inset must match other
+    // Home rows (Mood / Because parents do not pad the nested KitSection).
+    final horizontalPad = shellHomeSectionHorizontalPadding(context);
     final sectionTop = _sectionTitleTop(context);
 
     return CatalogSection<T>(
