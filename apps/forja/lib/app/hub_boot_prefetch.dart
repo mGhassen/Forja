@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja_foundation/protocol/filter.dart';
-import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/runtime/plugin_actions.dart';
-import 'package:forja/shared/engine/runtime/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:rust/rust.dart';
 
 /// Prefetch default hub layout + first-paint rails into [EngineCache].

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/runtime/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 

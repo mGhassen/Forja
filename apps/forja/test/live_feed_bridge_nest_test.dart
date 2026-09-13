@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/runtime/hub_host_bridge_nest.dart';
+import 'package:forja/shared/engine/runtime/vm/hub_host_bridge_nest.dart';
 
 void main() {
   test('withHubHostBridge nests and clears', () async {

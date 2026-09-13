@@ -20,34 +20,34 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/engine/runtime/service.dart';
+import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 
-import 'package:forja/shared/engine/runtime/pack_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 
 import 'package:forja_foundation/widgets/chrome/catalog_menu.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_tabs.dart';
-import 'package:forja/shared/engine/runtime/top_menu_registry.dart';
+import 'package:forja/shared/engine/runtime/nav/top_menu_registry.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
-import 'package:forja/shared/engine/runtime/details_meta.dart';
-import 'package:forja/shared/engine/runtime/meta_movie.dart';
-import 'package:forja/shared/engine/runtime/row_prefetch.dart';
+import 'package:forja/shared/engine/runtime/details/details_meta.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/list/row_prefetch.dart';
 
 import 'package:forja_foundation/protocol/filter.dart';
-import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/runtime/plugin_actions.dart';
-import 'package:forja/shared/engine/runtime/chrome_filters.dart';
-import 'package:forja/shared/engine/runtime/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/list/host_list_registry.dart';
 import 'package:forja/shared/host/layout/top_bar_host_hooks.dart';
-import 'package:forja/shared/engine/runtime/list_source.dart';
-import 'package:forja/shared/engine/runtime/catalog_open.dart';
+import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/shell/focus/focus_edge.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_body.dart';

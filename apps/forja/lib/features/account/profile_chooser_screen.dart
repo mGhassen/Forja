@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
-import 'package:forja/features/settings/widgets/settings_ui.dart';
+import 'package:forja/features/settings/chrome/settings_ui.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';

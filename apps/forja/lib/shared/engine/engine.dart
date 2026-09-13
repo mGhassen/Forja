@@ -1,7 +1,7 @@
 library;
 
 export 'cache/engine_cache.dart';
-export 'runtime/catalog_extract_context.dart';
+export 'runtime/meta/catalog_extract_context.dart';
 export 'unlock/goat_unlock.dart';
 export 'unlock/pack_unlock_files.dart';
 export 'packs/live_sport_capabilities.dart';
@@ -22,8 +22,8 @@ export 'packs/registry/pack_device_state.dart';
 export 'packs/registry/plugin_contract.dart';
 export 'packs/registry/plugin_registry.dart';
 export 'packs/registry/plugin_script_disk_store.dart';
-export 'runtime/runtime.dart';
-export 'runtime/service.dart';
+export 'runtime/vm/runtime.dart';
+export 'runtime/vm/service.dart';
 export 'store/engine_store.dart';
 export 'vault/engine_vault.dart';
 

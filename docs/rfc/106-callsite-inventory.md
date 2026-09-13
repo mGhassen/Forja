@@ -75,40 +75,40 @@ Checklist (paths only — migrate batches tick these):
 - [x] `apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart`
 - [x] `apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart`
 - [x] `apps/forja/lib/features/iptv/screens/iptv_series_episode_list.dart`
-- [x] `apps/forja/lib/features/settings/addons/pack_addon_settings_section.dart`
-- [x] `apps/forja/lib/features/settings/addons/pack_auth_browser_dialog.dart`
-- [ ] `apps/forja/lib/features/settings/addons/pack_auth_session_handoff.dart`
-- [x] `apps/forja/lib/features/settings/addons/pack_connected_auth_section.dart`
-- [ ] `apps/forja/lib/features/settings/addons/settings_addon_catalog.dart`
-- [ ] `apps/forja/lib/features/settings/addons/settings_addon_toggles.dart`
-- [x] `apps/forja/lib/features/settings/addons/settings_addons_host.dart`
-- [x] `apps/forja/lib/features/settings/pages/settings_category_bodies.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack/pack_addon_settings_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack/pack_auth_browser_dialog.dart`
+- [ ] `apps/forja/lib/features/settings/addons/pack/pack_auth_session_handoff.dart`
+- [x] `apps/forja/lib/features/settings/addons/pack/pack_connected_auth_section.dart`
+- [ ] `apps/forja/lib/features/settings/addons/catalog.dart`
+- [ ] `apps/forja/lib/features/settings/addons/toggles.dart`
+- [x] `apps/forja/lib/features/settings/addons/addons_host.dart`
+- [x] `apps/forja/lib/features/settings/categories/bodies.dart`
 - [ ] `apps/forja/lib/features/settings/providers/settings_panel_providers.dart`
-- [x] `apps/forja/lib/features/settings/sections/lan_settings_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_about_panel.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_cache_data_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_debrid_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_forja_account_panel.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_forja_addons_play_toggles.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_forja_packs_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/lan_section.dart`
+- [x] `apps/forja/lib/features/settings/categories/about_panel.dart`
+- [x] `apps/forja/lib/features/settings/categories/cache_data_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/debrid_section.dart`
+- [x] `apps/forja/lib/features/settings/categories/account_panel.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/forja_addons_play_toggles.dart`
+- [x] `apps/forja/lib/features/settings/categories/packs_section.dart`
 - [x] `apps/forja/lib/features/settings/sections/settings_iptv_portals_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_mdblist_panel.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_providers_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_search_torrents_section.dart`
-- [x] `apps/forja/lib/features/settings/sections/settings_simkl_panel.dart`
-- [ ] `apps/forja/lib/features/settings/settings_kit_hooks_register.dart`
-- [x] `apps/forja/lib/features/settings/settings_screen.dart`
-- [x] `apps/forja/lib/features/settings/widgets/lan_p2p_required_dialog.dart`
-- [x] `apps/forja/lib/features/settings/widgets/p2p_streaming_ack_dialog.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_engine_pack_update.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_engine_plugin_pack.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_hub_scaffold.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_pack_prompt_pane.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_plugin_install_progress.dart`
-- [x] `apps/forja/lib/features/settings/widgets/settings_ui.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/mdblist_panel.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/providers_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/search_torrents_section.dart`
+- [x] `apps/forja/lib/features/settings/addons/host/simkl_panel.dart`
+- [ ] `apps/forja/lib/features/settings/hub/kit_hooks_register.dart`
+- [x] `apps/forja/lib/features/settings/hub/screen.dart`
+- [x] `apps/forja/lib/features/settings/chrome/lan_p2p_required_dialog.dart`
+- [x] `apps/forja/lib/features/settings/chrome/p2p_streaming_ack_dialog.dart`
+- [x] `apps/forja/lib/features/settings/categories/engine_pack_update.dart`
+- [x] `apps/forja/lib/features/settings/categories/engine_plugin_pack.dart`
+- [x] `apps/forja/lib/features/settings/hub/scaffold.dart`
+- [x] `apps/forja/lib/features/settings/categories/pack_prompt_pane.dart`
+- [x] `apps/forja/lib/features/settings/categories/plugin_install_progress.dart`
+- [x] `apps/forja/lib/features/settings/chrome/settings_ui.dart`
 - [ ] `apps/forja/lib/shared/engine/engine.dart`
-- [ ] `apps/forja/lib/shared/engine/runtime/catalog_extract_context.dart`
-- [ ] `apps/forja/lib/shared/engine/runtime/plugin_config.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/meta/catalog_extract_context.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/meta/plugin_config.dart`
 - [ ] `apps/forja/lib/shared/engine/lists/my_list_feed_aggregate.dart`
 - [ ] `apps/forja/lib/shared/engine/live/live_feed_aggregate.dart`
 - [ ] `apps/forja/lib/shared/engine/live/live_feed_merge.dart`
@@ -127,7 +127,7 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/lib/shared/engine/packs/registry/pack_hub_features.dart`
 - [ ] `apps/forja/lib/shared/engine/packs/registry/plugin_contract.dart`
 - [ ] `apps/forja/lib/shared/engine/packs/registry/plugin_registry.dart`
-- [ ] `apps/forja/lib/shared/engine/runtime/service.dart`
+- [ ] `apps/forja/lib/shared/engine/runtime/vm/service.dart`
 - [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_meta.dart`
 - [ ] `apps/forja/lib/shared/foundation/blocks/details/kit_details_play.dart`
 - [x] `apps/forja/lib/shared/foundation/blocks/details/kit_details_screen.dart`
@@ -429,6 +429,6 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/test/sources_request_context_test.dart`
 - [ ] `apps/forja/test/splash_halo_test.dart`
 - [ ] `apps/forja/test/tab_watch_history_test.dart`
-- [ ] `apps/forja/test/torrent_release_metadata_test.dart`
+- [ ] `apps/forja/test/torrent_meta_parser_test.dart`
 - [x] `apps/forja/test/tv_focus_graph_test.dart`
 - [x] `apps/forja/test/tv_season_episode_picker_test.dart`

@@ -36,7 +36,7 @@
 | **home** | 11 | ~3,800 | `home_screen_feed.dart` (854) + `home_hero.dart` |
 | **media** | 12 | ~5,800 | `details_screen.dart` (545) + `details_screen_*.dart` mixins |
 | **anime** | 17 | ~7,100 | `catalog/anime_service.dart` (1,648) + `widgets/` |
-| **settings** | 12 | ~4,100 | `settings_screen.dart` (748) + `sections/` + `widgets/` |
+| **settings** | ~40 | ~10k | `hub/` + `addons/` + `categories/` + `chrome/` |
 | **jellyfin** | 3 | ~4,300 | `jellyfin_screen.dart` (1,697) |
 | **live_sports** | 4 | thin host | `live_sports_host.dart` + catalog list/panel; panel in `shared/foundation/services/live/` |
 | **music** | 2 | ~3,300 | `music_screen.dart` (2,401) |
@@ -71,7 +71,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`media/details/details_screen.dart`](../../apps/forja/lib/features/media/details/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins; moved from `home/` (RFC-020) |
-| [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | `sections/` + `widgets/` |
+| [`settings/hub/screen.dart`](../../apps/forja/lib/features/settings/hub/screen.dart) | — | Orchestrator | In | `hub/` · `categories/` · `addons/` · `chrome/` |
 
 ---
 

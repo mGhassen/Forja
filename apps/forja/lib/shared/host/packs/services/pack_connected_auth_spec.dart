@@ -1,5 +1,5 @@
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
+import 'package:forja/features/settings/addons/catalog.dart';
 
 /// Pack-declared Connected Services auth (RFC-102).
 ///

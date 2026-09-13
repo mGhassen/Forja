@@ -20,7 +20,7 @@ shared/player/details/           # episode picker, media-details body/hero, kit 
 shared/player/sources/           # torrent + kit sources panels
 shared/playback/                 # play hooks, probe, stream loading
 shared/shell/{core,chrome,focus,feedback,desktop,brand,tv}/
-shared/engine/runtime/           # MetaRuntime (plugin_actions), plugin_nav, catalog open / filters
+shared/engine/runtime/{vm,meta,nav,open,details,list}/  # JS VM, MetaRuntime, nav/filters, open, details, kit.list
 shared/engine/store/             # EngineStore + list follow / open binding
 shared/engine/unlock/            # goat/gasm unlock + live plugin meta
 shared/engine/portals/           # portal data + match helpers for channel search

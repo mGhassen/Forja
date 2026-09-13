@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/runtime/catalog_extract_context.dart';
+import 'package:forja/shared/engine/runtime/meta/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:rust/rust.dart';
 

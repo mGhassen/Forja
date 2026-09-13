@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
-import 'package:forja/shared/engine/runtime/legacy_movie_meta.dart';
-import 'package:forja/shared/engine/runtime/catalog_open.dart';
+import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:rust/rust.dart';
 
 void main() {

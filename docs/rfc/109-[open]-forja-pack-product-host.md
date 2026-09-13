@@ -169,8 +169,8 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 |---------------------|--------|
 | `MetaCache` deleted | Call sites → `EngineCache` (`getEntry`/`putEntry`/`wipePlugin`/…) |
 | `engine/hub/` gone | Protocol → `runtime/` (`plugin_actions.dart` keeps class `MetaRuntime`); kit glue → `host/layout/kit/`; `legacy_list_item` → `store/` |
-| `hub_plugin_config` | → `runtime/plugin_config.dart` (still used by `plugin_nav`) |
-| `legacy_movie_meta` | Kept (call sites) → `runtime/legacy_movie_meta.dart` |
+| `hub_plugin_config` | → `runtime/meta/plugin_config.dart` (still used by `plugin_nav`) |
+| `legacy_movie_meta` | Kept (call sites) → `runtime/open/legacy_movie_meta.dart` |
 
 | Still open | Detail |
 |------------|--------|
@@ -206,7 +206,7 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 | `engine/lists/` gone | Persist/follow → `engine/store/` (`list_follow*`, `list_open_prefs`, `list_open_binding`, `list_open_title_rank`) |
 | List UI | Picker / bind sheet / flow + Riverpod providers → `shared/engine/store/` (Wave F; `lists_ui/` deleted) |
 | `engine/live/` gone | Interim → `engine/feeds/` then Wave B deleted feeds; survivors → `runtime/` / `unlock/` / `portals/match/` / `packs/` |
-| `kit_schedule_window` | → `engine/runtime/schedule_window.dart` (+ sheet under `host/layout/`) |
+| `kit_schedule_window` | → `engine/runtime/list/schedule_window.dart` (+ sheet under `host/layout/`) |
 | `embed_webview_proxy` | Deleted (test-only; no production callers) |
 
 | Still open | Detail |

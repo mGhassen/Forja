@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/models/torrent_release_metadata.dart';
+import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 import 'ids.dart';
 
@@ -1120,7 +1120,7 @@ Map<String, dynamic>? mapEngineStream({
     final a = (raw['audio'] ?? '').toString().trim();
     return a.isEmpty ? null : a;
   }();
-  final size = TorrentReleaseMetadata.resolveSizeLabel(
+  final size = TorrentMetaParser.resolveSizeLabel(
     sizeText: (raw['size'] ?? '').toString(),
     fallbackText: '$rawTitle $rawName',
   );

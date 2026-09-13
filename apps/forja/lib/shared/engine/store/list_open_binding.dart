@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/runtime/catalog_open.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
-import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';

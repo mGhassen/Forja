@@ -10,7 +10,7 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
-import 'package:forja/shared/engine/models/torrent_release_metadata.dart';
+import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
@@ -1855,7 +1855,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       );
     }
     if (widget.availableQualities.isNotEmpty) {
-      final qs = TorrentReleaseMetadata.qualityFilters
+      final qs = TorrentMetaParser.qualityFilters
           .where(widget.availableQualities.contains)
           .toList();
       const rowId = 'filters-quality';
@@ -1880,7 +1880,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     }
     if (widget.availableSizeRanges.isNotEmpty &&
         widget.onSizeFiltersChanged != null) {
-      final sizes = TorrentReleaseMetadata.sizeFilters
+      final sizes = TorrentMetaParser.sizeFilters
           .where(widget.availableSizeRanges.contains)
           .toList();
       const rowId = 'filters-size';
@@ -1929,7 +1929,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       );
     }
     if (widget.availableTech.isNotEmpty) {
-      final tech = TorrentReleaseMetadata.techFilters
+      final tech = TorrentMetaParser.techFilters
           .where(widget.availableTech.contains)
           .toList();
       const rowId = 'filters-tech';

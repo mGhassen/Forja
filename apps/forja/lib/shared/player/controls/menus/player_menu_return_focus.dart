@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
+import 'package:forja/features/settings/chrome/lan_p2p_required_dialog.dart';
 
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';

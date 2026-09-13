@@ -107,8 +107,8 @@ class PlayerAppMenu {
             selected: usingBuiltIn && engine == builtInEngine,
             expanded: true,
             onTap: () async {
-              if (disabled) {
-                ForjaToast.info(reason!);
+              if (reason != null) {
+                ForjaToast.info(reason);
                 return;
               }
               onDismiss?.call();

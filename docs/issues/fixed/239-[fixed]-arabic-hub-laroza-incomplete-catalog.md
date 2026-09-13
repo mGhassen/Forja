@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** fixed  
-**Area:** `plugins/hubs/arabic`, `plugins/providers/larozaa`, `apps/forja/lib/shared/engine/runtime/runtime.dart`  
+**Area:** `plugins/hubs/arabic`, `plugins/providers/larozaa`, `apps/forja/lib/shared/engine/runtime/vm/runtime.dart`  
 **Reported:** 2026-09-08
 
 ## Status at a glance

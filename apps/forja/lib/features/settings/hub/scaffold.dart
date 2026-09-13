@@ -1,0 +1,526 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/addons/addons_host.dart';
+import 'package:forja/features/settings/categories/bodies.dart';
+import 'package:forja/features/settings/hub/catalog.dart';
+import 'package:forja/features/settings/hub/visibility_provider.dart';
+import 'package:forja/features/settings/hub/visibility.dart';
+import 'package:forja/features/settings/categories/pack_prompt_pane.dart';
+import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/widgets/chrome/shell_tab_header.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+/// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
+class SettingsHubScaffold extends ConsumerStatefulWidget {
+  const SettingsHubScaffold({
+    super.key,
+    required this.selectedId,
+    required this.onSelect,
+    this.firstTileFocusNode,
+  });
+
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+  final FocusNode? firstTileFocusNode;
+
+  @override
+  ConsumerState<SettingsHubScaffold> createState() =>
+      _SettingsHubScaffoldState();
+}
+
+class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
+  static const _categoryRowId = 'settings-categories';
+
+  SettingsVisibility? _visibility;
+  final FocusScopeNode _detailScope =
+      FocusScopeNode(debugLabel: 'settings-detail');
+  int _detailEnterToken = 0;
+
+  /// Last detail control before Back to the category rail — restored on re-enter.
+  ShellTvFocusMemory? _detailReturnFocus;
+  String? _detailReturnCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back ladder: nested drill → detail (same control) → selected category → nav.
+    TvHeroActions.bind(
+      'settings',
+      pageBack: _handlePageBack,
+    );
+    // ← on detail TvKitRows (Addons / Packs / Features) exits like Back.
+    ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', true);
+  }
+
+  void _reloadFromProvider(SettingsVisibility next) {
+    if (!mounted) return;
+    if (_visibility == next) return;
+    setState(() => _visibility = next);
+    // Never force Profile here. Resume/cloud pull can briefly drop gated
+    // tiles; auto-fallback was overwriting [ShellBus.settingsHubCategoryId]
+    // and yanking the hub back to Profile & account.
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsHubScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedId != widget.selectedId) {
+      _detailReturnFocus = null;
+      _detailReturnCategoryId = null;
+      if (widget.selectedId != SettingsCategoryId.sources) {
+        SettingsAddonDrill.clearReturnFocus();
+        SettingsAddonDrill.close();
+      }
+      if (widget.selectedId != SettingsCategoryId.forjaPacks &&
+          SettingsPackPromptDrill.isOpen &&
+          !SettingsPackPromptDrill.isApplying) {
+        SettingsPackPromptDrill.clearReturnFocus();
+        unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', false);
+    _detailScope.dispose();
+    super.dispose();
+  }
+
+  bool _focusSelectedCategory() {
+    final visibility = _visibility;
+    if (visibility == null) return false;
+    final categories = settingsCategories(visibility);
+    final index = categories.indexWhere((c) => c.id == widget.selectedId);
+    if (index < 0) return false;
+    return ShellTvFocusCoordinator.focusRowItem(
+      'settings',
+      _categoryRowId,
+      index,
+    );
+  }
+
+  /// OK / → from the category rail: bump [SettingsDetailEnter] so the detail
+  /// scaffold lands focus on the last detail control (or the first).
+  void _enterDetail(String categoryId) {
+    if (categoryId != widget.selectedId) {
+      widget.onSelect(categoryId);
+    }
+    setState(() => _detailEnterToken++);
+    // Do not focus the bare [FocusScope] — that leaves primary on
+    // `settings-detail` with no row chrome. Land on the remembered control
+    // after the detail body rebuilds.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _landDetailFocus(0));
+  }
+
+  bool _tryRestoreDetailReturn() {
+    final snap = _detailReturnFocus;
+    final categoryId = _detailReturnCategoryId;
+    if (snap == null || categoryId != widget.selectedId) return false;
+    if (snap.zone == ShellTvZone.row && snap.rowId != null) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          ) ||
+          ShellTvFocusCoordinator.focusRowItem(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          )) {
+        return true;
+      }
+    }
+    final node = snap.node;
+    if (node != null && node.canRequestFocus && node.context != null) {
+      node.requestFocus();
+      return node.hasPrimaryFocus || node.hasFocus;
+    }
+    return false;
+  }
+
+  void _landDetailFocus(int attempt) {
+    if (!mounted) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
+
+    if (_tryRestoreDetailReturn()) return;
+
+    final first = _firstDetailFocusable();
+    if (first != null) {
+      first.requestFocus();
+      if (first.hasPrimaryFocus || first.hasFocus) return;
+    }
+
+    if (attempt < 30) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _landDetailFocus(attempt + 1),
+      );
+      return;
+    }
+
+    // Empty / still building — own the scope so Back can exit to the rail.
+    if (_detailScope.canRequestFocus && !_detailScope.hasFocus) {
+      _detailScope.requestFocus();
+    }
+  }
+
+  FocusNode? _firstDetailFocusable() {
+    if (!_detailScope.canRequestFocus) return null;
+
+    final policy = ReadingOrderTraversalPolicy();
+    final fromPolicy = policy.findFirstFocus(
+      _detailScope,
+      ignoreCurrentFocus: true,
+    );
+    if (fromPolicy != null &&
+        !identical(fromPolicy, _detailScope) &&
+        fromPolicy.canRequestFocus &&
+        !fromPolicy.skipTraversal &&
+        fromPolicy.context != null) {
+      return fromPolicy;
+    }
+
+    for (final node in _detailScope.descendants) {
+      if (identical(node, _detailScope)) continue;
+      if (node is FocusScopeNode) continue;
+      if (!node.canRequestFocus || node.skipTraversal) continue;
+      if (node.context == null) continue;
+      return node;
+    }
+    return null;
+  }
+
+  bool _handlePageBack() {
+    if (!mounted) return false;
+    if (!SettingsTokens.useSplitLayout(context)) return false;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
+
+    if (SettingsAddonDrill.current.value != null) {
+      // Host restores focus onto the control that opened the drill.
+      SettingsAddonDrill.close();
+      return true;
+    }
+
+    if (SettingsPackPromptDrill.isOpen) {
+      if (SettingsPackPromptDrill.isApplying) {
+        // Mid-download Back used to tear down the pane and skip nav refresh.
+        return true;
+      }
+      unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+      final snap = SettingsPackPromptDrill.takeReturnFocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (snap != null && _restoreMemory(snap)) return;
+        _landDetailFocus(0);
+      });
+      return true;
+    }
+
+    if (_detailScope.hasFocus) {
+      // Remember the exact detail control so OK/→ re-enters there.
+      _detailReturnFocus = ShellTvFocusCoordinator.memoryFor('settings');
+      _detailReturnCategoryId = widget.selectedId;
+      if (_detailEnterToken != 0) {
+        setState(() => _detailEnterToken = 0);
+      }
+      return _focusSelectedCategory();
+    }
+
+    // On the category rail (any index): let the shell focus the nav item.
+    // Do not hop to Profile / index 0 — selection must stay where it was.
+    return false;
+  }
+
+  bool _restoreMemory(ShellTvFocusMemory snap) {
+    if (snap.zone == ShellTvZone.row && snap.rowId != null) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          ) ||
+          ShellTvFocusCoordinator.focusRowItem(
+            'settings',
+            snap.rowId!,
+            snap.itemIndex,
+          )) {
+        return true;
+      }
+    }
+    final node = snap.node;
+    if (node != null && node.canRequestFocus && node.context != null) {
+      node.requestFocus();
+      return node.hasPrimaryFocus || node.hasFocus;
+    }
+    return false;
+  }
+
+  Widget _wrapCompactTvFocus(Widget child) {
+    // Settings lists are vertical reading-order (↑/← prev, ↓/→ next) — not
+    // spatial sideways jumps between side-by-side controls.
+    return ShellTvContainDpad(
+      child: ShellTvLinearFocusScope(
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibilityAsync = ref.watch(settingsVisibilityProvider);
+    ref.listen(settingsVisibilityProvider, (_, next) {
+      next.whenData(_reloadFromProvider);
+    });
+    // Visibility already watches play/nav/account revisions — do not
+    // invalidate (that clears AsyncData and flashes the hub empty).
+
+    final visibility = visibilityAsync.valueOrNull ?? _visibility;
+    if (visibility == null) {
+      return const SafeArea(child: SizedBox.expand());
+    }
+
+    final categories = settingsCategories(visibility);
+    final split = SettingsTokens.useSplitLayout(context);
+    final selectedMeta = settingsCategoryById(widget.selectedId, visibility);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (ShellBus.takeEnterSettingsDetail()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (tv) {
+          _enterDetail(widget.selectedId);
+        } else {
+          _focusSelectedCategory();
+        }
+      });
+    }
+
+    if (split) {
+      return TvFocusGraph(
+        tabId: 'settings',
+        child: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: SettingsTokens.sidebarWidth,
+                child: FocusTraversalGroup(
+                  policy: ReadingOrderTraversalPolicy(),
+                  child: TvKitRow(
+                    rowId: _categoryRowId,
+                    sortOrder: 0,
+                    itemCount: tv ? categories.length : 0,
+                    orientation: ShellTvRowOrientation.vertical,
+                    child: _CategorySidebar(
+                      categories: categories,
+                      selectedId: widget.selectedId,
+                      onSelect: (id) {
+                        if (id != SettingsCategoryId.sources) {
+                          SettingsAddonDrill.clearReturnFocus();
+                          SettingsAddonDrill.close();
+                        }
+                        if (id != SettingsCategoryId.forjaPacks &&
+                            SettingsPackPromptDrill.isOpen &&
+                            !SettingsPackPromptDrill.isApplying) {
+                          SettingsPackPromptDrill.clearReturnFocus();
+                          unawaited(
+                            SettingsPackPromptDrill.dismissWithoutApply(),
+                          );
+                        }
+                        widget.onSelect(id);
+                      },
+                      firstTileFocusNode: widget.firstTileFocusNode,
+                      categoryRowId: tv ? _categoryRowId : null,
+                      onEnterDetail: tv ? _enterDetail : null,
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 1,
+                color: ForjaShellColors.borderSubtle,
+              ),
+              Expanded(
+                child: tv
+                    ? FocusScope(
+                        node: _detailScope,
+                        // D-pad stays in the detail pane. ← on any control /
+                        // Back (_handlePageBack) → category rail (same as
+                        // Addons TvKitRow column-0).
+                        child: SettingsDetailEnter(
+                          enterToken: _detailEnterToken,
+                          child: ShellTvContainDpad(
+                            child: ShellTvLinearFocusScope(
+                              child: ShellTvLinearFocusEdges(
+                                onBackwardEdge: () {
+                                  // ← anywhere in the page → category.
+                                  return _handlePageBack();
+                                },
+                                child: FocusTraversalGroup(
+                                  policy: ReadingOrderTraversalPolicy(),
+                                  child: SettingsAddonsAwareScaffold(
+                                    categoryTitle:
+                                        selectedMeta?.title ?? 'Settings',
+                                    categoryId: widget.selectedId,
+                                    categoryAdminOnly:
+                                        selectedMeta?.adminOnly ?? false,
+                                    scrollable: !(selectedMeta?.fillViewport ??
+                                        false),
+                                    child: buildSettingsCategoryBody(
+                                      widget.selectedId,
+                                      visibility,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : SettingsAddonsAwareScaffold(
+                        categoryTitle: selectedMeta?.title ?? 'Settings',
+                        categoryId: widget.selectedId,
+                        categoryAdminOnly: selectedMeta?.adminOnly ?? false,
+                        scrollable: !(selectedMeta?.fillViewport ?? false),
+                        child: buildSettingsCategoryBody(
+                          widget.selectedId,
+                          visibility,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SafeArea(
+      child: _wrapCompactTvFocus(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                SettingsTokens.pagePadding,
+                tv ? 28 : 8,
+                SettingsTokens.pagePadding,
+                4,
+              ),
+              child: const ShellTabHeader(
+                title: 'Settings',
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(
+                  SettingsTokens.pagePadding,
+                  8,
+                  SettingsTokens.pagePadding,
+                  48,
+                ),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final c = categories[index];
+                  return SettingsCategoryTile(
+                    icon: c.icon,
+                    title: c.title,
+                    subtitle: c.subtitle,
+                    selected: false,
+                    adminOnly: c.adminOnly,
+                    listIndex: index,
+                    focusNode: index == 0 ? widget.firstTileFocusNode : null,
+                    onTap: () => widget.onSelect(c.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategorySidebar extends StatelessWidget {
+  const _CategorySidebar({
+    required this.categories,
+    required this.selectedId,
+    required this.onSelect,
+    this.categoryRowId,
+    this.onEnterDetail,
+    this.firstTileFocusNode,
+  });
+
+  final List<SettingsCategoryMeta> categories;
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+  final String? categoryRowId;
+  final ValueChanged<String>? onEnterDetail;
+  final FocusNode? firstTileFocusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final headerTop = tv ? 28.0 : 12.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, headerTop, 16, 8),
+          child: const ShellTabHeader(
+            title: 'Settings',
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final c = categories[index];
+              return SettingsCategoryTile(
+                icon: c.icon,
+                title: c.title,
+                subtitle: c.subtitle,
+                selected: c.id == selectedId,
+                adminOnly: c.adminOnly,
+                listIndex: index,
+                // Pin default/restore focus on the *selected* tile — never
+                // index 0 (Profile). Resume focus dump onto hub-0 was
+                // selecting Profile via onFocusSelect.
+                focusNode: c.id == selectedId ? firstTileFocusNode : null,
+                tvRowId: categoryRowId,
+                tvItemIndex: categoryRowId != null ? index : null,
+                onRightEdge: onEnterDetail == null
+                    ? null
+                    : () => onEnterDetail!(c.id),
+                // ↑/↓ selects only; OK / Right enters the independent detail pane.
+                onFocusSelect:
+                    onEnterDetail == null ? null : () => onSelect(c.id),
+                onTap: () {
+                  if (onEnterDetail != null) {
+                    onEnterDetail!(c.id);
+                  } else {
+                    onSelect(c.id);
+                  }
+                },
+              );
+            },
+          ),
+        ),
+        const SettingsSidebarFooter(),
+      ],
+    );
+  }
+}

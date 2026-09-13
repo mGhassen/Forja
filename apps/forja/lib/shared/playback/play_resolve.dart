@@ -1,8 +1,8 @@
-import 'package:forja/shared/engine/runtime/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/runtime/catalog_extract_context.dart';
+import 'package:forja/shared/engine/runtime/meta/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 
 /// Catalog kit boundary — maps pack [MetaItem] → play args.

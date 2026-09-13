@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/settings_catalog.dart';
-import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/hub/catalog.dart';
+import 'package:forja/features/settings/hub/visibility.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';
@@ -78,24 +78,14 @@ void main() {
       expect(v.showMdblist, isFalse);
 
       final ids = settingsCategories(v).map((c) => c.id).toList();
-      expect(ids.contains(SettingsCategoryId.sources), isTrue);
-      expect(ids.contains(SettingsCategoryId.forjaPacks), isTrue);
-      expect(ids.contains(SettingsCategoryId.lists), isFalse);
+      expect(ids, [
+        SettingsCategoryId.profile,
+        SettingsCategoryId.sources,
+        SettingsCategoryId.forjaPacks,
+        SettingsCategoryId.navigation,
+        SettingsCategoryId.about,
+      ]);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
-      expect(ids.contains(SettingsCategoryId.debrid), isFalse);
-      expect(ids.contains(SettingsCategoryId.playback), isFalse);
-      expect(ids.contains(SettingsCategoryId.accounts), isFalse);
-      expect(ids.contains(SettingsCategoryId.navigation), isTrue);
-      expect(ids.contains(SettingsCategoryId.about), isTrue);
-      expect(ids.contains(SettingsCategoryId.lan), isFalse);
-      expect(
-        ids.indexOf(SettingsCategoryId.sources),
-        lessThan(ids.indexOf(SettingsCategoryId.forjaPacks)),
-      );
-      expect(
-        ids.indexOf(SettingsCategoryId.forjaPacks),
-        lessThan(ids.indexOf(SettingsCategoryId.navigation)),
-      );
     },
   );
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
+import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';

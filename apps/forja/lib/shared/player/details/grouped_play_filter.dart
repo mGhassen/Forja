@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/play_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/play_filters.dart';
 import 'package:forja/shared/player/details/hero_pill_buttons.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 

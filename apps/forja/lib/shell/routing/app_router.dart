@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/player/details/pack_details_host.dart';
-import 'package:forja/shared/engine/runtime/plugin_nav.dart';
-import 'package:forja/shared/engine/runtime/legacy_movie_meta.dart';
-import 'package:forja/shared/engine/runtime/open_catalog_search.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
+import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/entry/player_screen.dart';
@@ -11,7 +11,6 @@ import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';

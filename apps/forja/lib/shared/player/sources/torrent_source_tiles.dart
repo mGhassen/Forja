@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
-import 'package:forja/shared/engine/models/torrent_release_metadata.dart';
+import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
@@ -36,11 +35,11 @@ class TorrentSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = TorrentReleaseMetadata.parse(result.name);
+    final meta = TorrentMetaParser.parse(result.name);
     final seedsLabel = result.seedersCount > 0
         ? '${result.seedersCount}'
         : (result.seeders.trim().isEmpty ? null : result.seeders.trim());
-    final sizeLabel = TorrentReleaseMetadata.resolveSizeLabel(
+    final sizeLabel = TorrentMetaParser.resolveSizeLabel(
       sizeText: result.size,
       fallbackText: result.name,
     );
@@ -111,8 +110,8 @@ class WebstreamingSourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = TorrentReleaseMetadata.parse(title);
-    final sizeLabel = TorrentReleaseMetadata.resolveSizeLabel(
+    final meta = TorrentMetaParser.parse(title);
+    final sizeLabel = TorrentMetaParser.resolveSizeLabel(
       sizeText: subtitle,
       fallbackText: title,
     );
@@ -342,7 +341,7 @@ class StremioSourceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final blob = '$title $description ${sizeText ?? ''}';
     final meta = isExternal
-        ? const TorrentReleaseMetadata(
+        ? const TorrentMetaParser(
             quality: null,
             languageCodes: [],
             audioTags: [],
@@ -351,12 +350,12 @@ class StremioSourceTile extends StatelessWidget {
             videoCodec: null,
             container: null,
           )
-        : TorrentReleaseMetadata.parse(blob);
+        : TorrentMetaParser.parse(blob);
     final sizeLabel = isExternal
         ? null
         : (stream != null
-              ? TorrentReleaseMetadata.resolveStreamSizeLabel(stream!)
-              : TorrentReleaseMetadata.resolveSizeLabel(
+              ? TorrentMetaParser.resolveStreamSizeLabel(stream!)
+              : TorrentMetaParser.resolveSizeLabel(
                   sizeText: sizeText,
                   fallbackText: blob,
                 ));

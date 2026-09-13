@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:forja/shared/engine/runtime/meta_movie.dart';
+import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -24,7 +24,7 @@ import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
-import 'package:forja/shared/engine/models/torrent_release_metadata.dart';
+import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:forja/shared/player/sources/torrent_source_filters.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel_chrome.dart';
@@ -1841,7 +1841,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   double _streamSizeBytes(Map<String, dynamic> s) =>
-      TorrentReleaseMetadata.streamSizeBytesForFilters(s);
+      TorrentMetaParser.streamSizeBytesForFilters(s);
 
   /// Quality / language / tech / size / search — same contract as details Sources.
   bool _matchesStreamFilters(Map<String, dynamic> s) {
@@ -1852,7 +1852,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return false;
     }
     final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
-    if (!TorrentReleaseMetadata.parse(name).matchesFiltersForName(
+    if (!TorrentMetaParser.parse(name).matchesFiltersForName(
       name,
       searchQuery: _searchQuery,
       qualityFilters: _qualityFilters,
@@ -1862,7 +1862,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     )) {
       return false;
     }
-    return TorrentReleaseMetadata.matchesSizeFilters(
+    return TorrentMetaParser.matchesSizeFilters(
       _streamSizeBytes(s),
       _sizeFilters,
     );
@@ -1973,7 +1973,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       for (final r in _results) {
         final bytes = r.sizeInBytes > 0
             ? r.sizeInBytes
-            : TorrentReleaseMetadata.parseSizeBytes(r.size);
+            : TorrentMetaParser.parseSizeBytes(r.size);
         if (bytes > 0) sizes.add(bytes);
       }
     }

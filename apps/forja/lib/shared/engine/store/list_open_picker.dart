@@ -1,4 +1,4 @@
-import 'package:forja/shared/engine/runtime/plugin_actions.dart';
+import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 

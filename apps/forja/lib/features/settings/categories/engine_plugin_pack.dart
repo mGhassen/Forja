@@ -1,0 +1,649 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
+import 'package:forja/features/settings/categories/engine_pack_update.dart';
+import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+
+import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/features/settings/categories/plugin_install_progress.dart';
+import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:rust/rust.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+/// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).
+({Map<String, List<EnginePlugin>> byGroup, List<String> orderedGroups})
+groupEnginePluginsForSettings({
+  required List<EnginePlugin> plugins,
+  required String Function(EnginePlugin) groupKey,
+  required List<String> groupOrder,
+}) {
+  final byGroup = <String, List<EnginePlugin>>{};
+  for (final p in plugins) {
+    byGroup.putIfAbsent(groupKey(p), () => []).add(p);
+  }
+  final orderedGroups = [
+    for (final key in groupOrder)
+      if (byGroup.containsKey(key)) key,
+    for (final key in byGroup.keys)
+      if (!groupOrder.contains(key)) key,
+  ];
+  return (byGroup: byGroup, orderedGroups: orderedGroups);
+}
+
+/// Groups installed packs by Providers / Live / Catalog / IPTV / Hubs / Other.
+({Map<String, List<EnginePack>> byKind, List<String> orderedKinds})
+groupEnginePacksByKind(List<EnginePack> packs) {
+  final byKind = <String, List<EnginePack>>{};
+  for (final pack in packs) {
+    byKind.putIfAbsent(PluginRegistry.packKindKey(pack), () => []).add(pack);
+  }
+  final orderedKinds = [
+    for (final key in PluginRegistry.packKindOrder)
+      if (byKind.containsKey(key)) key,
+    for (final key in byKind.keys)
+      if (!PluginRegistry.packKindOrder.contains(key)) key,
+  ];
+  return (byKind: byKind, orderedKinds: orderedKinds);
+}
+
+/// Small muted uppercase label used for inline sub-sections (Forja pack lists).
+class SettingsEngineMiniLabel extends StatelessWidget {
+  const SettingsEngineMiniLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+/// Built-in / installed pack row with grouped plugin toggles (Sources → Forja parity).
+class SettingsEnginePackExpansion extends StatelessWidget {
+  const SettingsEnginePackExpansion({
+    super.key,
+    required this.pack,
+    required this.plugins,
+    required this.groupKey,
+    required this.groupLabel,
+    required this.groupOrder,
+    this.miniLabel = 'Forja plugins',
+    this.tabRowId,
+    this.trailing,
+    this.onHeaderActivate,
+    this.showMiniLabel = false,
+    this.installProgress,
+    this.update,
+    this.deprecated = false,
+  });
+
+  final EnginePack pack;
+  final List<EnginePlugin> plugins;
+  final String Function(EnginePlugin) groupKey;
+  final String Function(String) groupLabel;
+  final List<String> groupOrder;
+  final String miniLabel;
+  /// Unique per pack so TV chip strips do not share one focus-graph row.
+  final String? tabRowId;
+  final Widget? trailing;
+  /// Leanback: OK on row toggles pack enable; details chevron expands.
+  final VoidCallback? onHeaderActivate;
+  final bool showMiniLabel;
+  final PluginInstallProgress? installProgress;
+  final EnginePackUpdateInfo? update;
+  final bool deprecated;
+
+  @override
+  Widget build(BuildContext context) {
+    if (plugins.isEmpty) return const SizedBox.shrink();
+
+    final grouped = groupEnginePluginsForSettings(
+      plugins: plugins,
+      groupKey: groupKey,
+      groupOrder: groupOrder,
+    );
+    final tabsId = tabRowId ?? 'engine-pack-tabs-${pack.sourceUrl.hashCode}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showMiniLabel) ...[
+          SettingsEngineMiniLabel(miniLabel),
+          const SizedBox(height: 4),
+        ],
+        settingsExpandableWithSideActions(
+          context: context,
+          trailing: trailing,
+          onHeaderActivate: onHeaderActivate,
+          leading: Icon(
+            deprecated
+                ? Icons.link_off_rounded
+                : update != null
+                ? Icons.system_update_rounded
+                : Icons.bolt_rounded,
+            color: deprecated
+                ? const Color(0xFFF87171)
+                : update != null
+                ? ForjaShellColors.brandGreen
+                : ForjaShellColors.iconActive,
+          ),
+          title: SettingsEnginePackTitle(
+            name: pack.name,
+            deprecated: deprecated,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                pack.sourceUrl,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: ForjaShellColors.textSecondary,
+                ),
+              ),
+              SettingsEnginePackVersionLine(
+                meta:
+                    '${PluginRegistry.packKindInfo(pack)} · '
+                    '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                    'v${pack.version}',
+              ),
+              SettingsEnginePackInstallStatus(
+                sourceUrl: pack.sourceUrl,
+                progress: installProgress,
+                update: update,
+              ),
+            ],
+          ),
+          children: [
+            PackAddonSettingsSection(plugins: plugins),
+            SettingsEnginePluginGroupList(
+              sourceUrl: pack.sourceUrl,
+              byGroup: grouped.byGroup,
+              orderedGroups: grouped.orderedGroups,
+              groupLabel: groupLabel,
+              tabRowId: tabsId,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Category tabs + per-plugin toggles inside a pack ExpansionTile.
+class SettingsEnginePluginGroupList extends StatefulWidget {
+  const SettingsEnginePluginGroupList({
+    super.key,
+    required this.sourceUrl,
+    required this.byGroup,
+    required this.orderedGroups,
+    required this.groupLabel,
+    this.tabRowId = 'engine-pack-tabs',
+  });
+
+  final String sourceUrl;
+  final Map<String, List<EnginePlugin>> byGroup;
+  final List<String> orderedGroups;
+  final String Function(String) groupLabel;
+  final String tabRowId;
+
+  @override
+  State<SettingsEnginePluginGroupList> createState() =>
+      _SettingsEnginePluginGroupListState();
+}
+
+class _SettingsEnginePluginGroupListState
+    extends State<SettingsEnginePluginGroupList> {
+  late String _group;
+
+  @override
+  void initState() {
+    super.initState();
+    _group = widget.orderedGroups.first;
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsEnginePluginGroupList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.orderedGroups.contains(_group)) {
+      _group = widget.orderedGroups.isEmpty
+          ? 'other'
+          : widget.orderedGroups.first;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plugins = widget.byGroup[_group] ?? const <EnginePlugin>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.orderedGroups.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            child: _SettingsEngineCategoryTabStrip(
+              groups: widget.orderedGroups,
+              selected: _group,
+              groupLabel: widget.groupLabel,
+              tabRowId: widget.tabRowId,
+              onChanged: (g) => setState(() => _group = g),
+            ),
+          ),
+        SettingsEnginePluginToggleList(
+          sourceUrl: widget.sourceUrl,
+          plugins: plugins,
+        ),
+      ],
+    );
+  }
+}
+
+/// Flat per-plugin toggles (no category tabs).
+class SettingsEnginePluginToggleList extends StatelessWidget {
+  const SettingsEnginePluginToggleList({
+    super.key,
+    required this.sourceUrl,
+    required this.plugins,
+  });
+
+  final String sourceUrl;
+  final List<EnginePlugin> plugins;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final p in plugins)
+          SettingsToggleRow(
+            key: ValueKey('engine-plugin-${sourceUrl.hashCode}-${p.id}'),
+            title: p.name,
+            subtitle: [
+              if (p.description != null && p.description!.isNotEmpty)
+                p.description!,
+              if (p.types.isNotEmpty) p.types.join(', '),
+              p.kind,
+            ].join(' · '),
+            value: p.enabled,
+            onChanged: (val) async {
+              await EngineService.instance.setPluginEnabled(
+                sourceUrl: sourceUrl,
+                pluginId: p.id,
+                enabled: val,
+              );
+              if (val && p.isKitPlugin) {
+                final spec = MetaNavSpec.fromPluginNav(
+                  p.nav,
+                  pluginId: p.id,
+                  fallbackLabel: p.name,
+                );
+                if (spec != null &&
+                    spec.isValid &&
+                    !SettingsService.addonGatedNavIds.contains(spec.tabId)) {
+                  noteNavigationDirty();
+                  await SettingsService().setNavbarTabVisible(
+                    PluginNavRegistry.hostNavId(
+                      sourceUrl: sourceUrl,
+                      authorTabId: spec.tabId,
+                    ),
+                    true,
+                    orderAtEnd: true,
+                  );
+                  await scheduleNavigationSyncPush();
+                }
+              }
+              await PluginNavRegistry.refresh();
+            },
+          ),
+      ],
+    );
+  }
+}
+
+/// Live sport pack row — **Catalog** / **Provider** tabs with per-site toggles.
+class SettingsLiveSportPackExpansion extends StatelessWidget {
+  const SettingsLiveSportPackExpansion({
+    super.key,
+    required this.pack,
+    required this.plugins,
+    this.trailing,
+    this.onHeaderActivate,
+    this.update,
+    this.deprecated = false,
+  });
+
+  final EnginePack pack;
+  final List<EnginePlugin> plugins;
+  final Widget? trailing;
+  final VoidCallback? onHeaderActivate;
+  final EnginePackUpdateInfo? update;
+  final bool deprecated;
+
+  @override
+  Widget build(BuildContext context) {
+    if (plugins.isEmpty) return const SizedBox.shrink();
+
+    return settingsExpandableWithSideActions(
+      context: context,
+      trailing: trailing,
+      onHeaderActivate: onHeaderActivate,
+      leading: Icon(
+        deprecated
+            ? Icons.link_off_rounded
+            : update != null
+            ? Icons.system_update_rounded
+            : Icons.bolt_rounded,
+        color: deprecated
+            ? const Color(0xFFF87171)
+            : update != null
+            ? ForjaShellColors.brandGreen
+            : ForjaShellColors.iconActive,
+      ),
+      title: SettingsEnginePackTitle(
+        name: pack.name,
+        deprecated: deprecated,
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            pack.sourceUrl,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              color: ForjaShellColors.textSecondary,
+            ),
+          ),
+          SettingsEnginePackVersionLine(
+            meta:
+                '${PluginRegistry.packKindInfo(pack)} · '
+                '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                'v${pack.version}',
+          ),
+          SettingsEnginePackInstallStatus(
+            sourceUrl: pack.sourceUrl,
+            update: update,
+          ),
+        ],
+      ),
+      children: [
+        PackAddonSettingsSection(plugins: plugins),
+        SettingsLiveSportCapabilityTabs(
+          sourceUrl: pack.sourceUrl,
+          plugins: plugins,
+          tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
+        ),
+      ],
+    );
+  }
+}
+
+/// Catalog | Provider tabs — one toggle per site in each tab.
+class SettingsLiveSportCapabilityTabs extends StatefulWidget {
+  const SettingsLiveSportCapabilityTabs({
+    super.key,
+    required this.sourceUrl,
+    required this.plugins,
+    this.tabRowId = 'live-sport-cap-tabs',
+  });
+
+  final String sourceUrl;
+  final List<EnginePlugin> plugins;
+  final String tabRowId;
+
+  @override
+  State<SettingsLiveSportCapabilityTabs> createState() =>
+      _SettingsLiveSportCapabilityTabsState();
+}
+
+class _SettingsLiveSportCapabilityTabsState
+    extends State<SettingsLiveSportCapabilityTabs> {
+  static const _tabCatalog = 'catalog';
+  static const _tabProvider = 'provider';
+
+  late String _tab;
+  Map<String, ({bool catalog, bool resolve})> _caps = const {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = _defaultTab();
+    EngineService.changeNotifier.addListener(_onEngineChanged);
+    unawaited(_reloadCaps());
+  }
+
+  @override
+  void dispose() {
+    EngineService.changeNotifier.removeListener(_onEngineChanged);
+    super.dispose();
+  }
+
+  String _defaultTab() {
+    final hasCatalog = widget.plugins.any((p) => p.supportsLiveFeed);
+    return hasCatalog ? _tabCatalog : _tabProvider;
+  }
+
+  void _onEngineChanged() {
+    if (!mounted) return;
+    unawaited(_reloadCaps());
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsLiveSportCapabilityTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sourceUrl != widget.sourceUrl ||
+        oldWidget.plugins != widget.plugins) {
+      if (!_tabs.contains(_tab)) {
+        _tab = _defaultTab();
+      }
+      unawaited(_reloadCaps());
+    }
+  }
+
+  List<String> get _tabs {
+    final out = <String>[];
+    if (widget.plugins.any((p) => p.supportsLiveFeed)) {
+      out.add(_tabCatalog);
+    }
+    if (widget.plugins.any((p) => p.supportsLiveResolve)) {
+      out.add(_tabProvider);
+    }
+    return out;
+  }
+
+  Future<void> _reloadCaps() async {
+    final next = <String, ({bool catalog, bool resolve})>{};
+    for (final p in widget.plugins) {
+      if (!p.isLiveSportPlugin) continue;
+      final catalog = p.supportsLiveFeed
+          ? await EngineService.instance.liveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              plugin: p,
+              capability: LiveSportCapabilities.catalog,
+            )
+          : false;
+      final resolve = p.supportsLiveResolve
+          ? await EngineService.instance.liveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              plugin: p,
+              capability: LiveSportCapabilities.resolve,
+            )
+          : false;
+      next[p.id] = (catalog: catalog, resolve: resolve);
+    }
+    if (!mounted) return;
+    setState(() {
+      _caps = next;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    final tabs = _tabs;
+    if (tabs.isEmpty) return const SizedBox.shrink();
+
+    final showTabs = tabs.length > 1;
+    final catalogPlugins = [
+      for (final p in widget.plugins)
+        if (p.isLiveSportPlugin && p.supportsLiveFeed) p,
+    ];
+    final providerPlugins = [
+      for (final p in widget.plugins)
+        if (p.isLiveSportPlugin && p.supportsLiveResolve) p,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showTabs)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            child: _SettingsEngineCategoryTabStrip(
+              groups: tabs,
+              selected: _tab,
+              groupLabel: (key) => switch (key) {
+                _tabCatalog => 'Catalog',
+                _tabProvider => 'Provider',
+                _ => key,
+              },
+              tabRowId: widget.tabRowId,
+              onChanged: (g) => setState(() => _tab = g),
+            ),
+          ),
+        if (_tab == _tabCatalog)
+          ..._capabilityRows(
+            catalogPlugins,
+            capability: LiveSportCapabilities.catalog,
+            subtitle: 'Schedule feed for Live Sports',
+            valueFor: (id) => _caps[id]?.catalog ?? false,
+          )
+        else
+          ..._capabilityRows(
+            providerPlugins,
+            capability: LiveSportCapabilities.resolve,
+            subtitle: 'Stream resolve for Forja Live',
+            valueFor: (id) => _caps[id]?.resolve ?? false,
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _capabilityRows(
+    List<EnginePlugin> plugins, {
+    required String capability,
+    required String subtitle,
+    required bool Function(String id) valueFor,
+  }) {
+    return [
+      for (final p in plugins)
+        SettingsToggleRow(
+          key: ValueKey('live-cap-${widget.sourceUrl.hashCode}-${p.id}-$capability'),
+          title: p.name,
+          subtitle: [
+            if (p.description != null && p.description!.isNotEmpty) p.description!,
+            subtitle,
+          ].join(' · '),
+          value: valueFor(p.id),
+          onChanged: (val) async {
+            await EngineService.instance.setLiveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              pluginId: p.id,
+              capability: capability,
+              enabled: val,
+            );
+          },
+        ),
+    ];
+  }
+}
+class _SettingsEngineCategoryTabStrip extends StatelessWidget {
+  const _SettingsEngineCategoryTabStrip({
+    required this.groups,
+    required this.selected,
+    required this.groupLabel,
+    required this.tabRowId,
+    required this.onChanged,
+  });
+
+  final List<String> groups;
+  final String selected;
+  final String Function(String) groupLabel;
+  final String tabRowId;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < groups.length; i++)
+            ForjaShellChip(
+              label: groupLabel(groups[i]),
+              selected: selected == groups[i],
+              listIndex: i,
+              onTap: () => onChanged(groups[i]),
+            ),
+        ],
+      );
+    }
+
+    return TvChipStrip(
+      tabId: 'settings',
+      rowId: tabRowId,
+      sortOrder: 0,
+      itemCount: groups.length,
+      resultsRowId: 'engine-pack-row',
+      builder: (context, edgesFor) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < groups.length; i++)
+              ForjaShellChip(
+                label: groupLabel(groups[i]),
+                selected: selected == groups[i],
+                listIndex: i,
+                tvTabId: 'settings',
+                tvRowId: tabRowId,
+                onTap: () => onChanged(groups[i]),
+                onLeftEdge: edgesFor(i).onLeft,
+                onRightEdge: edgesFor(i).onRight,
+                onDownEdge: edgesFor(i).onDown,
+                onUpEdge: edgesFor(i).onUp,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
