@@ -9,9 +9,9 @@ import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
 import 'package:forja/shared/engine/lists/list_open_prefs.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_shell_chip.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).

@@ -14,11 +14,11 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/forja_interactive.dart';
-import 'package:forja/shared/shell/tv_browse_text_field.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_frosted_panel.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/forja_interactive.dart';
+import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 

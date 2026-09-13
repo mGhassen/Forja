@@ -10,7 +10,7 @@ import 'package:forja/shared/engine/hub/meta_runtime.dart';
 import 'package:forja/shared/engine/hub/pack_filters.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
-import 'package:forja/shared/shell/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja_foundation/protocol/deeplink.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';

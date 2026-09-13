@@ -3,7 +3,7 @@ import 'package:forja/shared/engine/hub/catalog_open.dart';
 import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/engine/lists/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/lists/list_open_binding.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Open a My List / catalog list row with hub binding (RFC-108).

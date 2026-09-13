@@ -12,7 +12,7 @@ import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
 import 'package:forja/shared/engine/hub/kit_top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/hub/kit_live_boot.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
 
 /// IPTV data for pack-declared `kit.topBar` `action: portals` (+ list overlay).
 ///

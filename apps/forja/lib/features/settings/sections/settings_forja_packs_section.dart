@@ -24,10 +24,10 @@ import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/switch.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {

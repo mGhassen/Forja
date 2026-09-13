@@ -15,8 +15,8 @@ import 'package:forja/shared/player/controls/sources/player_torrent_file_panel.d
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Two-column Sources dialog - left servers, right streams for the selected server.

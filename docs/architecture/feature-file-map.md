@@ -278,8 +278,8 @@ flowchart TB
 
 | Layer | Location | Owns | Does NOT own |
 |-------|----------|------|--------------|
-| Shell / profile | `shared/foundation/primitives/`, `shell/adapters/`, `shared/foundation/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
-| Shared presentation | `shared/foundation/` (`primitives/`, `components/`) | Reusable UI + callbacks | State machines, routing |
+| Shell / profile | `shared/shell/{core,tv}/`, `shell/adapters/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvKitRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
+| Shared presentation | `packages/forja_foundation/` + `shared/shell/` | Reusable UI + callbacks | State machines, routing |
 | Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
 
 ### Canonical feature folder

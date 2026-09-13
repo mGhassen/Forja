@@ -8,10 +8,10 @@ import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dar
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_shell_profile.dart';
-import 'package:forja/shared/shell/forja_shell_platform.dart';
-import 'package:forja/shared/shell/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_profile.dart';
+import 'package:forja/shared/shell/core/forja_shell_platform.dart';
+import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 

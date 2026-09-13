@@ -6,8 +6,8 @@ import 'package:forja/features/archive/comics/catalog/comics_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 
 class ComicDetailsScreen extends StatefulWidget {
   final Comic comic;

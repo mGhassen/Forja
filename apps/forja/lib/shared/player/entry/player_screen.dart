@@ -19,9 +19,9 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-import 'package:forja/shared/shell/desktop_window_geometry.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/loading_overlay.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/loading_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
 class PlayerScreen extends StatefulWidget {

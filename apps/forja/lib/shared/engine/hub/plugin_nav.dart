@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/host/packs/forja_host_assets.dart';
-import 'package:forja/shared/shell/kit_shell.dart';
+import 'package:forja/shared/shell/kit/kit_shell.dart';
 import 'package:forja/shared/engine/hub/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav/nav_destination.dart';

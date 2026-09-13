@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/hub/meta_movie.dart';
-import 'package:forja/shared/shell/kit_poster_card.dart';
+import 'package:forja/shared/shell/kit/kit_poster_card.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/details/details_rails.dart';

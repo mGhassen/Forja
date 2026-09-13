@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/hub/pack_filters.dart';
-import 'package:forja/shared/shell/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/hub/plugin_nav.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 

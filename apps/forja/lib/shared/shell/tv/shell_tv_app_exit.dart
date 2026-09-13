@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 
 /// Double-confirm quit for Android TV (nav Back or remote Exit).

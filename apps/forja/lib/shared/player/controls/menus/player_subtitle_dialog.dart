@@ -17,7 +17,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Two-column Subtitles dialog — left languages, right tracks in the group.
 ///

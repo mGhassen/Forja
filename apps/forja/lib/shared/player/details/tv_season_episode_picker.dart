@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/shell/horizontal_scroller.dart';
-import 'package:forja/shared/shell/shell_card_play_overlay.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_shell_section_title.dart';
+import 'package:forja/shared/shell/chrome/horizontal_scroller.dart';
+import 'package:forja/shared/shell/feedback/shell_card_play_overlay.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/chrome/forja_shell_section_title.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
@@ -14,7 +14,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/episode_air_date.dart';
 import 'package:forja/shared/player/details/episode_range_bar.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
-import 'package:forja/shared/shell/home_loading_skeleton.dart';
+import 'package:forja/shared/shell/catalog/home_loading_skeleton.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 
 typedef SeasonSelectCallback = void Function(int season);

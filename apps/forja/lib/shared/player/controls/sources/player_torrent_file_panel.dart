@@ -11,7 +11,7 @@ import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Right-side panel to pick another file inside the active torrent.

@@ -14,9 +14,9 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Open pack install/uninstall picker inside Settings → Forja Packs (right pane).

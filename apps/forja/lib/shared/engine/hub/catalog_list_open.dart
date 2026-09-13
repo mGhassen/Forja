@@ -4,7 +4,7 @@ import 'package:forja/shared/engine/hub/legacy_list_item.dart';
 import 'package:forja/shared/player/details/kit_list_status_button.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_shell_layout.dart';
+import 'package:forja/shared/shell/core/forja_shell_layout.dart';
 
 Future<void> openCatalogListEntry(
   BuildContext context,

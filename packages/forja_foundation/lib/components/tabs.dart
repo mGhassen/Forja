@@ -54,7 +54,8 @@ class UnderlineTabBar extends StatelessWidget {
           if (i > 0) SizedBox(width: theme.spaceLg),
           _TabItem(
             label: labels[i],
-            selected: i == selectedIndex,
+            // selectedIndex < 0 → none selected (toggle-cleared menus).
+            selected: selectedIndex >= 0 && i == selectedIndex,
             onTap: () => onChanged(i),
           ),
         ],

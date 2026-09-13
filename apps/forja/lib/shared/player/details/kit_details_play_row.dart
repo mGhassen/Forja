@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/focus/hero_pill_buttons.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';

@@ -19,8 +19,8 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Open addon inside Settings → Addons. Hub chrome listens so the page title

@@ -19,7 +19,7 @@ packages/forja_foundation/lib/widgets|components|blocks/  # catalog composers
 shared/player/details/           # episode picker, media-details body/hero, kit details
 shared/player/sources/           # torrent + kit sources panels
 shared/playback/                 # play hooks, probe, stream loading
-shared/shell/                    # toast, TV, desktop chrome, catalog host composers
+shared/shell/{core,chrome,kit,catalog,focus,feedback,desktop,brand,tv}/
 shared/engine/hub/               # MetaRuntime, plugin_nav, kit open / filters
 shared/engine/lists/             # list-follow + my-list catalog
 shared/host/packs|update|account|watch/

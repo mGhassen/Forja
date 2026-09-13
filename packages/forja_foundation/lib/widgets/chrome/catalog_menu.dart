@@ -37,7 +37,11 @@ class CatalogMenu extends StatelessWidget {
   final Widget Function(Widget child)? wrapRow;
 
   String get _widgetId => (spec['id'] ?? 'menu').toString();
-  bool get _toggle => spec['toggle'] == true;
+  bool get _toggle {
+    final raw = spec['toggle'];
+    return raw == true || raw == 1 || raw == 'true';
+  }
+
   List<({String id, String label})> get _items => layoutItemsFromSpec(spec);
 
   @override
@@ -76,17 +80,17 @@ class CatalogMenu extends StatelessWidget {
         ],
       );
     } else {
+      // No selection (toggle cleared) → -1 so no tab paints active.
+      // Never snap to index 0 — that looked like Film stayed selected.
       final selectedIndex = selected == null
-          ? 0
-          : _items
-              .indexWhere((t) => t.id == selected)
-              .clamp(0, _items.length - 1);
+          ? -1
+          : _items.indexWhere((t) => t.id == selected);
       row = Row(
         children: [
           Expanded(
             child: UnderlineTabBar(
               labels: [for (final t in _items) t.label],
-              selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+              selectedIndex: selectedIndex,
               onChanged: (i) => scope.onSelect(
                 _widgetId,
                 _items[i].id,

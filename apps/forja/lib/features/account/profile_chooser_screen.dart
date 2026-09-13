@@ -12,7 +12,7 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:forja/shared/shell/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

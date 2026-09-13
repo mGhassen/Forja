@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 
 export 'package:forja_foundation/widgets/details/list_status_pin.dart'

@@ -8,17 +8,17 @@ import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dar
 import 'package:forja_foundation/widgets/details/meta_line.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 import 'package:forja_foundation/widgets/details/hero_title.dart';
-import 'package:forja/shared/shell/desktop_selectable_title.dart';
+import 'package:forja/shared/shell/desktop/desktop_selectable_title.dart';
 import 'package:forja/shared/player/details/watch_progress_bar.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
 import 'package:rust/rust.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 part 'player_chrome_overlay_hero.dart';
 

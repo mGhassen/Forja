@@ -15,12 +15,12 @@ import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_chip.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/forja_frosted_panel.dart';
-import 'package:forja/shared/shell/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
+import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// How many Nuvio provider chips count as an active Filters badge.
 ///

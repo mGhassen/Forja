@@ -14,8 +14,8 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/switch.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 /// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).
 bool addonMasterEnabled({
   required String addonId,

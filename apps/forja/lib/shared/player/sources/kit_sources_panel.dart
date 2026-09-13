@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/hero_pill_buttons.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/hero_pill_buttons.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/shell/tv_browse_text_field.dart';
+import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/widgets/chrome/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';

@@ -3,17 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/hub/pack_filters.dart';
-import 'package:forja/shared/shell/vertical_filters.dart';
-import 'package:forja/shared/shell/vertical_filters_rail.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/shell/forja_shell_layout.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_layout.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 

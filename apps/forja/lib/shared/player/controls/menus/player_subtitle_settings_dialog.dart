@@ -13,8 +13,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/switch.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class PlayerSubtitleSettingsValues {
   const PlayerSubtitleSettingsValues({

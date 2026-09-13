@@ -73,10 +73,10 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/desktop_window_chrome.dart';
-import 'package:forja/shared/shell/desktop_window_geometry.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 

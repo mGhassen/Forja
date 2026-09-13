@@ -7,9 +7,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_shell_profile.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_profile.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/brand/animated_logo.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Shown when every shell feature tab is hidden — guides users to Plugins,

@@ -10,7 +10,7 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 /// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.

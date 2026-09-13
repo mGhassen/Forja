@@ -30,9 +30,9 @@ import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/shell_focusable_tap.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// Right-side Sources panel in the player - same shell/chrome/tiles as

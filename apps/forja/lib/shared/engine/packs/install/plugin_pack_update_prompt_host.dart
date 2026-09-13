@@ -6,8 +6,8 @@ import 'package:forja/shared/engine/packs/install/plugin_pack_update_dialog.dart
 
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shared/shell/forja_shell_profile.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_profile.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 
 /// Listens for [PluginInstallCoordinator.pendingUpdatePrompt] and shows confirm.
 ///

@@ -4,7 +4,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 export 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

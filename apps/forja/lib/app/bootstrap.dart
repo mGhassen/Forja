@@ -56,11 +56,11 @@ import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
 import 'package:forja/shared/shell/brand/animated_logo.dart';
-import 'package:forja/shared/shell/forja_toast.dart';
-import 'package:forja/shared/shell/forja_shell_scope.dart';
-import 'package:forja/shared/shell/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/forja_shell_keyboard_focus.dart';
-import 'package:forja/shared/shell/desktop_window_geometry.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shared/shell/core/forja_shell_keyboard_focus.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 bool _appShutdownStarted = false;
 
