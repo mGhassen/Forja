@@ -41,6 +41,9 @@ class DetailsRecommendationsSection extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: ListView.separated(
+              // Match Home HorizontalScroller — hover/focus scale paints past
+              // the row box instead of clipping into section margins.
+              clipBehavior: Clip.none,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
               itemCount: cards.length,
