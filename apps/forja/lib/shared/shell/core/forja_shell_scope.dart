@@ -3,6 +3,7 @@ import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/core/forja_shell_metrics.dart';
 import 'package:forja/shared/shell/core/forja_shell_platform.dart';
 import 'package:forja/shared/shell/core/forja_shell_profile.dart';
+import 'package:forja/shared/shell/core/shell_paint_host.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -15,7 +16,11 @@ class ShellScope extends InheritedWidget {
   }) : super(
          child: CompactNavDrawerPolicy(
            allow: config.metrics.allowCompactNavDrawer,
-           child: child,
+           child: shellPaintHostScope(
+             inputPolicy: config.inputPolicy,
+             metrics: config.metrics,
+             child: child,
+           ),
          ),
        );
 

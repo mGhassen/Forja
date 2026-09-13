@@ -1,7 +1,7 @@
 # RFC-091: Explode Live Sports host — packs own MetaRuntime
 
 **Status:** fixed  
-**Depends on:** [RFC-087](087-[fixed]-live-sports-pack-only.md) · [RFC-090](090-[fixed]-live-sports-host-outside-foundation.md) · [RFC-085](../085-[partial]-catalog-kit-generic-only.md)  
+**Depends on:** [RFC-087](087-[fixed]-live-sports-pack-only.md) · [RFC-090](090-[fixed]-live-sports-host-outside-foundation.md) · [RFC-085](085-[fixed]-catalog-kit-generic-only.md)  
 **Area:** `plugins/hubs/live_sports*`, `plugins/catalog/**`, `plugins/live/**`, `features/iptv/sports/`, kit registries
 
 ## Status at a glance
@@ -74,4 +74,4 @@ RFC-090 parked Live Sports under `shared/host/live_sports/`. This RFC deletes th
 
 - [RFC-090](090-[fixed]-live-sports-host-outside-foundation.md) — foundation evacuate (location superseded)
 - [RFC-087](087-[fixed]-live-sports-pack-only.md) — pack-only tab
-- [RFC-062](../062-[open]-native-iptv-sports-matching.md) — IPTV sports matching
+- [RFC-062](062-[fixed]-native-iptv-sports-matching.md) — IPTV sports matching

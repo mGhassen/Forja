@@ -42,7 +42,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [018-[draft]-…](018-[draft]-migration-playback-parity-unverified.md) | Playback parity unverified | P1 | High | open | 3/13 | [1.0.1](../backlog/1.0.1-[draft].md) |
 | [019-[draft]-…](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md) | WebStreamr E2E test gap | P2 | Medium | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-cancel-gen-token-discard-unverified.md) | Cancel gen-token unverified | P2 | Medium | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [021-[canceled]-…](canceled/021-[canceled]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | canceled | Canceled — obsolete verticals | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | open | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | packages/api delete | P2 | Medium | fixed | 4/4 | [0.3.2](../backlog/done/0.3.2-[done].md) |
 | [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 12/13 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -67,14 +67,14 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
 | [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 24/24 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [046-[open]-…](046-[open]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [046-[canceled]-…](canceled/046-[canceled]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [048-[open]-…](048-[open]-vidsrc-sbs-iframe-playback-restricted.md) | VidSrc.sbs iframe playback restricted | P1 | High | open | 1/1 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [049-[open]-…](049-[open]-live-embed-ad-hijack-crash.md) | Live embed ad main-frame hijack crash | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [049-[canceled]-…](canceled/049-[canceled]-live-embed-ad-hijack-crash.md) | Live embed ad main-frame hijack crash | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [050-[fixed]-…](fixed/050-[fixed]-template-embed-one-file-per-plugin.md) | Template embed one file per plugin | P2 | Medium | fixed | Complete · 2/2 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [051-[open]-…](051-[open]-embed-multiserver-sniff-proxy-cookies.md) | Embed multi-server sniff / proxy body / cookies | P1 | High | open | 13/13 · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [052-[fixed]-…](fixed/052-[fixed]-extractor-ownership-playback-layout.md) | Host extractor ownership + playback package layout | P2 | Medium | fixed | 4/4 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [053-[workaround]-…](053-[workaround]-windows-live-embed-webview2-transparent.md) | Windows Live Matches WebView2 transparent / blank embed | P1 | High | workaround | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [053-[canceled]-…](canceled/053-[canceled]-windows-live-embed-webview2-transparent.md) | Windows Live Matches WebView2 transparent / blank embed | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [054-[fixed]-…](fixed/054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) | Vidsrc CloudStream Referer blocks HLS segments | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [055-[fixed]-…](fixed/055-[fixed]-vidnest-moviebox-referer-429.md) | VidNest MovieBox CDN Referer → HTTP 429 | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [056-[fixed]-…](fixed/056-[fixed]-autoembed-player-sandbox-playback-blocked.md) | AutoEmbed player sandbox / Playback blocked | P1 | High | fixed | Complete · 3/3 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -125,7 +125,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [101-[open]-…](101-[open]-player-back-lands-on-loading.md) | Player Back lands on stream loading | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [102-[open]-…](102-[open]-android-tv-exoplayer-tiled-frames.md) | Android TV ExoPlayer tiled / shifted frames | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [103-[open]-…](103-[open]-android-tv-anime-details-hero-focus.md) | Android TV anime details hero + focus chrome | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [104-[open]-…](104-[open]-android-tv-live-matches-embed-dpad.md) | Android TV Live Matches embed Play/Back/player D-pad | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [104-[canceled]-…](canceled/104-[canceled]-android-tv-live-matches-embed-dpad.md) | Android TV Live Matches embed Play/Back/player D-pad | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -166,7 +166,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 18/18 · A 0/4 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [143-[open]-…](143-[open]-android-tv-stremio-live-reconnect.md) | ATV Live Matches Stremio forever Reconnecting | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [145-[canceled]-…](canceled/145-[canceled]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 24/24 · A 0/19 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -197,6 +197,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [173-[open]-…](173-[open]-android-tv-update-dialog-focus-leak.md) | ATV update dialog D-pad under the gate | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [175-[open]-…](175-[open]-mid-watch-auto-failover.md) | Mid-watch CDN death Auto hop | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [176-[workaround]-…](176-[workaround]-macos-intel-metal-text-glitch.md) | macOS Intel Metal text/subtitle glitch | P1 | High | workaround | 2/2 · A 0/1 | — |
 | [177-[open]-…](177-[open]-sources-selected-provider-lazy-fetch.md) | Sources: fetch only the selected provider / addon / scraper | P2 | Medium | open | 6/6 · A 0/4 | — |
 | [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
 | [179-[fixed]-…](fixed/179-[fixed]-search-progressive-tmdb-live-stampede.md) | Search: TMDB blocked by Stremio live stampede | P1 | High | fixed | Complete · 5/5 · A 4/4 | — |
@@ -258,8 +259,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [251-[fixed]-…](fixed/251-[fixed]-live-sports-streamed-empty-nested-skip.md) | Live Sports empty while Streamed logs streams=N | P0 | High | fixed | Complete · 3/3 · A 0/1 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
 | [252-[fixed]-…](fixed/252-[fixed]-iptv-status-checks-false-red.md) | IPTV portal + channel status all red (false negatives) | P1 | High | fixed | Complete · 5/5 · A 0/2 | [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) |
 | [253-[open]-…](253-[open]-starred-home-opens-on-settings.md) | Starred Home opens on Settings (cold start) | P0 | High | open | 5/5 · A 1/3 | — |
-| [254-[open]-…](254-[open]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | open | 7/7 · A 0/2 | — |
-| [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 0/5 · A 0/2 | [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md) |
+| [254-[fixed]-…](fixed/254-[fixed]-live-catalog-schedule-only-no-streams.md) | Live catalog schedule-only (no stream find/resolve) | P0 | High | fixed | Complete · 7/7 · A 2/2 | — |
+| [255-[open]-…](255-[open]-provider-runtime-config-builtins-debt.md) | ProviderRuntimeConfig Dart builtins debt | P2 | Medium | open | 0/5 · A 0/2 | [RFC-100](../rfc/fixed/100-[fixed]-admin-plugin-catalog-bundles.md) |
 | [256-[fixed]-…](fixed/256-[fixed]-android-tv-plugin-pack-update-focus.md) | ATV plugin pack update dialog focus stays on shell | P1 | High | fixed | Complete · 2/2 · A 1/2 | [173](173-[open]-android-tv-update-dialog-focus-leak.md) |
 | [257-[open]-…](257-[open]-android-tv-guest-settings-only-dpad.md) | ATV guest / Settings-only D-pad stuck on Settings rail | P0 | High | open | 4/4 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) |
 | [258-[open]-…](258-[open]-shahid-android-drm-manual-qa.md) | Shahid Android DRM manual QA | P1 | Medium | open | 0/5 | [RFC-101](../rfc/101-[open]-shahid-hub-provider-exo-widevine.md) |
@@ -275,8 +276,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [268-[fixed]-…](fixed/268-[fixed]-android-tv-settings-addons-features-scroll-stuck.md) | ATV Settings Addons / Features D-pad scroll stuck top | P1 | High | fixed | Complete · 2/2 · A 0/2 | [262](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) |
 | [269-[open]-…](269-[open]-windows-iptv-portal-af-inet-dns64.md) | Windows IPTV portal AF_INET DNS (DNS64 residual) | P1 | High | open | 3/3 · A 0/1 | [261](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) |
 | [270-[fixed]-…](fixed/270-[fixed]-live-providers-resolve-empty-regression.md) | Live Sports Providers empty (resolve regression) | P0 | Critical | fixed | Complete · 5/5 · A 0/1 | [240](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) |
-| [271-[open]-…](271-[open]-catalog-body-evacuate-foundation.md) | Catalog body evacuate into forja_foundation | P1 | Medium | open | 7/7 · A 7/9 | [RFC-106](../rfc/106-[open]-forja-foundation-design-system-package.md) · [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
-| [277-[fixed]-…](fixed/277-[fixed]-catalog-deeper-evacuate-paint.md) | Catalog deeper evacuate (search / section / list paint) | P1 | Medium | fixed | Complete · 4/4 · A 5/5 | [271](271-[open]-catalog-body-evacuate-foundation.md) · [RFC-106](../rfc/106-[open]-forja-foundation-design-system-package.md) |
+| [271-[open]-…](271-[open]-catalog-body-evacuate-foundation.md) | Catalog body evacuate into forja_foundation | P1 | Medium | open | 7/7 · A 7/9 | [RFC-106](../rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md) · [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) |
+| [277-[fixed]-…](fixed/277-[fixed]-catalog-deeper-evacuate-paint.md) | Catalog deeper evacuate (search / section / list paint) | P1 | Medium | fixed | Complete · 4/4 · A 5/5 | [271](271-[open]-catalog-body-evacuate-foundation.md) · [RFC-106](../rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md) |
 | [272-[fixed]-…](fixed/272-[fixed]-iptv-hls-m3u-continuity-proxy-death-spiral.md) | IPTV HLS M3U channels fail via TS continuity proxy | P1 | High | fixed | Complete · 3/3 · A 0/2 | [208](fixed/208-[fixed]-iptv-stalker-misclassified-as-xtream-proxy.md) |
 | [273-[fixed]-…](fixed/273-[fixed]-iptv-hls-cold-open-watchdog-kill.md) | IPTV HLS cold open killed by stall soft-reopen | P0 | Critical | fixed | Complete · 7/7 · A 0/2 | [272](fixed/272-[fixed]-iptv-hls-m3u-continuity-proxy-death-spiral.md) |
 | [274-[fixed]-…](fixed/274-[fixed]-debug-release-shared-session.md) | Debug + release share session / local data | P1 | High | fixed | Complete · 4/4 · A 0/1 | — |

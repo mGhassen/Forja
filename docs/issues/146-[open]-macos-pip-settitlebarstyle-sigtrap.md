@@ -47,6 +47,6 @@ Crash report (1.3.114, macOS 26.5): `EXC_BREAKPOINT` / Swift runtime failure on 
 (mainWindow.standardWindowButton(.closeButton)?.superview)!.superview!
 ```
 
-`closeButton` is nil on a borderless window → force unwrap → SIGTRAP. Dart `try/catch` does not catch native traps. Distinct from [145](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) (WK fullscreen).
+`closeButton` is nil on a borderless window → force unwrap → SIGTRAP. Dart `try/catch` does not catch native traps. Distinct from [145](canceled/145-[canceled]-macos-live-embed-webkit-fullscreen-crash.md) (WK fullscreen).
 
 **Fix (shipped in code):** Rely on native PiP chrome for hide/restore title bar. Never call `setTitleBarStyle` / `setAsFrameless` on the enter/leave path after native chrome is applied. Fire `desktopPipChanges(true)` and treat `isDesktopActive` (enter-pending) before `setSize`, so IPTV/VOD full chrome is swapped for `DesktopPipOverlay` before the window shrinks. While desktop PiP is active, stub the underlay IPTV catalog shell (black box) and make catalog top-bar tools `Flexible`+horizontal scroll so a ~214px slot cannot RenderFlex-overflow.

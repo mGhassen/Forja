@@ -36,11 +36,11 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [013-[draft]-…](013-[draft]-v1.2-sync-lan-party.md) | v1.2 sync + LAN party | v1.2 | draft | 0/6 | v2 |
 | [014-[draft]-…](014-[draft]-v3-web-rust.md) | v3.0 web + Rust/WASM | v3.0 | draft | 0/5 | v3 |
 | [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 11/13 · 3/3 · 2/2 · 5/5 · 5/6 · 1/1 · 3/3 · 2/3 · 4/4 · 4/4 · 1/1 · 2/2 · 1/1 · 3/3 macOS silent | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.1](../backlog/1.0.1-[open].md), [1.0.2](../backlog/1.0.2-[draft].md), [1.0.4](../backlog/1.0.4-[draft].md) |
-| [016-[partial]-…](016-[partial]-lazy-tab-mounting.md) | Lazy tab mounting | v0.8.x | partial | 5/5 mount | [0.8.2](../backlog/done/0.8.2-[done].md) |
-| [024-[partial]-…](024-[partial]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | partial | 21/22 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) · [1.0.1](../backlog/1.0.1-[open].md) |
+| [016-[fixed]-…](fixed/016-[fixed]-lazy-tab-mounting.md) | Lazy tab mounting | v0.8.x | fixed | Complete · 5/5 mount | [0.8.2](../backlog/done/0.8.2-[done].md) |
+| [024-[fixed]-…](fixed/024-[fixed]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | fixed | Complete · 21/22 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) · [1.0.1](../backlog/1.0.1-[open].md) |
 | [017-[open]-…](017-[open]-deferred-engine-boot.md) | Deferred / profile-gated engine boot | v1.0.1 | open | 0/6 ⏭️ · 8/8 profile-gated · 3/3 switch=intro · 4/4 instant splash · **3/3 pack-gated** | [1.0.1](../backlog/1.0.1-[open].md) · [0.5.0](../backlog/done/0.5.0-[done].md) hist |
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/4 · 2 fetch · 3⏭️ | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
-| [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
+| [019-[fixed]-…](fixed/019-[fixed]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | fixed | Complete · 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 3/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
 | [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 18/19 · 30/36 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [021-[draft]-…](021-[draft]-release-ship-hygiene.md) | Release ship hygiene | v1.0 | draft | 1/8 · 2 🔄 · 1 ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) |
@@ -54,22 +54,22 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
 | [032-[open]-…](032-[open]-rust-resolver-engine.md) | Rust Resolver Engine | v1.0.3 | open | 8/8 · 12/15 | [1.0.3](../backlog/1.0.3-[draft].md) |
 | [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 9/9 · 10/10 hub · 6/6 visibility · 4/4 TV · 1/1 resume · 2/6 Addons | [1.0.1](../backlog/1.0.1-[open].md) · [1.0.2](../backlog/1.0.2-[draft].md) |
-| [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 · 8/8 reset+confirm · 6/7 passkeys · 0/1 mobile ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) · [1.0.4](../backlog/1.0.4-[draft].md) |
+| [034-[fixed]-…](fixed/034-[fixed]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | fixed | Complete · portal ✅ · 6/7 passkeys · 0/1 mobile ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) · [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 22/32 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 6/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [039-[fixed]-…](fixed/039-[fixed]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | fixed | Complete · 7/7 · 12/12 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 30/32 | [1.0.5](../backlog/1.0.5-[draft].md) |
+| [040-[fixed]-…](fixed/040-[fixed]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | fixed | Complete · 5/5 · 30/32 (2 ⏭️) | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [041-[open]-…](041-[open]-iptv-live-epg-guide.md) | IPTV Live EPG guide view (catalog) | v1.0.6 | open | 4/4 · 0/6 | [1.0.6](../backlog/1.0.6-[draft].md) |
 | [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 5/5 · 13/19 | [1.0.7](../backlog/1.0.7-[draft].md) |
-| [043-[open]-…](043-[open]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | open | 6/6 · 9/9 · 8/8 · 4/4 · 6/6 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [043-[fixed]-…](fixed/043-[fixed]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | fixed | Complete · 6/6 · 9/9 · 8/8 · 4/4 · 6/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[open]-…](044-[open]-provider-identity-playback.md) | Provider-identity playback (end CDN host chase) | v1.0.1 | open | 11/11 · 21/21 unit · 0/3 manual | [1.0.1](../backlog/1.0.1-[open].md) |
 | [045-[open]-…](045-[open]-stream-open-pipeline.md) | Stream open pipeline middleware | v1.0.1 | open | 6/6 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-android-tv-device-link.md) | Android TV device-code / QR account link | v1.0.7 | open | 5/5 · A 0/8 · net 1/1 | [1.0.7](../backlog/1.0.7-[draft].md) |
 | [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/5** settings · **8/8** TV | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [048-[fixed]-…](fixed/048-[fixed]-tv-focus-graph.md) | TV focus graph + screen recipes | v1.0.1 | fixed | Complete · 6/6 historical · 1/1 spatial C · 4/4 spatial A | [1.0.1](../backlog/1.0.1-[open].md) — B101-S132 ✅ · B101-S169 ✅ |
-| [049-[open]-…](049-[open]-live-matches-mutstreams.md) | Live Matches MutStreams catalog | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S173 · smoke R49-A05 ⬜ |
+| [049-[canceled]-…](canceled/049-[canceled]-live-matches-mutstreams.md) | Live Matches MutStreams catalog | v1.0.1 | canceled | Canceled — product removed | [1.0.1](../backlog/1.0.1-[open].md) — B101-S173 · smoke R49-A05 ⬜ |
 | [050-[open]-…](050-[open]-stremio-addon-feature-targets.md) | Stremio feature targets + Live Matches sports | v1.0.1 | open | 4/4 · 8/10 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S180 · B101-S182 · B101-S183 · smoke R50-A06 ⬜ · R50-A07 ⬜ |
 | [051-[open]-…](051-[open]-iptv-multi-protocol-portals.md) | IPTV multi-protocol portals (Xtream / M3U / Stalker) | v1.0.8 | open | 7/7 · 18/19 · 7/7 · 3/3 | [1.0.8](../backlog/1.0.8-[draft].md) |
 | [052-[canceled]-…](canceled/052-[canceled]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery — abandoned; restored v1.3.114 | v1.0.1 | canceled | Canceled · hist 13/14 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -82,7 +82,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [059-[fixed]-…](fixed/059-[fixed]-hub-list-follow.md) | Anime & Asian Drama list follow | v1.4 | fixed | Complete · 4/4 · 8/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [060-[fixed]-…](fixed/060-[fixed]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | fixed | Complete · 78/80 · 2 ⏭️ | — |
 | [061-[fixed]-…](fixed/061-[fixed]-engine-scraper-upstream-parity.md) | Engine scraper upstream parity | v1.3 | fixed | Complete · 4/4 · 10/12 · 2 ⏭️ | — |
-| [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 6/6 · 14/14 Xtream · 2/2 ATV · 4/4 Stalker · 1/1 EPG pad · 1/1 Mag ch_id · 0/3 M3U ⏭️ | — |
+| [062-[fixed]-…](fixed/062-[fixed]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | fixed | Complete · Xtream/ATV/Stalker ✅ · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 8/8 · 12/16 | — |
 | [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 7/7 · 21/25 · EngineJS→flutter_js unlock fallback · WebView GOAT+GASM 🔄 | — |
@@ -92,21 +92,21 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [069-[fixed]-…](fixed/069-[fixed]-official-plugins-split.md) | Official packs under `plugins/` (providers / live / catalog) | v1.4 | fixed | Complete · 4/4 · 8/8 | — |
 | [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 11/11 · 14/15 · 12/12 hub parity · **1/1** hub contribution · 4/4 host enrich · **6/6** enrich companion · 1/1 required packs · 6/6 shared cache · 2/2 host assets · **3/3** pack-owned nav icons · **4/4** disk-cached hub nav icons · **2/2** host IPTV nav asset · **7/7** Arabic/open · **5/5** search capabilities · **3/3** host search engine · **5/5** My List host · **1/1** Live Sports hub · **5/5** Arabic-family chrome filters · **3/3** anime play audio · **1/1** hub Feature defaults · **3/3** layout `dir` | — |
 | [071-[fixed]-…](fixed/071-[fixed]-live-sports-hub-kit.md) | Live Sports catalog hub kit | v1.4 | fixed | **Complete** · 9/9 · 21/21 | — |
-| [072-[open]-…](072-[open]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | open | 4/4 · 6/6 | — |
+| [072-[fixed]-…](fixed/072-[fixed]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | fixed | Complete · 4/4 · 6/6 | — |
 | [073-[fixed]-…](fixed/073-[fixed]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details → platform → teardown → kill live silo → domain home → pack wire) | v1.4 | fixed | **Complete** · 4/4 C · A kill/kit/details/platform/teardown/silo/domain/pack | — |
 | [074-[open]-…](074-[open]-remote-profile-plugin-install.md) | Remote profile plugin install and uninstall | v1.4 | open | **6/6** · **15/17** | — |
 | [075-[fixed]-…](fixed/075-[fixed]-iptv-portal-probe-detail.md) | IPTV portal probe status + desktop detail card | v1.4 | fixed | **Complete** · 4/4 · 8/8 | — |
 | [076-[fixed]-…](fixed/076-[fixed]-cartoon-hub-dimatoon.md) | كرتون hub (DimaToon) + provider blank.mp4 fix | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
 | [077-[fixed]-…](fixed/077-[fixed]-brstej-hub-laroza-only-arabic.md) | Brstej hub + Laroza-only Arabic | v1.4 | fixed | **Complete** · 3/3 · 7/7 | — |
 | [078-[fixed]-…](fixed/078-[fixed]-kids-hub-dimakids.md) | Kids hub (Dimakids) + provider | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
-| [079-[open]-…](079-[open]-sources-id-middleware.md) | Sources ID middleware (catalog → providers / torrents / Stremio / Nuvio) | v1.4 | open | **4 / 4** · **8 / 8** | — |
-| [080-[open]-…](080-[open]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | open | **5 / 5** · **13 / 13** | — |
+| [079-[fixed]-…](fixed/079-[fixed]-sources-id-middleware.md) | Sources ID middleware (catalog → providers / torrents / Stremio / Nuvio) | v1.4 | fixed | Complete · 4/4 · 8/8 | — |
+| [080-[fixed]-…](fixed/080-[fixed]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | fixed | Complete · 5/5 · 13/13 | — |
 | [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **6 / 6** | — |
 | [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **3 / 5** · **6 / 10** | — |
-| [083-[open]-…](083-[open]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | open | **9 / 9** · **26 / 26** | — |
+| [083-[fixed]-…](fixed/083-[fixed]-in-app-mini-player.md) | In-app mini player (inside Forja — not OS PiP) | v1.4 | fixed | Complete · 9/9 · 26/26 | — |
 | [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [084-[canceled]-…](canceled/084-[canceled]-live-sports-host-feature-kit.md) | Live Sports host feature + kit standard layout | v1.4 | canceled | **Canceled** · superseded by [087](fixed/087-[fixed]-live-sports-pack-only.md) | — |
-| [085-[partial]-…](085-[partial]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | partial | **5 / 5** · **23 / 23** · **1 / 1** sides | — |
+| [085-[fixed]-…](fixed/085-[fixed]-catalog-kit-generic-only.md) | Catalog kit generic only (evacuate product trees) | v1.4 | fixed | Complete · 5/5 · 23/23 · 1/1 sides | — |
 | [086-[fixed]-…](fixed/086-[fixed]-addons-packs-feature-vs-navbar.md) | Addons/Packs flag features; Features flags navbar | v1.4 | fixed | **Complete** · **4 / 4** · **17 / 17** | — |
 | [087-[fixed]-…](fixed/087-[fixed]-live-sports-pack-only.md) | Live Sports pack-only (no host feature root) | v1.4 | fixed | **Complete** · **4 / 4** · **8 / 8** | — |
 | [088-[fixed]-…](fixed/088-[fixed]-my-list-pack-only.md) | My List pack-only (no host feature root) | v1.4 | fixed | **Complete** · **3 / 3** · **5 / 5** | — |
@@ -117,19 +117,19 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [093-[fixed]-…](fixed/093-[fixed]-live-sports-no-host-addon.md) | Live Sports — no host Addons row | v1.4 | fixed | **Complete** · **6 / 6** · **10 / 10** · **3 / 3** discovery | — |
 | [094-[partial]-…](094-[partial]-community-pack-url-scoped-ids.md) | Community packs — URL-scoped identity | v1.4 | partial | **3 / 4** · **8 / 8** hub · **0 / 4** ⏭️ providers | — |
 | [095-[fixed]-…](fixed/095-[fixed]-foundation-design-data-split.md) | Foundation like shadcn — design alone / data alone | v1.4 | fixed | **Complete · 10/10** | — |
-| [096-[open]-…](096-[open]-iptv-channel-search-only.md) | IPTV channel search only — pack owns sports policy | v1.4 | open | **3 / 3** · **8 / 8** · **1 / 1** liveTv | — |
+| [096-[fixed]-…](fixed/096-[fixed]-iptv-channel-search-only.md) | IPTV channel search only — pack owns sports policy | v1.4 | fixed | Complete · 3/3 · 8/8 · 1/1 liveTv | — |
 | [097-[fixed]-…](fixed/097-[fixed]-my-list-explode-host-to-packs.md) | Explode My List host → packs MetaRuntime feed | v1.4 | fixed | **Complete** · **4 / 4** · **10 / 10** | — |
 | [098-[fixed]-…](fixed/098-[fixed]-live-sports-event-search.md) | Live Sports event search (top-bar) | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [099-[open]-…](099-[open]-live-unlock-pack-modules.md) | Live unlock modules in packs (opaque runUnlock) | v1.4 | open | **4 / 4** · **12 / 13** · smoke ⬜ | — |
-| [100-[open]-…](100-[open]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | open | **5 / 5** · **9 / 9** admin · **8 / 8** app · **5 / 5** web · **3 / 3** retire | — |
+| [100-[fixed]-…](fixed/100-[fixed]-admin-plugin-catalog-bundles.md) | Admin plugin catalog + product bundles | v1.4 | fixed | Complete · 5/5 · 9/9 admin · 8/8 app · 5/5 web · 3/3 retire | — |
 | [101-[open]-…](101-[open]-shahid-hub-provider-exo-widevine.md) | Shahid hub + provider + Exo Widevine | — | open | **4 / 4** · **6 / 6** A · **4 / 4** B · **5 / 6** C · **3 / 3** D · **2 / 2** E | — |
-| [102-[open]-…](102-[open]-pack-connected-services-auth.md) | Pack Connected Services auth | — | open | **4 / 4** · **10 / 11** (1 ⏭️ pin) | — |
+| [102-[fixed]-…](fixed/102-[fixed]-pack-connected-services-auth.md) | Pack Connected Services auth | — | fixed | Complete · 4/4 · 10/11 (1 ⏭️ pin) | — |
 | [103-[planned]-…](103-[planned]-shahid-desktop-fairplay.md) | Shahid desktop FairPlay (macOS) | — | planned | **0 / 3** · **0 / 8** | — |
 | [104-[fixed]-…](fixed/104-[fixed]-merge-live-sports-hubs.md) | Merge Live Sports hubs (list/cards + panel/details) | — | fixed | **Complete** · **5 / 5** · **8 / 8** | — |
 | [105-[fixed]-…](fixed/105-[fixed]-live-providers-plugin-search.md) | Providers — plugin-owned fixture search + progressive paint | — | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
-| [106-[open]-…](106-[open]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | open | **7 / 8** · **14 / 14** Part 1 · **6 / 8** Part 2 · **5 / 5** body evacuate · **3 / 3** deeper paint · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
+| [106-[fixed]-…](fixed/106-[fixed]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | fixed | Complete · 9/9 · Part1/2 ✅ · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
 | [107-[open]-…](107-[open]-iptv-multi-engine-avplayer-vlc.md) | IPTV multi-engine (AVPlayer Mac · VLC Windows · Exo Android) | — | open | **7 / 7** · **13 / 14** | — |
-| [108-[open]-…](108-[open]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | open | **7 / 7** · **20 / 20** | — |
+| [108-[fixed]-…](fixed/108-[fixed]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | fixed | Complete · 7/7 · 20/20 | — |
 | [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **5 / 7** · **8 / 8** law · **8 / 10** code · **2** 🔄 interim | — |
 
 ## Related

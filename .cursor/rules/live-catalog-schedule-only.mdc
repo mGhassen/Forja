@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Catalog schedule-only (Live Sports)
 
-Index: [no-embed-playback](./no-embed-playback.mdc) · [issue 254](../../docs/issues/254-[open]-live-catalog-schedule-only-no-streams.md)
+Index: [no-embed-playback](./no-embed-playback.mdc) · [issue 254](../../docs/issues/fixed/254-[fixed]-live-catalog-schedule-only-no-streams.md)
 
 **Catalog packs** (`plugins/catalog/**`) publish the **match schedule** only.  
 **Live packs** (`plugins/live/**`) **discover streams and unlock** playback.

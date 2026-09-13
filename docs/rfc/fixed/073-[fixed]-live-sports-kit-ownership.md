@@ -1,7 +1,7 @@
 # RFC-073: Live Sports kit ownership (post–RFC-071)
 
 **Status:** fixed  
-**Depends on:** [RFC-071](071-[fixed]-live-sports-hub-kit.md) · [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-062](../062-[open]-native-iptv-sports-matching.md)  
+**Depends on:** [RFC-071](071-[fixed]-live-sports-hub-kit.md) · [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-062](062-[fixed]-native-iptv-sports-matching.md)  
 **Area:** `features/live_sports/`, `shared/foundation/services/live/`, `plugins/hubs/live_sports/`, host services
 
 ## Status at a glance
@@ -165,4 +165,4 @@ RFC-071 relocated Live Sports under kit then RFC-085 moved it to `features/live_
 
 - [RFC-071](071-[fixed]-live-sports-hub-kit.md) — frozen relocate (modes were host-owned there)
 - [live-matches feature doc](../../features/live/live-sports.md)
-- [RFC-062](../062-[open]-native-iptv-sports-matching.md) — matcher engine
+- [RFC-062](062-[fixed]-native-iptv-sports-matching.md) — matcher engine

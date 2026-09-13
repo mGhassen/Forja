@@ -1,7 +1,7 @@
 # RFC-109: Forja pack-product host
 
 **Status:** open  
-**Depends on:** [RFC-081](fixed/081-[fixed]-host-only-platform-nav-defaults.md) · [RFC-087](fixed/087-[fixed]-live-sports-pack-only.md) · [RFC-088](fixed/088-[fixed]-my-list-pack-only.md) · [RFC-106](106-[open]-forja-foundation-design-system-package.md) · [issue 271](../issues/271-[open]-catalog-body-evacuate-foundation.md)  
+**Depends on:** [RFC-081](fixed/081-[fixed]-host-only-platform-nav-defaults.md) · [RFC-087](fixed/087-[fixed]-live-sports-pack-only.md) · [RFC-088](fixed/088-[fixed]-my-list-pack-only.md) · [RFC-106](fixed/106-[fixed]-forja-foundation-design-system-package.md) · [issue 271](../issues/271-[open]-catalog-body-evacuate-foundation.md)  
 **Area:** host architecture / packs / foundation
 
 ## Status at a glance

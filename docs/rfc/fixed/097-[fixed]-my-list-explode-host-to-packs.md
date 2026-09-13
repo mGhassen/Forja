@@ -1,7 +1,7 @@
 # RFC-097: Explode My List host — packs own MetaRuntime feed
 
 **Status:** fixed  
-**Depends on:** [RFC-088](088-[fixed]-my-list-pack-only.md) · [RFC-091](091-[fixed]-live-sports-explode-host-to-packs.md) · [RFC-085](../085-[partial]-catalog-kit-generic-only.md)  
+**Depends on:** [RFC-088](088-[fixed]-my-list-pack-only.md) · [RFC-091](091-[fixed]-live-sports-explode-host-to-packs.md) · [RFC-085](085-[fixed]-catalog-kit-generic-only.md)  
 **Area:** `plugins/hubs/my_list`, `shared/foundation/services/follow/`, engine runtime bridge, kit list registry
 
 ## Status at a glance

@@ -5,7 +5,7 @@
 **Status:** open  
 **Area:** `packages/forja_foundation`, `apps/forja/lib/shared/shell`, `apps/forja/lib/shared/player`  
 **Reported:** 2026-09-11  
-**Related:** [RFC-106](../rfc/106-[open]-forja-foundation-design-system-package.md) · plan referred to issue 270 (number taken by live-providers fix)
+**Related:** [RFC-106](../rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md) · plan referred to issue 270 (number taken by live-providers fix)
 
 ## Status at a glance
 

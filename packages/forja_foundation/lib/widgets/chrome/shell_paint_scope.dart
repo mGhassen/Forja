@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+/// TV focus zone tokens for paint widgets (host maps to its coordinator).
+enum ShellPaintTvZone { nav, hero, topBar, chipStrip, row, grid, settings }
+
+/// Scroll-into-view mode when a paint widget takes focus.
+enum ShellPaintEnsureVisible { off, row, item }
+
+/// Host-provided focus tap (typically wraps app `shellFocusableTap`).
+typedef ShellPaintFocusableTap = Widget Function({
+  required BuildContext context,
+  required Widget child,
+  VoidCallback? onTap,
+  double borderRadius,
+  double scaleOnFocus,
+  VoidCallback? onLeftEdge,
+  VoidCallback? onUpEdge,
+  VoidCallback? onDownEdge,
+  VoidCallback? onRightEdge,
+  ValueChanged<bool>? onFocusChange,
+  ValueChanged<bool>? onHoverChange,
+  FocusNode? focusNode,
+  bool autoFocus,
+  int? listIndex,
+  String? tvTabId,
+  String? tvRowId,
+  int? tvItemIndex,
+  ShellPaintTvZone? tvZone,
+  ShellPaintEnsureVisible ensureVisibleMode,
+  bool showFocusBorder,
+  bool showFocusFill,
+  bool suppressInkHover,
+  FocusOnKeyEventCallback? onKeyEvent,
+});
+
+/// Host TV row registration (typically wraps app `TvKitRow`).
+typedef ShellPaintTvRowWrap = Widget Function({
+  required String tabId,
+  required String rowId,
+  required int sortOrder,
+  required int itemCount,
+  VoidCallback? onFocusUp,
+  VoidCallback? onFocusDown,
+  required Widget child,
+});
+
+/// Host policy + focus injection so foundation paint never imports `package:forja`.
+///
+/// Mount under the app [ShellScope] (or equivalent) and pass [focusableTap] that
+/// delegates to host TV/focus chrome.
+class ShellPaintScope extends InheritedWidget {
+  const ShellPaintScope({
+    super.key,
+    required this.useTvFocus,
+    required this.scaleOnHover,
+    required this.focusStyled,
+    required this.usesTvDensity,
+    this.focusableTap,
+    this.wrapTvRow,
+    this.wrapHorizontalScroller,
+    this.absorbHorizontalScroll,
+    this.isActivateKey,
+    required super.child,
+  });
+
+  final bool useTvFocus;
+  final bool scaleOnHover;
+  final bool Function(BuildContext context, {required bool focused}) focusStyled;
+  final bool usesTvDensity;
+  final ShellPaintFocusableTap? focusableTap;
+  final ShellPaintTvRowWrap? wrapTvRow;
+
+  /// Optional host wrap (e.g. desktop swipe-back ignore).
+  final Widget Function(Widget child)? wrapHorizontalScroller;
+
+  final bool Function(ScrollNotification notification)? absorbHorizontalScroll;
+
+  final bool Function(KeyEvent event)? isActivateKey;
+
+  static ShellPaintScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellPaintScope>();
+
+  static ShellPaintScope of(BuildContext context) {
+    final scope = maybeOf(context);
+    assert(scope != null, 'ShellPaintScope not found in context');
+    return scope!;
+  }
+
+  /// Defaults when no host scope is mounted (gallery / tests).
+  static bool useTvFocusOf(BuildContext context) =>
+      maybeOf(context)?.useTvFocus ?? false;
+
+  static bool scaleOnHoverOf(BuildContext context) =>
+      maybeOf(context)?.scaleOnHover ?? true;
+
+  static bool focusStyledOf(
+    BuildContext context, {
+    required bool focused,
+  }) {
+    final scope = maybeOf(context);
+    if (scope == null) return focused;
+    return scope.focusStyled(context, focused: focused);
+  }
+
+  static bool usesTvDensityOf(BuildContext context) =>
+      maybeOf(context)?.usesTvDensity ?? false;
+
+  static bool interactiveActive(
+    BuildContext context, {
+    required bool hovered,
+    required bool focused,
+  }) {
+    final scope = maybeOf(context);
+    if (scope == null) return hovered || focused;
+    if (scope.useTvFocus) {
+      return scope.focusStyled(context, focused: focused) || hovered;
+    }
+    return hovered;
+  }
+
+  static Widget focusableTap({
+    required BuildContext context,
+    required Widget child,
+    VoidCallback? onTap,
+    double borderRadius = 12,
+    double scaleOnFocus = 1.04,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onUpEdge,
+    VoidCallback? onDownEdge,
+    VoidCallback? onRightEdge,
+    ValueChanged<bool>? onFocusChange,
+    ValueChanged<bool>? onHoverChange,
+    FocusNode? focusNode,
+    bool autoFocus = false,
+    int? listIndex,
+    String? tvTabId,
+    String? tvRowId,
+    int? tvItemIndex,
+    ShellPaintTvZone? tvZone,
+    ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
+    bool showFocusBorder = false,
+    bool showFocusFill = true,
+    bool suppressInkHover = false,
+    FocusOnKeyEventCallback? onKeyEvent,
+  }) {
+    final scope = maybeOf(context);
+    final tap = scope?.focusableTap;
+    if (tap != null) {
+      return tap(
+        context: context,
+        child: child,
+        onTap: onTap,
+        borderRadius: borderRadius,
+        scaleOnFocus: scaleOnFocus,
+        onLeftEdge: onLeftEdge,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onRightEdge: onRightEdge,
+        onFocusChange: onFocusChange,
+        onHoverChange: onHoverChange,
+        focusNode: focusNode,
+        autoFocus: autoFocus,
+        listIndex: listIndex,
+        tvTabId: tvTabId,
+        tvRowId: tvRowId,
+        tvItemIndex: tvItemIndex,
+        tvZone: tvZone,
+        ensureVisibleMode: ensureVisibleMode,
+        showFocusBorder: showFocusBorder,
+        showFocusFill: showFocusFill,
+        suppressInkHover: suppressInkHover,
+        onKeyEvent: onKeyEvent,
+      );
+    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        focusNode: focusNode,
+        autofocus: autoFocus,
+        borderRadius: BorderRadius.circular(borderRadius),
+        onFocusChange: onFocusChange,
+        onHover: onHoverChange == null
+            ? null
+            : (v) => onHoverChange(v),
+        child: child,
+      ),
+    );
+  }
+
+  static bool isActivateKeyOf(BuildContext context, KeyEvent event) {
+    final check = maybeOf(context)?.isActivateKey;
+    if (check != null) return check(event);
+    if (event is! KeyDownEvent) return false;
+    final key = event.logicalKey;
+    return key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space;
+  }
+
+  static Widget tvRow({
+    required BuildContext context,
+    required String tabId,
+    required String rowId,
+    required int sortOrder,
+    required int itemCount,
+    VoidCallback? onFocusUp,
+    VoidCallback? onFocusDown,
+    required Widget child,
+  }) {
+    final wrap = maybeOf(context)?.wrapTvRow;
+    if (wrap == null) return child;
+    return wrap(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: sortOrder,
+      itemCount: itemCount,
+      onFocusUp: onFocusUp,
+      onFocusDown: onFocusDown,
+      child: child,
+    );
+  }
+
+  @override
+  bool updateShouldNotify(ShellPaintScope oldWidget) =>
+      useTvFocus != oldWidget.useTvFocus ||
+      scaleOnHover != oldWidget.scaleOnHover ||
+      usesTvDensity != oldWidget.usesTvDensity ||
+      focusableTap != oldWidget.focusableTap ||
+      wrapTvRow != oldWidget.wrapTvRow;
+}

@@ -49,7 +49,7 @@
 
 ## Summary
 
-Lazy tab mount ([RFC-016](../rfc/016-[partial]-lazy-tab-mounting.md)) + LRU ([RFC-024](../rfc/024-[partial]-tab-cache-eviction-stale.md)) keep visited tabs alive for UX. On weak Android TV SoCs, Home feed images + IPTV catalog stay resident while a new Exo/SurfaceView session starts — live IPTV hitch after browsing Home/details.
+Lazy tab mount ([RFC-016](../rfc/fixed/016-[fixed]-lazy-tab-mounting.md)) + LRU ([RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md)) keep visited tabs alive for UX. On weak Android TV SoCs, Home feed images + IPTV catalog stay resident while a new Exo/SurfaceView session starts — live IPTV hitch after browsing Home/details.
 
 **Root fix:** give the player max RAM/GPU — tighter TV tab cap, stop hidden-tab tickers, and on every fullscreen player enter unload **other** shell tabs and Flutter’s image cache while keeping the screen that opened the player. IPTV also trims images when the tab is hidden.
 
@@ -57,4 +57,4 @@ Lazy tab mount ([RFC-016](../rfc/016-[partial]-lazy-tab-mounting.md)) + LRU ([RF
 
 **Follow-up (T09–T11):** Same chrome-stub for VOD/hub details + KitShell under Home→details→Play, plus cancel leftover engine/Nuvio/sync work on enter so decode is not fighting JS/HTTP.
 
-**Related:** [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) · [RFC-024](../rfc/024-[partial]-tab-cache-eviction-stale.md) · [platforms](../features/getting-started/platforms.md)
+**Related:** [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) · [RFC-024](../rfc/fixed/024-[fixed]-tab-cache-eviction-stale.md) · [platforms](../features/getting-started/platforms.md)

@@ -43,5 +43,5 @@ On **Android TV**, the IPTV player remote felt dead: chrome used the catalog-row
 ## Related
 
 - [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md) — IPTV top-bar Player chrome
-- [104](104-[open]-android-tv-live-matches-embed-dpad.md) — Live Matches embed D-pad
+- [104](canceled/104-[canceled]-android-tv-live-matches-embed-dpad.md) — Live Matches embed D-pad
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

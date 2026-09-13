@@ -82,5 +82,5 @@ In the Forja app: IPTV → Portals → **Deal** (hidden unless `dealPortal` is o
 ## Related
 
 - [IPTV — Xtream](iptv-xtream.md)
-- [RFC-040](../../rfc/040-[open]-iptv-catalog-ops.md)
+- [RFC-040](../../rfc/fixed/040-[fixed]-iptv-catalog-ops.md)
 - [forja-admin](https://github.com/mGhassen/forja-admin)

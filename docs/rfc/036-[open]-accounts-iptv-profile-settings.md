@@ -109,7 +109,7 @@ On write, clients call compact helpers:
 - Only store enabled keys — e.g. `{ "iptvScrape": true, "dealPortal": true }`
 - Never store `"iptvScrape": false` / `"dealPortal": false`
 - **`iptvScrape`** — Reddit / Find Portals scrape in the app
-- **`dealPortal`** — Deal lottery from catalog pool (credits separate; see [RFC-040](040-[open]-iptv-catalog-ops.md) R40-A23). Admin toggles via dedicated RPCs (`admin_set_iptv_scrape`, `admin_set_deal_portal`) and the Accounts Features dialog.
+- **`dealPortal`** — Deal lottery from catalog pool (credits separate; see [RFC-040](fixed/040-[fixed]-iptv-catalog-ops.md) R40-A23). Admin toggles via dedicated RPCs (`admin_set_iptv_scrape`, `admin_set_deal_portal`) and the Accounts Features dialog.
 - **`maxIptvPortals`** — integer in the same lean JSON (default **5** when omitted; range 1–500). Caps `user_iptv_portals` **per profile**. Never store `5` (omit key). `accounts.is_admin` bypasses the cap (unlimited). Admin sets via `admin_set_max_iptv_portals` in the Features dialog (merges into `features` without clearing other keys).
 - Activation this slice: SQL / seed / service-role; admin UI later (R36-A08)
 
@@ -128,4 +128,4 @@ Global `iptv_portals` stores credentials / expiry / max connections only — no 
 ## Related
 
 - [RFC-006](006-[partial]-supabase-sync.md) — prior sync domains (historical rows frozen)
-- [RFC-034](034-[partial]-web-portal-landing.md) — web portal
+- [RFC-034](fixed/034-[fixed]-web-portal-landing.md) — web portal

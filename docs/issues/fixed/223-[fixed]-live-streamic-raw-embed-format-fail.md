@@ -61,4 +61,4 @@ Separately, Rust `streamed_streams` invented `https://embed.st/embed/{source}/{i
 ## Related
 
 - [no-embed-playback](../../../.cursor/rules/no-embed-playback.mdc)
-- [046](../046-[open]-streamed-live-embed-white-screen.md) — legacy WebView white screen (separate)
+- [046](../canceled/046-[canceled]-streamed-live-embed-white-screen.md) — legacy WebView white screen (separate)

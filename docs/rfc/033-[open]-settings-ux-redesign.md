@@ -112,6 +112,6 @@ Replace the single long accordion Settings tab with a **category hub**: desktop/
 
 ## Related
 
-- [RFC-019](019-[draft]-god-file-decomposition.md) — settings file map (remainder)
+- [RFC-019](fixed/019-[fixed]-god-file-decomposition.md) — settings file map (remainder)
 - [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) — app shell
 - [docs/features/settings/](../features/settings/)

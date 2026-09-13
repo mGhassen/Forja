@@ -17,7 +17,7 @@ rg -l "shared/foundation|ForjaGhostButton|ForjaPlainIcon|ForjaIconButton" apps/f
 | **Historical “host paths not in freeze list” (G11)** | **Retracted** — `host/lists`, `host/live_sports`, `host/sources` are gone (packs / `engine` / `player/sources`). Leftover app-only: `host/packs/**`, `host/update/**`, `host/account/**`, `host/watch/**`, `host/search/**` |
 | **Remaining (freeze checklist)** | **257** (keepers + kit runtime until G14-E; `primitives.dart` barrels gone) |
 
-Batch notes: app code imports **per-file** package paths (`tokens/forja_shell_colors.dart`, `components/button.dart`, …). Root `forja_foundation.dart` is gallery/test only. Do **not** add product trees under `shared/host/` ([R106-A31](106-[open]-forja-foundation-design-system-package.md)).
+Batch notes: app code imports **per-file** package paths (`tokens/forja_shell_colors.dart`, `components/button.dart`, …). Root `forja_foundation.dart` is gallery/test only. Do **not** add product trees under `shared/host/` ([R106-A31](fixed/106-[fixed]-forja-foundation-design-system-package.md)).
 
 
 Checklist (paths only — migrate batches tick these):

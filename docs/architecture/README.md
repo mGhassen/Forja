@@ -15,7 +15,7 @@ Cross-cutting architecture docs for the Forja Flutter app. **Code is source of t
 
 | RFC | Topic |
 |-----|-------|
-| [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) | God-file splits — line budget, target layouts, migration order |
+| [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) | God-file splits — line budget, target layouts, migration order |
 | [RFC-026](../rfc/026-[draft]-media-details-player-ux.md) | Media details + player UX; shared `media_details/` widgets |
 | [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) | `ShellProfile`, `ShellMetrics`, `ShellInputPolicy`, TV coordinator |
 | [RFC-048](../rfc/fixed/048-[fixed]-tv-focus-graph.md) | `TvFocusGraph` + screen recipes (Home / hubs / Search / Live Sports / IPTV / player overlays) |

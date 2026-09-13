@@ -45,4 +45,4 @@ Opening a Live Matches card on **Android TV** (All / Forja Sports path) showed *
 
 **Still open:** category-map UI (RFC-062) so matching does not scan the whole bouquet for skeletons; ATV manual smoke `I194-A02`.
 
-**Related:** [RFC-062](../rfc/062-[open]-native-iptv-sports-matching.md)
+**Related:** [RFC-062](../rfc/fixed/062-[fixed]-native-iptv-sports-matching.md)

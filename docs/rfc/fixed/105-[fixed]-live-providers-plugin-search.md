@@ -1,7 +1,7 @@
 # RFC-105: Providers — plugin-owned fixture search + progressive paint
 
 **Status:** fixed  
-**Depends on:** [RFC-065](../065-[open]-live-forja-scrapers.md) · [Issue 254](../../issues/254-[open]-live-catalog-schedule-only-no-streams.md)  
+**Depends on:** [RFC-065](../065-[open]-live-forja-scrapers.md) · [Issue 254](../../issues/fixed/254-[fixed]-live-catalog-schedule-only-no-streams.md)  
 **Area:** live packs · Providers panel · engine host
 
 ## Status at a glance
@@ -62,4 +62,4 @@
 ### Related
 
 - [RFC-065](../065-[open]-live-forja-scrapers.md) — live scrapers / capabilities  
-- [Issue 254](../../issues/254-[open]-live-catalog-schedule-only-no-streams.md) — catalog schedule-only  
+- [Issue 254](../../issues/fixed/254-[fixed]-live-catalog-schedule-only-no-streams.md) — catalog schedule-only  

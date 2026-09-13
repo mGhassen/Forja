@@ -5,7 +5,7 @@
 **Status:** fixed  
 **Area:** `packages/forja_foundation`, `apps/forja/lib/shared/shell`  
 **Reported:** 2026-09-13  
-**Related:** [271](../271-[open]-catalog-body-evacuate-foundation.md) · [RFC-106](../../rfc/106-[open]-forja-foundation-design-system-package.md) · plan referred to issue 272 (number taken by IPTV HLS proxy fix)
+**Related:** [271](../271-[open]-catalog-body-evacuate-foundation.md) · [RFC-106](../../rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md) · plan referred to issue 272 (number taken by IPTV HLS proxy fix)
 
 ## Status at a glance
 

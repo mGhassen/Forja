@@ -4,7 +4,7 @@
 **Priority:** P2  
 **Severity:** Medium  
 **Phase:** [P3-03](../migration/fixed/03-[fixed]-engine-catalog.md)  
-**Related:** [021 catalog vertical smoke](../021-[draft]-catalog-vertical-import-smoke-unverified.md)
+**Related:** [021 catalog vertical smoke](../canceled/021-[canceled]-catalog-vertical-import-smoke-unverified.md)
 ## Status at a glance
 
 | | |

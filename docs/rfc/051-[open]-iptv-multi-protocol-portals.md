@@ -1,7 +1,7 @@
 # RFC-051: IPTV multi-protocol portals (Xtream / M3U / Stalker)
 
 **Status:** open  
-**Depends on:** [RFC-036](036-[open]-accounts-iptv-profile-settings.md), [RFC-040](040-[open]-iptv-catalog-ops.md) (R40-A12)  
+**Depends on:** [RFC-036](036-[open]-accounts-iptv-profile-settings.md), [RFC-040](fixed/040-[fixed]-iptv-catalog-ops.md) (R40-A12)  
 **Area:** `apps/forja/lib/features/iptv/`, `crates/iptv/`, `apps/web/supabase/`
 
 ## Status at a glance
@@ -92,5 +92,5 @@ Forja IPTV today is Xtream-first in the main catalog, with M3U on a device-local
 
 ## Related
 
-- [RFC-040 R40-A12](040-[open]-iptv-catalog-ops.md) — deferred row superseded by this RFC
+- [RFC-040 R40-A12](fixed/040-[fixed]-iptv-catalog-ops.md) — deferred row superseded by this RFC
 - [iptv-xtream.md](../features/live/iptv-xtream.md) · [iptv-m3u.md](../features/live/iptv-m3u.md) · [iptv-stalker.md](../features/live/iptv-stalker.md)

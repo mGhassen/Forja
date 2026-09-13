@@ -90,7 +90,7 @@ Sibling: **[forja-admin](https://github.com/mGhassen/forja-admin)** — ops cons
 | `apps/web` | Web portal | **Permanent** (separate from Flutter engine) |
 | [forja-admin](https://github.com/mGhassen/forja-admin) | Ops console | **Permanent** (external repo) |
 | `packages/rust` | Dart FFI bridge + parity tests + thin services | **Permanent** |
-| `packages/forja_foundation` | Design system (tokens → kit) | **Permanent** ([RFC-106](rfc/106-[open]-forja-foundation-design-system-package.md)) |
+| `packages/forja_foundation` | Design system (tokens → kit) | **Permanent** ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
 | `packages/forja-auth` | TS auth for web (+ vendored copy in forja-admin) | **Permanent** (web stack) |
 | ~~`packages/api`~~ / ~~`packages/{core,storage,streaming}`~~ | Legacy Dart engines | **Deleted** (waves 1–2) |
 | `crates/*` | Rust engine | **Permanent** |
@@ -282,7 +282,7 @@ Host prefs / settings facades live in **`packages/rust/lib/src/`** (`SettingsSer
 | Package | Role |
 |---------|------|
 | `packages/rust` | Dart FFI bridge, thin catalog/playback services, parity tests |
-| `packages/forja_foundation` | Design system — tokens, theme, primitives, components, kit ([RFC-106](rfc/106-[open]-forja-foundation-design-system-package.md)) |
+| `packages/forja_foundation` | Design system — tokens, theme, primitives, components, kit ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
 | `packages/forja-auth` | Shared TypeScript auth for `apps/web` |
 
 Deleted engine packages: `api`, `scrapers`, `webstreamr`, `streaming`, `storage`, `core`, legacy `forja_*`.

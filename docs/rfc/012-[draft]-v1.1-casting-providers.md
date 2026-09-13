@@ -80,8 +80,8 @@ IPTV live: best-effort via HLS proxy transmux.
 
 ## Related RFCs
 
-RFC-003, RFC-004 (expansion), RFC-005, RFC-015, [RFC-019](019-[draft]-god-file-decomposition.md) (god file splits), [RFC-020](020-[draft]-media-details-routing.md) (media details routing), [RFC-026](026-[draft]-media-details-player-ux.md) (1.0.1 details + player UX)
+RFC-003, RFC-004 (expansion), RFC-005, RFC-015, [RFC-019](fixed/019-[fixed]-god-file-decomposition.md) (god file splits), [RFC-020](020-[draft]-media-details-routing.md) (media details routing), [RFC-026](026-[draft]-media-details-player-ux.md) (1.0.1 details + player UX)
 
 ## Prerequisites
 
-Complete [RFC-016](016-[partial]-lazy-tab-mounting.md)–[018](018-[draft]-startup-splash-home.md) (performance) before or in parallel with overlay work. Player control extraction in [RFC-019](019-[draft]-god-file-decomposition.md) unblocks RFC-003 wiring.
+Complete [RFC-016](fixed/016-[fixed]-lazy-tab-mounting.md)–[018](018-[draft]-startup-splash-home.md) (performance) before or in parallel with overlay work. Player control extraction in [RFC-019](fixed/019-[fixed]-god-file-decomposition.md) unblocks RFC-003 wiring.

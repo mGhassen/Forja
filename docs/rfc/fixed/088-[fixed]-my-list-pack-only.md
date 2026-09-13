@@ -1,7 +1,7 @@
 # RFC-088: My List pack-only (no host feature root)
 
 **Status:** fixed  
-**Depends on:** [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-085](../085-[partial]-catalog-kit-generic-only.md) · [RFC-087](087-[fixed]-live-sports-pack-only.md)  
+**Depends on:** [RFC-070](../070-[partial]-catalog-hub-protocol.md) · [RFC-085](085-[fixed]-catalog-kit-generic-only.md) · [RFC-087](087-[fixed]-live-sports-pack-only.md)  
 **Area:** `plugins/hubs/my_list/`, `shared/foundation/services/follow/`, shell nav
 
 ## Status at a glance
@@ -47,7 +47,7 @@
 | `shared/foundation/services/follow/` | `MyListService` bridge, merge, enrich, kit list source, open |
 | Host shell | No `mylist` core destination |
 
-Tab was already pack-gated ([R70-A60](../070-[partial]-catalog-hub-protocol.md)). This RFC only evacuates `features/my_list/` into foundation. [R85-C03](../085-[partial]-catalog-kit-generic-only.md) stays frozen ✅ as historical “domain home”; ownership is corrected here.
+Tab was already pack-gated ([R70-A60](../070-[partial]-catalog-hub-protocol.md)). This RFC only evacuates `features/my_list/` into foundation. [R85-C03](085-[fixed]-catalog-kit-generic-only.md) stays frozen ✅ as historical “domain home”; ownership is corrected here.
 
 ### Related
 

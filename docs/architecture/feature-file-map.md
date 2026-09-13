@@ -3,7 +3,7 @@
 **Status:** living doc  
 **Area:** `apps/forja/lib/features/`  
 **Line counts:** `wc -l` on repo HEAD — re-run when splits land  
-**Related:** [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) · [Architecture README](README.md)
+**Related:** [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) · [Architecture README](README.md)
 
 ## Status at a glance
 
@@ -293,7 +293,7 @@ features/<feature>/
   controller/                 # state machines (IPTV pattern)
 ```
 
-### Home target ([RFC-019 R19-A03](../rfc/019-[draft]-god-file-decomposition.md)) — browse only
+### Home target ([RFC-019 R19-A03](../rfc/fixed/019-[fixed]-god-file-decomposition.md)) — browse only
 
 ```
 features/home/
@@ -353,7 +353,7 @@ features/media/
 
 `details_screen.dart`: 4,061 → **545** lines (−3,516).
 
-### Settings target ([RFC-019 R19-A04](../rfc/019-[draft]-god-file-decomposition.md))
+### Settings target ([RFC-019 R19-A04](../rfc/fixed/019-[fixed]-god-file-decomposition.md))
 
 ```
 features/settings/
@@ -389,7 +389,7 @@ features/iptv/
   controller/iptv_controller_models.dart
 ```
 
-### Player ([RFC-019 R19-A05](../rfc/019-[draft]-god-file-decomposition.md))
+### Player ([RFC-019 R19-A05](../rfc/fixed/019-[fixed]-god-file-decomposition.md))
 
 | File | Lines (current) | Target |
 |------|----------------:|--------|
@@ -433,7 +433,7 @@ features/iptv/
 
 ## Extraction rules
 
-From [RFC-019](../rfc/019-[draft]-god-file-decomposition.md) and [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc):
+From [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md) and [forja-shared-ui.mdc](../../.cursor/rules/forja-shared-ui.mdc):
 
 1. **One PR per split** — no mega-refactor
 2. **No behavior change** — pure move/extract
@@ -536,7 +536,7 @@ When a split PR lands: update RFC-019 acceptance rows, backlog shipped rows, and
 ## Related
 
 - [Architecture README](README.md)
-- [RFC-019](../rfc/019-[draft]-god-file-decomposition.md)
+- [RFC-019](../rfc/fixed/019-[fixed]-god-file-decomposition.md)
 - [RFC-026](../rfc/026-[draft]-media-details-player-ux.md)
 - [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md)
 - [Features user guide](../features/README.md)

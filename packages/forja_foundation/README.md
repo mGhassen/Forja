@@ -19,6 +19,6 @@ Tokens → theme → primitives → components → widgets → blocks, plus prot
 
 ## Status
 
-Part 1 scaffold: tokens (copied), `ForjaThemeExtension`, `Button` / `ButtonGroup` / `VerticalMenu`. See [MIGRATION.md](MIGRATION.md) and [RFC-106](../../docs/rfc/106-[open]-forja-foundation-design-system-package.md).
+Part 1 scaffold: tokens (copied), `ForjaThemeExtension`, `Button` / `ButtonGroup` / `VerticalMenu`. See [MIGRATION.md](MIGRATION.md) and [RFC-106](../../docs/rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md).
 
 App imports the **file** (`package:forja_foundation/components/button.dart`, `widgets/details/facts_panel.dart`, …). Catalog UI lives in this package (`widgets/` / `components/` / `blocks/`). Host glue is `shared/engine/hub/`, `shared/shell/`, `shared/player/` — see [MIGRATION.md](MIGRATION.md).

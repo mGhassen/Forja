@@ -1,7 +1,7 @@
 # RFC-090: Live Sports host outside foundation
 
 **Status:** fixed  
-**Depends on:** [RFC-085](../085-[partial]-catalog-kit-generic-only.md) · [RFC-087](087-[fixed]-live-sports-pack-only.md)  
+**Depends on:** [RFC-085](085-[fixed]-catalog-kit-generic-only.md) · [RFC-087](087-[fixed]-live-sports-pack-only.md)  
 **Area:** `shared/host/live_sports/`, `shared/foundation/`
 
 ## Status at a glance
@@ -44,7 +44,7 @@ RFC-087 kept schedule/stream orchestration under foundation. That put product sc
 ### Related
 
 - [RFC-087](087-[fixed]-live-sports-pack-only.md) — pack-only tab (location of host services corrected here)
-- [RFC-085](../085-[partial]-catalog-kit-generic-only.md) — foundation purity
+- [RFC-085](085-[fixed]-catalog-kit-generic-only.md) — foundation purity
 
 
 ---

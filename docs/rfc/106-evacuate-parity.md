@@ -1,14 +1,14 @@
 # RFC-106 G14-D — Evacuate parity checklist
 
 **Status:** wiring complete (A18 ✅) — **not** QA sign-off (A19 ⏭️)  
-**RFC:** [106-[open]-forja-foundation-design-system-package.md](106-[open]-forja-foundation-design-system-package.md)  
+**RFC:** [fixed/106-[fixed]-forja-foundation-design-system-package.md](fixed/106-[fixed]-forja-foundation-design-system-package.md)  
 **Plan:** G14-D (do not edit `.cursor/plans`)
 
 **Legend:** ✅ surface works via current paths · ⬜ missing · 🔄 partial
 
 QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring only**. Unsigned QA does **not** block pack / kit / engine work.
 
-**Law:** Forja root is a **pack-product host** — generic only. Product lives in packs. `shared/host/` is **not** a product destination ([R106-A31](106-[open]-forja-foundation-design-system-package.md)).
+**Law:** Forja root is a **pack-product host** — generic only. Product lives in packs. `shared/host/` is **not** a product destination ([R106-A31](fixed/106-[fixed]-forja-foundation-design-system-package.md)).
 
 ---
 

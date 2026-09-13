@@ -4,7 +4,7 @@
 **Priority:** P2  
 **Severity:** Medium  
 **Area:** playback / engine / packs  
-**Parent:** [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md)
+**Parent:** [RFC-100](../rfc/fixed/100-[fixed]-admin-plugin-catalog-bundles.md)
 
 ## Status at a glance
 
@@ -47,5 +47,5 @@ RFC-100 retires the **admin** Providers UI and stops **remote** `provider_runtim
 ## Related
 
 - [RFC-039](../rfc/fixed/039-[fixed]-remote-provider-runtime-config.md)
-- [RFC-100](../rfc/100-[open]-admin-plugin-catalog-bundles.md)
+- [RFC-100](../rfc/fixed/100-[fixed]-admin-plugin-catalog-bundles.md)
 - [`provider_runtime_config.dart`](../../apps/forja/lib/shared/playback/sources/provider_runtime_config.dart)
