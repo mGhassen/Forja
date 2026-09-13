@@ -239,9 +239,10 @@ class _SettingsForjaPacksSectionState
               controller: _engineController,
               label: 'Add pack',
               hint: 'Paste one or more manifest URLs / local paths',
-              minLines: 1,
-              maxLines: 6,
-              keyboardType: TextInputType.multiline,
+              onSubmitted: (_) {
+                if (_engineReloading || _engineInstalling) return;
+                unawaited(_installEnginePack());
+              },
             ),
             const SizedBox(height: 14),
             Row(

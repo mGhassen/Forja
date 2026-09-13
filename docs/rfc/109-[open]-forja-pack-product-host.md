@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **18 / 22** acceptance (code) · **4** 🔄 |
-| **Current slice** | A29: engine/details evacuated — protocol meta in foundation; Stremio/host rail wire still debt (A30) |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **20 / 25** acceptance (code) · **5** 🔄 |
+| **Current slice** | A33: Live Sports paint/search out of foundation — pack `liveSportsShapeRow` owns flat paint |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -77,6 +77,9 @@
 | 8 | R109-A28 | Host catalog/search MetaItem adapters absorbed into foundation (no `host/catalog` rename residue) | ✅ |
 | 9 | R109-A29 | No `engine/runtime/details/` — meta protocol helpers in foundation; host wire beside PackDetailsHost only | ✅ |
 | 10 | R109-A30 | Stremio details load + rail open/TV wire stay host debt (`player/details/details_stremio` · `details_host_wire`) until pack owns surface | 🔄 |
+| 11 | R109-A31 | No `engine/runtime/list/` — kit.list host wire in `host/layout/list`; Live Sports paint/search/schedule in pack | ✅ |
+| 12 | R109-A32 | `plugin_feed_source` / Riverpod list open mode stay host layout debt until pack owns feed | 🔄 |
+| 13 | R109-A33 | Foundation has no Live Sports product (`list_event_paint` / `match` / `schedule_window` / `kit_list_entry`) — pack emits flat paint + `searchText` | ✅ |
 
 ---
 
@@ -208,7 +211,7 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 | `engine/lists/` gone | Persist/follow → `engine/store/` (`list_follow*`, `list_open_prefs`, `list_open_binding`, `list_open_title_rank`) |
 | List UI | Picker / bind sheet / flow + Riverpod providers → `shared/engine/store/` (Wave F; `lists_ui/` deleted) |
 | `engine/live/` gone | Interim → `engine/feeds/` then Wave B deleted feeds; survivors → `runtime/` / `unlock/` / `portals/match/` / `packs/` |
-| `kit_schedule_window` | → `engine/runtime/list/schedule_window.dart` (+ sheet under `host/layout/`) |
+| `kit_schedule_window` | → pack `live_sports` horizon menu (Dart schedule_window deleted) |
 | `embed_webview_proxy` | Deleted (test-only; no production callers) |
 
 | Still open | Detail |
@@ -355,3 +358,33 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 | Still open | Detail |
 |------------|--------|
 | A30 | Stremio details + host rail wire → pack surface or thinner host callbacks |
+
+---
+
+## Wave H notes (`engine/runtime/list` evacuate)
+
+| Done | Detail |
+|------|--------|
+| Deleted | `apps/forja/lib/shared/engine/runtime/list/` |
+| Foundation (generic only) | `kit/row_prefetch.dart` |
+| Host layout | `host/layout/list/` — registry, panel, Riverpod query/open, `plugin_feed_source`, thin `KitListPaint` reader |
+| Pack (Live Sports) | `liveSportsShapeRow` emits flat paint + `timeLabel`/`scheduleLabel`/`searchText`; feed accepts `q` |
+
+| Still open | Detail |
+|------------|--------|
+| A32 | Feed source + open-mode providers → thinner host / pack |
+
+---
+
+## Wave I notes (foundation product eviction)
+
+| Done | Detail |
+|------|--------|
+| Deleted from foundation | `kit/list_event_paint.dart` · `kit/list_event_match.dart` · `protocol/kit_list_entry.dart` · `protocol/schedule_window.dart` |
+| Pack owns | schedule horizon prefs (already) · row paint · search haystack |
+| Host | reads pack fields only via `KitListPaint.fromKitEntry` |
+
+| Still open | Detail |
+|------------|--------|
+| A30 | Stremio details + host rail wire |
+| `meta_details` in foundation | still hub-shaped — later peel |

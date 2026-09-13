@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/kit_list_entry.dart';
+import 'package:forja/shared/host/layout/list/list_event_query.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/runtime/list/list_event_query.dart';
 
 KitListEntry _entry({
   required String name,
@@ -9,50 +9,41 @@ KitListEntry _entry({
   Map<String, dynamic>? row,
 }) {
   return KitListEntry(
-    meta: MetaItem(id: name, type: 'live_match', name: name),
-    legacyRow: {
-      'title': name,
-      ...?row,
-    },
+    meta: MetaItem(id: 't', type: 'live', name: name),
+    legacyRow: row ?? const {},
     kind: kind,
   );
 }
 
 void main() {
   test('empty query matches everything', () {
-    final e = _entry(name: 'Clydebank vs Alloa Athletic');
+    final e = _entry(name: 'Clydebank');
     expect(kitListEntryMatchesQuery(e, ''), isTrue);
     expect(kitListEntryMatchesQuery(e, '   '), isTrue);
   });
 
-  test('matches title tokens', () {
-    final e = _entry(name: 'Clydebank vs Alloa Athletic');
+  test('matches pack searchText tokens', () {
+    final e = _entry(
+      name: 'Ignore',
+      row: {'searchText': 'clydebank alloa athletic football'},
+    );
     expect(kitListEntryMatchesQuery(e, 'clydebank'), isTrue);
     expect(kitListEntryMatchesQuery(e, 'alloa'), isTrue);
     expect(kitListEntryMatchesQuery(e, 'clyde alloa'), isTrue);
     expect(kitListEntryMatchesQuery(e, 'arsenal'), isFalse);
   });
 
-  test('matches teams and sport from row', () {
-    final e = _entry(
-      name: 'Match',
-      kind: 'basketball',
-      row: {
-        'homeTeam': 'Lakers',
-        'awayTeam': 'Celtics',
-        'sport': 'Basketball',
-      },
-    );
+  test('falls back to meta name when searchText missing', () {
+    final e = _entry(name: 'Lakers vs Celtics');
     expect(kitListEntryMatchesQuery(e, 'lakers'), isTrue);
-    expect(kitListEntryMatchesQuery(e, 'celtics basketball'), isTrue);
+    expect(kitListEntryMatchesQuery(e, 'celtics'), isTrue);
   });
 
   test('kitListFilterEntries drops misses', () {
     final entries = [
-      _entry(name: 'A vs B'),
-      _entry(name: 'C vs D'),
+      _entry(name: 'A', row: {'searchText': 'alpha'}),
+      _entry(name: 'B', row: {'searchText': 'beta'}),
     ];
-    expect(kitListFilterEntries(entries, 'c vs').single.meta.name, 'C vs D');
-    expect(kitListFilterEntries(entries, '').length, 2);
+    expect(kitListFilterEntries(entries, 'alpha').single.meta.name, 'A');
   });
 }

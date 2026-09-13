@@ -162,18 +162,65 @@ MetaItem metaItemFromLegacyListItem(Map<String, dynamic> item) {
   }
   return MetaItem(
     id: metaId.isEmpty ? 'unknown' : metaId,
-    type: item['mediaType']?.toString() ?? open.surface,
-    name: item['title']?.toString() ?? 'Unknown',
-    poster: item['posterPath']?.toString() ?? '',
+    type: item['mediaType']?.toString() ??
+        item['type']?.toString() ??
+        open.surface,
+    name: item['title']?.toString() ??
+        item['name']?.toString() ??
+        'Unknown',
+    poster: () {
+      final p = (item['poster'] ?? item['posterPath'] ?? '').toString().trim();
+      return p;
+    }(),
     background: item['backdropPath']?.toString() ??
+        item['background']?.toString() ??
+        item['poster']?.toString() ??
         item['posterPath']?.toString() ??
         '',
-    description: item['overview']?.toString() ?? '',
+    description: item['overview']?.toString() ??
+        item['description']?.toString() ??
+        '',
     releaseInfo: item['releaseDate']?.toString() ?? '',
     rating: (item['voteAverage'] as num?)?.toDouble() ?? 0,
     ids: ids,
     open: open,
     tmdbMediaType: tmdbMediaType,
+    badge: () {
+      final b = (item['badge'] ?? item['category'] ?? item['sport'] ?? '')
+          .toString()
+          .trim();
+      return b.isEmpty ? null : b;
+    }(),
+    genres: () {
+      final g = item['genres'];
+      if (g is List) {
+        return [
+          for (final e in g)
+            if (e.toString().trim().isNotEmpty) e.toString().trim(),
+        ];
+      }
+      final cat = (item['category'] ?? item['sport'] ?? '').toString().trim();
+      return cat.isEmpty ? const <String>[] : [cat];
+    }(),
+    airing: item['airing'] == true ||
+        item['live'] == true ||
+        item['alwaysLive'] == true ||
+        item['always_live'] == true,
+    startsAt: () {
+      final raw = item['startsAt'] ?? item['dateMs'] ?? item['date'];
+      if (raw == null) return null;
+      final s = raw.toString().trim();
+      return s.isEmpty ? null : s;
+    }(),
+    viewers: () {
+      final v = item['viewers'];
+      if (v is num) return v.toInt();
+      if (v is String) {
+        final n = num.tryParse(v.trim().replaceAll(',', ''));
+        return n?.toInt();
+      }
+      return null;
+    }(),
   );
 }
 

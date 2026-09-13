@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/list_source.dart';
 
-/// Forja platform: side panel for a `kit.list` source (e.g. Live Sports streams).
+/// Side panel for a `kit.list` source (e.g. Live Sports streams).
 ///
 /// Features register an implementation; kit / browse shells never import the
 /// product module — they resolve by opaque [listSourceId].

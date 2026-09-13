@@ -8,7 +8,8 @@ import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/list_event_query.dart';
 import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
@@ -268,6 +269,9 @@ final pluginFeedProvider =
   final horizonPref = chromeKey.isEmpty
       ? ''
       : ref.watch(kitFeedHorizonPrefProvider(chromeKey));
+  final searchQ = chromeKey.isEmpty
+      ? ''
+      : ref.watch(kitListEventQueryProvider(chromeKey)).trim();
 
   // Always bypass EngineCache — bookmarks/Simkl change under us; `_rev` alone
   // still lost to soft tab stale + keep-alive until pull-to-refresh.
@@ -291,6 +295,7 @@ final pluginFeedProvider =
         '_rev': revision,
         'catalogFilter': catalogFilter,
         if (horizonPref.isNotEmpty) 'horizon': horizonPref,
+        if (searchQ.isNotEmpty) 'q': searchQ,
       },
       forceRefresh: true,
     );

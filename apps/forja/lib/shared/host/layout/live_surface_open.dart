@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/list/host_list_registry.dart';
+import 'package:forja/shared/host/layout/list/host_list_registry.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/bus/shell_bus.dart';

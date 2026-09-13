@@ -37,16 +37,16 @@ import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
 import 'package:forja_foundation/protocol/meta_details.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
-import 'package:forja/shared/engine/runtime/list/row_prefetch.dart';
+import 'package:forja_foundation/kit/row_prefetch.dart';
 
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
-import 'package:forja/shared/engine/runtime/list/host_list_registry.dart';
+import 'package:forja/shared/host/layout/list/host_list_registry.dart';
 import 'package:forja/shared/host/layout/top_bar_host_hooks.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/list_source.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/shell/focus/focus_edge.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';

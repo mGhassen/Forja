@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/kit_list_entry.dart';
 
 /// Session-only list search query — per hub chrome key.
 final kitListEventQueryProvider =
@@ -9,33 +9,15 @@ final kitListEventQueryProvider =
 final kitListEventSearchOpenProvider =
     StateProvider.family<bool, String>((ref, chromeKey) => false);
 
+/// Generic filter on pack-emitted [searchText] (or meta name). No product fields.
 bool kitListEntryMatchesQuery(KitListEntry entry, String rawQuery) {
   final q = rawQuery.trim().toLowerCase();
   if (q.isEmpty) return true;
-  final row = entry.legacyRow;
-  final game = row['sportMatchGame'];
-  final gameMap = game is Map ? Map<String, dynamic>.from(game) : const {};
-  final hay = [
-    entry.meta.name,
-    entry.kind,
-    row['title'],
-    row['name'],
-    row['homeTeam'],
-    row['awayTeam'],
-    row['sport'],
-    row['category'],
-    row['league'],
-    gameMap['title'],
-    gameMap['homeTeam'],
-    gameMap['awayTeam'],
-    gameMap['sport'],
-    gameMap['category'],
-  ]
-      .map((v) => (v ?? '').toString().trim().toLowerCase())
-      .where((s) => s.isNotEmpty)
-      .join(' ');
-  final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
-  for (final t in tokens) {
+  final hay = (entry.legacyRow['searchText'] ?? entry.meta.name)
+      .toString()
+      .trim()
+      .toLowerCase();
+  for (final t in q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty)) {
     if (!hay.contains(t)) return false;
   }
   return true;

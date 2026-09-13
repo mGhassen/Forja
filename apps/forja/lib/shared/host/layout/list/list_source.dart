@@ -1,23 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja/shared/host/layout/list/kit_list_entry.dart';
 
-/// One row in a host-backed [`LayoutTypes.list`] grid.
-class KitListEntry {
-  const KitListEntry({
-    required this.meta,
-    required this.legacyRow,
-    required this.kind,
-    this.pluginId,
-    this.listStatus,
-  });
-
-  final MetaItem meta;
-  final Map<String, dynamic> legacyRow;
-  final String kind;
-  final String? pluginId;
-  final String? listStatus;
-}
+export 'package:forja/shared/host/layout/list/kit_list_entry.dart';
 
 /// Page of entries returned by a [KitListSource].
 abstract class KitListPage {

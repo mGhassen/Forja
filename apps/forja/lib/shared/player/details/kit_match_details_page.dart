@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
-import 'package:forja/shared/engine/runtime/list/list_event_paint.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/kit_list_paint.dart';
+import 'package:forja/shared/host/layout/list/list_source.dart';
 import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
@@ -66,7 +66,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     super.dispose();
   }
 
-  KitEventPaint get _paint => KitEventPaint.fromEntry(widget.entry);
+  KitListPaint get _paint => KitListPaint.fromKitEntry(widget.entry);
 
   ({List<PanelTabSpec> tabs, String? initial}) get _chrome =>
       panelChromeFromLayouts(widget.layoutWidgets);
@@ -80,7 +80,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     if (m.isLive) {
       parts.add('Live');
     } else {
-      final t = kitEventTimeLabel(m);
+      final t = m.timeLabel;
       if (t.isNotEmpty) parts.add(t);
     }
     final viewers = _providersViewerTotal ?? m.viewers;
@@ -142,7 +142,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final m = _paint;
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
-    final backdrop = kitEventImageUrl(m.poster);
+    final backdrop = m.poster;
     final viewport = MediaQuery.sizeOf(context);
     final title = m.title.trim().isEmpty ? widget.entry.meta.name : m.title;
     final probe = _healthProbe;

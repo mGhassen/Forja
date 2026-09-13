@@ -13,19 +13,19 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
-import 'package:forja/shared/engine/runtime/list/host_list_registry.dart';
-import 'package:forja/shared/engine/runtime/list/list_event_paint.dart';
-import 'package:forja/shared/engine/runtime/list/list_event_query.dart';
-import 'package:forja/shared/engine/runtime/list/list_open_mode.dart';
-import 'package:forja/shared/engine/runtime/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/host_list_registry.dart';
+import 'package:forja/shared/host/layout/list/kit_list_paint.dart';
+import 'package:forja/shared/host/layout/list/list_event_query.dart';
+import 'package:forja/shared/host/layout/list/list_open_mode.dart';
+import 'package:forja/shared/host/layout/list/list_source.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
-import 'package:forja/shared/engine/runtime/list/panel_host.dart';
+import 'package:forja/shared/host/layout/list/panel_host.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/engine/runtime/list/plugin_feed_source.dart';
+import 'package:forja/shared/host/layout/list/plugin_feed_source.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shared/engine/runtime/list/row_prefetch.dart';
+import 'package:forja_foundation/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/nav/top_menu_registry.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/host/layout/top_bar_host_hooks.dart';
@@ -435,7 +435,7 @@ class KitEventCard extends StatefulWidget {
     this.height,
   });
 
-  final KitEventPaint event;
+  final KitListPaint event;
   final VoidCallback onTap;
   final int? gridIndex;
   final int? gridColumns;
@@ -519,14 +519,14 @@ class _KitEventCardState extends State<KitEventCard> {
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: EventCard(
         title: m.title,
-        posterUrl: kitEventImageUrl(m.poster),
+        posterUrl: m.poster,
         homeTeam: m.homeTeam,
         awayTeam: m.awayTeam,
-        homeBadgeUrl: kitEventImageUrl(m.homeBadge ?? ''),
-        awayBadgeUrl: kitEventImageUrl(m.awayBadge ?? ''),
+        homeBadgeUrl: m.homeBadge ?? '',
+        awayBadgeUrl: m.awayBadge ?? '',
         categoryLabel: m.categoryLabel,
-        scheduleLabel: kitEventScheduleLabel(m),
-        timeLabel: kitEventTimeLabel(m),
+        scheduleLabel: m.scheduleLabel,
+        timeLabel: m.timeLabel,
         viewers: _viewers,
         live: live,
         selected: widget.selected,
@@ -3526,7 +3526,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             genres: meta.genres,
           ),
           airing: airing,
-          viewers: KitEventPaint.fromEntry(entry).viewers,
+          viewers: KitListPaint.fromKitEntry(entry).viewers,
           selected: selected,
           index: index,
           playable: true,
@@ -3590,7 +3590,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
             final selected =
                 selectedId != null && selectedId == entry.meta.id;
             return KitEventCard(
-              event: KitEventPaint.fromEntry(entry),
+              event: KitListPaint.fromKitEntry(entry),
               width: layout.cardW,
               height: layout.cardH,
               gridIndex: index,
