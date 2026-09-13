@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:url_launcher/url_launcher.dart';

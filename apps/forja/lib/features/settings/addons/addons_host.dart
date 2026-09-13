@@ -6,11 +6,11 @@ import 'package:forja/features/settings/addons/catalog.dart';
 import 'package:forja/features/settings/addons/detail.dart';
 import 'package:forja/features/settings/addons/toggles.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/features/settings/hub/visibility_provider.dart';
-import 'package:forja/features/settings/hub/catalog.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
-import 'package:forja/features/settings/categories/packs/pack_prompt_pane.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/shell/visibility_provider.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
+import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';

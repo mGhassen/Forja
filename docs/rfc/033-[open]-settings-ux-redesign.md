@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** RFC-023 (shell), RFC-025 (flat cinematic shell)  
-**Area:** `apps/forja/lib/features/settings/{hub,categories,addons,chrome}/`, `apps/forja/lib/shared/foundation/primitives/`
+**Area:** `apps/forja/lib/features/settings/{shell,profile,addons,packs,features,data,about,ui}/`, `apps/forja/lib/shared/foundation/primitives/`
 
 ## Status at a glance
 

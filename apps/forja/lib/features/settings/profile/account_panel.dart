@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';

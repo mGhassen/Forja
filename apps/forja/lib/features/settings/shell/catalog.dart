@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
 
 /// Stable category IDs for the Settings hub (RFC-033).
 ///

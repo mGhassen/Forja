@@ -17,7 +17,7 @@ On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope fo
 | IPTV | `iptv` | pack `nav` + interim `shared/host/portals_ui/screens/iptv_pt_screen.dart` |
 | Live Sports | `live_sports` / `live_sports_cards` | KitShell via hub pack (`plugins/hubs/live_sports`, `live_sports_cards`) |
 | Lists | pack `nav.tabId` | KitShell via installed Lists hub pack |
-| Settings | `settings` | `features/settings/hub/screen.dart` |
+| Settings | `settings` | `features/settings/shell/screen.dart` |
 
 Nav registry: `apps/forja/lib/shell/nav/nav_config.dart` (`navDestinations`, `navTabBuilders`).
 

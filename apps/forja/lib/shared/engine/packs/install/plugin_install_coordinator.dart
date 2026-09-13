@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/settings/hub/catalog.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
 
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';

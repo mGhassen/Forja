@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/hub/catalog.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:rust/rust.dart';

@@ -49,7 +49,7 @@ import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
-import 'package:forja/features/settings/chrome/lan_p2p_required_dialog.dart';
+import 'package:forja/features/settings/ui/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/entry/player_metadata.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';

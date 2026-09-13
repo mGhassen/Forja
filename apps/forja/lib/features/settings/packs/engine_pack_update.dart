@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Banner above installed packs when one or more updates are available.

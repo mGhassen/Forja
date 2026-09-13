@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/features/settings/hub/visibility_provider.dart';
-import 'package:forja/features/settings/chrome/p2p_streaming_ack_dialog.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/shell/visibility_provider.dart';
+import 'package:forja/features/settings/ui/p2p_streaming_ack_dialog.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/sync.dart';

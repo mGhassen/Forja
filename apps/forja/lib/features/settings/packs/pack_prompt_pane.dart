@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';

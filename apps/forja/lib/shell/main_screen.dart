@@ -12,7 +12,7 @@ import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/features/settings/hub/catalog.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/frame/shell_empty_features_screen.dart';
 import 'package:forja/shell/routing/app_router.dart';

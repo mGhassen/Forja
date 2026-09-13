@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
-import 'package:forja/features/settings/categories/packs/engine_pack_update.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/packs/engine_pack_update.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/features/settings/categories/packs/plugin_install_progress.dart';
+import 'package:forja/features/settings/packs/plugin_install_progress.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';

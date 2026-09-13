@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/addons_host.dart';
-import 'package:forja/features/settings/categories/about/page.dart';
-import 'package:forja/features/settings/categories/data/page.dart';
-import 'package:forja/features/settings/categories/features/page.dart';
-import 'package:forja/features/settings/categories/packs/page.dart';
-import 'package:forja/features/settings/categories/profile/page.dart';
-import 'package:forja/features/settings/hub/catalog.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
-import 'package:forja/features/settings/hub/visibility_provider.dart';
+import 'package:forja/features/settings/about/page.dart';
+import 'package:forja/features/settings/data/page.dart';
+import 'package:forja/features/settings/features/page.dart';
+import 'package:forja/features/settings/packs/page.dart';
+import 'package:forja/features/settings/profile/page.dart';
+import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
+import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 
 Widget buildSettingsCategoryBody(

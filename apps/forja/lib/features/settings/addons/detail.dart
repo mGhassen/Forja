@@ -10,8 +10,8 @@ import 'package:forja/features/settings/addons/host/simkl_panel.dart';
 import 'package:forja/features/settings/addons/host/mdblist_panel.dart';
 import 'package:forja/features/settings/addons/host/playback_section.dart';
 import 'package:forja/features/settings/addons/host/iptv_addon_section.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///

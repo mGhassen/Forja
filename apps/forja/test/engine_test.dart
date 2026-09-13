@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/settings/categories/packs/engine_plugin_pack.dart';
+import 'package:forja/features/settings/packs/engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/engine/packs/forja_packs_root.dart';

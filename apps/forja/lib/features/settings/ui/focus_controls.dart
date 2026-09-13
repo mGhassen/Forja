@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 /// TV-aware toggle row for settings sections (RFC-033 primitives).
 Widget settingsFocusableToggle(

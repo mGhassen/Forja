@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/chrome/lan_p2p_required_dialog.dart';
+import 'package:forja/features/settings/ui/lan_p2p_required_dialog.dart';
 import 'package:rust/rust.dart';
 
 import 'lan_playback_router.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/hub/screen.dart';
+import 'package:forja/features/settings/shell/screen.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
 

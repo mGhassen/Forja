@@ -71,7 +71,7 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`media/details/details_screen.dart`](../../apps/forja/lib/features/media/details/details_screen.dart) | 545 | Details orchestrator | In | 8 `details_screen_*.dart` mixins; moved from `home/` (RFC-020) |
-| [`settings/hub/screen.dart`](../../apps/forja/lib/features/settings/hub/screen.dart) | — | Orchestrator | In | `hub/` · `categories/` · `addons/` · `chrome/` |
+| [`settings/hub/screen.dart`](../../apps/forja/lib/features/settings/shell/screen.dart) | — | Orchestrator | In | `shell/` · page folders · `addons/` · `ui/` |
 
 ---
 

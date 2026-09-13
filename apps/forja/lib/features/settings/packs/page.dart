@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/categories/packs/packs_section.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
+import 'package:forja/features/settings/packs/packs_section.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
 
 class SettingsForjaPacksPageBody extends StatelessWidget {
   const SettingsForjaPacksPageBody({super.key, required this.visibility});

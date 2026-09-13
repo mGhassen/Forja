@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/settings/hub/visibility.dart';
+import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Resolves which Settings categories / rows are visible for the active profile.

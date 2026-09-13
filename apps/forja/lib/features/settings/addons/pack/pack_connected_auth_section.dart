@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_auth_browser_dialog.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 
 import 'package:forja/shared/host/packs/services/pack_connected_auth_service.dart';
 import 'package:forja/shared/host/packs/services/pack_connected_auth_spec.dart';

@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/features/settings/chrome/focus_controls.dart';
-import 'package:forja/features/settings/chrome/settings_ui.dart';
+import 'package:forja/features/settings/ui/focus_controls.dart';
+import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 

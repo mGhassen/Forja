@@ -82,30 +82,30 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/lib/features/settings/addons/catalog.dart`
 - [ ] `apps/forja/lib/features/settings/addons/toggles.dart`
 - [x] `apps/forja/lib/features/settings/addons/addons_host.dart`
-- [x] `apps/forja/lib/features/settings/categories/bodies.dart`
+- [x] `apps/forja/lib/features/settings/bodies.dart`
 - [ ] `apps/forja/lib/features/settings/providers/settings_panel_providers.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/lan_section.dart`
-- [x] `apps/forja/lib/features/settings/categories/about_panel.dart`
-- [x] `apps/forja/lib/features/settings/categories/cache_data_section.dart`
+- [x] `apps/forja/lib/features/settings/about_panel.dart`
+- [x] `apps/forja/lib/features/settings/cache_data_section.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/debrid_section.dart`
-- [x] `apps/forja/lib/features/settings/categories/account_panel.dart`
+- [x] `apps/forja/lib/features/settings/account_panel.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/forja_addons_play_toggles.dart`
-- [x] `apps/forja/lib/features/settings/categories/packs_section.dart`
+- [x] `apps/forja/lib/features/settings/packs_section.dart`
 - [x] `apps/forja/lib/features/settings/sections/settings_iptv_portals_section.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/mdblist_panel.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/providers_section.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/search_torrents_section.dart`
 - [x] `apps/forja/lib/features/settings/addons/host/simkl_panel.dart`
-- [ ] `apps/forja/lib/features/settings/hub/kit_hooks_register.dart`
-- [x] `apps/forja/lib/features/settings/hub/screen.dart`
-- [x] `apps/forja/lib/features/settings/chrome/lan_p2p_required_dialog.dart`
-- [x] `apps/forja/lib/features/settings/chrome/p2p_streaming_ack_dialog.dart`
-- [x] `apps/forja/lib/features/settings/categories/engine_pack_update.dart`
-- [x] `apps/forja/lib/features/settings/categories/engine_plugin_pack.dart`
-- [x] `apps/forja/lib/features/settings/hub/scaffold.dart`
-- [x] `apps/forja/lib/features/settings/categories/pack_prompt_pane.dart`
-- [x] `apps/forja/lib/features/settings/categories/plugin_install_progress.dart`
-- [x] `apps/forja/lib/features/settings/chrome/settings_ui.dart`
+- [ ] `apps/forja/lib/features/settings/shell/kit_hooks_register.dart`
+- [x] `apps/forja/lib/features/settings/shell/screen.dart`
+- [x] `apps/forja/lib/features/settings/ui/lan_p2p_required_dialog.dart`
+- [x] `apps/forja/lib/features/settings/ui/p2p_streaming_ack_dialog.dart`
+- [x] `apps/forja/lib/features/settings/engine_pack_update.dart`
+- [x] `apps/forja/lib/features/settings/engine_plugin_pack.dart`
+- [x] `apps/forja/lib/features/settings/shell/scaffold.dart`
+- [x] `apps/forja/lib/features/settings/pack_prompt_pane.dart`
+- [x] `apps/forja/lib/features/settings/plugin_install_progress.dart`
+- [x] `apps/forja/lib/features/settings/ui/settings_ui.dart`
 - [ ] `apps/forja/lib/shared/engine/engine.dart`
 - [ ] `apps/forja/lib/shared/engine/runtime/meta/catalog_extract_context.dart`
 - [ ] `apps/forja/lib/shared/engine/runtime/meta/plugin_config.dart`
