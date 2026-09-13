@@ -1,30 +1,32 @@
 # RFC-106 G14-D — Evacuate parity checklist
 
-**Status:** open (wiring inventory — **not** QA sign-off)  
+**Status:** wiring complete (A18 ✅) — **not** QA sign-off (A19 ⏭️)  
 **RFC:** [106-[open]-forja-foundation-design-system-package.md](106-[open]-forja-foundation-design-system-package.md)  
 **Plan:** G14-D (do not edit `.cursor/plans`)
 
-**Legend:** ✅ host path + foundation stub exist · analyze clean on moved trees · ⬜ not evacuated / host adapter incomplete · 🔄 partial
+**Legend:** ✅ surface works via current paths · ⬜ missing · 🔄 partial
 
-QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring only**.
+QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring only**. Unsigned QA does **not** block pack / kit / engine work.
+
+**Law:** Forja root is a **pack-product host** — generic only. Product lives in packs. `shared/host/` is **not** a product destination ([R106-A31](106-[open]-forja-foundation-design-system-package.md)).
 
 ---
 
 ## G14-D surfaces
 
-| Old foundation surface | Must still work via | Host / stub | Status |
-|------------------------|---------------------|-------------|--------|
-| Live match details | Host + `DetailsBlock` | `shared/kit/kit_match_details_page.dart` + `KitEventPaint` | ✅ |
-| Live schedule list/cards | `kit.list` `style: cards` + `KitEventPaint` | Generic kit list; no Live Sports hooks | ✅ |
-| Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | `vertical_filters*.dart` wraps DS `LogoMenuRail` + `VerticalMenu` | ✅ |
-| Sources / resolve panel | Kit hooks + SourcesPanel | Generic panel stays foundation; Live TV browse + `KitResolvePanelHost` → `host/sources/panel/` | ✅ |
-| Follow / list status | Host data + ListStatus widgets | `host/lists/**` + follow stubs | ✅ |
-| Pack install / update / keychain | Host entry points | `host/packs/**` + `host/update/**` + `host/account/**` + stubs | ✅ |
-| Torrent sources UI | Host torrent panels | `host/sources/torrent/**` + foundation stubs | ✅ |
-| Watch history | Host watch store | `host/watch/watch_history.dart` + stub | ✅ |
-| TMDB / enrich images | Absolute URLs + host enrich hooks | `TmdbDetailsEnrich` → `KitDetailsHostHooks`; pack URLs always | ✅ |
-| MetaRuntime / plugin_nav / HostListRegistry | Boot registration | Stays foundation (kit runtime, not product dump) | ✅ |
-| Deeplink `forja://catalog/...` | Package protocol + app re-export | `forja_foundation/protocol` + foundation re-export | ✅ |
+| Old foundation surface | Must still work via | Current path | Status |
+|------------------------|---------------------|--------------|--------|
+| Live match details | Kit + pack feed | `shared/shell/kit/` + engine live + hub packs | ✅ |
+| Live schedule list/cards | `kit.list` + pack chrome | Generic kit list; Live Sports pack | ✅ |
+| Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | DS `LogoMenuRail` + `VerticalMenu` | ✅ |
+| Sources / resolve panel | Kit hooks + SourcesPanel | `shared/player/sources/**` | ✅ |
+| Follow / list status | Engine lists + pack My List | `shared/engine/lists/**` + My List hub | ✅ |
+| Pack install / update / keychain | App-only modules | `shared/host/packs|update|account/**` (leftover paths — not a product layer) | ✅ |
+| Torrent sources UI | Player sources | `shared/player/sources/**` | ✅ |
+| Watch history | App prefs store | `shared/host/watch/watch_history.dart` (leftover path) | ✅ |
+| TMDB / enrich images | Pack enrich companions | Pack `enrich` + kit render-only | ✅ |
+| MetaRuntime / plugin_nav / HostListRegistry | Boot registration | `shared/engine/hub/**` + shell kit | ✅ |
+| Deeplink `forja://catalog/...` | Package protocol | `forja_foundation/protocol` | ✅ |
 
 ---
 
@@ -32,14 +34,14 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 
 | Surface | Expected open path |
 |---------|-------------------|
-| Live match details | Kit list → `KitMatchDetailsPage` via host |
-| Live schedule | `kit.list` `source: live_schedule` → `KitLiveBoot` + generic cards |
-| Follow / list | My List hub + `KitListStatusButton` |
+| Live match details | Kit list → match details via pack `open` / kit paint |
+| Live schedule | Hub pack `feed` + opaque `live_schedule` registry |
+| Follow / list | My List hub + engine list follow |
 | Pack install | Settings Forja Packs + install banner |
-| App update / Keychain | `host/update/UpdateDialog` · `host/account` consent |
+| App update / Keychain | `shared/host/update` · `shared/host/account` (app-only leftovers) |
 | Vertical filters | Home platforms → LogoMenuRail |
-| Sources panel | `KitSourcesPanel` (foundation) + host `KitResolvePanelHost` / Live TV browse |
-| Torrent | Media details torrent panels via host |
+| Sources panel | `shared/player/sources/**` |
+| Torrent | Media details torrent panels under player sources |
 
 ---
 
@@ -51,62 +53,57 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | 2 | No pack JSON required unless forja-packs PR first | ✅ |
 | 3 | No user-facing entry removed without replacement | ✅ |
 | 4 | Shim death separate after Q1–Q12 | ⬜ |
-| 5 | Part 1 evacuate includes host wiring enough to compile | ✅ |
+| 5 | Part 1 evacuate includes wiring enough to compile | ✅ |
+| 6 | No new product trees under `shared/host/` | ✅ |
 
 ---
 
-## Host folders (G11)
+## Historical — G11 host dump (retracted)
 
-| Folder | Contents |
-|--------|----------|
-| `apps/forja/lib/shared/host/live_sports/` | Match/schedule/live chrome + list hooks |
-| `apps/forja/lib/shared/host/packs/` | Pack UI + settings + PackAssets |
-| `apps/forja/lib/shared/host/lists/` | Follow / My List product |
-| `apps/forja/lib/shared/host/sources/torrent/` | Torrent panels / tiles / loading |
-| `apps/forja/lib/shared/host/sources/panel/` | Live TV browse + `KitResolvePanelHost` |
-| `apps/forja/lib/shared/host/details/` | TMDB enrich hooks |
-| `apps/forja/lib/shared/host/watch/` | Watch history |
-| `apps/forja/lib/shared/host/update/` | App update dialog + progress banner |
-| `apps/forja/lib/shared/host/account/` | macOS Keychain consent |
+G11 briefly listed product under `shared/host/{live_sports,lists,sources,…}`. That destination is **wrong** and those trees are **gone**.
 
-See per-folder READMEs for leftover kit entanglement.
+| Was (G11 mistake) | Now |
+|-------------------|-----|
+| `host/live_sports/` | Packs + `shared/engine/live/**` + kit |
+| `host/lists/` | Packs + `shared/engine/lists/**` |
+| `host/sources/**` | `shared/player/sources/**` |
+| Catalog kit / MetaRuntime / `kit_shell` | `shared/shell/kit/**` + `shared/engine/hub/**` |
 
 ---
 
-## Correction — pack surfaces are not host
+## Leftover app-only paths (not a product layer)
 
-`host/lists`, `host/live_sports`, `host/sources` are **gone**. Those names are pack surfaces.
+These remain under `apps/forja/lib/shared/host/` **only** because they are app chrome / prefs, not hub product. Do **not** add catalog, live, lists, or sources here. Rename later is fine; expanding the silo is not.
 
-| Was | Now |
-|-----|-----|
-| Match/schedule models + prefs | `shared/engine/live/**` |
-| List-follow / merge | `shared/engine/lists/**` |
-| Torrent parse | `shared/engine/models/torrent_release_metadata.dart` |
-| Torrent source panels | `shared/player/sources/**` |
-| Catalog boot / cards / resolve panel / my-list catalog / `plugin_nav` / MetaRuntime / `kit_shell` | `shared/kit/**` |
-
-Catalog kit is `shared/kit/**`. Host services are `packs/`, `watch/`, `update/`, `account/`, plus `details/` (TMDB enrich still debt). Do not put catalog under `shared/host/`.
+| Path | Role |
+|------|------|
+| `packs/` | Pack install UI, settings store, connected auth, `PackAssets` |
+| `update/` | App update dialog + progress banner |
+| `account/` | macOS Keychain consent |
+| `watch/` | Continue / watched prefs store |
+| `search/` | App search engine glue behind kit (`host_search`) |
+| `details/` | README only — packs own enrich |
 
 ---
 
 ## Correction — Live Sports UX is the pack
 
-`engine/live/kit_schedule_*` and `LiveSportsHubMergeUpgrade` are **deleted**. Horizon / view items live on `hubs/live_sports/live_sports.js`. Engine `LiveFeedQuery` takes opaque strings (`airing` / `h1`). `KitLiveBoot` only registers `live_schedule` + catalog options from the engine.
+`engine/live/kit_schedule_*` and `LiveSportsHubMergeUpgrade` are **deleted**. Horizon / view items live on `hubs/live_sports/live_sports.js`. Engine `LiveFeedQuery` takes opaque strings (`airing` / `h1`). Kit live boot only registers opaque schedule + catalog options from the engine.
 
 ---
 
 ## Correction — cards are kit.list, not a Live Sports module
 
-`KitListLiveCards` / `KitListHostHooks` are **deleted**. `KitEventCard` / `KitMatchDetailsPage` paint from `KitListEntry` (`KitEventPaint`). `MatchEvent` stays in `engine/live` for merge/resolve/IPTV match. Badge URLs are pack-absolute — host `kitEventImageUrl` does not invent `streamed.pk`.
+`KitListLiveCards` / `KitListHostHooks` are **deleted**. Event cards / match details paint from kit list entries. `MatchEvent` stays in `engine/live` for merge/resolve/IPTV match. Badge URLs are pack-absolute.
 
 ---
 
 ## Correction — kind icons and list search are pack chrome
 
-Host `kitMoodCircleMeta` only resolves pack **icon tokens** (`soccer`, `tv`, …). It does not map NFL / La Liga / WWE. `kindIcons` + search `placeholder` live on `hubs/live_sports/live_sports.js`. Horizon chip default is the pack `default` — host no longer hardcodes `airing|1h`. `KitScheduleEventSearch` is `KitListEventSearch`.
+Host mood helpers only resolve pack **icon tokens**. `kindIcons` + search `placeholder` live on the Live Sports hub pack. Horizon chip default is the pack `default`.
 
 ---
 
 ## Correction — panel tabs are pack chrome
 
-`kit.list.panelTabs` / `panelTab` declare Providers / Live TV (or any tabs). Host `KitSourcesPanel` default `browseCategoryTabIds` is empty. Tab icons come from pack `icon` (not index 0/1). IPTV adapter loads pack tab `action` (`liveTv`) — not chrome id `live_tv`.
+`kit.list.panelTabs` / `panelTab` declare Providers / Live TV (or any tabs). Default browse category tab ids are empty. Tab icons come from pack `icon`. IPTV adapter loads pack tab `action` (`liveTv`) — not a hardcoded chrome id.

@@ -9,7 +9,8 @@ Q1–Q12 remains unsigned (A19). Plan source: Part 2 G14-G.
 | 2 | **No pack JSON required change** unless a forja-packs PR landed first. |
 | 3 | **No user-facing entry point removed** without a replacement path in the same PR. |
 | 4 | **Shim tree is gone** (`shared/foundation/` deleted, A22). Do not restore it. Q1–Q12 remains unsigned (A19). |
-| 5 | **Part 1 evacuate PRs include host adapter wiring** enough to satisfy (1) and (3). |
+| 5 | **Part 1 evacuate PRs include wiring** enough to satisfy (1) and (3). |
+| 6 | **No new product under `shared/host/`** — packs own product; root is generic only. Leftover `host/{packs,update,account,watch,search}` are app-only modules, not a dump zone. |
 
 ## Enforcement
 

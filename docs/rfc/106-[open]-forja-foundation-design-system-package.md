@@ -1,15 +1,15 @@
 # RFC-106: Forja foundation design system package
 
 **Status:** open  
-**Depends on:** [RFC-095](fixed/095-[fixed]-foundation-design-data-split.md) · [RFC-085](085-[partial]-catalog-kit-generic-only.md) · [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md)  
+**Depends on:** [RFC-095](fixed/095-[fixed]-foundation-design-data-split.md) · [RFC-085](fixed/085-[fixed]-catalog-kit-generic-only.md) · [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md)  
 **Area:** `packages/forja_foundation`, `apps/forja`
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **14 / 14** acceptance (Part 1) · **6 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **3 / 3** acceptance (deeper paint) · **1** ⏭️ Q1–Q12 |
-| **Current slice** | Deeper paint evacuate shipped ([277](../issues/fixed/277-[fixed]-catalog-deeper-evacuate-paint.md)) · A18 🔄 · A19 ⏭️ |
+| **Progress** | **8 / 9** components · **14 / 14** acceptance (Part 1) · **7 / 8** acceptance (Part 2) · **5 / 5** acceptance (body evacuate) · **3 / 3** acceptance (deeper paint) · **3 / 3** acceptance (pack-product law) · **1** ⏭️ Q1–Q12 |
+| **Current slice** | Package + evacuate wiring done · G11 `shared/host/` dump **retracted** · A19 QA ⏭️ — **does not block** pack / kit / engine work |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 6 | R106-C06 | Kit layout map + widgets + blocks + protocol/kit/platform | ✅ |
 | 7 | R106-C07 | Evacuate product domain from package into host adapters | ✅ |
 | 8 | R106-C08 | Part 2 consumer upgrade — shims, migrate, QA, shim death | 🔄 |
+| 9 | R106-C09 | Pack-product host law — retract `shared/host/` as product destination | ✅ |
 
 ---
 
@@ -58,7 +59,7 @@
 | 15 | R106-A15 | **G14-A** Compat layer — export inventory; old `shared/foundation/**` paths resolve; deprecated aliases for exploded buttons/kit names | ✅ |
 | 16 | R106-A16 | **G14-B** Dart call-site migrate — all foundation importers; analyze clean; CI bans old paths after shim phase | ✅ |
 | 17 | R106-A17 | **G14-C** Pack wire freeze — layout types keep working; forja-packs PR only if JSON must change | ✅ |
-| 18 | R106-A18 | **G14-D** Evacuate parity — match details, schedule, VerticalMenu, sources, follow, packs, deeplink still work | 🔄 |
+| 18 | R106-A18 | **G14-D** Evacuate parity — match details, schedule, VerticalMenu, sources, follow, packs, deeplink still work | ✅ |
 | 19 | R106-A19 | **G14-E** QA Q1–Q12 green → shim death → delete `apps/forja/lib/shared/foundation/` | ⏭️ |
 | 20 | R106-A20 | **G14-F** Docs/rules — migration guide, pack author note, design-system rules → package paths | ✅ |
 | 21 | R106-A21 | **G14-G** Hard invariants — compile every PR; no silent pack break; no delete-before-wire | ✅ |
@@ -88,11 +89,25 @@
 
 ---
 
+## Acceptance (pack-product host law)
+
+G11 (`R106-A12` / `R106-C07`) parked leftover app glue under `shared/host/**` so the DS package stayed design-only. That **folder brand is wrong** for Forja today: root is a **pack-product host** (generic only). Packs own product. Do not use this RFC to dump Live Sports / Lists / Search / Sources into `shared/host/`. See [091](fixed/091-[fixed]-live-sports-explode-host-to-packs.md) · [087](fixed/087-[fixed]-live-sports-pack-only.md) · [088](fixed/088-[fixed]-my-list-pack-only.md).
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 31 | R106-A31 | Docs law: `shared/host/` is **not** a product destination; no new catalog/live/lists/sources trees there | ✅ |
+| 32 | R106-A32 | [Evacuate parity](106-evacuate-parity.md) corrected — pack surfaces map to engine/kit/player; leftovers listed as app-only modules | ✅ |
+| 33 | R106-A33 | A18 evacuate **wiring** closed; A19 visual QA stays ⏭️ and does **not** gate pack/kit/engine evolution | ✅ |
+
+---
+
 ## Summary
 
-Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`packages/forja_foundation`](../../packages/forja_foundation): tokens → theme → primitives → components → widgets → blocks, plus protocol/kit/platform/utils. One public widget per family (`Button`, `ButtonGroup`, `VerticalMenu`, …) with variants/sizes/slots. Product domain leaves the package for host adapters.
+Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`packages/forja_foundation`](../../packages/forja_foundation): tokens → theme → primitives → components → widgets → blocks, plus protocol/kit/platform/utils. One public widget per family (`Button`, `ButtonGroup`, `VerticalMenu`, …) with variants/sizes/slots.
 
-**Part 1** builds the package (G0–G13). **Part 2** upgrades every consumer without loss (G14). Shim tree is deleted (A22). Visual QA Q1–Q12 is still unsigned (A18 / A19).
+**Product does not leave the package into a `shared/host/` silo.** Product lives in **packs** (`forja-packs`). The Flutter root stays generic (kit paint, engine runtime, player, shell, opaque registries). Leftover app-only modules that are not design-system (pack install UI, updater, keychain, watch-history store, search engine glue) may sit under today’s `shared/host/{packs,update,account,watch,search}/` paths until renamed — they are **not** a layer for hub/product trees.
+
+**Part 1** builds the package (G0–G13). **Part 2** upgrades consumers (G14). Shim tree is deleted (A22). Visual QA Q1–Q12 remains unsigned (**A19 only**) — unsigned QA does not block product work.
 
 ### Goals
 
@@ -100,6 +115,7 @@ Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`pac
 - Flat cinematic tokens/theme as `ThemeExtension`
 - Button/ButtonGroup/VerticalMenu as the first family slice
 - Zero-regression cutover via shims then migrate then delete
+- Root stays pack-product host — generic only (R106-C09)
 
 ### Non-goals
 
@@ -107,6 +123,7 @@ Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`pac
 - Moving `packages/rust` or player engines into foundation
 - Pack folder allowlists in Dart
 - Editing `docs/backlog/`
+- Recreating a product dump under `shared/host/` (supersedes G11 destination reading)
 
 ### Related
 
@@ -114,5 +131,6 @@ Move the Forja design system from `apps/forja/lib/shared/foundation/` into [`pac
 - [Evacuate parity (G14-D)](106-evacuate-parity.md) · [Export inventory](106-export-inventory.txt) · [Call-site inventory](106-callsite-inventory.md) · [Invariants (G14-G)](106-invariants.md)
 - Package [MIGRATION.md](../../packages/forja_foundation/MIGRATION.md) · [PACK_AUTHORS.md](../../packages/forja_foundation/PACK_AUTHORS.md) · [QA matrix](106-qa-matrix.md)
 - [RFC-095](fixed/095-[fixed]-foundation-design-data-split.md) — design alone / data alone
-- [RFC-085](085-[partial]-catalog-kit-generic-only.md) — kit generic only
+- [RFC-085](fixed/085-[fixed]-catalog-kit-generic-only.md) — kit generic only
 - [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) — flat cinematic shell
+- [RFC-091](fixed/091-[fixed]-live-sports-explode-host-to-packs.md) — deleted `shared/host/` product silo

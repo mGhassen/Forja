@@ -14,10 +14,10 @@ rg -l "shared/foundation|ForjaGhostButton|ForjaPlainIcon|ForjaIconButton" apps/f
 |--------|------:|
 | **Migrated (package importers, excl. bridge)** | **99** host + **8** foundation kit chrome |
 | **Checked off below** | **153** |
-| **Host paths not in freeze list** | **14** (`shared/host/lists/kit_list_status_button.dart`, `shared/host/live_sports/cards/kit_event_card.dart`, `shared/host/live_sports/cards/kit_event_dense_tile.dart`, `shared/host/live_sports/chrome/kit_schedule_event_search.dart`, `shared/host/live_sports/chrome/kit_schedule_window_sheet.dart`, `shared/host/live_sports/kit_category_circle_meta.dart`, `shared/host/live_sports/kit_match_details_page.dart`, `shared/host/packs/components/forja_pack_choice_cards.dart`, `shared/host/packs/components/plugin_install_progress_banner.dart`, `shared/host/sources/panel/kit_sources_live_tv_browse.dart`, `shared/host/sources/torrent/torrent_source_filters.dart`, `shared/host/sources/torrent/torrent_source_tiles.dart`, `shared/host/sources/torrent/torrent_sources_panel.dart`, `shared/host/sources/torrent/torrent_sources_panel_chrome.dart`) |
+| **Historical “host paths not in freeze list” (G11)** | **Retracted** — `host/lists`, `host/live_sports`, `host/sources` are gone (packs / `engine` / `player/sources`). Leftover app-only: `host/packs/**`, `host/update/**`, `host/account/**`, `host/watch/**`, `host/search/**` |
 | **Remaining (freeze checklist)** | **257** (keepers + kit runtime until G14-E; `primitives.dart` barrels gone) |
 
-Batch notes: app code imports **per-file** package paths (`tokens/forja_shell_colors.dart`, `components/button.dart`, …). Root `forja_foundation.dart` is gallery/test only — no `hide Switch, Chip, …` lists. Host keepers stay on host paths.
+Batch notes: app code imports **per-file** package paths (`tokens/forja_shell_colors.dart`, `components/button.dart`, …). Root `forja_foundation.dart` is gallery/test only. Do **not** add product trees under `shared/host/` ([R106-A31](106-[open]-forja-foundation-design-system-package.md)).
 
 
 Checklist (paths only — migrate batches tick these):
