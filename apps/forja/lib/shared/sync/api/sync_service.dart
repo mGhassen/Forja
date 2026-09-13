@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
@@ -699,10 +698,6 @@ class SyncService {
   }) async {
     await LocalDataScope.configure(accountId: accountId, profileId: profileId);
     await PluginScriptDiskStore.configureScope(
-      accountId: accountId,
-      profileId: profileId,
-    );
-    await IptvCatalogDiskStore.configureScope(
       accountId: accountId,
       profileId: profileId,
     );

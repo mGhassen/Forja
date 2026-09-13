@@ -3876,7 +3876,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           tvRowId: SourcesPanelTv.listRowId,
           tvItemIndex: 0,
           tvZone: ShellTvZone.row,
-          ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+          ensureVisibleMode: ShellPaintEnsureVisible.off,
           child: loading,
         ),
       );

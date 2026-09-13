@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/host/layout/resolve_panel_host.dart';
-import 'package:forja/shared/host/layout/kit/kit_event_paint.dart';
-import 'package:forja/shared/host/layout/kit/kit_list_source.dart';
+import 'package:forja/shared/player/sources/resolve_panel_host.dart';
+import 'package:forja/shared/engine/runtime/list_event_paint.dart';
+import 'package:forja/shared/engine/runtime/list_source.dart';
 import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
-import 'package:forja/shared/host/layout/kit/kit_resolve_streams_hooks.dart';
+import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/desktop/desktop_selectable_title.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/host/layout/hero_pill_buttons.dart';
+import 'package:forja/shared/player/details/hero_pill_buttons.dart';
 import 'package:forja/shared/player/details/kit_details_play_row.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja_foundation/components/button.dart';

@@ -5,7 +5,7 @@ import 'package:forja_foundation/components/mood_circle.dart';
 export 'package:forja_foundation/components/mood_circle.dart'
     show MoodCircle, MoodCircleLayout;
 
-/// Host resolve helpers for [MoodCircleLayout] (reads [ShellScope]).
+/// Resolve helpers for [MoodCircleLayout] (reads [ShellPaintScope]).
 abstract final class ShellMoodCircleLayout {
   static MoodCircleLayout get desktop => MoodCircleLayout.desktop;
   static MoodCircleLayout get tvScrollable => MoodCircleLayout.tvScrollable;
@@ -70,8 +70,6 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
   bool _focused = false;
 
   bool _active(BuildContext context) {
-    final useTv = ShellPaintScope.useTvFocusOf(context);
-    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
     return widget.selected ||
         _hovered ||
         ShellPaintScope.focusStyledOf(context, focused: _focused);

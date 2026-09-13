@@ -8,7 +8,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/feedback/loading_overlay.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/focus/forja_interactive.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';

@@ -916,7 +916,7 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
       listIndex: widget.listIndex,
       tvTabId: PlayerSubtitleSettingsDialog.tvTabId,
       tvRowId: PlayerSubtitleSettingsDialog.delayRowId,

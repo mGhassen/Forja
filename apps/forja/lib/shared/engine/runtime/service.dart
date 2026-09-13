@@ -6,8 +6,8 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
-import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
-import 'package:forja/shared/engine/feeds/live_sport_capabilities.dart';
+import 'package:forja/shared/engine/runtime/hub_host_bridge_nest.dart';
+import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -83,7 +83,7 @@ class EngineService {
   /// JSValueToStringCopy (189 / 234 / Live Sports load + resolve).
   Future<void> _flutterJsTail = Future<void>.value();
 
-  /// Depth of [_withFlutterJsFork]. Nested liveFeed → runLiveFeed must not
+  /// Depth of [_withFlutterJsFork]. Nested hub host bridge → runLiveFeed must not
   /// wait on the same mutex (deadlock) or fork a second JSC heap.
   int _flutterJsDepth = 0;
 
@@ -508,12 +508,18 @@ class EngineService {
       }
     }
 
-    // Home/TMDB: EngineJS-first. Live Sports / list hubs feed/rail call
-    // ctx.host.liveFeed / ctx.host.bookmarks|simkl — EngineJS has no bridge (ok
-    // items:[] would skip flutter_js). layout / filters do not need the
-    // bridge — keep EngineJS-first for those.
-    final needsHostFeedBridge = (action == 'feed' || action == 'rail') &&
-        (plugin.needsLiveFeedHost || plugin.needsListsHost);
+    // Home/TMDB: EngineJS-first. Live Sports / list / portal hubs call
+    // ctx.host.* — EngineJS has no bridge. layout / filters stay EngineJS-first.
+    final hostBridgeActions = {
+      'feed',
+      'rail',
+      'searchChannels',
+      'addPortal',
+      'selectPortal',
+      'removePortal',
+    };
+    final needsHostFeedBridge =
+        plugin.needsHostBridge && hostBridgeActions.contains(action);
     if (!needsHostFeedBridge) {
       final viaRust = await _runLiveEngineRustJs(
         plugin: plugin,
@@ -534,7 +540,11 @@ class EngineService {
       }
       if (gen != _catalogGeneration) return null;
     } else {
-      final bridge = plugin.needsListsHost ? 'bookmarks+simkl' : 'liveFeed';
+      final bridge = plugin.needsListsHost
+          ? 'bookmarks+simkl'
+          : plugin.needsPortalPackHost
+              ? 'http+vault+playback'
+              : 'plugin';
       debugPrint(
         '[catalog] ${plugin.id} $action needs $bridge — flutter_js',
       );
@@ -1114,7 +1124,7 @@ class EngineService {
     if (gen != _extractGeneration) return [];
 
     // Must share the flutter_js queue with Live Sports hub feed — parallel
-    // JSC while catalog is mid-liveFeed → SIGSEGV (issue 237).
+    // JSC while catalog is mid-hub host bridge → SIGSEGV (issue 237).
     return _withFlutterJsFork(() async {
       if (gen != _extractGeneration) return <Map<String, dynamic>>[];
       final runtime = EngineRuntime.fork();
@@ -1254,15 +1264,15 @@ class EngineService {
     if (viaRust != null) return _postProcessLivePluginRows(viaRust);
     if (gen != _liveCatalogGeneration) return [];
 
-    // True nest only: hub JS `liveFeed.load` → aggregate → runLiveFeed while
+    // True nest only: hub JS plugin.run → runLiveFeed while
     // the outer flutter_js fork is held. Waiting on [_withFlutterJsFork]
     // deadlocks; a second JSC heap crashes macOS (issue 237).
     // Sibling scrapes (metaFeedCatalogProvider during hub layout) must queue —
     // `_flutterJsDepth > 0` alone was emptying Streamed/etc. while logs still
     // showed streams=310 from a later top-level run that never painted.
-    if (isUnderHubLiveFeedBridge && _flutterJsDepth > 0) {
+    if (isUnderHubHostBridge && _flutterJsDepth > 0) {
       debugPrint(
-        '[engine] ${catalogPlugin.id} skip flutter_js nested under liveFeed',
+        '[engine] ${catalogPlugin.id} skip flutter_js nested under hub host bridge',
       );
       return [];
     }

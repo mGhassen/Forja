@@ -509,7 +509,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       tvZone: ShellTvZone.row,
       tvRowId: rowId,
       tvItemIndex: meta.hasToggle ? 1 : 0,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onLeftEdge: leanback && meta.hasToggle
           ? () {
               _rowFocus.requestFocus();
@@ -534,7 +534,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
               tvZone: ShellTvZone.row,
               tvRowId: rowId,
               tvItemIndex: 0,
-              ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+              ensureVisibleMode: ShellPaintEnsureVisible.item,
               onRightEdge: leanback
                   ? () {
                       _detailsFocus.requestFocus();
@@ -575,7 +575,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         tvZone: ShellTvZone.row,
         tvRowId: rowId,
         tvItemIndex: 0,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         child: Row(
           children: [
             Expanded(

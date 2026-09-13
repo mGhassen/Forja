@@ -927,7 +927,7 @@ Widget _settingsTvIconButton(
       showFocusBorder: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),
     );
   }

@@ -434,7 +434,7 @@ class _HintCardState extends State<_HintCard> {
         onRightEdge: widget.onFocusRight,
         onUpEdge: widget.onFocusUp,
         onDownEdge: widget.onFocusDown,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         child: inner,
       );
     }

@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/pack_filters.dart';
-import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
-import 'package:forja/shared/host/layout/chrome/vertical_filters_rail.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';

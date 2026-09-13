@@ -240,7 +240,7 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
           zone: ShellTvZone.settings,
           itemIndex: widget.tvItemIndex,
         ),
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         child: body,
       );
     }

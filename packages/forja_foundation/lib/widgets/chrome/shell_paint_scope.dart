@@ -23,6 +23,9 @@ typedef ShellPaintFocusableTap = Widget Function({
   FocusNode? focusNode,
   bool autoFocus,
   int? listIndex,
+  bool navLeftAlways,
+  int? gridIndex,
+  int? gridColumns,
   String? tvTabId,
   String? tvRowId,
   int? tvItemIndex,
@@ -30,6 +33,7 @@ typedef ShellPaintFocusableTap = Widget Function({
   ShellPaintEnsureVisible ensureVisibleMode,
   bool showFocusBorder,
   bool showFocusFill,
+  bool showFocusRail,
   bool suppressInkHover,
   FocusOnKeyEventCallback? onKeyEvent,
 });
@@ -56,7 +60,7 @@ class ShellPaintScope extends InheritedWidget {
     required this.scaleOnHover,
     required this.focusStyled,
     required this.usesTvDensity,
-    this.focusableTap,
+    this.focusableTapBuilder,
     this.wrapTvRow,
     this.wrapHorizontalScroller,
     this.absorbHorizontalScroll,
@@ -68,7 +72,7 @@ class ShellPaintScope extends InheritedWidget {
   final bool scaleOnHover;
   final bool Function(BuildContext context, {required bool focused}) focusStyled;
   final bool usesTvDensity;
-  final ShellPaintFocusableTap? focusableTap;
+  final ShellPaintFocusableTap? focusableTapBuilder;
   final ShellPaintTvRowWrap? wrapTvRow;
 
   /// Optional host wrap (e.g. desktop swipe-back ignore).
@@ -134,6 +138,9 @@ class ShellPaintScope extends InheritedWidget {
     FocusNode? focusNode,
     bool autoFocus = false,
     int? listIndex,
+    bool navLeftAlways = false,
+    int? gridIndex,
+    int? gridColumns,
     String? tvTabId,
     String? tvRowId,
     int? tvItemIndex,
@@ -141,11 +148,12 @@ class ShellPaintScope extends InheritedWidget {
     ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
     bool showFocusBorder = false,
     bool showFocusFill = true,
+    bool showFocusRail = false,
     bool suppressInkHover = false,
     FocusOnKeyEventCallback? onKeyEvent,
   }) {
     final scope = maybeOf(context);
-    final tap = scope?.focusableTap;
+    final tap = scope?.focusableTapBuilder;
     if (tap != null) {
       return tap(
         context: context,
@@ -162,6 +170,9 @@ class ShellPaintScope extends InheritedWidget {
         focusNode: focusNode,
         autoFocus: autoFocus,
         listIndex: listIndex,
+        navLeftAlways: navLeftAlways,
+        gridIndex: gridIndex,
+        gridColumns: gridColumns,
         tvTabId: tvTabId,
         tvRowId: tvRowId,
         tvItemIndex: tvItemIndex,
@@ -169,6 +180,7 @@ class ShellPaintScope extends InheritedWidget {
         ensureVisibleMode: ensureVisibleMode,
         showFocusBorder: showFocusBorder,
         showFocusFill: showFocusFill,
+        showFocusRail: showFocusRail,
         suppressInkHover: suppressInkHover,
         onKeyEvent: onKeyEvent,
       );
@@ -228,6 +240,6 @@ class ShellPaintScope extends InheritedWidget {
       useTvFocus != oldWidget.useTvFocus ||
       scaleOnHover != oldWidget.scaleOnHover ||
       usesTvDensity != oldWidget.usesTvDensity ||
-      focusableTap != oldWidget.focusableTap ||
+      focusableTapBuilder != oldWidget.focusableTapBuilder ||
       wrapTvRow != oldWidget.wrapTvRow;
 }

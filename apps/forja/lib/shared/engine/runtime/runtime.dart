@@ -9,11 +9,12 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/runtime/engine_polyfills.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/store/engine_store.dart';
-import 'package:forja/shared/engine/feeds/live_feed_aggregate.dart';
-import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
+import 'package:forja/shared/engine/runtime/hub_host_bridge_nest.dart';
+import 'package:forja/shared/engine/runtime/service.dart';
 import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
-import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
+import 'package:forja/shared/engine/vault/engine_vault.dart';
+import 'package:forja/shared/engine/runtime/host_playback_open.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -294,7 +295,7 @@ class EngineRuntime {
       return null;
     });
 
-    br('LiveFeedStart', (args) {
+    br('PluginListStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
         final m = _bridgeMap(args);
@@ -304,7 +305,30 @@ class EngineRuntime {
             ? Map<String, dynamic>.from(queryRaw)
             : <String, dynamic>{};
         final gen = _fetchGeneration;
-        unawaited(_dispatchLiveFeed(id: id, query: query, gen: gen));
+        unawaited(_dispatchPluginList(id: id, query: query, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('PluginRunStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final pluginId = (m['pluginId'] ?? '').toString();
+        final action = (m['action'] ?? '').toString();
+        final paramsRaw = m['params'];
+        final params = paramsRaw is Map
+            ? Map<String, dynamic>.from(paramsRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(_dispatchPluginRun(
+          id: id,
+          pluginId: pluginId,
+          action: action,
+          params: params,
+          gen: gen,
+        ));
       } catch (_) {}
       return null;
     });
@@ -441,34 +465,106 @@ class EngineRuntime {
       return null;
     });
 
-    br('IptvSearchChannelsStart', (args) {
+    br('VaultGetStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
         final m = _bridgeMap(args);
         final id = (m['id'] as num).toInt();
-        final gameRaw = m['game'];
-        final game = gameRaw is Map
-            ? Map<String, dynamic>.from(gameRaw)
-            : <String, dynamic>{};
-        final catsRaw = m['categoryIds'] ?? m['category_ids'];
-        final categoryIds = catsRaw is List
-            ? [
-                for (final c in catsRaw)
-                  if (c.toString().trim().isNotEmpty) c.toString().trim(),
-              ]
-            : <String>[];
-        final portalKey = (m['portalKey'] ?? m['portal_key'] ?? '')
-            .toString()
-            .trim();
-        final force = m['force'] == true;
+        final key = (m['key'] ?? '').toString();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchVaultGet(id: id, key: key, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('VaultSetStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final key = (m['key'] ?? '').toString();
+        final value = (m['value'] ?? '').toString();
         final gen = _fetchGeneration;
         unawaited(
-          _dispatchIptvSearchChannels(
+          _dispatchVaultSet(id: id, key: key, value: value, gen: gen),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('VaultRemoveStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final key = (m['key'] ?? '').toString();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchVaultRemove(id: id, key: key, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('HttpRequestStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final url = (m['url'] ?? '').toString().trim();
+        final method = (m['method'] ?? 'GET').toString().trim().toUpperCase();
+        final headersRaw = m['headers'];
+        final headers = <String, String>{};
+        if (headersRaw is Map) {
+          for (final e in headersRaw.entries) {
+            final k = e.key.toString().trim();
+            if (k.isEmpty) continue;
+            headers[k] = e.value?.toString() ?? '';
+          }
+        }
+        final body = (m['body'] ?? '').toString();
+        var timeoutMs = 20000;
+        final tRaw = m['timeoutMs'] ?? m['timeout_ms'];
+        if (tRaw is num && tRaw > 0) {
+          timeoutMs = tRaw.toInt().clamp(1, 120000);
+        }
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchHttpRequest(
             id: id,
-            game: game,
-            categoryIds: categoryIds,
-            portalKey: portalKey.isEmpty ? null : portalKey,
-            force: force,
+            url: url,
+            method: method.isEmpty ? 'GET' : method,
+            headers: headers,
+            body: body,
+            timeoutMs: timeoutMs,
+            gen: gen,
+          ),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('PlaybackOpenStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final url = (m['url'] ?? '').toString().trim();
+        final title = (m['title'] ?? 'Stream').toString();
+        final headersRaw = m['headers'];
+        final headers = <String, String>{};
+        if (headersRaw is Map) {
+          for (final e in headersRaw.entries) {
+            final k = e.key.toString().trim();
+            if (k.isEmpty) continue;
+            headers[k] = e.value?.toString() ?? '';
+          }
+        }
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchPlaybackOpen(
+            id: id,
+            url: url,
+            title: title,
+            headers: headers.isEmpty ? null : headers,
             gen: gen,
           ),
         );
@@ -1227,22 +1323,34 @@ class EngineRuntime {
           return search(primary).then(function(hit){ return hit || search(secondary); });
         }
       };
-      h.feed = {
-        load: function(query) {
+      h.plugin = {
+        list: function(query) {
           return new Promise(function(resolve) {
-            var id = ++globalThis.__engineLiveFeedSeq;
-            globalThis.__engineLiveFeedPending[id] = function(env) {
-              resolve(env && Array.isArray(env.rows) ? env.rows : []);
+            var id = ++globalThis.__enginePluginSeq;
+            globalThis.__enginePluginPending[id] = function(env) {
+              resolve(env && Array.isArray(env.plugins) ? env.plugins : []);
             };
-            sendMessage('LiveFeedStart', JSON.stringify({
+            sendMessage('PluginListStart', JSON.stringify({
               id: id,
               query: query == null ? {} : query
             }));
           });
+        },
+        run: function(pluginId, action, params) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__enginePluginSeq;
+            globalThis.__enginePluginPending[id] = function(env) {
+              resolve(env && Array.isArray(env.rows) ? env.rows : []);
+            };
+            sendMessage('PluginRunStart', JSON.stringify({
+              id: id,
+              pluginId: String(pluginId == null ? '' : pluginId),
+              action: String(action == null ? '' : action),
+              params: params == null ? {} : params
+            }));
+          });
         }
       };
-      // Deprecated (RFC-109): use ctx.host.feed.load — temporary alias.
-      h.liveFeed = h.feed;
       h.cache = {
         get: function(namespace, key) {
           var raw = sendMessage('CacheGet', JSON.stringify({
@@ -1307,7 +1415,7 @@ class EngineRuntime {
           });
         }
       };
-      // Temporary alias — prefer ctx.host.store.list (RFC-109).
+      // Deprecated (RFC-109 Wave B/C): prefer ctx.host.store.list.
       h.bookmarks = {
         list: function(query) { return h.store.list(query); }
       };
@@ -1334,26 +1442,81 @@ class EngineRuntime {
           });
         }
       };
-      h.portals = {
-        searchChannels: function(opts) {
+      h.http = {
+        request: function(opts) {
           return new Promise(function(resolve) {
-            var id = ++globalThis.__engineIptvSearchSeq;
-            globalThis.__engineIptvSearchPending[id] = function(env) {
-              resolve(env && Array.isArray(env.sources) ? env.sources : []);
+            var id = ++globalThis.__engineHttpSeq;
+            globalThis.__engineHttpPending[id] = function(env) {
+              resolve(env == null ? { ok: false, status: 0, body: '', headers: {} } : env);
             };
             var o = opts == null ? {} : opts;
-            sendMessage('IptvSearchChannelsStart', JSON.stringify({
+            sendMessage('HttpRequestStart', JSON.stringify({
               id: id,
-              game: o.game == null ? {} : o.game,
-              categoryIds: Array.isArray(o.categoryIds) ? o.categoryIds : [],
-              portalKey: o.portalKey == null ? '' : String(o.portalKey),
-              force: o.force === true
+              method: o.method == null ? 'GET' : String(o.method),
+              url: o.url == null ? '' : String(o.url),
+              headers: o.headers == null ? {} : o.headers,
+              body: o.body == null ? '' : (typeof o.body === 'string' ? o.body : JSON.stringify(o.body)),
+              timeoutMs: o.timeoutMs == null ? (o.timeout_ms == null ? 20000 : o.timeout_ms) : o.timeoutMs
             }));
           });
         }
       };
-      // Temporary product alias — prefer ctx.host.portals.searchChannels.
-      h.iptv = h.portals;
+      h.vault = {
+        get: function(key) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineVaultSeq;
+            globalThis.__engineVaultPending[id] = function(env) {
+              resolve(env && typeof env.value === 'string' ? env.value : null);
+            };
+            sendMessage('VaultGetStart', JSON.stringify({
+              id: id,
+              key: String(key == null ? '' : key)
+            }));
+          });
+        },
+        set: function(key, value) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineVaultSeq;
+            globalThis.__engineVaultPending[id] = function(env) {
+              resolve(!!(env && env.ok));
+            };
+            sendMessage('VaultSetStart', JSON.stringify({
+              id: id,
+              key: String(key == null ? '' : key),
+              value: String(value == null ? '' : value)
+            }));
+          });
+        },
+        remove: function(key) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineVaultSeq;
+            globalThis.__engineVaultPending[id] = function(env) {
+              resolve(!!(env && env.ok));
+            };
+            sendMessage('VaultRemoveStart', JSON.stringify({
+              id: id,
+              key: String(key == null ? '' : key)
+            }));
+          });
+        }
+      };
+      h.playback = {
+        open: function(opts) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__enginePlaybackSeq;
+            globalThis.__enginePlaybackPending[id] = function(env) {
+              resolve(!!(env && env.ok));
+            };
+            var o = opts == null ? {} : opts;
+            sendMessage('PlaybackOpenStart', JSON.stringify({
+              id: id,
+              url: o.url == null ? '' : String(o.url),
+              title: o.title == null ? 'Stream' : String(o.title),
+              headers: o.headers == null ? {} : o.headers
+            }));
+          });
+        }
+      };
       return h;
     })(),
     hop: globalThis.__engineHop,
@@ -1670,24 +1833,133 @@ class EngineRuntime {
     _resolveHost(id: id, gen: gen, streams: const []);
   }
 
-  Future<void> _dispatchLiveFeed({
+  Future<void> _dispatchPluginList({
     required int id,
     required Map<String, dynamic> query,
     required int gen,
   }) async {
     if (gen != _fetchGeneration) return;
-    List<Map<String, dynamic>> rows = const [];
+    List<Map<String, dynamic>> plugins = const [];
     try {
-      // Nest flag: runLiveFeed must EngineJS-only under this bridge (issue 237).
-      // metaFeed sibling scrapes are outside this wrapper and may queue flutter_js.
-      rows = await withHubLiveFeedBridge(
-        () => aggregateLiveFeed(LiveFeedQuery.fromHostParams(query)),
-      );
+      plugins = await withHubHostBridge(() async {
+        final type = (query['type'] ?? query['types'] ?? 'live_sport')
+            .toString()
+            .trim();
+        final capability =
+            (query['capability'] ?? 'catalog').toString().trim().toLowerCase();
+        final listed = <Map<String, dynamic>>[];
+        if (type == 'iptv') {
+          final hubs = await EngineService.instance.listHubCatalogPlugins();
+          for (final p in hubs) {
+            if (!p.types.contains('iptv')) continue;
+            listed.add({
+              'id': p.id,
+              'name': p.name.trim().isEmpty ? p.id : p.name.trim(),
+              'pluginId': p.id,
+              'types': p.types,
+              'kind': p.kind,
+            });
+          }
+          return listed;
+        }
+        if (type == 'live_sport' || type == 'live' || type.isEmpty) {
+          final enabled =
+              await EngineService.instance.listEnabledLiveFeedPlugins();
+          for (final p in enabled) {
+            if (capability == 'catalog' &&
+                !p.supportsLiveFeed &&
+                !p.supportsLiveBroadcast) {
+              continue;
+            }
+            listed.add({
+              'id': EngineService.normalizeLiveSportPluginId(p.id),
+              'name': p.name.trim().isEmpty ? p.id : p.name.trim(),
+              'pluginId': p.id,
+            });
+          }
+        }
+        return listed;
+      });
     } catch (e, st) {
-      _forjaRuntimeLog('liveFeed.load failed: $e\n$st');
+      _forjaRuntimeLog('plugin.list failed: $e\n$st');
     }
     if (gen != _fetchGeneration) return;
-    _resolveLiveFeed(id: id, gen: gen, rows: rows);
+    _resolvePlugin(id: id, gen: gen, envelope: {'plugins': plugins});
+  }
+
+  Future<void> _dispatchPluginRun({
+    required int id,
+    required String pluginId,
+    required String action,
+    required Map<String, dynamic> params,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await withHubHostBridge(() async {
+        final pid = pluginId.trim();
+        final actRaw = action.trim();
+        final act = actRaw.toLowerCase();
+        if (pid.isEmpty || act.isEmpty) return <Map<String, dynamic>>[];
+        if (act == 'catalog') {
+          final plugin = await EngineService.instance.pluginById(pid);
+          if (plugin == null) {
+            final normalized = EngineService.normalizeLiveSportPluginId(pid);
+            final alt = await EngineService.instance.pluginById(normalized);
+            if (alt == null) return <Map<String, dynamic>>[];
+            return EngineService.instance.runLiveFeed(catalogPlugin: alt);
+          }
+          return EngineService.instance.runLiveFeed(catalogPlugin: plugin);
+        }
+        if (act == 'resolve') {
+          return EngineService.instance.runLivePlugin(
+            pluginId: pid,
+            action: 'resolve',
+            params: params,
+          );
+        }
+        // Kit hub actions (searchChannels, feed extras, …) via runCatalog.
+        final plugin = await EngineService.instance.pluginById(pid);
+        if (plugin != null && plugin.isKitPlugin) {
+          final env = await EngineService.instance.runCatalog(
+            pluginId: pid,
+            action: actRaw,
+            params: params,
+          );
+          return _rowsFromCatalogEnvelope(env);
+        }
+        return <Map<String, dynamic>>[];
+      });
+    } catch (e, st) {
+      _forjaRuntimeLog('plugin.run failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolvePlugin(id: id, gen: gen, envelope: {'rows': rows});
+  }
+
+  static List<Map<String, dynamic>> _rowsFromCatalogEnvelope(
+    Map<String, dynamic>? env,
+  ) {
+    if (env == null) return const [];
+    final data = env['data'];
+    if (data is Map) {
+      final sources = data['sources'];
+      if (sources is List) {
+        return [
+          for (final s in sources)
+            if (s is Map) Map<String, dynamic>.from(s),
+        ];
+      }
+      final items = data['items'];
+      if (items is List) {
+        return [
+          for (final s in items)
+            if (s is Map) Map<String, dynamic>.from(s),
+        ];
+      }
+    }
+    return [Map<String, dynamic>.from(env)];
   }
 
   Future<void> _dispatchStoreList({
@@ -1783,42 +2055,164 @@ class EngineRuntime {
     _resolveSimkl(id: id, gen: gen, envelope: {'rows': rows});
   }
 
-  Future<void> _dispatchIptvSearchChannels({
+  Future<void> _dispatchVaultGet({
     required int id,
-    required Map<String, dynamic> game,
-    required List<String> categoryIds,
-    required String? portalKey,
-    required bool force,
+    required String key,
     required int gen,
   }) async {
     if (gen != _fetchGeneration) return;
-    List<Map<String, dynamic>> sources = const [];
+    String? value;
     try {
-      sources = await IptvChannelSearch.searchAsMaps(
-        game: game,
-        categoryIds: categoryIds,
-        portalKey: portalKey,
-        force: force,
-      );
+      value = await EngineVault.get(key);
     } catch (e, st) {
-      _forjaRuntimeLog('iptv.searchChannels failed: $e\n$st');
+      _forjaRuntimeLog('vault.get failed: $e\n$st');
     }
     if (gen != _fetchGeneration) return;
-    _resolveIptvSearchChannels(id: id, gen: gen, sources: sources);
+    _resolveVault(
+      id: id,
+      gen: gen,
+      envelope: {'value': value},
+    );
   }
 
-  void _resolveLiveFeed({
+  Future<void> _dispatchVaultSet({
+    required int id,
+    required String key,
+    required String value,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    var ok = false;
+    try {
+      ok = await EngineVault.set(key, value);
+    } catch (e, st) {
+      _forjaRuntimeLog('vault.set failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveVault(id: id, gen: gen, envelope: {'ok': ok});
+  }
+
+  Future<void> _dispatchVaultRemove({
+    required int id,
+    required String key,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    var ok = false;
+    try {
+      ok = await EngineVault.remove(key);
+    } catch (e, st) {
+      _forjaRuntimeLog('vault.remove failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveVault(id: id, gen: gen, envelope: {'ok': ok});
+  }
+
+  Future<void> _dispatchHttpRequest({
+    required int id,
+    required String url,
+    required String method,
+    required Map<String, String> headers,
+    required String body,
+    required int timeoutMs,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    Map<String, dynamic> envelope;
+    try {
+      if (url.isEmpty) {
+        envelope = {
+          'ok': false,
+          'status': 0,
+          'statusText': 'empty url',
+          'url': '',
+          'body': '',
+          'headers': <String, dynamic>{},
+        };
+      } else {
+        headers.putIfAbsent(
+          'User-Agent',
+          () =>
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+        );
+        final req = http.Request(method, Uri.parse(url));
+        req.followRedirects = true;
+        req.maxRedirects = 8;
+        req.headers.addAll(headers);
+        if (body.isNotEmpty &&
+            method != 'GET' &&
+            method != 'HEAD' &&
+            method != 'OPTIONS') {
+          req.body = body;
+        }
+        final timeout = Duration(milliseconds: timeoutMs);
+        final streamed = await _http.send(req).timeout(timeout);
+        if (gen != _fetchGeneration) return;
+        final bytes = await streamed.stream.toBytes().timeout(timeout);
+        if (gen != _fetchGeneration) return;
+        var text = utf8.decode(bytes, allowMalformed: true);
+        const maxLen = 1024 * 1024;
+        if (text.length > maxLen) text = text.substring(0, maxLen);
+        final respHeaders = <String, dynamic>{};
+        streamed.headers.forEach((k, v) => respHeaders[k.toLowerCase()] = v);
+        envelope = {
+          'ok': streamed.statusCode >= 200 && streamed.statusCode < 300,
+          'status': streamed.statusCode,
+          'statusText': streamed.reasonPhrase ?? '',
+          'url': streamed.request?.url.toString() ?? url,
+          'body': text,
+          'headers': respHeaders,
+        };
+      }
+    } catch (e) {
+      if (gen != _fetchGeneration) return;
+      envelope = {
+        'ok': false,
+        'status': 0,
+        'statusText': e.toString(),
+        'url': url,
+        'body': '',
+        'headers': <String, dynamic>{},
+      };
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveHttp(id: id, gen: gen, envelope: envelope);
+  }
+
+  Future<void> _dispatchPlaybackOpen({
+    required int id,
+    required String url,
+    required String title,
+    required Map<String, String>? headers,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    var ok = false;
+    try {
+      ok = await HostPlaybackOpen.openUrl(
+        url: url,
+        title: title,
+        headers: headers,
+      );
+    } catch (e, st) {
+      _forjaRuntimeLog('playback.open failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolvePlayback(id: id, gen: gen, envelope: {'ok': ok});
+  }
+
+  void _resolvePlugin({
     required int id,
     required int gen,
-    required List<Map<String, dynamic>> rows,
+    required Map<String, dynamic> envelope,
   }) {
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
     if (rt == null) return;
     _evalOn(
       rt,
-      'try { globalThis.__engineLiveFeedResolve($id, ${jsonEncode({'rows': rows})}); } catch (e) {}',
-      sourceUrl: 'engine://feed/$id',
+      'try { globalThis.__enginePluginResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://plugin/$id',
     );
   }
 
@@ -1852,18 +2246,48 @@ class EngineRuntime {
     );
   }
 
-  void _resolveIptvSearchChannels({
+  void _resolveVault({
     required int id,
     required int gen,
-    required List<Map<String, dynamic>> sources,
+    required Map<String, dynamic> envelope,
   }) {
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
     if (rt == null) return;
     _evalOn(
       rt,
-      'try { globalThis.__engineIptvSearchResolve($id, ${jsonEncode({'sources': sources})}); } catch (e) {}',
-      sourceUrl: 'engine://iptvSearch/$id',
+      'try { globalThis.__engineVaultResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://vault/$id',
+    );
+  }
+
+  void _resolveHttp({
+    required int id,
+    required int gen,
+    required Map<String, dynamic> envelope,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineHttpResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://http/$id',
+    );
+  }
+
+  void _resolvePlayback({
+    required int id,
+    required int gen,
+    required Map<String, dynamic> envelope,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__enginePlaybackResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://playback/$id',
     );
   }
 
@@ -2304,11 +2728,11 @@ class EngineRuntime {
     var p = globalThis.__engineHostPending[id];
     if (p) { delete globalThis.__engineHostPending[id]; p(envelope); }
   };
-  globalThis.__engineLiveFeedPending = globalThis.__engineLiveFeedPending || {};
-  globalThis.__engineLiveFeedSeq = globalThis.__engineLiveFeedSeq || 0;
-  globalThis.__engineLiveFeedResolve = function(id, envelope){
-    var p = globalThis.__engineLiveFeedPending[id];
-    if (p) { delete globalThis.__engineLiveFeedPending[id]; p(envelope); }
+  globalThis.__enginePluginPending = globalThis.__enginePluginPending || {};
+  globalThis.__enginePluginSeq = globalThis.__enginePluginSeq || 0;
+  globalThis.__enginePluginResolve = function(id, envelope){
+    var p = globalThis.__enginePluginPending[id];
+    if (p) { delete globalThis.__enginePluginPending[id]; p(envelope); }
   };
   globalThis.__engineStorePending = globalThis.__engineStorePending || {};
   globalThis.__engineStoreSeq = globalThis.__engineStoreSeq || 0;
@@ -2322,11 +2746,23 @@ class EngineRuntime {
     var p = globalThis.__engineSimklPending[id];
     if (p) { delete globalThis.__engineSimklPending[id]; p(envelope); }
   };
-  globalThis.__engineIptvSearchPending = globalThis.__engineIptvSearchPending || {};
-  globalThis.__engineIptvSearchSeq = globalThis.__engineIptvSearchSeq || 0;
-  globalThis.__engineIptvSearchResolve = function(id, envelope){
-    var p = globalThis.__engineIptvSearchPending[id];
-    if (p) { delete globalThis.__engineIptvSearchPending[id]; p(envelope); }
+  globalThis.__engineVaultPending = globalThis.__engineVaultPending || {};
+  globalThis.__engineVaultSeq = globalThis.__engineVaultSeq || 0;
+  globalThis.__engineVaultResolve = function(id, envelope){
+    var p = globalThis.__engineVaultPending[id];
+    if (p) { delete globalThis.__engineVaultPending[id]; p(envelope); }
+  };
+  globalThis.__engineHttpPending = globalThis.__engineHttpPending || {};
+  globalThis.__engineHttpSeq = globalThis.__engineHttpSeq || 0;
+  globalThis.__engineHttpResolve = function(id, envelope){
+    var p = globalThis.__engineHttpPending[id];
+    if (p) { delete globalThis.__engineHttpPending[id]; p(envelope); }
+  };
+  globalThis.__enginePlaybackPending = globalThis.__enginePlaybackPending || {};
+  globalThis.__enginePlaybackSeq = globalThis.__enginePlaybackSeq || 0;
+  globalThis.__enginePlaybackResolve = function(id, envelope){
+    var p = globalThis.__enginePlaybackPending[id];
+    if (p) { delete globalThis.__enginePlaybackPending[id]; p(envelope); }
   };
   globalThis.__engineHost = function(hostId){
     return new Promise(function(resolve){

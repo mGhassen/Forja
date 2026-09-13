@@ -16,10 +16,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// How many Nuvio provider chips count as an active Filters badge.
@@ -2044,8 +2044,8 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       // TV: green focus chrome (chips otherwise paint no focus ring).
       accentHover: tv,
       ensureVisibleMode: tv
-          ? ShellTvEnsureVisibleMode.item
-          : ShellTvEnsureVisibleMode.row,
+          ? ShellPaintEnsureVisible.item
+          : ShellPaintEnsureVisible.row,
       radius: 16,
       padding: EdgeInsets.symmetric(
         horizontal: metrics.torrentPanelChipHorizontalPadding,

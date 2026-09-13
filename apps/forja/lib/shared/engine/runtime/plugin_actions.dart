@@ -629,6 +629,6 @@ class MetaRuntime {
         ok: true,
         action: action,
         data: entry.data,
-        cache: MetaCacheHints(etag: entry.etag),
+        cache: CatalogCacheHints(etag: entry.etag),
       );
 }

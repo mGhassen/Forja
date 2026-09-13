@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/player/details/kit_list_status_pin.dart';
-import 'package:forja/shared/host/layout/hero_pill_buttons.dart';
+import 'package:forja/shared/player/details/hero_pill_buttons.dart';
+import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 
 import 'package:forja/shared/engine/store/list_follow.dart';
-import 'package:forja/shared/host/lists_ui/list_providers.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
@@ -28,7 +28,7 @@ void _toastStatusWrite(bool ok, String to) {
     }
     return;
   }
-  final label = kitListStatusLabel(to, fallback: to);
+  final label = listStatusLabel(to, fallback: to);
   if (ok) {
     ForjaToast.success(label, duration: const Duration(seconds: 1));
   } else {
@@ -38,7 +38,7 @@ void _toastStatusWrite(bool ok, String to) {
 
 /// Wired bookmark status pin — Riverpod / Simkl / [ListFollow].
 ///
-/// Presentational chrome: [KitListStatusPin].
+/// Presentational chrome: [ListStatusPin].
 class KitListStatusButton extends StatelessWidget {
   const KitListStatusButton.movie({
     super.key,
@@ -187,7 +187,7 @@ class KitListStatusButton extends StatelessWidget {
   }
 }
 
-/// Listens to [BookmarkStore] and fills [KitListStatusPin] props.
+/// Listens to [BookmarkStore] and fills [ListStatusPin] props.
 class _WiredStatusPin extends StatelessWidget {
   const _WiredStatusPin({
     required this.uniqueId,
@@ -220,11 +220,14 @@ class _WiredStatusPin extends StatelessWidget {
               mediaType: mediaType,
             ) ??
             knownStatus;
-        return KitListStatusPin(
+        final policy = ShellScope.inputPolicyOf(context);
+        return ListStatusPin(
           currentStatus: status,
           iconSize: iconSize,
           iconColor: iconColor,
           excludeFromTvTraversal: excludeFromTvTraversal,
+          useFocusableChips: policy.useFocusableMoodChips,
+          scaleOnHover: policy.scaleOnHover,
           onSelect: (to) async {
             final ok = await onSetStatus(to);
             _toastStatusWrite(ok, to);
@@ -292,7 +295,7 @@ class _LegacyTogglePin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    // Same leanback-only hide as [KitListStatusPin] — keep pins on desktop hover.
+    // Same leanback-only hide as [ListStatusPin] — keep pins on desktop hover.
     if (excludeFromTvTraversal &&
         policy.useFocusableMoodChips &&
         !policy.scaleOnHover) {
@@ -371,9 +374,9 @@ class BookmarkHeroIcon extends StatelessWidget {
                 ? BookmarkStore().statusOf(uid)
                 : null);
         return Icon(
-          kitListStatusPinIcon(status),
+          listStatusPinIcon(status),
           size: 20,
-          color: kitListStatusPinColor(status),
+          color: listStatusPinColor(status),
         );
       },
     );
@@ -507,7 +510,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                           tmdbId: widget.tmdbId,
                           mediaType: widget.mediaType,
                         );
-                        return KitListStatusPopupPanel(
+                        return ListStatusPopupPanel(
                           currentStatus: status,
                           busy: _busy,
                           // Desktop hybrid has mood chips too — menu is mouse
@@ -585,11 +588,11 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
             onRightEdge: widget.onRightEdge,
             slots: [
               HeroPillIconSlot(
-                label: kitListStatusLabel(status),
+                label: listStatusLabel(status),
                 iconWidget: Icon(
-                  kitListStatusPinIcon(status),
+                  listStatusPinIcon(status),
                   size: 20,
-                  color: kitListStatusPinColor(status),
+                  color: listStatusPinColor(status),
                 ),
                 onTap: (!widget.enabled || _busy) ? null : _toggle,
                 suppressActive: suppressActive,

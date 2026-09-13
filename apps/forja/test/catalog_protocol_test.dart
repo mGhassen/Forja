@@ -10,7 +10,7 @@ import 'package:forja/shared/engine/runtime/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/pack_filters.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
-import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja_foundation/protocol/deeplink.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -416,7 +416,7 @@ void main() {
         key: key,
         pluginId: 'anilist',
         data: const {'items': []},
-        hints: const MetaCacheHints(
+        hints: const CatalogCacheHints(
           maxAge: Duration(seconds: 1),
           swr: Duration(minutes: 5),
         ),

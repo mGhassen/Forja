@@ -1,12 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/core/forja_shell_metrics.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+ShellPaintFocusableTap? _registeredFocusableTap;
+ShellPaintTvRowWrap? _registeredTvRow;
+Widget Function(Widget child)? _registeredHorizontalWrap;
+bool Function(ScrollNotification notification)? _registeredAbsorbHorizontal;
+bool Function(KeyEvent event)? _registeredIsActivateKey;
+
+/// Called once from host focus bootstrap so [ShellScope] can mount paint
+/// without an import cycle on `shell_focusable_tap.dart`.
+void registerShellPaintHostAdapters({
+  required ShellPaintFocusableTap focusableTap,
+  required ShellPaintTvRowWrap wrapTvRow,
+  required Widget Function(Widget child) wrapHorizontalScroller,
+  required bool Function(ScrollNotification notification) absorbHorizontalScroll,
+  required bool Function(KeyEvent event) isActivateKey,
+}) {
+  _registeredFocusableTap = focusableTap;
+  _registeredTvRow = wrapTvRow;
+  _registeredHorizontalWrap = wrapHorizontalScroller;
+  _registeredAbsorbHorizontal = absorbHorizontalScroll;
+  _registeredIsActivateKey = isActivateKey;
+}
 
 /// Maps foundation paint focus requests onto host TV/focus chrome.
 Widget shellPaintHostScope({
@@ -20,102 +37,11 @@ Widget shellPaintHostScope({
     usesTvDensity: metrics.usesTvDensity,
     focusStyled: (context, {required focused}) =>
         inputPolicy.focusStyled(context, focused: focused),
-    isActivateKey: shellTvIsActivateKey,
-    absorbHorizontalScroll: shellAbsorbHorizontalScroll,
-    wrapHorizontalScroller: (child) => DesktopSwipeBackIgnore(child: child),
-    wrapTvRow: ({
-      required String tabId,
-      required String rowId,
-      required int sortOrder,
-      required int itemCount,
-      VoidCallback? onFocusUp,
-      VoidCallback? onFocusDown,
-      required Widget child,
-    }) {
-      return TvKitRow(
-        tabId: tabId,
-        rowId: rowId,
-        sortOrder: sortOrder,
-        itemCount: itemCount,
-        onFocusUp: onFocusUp,
-        onFocusDown: onFocusDown,
-        child: child,
-      );
-    },
-    focusableTap: ({
-      required BuildContext context,
-      required Widget child,
-      VoidCallback? onTap,
-      double borderRadius = 12,
-      double scaleOnFocus = 1.04,
-      VoidCallback? onLeftEdge,
-      VoidCallback? onUpEdge,
-      VoidCallback? onDownEdge,
-      VoidCallback? onRightEdge,
-      ValueChanged<bool>? onFocusChange,
-      ValueChanged<bool>? onHoverChange,
-      FocusNode? focusNode,
-      bool autoFocus = false,
-      int? listIndex,
-      String? tvTabId,
-      String? tvRowId,
-      int? tvItemIndex,
-      ShellPaintTvZone? tvZone,
-      ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
-      bool showFocusBorder = false,
-      bool showFocusFill = true,
-      bool suppressInkHover = false,
-      FocusOnKeyEventCallback? onKeyEvent,
-    }) {
-      return shellFocusableTap(
-        context: context,
-        child: child,
-        onTap: onTap,
-        borderRadius: borderRadius,
-        scaleOnFocus: scaleOnFocus == 1.04
-            ? ShellTokens.focusActiveScale
-            : scaleOnFocus,
-        onLeftEdge: onLeftEdge,
-        onUpEdge: onUpEdge,
-        onDownEdge: onDownEdge,
-        onRightEdge: onRightEdge,
-        onFocusChange: onFocusChange,
-        onHoverChange: onHoverChange,
-        focusNode: focusNode,
-        autoFocus: autoFocus,
-        listIndex: listIndex,
-        tvTabId: tvTabId,
-        tvRowId: tvRowId,
-        tvItemIndex: tvItemIndex,
-        tvZone: _mapZone(tvZone),
-        ensureVisibleMode: _mapEnsure(ensureVisibleMode),
-        showFocusBorder: showFocusBorder,
-        showFocusFill: showFocusFill,
-        suppressInkHover: suppressInkHover,
-        onKeyEvent: onKeyEvent,
-      );
-    },
+    isActivateKey: _registeredIsActivateKey,
+    absorbHorizontalScroll: _registeredAbsorbHorizontal,
+    wrapHorizontalScroller: _registeredHorizontalWrap,
+    wrapTvRow: _registeredTvRow,
+    focusableTapBuilder: _registeredFocusableTap,
     child: child,
   );
-}
-
-ShellTvZone? _mapZone(ShellPaintTvZone? zone) {
-  if (zone == null) return null;
-  return switch (zone) {
-    ShellPaintTvZone.nav => ShellTvZone.nav,
-    ShellPaintTvZone.hero => ShellTvZone.hero,
-    ShellPaintTvZone.topBar => ShellTvZone.topBar,
-    ShellPaintTvZone.chipStrip => ShellTvZone.chipStrip,
-    ShellPaintTvZone.row => ShellTvZone.row,
-    ShellPaintTvZone.grid => ShellTvZone.grid,
-    ShellPaintTvZone.settings => ShellTvZone.settings,
-  };
-}
-
-ShellTvEnsureVisibleMode _mapEnsure(ShellPaintEnsureVisible mode) {
-  return switch (mode) {
-    ShellPaintEnsureVisible.off => ShellTvEnsureVisibleMode.off,
-    ShellPaintEnsureVisible.row => ShellTvEnsureVisibleMode.row,
-    ShellPaintEnsureVisible.item => ShellTvEnsureVisibleMode.item,
-  };
 }

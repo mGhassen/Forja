@@ -17,6 +17,8 @@ class LayoutScope extends InheritedWidget {
     required this.selections,
     required this.onSelect,
     required this.widgetSpecs,
+    this.tabId,
+    this.focusEdge,
     required super.child,
   });
 
@@ -24,6 +26,12 @@ class LayoutScope extends InheritedWidget {
   final void Function(String widgetId, String value, {required bool toggle})
   onSelect;
   final Map<String, Map<String, dynamic>> widgetSpecs;
+
+  /// Shell nav / TV tab id for focus graph rows.
+  final String? tabId;
+
+  /// Host resolves pack `focusUp` / `focusDown` / side edges to callbacks.
+  final VoidCallback? Function(String? rowId, {bool last})? focusEdge;
 
   static LayoutScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<LayoutScope>();
@@ -43,10 +51,18 @@ class LayoutScope extends InheritedWidget {
 
   Map<String, dynamic>? widgetSpecFor(String widgetId) => widgetSpecs[widgetId];
 
+  VoidCallback? resolveFocusEdge(String? rowId, {bool last = false}) {
+    final edge = focusEdge;
+    if (edge == null || rowId == null || rowId.isEmpty) return null;
+    return edge(rowId, last: last);
+  }
+
   @override
   bool updateShouldNotify(LayoutScope oldWidget) {
     return !mapEquals(selections, oldWidget.selections) ||
-        !mapEquals(widgetSpecs, oldWidget.widgetSpecs);
+        !mapEquals(widgetSpecs, oldWidget.widgetSpecs) ||
+        tabId != oldWidget.tabId ||
+        focusEdge != oldWidget.focusEdge;
   }
 }
 

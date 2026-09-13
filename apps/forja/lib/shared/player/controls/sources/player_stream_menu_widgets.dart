@@ -176,7 +176,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: () => _serverFocus.requestFocus(),
         onFocusChange: (focused) => setState(() => _reloadFocused = focused),
         child: body,
@@ -250,7 +250,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
               scaleOnFocus: 1.0,
               showFocusBorder: false,
               showFocusFill: false,
-              ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+              ensureVisibleMode: ShellPaintEnsureVisible.item,
               onRightEdge: widget.showReload && canReload
                   ? () => _reloadFocus.requestFocus()
                   : null,
@@ -536,7 +536,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
         _syncHoverProbe(focused || _hovered);

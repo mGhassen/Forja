@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/tv/tv_search_browse_overlay.dart';
+import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 

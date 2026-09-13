@@ -392,7 +392,7 @@ class _SettingsForjaAddonsSectionState
                         showFocusBorder: false,
                         tvTabId: 'settings',
                         tvZone: ShellTvZone.settings,
-                        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                        ensureVisibleMode: ShellPaintEnsureVisible.item,
                         onLeftEdge: () {
                           SettingsExpandHeaderFocus.maybeFocusHeaderOf(
                             context,
@@ -906,7 +906,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
             showFocusRail: true,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
-            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            ensureVisibleMode: ShellPaintEnsureVisible.item,
             child: rowBody,
           ),
         ),
@@ -1085,7 +1085,7 @@ class _AddonFeatureChip extends StatelessWidget {
       showFocusBorder: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: chip,
     );
   }

@@ -1,28 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/feeds/live_feed_bridge_nest.dart';
+import 'package:forja/shared/engine/runtime/hub_host_bridge_nest.dart';
 
 void main() {
-  test('withHubLiveFeedBridge nests and clears', () async {
-    expect(isUnderHubLiveFeedBridge, isFalse);
-    await withHubLiveFeedBridge(() async {
-      expect(isUnderHubLiveFeedBridge, isTrue);
-      await withHubLiveFeedBridge(() async {
-        expect(isUnderHubLiveFeedBridge, isTrue);
+  test('withHubHostBridge nests and clears', () async {
+    expect(isUnderHubHostBridge, isFalse);
+    await withHubHostBridge(() async {
+      expect(isUnderHubHostBridge, isTrue);
+      await withHubHostBridge(() async {
+        expect(isUnderHubHostBridge, isTrue);
       });
-      expect(isUnderHubLiveFeedBridge, isTrue);
+      expect(isUnderHubHostBridge, isTrue);
     });
-    expect(isUnderHubLiveFeedBridge, isFalse);
+    expect(isUnderHubHostBridge, isFalse);
   });
 
-  test('withHubLiveFeedBridge clears after throw', () async {
-    expect(isUnderHubLiveFeedBridge, isFalse);
+  test('withHubHostBridge clears after throw', () async {
+    expect(isUnderHubHostBridge, isFalse);
     await expectLater(
-      withHubLiveFeedBridge(() async {
-        expect(isUnderHubLiveFeedBridge, isTrue);
+      withHubHostBridge(() async {
+        expect(isUnderHubHostBridge, isTrue);
         throw StateError('boom');
       }),
       throwsStateError,
     );
-    expect(isUnderHubLiveFeedBridge, isFalse);
+    expect(isUnderHubHostBridge, isFalse);
   });
 }

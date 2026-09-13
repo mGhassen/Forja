@@ -130,7 +130,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [106-[fixed]-…](fixed/106-[fixed]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | fixed | Complete · 9/9 · Part1/2 ✅ · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
 | [107-[open]-…](107-[open]-iptv-multi-engine-avplayer-vlc.md) | IPTV multi-engine (AVPlayer Mac · VLC Windows · Exo Android) | — | open | **7 / 7** · **13 / 14** | — |
 | [108-[fixed]-…](fixed/108-[fixed]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | fixed | Complete · 7/7 · 20/20 | — |
-| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **5 / 7** · **8 / 8** law · **8 / 10** code · **2** 🔄 interim | — |
+| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **17 / 20** code · 3 🔄 | — |
 
 ## Related
 

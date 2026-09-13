@@ -75,7 +75,7 @@ import 'package:forja/shell/routing/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
-import 'package:forja/shared/shell/feedback/loading_overlay.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';

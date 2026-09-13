@@ -777,7 +777,7 @@ class _ActiveProfileStage extends StatelessWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: content,
     );
   }

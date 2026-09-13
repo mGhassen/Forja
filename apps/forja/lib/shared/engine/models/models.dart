@@ -93,8 +93,8 @@ class EnginePlugin {
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isKitPlugin => kind == 'catalog';
 
-  /// Hub feed that calls `ctx.host.feed.load` (Live Sports packs; `liveFeed` alias deprecated).
-  /// EngineJS has no feed bridge yet — [EngineService.runCatalog] must use
+  /// Hub feed that calls `ctx.host.plugin` (Live Sports packs).
+  /// EngineJS has no host bridges yet — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout/filters).
   bool get needsLiveFeedHost => isKitPlugin && types.contains('live_match');
 
@@ -102,6 +102,14 @@ class EnginePlugin {
   /// EngineJS has no host bridges — [EngineService.runCatalog] must use
   /// flutter_js for `feed`/`rail` on these plugins (not layout).
   bool get needsListsHost => isKitPlugin && types.contains('list');
+
+  /// Hub that calls `ctx.host.http` / `vault` / `playback` (portal packs).
+  /// EngineJS has no host bridges — flutter_js for feed + pack actions.
+  bool get needsPortalPackHost => isKitPlugin && types.contains('iptv');
+
+  /// Any kit hub that must skip EngineJS-first for host-bridge actions.
+  bool get needsHostBridge =>
+      needsLiveFeedHost || needsListsHost || needsPortalPackHost;
 
   /// Pack install must cache JS for this plugin.
   bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;

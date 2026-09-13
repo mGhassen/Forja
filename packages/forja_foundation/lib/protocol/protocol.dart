@@ -136,8 +136,8 @@ MetaErrorCode effectiveCatalogErrorCode(MetaError error) {
   return error.code;
 }
 
-class MetaCacheHints {
-  const MetaCacheHints({
+class CatalogCacheHints {
+  const CatalogCacheHints({
     this.etag,
     this.maxAge,
     this.swr,
@@ -147,11 +147,11 @@ class MetaCacheHints {
   final Duration? maxAge;
   final Duration? swr;
 
-  static const empty = MetaCacheHints();
+  static const empty = CatalogCacheHints();
 
   bool get isEmpty => etag == null && maxAge == null && swr == null;
 
-  factory MetaCacheHints.fromJson(Map<String, dynamic>? j) {
+  factory CatalogCacheHints.fromJson(Map<String, dynamic>? j) {
     if (j == null) return empty;
     Duration? secs(String a, String b) {
       final v = j[a] ?? j[b];
@@ -163,7 +163,7 @@ class MetaCacheHints {
     }
 
     final etag = (j['etag'] ?? '').toString().trim();
-    return MetaCacheHints(
+    return CatalogCacheHints(
       etag: etag.isEmpty ? null : etag,
       maxAge: secs('maxAge', 'maxAgeSec'),
       swr: secs('swr', 'staleWhileRevalidateSec') ??
@@ -186,7 +186,7 @@ class MetaEnvelope {
     this.action = '',
     this.data,
     this.error,
-    this.cache = MetaCacheHints.empty,
+    this.cache = CatalogCacheHints.empty,
     this.notModified = false,
   });
 
@@ -196,7 +196,7 @@ class MetaEnvelope {
   final String action;
   final Map<String, dynamic>? data;
   final MetaError? error;
-  final MetaCacheHints cache;
+  final CatalogCacheHints cache;
   final bool notModified;
 
   bool get isUnsupportedKit => kit > hostKitVersion;
@@ -252,7 +252,7 @@ class MetaEnvelope {
       error: err is Map
           ? MetaError.fromJson(Map<String, dynamic>.from(err))
           : null,
-      cache: MetaCacheHints.fromJson(
+      cache: CatalogCacheHints.fromJson(
         cacheRaw is Map ? Map<String, dynamic>.from(cacheRaw) : null,
       ),
       notModified: j['notModified'] == true,

@@ -2,9 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
-import 'package:forja/shared/engine/portals/iptv_catalog_shelf_cache.dart';
-import 'package:forja/shared/engine/portals/storage.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/host/watch/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
@@ -38,12 +35,8 @@ abstract final class SettingsDataCleaner {
     } catch (_) {}
   }
 
-  static Future<void> clearIptvPortalCaches() async {
-    await IptvAliveStore.clearAll();
-    await IptvChannelResultsStore.clearAll();
-    await IptvCatalogShelfCache.clearAll();
-    await IptvCatalogDiskStore.clearAll();
-  }
+  /// Pack-owned portal caches (RFC-109 Wave C) — host no longer keeps IPTV disk stores.
+  static Future<void> clearIptvPortalCaches() async {}
 
   static Future<void> clearImageAndWebViewCaches() async {
     imageCache.clear();

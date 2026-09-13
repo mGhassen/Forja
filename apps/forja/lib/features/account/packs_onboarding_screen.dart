@@ -13,7 +13,7 @@ import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart'
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/feedback/forja_fractal_glass_gradient.dart';
+import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 TextStyle _onboardText({
   required Color color,

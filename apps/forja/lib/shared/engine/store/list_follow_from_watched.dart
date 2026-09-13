@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
-import 'package:forja/shared/host/lists_ui/list_providers.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 

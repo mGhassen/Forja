@@ -11,7 +11,7 @@ import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).
@@ -379,7 +379,7 @@ class _MultiSelectChipsField extends StatelessWidget {
                   accentHover: true,
                   tvTabId: tv ? 'settings' : null,
                   tvRowId: tv ? 'pack-settings-${field.id}' : null,
-                  ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                  ensureVisibleMode: ShellPaintEnsureVisible.item,
                   onTap: () {
                     final next = Set<String>.from(selected);
                     if (!next.add(options[i].id)) next.remove(options[i].id);
@@ -410,7 +410,7 @@ class _MultiSelectChipsField extends StatelessWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(

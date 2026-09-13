@@ -1,6 +1,6 @@
+import 'package:forja/shared/host/search/host_search_wire.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
-import 'package:forja/shared/host/layout/kit/kit_search_filters.dart';
 import 'package:forja/shared/engine/models/models.dart';
 
 void main() {

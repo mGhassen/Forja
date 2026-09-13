@@ -265,7 +265,7 @@ class _SettingsEnginePackPendingTileState
             showFocusRail: true,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
-            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            ensureVisibleMode: ShellPaintEnsureVisible.item,
             onRightEdge: showSideActions
                 ? () {
                     if (widget.onAction != null &&
@@ -324,7 +324,7 @@ class _PendingActionIcon extends StatelessWidget {
         showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeftEdge,
         child: SizedBox(width: 40, height: 40, child: Center(child: child)),
       );

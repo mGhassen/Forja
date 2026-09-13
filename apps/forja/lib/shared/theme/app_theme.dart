@@ -11,6 +11,11 @@ import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
+    show ShellPaintEnsureVisible;
+
 /// Fixed Forja theme descriptor (single preset, not user-selectable).
 class AppThemePreset {
   final String id;
@@ -162,7 +167,7 @@ class FocusableControl extends StatefulWidget {
   final ValueChanged<bool>? onHoverChange;
   final FocusNode? focusNode;
   final ShellTvFocusMeta? tvMeta;
-  final ShellTvEnsureVisibleMode ensureVisibleMode;
+  final ShellPaintEnsureVisible ensureVisibleMode;
   final bool showFocusBorder;
 
   /// Flat focus (scale ≤ 1): when false, only the thin border - no gray fill.
@@ -210,7 +215,7 @@ class FocusableControl extends StatefulWidget {
     this.onHoverChange,
     this.focusNode,
     this.tvMeta,
-    this.ensureVisibleMode = ShellTvEnsureVisibleMode.row,
+    this.ensureVisibleMode = ShellPaintEnsureVisible.row,
   });
 
   @override
@@ -364,11 +369,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
   void _ensureVisible(BuildContext context, ShellInputPolicy policy) {
     if (!policy.ensureVisibleOnFocus) return;
-    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
+    if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
 
     // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
     // control clipped / hidden until the tween ends, and stacks into stutter.
-    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.item) {
+    if (widget.ensureVisibleMode == ShellPaintEnsureVisible.item) {
       // Settings / vertical menus: first control snaps to content top so
       // section labels above it stay visible (keepVisible alone pins flush).
       shellTvEnsureVisibleItem(context);

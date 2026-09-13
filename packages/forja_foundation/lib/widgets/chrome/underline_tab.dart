@@ -61,8 +61,6 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
   double get _visualTarget {
     if (widget.isActive) return _selectedT;
     if (_suppressHighlightUntilLeave) return 0;
-    final useTv = ShellPaintScope.useTvFocusOf(context);
-    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
     if (_hovered || ShellPaintScope.focusStyledOf(context, focused: _focused)) {
       return _hoverT;
     }
@@ -101,16 +99,15 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                     Colors.white,
                     (t - _hoverT) / (_selectedT - _hoverT),
                   )!;
-        final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
-        final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
-        final hoverW = shellScaled(context, 28).clamp(14.0, 28.0);
+        final tabHeight = 34.0;
+        final tabFont = 17.0;
+        final hoverW = 28.0;
         final underline = t <= 0
             ? 0.0
             : t < _hoverT
                 ? hoverW * (t / _hoverT)
                 : hoverW +
-                    shellScaled(context, 4).clamp(2.0, 4.0) *
-                        ((t - _hoverT) / (_selectedT - _hoverT));
+                    4.0 * ((t - _hoverT) / (_selectedT - _hoverT));
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,17 +131,9 @@ class _ForjaUnderlineTabState extends State<ForjaUnderlineTab> {
                 ),
               ),
             ),
-            SizedBox(
-              height: shellScaled(
-                context,
-                ShellTokens.shellCategoryUnderlineGap,
-              ).clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
-            ),
+            SizedBox(height: ShellTokens.shellCategoryUnderlineGap),
             Container(
-              height: shellScaled(
-                context,
-                ShellTokens.shellNavUnderlineHeight,
-              ).clamp(1.0, ShellTokens.shellNavUnderlineHeight),
+              height: ShellTokens.shellNavUnderlineHeight,
               width: underline,
               decoration: BoxDecoration(
                 color: underline > 0 ? color : Colors.transparent,

@@ -6,16 +6,15 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/engine/runtime/open_catalog_search.dart';
 import 'package:forja/shared/host/layout/pack_layout_host.dart';
-import 'package:forja/shared/host/layout/kit/kit_shell.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/frame/shell_empty_features_screen.dart';
-import 'package:forja/shared/host/layout/chrome/kit_top_bar_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/platform/shell_find_shortcut.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
@@ -124,8 +123,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       }
       final key = _keyForTab(id);
       final child = builder();
-      // PackLayoutHost extends KitShell — keyed mount for ShellTabRefresh.
-      if (child is KitShell) {
+      // PackLayoutHost keyed mount — keyed mount for ShellTabRefresh.
+      if (child is PackLayoutHost) {
         return _tabWithKey(key, child);
       }
       if (key != null && id == 'iptv') {
@@ -151,7 +150,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         hostLayout: child.hostLayout,
       );
     }
-    if (child is KitShell) {
+    if (child is PackLayoutHost) {
       return PackLayoutHost(
         key: key,
         pluginId: child.pluginId,
@@ -368,7 +367,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         // Only remount / hard-refresh hubs when nav shape changed. Lean sync and
         // unrelated pack notifies used to mark every hub stale → soft return
         // wiped rails while the hero kept slides. Script/install wipes go through
-        // [PluginRegistry.hubFeedEpoch] → KitShell.
+        // [PluginRegistry.hubFeedEpoch] → PackLayoutHost.
         if (changed) {
           _invalidateHubTabsAfterPackChange(remountBuilders: true);
         }
@@ -394,7 +393,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _tabCache.remove(id);
       _mountedTabIds.remove(id);
       _tabLru.remove(id);
-      // Drop GlobalKey so a new KitShell State is created (same key would
+      // Drop GlobalKey so a new PackLayoutHost State is created (same key would
       // reparent and keep the old memoized rails).
       _tabKeys.remove(id);
     }

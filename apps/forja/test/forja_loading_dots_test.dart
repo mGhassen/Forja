@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/feedback/forja_loading_dots.dart';
+import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 
 void main() {
   testWidgets('ForjaLoadingDots paints cycling dots', (tester) async {

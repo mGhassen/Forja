@@ -14,7 +14,6 @@ import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
 import 'package:forja/features/settings/addons/settings_addons_host.dart';
 import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
-import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_forja_addons_play_toggles.dart';
 import 'package:forja/features/settings/sections/settings_forja_packs_section.dart';
@@ -326,7 +325,6 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           ],
         ),
         if (widget.visibility.showIptvSettings)
-          const SettingsIptvPortalsSection(),
         SettingsCacheDataSection(
           showIptvPortalCache: widget.visibility.showIptvSettings,
         ),
@@ -594,7 +592,7 @@ class _SettingsNavigationPageBodyState
       tvZone: ShellTvZone.row,
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
     );
   }
@@ -619,7 +617,7 @@ class _SettingsNavigationPageBodyState
       tvZone: ShellTvZone.row,
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: SizedBox(
         width: 28,
         height: 36,
@@ -801,7 +799,7 @@ class _SettingsNavigationPageBodyState
                               tvRowId: rowId,
                               tvItemIndex: 0,
                               ensureVisibleMode:
-                                  ShellTvEnsureVisibleMode.item,
+                                  ShellPaintEnsureVisible.item,
                               child: Padding(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 10),

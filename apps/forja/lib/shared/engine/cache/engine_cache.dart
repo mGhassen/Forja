@@ -7,8 +7,8 @@ import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Generic namespaced cache + catalog response entries (RFC-109).
 ///
-/// Replaces former `MetaCache`. Catalog helpers use a separate entry map with
-/// SWR semantics; [get]/[set]/[invalidate] are opaque namespace/key slots.
+/// Catalog helpers use a separate entry map with SWR semantics;
+/// [get]/[set]/[invalidate] are opaque namespace/key slots.
 class EngineCache {
   EngineCache._();
   static final EngineCache instance = EngineCache._();
@@ -66,7 +66,7 @@ class EngineCache {
     _catalog.clear();
   }
 
-  // --- Catalog response cache (was MetaCache) ---
+  // --- Catalog response cache ---
 
   /// `pluginId|packHash|action|paramsHash|authSubject`
   static String keyFor({
@@ -105,7 +105,7 @@ class EngineCache {
     required String key,
     required String pluginId,
     required Map<String, dynamic> data,
-    MetaCacheHints hints = MetaCacheHints.empty,
+    CatalogCacheHints hints = CatalogCacheHints.empty,
   }) {
     _catalog[key] = EngineCacheEntry(
       pluginId: pluginId,

@@ -11,7 +11,7 @@ import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/core/forja_shell_profile.dart';
 import 'package:forja/shared/shell/core/forja_shell_platform.dart';
-import 'package:forja/shared/shell/feedback/forja_frosted_panel.dart';
+import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 
@@ -937,7 +937,7 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange:
           mouseHover ? (h) => setState(() => _hovered = h) : null,
@@ -1138,7 +1138,7 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange:
             mouseHover ? (h) => setState(() => _hovered = h) : null,
@@ -1563,7 +1563,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
         // Tile paints brand-green focus itself — skip gray/white overlay.
         showFocusBorder: false,
         showFocusFill: false,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         onFocusChange: (focused) => setState(() => _setInteractive(focused: focused)),
         onHoverChange:
             mouseHover ? (h) => setState(() => _setInteractive(hovered: h)) : null,

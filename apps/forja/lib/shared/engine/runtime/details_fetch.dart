@@ -1,4 +1,4 @@
-import 'package:forja/shared/host/layout/kit/kit_details_meta.dart';
+import 'package:forja/shared/engine/runtime/details_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 import 'package:forja/shared/engine/runtime/plugin_actions.dart';

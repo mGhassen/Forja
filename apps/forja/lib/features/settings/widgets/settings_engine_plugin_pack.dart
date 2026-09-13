@@ -11,7 +11,7 @@ import 'package:forja/features/settings/widgets/settings_plugin_install_progress
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).

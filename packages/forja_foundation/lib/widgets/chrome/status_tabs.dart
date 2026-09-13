@@ -166,8 +166,6 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
 
   @override
   Widget build(BuildContext context) {
-    final useTv = ShellPaintScope.useTvFocusOf(context);
-    final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
     final emphasize =
         widget.selected || ShellPaintScope.focusStyledOf(context, focused: _focused);
     final label = Text(

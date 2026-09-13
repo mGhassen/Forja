@@ -155,66 +155,69 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
     final scrollCacheExtent =
         // Enough for ±1 card off-screen; 2000 kept too many live FocusableControls.
         tvFocus ? ScrollCacheExtent.pixels(720) : null;
+    final scope = ShellPaintScope.maybeOf(context);
+    final absorb = scope?.absorbHorizontalScroll ??
+        ((ScrollNotification n) => n.metrics.axis == Axis.horizontal);
+    final wrap = scope?.wrapHorizontalScroller;
 
-    return DesktopSwipeBackIgnore(
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovering = true),
-        onExit: (_) => setState(() => _hovering = false),
-        child: Listener(
-          onPointerSignal: _onPointerSignal,
-          child: SizedBox(
-            height: widget.height,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    _updateEdges();
-                    return shellAbsorbHorizontalScroll(notification);
-                  },
-                  child: widget.separatorBuilder != null
-                      ? ListView.separated(
-                          controller: _ctrl,
-                          clipBehavior: widget.clipBehavior,
-                          scrollDirection: Axis.horizontal,
-                          physics: physics,
-                          padding: widget.padding,
-                          itemCount: widget.itemCount,
-                          scrollCacheExtent: scrollCacheExtent,
-                          separatorBuilder: widget.separatorBuilder!,
-                          itemBuilder: widget.itemBuilder,
-                        )
-                      : ListView.builder(
-                          controller: _ctrl,
-                          clipBehavior: widget.clipBehavior,
-                          scrollDirection: Axis.horizontal,
-                          physics: physics,
-                          padding: widget.padding,
-                          itemCount: widget.itemCount,
-                          scrollCacheExtent: scrollCacheExtent,
-                          itemBuilder: widget.itemBuilder,
-                        ),
+    Widget body = MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Listener(
+        onPointerSignal: _onPointerSignal,
+        child: SizedBox(
+          height: widget.height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  _updateEdges();
+                  return absorb(notification);
+                },
+                child: widget.separatorBuilder != null
+                    ? ListView.separated(
+                        controller: _ctrl,
+                        clipBehavior: widget.clipBehavior,
+                        scrollDirection: Axis.horizontal,
+                        physics: physics,
+                        padding: widget.padding,
+                        itemCount: widget.itemCount,
+                        scrollCacheExtent: scrollCacheExtent,
+                        separatorBuilder: widget.separatorBuilder!,
+                        itemBuilder: widget.itemBuilder,
+                      )
+                    : ListView.builder(
+                        controller: _ctrl,
+                        clipBehavior: widget.clipBehavior,
+                        scrollDirection: Axis.horizontal,
+                        physics: physics,
+                        padding: widget.padding,
+                        itemCount: widget.itemCount,
+                        scrollCacheExtent: scrollCacheExtent,
+                        itemBuilder: widget.itemBuilder,
+                      ),
+              ),
+              if (showArrows) ...[
+                _ArrowButton(
+                  visible: _hovering && _canLeft,
+                  atStart: true,
+                  offset: widget.arrowOffset,
+                  onTap: () => _scrollBy(-_pageStep(context)),
                 ),
-                if (showArrows) ...[
-                  _ArrowButton(
-                    visible: _hovering && _canLeft,
-                    atStart: true,
-                    offset: widget.arrowOffset,
-                    onTap: () => _scrollBy(-_pageStep(context)),
-                  ),
-                  _ArrowButton(
-                    visible: _hovering && _canRight,
-                    atStart: false,
-                    offset: widget.arrowOffset,
-                    onTap: () => _scrollBy(_pageStep(context)),
-                  ),
-                ],
+                _ArrowButton(
+                  visible: _hovering && _canRight,
+                  atStart: false,
+                  offset: widget.arrowOffset,
+                  onTap: () => _scrollBy(_pageStep(context)),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
+    return wrap == null ? body : wrap(body);
   }
 
   double _pageStep(BuildContext context) {
@@ -251,11 +254,9 @@ class _ArrowButton extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           opacity: visible ? 1 : 0,
           child: Center(
-            child: ForjaInteractive(
+            child: _HoverScaleButton(
               onTap: onTap,
-              hoverScale: 1.06,
-              pressScale: 0.95,
-              builder: (hover, pressed) {
+              builder: (hover) {
                 return Container(
                   width: 40,
                   height: 40,
@@ -294,6 +295,37 @@ class _ArrowButton extends StatelessWidget {
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverScaleButton extends StatefulWidget {
+  const _HoverScaleButton({required this.onTap, required this.builder});
+
+  final VoidCallback onTap;
+  final Widget Function(bool hover) builder;
+
+  @override
+  State<_HoverScaleButton> createState() => _HoverScaleButtonState();
+}
+
+class _HoverScaleButtonState extends State<_HoverScaleButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _hover ? 1.06 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          child: widget.builder(_hover),
         ),
       ),
     );

@@ -282,7 +282,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
           showFocusBorder: true,
           tvTabId: 'settings',
           tvZone: ShellTvZone.settings,
-          ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+          ensureVisibleMode: ShellPaintEnsureVisible.item,
           onLeftEdge: widget.onLeftEdge,
           onFocusChange: (f) {
             if (_focused == f) return;

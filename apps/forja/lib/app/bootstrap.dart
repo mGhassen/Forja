@@ -10,8 +10,6 @@ import 'package:logging/logging.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:forja/shared/host/portals_ui/open/iptv_kit_hooks_register.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_portals_chrome_hooks.dart';
 import 'package:forja/features/settings/settings_kit_hooks_register.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
@@ -26,7 +24,8 @@ import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
-import 'package:forja/shared/engine/runtime/live_surface_open.dart';
+import 'package:forja/shared/host/layout/live_surface_open.dart';
+import 'package:forja/shared/engine/runtime/host_playback_open.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -60,6 +59,7 @@ import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/core/forja_shell_keyboard_focus.dart';
+import 'package:forja/shared/shell/core/shell_paint_host_install.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 bool _appShutdownStarted = false;
@@ -133,6 +133,7 @@ Future<void> _runDesktopQuit() async {
 
 Future<void> bootstrapForja({String title = 'Forja'}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  installShellPaintHostAdapters();
   // Before any CachedNetworkImage / TMDB poster fetch (Android ≤7.0 LE trust).
   installLegacyAndroidTlsTrust();
   initTmdbUserRegion();
@@ -140,8 +141,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   BookmarkStore().syncAddHandler = syncBookmarkAddToTrackers;
   BookmarkStore().syncRemoveHandler = syncBookmarkRemoveFromTrackers;
   LiveSurfaceOpen.ensureRegistered();
-  IptvPortalsChromeHooks.ensureRegistered();
-  IptvKitHooksRegister.ensureRegistered();
+  HostPlaybackOpen.ensureRegistered();
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');

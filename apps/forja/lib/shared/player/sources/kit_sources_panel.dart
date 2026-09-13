@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/host/layout/hero_pill_buttons.dart';
+import 'package:forja/shared/player/details/hero_pill_buttons.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';

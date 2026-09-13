@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shared/shell/core/forja_shell_profile.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+
+export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
+    show ShellPaintEnsureVisible;
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
 bool shellAbsorbHorizontalScroll(ScrollNotification notification) =>
@@ -135,7 +139,7 @@ Widget shellFocusableTap({
   String? tvRowId,
   int? tvItemIndex,
   ShellTvZone? tvZone,
-  ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
+  ShellPaintEnsureVisible ensureVisibleMode = ShellPaintEnsureVisible.row,
   bool showFocusBorder = false,
   bool showFocusFill = true,
   bool showFocusRail = false,

@@ -34,7 +34,7 @@ Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [extern
 | `MetaCache` / catalog-meta-specific cache | Use generic `engine/cache` with namespace/key/ttl |
 | Any `kit_*` / top bar / event card / match details / list pin in `shared/shell` | Widgets live in foundation |
 | Catalog layout runner in host shell | Foundation owns layout composition; root only mounts |
-| `ctx.host.liveFeed` / `myList` / product `iptv` namespaces | Use `cache`, `store`, `portals`, `plugin.run`, `playback.open` |
+| `ctx.host.liveFeed` / `myList` / product `iptv` / `portals` namespaces | Use `cache`, `store`, `http`, `vault`, `plugin.run`, `playback.open` |
 | Product boots (`KitLiveBoot`, IPTV core nav builder) | Pack `nav` only |
 
 ```
@@ -42,17 +42,20 @@ Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [extern
 ❌ shared/shell/kit_top_bar.dart
 ❌ coreNavDestinations['iptv'] = IptvPtScreen
 ❌ ctx.host.liveFeed.load
+❌ ctx.host.portals.searchChannels
 ✅ shared/engine/cache/ + ctx.host.cache.*
+✅ shared/engine/vault/ + ctx.host.vault.*
+✅ ctx.host.http.request / playback.open
 ✅ forja_foundation widgets + PackLayoutHost mount
 ✅ pack nav → foundation layout runner
-✅ ctx.host.portals.searchChannels (generic portal engine)
+✅ live_sports → plugin.run(iptv hub, searchChannels)
 ```
 
 ## Allowed in `apps/forja`
 
 - App frame: `shell/nav`, `shell/frame`, window, TV focus, account, settings shell
 - Generic plugin runtime: install packs, `runPlugin(pluginId, action, params)`
-- Generic cache / store / portals / unlock / playback open
+- Generic cache / store / http / vault / unlock / playback open
 - One mount: run foundation layout for `pluginId` — zero product branches
 
 ## Packs tree (source of truth)

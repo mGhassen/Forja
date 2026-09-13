@@ -4,7 +4,7 @@ export 'cache/engine_cache.dart';
 export 'runtime/catalog_extract_context.dart';
 export 'unlock/goat_unlock.dart';
 export 'unlock/pack_unlock_files.dart';
-export 'feeds/live_sport_capabilities.dart';
+export 'packs/live_sport_capabilities.dart';
 export 'models/categories.dart';
 export 'models/ids.dart';
 export 'models/lean_apply_result.dart';
@@ -25,7 +25,7 @@ export 'packs/registry/plugin_script_disk_store.dart';
 export 'runtime/runtime.dart';
 export 'runtime/service.dart';
 export 'store/engine_store.dart';
-export 'portals/portals.dart';
+export 'vault/engine_vault.dart';
 
 /// Catalog hub wire types — `runCatalog` returns these envelopes.
 export 'package:forja_foundation/protocol/protocol.dart';

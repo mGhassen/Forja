@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/host/lists_ui/list_providers.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';

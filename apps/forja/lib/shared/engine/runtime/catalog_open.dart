@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/player/details/kit_details_screen.dart';
+import 'package:forja/shared/player/details/pack_details_host.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/meta_surface_open.dart';
@@ -61,14 +61,6 @@ Future<void> openMetaItem(
     if (surfaceHandler != null) {
       surfaceHandler(context, item);
       return;
-    }
-    // Opaque type token some packs use without `open.surface`.
-    if (item.type == 'live_match') {
-      final live = MetaSurfaceOpen.resolve('live');
-      if (live != null) {
-        live(context, item);
-        return;
-      }
     }
     await openKitDetails(
       context,

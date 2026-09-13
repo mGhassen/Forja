@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/player/details/kit_details_screen.dart';
+import 'package:forja/shared/player/details/pack_details_host.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/runtime/open_catalog_search.dart';
@@ -14,7 +14,7 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
-import 'package:forja/shared/shell/feedback/loading_overlay.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shared/shell/core/forja_shell_platform.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/core/forja_shell_profile.dart';

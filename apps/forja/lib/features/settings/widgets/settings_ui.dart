@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
@@ -213,7 +213,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       tvItemIndex: widget.tvItemIndex ?? widget.listIndex,
       tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
       // Item mode snaps the first tile to list top (header stays visible).
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onRightEdge: widget.onRightEdge,
       focusNode: widget.focusNode,
       onHoverChange: (hovered) {
@@ -462,7 +462,7 @@ class _SettingsTvExpandableSideRowState
             showFocusBorder: true,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
-            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            ensureVisibleMode: ShellPaintEnsureVisible.item,
             onLeftEdge: () {
               _headerFocus.requestFocus();
             },
@@ -498,7 +498,7 @@ class _SettingsTvExpandableSideRowState
                 showFocusRail: true,
                 tvTabId: 'settings',
                 tvZone: ShellTvZone.settings,
-                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                ensureVisibleMode: ShellPaintEnsureVisible.item,
                 onRightEdge: detailsBtn != null
                     ? () {
                         _detailsFocus.requestFocus();
@@ -1121,7 +1121,7 @@ class SettingsToggleRow extends StatelessWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: content,
     );
   }
@@ -1282,7 +1282,7 @@ class SettingsSelectRow extends StatelessWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: content,
     );
   }
@@ -1427,7 +1427,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
         borderRadius: SettingsTokens.categoryTileRadius,
         scaleOnFocus: 1.0,
         showFocusRail: true,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         child: row,
       );
     }
@@ -1563,7 +1563,7 @@ class SettingsActionRow extends StatelessWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       child: content,
     );
   }
@@ -1798,7 +1798,7 @@ class SettingsTextAction extends StatelessWidget {
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
       tvZone: tvZone ?? ShellTvZone.settings,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
       onUpEdge: onUpEdge,
@@ -2413,7 +2413,7 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
         focusNode: focus,
         borderRadius: 10,
         scaleOnFocus: ShellTokens.focusActiveScale,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        ensureVisibleMode: ShellPaintEnsureVisible.item,
         onLeftEdge: onLeft,
         onRightEdge: onRight,
         child: Padding(

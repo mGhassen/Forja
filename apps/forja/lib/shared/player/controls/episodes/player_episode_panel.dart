@@ -6,21 +6,23 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
-import 'package:forja/shared/player/details/episode_air_date.dart';
-import 'package:forja/shared/player/details/episode_range_bar.dart';
+import 'package:forja_foundation/widgets/details/episode_air_date.dart';
+import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/player/details/watch_progress_bar.dart';
+import 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/chrome/forja_shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
+    show ShellPaintEnsureVisible;
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
 
@@ -527,6 +529,8 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
               onSelected: _selectChunk,
+              useFocusableChips:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
             ),
           ),
         ],
@@ -1117,6 +1121,8 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
               ranges: _episodeRanges,
               selectedIndex: _episodeChunk,
               onSelected: _selectChunk,
+              useFocusableChips:
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
             ),
           ),
         ],
@@ -1402,7 +1408,7 @@ class _EpisodeRow extends StatelessWidget {
       borderRadius: 10,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       listIndex: tvItemIndex,
       tvTabId: _kEpisodeTvTabId,
       tvRowId: _kEpisodeTvListRowId,

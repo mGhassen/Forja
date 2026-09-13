@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/runtime/host_list_registry.dart';
-import 'package:forja/shared/engine/runtime/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
+import 'package:forja/shared/host/layout/live_surface_open.dart';
+import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,9 +67,9 @@ void main() {
   });
 
   test('live_schedule registers streams panel host', () {
-    final panel = HostListRegistry.resolvePanel(LiveSurfaceOpen.listSourceId);
+    final panel = HostListRegistry.resolvePanel('live_schedule');
     expect(panel, isNotNull);
-    expect(panel!.listSourceId, LiveSurfaceOpen.listSourceId);
+    expect(panel!.listSourceId, KitResolvePanelHost.instance.listSourceId);
   });
 
   test('hub pack contributes live_sports kit tab', () {

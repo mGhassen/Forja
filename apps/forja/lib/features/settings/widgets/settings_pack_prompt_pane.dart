@@ -719,7 +719,7 @@ class _PackPromptRow extends StatelessWidget {
       tvZone: listRowId != null ? ShellTvZone.row : ShellTvZone.settings,
       tvRowId: listRowId,
       tvItemIndex: listIndex,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
       onLeftEdge: onLeftEdge,
       child: row,
     );

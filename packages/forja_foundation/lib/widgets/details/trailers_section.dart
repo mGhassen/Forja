@@ -1,0 +1,217 @@
+import 'package:flutter/material.dart';
+import 'package:forja_foundation/components/focusable_tap.dart';
+import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+/// One trailer card — absolute thumbnail URL + title (props only).
+class DetailsTrailerItem {
+  const DetailsTrailerItem({
+    required this.key,
+    required this.name,
+    required this.thumbnailUrl,
+    this.official = false,
+  });
+
+  final String key;
+  final String name;
+  final String thumbnailUrl;
+  final bool official;
+}
+
+/// Horizontal trailers row — host wires play via [onTap].
+class DetailsTrailersSection extends StatelessWidget {
+  const DetailsTrailersSection({
+    super.key,
+    required this.trailers,
+    required this.onTap,
+    this.title = 'Trailers',
+    this.outdentHorizontal = 0,
+    this.itemBuilder,
+  });
+
+  final List<DetailsTrailerItem> trailers;
+  final void Function(int index) onTap;
+  final String title;
+  final double outdentHorizontal;
+  final Widget Function(
+    BuildContext context, {
+    required int index,
+    required Widget child,
+  })? itemBuilder;
+
+  static const double cardWidth = 200;
+  static const TextStyle titleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.3,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (trailers.isEmpty) return const SizedBox.shrink();
+
+    final outdent = outdentHorizontal;
+    final useHomeInsets = outdent > 0;
+    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    const thumbHeight = cardWidth * 9 / 16;
+    const textBlock = 8 + 12 * 1.25 * 2;
+    final trailerRowHeight =
+        thumbHeight * ShellTokens.focusActiveScale + textBlock + 4;
+
+    final row = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (useHomeInsets)
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              homePad,
+              0,
+              homePad,
+              DetailsTokens.sectionTitleGap,
+            ),
+            child: Text(title, style: titleStyle),
+          )
+        else ...[
+          Text(title, style: titleStyle),
+          const SizedBox(height: DetailsTokens.sectionTitleGap),
+        ],
+        FocusTraversalGroup(
+          child: SizedBox(
+            height: trailerRowHeight,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: useHomeInsets
+                  ? EdgeInsets.only(left: homePad)
+                  : EdgeInsets.zero,
+              itemCount: trailers.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final trailer = trailers[index];
+                final thumb = ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: cardWidth,
+                    height: thumbHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ForjaNetworkImage(
+                          url: trailer.thumbnailUrl,
+                          fit: BoxFit.cover,
+                          error: ColoredBox(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            child: const Icon(
+                              Icons.movie_outlined,
+                              color: Colors.white24,
+                            ),
+                          ),
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.45),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.black,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                        if (trailer.official)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Official',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+                final tappable = itemBuilder != null
+                    ? itemBuilder!(
+                        context,
+                        index: index,
+                        child: thumb,
+                      )
+                    : FocusableTap(
+                        onTap: () => onTap(index),
+                        borderRadius: BorderRadius.circular(10),
+                        child: thumb,
+                      );
+                return SizedBox(
+                  width: cardWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      tappable,
+                      const SizedBox(height: 8),
+                      Text(
+                        trailer.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (outdent <= 0) return row;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          width: constraints.maxWidth + outdent * 2,
+          child: Transform.translate(
+            offset: Offset(-outdent, 0),
+            child: row,
+          ),
+        );
+      },
+    );
+  }
+}

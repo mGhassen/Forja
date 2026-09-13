@@ -3,7 +3,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/plugin_nav.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
-import 'package:forja/shared/host/lists_ui/list_open_flow.dart';
+import 'package:forja/shared/engine/store/list_open_flow.dart';
 
 /// Prefer [metaOpen] / [open]; accept persisted [catalogOpen] from upsertCatalog.
 Object? legacyListStoredOpenRaw(Map<String, dynamic> item) =>

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:forja/shared/host/layout/chrome/vertical_filters.dart';
+import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/runtime/service.dart';

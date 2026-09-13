@@ -30,7 +30,7 @@ import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
-import 'package:forja/shared/shell/feedback/shell_card_play_overlay.dart';
+import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 part 'trailer_player_playback.dart';
 part 'trailer_player_menus.dart';

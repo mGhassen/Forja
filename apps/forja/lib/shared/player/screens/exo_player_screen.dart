@@ -56,7 +56,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:forja/shared/shell/feedback/loading_overlay.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
 part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';

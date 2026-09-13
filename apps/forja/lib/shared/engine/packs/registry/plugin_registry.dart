@@ -6,7 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
-import 'package:forja/shared/engine/feeds/live_sport_capabilities.dart';
+import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/catalog/plugin_catalog_remote.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
@@ -52,7 +52,7 @@ class PluginRegistry {
       ValueNotifier<String?>(null);
 
   /// Bumped when hub [EngineCache] entries are wiped (install / script edit / remove).
-  /// KitShell listens here — not [changeNotifier] — so lean sync / provider packs
+  /// PackLayoutHost listens here — not [changeNotifier] — so lean sync / provider packs
   /// do not blank keep-alive hub rails on every notify.
   static final ValueNotifier<int> hubFeedEpoch = ValueNotifier<int>(0);
 
@@ -1779,7 +1779,7 @@ class PluginRegistry {
 
   /// Resolve [pluginId] to its owning pack + plugin.
   ///
-  /// Pass [sourceUrl] when known (hub KitShell / community packs). Without it,
+  /// Pass [sourceUrl] when known (hub PackLayoutHost / community packs). Without it,
   /// prefers an active plugin when the same id exists in multiple packs
   /// (dev `.env` + disabled cloud shadow; legacy provider path).
   Future<({EnginePack pack, EnginePlugin plugin})?> findPlugin(

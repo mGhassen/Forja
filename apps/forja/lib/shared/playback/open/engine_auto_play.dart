@@ -17,7 +17,7 @@ import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
-import 'package:forja/shared/shell/feedback/loading_overlay.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';

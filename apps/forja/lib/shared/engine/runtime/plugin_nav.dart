@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/host/packs/forja_host_assets.dart';
 import 'package:forja/shared/host/layout/pack_layout_host.dart';
-import 'package:forja/shared/host/layout/kit/kit_shell.dart';
 import 'package:forja/shared/engine/runtime/plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
@@ -208,7 +207,7 @@ abstract final class PluginNavRegistry {
     _tabPackUrls = Map<String, String>.from(tabPackUrls ?? const {});
     _builders = {
       for (final tabId in _destinations.keys)
-        tabId: () => KitShellLoader(tabId: tabId),
+        tabId: () => PackLayoutHostLoader(tabId: tabId),
     };
     _seeded = true;
   }
@@ -336,7 +335,7 @@ abstract final class PluginNavRegistry {
               packSourceUrl: _tabPackUrls[tabId],
             );
           }
-          return KitShellLoader(tabId: tabId);
+          return PackLayoutHostLoader(tabId: tabId);
         },
     };
     _seeded = true;

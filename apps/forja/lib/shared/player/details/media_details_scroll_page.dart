@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/blocks/details/details_block.dart';
-import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/player/details/media_details_body.dart';
+import 'package:forja_foundation/widgets/details/details_scroll_page.dart';
 
-/// Unified scroll layout for torrent and streaming media details screens.
-///
-/// Paint composition via [DetailsBlock]; host keeps TV focus + fade.
+/// Host scroll page — wires TV hero/back focus into foundation paint.
 class MediaDetailsScrollPage extends StatelessWidget {
   const MediaDetailsScrollPage({
     super.key,
@@ -33,79 +29,25 @@ class MediaDetailsScrollPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget scroll = DetailsBlock(
+    Widget page = DetailsScrollPage(
       hero: hero,
-      scrollController: scrollController,
-      physics: const BouncingScrollPhysics(),
       backgroundColor: backgroundColor,
-      body: sections.isEmpty
-          ? const SizedBox.shrink()
-          : _FadeIn(
-              child: MediaDetailsBody(
-                backgroundColor: backgroundColor,
-                bodyOverlap: bodyOverlap,
-                topSpacing: topSpacing,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < sections.length; i++) ...[
-                      if (i > 0)
-                        const SizedBox(height: DetailsTokens.sectionSpacing),
-                      sections[i],
-                    ],
-                  ],
-                ),
-              ),
-            ),
+      sections: sections,
+      overlay: overlay,
+      scrollController: scrollController,
+      bodyOverlap: bodyOverlap,
+      topSpacing: topSpacing,
     );
 
     if (tvHeroPlayFocus != null && scrollController != null) {
-      scroll = MediaDetailsTvScope(
+      page = MediaDetailsTvScope(
         heroPlayFocus: tvHeroPlayFocus!,
         scrollController: scrollController!,
         backFocus: tvBackFocus,
-        child: scroll,
+        child: page,
       );
     }
 
-    if (overlay == null) return scroll;
-
-    return Stack(
-      children: [
-        scroll,
-        overlay!,
-      ],
-    );
-  }
-}
-
-class _FadeIn extends StatefulWidget {
-  const _FadeIn({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_FadeIn> createState() => _FadeInState();
-}
-
-class _FadeInState extends State<_FadeIn> {
-  double _opacity = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _opacity = 1);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: _opacity,
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOutCubic,
-      child: widget.child,
-    );
+    return page;
   }
 }

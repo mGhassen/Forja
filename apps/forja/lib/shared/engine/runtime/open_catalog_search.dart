@@ -1,6 +1,6 @@
+import 'package:forja/shared/host/search/host_search_wire.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
-import 'package:forja/shared/host/layout/kit/kit_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
