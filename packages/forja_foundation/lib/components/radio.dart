@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Radio, RadioGroup;
 import 'package:flutter/material.dart' as material show Radio;
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Single radio option — use inside [RadioGroup] or with shared [groupValue].
 class Radio<T> extends StatelessWidget {

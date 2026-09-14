@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide ListTile, Slider;
 import 'package:forja_foundation/components/list_tile.dart';
 import 'package:forja_foundation/components/slider.dart';
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Settings row chrome — props only (RFC-106 G8 pull-in).
 ///

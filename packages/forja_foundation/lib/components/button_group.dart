@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Groups [Button] children with optional separator / text slots.
 class ButtonGroup extends StatelessWidget {

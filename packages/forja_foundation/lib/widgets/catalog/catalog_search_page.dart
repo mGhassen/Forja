@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/search/search_block.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Hub search result row model (Zone A — no host types).
 class CatalogSearchResult {

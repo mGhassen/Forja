@@ -10,7 +10,6 @@ void main() {
     Directory('lib/components'),
     Directory('lib/widgets'),
     Directory('lib/tokens'),
-    Directory('lib/theme'),
   ];
 
   test('zone A dirs have no forbidden imports', () {

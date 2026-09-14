@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Hairline divider — horizontal or vertical.
 class Separator extends StatelessWidget {

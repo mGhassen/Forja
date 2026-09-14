@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// Legacy design tokens for server grid / player overlay panels.
+/// Palette aliases for server grid / player overlay panels.
+///
+/// Prefer [ForjaShellColors] / [ForjaThemeExtension] for new UI.
+/// [ThemeData] entry is [forjaThemeData] only — do not add a second factory here.
 abstract final class DesignTokens {
   static const bgDark = Color(0xFF141414);
   static const bgCard = Color(0xFF1C1C1C);
@@ -12,41 +14,4 @@ abstract final class DesignTokens {
   static const textPrimary = Color(0xFFF5F5F7);
   static const textSecondary = Color(0xFF9CA3AF);
   static const border = Color(0xFF2A2A2A);
-
-  static ThemeData dark() {
-    final base = ThemeData.dark(useMaterial3: true);
-    return base.copyWith(
-      scaffoldBackgroundColor: bgDark,
-      colorScheme: const ColorScheme.dark(
-        primary: primary,
-        secondary: accent,
-        surface: bgCard,
-      ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
-        bodyColor: textPrimary,
-        displayColor: textPrimary,
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: bgCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: border),
-        ),
-      ),
-    );
-  }
-
-  static BoxDecoration cinemaBackground = const BoxDecoration(
-    color: Color(0xFF141414),
-  );
 }

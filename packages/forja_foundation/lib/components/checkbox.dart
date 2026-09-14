@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/material.dart' as material show Checkbox;
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Forja checkbox — brand-green check, subtle border.
 class Checkbox extends StatelessWidget {

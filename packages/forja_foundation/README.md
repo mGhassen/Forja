@@ -2,14 +2,15 @@
 
 Forja design system package (RFC-106).
 
-Tokens → theme → components → widgets → blocks, plus protocol / kit / platform / utils.
+Tokens → components → widgets → blocks, plus protocol / kit / platform / utils.
+`ForjaThemeExtension` / `forjaThemeData()` live under `tokens/`.
 
 ## Entry points
 
 | Import | Use |
 |--------|-----|
 | `package:forja_foundation/forja_foundation.dart` | Full public API (sectioned) |
-| `package:forja_foundation/forja_foundation_primitives.dart` | Leaf tokens / theme / components (name historical) |
+| `package:forja_foundation/forja_foundation_primitives.dart` | Leaf tokens + components (name historical) |
 | `package:forja_foundation/forja_foundation_kit.dart` | Protocol + kit + blocks |
 
 ## Zones

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Catalog details page paint — loading / error / body slots (RFC-106 Zone A).
 ///

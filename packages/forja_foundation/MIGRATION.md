@@ -43,7 +43,7 @@ Every old symbol has **exactly one** New import.
 | `DetailsTokens` | `…/tokens/forja_details_tokens.dart` | `package:forja_foundation/tokens/forja_details_tokens.dart` |
 | `SettingsTokens` | `…/tokens/forja_settings_tokens.dart` | `package:forja_foundation/tokens/forja_settings_tokens.dart` |
 | `DesignTokens` | `…/tokens/forja_theme.dart` | `package:forja_foundation/tokens/forja_theme.dart` |
-| `ForjaThemeExtension` / `forjaThemeData()` | host theme glue | `package:forja_foundation/theme/forja_theme_extension.dart` — host `AppTheme` sets `extensions: [ForjaThemeExtension.dark()]` |
+| `ForjaThemeExtension` / `forjaThemeData()` | host theme glue | `package:forja_foundation/tokens/forja_theme_extension.dart` — host `AppTheme` sets `extensions: [ForjaThemeExtension.dark()]` |
 | `ShellTokens.usesCompactNavDrawer` | width + TV gate | package tokens + host `ShellScope` wraps `CompactNavDrawerPolicy` |
 
 ---

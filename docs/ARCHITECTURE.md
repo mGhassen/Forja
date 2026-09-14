@@ -282,7 +282,7 @@ Host prefs / settings facades live in **`packages/rust/lib/src/`** (`SettingsSer
 | Package | Role |
 |---------|------|
 | `packages/rust` | Dart FFI bridge, thin catalog/playback services, parity tests |
-| `packages/forja_foundation` | Design system — tokens, theme, components, kit ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
+| `packages/forja_foundation` | Design system — tokens, components, kit ([RFC-106](rfc/fixed/106-[fixed]-forja-foundation-design-system-package.md)) |
 | `packages/forja-auth` | Shared TypeScript auth for `apps/web` |
 
 Deleted engine packages: `api`, `scrapers`, `webstreamr`, `streaming`, `storage`, `core`, legacy `forja_*`.

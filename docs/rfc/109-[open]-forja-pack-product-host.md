@@ -145,7 +145,7 @@
 |-------|------|-----------|
 | **Pack** (`forja-packs`) | Product tabs, layout JSON, feed, prefs, chrome, `open` shaping | Native unlock internals |
 | **Host** (`apps/forja`) | App frame, generic engines, **thin kit interpreter** at `shared/engine/runtime/kit/` | Product screens, product-named folders, pack-id business logic, **`shared/host/layout/`** |
-| **Foundation** (`forja_foundation`) | Tokens, theme, components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration |
+| **Foundation** (`forja_foundation`) | Tokens (incl. ThemeExtension), components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration |
 
 **Wipe law (A57 historical):** Deleted `apps/forja/lib/shared/host/layout/`. **Evacuate (A60):** runner left foundation — lives in `engine/runtime/kit/`. Product stays in pack JS. Foundation paints only.
 

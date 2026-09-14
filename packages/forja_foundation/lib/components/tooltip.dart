@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Tooltip;
 import 'package:flutter/material.dart' as material show Tooltip;
-import 'package:forja_foundation/theme/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Forja-styled tooltip wrapper around Material [Tooltip].
 class Tooltip extends StatelessWidget {
