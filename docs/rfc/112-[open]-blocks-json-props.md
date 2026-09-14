@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **13 / 14** acceptance · **1** ⏭️ deferred |
-| **Current slice** | Deleted host `kit/paint_*` section painters — packs must emit blocks |
+| **Progress** | **4 / 4** components · **14 / 15** acceptance · **1** ⏭️ deferred |
+| **Current slice** | One mount catalog — `kit.stack` composes any foundation component |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -44,6 +44,7 @@
 | 12 | R112-A12 | `tabsCards` block — menu? + tabs + cards (My List geometry); PackPaintTree mounts it | ✅ |
 | 13 | R112-A13 | Delete `kit/slots/`; topBar/categoryBar/menu/tabs mount foundation Catalog* chrome; host glue lives in `kit/paint_*.dart` (no Pack*Slot) | ✅ |
 | 14 | R112-A14 | Delete host section painters (`paint_hero`/`mood`/`because`/`continue`/`list`/`vertical_filters`); PackPaintTree mounts blocks + chrome + CatalogCardsGrid + posterRow only | ✅ |
+| 15 | R112-A15 | One mount table (no atoms-vs-blocks fork); packs compose via `kit.stack` (or any type) of foundation components; host injects callbacks only | ✅ |
 
 ---
 

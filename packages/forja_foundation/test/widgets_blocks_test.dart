@@ -34,7 +34,7 @@ void main() {
       );
       expect(
         LayoutMap.slotToArtifactName[LayoutTypes.hero],
-        'pack block / posterRow (no host PackHeroPaint)',
+        'CinematicHero',
       );
       expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });

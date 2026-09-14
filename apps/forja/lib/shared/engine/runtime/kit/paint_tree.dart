@@ -1,8 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/store/continue_entries.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
+import 'package:forja/shared/playback/open/history_playback_resume.dart';
+import 'package:forja/shared/playback/play_resolve.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/catalog/columns_header_block.dart';
@@ -12,17 +23,29 @@ import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja_foundation/blocks/details/match_details_block.dart';
 import 'package:forja_foundation/blocks/empty/empty_block.dart';
 import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
+import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/because_section.dart';
+import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
+import 'package:forja_foundation/widgets/catalog/continue_section.dart';
+import 'package:forja_foundation/widgets/catalog/mood_section.dart';
+import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:rust/rust.dart'
+    show WatchHistoryService, canResumeFromSavedProgress;
 
-/// Recursive validate+paint: pack node → foundation block / chrome / cards.
+/// One mount table: pack `{ type, props, children?, load? }` → foundation.
 ///
-/// No per-section host painters. Packs emit blocks or `paint` props;
-/// [PackLoadedPaint] runs opaque loads; [PackPaintArtifact] mounts cards.
+/// Prepared pages and small chrome types are the same catalog — packs compose
+/// freely. Host only runs opaque [PackLoadedPaint] and injects callbacks.
 class PackPaintTree extends StatelessWidget {
   const PackPaintTree({
     super.key,
@@ -37,21 +60,6 @@ class PackPaintTree extends StatelessWidget {
   final String? packSourceUrl;
   final String? tabId;
 
-  static bool _isBlockType(String type) => switch (type) {
-        'catalogBody' ||
-        'columnsHeader' ||
-        'topBody' ||
-        'tabsCards' ||
-        'search' ||
-        'details' ||
-        'matchDetails' ||
-        'entryDetails' ||
-        'shell' ||
-        'empty' =>
-          true,
-        _ => false,
-      };
-
   @override
   Widget build(BuildContext context) {
     if (spec['hideWhenTypeFilter'] == true &&
@@ -64,46 +72,14 @@ class PackPaintTree extends StatelessWidget {
       spec,
     );
 
-    if (_isBlockType(type)) {
-      return _paintBlock(context, spec, type: type);
-    }
-
-    final paint = spec['paint'];
-    if (paint is Map) {
-      final paintType = (paint['type'] ?? '').toString().trim();
-      if (_isBlockType(paintType)) {
-        return _paintBlock(context, spec, type: paintType);
-      }
-    }
-
-    // Chrome + list. Section atoms (hero/mood/continue/because) → pack blocks.
-    switch (type) {
-      case LayoutTypes.verticalFilters:
-        return const SizedBox.shrink();
-      case LayoutTypes.list:
-        final listLoad = packLoadSpec(spec['load']) ??
-            (action: 'feed', params: <String, dynamic>{});
-        return PackLoadedPaint(
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
-          action: listLoad.action,
-          params: listLoad.params,
-          fallbackSpec: spec,
-          builder: (ctx, merged) => _paintList(ctx, merged),
-        );
-      case LayoutTypes.topBar:
-        return _paintTopBar(context, spec);
-      case LayoutTypes.categoryBar:
-        return _paintCategoryBar(context, spec);
-      case LayoutTypes.menu:
-        return _paintMenu(context, spec);
-      case LayoutTypes.tabs:
-        return _paintTabs(context, spec);
-    }
-
+    // Opaque load first — then remount merged node as the same type catalog.
+    // continue / mood / because own host store or selection → handled in _mount.
     final load = packLoadSpec(spec['load']);
-    if (load != null) {
+    if (load != null &&
+        type != LayoutTypes.list &&
+        type != LayoutTypes.continueWatching &&
+        type != LayoutTypes.mood &&
+        type != LayoutTypes.because) {
       return PackLoadedPaint(
         pluginId: pluginId,
         packSourceUrl: packSourceUrl,
@@ -111,46 +87,34 @@ class PackPaintTree extends StatelessWidget {
         action: load.action,
         params: load.params,
         fallbackSpec: spec,
-        builder: (ctx, merged) {
-          final mergedType = LayoutTypes.normalize(
-            (merged['type'] ?? '').toString(),
-            merged,
-          );
-          if (_isBlockType(mergedType)) {
-            return PackPaintTree(
-              spec: merged,
-              pluginId: pluginId,
-              packSourceUrl: packSourceUrl,
-              tabId: tabId,
-            );
-          }
-          if (mergedType == LayoutTypes.row ||
-              mergedType == 'rail' ||
-              mergedType == 'ranked' ||
-              mergedType == LayoutTypes.hero) {
-            return PackPaintArtifact.posterRow(
-              ctx,
-              node: merged,
-              pluginId: pluginId,
-            );
-          }
-          if (mergedType == LayoutTypes.list || merged['items'] is List) {
-            return _paintList(ctx, merged);
-          }
-          return PackPaintTree(
-            spec: merged,
-            pluginId: pluginId,
-            packSourceUrl: packSourceUrl,
-            tabId: tabId,
-          );
-        },
+        builder: (ctx, merged) => PackPaintTree(
+          spec: merged,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+        ),
       );
     }
-    return _paintNode(context, spec);
+
+    if (type == LayoutTypes.list) {
+      final listLoad = packLoadSpec(spec['load']) ??
+          (action: 'feed', params: <String, dynamic>{});
+      return PackLoadedPaint(
+        pluginId: pluginId,
+        packSourceUrl: packSourceUrl,
+        tabId: tabId,
+        action: listLoad.action,
+        params: listLoad.params,
+        fallbackSpec: spec,
+        builder: (ctx, merged) => _mountList(ctx, merged),
+      );
+    }
+
+    return _mount(context, spec, type: type);
   }
 
-  List<Widget> _paintChildren(BuildContext context, Map<String, dynamic> node) {
-    final raw = node['children'] ?? node['widgets'] ?? node['items'];
+  List<Widget> _kids(BuildContext context, Map<String, dynamic> node) {
+    final raw = node['children'] ?? node['widgets'];
     if (raw is! List) return const [];
     return [
       for (final c in raw)
@@ -164,17 +128,26 @@ class PackPaintTree extends StatelessWidget {
     ];
   }
 
-  Widget _paintBlock(
+  Map<String, dynamic> _propsOf(Map<String, dynamic> node) {
+    final paint = node['paint'];
+    final propsRaw = paint is Map ? paint['props'] : node['props'];
+    if (propsRaw is Map) return Map<String, dynamic>.from(propsRaw);
+    // Flat layout nodes (kit.topBar actions, kit.list items, …) are props.
+    return Map<String, dynamic>.from(node)
+      ..remove('type')
+      ..remove('children')
+      ..remove('widgets')
+      ..remove('load')
+      ..remove('paint');
+  }
+
+  Widget _mount(
     BuildContext context,
     Map<String, dynamic> node, {
     required String type,
   }) {
-    final paint = node['paint'];
-    final propsRaw = paint is Map ? paint['props'] : node['props'];
-    final props = propsRaw is Map
-        ? Map<String, dynamic>.from(propsRaw)
-        : <String, dynamic>{};
-    final kids = _paintChildren(context, node);
+    final props = _propsOf(node);
+    final kids = _kids(context, node);
     final body = kids.isEmpty
         ? const SizedBox.shrink()
         : kids.length == 1
@@ -185,16 +158,69 @@ class PackPaintTree extends StatelessWidget {
                 children: kids,
               );
     final bg = ForjaShellColors.cinematic.menuSurface;
+    final scope = LayoutScope.maybeOf(context);
 
     switch (type) {
+      case LayoutTypes.stack:
+        return LayoutStack(
+          spec: node,
+          childBuilder: (child, _) => PackPaintTree(
+            spec: child,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
+        );
+      case LayoutTypes.verticalFilters:
+        return const SizedBox.shrink();
+      case LayoutTypes.topBar:
+        return _chromeTopBar(context, node);
+      case LayoutTypes.categoryBar:
+        return _chromeCategoryBar(context, node);
+      case LayoutTypes.menu:
+        return _chromeMenu(context, node);
+      case LayoutTypes.tabs:
+        return _chromeTabs(context, node);
+      case LayoutTypes.list:
+        return _mountList(context, node);
+      case LayoutTypes.row:
+      case 'rail':
+      case 'ranked':
+        return PackPaintArtifact.posterRow(
+          context,
+          node: node,
+          pluginId: pluginId,
+        );
+      case LayoutTypes.hero:
+        return _mountHero(context, node);
+      case LayoutTypes.mood:
+        return _MoodMount(
+          spec: node,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+        );
+      case LayoutTypes.because:
+        return _BecauseMount(
+          spec: node,
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+        );
+      case LayoutTypes.continueWatching:
+        return _ContinueMount(
+          pluginId: pluginId,
+          tabId: tabId,
+          mergeHomeWatchHistory: node['mergeHomeWatchHistory'] == true,
+        );
       case 'catalogBody':
         return CatalogBody.fromProps(props, sections: kids);
       case 'columnsHeader':
-        return _paintColumnsHeader(context, node, props: props);
+        return _mountColumnsHeader(context, node, props: props, scope: scope);
       case 'topBody':
-        return _paintTopBody(context, node, props: props);
+        return _mountTopBody(context, node, props: props, scope: scope);
       case 'tabsCards':
-        return _paintTabsCards(context, node, props: props);
+        return _mountTabsCards(context, node, props: props, scope: scope);
       case 'search':
         return CatalogSearchPage.fromProps(props, results: body);
       case 'details':
@@ -227,27 +253,50 @@ class PackPaintTree extends StatelessWidget {
         );
       case 'empty':
         return EmptyBlock.fromProps(props);
-      default:
-        return const SizedBox.shrink();
     }
+
+    final paint = node['paint'];
+    if (paint is Map) {
+      return PackPaintArtifact.fromPaint(
+        context,
+        pluginId: pluginId,
+        paint: Map<String, dynamic>.from(paint),
+        open: node['open'] ?? paint['open'],
+        meta: node['meta'] ?? paint['meta'],
+      );
+    }
+    if (node['items'] is List) return _mountList(context, node);
+    if (kids.isNotEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedHeight) {
+            return ListView(padding: EdgeInsets.zero, children: kids);
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: kids,
+          );
+        },
+      );
+    }
+    return const SizedBox.shrink();
   }
 
-  Widget _paintColumnsHeader(
+  Widget _mountColumnsHeader(
     BuildContext context,
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
+    required LayoutScope? scope,
   }) {
     final merged = Map<String, dynamic>.from(props);
-    Widget? feedBody;
+    Widget? feed;
     final rawKids = node['children'] ?? node['widgets'];
     if (rawKids is List) {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize(
-          (child['type'] ?? '').toString(),
-          child,
-        );
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
         if (t == LayoutTypes.topBar && merged['actions'] == null) {
           merged['actions'] = child['actions'];
           merged['title'] ??= child['title'] ?? child['label'];
@@ -256,7 +305,7 @@ class PackPaintTree extends StatelessWidget {
           merged['selectedSideId'] ??= child['default'];
           merged['defaultSideId'] ??= child['default'];
         } else if (t == LayoutTypes.list || child['load'] != null) {
-          feedBody = PackPaintTree(
+          feed = PackPaintTree(
             spec: child,
             pluginId: pluginId,
             packSourceUrl: packSourceUrl,
@@ -265,34 +314,18 @@ class PackPaintTree extends StatelessWidget {
         }
       }
     }
-    feedBody ??= () {
-      final body = node['body'];
-      if (body is Map) {
-        return PackPaintTree(
-          spec: Map<String, dynamic>.from(body),
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
-        );
-      }
-      return null;
-    }();
-
-    final scope = LayoutScope.maybeOf(context);
     return ColumnsHeaderBlock.fromProps(
       merged,
-      body: feedBody,
-      actionSelections: scope == null
-          ? const {}
-          : {
-              for (final a in (merged['actions'] is List
-                  ? merged['actions'] as List
-                  : const []))
-                if (a is Map && (a['id'] ?? '').toString().isNotEmpty)
-                  (a['id'] as Object).toString():
-                      scope.selectedId((a['id'] as Object).toString()) ??
-                          (a['default'] ?? '').toString(),
-            },
+      body: feed,
+      actionSelections: {
+        for (final a in (merged['actions'] is List
+            ? merged['actions'] as List
+            : const []))
+          if (a is Map && (a['id'] ?? '').toString().isNotEmpty)
+            (a['id'] as Object).toString():
+                scope?.selectedId((a['id'] as Object).toString()) ??
+                    (a['default'] ?? '').toString(),
+      },
       onActionSelect: (actionId, value) {
         scope?.onSelect(actionId, value, toggle: false);
       },
@@ -303,22 +336,20 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  Widget _paintTopBody(
+  Widget _mountTopBody(
     BuildContext context,
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
+    required LayoutScope? scope,
   }) {
     final merged = Map<String, dynamic>.from(props);
-    Widget? feedGrid;
+    Widget? feed;
     final rawKids = node['children'] ?? node['widgets'];
     if (rawKids is List) {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize(
-          (child['type'] ?? '').toString(),
-          child,
-        );
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
         if (t == LayoutTypes.topBar && merged['actions'] == null) {
           merged['actions'] = child['actions'];
           merged['title'] ??= child['title'] ?? child['label'];
@@ -327,7 +358,7 @@ class PackPaintTree extends StatelessWidget {
           merged['selectedKindId'] ??= child['default'];
           merged['defaultKindId'] ??= child['default'];
         } else if (t == LayoutTypes.list || child['load'] != null) {
-          feedGrid = PackPaintTree(
+          feed = PackPaintTree(
             spec: child,
             pluginId: pluginId,
             packSourceUrl: packSourceUrl,
@@ -336,11 +367,9 @@ class PackPaintTree extends StatelessWidget {
         }
       }
     }
-
-    final scope = LayoutScope.maybeOf(context);
     return TopBodyBlock.fromProps(
       merged,
-      grid: feedGrid,
+      grid: feed,
       onActionSelect: (actionId, value) {
         scope?.onSelect(actionId, value, toggle: false);
       },
@@ -351,22 +380,20 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  Widget _paintTabsCards(
+  Widget _mountTabsCards(
     BuildContext context,
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
+    required LayoutScope? scope,
   }) {
     final merged = Map<String, dynamic>.from(props);
-    Widget? feedCards;
+    Widget? feed;
     final rawKids = node['children'] ?? node['widgets'];
     if (rawKids is List) {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize(
-          (child['type'] ?? '').toString(),
-          child,
-        );
+        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
         if (t == LayoutTypes.menu) {
           merged['menuItems'] ??= child['items'] ?? child['tabs'];
         } else if (t == LayoutTypes.tabs) {
@@ -374,7 +401,7 @@ class PackPaintTree extends StatelessWidget {
           merged['selectedTabId'] ??= child['default'];
           merged['defaultTabId'] ??= child['default'];
         } else if (t == LayoutTypes.list || child['load'] != null) {
-          feedCards = PackPaintTree(
+          feed = PackPaintTree(
             spec: child,
             pluginId: pluginId,
             packSourceUrl: packSourceUrl,
@@ -383,11 +410,9 @@ class PackPaintTree extends StatelessWidget {
         }
       }
     }
-
-    final scope = LayoutScope.maybeOf(context);
     return TabsCardsBlock.fromProps(
       merged,
-      cards: feedCards,
+      cards: feed,
       onMenuSelect: (id) {
         final menuId = _childIdOfType(node, LayoutTypes.menu) ?? 'kind';
         scope?.onSelect(menuId, id, toggle: true);
@@ -415,83 +440,95 @@ class PackPaintTree extends StatelessWidget {
     return null;
   }
 
-  Widget _paintNode(BuildContext context, Map<String, dynamic> node) {
-    final type = LayoutTypes.normalize(
-      (node['type'] ?? '').toString(),
-      node,
-    );
-
-    if (_isBlockType(type)) {
-      return _paintBlock(context, node, type: type);
-    }
-
-    if (type == LayoutTypes.list) {
-      return _paintList(context, node);
-    }
-
-    if (LayoutTypes.isStack(type) || type == LayoutTypes.stack) {
-      return LayoutStack(
-        spec: node,
-        childBuilder: (child, _) => PackPaintTree(
-          spec: child,
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
+  Widget _mountHero(BuildContext context, Map<String, dynamic> node) {
+    final items = node['items'];
+    if (items is! List || items.isEmpty) return const SizedBox.shrink();
+    final slides = <CinematicHeroSlide>[];
+    for (final raw in items) {
+      if (raw is! Map) continue;
+      if (slides.length >= 5) break;
+      final item = Map<String, dynamic>.from(raw);
+      final props = PackPaintArtifact.propsOf(item);
+      final meta = item['meta'] is Map
+          ? MetaItem.fromJson(Map<String, dynamic>.from(item['meta'] as Map))
+          : null;
+      final open = item['open'] is Map
+          ? MetaOpen.fromJson(Map<String, dynamic>.from(item['open'] as Map))
+          : meta?.open;
+      final title = (props['title'] ?? meta?.name ?? '').toString().trim();
+      final backdrop = (props['backdropUrl'] ??
+              props['backgroundUrl'] ??
+              meta?.background ??
+              '')
+          .toString()
+          .trim();
+      final poster = (props['posterUrl'] ??
+              props['imageUrl'] ??
+              meta?.poster ??
+              '')
+          .toString()
+          .trim();
+      if (title.isEmpty && backdrop.isEmpty && poster.isEmpty) continue;
+      final id = (open?.id ?? meta?.id ?? props['id'] ?? title).toString();
+      slides.add(
+        CinematicHeroSlide(
+          id: id.isEmpty ? title : id,
+          title: title.isEmpty ? 'Title' : title,
+          backdropUrl: backdrop.isNotEmpty ? backdrop : poster,
+          posterUrl: poster.isEmpty ? null : poster,
+          logoUrl: (props['logoUrl'] ?? props['logo'] ?? meta?.logo ?? '')
+              .toString(),
+          overview: (props['overview'] ??
+                  props['description'] ??
+                  meta?.description ??
+                  '')
+              .toString(),
+          rating: props['rating'] is num
+              ? (props['rating'] as num).toDouble()
+              : meta?.rating,
+          year: () {
+            final y = (props['year'] ?? meta?.releaseInfo ?? '').toString();
+            return y.isEmpty ? null : y.split(' • ').first;
+          }(),
+          badge: (props['badge'] ?? meta?.badge)?.toString(),
+          genres: props['genres'] is List
+              ? [
+                  for (final g in props['genres'] as List)
+                    if (g != null && g.toString().trim().isNotEmpty)
+                      g.toString(),
+                ]
+              : (meta?.genres ?? const <String>[]),
+          onDetails: PackPaintArtifact.openTap(
+            context,
+            pluginId: pluginId,
+            props: props,
+            open: open?.toJson(),
+            meta: meta?.toJson(),
+          ),
         ),
       );
     }
-
-    final paint = node['paint'];
-    if (paint is Map) {
-      final paintType = (paint['type'] ?? '').toString().trim();
-      if (_isBlockType(paintType)) {
-        return _paintBlock(context, node, type: paintType);
-      }
-      return PackPaintArtifact.fromPaint(
-        context,
-        pluginId: pluginId,
-        paint: Map<String, dynamic>.from(paint),
-        open: node['open'] ?? paint['open'],
-        meta: node['meta'] ?? paint['meta'],
-      );
-    }
-
-    if (type == LayoutTypes.row || type == 'rail' || type == 'ranked') {
-      return PackPaintArtifact.posterRow(
-        context,
-        node: node,
-        pluginId: pluginId,
-      );
-    }
-
-    if (node['items'] is List) {
-      return _paintList(context, node);
-    }
-
-    final kids = _paintChildren(context, node);
-    if (kids.isNotEmpty) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.hasBoundedHeight) {
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: kids,
-            );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: kids,
-          );
-        },
-      );
-    }
-
-    return const SizedBox.shrink();
+    if (slides.isEmpty) return const SizedBox.shrink();
+    final compact = MediaQuery.sizeOf(context).width <
+        ShellTokens.heroDesktopMinBodyWidth;
+    final metrics = ShellScope.metricsOf(context);
+    final policy = ShellScope.inputPolicyOf(context);
+    return CinematicHero(
+      slides: slides,
+      layout: CinematicHeroLayout(
+        compact: compact,
+        tvDensity: metrics.usesTvDensity,
+        kenBurns: policy.kenBurnsBackdrop,
+        plainTitle: policy.useFocusableMoodChips,
+        heroMinTitleHeight: metrics.heroMinTitleHeight,
+        heroActionUseFittedBox: metrics.heroActionUseFittedBox,
+        heroCompactRightInset: metrics.heroCompactRightInset,
+        sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
+      ),
+    );
   }
 
-  /// kit.list items → foundation grid/list (expand-safe).
-  Widget _paintList(BuildContext context, Map<String, dynamic> spec) {
+  Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedWidth ||
@@ -500,7 +537,6 @@ class PackPaintTree extends StatelessWidget {
             constraints.maxHeight < 1) {
           return const SizedBox.shrink();
         }
-
         final raw = spec['items'];
         final items = <Map<String, dynamic>>[
           if (raw is List)
@@ -517,12 +553,10 @@ class PackPaintTree extends StatelessWidget {
                 for (final e in items)
                   if (_itemKind(e) == kindFilter) e,
               ];
-
         var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
         if (style == 'epg' || style == 'guide') style = 'timeline';
         final cardKind =
             style == 'list' || style == 'timeline' ? 'event' : 'poster';
-
         return SizedBox(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
@@ -531,15 +565,13 @@ class PackPaintTree extends StatelessWidget {
             cardKind: cardKind,
             emptyTitle: 'Nothing here yet.',
             onItemTap: (item) {
-              final props = PackPaintArtifact.propsOf(item);
-              final tap = PackPaintArtifact.openTap(
+              PackPaintArtifact.openTap(
                 context,
                 pluginId: pluginId,
-                props: props,
+                props: PackPaintArtifact.propsOf(item),
                 open: item['open'],
                 meta: item['meta'],
-              );
-              tap?.call();
+              )?.call();
             },
           ),
         );
@@ -560,7 +592,7 @@ class PackPaintTree extends StatelessWidget {
     return '';
   }
 
-  Widget _paintMenu(BuildContext context, Map<String, dynamic> spec) {
+  Widget _chromeMenu(BuildContext context, Map<String, dynamic> spec) {
     final items = layoutItemsFromSpec(spec);
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
@@ -584,7 +616,7 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  Widget _paintTabs(BuildContext context, Map<String, dynamic> spec) {
+  Widget _chromeTabs(BuildContext context, Map<String, dynamic> spec) {
     final items = layoutItemsFromSpec(spec);
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
@@ -599,7 +631,7 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  Widget _paintCategoryBar(BuildContext context, Map<String, dynamic> spec) {
+  Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {
     final items = layoutItemsFromSpec(spec);
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
@@ -614,9 +646,8 @@ class PackPaintTree extends StatelessWidget {
         orientation == 'rail' ||
         spec['vertical'] == true;
     if (vertical) {
-      final width = (spec['width'] is num)
-          ? (spec['width'] as num).toDouble()
-          : 220.0;
+      final width =
+          (spec['width'] is num) ? (spec['width'] as num).toDouble() : 220.0;
       return CatalogSideRail(
         items: items,
         selectedId: selected,
@@ -631,15 +662,9 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  Widget _paintTopBar(BuildContext context, Map<String, dynamic> spec) {
+  Widget _chromeTopBar(BuildContext context, Map<String, dynamic> spec) {
     final scope = LayoutScope.maybeOf(context);
     final actions = propsActionMaps(spec);
-    if (actions.isEmpty) {
-      return CatalogTopChrome(
-        actions: const [],
-        title: (spec['title'] ?? spec['label'] ?? '').toString(),
-      );
-    }
     return CatalogTopChrome(
       actions: actions,
       title: (spec['title'] ?? spec['label'] ?? '').toString(),
@@ -652,6 +677,418 @@ class PackPaintTree extends StatelessWidget {
       },
       onSelect: (actionId, value) {
         scope?.onSelect(actionId, value, toggle: false);
+      },
+    );
+  }
+}
+
+Color? _parseMoodAccent(Object? raw) {
+  final s = (raw ?? '').toString().trim();
+  if (s.isEmpty) return null;
+  var hex = s;
+  if (hex.startsWith('#')) hex = hex.substring(1);
+  if (hex.length == 6) hex = 'FF$hex';
+  final v = int.tryParse(hex, radix: 16);
+  if (v == null) return null;
+  return Color(v);
+}
+
+/// Mood chips + optional pack load results → foundation [MoodSection].
+class _MoodMount extends StatefulWidget {
+  const _MoodMount({
+    required this.spec,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.tabId,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? packSourceUrl;
+  final String? tabId;
+
+  @override
+  State<_MoodMount> createState() => _MoodMountState();
+}
+
+class _MoodMountState extends State<_MoodMount> {
+  String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    final options = widget.spec['options'];
+    if (options is List && options.isNotEmpty) {
+      final ids = <String>[
+        for (final o in options)
+          if (o is Map && o['id'] != null) o['id'].toString(),
+      ];
+      if (ids.isNotEmpty) {
+        _selectedId = ids[DateTime.now().millisecond % ids.length];
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = widget.spec['options'];
+    if (options is! List || options.isEmpty) return const SizedBox.shrink();
+    final title = (widget.spec['title'] ?? '').toString();
+    final pad = catalogSectionHorizontalPadding(context);
+    final chips = <Widget>[];
+    for (final raw in options) {
+      if (raw is! Map) continue;
+      final opt = Map<String, dynamic>.from(raw);
+      final id = (opt['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      final token = kitMoodIconToken(opt['icon']?.toString() ?? id);
+      final accent = _parseMoodAccent(opt['accent']) ?? token.accent;
+      chips.add(
+        MoodCircle(
+          label: (opt['label'] ?? id).toString(),
+          selected: _selectedId == id,
+          active: _selectedId == id,
+          accent: accent,
+          icon: token.icon,
+          layout: MoodCircleLayout.desktop,
+          onTap: () => setState(() => _selectedId = id),
+        ),
+      );
+    }
+    if (chips.isEmpty) return const SizedBox.shrink();
+    Widget? results;
+    final load = packLoadSpec(widget.spec['load']);
+    if (_selectedId != null && load != null) {
+      results = PackLoadedPaint(
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        tabId: widget.tabId,
+        action: load.action,
+        params: {
+          ...load.params,
+          'filter': {'field': 'mood', 'value': _selectedId},
+        },
+        fallbackSpec: const {'type': 'rail', 'title': ''},
+        builder: (ctx, merged) => PackPaintArtifact.posterRow(
+          ctx,
+          node: merged,
+          pluginId: widget.pluginId,
+        ),
+      );
+    }
+    return MoodSection(
+      title: title.isEmpty ? null : title,
+      titlePadding: EdgeInsets.fromLTRB(
+        pad,
+        catalogSectionTitleTop(context),
+        pad,
+        catalogSectionBottomGap(context),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      results: results,
+      children: chips,
+    );
+  }
+}
+
+/// Resume seeds → pack load → foundation [BecauseSection].
+class _BecauseMount extends StatefulWidget {
+  const _BecauseMount({
+    required this.spec,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.tabId,
+  });
+
+  final Map<String, dynamic> spec;
+  final String pluginId;
+  final String? packSourceUrl;
+  final String? tabId;
+
+  @override
+  State<_BecauseMount> createState() => _BecauseMountState();
+}
+
+class _BecauseMountState extends State<_BecauseMount> {
+  int _shuffleKey = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: WatchHistory.revision,
+      builder: (context, _, _) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: catalogResumeSeeds(widget.pluginId),
+          builder: (context, snap) {
+            final seeds = snap.data ?? const [];
+            if (seeds.isEmpty) return const SizedBox.shrink();
+            final load = packLoadSpec(widget.spec['load']);
+            if (load == null) return const SizedBox.shrink();
+            return PackLoadedPaint(
+              key: ValueKey('because-$_shuffleKey'),
+              pluginId: widget.pluginId,
+              packSourceUrl: widget.packSourceUrl,
+              tabId: widget.tabId,
+              action: load.action,
+              params: {
+                ...load.params,
+                'resumeSeeds': seeds,
+                'shuffleKey': _shuffleKey,
+              },
+              fallbackSpec: widget.spec,
+              builder: (ctx, node) {
+                final items = node['items'];
+                if (items is! List || items.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final posterItems = <PosterItem>[];
+                for (final raw in items) {
+                  if (raw is! Map) continue;
+                  final item = Map<String, dynamic>.from(raw);
+                  final props = PackPaintArtifact.propsOf(item);
+                  final url = (props['imageUrl'] ?? props['posterUrl'] ?? '')
+                      .toString()
+                      .trim();
+                  final title = (props['title'] ?? '').toString();
+                  if (url.isEmpty && title.isEmpty) continue;
+                  posterItems.add(
+                    PosterItem(
+                      url: url,
+                      title: title.isEmpty ? null : title,
+                      onTap: PackPaintArtifact.openTap(
+                        ctx,
+                        pluginId: widget.pluginId,
+                        props: props,
+                        open: item['open'],
+                        meta: item['meta'],
+                      ),
+                    ),
+                  );
+                }
+                if (posterItems.isEmpty) return const SizedBox.shrink();
+                final pad = catalogSectionHorizontalPadding(ctx);
+                final canShuffle = node['canShuffle'] == true;
+                return BecauseSection(
+                  title: (node['heading'] ?? '').toString().isEmpty
+                      ? null
+                      : (node['heading'] ?? '').toString(),
+                  seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
+                      ? null
+                      : (node['seedPoster'] ?? '').toString(),
+                  items: posterItems,
+                  trailing: canShuffle
+                      ? IconButton(
+                          onPressed: () => setState(() => _shuffleKey++),
+                          icon: const Icon(Icons.shuffle_rounded),
+                          color: ForjaShellColors.iconMuted,
+                        )
+                      : null,
+                  titlePadding: EdgeInsets.fromLTRB(
+                    pad,
+                    catalogSectionTitleTop(ctx),
+                    pad,
+                    catalogSectionBottomGap(ctx),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Host store → foundation [ContinueSection] (callbacks only).
+class _ContinueMount extends StatefulWidget {
+  const _ContinueMount({
+    required this.pluginId,
+    this.tabId,
+    this.mergeHomeWatchHistory = false,
+  });
+
+  final String pluginId;
+  final String? tabId;
+  final bool mergeHomeWatchHistory;
+
+  @override
+  State<_ContinueMount> createState() => _ContinueMountState();
+}
+
+class _ContinueMountState extends State<_ContinueMount> {
+  final _scroll = ScrollController();
+  List<Map<String, dynamic>> _entries = const [];
+  String? _resumingMetaId;
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+
+  @override
+  void initState() {
+    super.initState();
+    WatchHistory.revision.addListener(_reload);
+    if (widget.mergeHomeWatchHistory) {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        unawaited(_reload());
+      });
+    }
+    unawaited(_reload());
+  }
+
+  @override
+  void dispose() {
+    WatchHistory.revision.removeListener(_reload);
+    unawaited(_homeHistorySub?.cancel());
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    try {
+      final list = await catalogContinueEntries(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
+      if (!mounted) return;
+      setState(() => _entries = list);
+    } catch (_) {}
+  }
+
+  Map<String, dynamic>? _byId(String metaId) {
+    for (final e in _entries) {
+      if (e['metaId']?.toString() == metaId) return e;
+    }
+    return null;
+  }
+
+  Future<void> _resume(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final home = entry['homeHistory'];
+      if (home is! Map || _resumingMetaId != null) return;
+      final metaId = entry['metaId']?.toString();
+      if (metaId == null) return;
+      setState(() => _resumingMetaId = metaId);
+      try {
+        await resumePlaybackFromHistory(
+          context,
+          Map<String, dynamic>.from(home),
+        );
+        if (mounted) await _reload();
+      } catch (e) {
+        if (mounted) ForjaToast.error('Resume failed: $e');
+      } finally {
+        if (mounted) setState(() => _resumingMetaId = null);
+      }
+      return;
+    }
+    final metaId = entry['metaId']?.toString();
+    if (metaId == null || _resumingMetaId != null) return;
+    final meta = WatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    setState(() => _resumingMetaId = metaId);
+    try {
+      final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
+      final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
+      final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
+      Duration? startPosition;
+      if (posMs > 5000 && canResumeFromSavedProgress(posMs, durMs)) {
+        final clamped = (durMs > 0 && posMs > durMs - 30000)
+            ? (durMs - 30000)
+            : posMs;
+        startPosition =
+            Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+      }
+      final extras = entry['extras'];
+      final ctx = catalogPlayContextFromMeta(
+        meta: meta,
+        pluginId: widget.pluginId,
+        episodeNumber: epNum,
+        episodeVideoId: entry['episodeVideoId']?.toString(),
+        extras: extras is Map
+            ? Map<String, dynamic>.from(extras)
+            : const {},
+        startPosition: startPosition,
+      );
+      if (!mounted) return;
+      await runPlayFromContext(context: context, ctx: ctx);
+      if (mounted) await _reload();
+    } catch (e) {
+      if (mounted) ForjaToast.error('Resume failed: $e');
+    } finally {
+      if (mounted) setState(() => _resumingMetaId = null);
+    }
+  }
+
+  Future<void> _openDetails(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final metaJson = entry['meta'];
+      if (metaJson is! Map) return;
+      final meta = MetaItem.fromJson(Map<String, dynamic>.from(metaJson));
+      final home = entry['homeHistory'];
+      await openMetaItem(
+        context,
+        pluginId: widget.pluginId,
+        item: meta,
+        initialSeason: home is Map ? home['season'] as int? : null,
+        initialEpisode: home is Map ? home['episode'] as int? : null,
+      );
+      if (mounted) await _reload();
+      return;
+    }
+    final meta = WatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    await openMetaItem(context, pluginId: widget.pluginId, item: meta);
+    if (mounted) await _reload();
+  }
+
+  Future<void> _remove(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryEntry(entry)) {
+      final id = entry['metaId']?.toString();
+      if (id == null) return;
+      await WatchHistoryService().removeItem(id);
+      if (mounted) await _reload();
+      return;
+    }
+    final id = entry['metaId']?.toString();
+    if (id == null) return;
+    await WatchHistory.remove(widget.pluginId, id);
+    if (mounted) await _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_entries.isEmpty) return const SizedBox.shrink();
+    final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final cardW = tv
+        ? 140.0
+        : (shellUsesWideLayout(context)
+            ? ShellTokens.shellContinueWatchingCardWidthDesktop
+            : ShellTokens.shellContinueWatchingCardWidthCompact);
+    final pad = catalogSectionHorizontalPadding(context);
+    return ContinueSection(
+      scrollController: _scroll,
+      showScrollArrows: showArrows,
+      cardWidth: cardW,
+      cardHeight: cardW * 9 / 16,
+      titlePadding: EdgeInsets.fromLTRB(
+        pad,
+        shellSectionTitleTopCompact(context),
+        pad,
+        16,
+      ),
+      listPadding: EdgeInsets.symmetric(horizontal: pad),
+      entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
+      resumingMetaId: _resumingMetaId,
+      onResume: (entry) {
+        final raw = _byId(entry.metaId);
+        if (raw != null) unawaited(_resume(raw));
+      },
+      onInfo: (entry) {
+        final raw = _byId(entry.metaId);
+        if (raw != null) unawaited(_openDetails(raw));
+      },
+      onRemove: (entry) {
+        final raw = _byId(entry.metaId);
+        if (raw != null) unawaited(_remove(raw));
       },
     );
   }

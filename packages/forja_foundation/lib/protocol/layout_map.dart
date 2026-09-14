@@ -87,19 +87,20 @@ abstract final class LayoutMap {
   /// normalize via [layoutArtifactFor].
   ///
   /// Hub catalogs share `catalogBody` — never product-named block ids.
+  /// One catalog — prepared pages and chrome types. Packs compose freely.
   static const Map<String, String> slotToArtifactName = {
     LayoutTypes.stack: 'LayoutStack',
     LayoutTypes.row: 'PackPaintArtifact.posterRow',
-    LayoutTypes.hero: 'pack block / posterRow (no host PackHeroPaint)',
-    LayoutTypes.mood: 'pack block (no host painter)',
-    LayoutTypes.continueWatching: 'pack block (no host painter)',
-    LayoutTypes.because: 'pack block (no host painter)',
-    LayoutTypes.menu: 'ForjaShellChip (LayoutScope)',
+    LayoutTypes.hero: 'CinematicHero',
+    LayoutTypes.mood: 'MoodSection',
+    LayoutTypes.continueWatching: 'ContinueSection',
+    LayoutTypes.because: 'BecauseSection',
+    LayoutTypes.menu: 'ForjaShellChip / CatalogChipBar',
     LayoutTypes.tabs: 'CatalogChipBar',
     LayoutTypes.topBar: 'CatalogTopChrome',
     LayoutTypes.categoryBar: 'CatalogChipBar / CatalogSideRail',
-    LayoutTypes.list: 'CatalogCardsGrid via PackPaintTree',
-    LayoutTypes.verticalFilters: 'VerticalFiltersRegistry (PackLayoutPainter)',
+    LayoutTypes.list: 'CatalogCardsGrid',
+    LayoutTypes.verticalFilters: 'VerticalFiltersRegistry (shell rail)',
     'matchDetails': 'MatchDetailsPage + DetailsHero (blocks)',
     'details': 'DetailsBlock + DetailsHero (blocks)',
     'entryDetails': 'EntryDetails (blocks)',
