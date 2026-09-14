@@ -26,6 +26,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
+import 'package:forja/shared/player/sources/pack_iptv_play_hooks.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -142,6 +143,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   BookmarkStore().syncRemoveHandler = syncBookmarkRemoveFromTrackers;
   LiveSurfaceOpen.ensureRegistered();
   HostPlaybackOpen.ensureRegistered();
+  PackIptvPlayHooks.ensureRegistered();
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');

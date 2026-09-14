@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **3 / 3** IPTV unified pack |
-| **Current slice** | A35–A37: single IPTV hub pack (nav + VOD + settings); catalog replaces iptv-vod |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **5 / 6** IPTV unified pack |
+| **Current slice** | A38–A39: pack Live/Movies/Series Xtream browse + thin VOD play hooks; A40 portals/EPG/player chrome still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -91,6 +91,9 @@
 | 1 | R109-A35 | `forja-packs/hubs/iptv` ships hub nav + `iptv-vod` details + enrich in one pack | ✅ |
 | 2 | R109-A36 | Official catalog publishes `hubs/iptv` (`plugin_packs.id=iptv`); `iptv-vod` catalog row removed | ✅ |
 | 3 | R109-A37 | Host Addons IPTV row pack-only (`settings.addon`); `addonGatedNavIds` empty; install activates tab | ✅ |
+| 4 | R109-A38 | Pack feed Live / Movies / Series (Xtream categories + streams); VOD details fetch series episodes | ✅ |
+| 5 | R109-A39 | Thin host `PackIptvPlayHooks` — vault portal → Xtream URL → `HostPlaybackOpen` (no portals_ui) | ✅ |
+| 6 | R109-A40 | Portals panel / Stalker / M3U / EPG guide / dedicated IPTV player chrome parity | ⬜ |
 
 ---
 
@@ -406,7 +409,7 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 
 | Done | Detail |
 |------|--------|
-| Pack | `hubs/_shared/details_paint.js` (`hubStampDetailsPaint`) synced into each hub `_kit.js`; stamped on `hubOk('details')` + `hubItems` → `upcoming`, `premiereLabel` |
+| Pack | VOD hub `_kit.js`: `hubStampDetailsPaint` on `hubOk('details')` + `hubItems` → `upcoming`, `premiereLabel` (not live_sports / my_list) |
 | Protocol | `MetaItem.upcoming` · `MetaItem.premiereLabel` |
 | Host | `player/details/details_meta.dart` reads pack fields only |
 | Deleted | `forja_foundation/protocol/meta_details.dart` |

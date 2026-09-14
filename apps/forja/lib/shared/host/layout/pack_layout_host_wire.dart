@@ -2734,10 +2734,17 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
         final page = _dynamicPage;
         if (page != null) {
           final found = <String>{};
+          final labels = <String, String>{};
           for (final e in page.entriesForKind(null)) {
             final k = e.kind.trim();
             if (k.isEmpty || k == 'all' || k == 'live_match') continue;
             found.add(k);
+            final cn = (e.legacyRow['categoryName'] ?? e.legacyRow['category'])
+                ?.toString()
+                .trim();
+            if (cn != null && cn.isNotEmpty) {
+              labels.putIfAbsent(k, () => cn);
+            }
           }
           final sorted = found.toList()..sort();
           final haveAll = kinds.any((i) => i.id == 'all');
@@ -2756,7 +2763,10 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
             if (existing.contains(id)) continue;
             kinds.add((
               id: id,
-              label: catalogKitCategoryLabel(id),
+              label: catalogKitCategoryLabel(
+                id,
+                label: labels[id],
+              ),
               icon: kindIcons[id.toLowerCase()],
             ));
           }
@@ -3349,11 +3359,13 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final scopeKind = scope?.selectedId(widget.kindMenuId);
         final kind = scopeKind ?? _kindFilter;
+        final kindFilter =
+            (kind == null || kind.isEmpty || kind == 'all') ? null : kind;
         final chromeKey = kitChromeKey(pluginId: widget.pluginId);
         final eventQuery = chromeKey.isEmpty
             ? ''
             : ref.watch(kitListEventQueryProvider(chromeKey));
-        final rawEntries = page.entriesForKind(kind);
+        final rawEntries = page.entriesForKind(kindFilter);
         final entries = kitListFilterEntries(rawEntries, eventQuery);
         _consumePendingOpen(entries);
         if (entries.isEmpty) {
