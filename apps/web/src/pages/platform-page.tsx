@@ -7,17 +7,14 @@ import { SiteHeader } from '@/components/site-header'
 
 const CATALOG_FEATURES = [
   {
-    n: '01',
     title: 'Heroes & shelves',
     copy: 'Featured titles and poster shelves you can skim in seconds.',
   },
   {
-    n: '02',
     title: 'Title pages',
     copy: 'Episodes, related rows, and continue watching on every title.',
   },
   {
-    n: '03',
     title: 'My List & nav',
     copy: 'Statuses for what you care about, and a navigation rail you can reshape.',
   },
@@ -198,56 +195,47 @@ export function PlatformPage() {
             </div>
           </header>
 
-          {/* Catalogs — magazine split + three type columns */}
+          {/* Catalogs — watermark + shelf rows (not a numbered grid) */}
           <section
             id="catalogs"
-            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)]"
+            className="relative scroll-mt-28 overflow-hidden border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="mx-auto max-w-[1200px] px-[5vw] pt-16 sm:pt-24">
-              <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
-                <Reveal variant="left">
-                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                    Catalogs
-                  </p>
-                  <h2 className="mt-4 font-disp text-[clamp(32px,6vw,56px)] uppercase leading-[0.9] tracking-[-0.04em]">
-                    A cinematic home
-                    <br />
-                    <span className="font-serif-i normal-case text-flame">
-                      for what is on next
-                    </span>
-                  </h2>
-                </Reveal>
-                <Reveal delayMs={60} variant="right">
-                  <p className="max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg lg:pb-2">
-                    Forja opens on a featured title, rich posters, and shelves
-                    that stay readable from a laptop to a living-room TV.
-                  </p>
-                </Reveal>
-              </div>
-            </div>
+            <p
+              aria-hidden
+              className="pointer-events-none absolute -right-[4%] top-1/2 hidden -translate-y-1/2 select-none font-disp text-[clamp(120px,22vw,280px)] uppercase leading-none tracking-[-0.06em] text-[rgba(237,230,218,0.04)] lg:block"
+            >
+              Home
+            </p>
 
-            <div className="mx-auto mt-14 grid max-w-[1200px] border-t border-[rgba(237,230,218,0.14)] sm:grid-cols-3">
-              {CATALOG_FEATURES.map((item, i) => (
-                <Reveal key={item.title} delayMs={i * 50}>
-                  <div
-                    className={
-                      i === 0
-                        ? 'border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 lg:px-10'
-                        : 'border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 sm:last:border-r-0 lg:px-10'
-                    }
-                  >
-                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-flame">
-                      {item.n}
-                    </span>
-                    <h3 className="font-disp mt-4 text-xl uppercase leading-tight tracking-tight text-[#EDE6DA] sm:text-2xl">
-                      {item.title}
-                    </h3>
-                    <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-base">
-                      {item.copy}
-                    </p>
-                  </div>
-                </Reveal>
-              ))}
+            <div className="relative mx-auto max-w-[900px] px-[5vw] py-16 sm:py-24">
+              <Reveal>
+                <h2 className="font-serif-i text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] text-[#EDE6DA]">
+                  A cinematic home for what is on next
+                </h2>
+                <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
+                  Forja opens on a featured title, rich posters, and shelves that
+                  stay readable from a laptop to a living-room TV.
+                </p>
+              </Reveal>
+
+              <ul className="mt-14 space-y-0">
+                {CATALOG_FEATURES.map((item, i) => (
+                  <Reveal key={item.title} delayMs={i * 60}>
+                    <li className="group flex flex-col gap-2 border-t border-dashed border-[rgba(237,230,218,0.2)] py-7 last:border-b sm:flex-row sm:items-baseline sm:gap-6">
+                      <h3 className="shrink-0 font-disp text-[clamp(1.35rem,3vw,1.85rem)] uppercase tracking-tight text-flame transition group-hover:text-[#EDE6DA] sm:w-[14rem]">
+                        {item.title}
+                      </h3>
+                      <span
+                        aria-hidden
+                        className="hidden min-w-[2rem] flex-1 border-b border-dotted border-[rgba(237,230,218,0.25)] sm:block"
+                      />
+                      <p className="max-w-md text-sm leading-relaxed text-[rgba(237,230,218,0.55)] sm:max-w-xs sm:text-right sm:text-base">
+                        {item.copy}
+                      </p>
+                    </li>
+                  </Reveal>
+                ))}
+              </ul>
             </div>
           </section>
 
@@ -393,11 +381,11 @@ export function PlatformPage() {
               </Reveal>
             </div>
 
-            <ol className="mx-auto grid max-w-[1200px] border-t border-[rgba(237,230,218,0.12)] sm:grid-cols-2 lg:grid-cols-4">
+            <ol className="mx-auto grid max-w-[1200px] border-t border-l border-[rgba(237,230,218,0.12)] sm:grid-cols-2 lg:grid-cols-4">
               {SPORT_FEATURES.map((item, i) => (
                 <li
                   key={item.title}
-                  className="border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-r sm:px-8 sm:py-12 lg:border-b-0 lg:px-8"
+                  className="border-b border-r border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:px-8 sm:py-12 lg:border-b-0 lg:px-8"
                 >
                   <span className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
                     {String(i + 1).padStart(2, '0')}
@@ -432,21 +420,21 @@ export function PlatformPage() {
                 </p>
               </Reveal>
 
-              <dl className="mt-12 divide-y divide-[rgba(237,230,218,0.12)] border-y border-[rgba(237,230,218,0.12)]">
+              <div className="mt-12 grid border-t border-l border-[rgba(237,230,218,0.12)] sm:grid-cols-2">
                 {LAN_FEATURES.map((item) => (
                   <div
                     key={item.title}
-                    className="grid gap-3 py-8 sm:grid-cols-[14rem_1fr] sm:gap-10"
+                    className="border-b border-r border-[rgba(237,230,218,0.12)] px-6 py-8 sm:px-8 sm:py-10"
                   >
-                    <dt className="font-disp text-lg uppercase tracking-tight text-[#EDE6DA] sm:text-xl">
+                    <h3 className="font-disp text-lg uppercase tracking-tight text-[#EDE6DA] sm:text-xl">
                       {item.title}
-                    </dt>
-                    <dd className="text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-base">
                       {item.copy}
-                    </dd>
+                    </p>
                   </div>
                 ))}
-              </dl>
+              </div>
             </div>
           </section>
 

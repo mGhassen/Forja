@@ -4,64 +4,40 @@ type LanFluxBusProps = {
   className?: string
 }
 
+/** Open flux: Desktop torrent engine → TV play. No card chrome. */
 export function LanFluxBus({ className }: LanFluxBusProps) {
   return (
-    <div
-      className={cn(
-        'relative overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.12)] bg-[#121110] px-5 py-8 sm:px-8 sm:py-10',
-        className,
-      )}
-      aria-hidden
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(28,231,131,0.08),transparent_55%),radial-gradient(ellipse_at_80%_50%,rgba(255,77,28,0.06),transparent_55%)]" />
-
-      <div className="relative grid items-center gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] sm:gap-4">
-        <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
-          <div className="flex size-14 items-center justify-center rounded-xl border border-forja-green/35 bg-forja-green/10 shadow-[0_0_28px_rgba(28,231,131,0.18)] sm:size-16">
-            <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-forja-green">
-              PC
-            </span>
-          </div>
-          <p className="font-disp mt-4 text-2xl uppercase tracking-tight text-forja-green sm:text-3xl">
+    <div className={cn('w-full', className)} aria-hidden>
+      <div className="flex flex-col items-stretch gap-8 sm:flex-row sm:items-center sm:gap-6">
+        <div className="min-w-0 shrink-0 sm:w-[11rem]">
+          <p className="font-disp text-[clamp(2rem,5vw,3rem)] uppercase leading-none tracking-tight text-forja-green">
             Desktop
           </p>
-          <p className="mt-1 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.45)]">
-            Torrent engine
+          <p className="mt-2 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.45)]">
+            Downloads the torrent
           </p>
         </div>
 
-        <div className="relative flex min-h-[4.5rem] flex-col justify-center">
-          <p className="mb-3 text-center font-mono-ui text-[9px] uppercase tracking-[0.2em] text-flame">
-            Passthrough bus
+        <div className="relative min-h-[3rem] flex-1">
+          <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-[rgba(237,230,218,0.2)]" />
+          <div className="lan-flux-beam absolute left-0 top-1/2 h-0.5 w-1/4 -translate-y-1/2 bg-gradient-to-r from-transparent via-forja-green to-transparent" />
+          <span className="lan-flux-packet absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-forja-green shadow-[0_0_10px_rgba(28,231,131,0.85)]" />
+          <span className="lan-flux-packet lan-flux-packet-delay absolute top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-flame" />
+
+          <p className="absolute inset-x-0 top-0 text-center font-mono-ui text-[9px] uppercase tracking-[0.2em] text-flame">
+            Stream over Wi-Fi
           </p>
-
-          <div className="relative h-3 rounded-full border border-white/10 bg-black/40">
-            <div className="lan-flux-rail absolute inset-y-0 left-0 right-0 overflow-hidden rounded-full">
-              <div className="lan-flux-beam absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-forja-green/80 to-transparent" />
-            </div>
-            <span className="lan-flux-packet absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-forja-green shadow-[0_0_12px_rgba(28,231,131,0.9)]" />
-            <span className="lan-flux-packet lan-flux-packet-delay absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-flame shadow-[0_0_10px_rgba(255,77,28,0.8)]" />
-            <span className="lan-flux-packet lan-flux-packet-delay-2 absolute top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-[#EDE6DA]" />
-          </div>
-
-          <div className="mt-3 flex justify-between font-mono-ui text-[9px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.35)]">
-            <span>Magnet</span>
-            <span>Stream</span>
-            <span>Play</span>
-          </div>
+          <p className="absolute inset-x-0 bottom-0 text-center font-mono-ui text-[9px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
+            Magnet on TV · torrent on PC · play on TV
+          </p>
         </div>
 
-        <div className="flex flex-col items-center text-center sm:items-end sm:text-right">
-          <div className="flex size-14 items-center justify-center rounded-xl border border-forja-flame/35 bg-forja-flame/10 shadow-[0_0_28px_rgba(255,77,28,0.16)] sm:size-16">
-            <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-flame">
-              TV
-            </span>
-          </div>
-          <p className="font-disp mt-4 text-2xl uppercase tracking-tight text-[#EDE6DA] sm:text-3xl">
+        <div className="min-w-0 shrink-0 text-left sm:w-[11rem] sm:text-right">
+          <p className="font-disp text-[clamp(2rem,5vw,3rem)] uppercase leading-none tracking-tight text-[#EDE6DA]">
             TV
           </p>
-          <p className="mt-1 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.45)]">
-            Native player
+          <p className="mt-2 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.45)]">
+            Plays the stream
           </p>
         </div>
       </div>

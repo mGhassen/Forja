@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.view.KeyEvent
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
@@ -42,18 +41,6 @@ class MainActivity : AudioServiceActivity() {
             return true
         }
         return super.dispatchKeyEvent(event)
-    }
-
-    // Belt-and-suspenders with ForjaApplication: Impeller off (Skia) on leanback
-    // (ipdigi). MediaKit uses mediacodec_embed + SurfaceTexture producers.
-    override fun getFlutterShellArgs(): FlutterShellArgs {
-        val args = super.getFlutterShellArgs()
-        if (isAndroidTv()) {
-            for (arg in TvFlutterShellArgs.forLeanback()) {
-                args.add(arg)
-            }
-        }
-        return args
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

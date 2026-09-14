@@ -1,15 +1,17 @@
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
-import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/playback/play_context.dart';
+import 'package:forja/shared/player/live/hooks/live_play.dart';
+import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/player/sources/stream_play_hooks.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Thin pack-driven portal VOD play — vault portals + stream URL shape.
-/// Browse UI lives in the IPTV hub pack; this only wires details → [HostPlaybackOpen].
+/// Browse UI lives in the IPTV hub pack; this only wires details → [PtPlayerScreen].
 abstract final class PackStreamPlayHooks {
   PackStreamPlayHooks._();
 
@@ -105,6 +107,33 @@ abstract final class PackStreamPlayHooks {
         '${Uri.encodeComponent(pass)}/${Uri.encodeComponent(id)}.$useExt';
   }
 
+  static Future<void> _openVod({
+    required BuildContext context,
+    required String url,
+    required String title,
+    String? logoUrl,
+    String? subtitle,
+  }) {
+    return openForjaLiveNativePlayer(
+      context,
+      sources: [
+        LivePlaySource(
+          url: url,
+          label: title,
+          logoUrl: logoUrl,
+          headers: const {'User-Agent': 'Mozilla/5.0'},
+        ),
+      ],
+      title: title,
+      subtitle: subtitle,
+      logoUrl: logoUrl,
+      engineContext: BuiltInPlayerContext.vod,
+      titleTracksSource: false,
+      vodPlayback: true,
+      onlineSubtitles: true,
+    );
+  }
+
   static Future<void> _playFromContext({
     required BuildContext context,
     required PlayContext ctx,
@@ -124,6 +153,8 @@ abstract final class PackStreamPlayHooks {
         meta.type == 'movie';
     final containerExt =
         (extras['containerExt'] ?? 'mp4').toString().replaceFirst(RegExp(r'^\.'), '');
+    final logo = meta.poster.trim().isEmpty ? null : meta.poster.trim();
+    final portalName = (portalRaw['name'] ?? '').toString().trim();
 
     if (isMovie) {
       final streamId =
@@ -139,11 +170,12 @@ abstract final class PackStreamPlayHooks {
         ForjaToast.error('Could not open stream');
         return;
       }
-      await HostPlaybackOpen.openUrl(
+      await _openVod(
         context: context,
         url: url,
         title: meta.name,
-        headers: const {'User-Agent': 'Mozilla/5.0'},
+        logoUrl: logo,
+        subtitle: portalName.isEmpty ? null : portalName,
       );
       return;
     }
@@ -173,11 +205,12 @@ abstract final class PackStreamPlayHooks {
       ForjaToast.error('Could not open episode');
       return;
     }
-    await HostPlaybackOpen.openUrl(
+    await _openVod(
       context: context,
       url: url,
       title: 'Ep ${selected.episode ?? epNum} · ${selected.title}',
-      headers: const {'User-Agent': 'Mozilla/5.0'},
+      logoUrl: logo,
+      subtitle: portalName.isEmpty ? meta.name : '$portalName · ${meta.name}',
     );
   }
 }

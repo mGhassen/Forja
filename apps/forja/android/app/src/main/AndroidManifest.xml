@@ -24,9 +24,10 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true">
-        <!-- Do not set EnableImpeller globally — phones keep Impeller.
-             Android TV: Impeller off (Skia) via ForjaApplication + MainActivity
-             shell args (ipdigi parity; MediaKit mediacodec_embed). -->
+        <!-- ipdigi: media_kit Texture paints black under Impeller — Skia for all Android. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
