@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) |
-| **Current slice** | `shared/host/layout/` wiped — `PackLayoutHost` in `forja_foundation`; host mounts via `engine/runtime/layout/pack_layout_host_bridge.dart`. Pack owns live_sports progressive feed + listPortals items/layout. Kit list **EPG** view → foundation `EpgGuide`. Fat bridge remains (A50 Wave K). |
+| **Current slice** | Foundation layout is pack-agnostic (`grid`/`list`/`cards`/`timeline`). IPTV hub owns Timeline view + `programmes[]` + portals `hoistSource`. Fat bridge remains (A50 Wave K). |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -482,8 +482,9 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | live_sports | `_feed.js` owns sequential catalog fan-out; host `liveScheduleFeedProvider` calls hub `feed` once (no host progressive fan-out) |
 | Law | **`apps/forja/lib/shared/host/layout/` wiped** — runner in foundation; host bridge `engine/runtime/layout/pack_layout_host_bridge.dart`; product in pack JS (A57) |
 | Portals hoist | Opaque `PortalsActionHost.registerHoistSource` + foundation hoist when layout topBar declares `action: portals` (no `iptv`/`portals` product ids) |
-| A48 | Kit list View cycles Cards/List/EPG; `style: epg` paints foundation `EpgGuide` from feed rows (+ optional pack `programmes`) |
+| A48 | Kit list View cycles Cards/List/Timeline; generic `style: timeline` paints foundation guide from pack-emitted `programmes` (not IPTV-specific wire) |
 | Pin order | Category bar keeps pack feed first-seen order; IPTV pack sorts streams by `pinnedCats` first |
+| Generic scent | No `Iptv*` aliases / `live_schedule` const / `portals` hardcodes in foundation layout; inventory chip + opaque hoistSource |
 | A26 / A31 | Historical ✅ described `host/layout/` paths — frozen; wipe done (paths now foundation + engine bridge) |
 
 | Still open | Detail |

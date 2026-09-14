@@ -1831,7 +1831,7 @@ class KitTopBarActions extends ConsumerWidget {
     final actions = _actions;
     if (actions.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.of(context);
-    // last: restore prior schedule/list index (↑ from match → Portals → ↓).
+    // last: restore prior schedule/list index (↑ from match → inventory chip → ↓).
     final focusDown =
         kitFocusEdge(tabId, spec['focusDown']?.toString(), last: true);
     final focusLeft = kitFocusSide(tabId, spec['focusLeft']);
@@ -2067,13 +2067,15 @@ class KitTopBarActions extends ConsumerWidget {
       final IconData viewIcon;
       final String viewLabel;
       switch (cur) {
-        case 'epg':
-        case 'guide':
+        case 'timeline':
           viewIcon = Icons.view_timeline_rounded;
-          viewLabel = 'EPG view';
+          viewLabel = 'Timeline view';
         case 'list':
           viewIcon = Icons.view_list_rounded;
           viewLabel = 'List view';
+        case 'grid':
+          viewIcon = Icons.grid_on_rounded;
+          viewLabel = 'Grid view';
         default:
           viewIcon = Icons.grid_view_rounded;
           viewLabel = 'Cards view';
@@ -2966,7 +2968,7 @@ class KitListWidget extends ConsumerStatefulWidget {
 
   bool get isMatchCards => listStyle == 'cards';
 
-  bool get isEpgGuide => listStyle == 'epg' || listStyle == 'guide';
+  bool get isTimeline => listStyle == 'timeline';
 
   String get entryOpen =>
       (layoutSpec['open'] ?? '').toString().trim().toLowerCase();
@@ -2999,8 +3001,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   bool get _isDenseList => _effectiveStyle == 'list';
   bool get _isMatchCards => _effectiveStyle == 'cards';
-  bool get _isEpgGuide =>
-      _effectiveStyle == 'epg' || _effectiveStyle == 'guide';
+  bool get _isTimeline => _effectiveStyle == 'timeline';
   bool get _opensDetails => _effectiveOpen == 'details';
   bool get _opensPanel =>
       _effectiveOpen == 'panel' ||
@@ -3016,6 +3017,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         .trim()
         .toLowerCase();
     if (_effectiveStyle.isEmpty) _effectiveStyle = 'grid';
+    if (_effectiveStyle == 'epg' || _effectiveStyle == 'guide') {
+      _effectiveStyle = 'timeline';
+    }
 
     final openSetting = widget.openSettingId;
     if (openSetting != null && widget.pluginId.trim().isNotEmpty) {
@@ -3388,8 +3392,8 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         }
         final selectedId = widget.selectedEntryId ?? _selected?.meta.id;
         final Widget body;
-        if (_isEpgGuide) {
-          body = _epgGuide(context, source, entries);
+        if (_isTimeline) {
+          body = _timelineGuide(context, source, entries);
         } else if (_isDenseList) {
           body = _denseList(context, source, entries, selectedId: selectedId);
         } else if (_isMatchCards) {
@@ -3508,9 +3512,9 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     return true;
   }
 
-  /// Browse EPG — channels from kit.list entries; programmes from pack row
-  /// `programmes` / `epg` when present (paint-only; host/pack owns fetch).
-  Widget _epgGuide(
+  /// Timeline list style — channels from kit.list entries; programmes from
+  /// opaque row `programmes` / `epg` when the pack emits them.
+  Widget _timelineGuide(
     BuildContext context,
     KitListSource source,
     List<KitListEntry> entries,
@@ -3538,8 +3542,12 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         final map = Map<String, dynamic>.from(p);
         final pTitle = (map['title'] ?? map['name'] ?? '').toString().trim();
         if (pTitle.isEmpty) continue;
-        final start = _epgMs(map['startMs'] ?? map['start'] ?? map['start_timestamp']);
-        final end = _epgMs(map['endMs'] ?? map['stop'] ?? map['end'] ?? map['end_timestamp']);
+        final start = _programmeMs(
+          map['startMs'] ?? map['start'] ?? map['start_timestamp'],
+        );
+        final end = _programmeMs(
+          map['endMs'] ?? map['stop'] ?? map['end'] ?? map['end_timestamp'],
+        );
         if (start == null || end == null || end <= start) continue;
         programmes.add(EpgProgramme(
           channelId: id,
@@ -3574,10 +3582,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     );
   }
 
-  static int? _epgMs(Object? raw) {
+  /// Opaque programme timestamps: millis preferred; values &lt; 1e11 treated as seconds.
+  static int? _programmeMs(Object? raw) {
     if (raw == null) return null;
     if (raw is int) {
-      // Xtream short EPG often uses unix seconds.
       return raw < 100000000000 ? raw * 1000 : raw;
     }
     if (raw is num) {
@@ -3630,24 +3638,14 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         final meta = entry.meta;
         final airing = meta.airing == true;
         final selected = selectedId != null && selectedId == meta.id;
-        final health = (entry.legacyRow['health'] ??
-                entry.legacyRow['urlHealth'] ??
-                '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        final healthSuffix = health == 'dead' || health == 'bad'
-            ? ' · offline'
-            : (health == 'ok' || health == 'alive' ? ' · live' : '');
         return KitEventDenseTile(
           title: meta.name,
           meta: kitEventDenseMetaLine(
-                airing: airing,
-                startsAt: meta.startsAt,
-                badge: meta.badge,
-                genres: meta.genres,
-              ) +
-              healthSuffix,
+            airing: airing,
+            startsAt: meta.startsAt,
+            badge: meta.badge,
+            genres: meta.genres,
+          ),
           airing: airing,
           viewers: KitListPaint.fromKitEntry(entry).viewers,
           selected: selected,

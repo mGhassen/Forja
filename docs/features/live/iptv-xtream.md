@@ -14,7 +14,7 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 ## What you can do
 
 - Switch **Live**, **Movies**, and **Series** from the pack top bar
-- Browse categories and streams in the pack grid / list / EPG view (Search, Sort, View)
+- Browse categories and streams in the pack **Cards** / **List** / **Timeline** view (Search, Sort, View). Timeline data (`programmes`) comes from the pack.
 - Open **Portals** from the top bar — add, select, or remove portals (inventory from the pack)
 - Open movies/series in shared **hub details** — series episodes come from pack `details` (`meta.videos`); optional TMDB enrich when enabled
 - Play live channels and VOD in the IPTV player (guide / search / engine prefs stay on the player)

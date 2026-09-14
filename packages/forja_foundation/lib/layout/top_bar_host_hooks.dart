@@ -55,7 +55,7 @@ typedef KitTopBarCatalogFilterWriter = Future<void> Function(
 /// Pack-declared top-bar action (`action` / `id`) → host widget.
 ///
 /// Packs list actions in `kit.topBar`; the host never invents trailing chrome.
-/// Features register opaque verbs here (e.g. `portals` → IPTV chip).
+/// Features register opaque verbs here (any string matching pack JSON).
 typedef KitTopBarPackActionBuilder = Widget? Function(
   BuildContext context,
   WidgetRef ref, {
@@ -68,7 +68,7 @@ typedef KitTopBarPackActionBuilder = Widget? Function(
   VoidCallback? onRightEdge,
 });
 
-/// Wrap kit page content *below* the top bar (e.g. Portals over category + list).
+/// Wrap kit page content *below* the top bar (e.g. inventory overlay).
 typedef KitListBodyWrapper = Widget Function(
   BuildContext context, {
   required Widget child,

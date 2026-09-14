@@ -4,12 +4,12 @@ import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 
 export 'package:forja_foundation/widgets/chrome/portals_chip.dart' show PortalsChip;
 
-/// Layout-zone wrapper over [PortalsChip].
+/// Layout-zone wrapper over [PortalsChip] — inventory / account chip paint.
 ///
 /// Host injects TV/shell focus via [interactiveBuilder]. Default uses
 /// package [FocusableTap] (no `package:forja` shell).
-class KitPortalsChip extends StatelessWidget {
-  const KitPortalsChip({
+class KitInventoryChip extends StatelessWidget {
+  const KitInventoryChip({
     super.key,
     required this.label,
     required this.onTap,
@@ -79,3 +79,6 @@ class KitPortalsChip extends StatelessWidget {
     );
   }
 }
+
+/// @Deprecated('Use KitInventoryChip')
+typedef KitPortalsChip = KitInventoryChip;

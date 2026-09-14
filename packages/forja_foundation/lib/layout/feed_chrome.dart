@@ -28,7 +28,7 @@ final kitFeedHorizonPrefProvider =
 final kitFeedSortPrefProvider =
     StateProvider.family<String, String>((ref, chromeKey) => '');
 
-/// Pack View menu (`list` / `cards`) — per hub. Empty = use `kit.list.style`.
+/// Pack View menu — per hub. Empty = use `kit.list.style`.
 final kitListStyleOverrideProvider =
     StateProvider.family<String, String>((ref, chromeKey) => '');
 
@@ -38,7 +38,11 @@ final Set<String> _listStyleHydrated = {};
 
 String? _normalizeListStyle(String? raw) {
   final v = (raw ?? '').trim().toLowerCase();
-  if (v == 'list' || v == 'cards') return v;
+  if (v.isEmpty) return null;
+  // Legacy pack tokens → generic timeline style.
+  if (v == 'epg' || v == 'guide') return 'timeline';
+  // Persist any opaque View cycle token (grid / list / cards / timeline / …).
+  if (RegExp(r'^[a-z][a-z0-9_]{0,31}$').hasMatch(v)) return v;
   return null;
 }
 
@@ -76,7 +80,7 @@ void ensureKitListStyleHydrated(WidgetRef ref, String chromeKey) {
   });
 }
 
-/// Write memory + disk for List/Cards chrome.
+/// Write memory + disk for View chrome style.
 void setKitListStyle(WidgetRef ref, String chromeKey, String style) {
   if (chromeKey.isEmpty) return;
   final v = _normalizeListStyle(style) ?? '';

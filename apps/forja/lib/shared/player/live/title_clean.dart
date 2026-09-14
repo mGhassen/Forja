@@ -7,3 +7,9 @@ import 'package:forja_foundation/utils/title_clean.dart';
 
 /// Migration alias used by live player paths.
 CleanedMediaTitle cleanStreamMediaTitle(String raw) => cleanMediaTitle(raw);
+
+/// @Deprecated('Use cleanMediaTitle / cleanStreamMediaTitle')
+CleanedMediaTitle cleanIptvMediaTitle(String raw) => cleanMediaTitle(raw);
+
+/// @Deprecated('Use CleanedMediaTitle')
+typedef IptvCleanedTitle = CleanedMediaTitle;

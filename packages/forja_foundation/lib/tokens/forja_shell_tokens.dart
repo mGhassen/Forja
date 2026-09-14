@@ -364,7 +364,10 @@ abstract final class ShellTokens {
   static const Duration tabStaleHome = Duration(minutes: 15);
   static const Duration tabStaleAudiobooks = Duration(minutes: 10);
   static const Duration tabStaleDiscover = Duration(minutes: 15);
-  static const Duration tabStaleIptv = Duration(minutes: 10);
+  static const Duration tabStaleLive = Duration(minutes: 10);
+
+  @Deprecated('Use tabStaleLive')
+  static const Duration tabStaleIptv = tabStaleLive;
   static const Duration tabStaleMusic = Duration(minutes: 10);
   static const Duration tabStaleJellyfin = Duration(minutes: 15);
 

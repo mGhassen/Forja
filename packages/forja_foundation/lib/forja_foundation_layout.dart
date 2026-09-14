@@ -1,4 +1,4 @@
-/// Layout zone — kit.list registry, top-bar hooks, portals chip (RFC migrate).
+/// Layout zone — kit.list registry, top-bar hooks, inventory chip.
 ///
 /// May use flutter_riverpod. Must not import `package:forja/`.
 library;
@@ -12,7 +12,7 @@ export 'package:forja_foundation/layout/list/list_event_query.dart';
 export 'package:forja_foundation/layout/list/host_list_registry.dart';
 export 'package:forja_foundation/layout/top_bar_host_hooks.dart';
 export 'package:forja_foundation/layout/panel_source_flags_hooks.dart';
-export 'package:forja_foundation/layout/chrome/kit_portals_chip.dart';
+export 'package:forja_foundation/layout/chrome/kit_inventory_chip.dart';
 
 export 'package:forja_foundation/layout/pack_layout_host.dart';
 export 'package:forja_foundation/layout/pack_layout_host_wire.dart' show PluginKitTopBar;

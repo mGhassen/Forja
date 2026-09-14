@@ -92,8 +92,3 @@ class ChannelGuide {
     }).toList(growable: false);
   }
 }
-
-/// Migration aliases — prefer [GuideGroup] / [GuideChannel] / [ChannelGuide].
-typedef IptvGuideGroup = GuideGroup;
-typedef IptvGuideChannel = GuideChannel;
-typedef IptvChannelGuide = ChannelGuide;

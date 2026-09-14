@@ -16,8 +16,8 @@ abstract final class LiveSurfaceOpen {
 
   static const surface = 'live';
 
-  /// Pack `kit.list` source id for Live Sports schedule / portals hoist.
-  static const listSourceId = HostListRegistry.liveScheduleSourceId;
+  /// Pack `kit.list` source id for live schedule / portals hoist (opaque).
+  static const listSourceId = 'live_schedule';
 
   static String? pendingOpenEntryId;
   static bool _registered = false;

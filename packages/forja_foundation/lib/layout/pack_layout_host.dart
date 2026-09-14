@@ -492,22 +492,16 @@ class _PackLayoutHostState extends State<PackLayoutHost>
 
   /// Vertical pack stack. Optional [KitTopBarHostHooks.wrapListBody] wraps
   /// content *below* the top bar when [KitTopBarHostHooks.shouldHoistListBody]
-  /// allows it, or when the stack topBar declares `action: portals` and the
-  /// host registered a portals pack action builder. Product filters belong in
-  /// those hooks — not here (RFC-109).
+  /// allows it. Product overlay verbs register in host hooks — not here.
   Widget? _buildStackWidget(
     Map<String, dynamic> spec, {
     required Map<String, int> tvOrders,
   }) {
     final wrap = KitTopBarHostHooks.wrapListBody;
     final listSourceId = _stackListSourceId(spec);
-    final hoistByHook = listSourceId != null &&
+    final hoistListBody = wrap != null &&
+        listSourceId != null &&
         (KitTopBarHostHooks.shouldHoistListBody?.call(listSourceId) ?? false);
-    final hoistByPortals = listSourceId != null &&
-        _stackHasPortalsTopBarAction(spec) &&
-        KitTopBarHostHooks.packActionBuilders.containsKey('portals');
-    final hoistListBody =
-        wrap != null && listSourceId != null && (hoistByHook || hoistByPortals);
     if (!hoistListBody) {
       return LayoutStack(
         spec: spec,
@@ -609,25 +603,6 @@ class _PackLayoutHostState extends State<PackLayoutHost>
       if (id.isNotEmpty) found = id;
     }
     return found;
-  }
-
-  /// True when a stack child `kit.topBar` declares `action: portals`.
-  bool _stackHasPortalsTopBarAction(Map<String, dynamic> spec) {
-    final raw = spec['children'];
-    if (raw is! List) return false;
-    for (final entry in raw) {
-      if (entry is! Map) continue;
-      final child = Map<String, dynamic>.from(entry);
-      if (_layoutWidgetType(child) != LayoutTypes.topBar) continue;
-      final actions = child['actions'];
-      if (actions is! List) continue;
-      for (final a in actions) {
-        if (a is! Map) continue;
-        final action = (a['action'] ?? a['id'] ?? '').toString().trim();
-        if (action == 'portals') return true;
-      }
-    }
-    return false;
   }
 
   bool _menuIsHoisted(Map<String, dynamic> spec) {

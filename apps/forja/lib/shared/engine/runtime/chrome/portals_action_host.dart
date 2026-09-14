@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja_foundation/layout/chrome/kit_portals_chip.dart';
+import 'package:forja_foundation/layout/chrome/kit_inventory_chip.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja_foundation/layout/top_bar_host_hooks.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
@@ -15,19 +15,20 @@ import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
-/// Generic `kit.topBar` `action: portals` — inventory via pack `listPortals`.
+/// Generic `kit.topBar` inventory action — pack verb + `listPortals` capability.
 ///
-/// Capability-only. Host runs pack actions + paints foundation [PortalsChip].
+/// Capability-only. Host runs pack actions + paints foundation [PortalsChip]
+/// via [KitInventoryChip]. No pack-id allowlist.
 abstract final class PortalsActionHost {
   PortalsActionHost._();
 
-  /// Opaque `kit.list` source ids that hoist the portals overlay.
+  /// Opaque `kit.list` source ids that hoist the inventory overlay.
   ///
-  /// Packs / surfaces register here — no product id allowlist (`iptv`, …).
-  /// Foundation also hoists when layout topBar declares `action: portals`.
+  /// Packs declare `hoistSource` / `source` on the topBar action, or surfaces
+  /// call [registerHoistSource] at boot.
   static final Set<String> _hoistSources = {};
 
-  /// Register an opaque list source that should hoist the portals panel.
+  /// Register an opaque list source that should hoist the inventory panel.
   static void registerHoistSource(String sourceId) {
     final id = sourceId.trim();
     if (id.isEmpty) return;
@@ -58,12 +59,17 @@ abstract final class PortalsActionHost {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
+    final hoist = (action['hoistSource'] ?? action['source'] ?? '')
+        .toString()
+        .trim();
+    if (hoist.isNotEmpty) registerHoistSource(hoist);
+
     final open = ref.watch(portalsPanelOpenProvider);
     final inv = ref.watch(portalsInventoryProvider);
     final active = inv.asData?.value.activeLabel ?? 'Portals';
 
     final policy = ShellScope.inputPolicyOf(context);
-    return KitPortalsChip(
+    return KitInventoryChip(
       label: active,
       hasPortal: (inv.asData?.value.portals.isNotEmpty ?? false),
       selected: open,

@@ -4,18 +4,14 @@ import 'package:forja_foundation/layout/list/panel_host.dart';
 
 /// Host-side registration for `kit.list` backends + optional side panels.
 ///
-/// Features register at boot by **host source id** (e.g. `live_schedule`).
-/// Optional [pluginId] is only for resolve fallback when pack layout omits
-/// `source` — do not pass shipped hub pack ids from foundation hosts.
+/// Features register at boot by **opaque host source id**. Optional [pluginId]
+/// is only for resolve fallback when pack layout omits `source` — do not pass
+/// shipped hub pack ids from foundation hosts.
 ///
 /// Registry starts empty. Host boot registers sources / panels / pack-feed
 /// factories — foundation never imports product feed modules.
 abstract final class HostListRegistry {
   HostListRegistry._();
-
-  /// Pack `kit.list` / categoryBar source id for Live Sports schedule.
-  /// Keep in sync with host live surface open.
-  static const liveScheduleSourceId = 'live_schedule';
 
   static final Map<String, KitListSource> _bySourceId = {};
   static final Map<String, KitListSource> _byPluginId = {};
@@ -41,7 +37,7 @@ abstract final class HostListRegistry {
     }
   }
 
-  /// Side panel for a list source (Live Sports streams panel, …).
+  /// Side panel for a list source (opaque source id).
   static void registerPanel(KitPanelHost panel) {
     final id = panel.listSourceId.trim();
     if (id.isEmpty) return;

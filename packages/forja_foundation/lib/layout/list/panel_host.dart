@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/layout/list/list_source.dart';
 
-/// Side panel for a `kit.list` source (e.g. Live Sports streams).
+/// Side panel for a `kit.list` source.
 ///
 /// Features register an implementation; kit / browse shells never import the
 /// product module — they resolve by opaque [listSourceId].
 abstract class KitPanelHost {
-  /// Opaque id matching [KitListSource.id] (e.g. `live_schedule`).
+  /// Opaque id matching [KitListSource.id].
   String get listSourceId;
 
   /// Streams / details panel beside the dense list for [entry].

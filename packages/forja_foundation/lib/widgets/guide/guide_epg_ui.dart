@@ -31,10 +31,6 @@ const double kGuideEpgCardHeight = 132;
 /// Taller shell when the NEXT programme row is shown below the current entry.
 const double kGuideEpgCardHeightWithNext = 156;
 
-/// Migration aliases.
-const double kIptvGuideEpgCardHeight = kGuideEpgCardHeight;
-const double kIptvGuideEpgCardHeightWithNext = kGuideEpgCardHeightWithNext;
-
 abstract final class _GuideShell {
   static Color get accent => ForjaShellColors.cinematic.navUnderline;
   static Color get live => const Color(0xFFEF4444);
@@ -58,9 +54,6 @@ class GuideEpgCard extends StatefulWidget {
   @override
   State<GuideEpgCard> createState() => _GuideEpgCardState();
 }
-
-/// Migration alias — prefer [GuideEpgCard].
-typedef IptvGuideEpgCard = GuideEpgCard;
 
 class _GuideEpgCardState extends State<GuideEpgCard> {
   Timer? _tick;
@@ -484,9 +477,6 @@ class FloatingEpg extends StatelessWidget {
     );
   }
 }
-
-/// Migration alias — prefer [FloatingEpg].
-typedef IptvFloatingEpg = FloatingEpg;
 
 class _Badge extends StatelessWidget {
   const _Badge({

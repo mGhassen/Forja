@@ -23,9 +23,6 @@ class PlayerStatsSnapshot {
   final Duration? position;
 }
 
-/// Migration alias — prefer [PlayerStatsSnapshot].
-typedef IptvPlayerStatsSnapshot = PlayerStatsSnapshot;
-
 class PlayerStatRow {
   const PlayerStatRow(this.label, this.value);
   final String label;

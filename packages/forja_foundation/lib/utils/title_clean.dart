@@ -15,9 +15,6 @@ class CleanedMediaTitle {
   bool get isEmpty => title.trim().isEmpty;
 }
 
-/// Migration alias — prefer [CleanedMediaTitle].
-typedef IptvCleanedTitle = CleanedMediaTitle;
-
 /// Strips `EN-` / `NETFLIX-` / quality tags, pulls year + SxxExx when present.
 CleanedMediaTitle cleanMediaTitle(String raw) {
   var s = raw.trim();
@@ -113,6 +110,3 @@ CleanedMediaTitle cleanMediaTitle(String raw) {
     episode: episode,
   );
 }
-
-/// Migration alias — prefer [cleanMediaTitle].
-CleanedMediaTitle cleanIptvMediaTitle(String raw) => cleanMediaTitle(raw);

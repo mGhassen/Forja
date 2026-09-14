@@ -4,6 +4,11 @@ import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 
 export 'package:forja_foundation/widgets/guide/channel_guide.dart';
 
+/// Host-local aliases (player channel guide still uses these names).
+typedef IptvGuideGroup = GuideGroup;
+typedef IptvGuideChannel = GuideChannel;
+typedef IptvChannelGuide = ChannelGuide;
+
 /// Host accessors for portal payloads on foundation [GuideChannel].
 extension GuideChannelHost on GuideChannel {
   IptvStream? get xtreamStream =>
