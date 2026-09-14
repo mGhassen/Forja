@@ -66,6 +66,23 @@ IptvCleanedTitle cleanIptvMediaTitle(String raw) {
     '',
   );
 
+  // Leading `|EN|` / `|FR|` pipe tags (common portal prefixes).
+  for (var i = 0; i < 4; i++) {
+    final next = s.replaceFirst(
+      RegExp(
+        r'^\|?\s*(?:'
+        r'EN|FR|AR|ES|DE|IT|PT|NL|TR|PL|RU|MULTI|VO|VF|VOSTFR|VOST|'
+        r'NETFLIX|NF|AMAZON|AMZN|PRIME|DISNEY(?:\+)?|HULU|HBO|MAX|APPLE|ATVP|'
+        r'DC|DV|WEB|WEB[- ]?DL|WEBRip'
+        r')\s*\|+\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    if (next == s) break;
+    s = next;
+  }
+
   // Bracket / paren junk: [1080p], (MULTI), {Web-DL}
   s = s.replaceAll(RegExp(r'[\[\(\{][^\]\)\}]{0,40}[\]\)\}]'), ' ');
 

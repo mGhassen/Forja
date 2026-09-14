@@ -32,8 +32,10 @@ abstract final class PackIptvPlayHooks {
       'id': open?.id ?? seed.id,
       'streamId': extras['streamId'] ?? open?.id ?? seed.id,
       'portalKey': extras['portalKey'] ?? '',
-      'name': extras['streamName'] ?? extras['name'] ?? seed.name,
-      'title': extras['streamName'] ?? extras['name'] ?? seed.name,
+      // Prefer cleaned display name; keep raw only as last resort.
+      'name': extras['name'] ?? seed.name ?? extras['streamName'],
+      'title': extras['name'] ?? seed.name ?? extras['streamName'],
+      'streamName': extras['streamName'] ?? extras['name'] ?? seed.name,
       'icon': extras['streamIcon'] ?? extras['icon'] ?? seed.poster,
       'poster': extras['streamIcon'] ?? extras['icon'] ?? seed.poster,
       'plot': extras['plot'] ?? seed.description,
