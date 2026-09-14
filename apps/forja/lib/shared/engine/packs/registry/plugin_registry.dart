@@ -256,6 +256,7 @@ class PluginRegistry {
   static const packKindLive = 'live';
   static const packKindCatalog = 'catalog';
   static const packKindTorrent = 'torrent';
+  static const packKindDebrid = 'debrid';
   static const packKindIptv = 'iptv';
   static const packKindHubs = 'hubs';
   static const packKindOther = 'other';
@@ -265,6 +266,7 @@ class PluginRegistry {
     packKindLive,
     packKindCatalog,
     packKindTorrent,
+    packKindDebrid,
     packKindIptv,
     packKindHubs,
     packKindOther,
@@ -275,6 +277,7 @@ class PluginRegistry {
     packKindLive => 'Live',
     packKindCatalog => 'Catalog',
     packKindTorrent => 'Torrent',
+    packKindDebrid => 'Debrid',
     packKindIptv => 'IPTV',
     packKindHubs => 'Hubs',
     _ => 'Other',
@@ -292,12 +295,14 @@ class PluginRegistry {
         'live' => packKindLive,
         'catalog' => packKindCatalog,
         'torrent' => packKindTorrent,
+        'debrid' => packKindDebrid,
         'iptv-vod' => packKindIptv,
         _ when isHubManifestSlot(slot) => packKindHubs,
         _ => null,
       };
       if (fromSlot != null) return fromSlot;
     }
+    if (pack.plugins.any((p) => p.isDebrid)) return packKindDebrid;
     if (pack.plugins.any((p) => p.types.contains('iptv'))) return packKindIptv;
     if (pack.plugins.any((p) => p.isKitPlugin)) return packKindHubs;
     if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {

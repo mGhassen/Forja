@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/components/input.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
-/// Search page template — field + optional filters + results (RFC-106 G6).
+/// Search page template — field + optional filters + results (RFC-106 G6 · RFC-112).
 class SearchBlock extends StatelessWidget {
   const SearchBlock({
     super.key,
@@ -16,6 +17,30 @@ class SearchBlock extends StatelessWidget {
     this.filters,
     this.field,
   });
+
+  factory SearchBlock.fromProps(
+    Map<String, dynamic> props, {
+    required Widget results,
+    TextEditingController? controller,
+    FocusNode? focusNode,
+    ValueChanged<String>? onChanged,
+    ValueChanged<String>? onSubmitted,
+    Widget? header,
+    Widget? filters,
+    Widget? field,
+  }) {
+    return SearchBlock(
+      results: results,
+      controller: controller,
+      focusNode: focusNode,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      hintText: propsStringOr(props, 'hintText', 'Search'),
+      header: header,
+      filters: filters,
+      field: field,
+    );
+  }
 
   final Widget results;
   final TextEditingController? controller;

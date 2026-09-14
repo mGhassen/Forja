@@ -16,7 +16,7 @@ import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
-import 'package:forja_foundation/widgets/details/match_details_page.dart';
+import 'package:forja_foundation/blocks/details/match_details_block.dart';
 
 /// Pack-emitted paint props for match details (no host field heuristics).
 class _PackEntryPaint {

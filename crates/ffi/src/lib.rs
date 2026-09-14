@@ -311,11 +311,6 @@ fn indexer_request_json(request_json: String) -> String {
     indexer::request_json(&request_json)
 }
 
-fn debrid_request_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    debrid::request_json(&request_json)
-}
-
 fn metadata_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     media_metadata::metadata_request_json(&request_json)

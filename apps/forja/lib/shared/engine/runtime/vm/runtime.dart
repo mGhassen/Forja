@@ -1313,6 +1313,7 @@ class EngineRuntime {
     title: meta.title,
     year: meta.year,
     url: meta.url || '',
+    magnet: meta.magnet || '',
     config: meta.config || {},
     action: meta.action || '',
     params: meta.params || {},

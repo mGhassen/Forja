@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
 
-/// Shell page template — topBar + body + optional side rail (RFC-106 G6).
+/// Shell page template — topBar + body + optional side rail (RFC-106 G6 · RFC-112).
 class ShellBlock extends StatelessWidget {
   const ShellBlock({
     super.key,
@@ -10,6 +11,21 @@ class ShellBlock extends StatelessWidget {
     this.sideRailWidth = 220,
     this.railOnLeading = true,
   });
+
+  factory ShellBlock.fromProps(
+    Map<String, dynamic> props, {
+    required Widget body,
+    Widget? topBar,
+    Widget? sideRail,
+  }) {
+    return ShellBlock(
+      topBar: topBar,
+      body: body,
+      sideRail: sideRail,
+      sideRailWidth: propsNumOr(props, 'sideRailWidth', 220),
+      railOnLeading: propsBool(props, 'railOnLeading', true),
+    );
+  }
 
   final Widget? topBar;
   final Widget body;

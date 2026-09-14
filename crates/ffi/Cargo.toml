@@ -35,7 +35,6 @@ media-metadata = { path = "../media-metadata" }
 host-http = { path = "../archive/host-http" }
 media-extra = { path = "../archive/media-extra" }
 indexer = { path = "../indexer" }
-debrid = { path = "../debrid" }
 live-sports = { path = "../live-sports" }
 engine = { path = "../engine" }
 uniffi = { workspace = true }

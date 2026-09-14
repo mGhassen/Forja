@@ -31,8 +31,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
   Map<String, dynamic>? preferFirst,
   ValueNotifier<String>? messageNotifier,
 }) async {
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   var ordered = sortEngineMetaStreamRows(rows);
   if (preferFirst != null) {
     final preferUrl = preferFirst['url']?.toString();
@@ -48,8 +46,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
     if (streamDrmBlockedOffAndroid(row['drm'])) continue;
@@ -60,8 +56,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
     // Widevine only on Android Exo (RFC-101) — skip before HTTP probe.
@@ -129,14 +123,10 @@ Future<Map<String, dynamic>?> firstEngineCatalogResolveRow({
   required PlaybackProfile profile,
   required SettingsService settings,
 }) async {
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   for (final row in sortEngineMetaStreamRows(rows)) {
     final check = classifyStremioStream(
       row,
       profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
     );
     if (check is StremioExternalLink || check is StremioResolveFailure) {
       continue;

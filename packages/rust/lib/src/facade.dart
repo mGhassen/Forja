@@ -354,6 +354,7 @@ abstract final class Engine {
     'forja_iptv_portal_meta',
     'sort_preference',
     'debrid_service',
+    'magnet_resolve_plugin_id',
     'external_player',
     'jackett_base_url',
     'jackett_api_key',

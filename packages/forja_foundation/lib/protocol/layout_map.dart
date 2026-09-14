@@ -1,4 +1,4 @@
-/// Layout slot → DS artifact (RFC-106 G4 · RFC-111).
+/// Layout slot → DS artifact (RFC-106 G4 · RFC-111 · RFC-112).
 ///
 /// Packs emit opaque [type] strings. Host walks layout → mounts matching
 /// widget when wired. [slotToArtifactName] only lists **mounted** paint
@@ -81,14 +81,29 @@ abstract final class LayoutMap {
   ]) =>
       layoutArtifactFor(rawType, spec);
 
-  /// Human map for docs / gallery — **mounted** paint only (RFC-111).
+  /// Human map for docs / gallery — **mounted** paint only (RFC-109 A69+).
   ///
-  /// Pack types without a foundation widget mount are omitted here
-  /// (`hero`, `menu`, `tabs`, `mood`, `continue`, `because`, `list`,
-  /// `topBar`, `categoryBar`). They still normalize via [layoutArtifactFor].
+  /// Unmounted pack types omit here (`menu`, `tabs`, `list`, `topBar`,
+  /// `categoryBar`). They still normalize via [layoutArtifactFor].
+  ///
+  /// Hub catalogs (IPTV / Live Sports / My List) share `catalogBody` — never
+  /// product-named block ids.
   static const Map<String, String> slotToArtifactName = {
     LayoutTypes.stack: 'LayoutStack',
     LayoutTypes.row: 'PackPaintTree row + ShellSectionTitle + cards',
+    LayoutTypes.hero: 'CinematicHero',
+    LayoutTypes.mood: 'MoodSection + MoodCircle',
+    LayoutTypes.continueWatching: 'ContinueSection',
+    LayoutTypes.because: 'BecauseSection',
     LayoutTypes.verticalFilters: 'LogoMenuRail (host VerticalFiltersRail)',
+    'catalogBody': 'CatalogBody (blocks)',
+    'search': 'CatalogSearchPage (blocks)',
+    'details': 'DetailsScreen (blocks)',
+    'matchDetails': 'MatchDetailsPage (blocks)',
+    'entryDetails': 'EntryDetails (blocks)',
+    'shell': 'ShellBlock (blocks)',
+    'empty': 'EmptyBlock (blocks)',
+    'posterCard': 'InteractivePosterCard',
+    'eventCard': 'EventCard',
   };
 }

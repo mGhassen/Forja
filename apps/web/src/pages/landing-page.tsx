@@ -18,14 +18,6 @@ const MARQUEE = [
   'Open source',
 ]
 
-const PACK_KINDS = [
-  'Anime hubs',
-  'Live sport',
-  'IPTV',
-  'Providers',
-  'Torrents',
-] as const
-
 export function LandingPage() {
   const magnetRef = useRef<HTMLAnchorElement>(null)
 
@@ -108,39 +100,38 @@ export function LandingPage() {
 
         <LibraryHubs />
 
-        <section className="border-t border-[rgba(237,230,218,0.14)] bg-[#0f0e0d] px-[5vw] py-[12vh]">
-          <div className="mx-auto max-w-[1100px]">
+        <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)]">
+          <img
+            src="/brand/forja-iptv-desk.png"
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover opacity-[0.22]"
+            loading="lazy"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-r from-[#0c0b0a] via-[#0c0b0a]/92 to-[#0c0b0a]/75"
+          />
+          <div className="relative mx-auto max-w-[900px] px-[5vw] py-[14vh] text-center">
             <Reveal>
-              <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between sm:gap-12">
-                <div className="max-w-xl">
-                  <h2 className="font-disp text-[clamp(28px,5vw,52px)] uppercase leading-[0.92] tracking-[-0.03em]">
-                    Add anime, sport, IPTV, and more
-                  </h2>
-                  <p className="mt-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                    Community packs extend Forja. Pick a ready-made set or browse
-                    the catalog.
-                  </p>
-                </div>
-                <Link
-                  to="/plugins"
-                  data-hover=""
-                  className="btn-magnet inline-flex shrink-0 items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
-                >
-                  Packs
-                </Link>
-              </div>
-            </Reveal>
-            <Reveal delayMs={60}>
-              <ul className="mt-12 divide-y divide-[rgba(237,230,218,0.12)] border-y border-[rgba(237,230,218,0.12)]">
-                {PACK_KINDS.map((kind) => (
-                  <li
-                    key={kind}
-                    className="py-5 font-serif-i text-[clamp(1.5rem,3.5vw,2.25rem)] leading-none text-[#EDE6DA]"
-                  >
-                    {kind}
-                  </li>
-                ))}
-              </ul>
+              <h2 className="font-disp text-[clamp(32px,6vw,56px)] uppercase leading-[0.92] tracking-[-0.04em]">
+                Packs extend
+                <br />
+                <span className="font-serif-i normal-case text-flame">
+                  what Forja can play
+                </span>
+              </h2>
+              <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
+                Anime, live sport, IPTV, torrents, and more. Pick a ready-made
+                set or browse the catalog.
+              </p>
+              <Link
+                to="/plugins"
+                data-hover=""
+                className="btn-magnet mt-9 inline-flex items-center justify-center rounded-full px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)]"
+              >
+                Packs
+              </Link>
             </Reveal>
           </div>
         </section>

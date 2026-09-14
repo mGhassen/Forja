@@ -1030,13 +1030,10 @@ Future<void> _playResolveRow({
 
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
-
-  final debrid = settings.debridPlaybackPrefs();
   loadingSession.setKind(StreamLoadingKind.torrent);
   loadingSession.torrentStatusNotifier.value = initialStremioTorrentResolveStatus(
     profile: profile,
-    useDebrid: debrid.useDebrid,
-    debridService: debrid.service,
+    debridLabel: DebridPackBridge.activePluginLabel?.call(),
   );
   final resolved = await resolveStremioStream(
     stream: stream,

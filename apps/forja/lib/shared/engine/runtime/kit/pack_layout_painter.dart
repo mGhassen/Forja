@@ -8,7 +8,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/catalog/catalog_body.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 
 /// Hub tab mount — validate pack page JSON and paint. No product field mappers.

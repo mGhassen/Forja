@@ -75,7 +75,7 @@ private const val LIVE_TARGET_OFFSET_MS = 8_000L
 private const val LIVE_MIN_OFFSET_MS = 3_000L
 private const val LIVE_MAX_OFFSET_MS = 25_000L
 // Android TV (Xiaomi A11 etc.): sit further behind the edge + deeper LoadControl
-// so CDN jitter / continuity-proxy overlap skip does not clockwork-rebuffer.
+// so CDN jitter does not clockwork-rebuffer.
 // Live speed catch-up stays off on ATV — 0.97–1.03 drains the cushion and
 // re-triggers STATE_BUFFERING (issue 233).
 private const val LIVE_ATV_MIN_BUFFER_MS = 25_000

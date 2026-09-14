@@ -4,7 +4,7 @@ import 'package:forja/shared/player/sources/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja_foundation/widgets/details/entry_details.dart';
+import 'package:forja_foundation/blocks/details/details_block.dart';
 
 /// Generic kit entry details — resolve panel host when source matches.
 class KitEntryDetailsPage extends StatelessWidget {

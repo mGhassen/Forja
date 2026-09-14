@@ -378,11 +378,6 @@ pub unsafe extern "C" fn ffi_indexer_request_json(request_json: *const c_char) -
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_debrid_request_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::debrid_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_filter_torrents_json(
     results_json: *const c_char,
     show_title: *const c_char,

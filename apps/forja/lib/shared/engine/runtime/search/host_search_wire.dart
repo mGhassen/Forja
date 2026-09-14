@@ -28,7 +28,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
-import 'package:forja_foundation/widgets/catalog/catalog_search_page.dart';
+import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_result_card.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_screen.dart';
 import 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart' as foundation;
@@ -36,7 +36,7 @@ import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
 
 export 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart' show CatalogSearchFilters, CatalogSearchFilterLens, CatalogScoreArcPainter, CatalogYearTimelinePainter, SearchFilters, SearchMediaFilter, composeSearchQuery, kSearchFilterCountries, kSearchFilterGenres, kSearchFilterLanguages;
-export 'package:forja_foundation/widgets/catalog/catalog_search_page.dart' show CatalogSearchResult;
+export 'package:forja_foundation/blocks/search/catalog_search_page.dart' show CatalogSearchResult;
 export 'package:forja_foundation/widgets/catalog/catalog_search_result_card.dart' show CatalogSearchResultCard, CatalogSearchSkeletonCard;
 export 'package:forja_foundation/widgets/catalog/catalog_search_screen.dart' show CatalogSearchScreen;
 

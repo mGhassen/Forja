@@ -9,7 +9,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:forja/shared/player/live/shell_style.dart';
-import 'package:forja/shared/player/live/atv_live_cache.dart';
 import 'package:forja/shared/player/live/title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -33,9 +32,7 @@ import 'package:forja/shared/player/live/channel_guide/channel_search_overlay.da
 import 'package:forja/shared/engine/portals/network/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
-import 'package:forja/shared/player/live/live_continuity_proxy.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
-import 'package:forja/shared/player/live/proxy_reconnect_skip.dart';
 import 'package:forja/shared/player/live/channel_guide/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
@@ -99,10 +96,10 @@ bool iptvExoUrlLooksLive(String url) {
 /// Live native playback profile — one MediaKit/Exo config per surface type,
 /// not inferred from URL shape.
 enum IptvLiveSourceKind {
-  /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy when not HLS).
+  /// IPTV Live tab + Forja Sports Xtream channels (MediaKit direct + lavf reconnect).
   iptvXtream,
 
-  /// IPTV Live / Forja Sports Stalker (create_link; no continuity proxy).
+  /// IPTV Live / Forja Sports Stalker (create_link; direct open).
   iptvStalker,
 
   /// Live Sports Stremio addon streams (direct HLS / lavf reconnect).
@@ -110,9 +107,6 @@ enum IptvLiveSourceKind {
 
   /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
   liveEngine;
-
-  /// Kind allows the TS continuity proxy; still gated by [iptvShouldUseContinuityProxy].
-  bool get useContinuityProxy => this == IptvLiveSourceKind.iptvXtream;
 }
 
 /// HLS masters/media playlists — short HTTP bodies, not a progressive TS pipe.
@@ -120,18 +114,6 @@ enum IptvLiveSourceKind {
 bool iptvUrlLooksLikeHls(String url) {
   final lower = url.toLowerCase();
   return lower.contains('.m3u8');
-}
-
-/// Continuity proxy is for progressive MPEG-TS. HLS `.m3u8` must open direct —
-/// proxying them EOF after ~2 KiB then overlap-skip death-spirals (issue 272).
-@visibleForTesting
-bool iptvShouldUseContinuityProxy({
-  required IptvLiveSourceKind kind,
-  required String url,
-}) {
-  if (!kind.useContinuityProxy) return false;
-  if (iptvUrlLooksLikeHls(url)) return false;
-  return true;
 }
 
 /// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.
@@ -149,8 +131,7 @@ bool iptvHlsColdOpenHold({
   return now.difference(openedAt) < grace;
 }
 
-/// IPTV catalog / Forja Sports: Stalker stays direct; Xtream/M3U TS use the
-/// continuity proxy; HLS channel URLs open direct regardless of portal kind.
+/// IPTV catalog / Forja Sports: portal platform → live source kind.
 @visibleForTesting
 IptvLiveSourceKind iptvLiveSourceKindForPortal(IptvPortalPlatform platform) {
   return switch (platform) {
@@ -739,11 +720,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// Probed after each open - pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
 
-  /// Live MediaKit: localhost TS relay so CDN socket closes never hit mpv.
-  LiveContinuityProxy? _liveContinuityProxy;
-
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
+  StreamSubscription? _completedSub;
 
   // Seekbar: duration > 1s ⇒ VOD scrubber; live always shows EPG / live-edge bar.
   Duration _position = Duration.zero;
@@ -1005,15 +984,25 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// HLS cold open: allow ABR variant probe + first segments before soft-reopen.
   static const Duration _hlsColdOpenGrace = Duration(seconds: 30);
 
-  /// After continuity-proxy CDN reopen: prefer Buffering + refill over
-  /// soft-reopen while the skip gap is absorbed (adaptive skip / ATV).
-  static const Duration _proxyReconnectRecoveryGrace = Duration(seconds: 8);
+  /// ipdigi live: silent grace before goLive reopen (desktop / phone).
+  static const Duration _liveGraceWindow = Duration(milliseconds: 6000);
 
-  /// Last continuity-proxy upstream reopen (MediaKit + Exo Xtream).
-  DateTime? _lastProxyReconnectAt;
+  /// ipdigi ATV: longer grace so lavf reconnect_delay_max=5 can finish.
+  static const Duration _liveGraceWindowAtv = Duration(milliseconds: 9000);
 
-  /// Demuxer/buffer ahead when [_lastProxyReconnectAt] was set — refill check.
-  double _cacheAheadAtProxyReconnect = 0;
+  static const Duration _liveGoLivePollWindow = Duration(seconds: 5);
+  static const Duration _liveGoLivePollWindowAtv = Duration(seconds: 8);
+  static const int _maxLiveGoLiveAttempts = 2;
+  static const int _maxLiveGoLiveAttemptsAtv = 1;
+  static const Duration _liveGoLiveThrottle = Duration(seconds: 3);
+  static const Duration _liveStableWindow = Duration(milliseconds: 1500);
+
+  Timer? _liveGraceTimer;
+  Timer? _liveGoLiveTimer;
+  Timer? _liveStableTimer;
+  int _liveGoLiveAttempt = 0;
+  DateTime? _lastGoLiveAt;
+  Duration _liveGraceStartPos = Duration.zero;
 
   /// Sustained Buffering + near-empty demuxer: fps paint pulse alone is not
   /// "working" (Stalker / direct live SW underrun). Soft-reopen can fire.
@@ -1062,9 +1051,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     );
   }
 
-  /// Last decoded height / bitrate — cache tiers and proxy queue (ATV live).
+  /// Last decoded height — cache profile re-apply gate (ATV live).
   int _lastVideoHeight = 0;
-  int _lastVideoBitrate = 0;
   bool _liveCacheTierApplied = false;
 
   /// Paint stall detection (MediaKit live — I199 / perf plan).
@@ -1076,16 +1064,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
-  /// ATV MediaKit: lean Player buffer for live and Movies/Series — demuxer
-  /// owns readahead. VOD used to inherit 64 MiB and OOM on 4K MediaCodec.
+  /// ATV MediaKit: same 64 MiB Player buffer as ipdigi (demuxer owns readahead).
   PlayerConfiguration get _mediaKitPlayerConfiguration {
-    if (_atvMediaKit) {
-      return const PlayerConfiguration(
-        bufferSize: 32 * 1024 * 1024,
-        logLevel: MPVLogLevel.warn,
-        libass: true,
-      );
-    }
     return _playerConfiguration;
   }
 

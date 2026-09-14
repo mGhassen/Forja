@@ -192,8 +192,6 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     _s._stallFrameDropBaseline = -1;
     _s._stallPaintWatchSince = null;
     _s._lastDemuxerSampleAt = null;
-    _s._lastProxyReconnectAt = null;
-    _s._cacheAheadAtProxyReconnect = 0;
   }
 
   bool get _networkStillFeeding {
@@ -201,31 +199,6 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (at == null) return false;
     return DateTime.now().difference(at) <
         _PtPlayerScreenState._networkAliveWindow;
-  }
-
-  /// Continuity-proxy just reopened CDN — hold soft-reopen while cushion refills.
-  bool get _inProxyReconnectGrace {
-    final at = _s._lastProxyReconnectAt;
-    if (at == null) return false;
-    return DateTime.now().difference(at) <
-        _PtPlayerScreenState._proxyReconnectRecoveryGrace;
-  }
-
-  /// Proxy skip gap in flight: feed advancing or demuxer climbing after reopen.
-  ///
-  /// Do **not** treat a fat proxy byte queue as refill — Exo LoadControl can
-  /// keep the queue high while playhead ahead collapses (gray / replay).
-  bool get _proxyReconnectRefilling {
-    if (!_inProxyReconnectGrace) return false;
-    final ahead = _s._cacheAheadSecs;
-    final atReconnect = _s._cacheAheadAtProxyReconnect;
-    // Cushion dying and not feeding ⇒ not refilling.
-    if (ahead + 0.5 < atReconnect && !_networkStillFeeding) {
-      return false;
-    }
-    if (_networkStillFeeding) return true;
-    if (ahead > atReconnect + 0.25) return true;
-    return false;
   }
 
   /// Stream is working: enough cache to play, or still downloading, or
@@ -293,6 +266,16 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       _s._playbackBannerSnapshot = null;
       _syncPlaybackBannerVisibility();
     }
+  }
+
+  /// Clear sticky Buffering when demuxer is healthy (RFC-113 / ipdigi).
+  void _clearBufferingChrome() {
+    if (!_s._buffering && _s._bufferingSince == null) return;
+    _s._buffering = false;
+    _s._bufferingSince = null;
+    _s._bufferingClearAt = null;
+    _s._playbackBannerSnapshot = null;
+    _syncPlaybackBannerVisibility();
   }
 
   void _logHold(String reason, {required bool healthy}) {
@@ -463,19 +446,12 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // Continuity-proxy CDN reopen: show Buffering and wait for refill —
-      // do not soft-reopen mid-skip (turns a micro-gap into full reconnect).
-      if (_livePlaybackProfile &&
-          _bufferedRecovery &&
-          _proxyReconnectRefilling &&
-          _s._userPlayWhenReady) {
-        _ensureBufferingChrome(now);
-        _logHold(
-          'proxy reconnect grace '
-          '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
-          'from=${_s._cacheAheadAtProxyReconnect.toStringAsFixed(1)}s)',
-          healthy: false,
-        );
+      // RFC-113 / ipdigi: lavf grace + goLive own MediaKit live EOF/error —
+      // do not soft-reopen mid-grace.
+      if (_mediaKitLiveProfile &&
+          ((_s._liveGraceTimer?.isActive ?? false) ||
+              (_s._liveGoLiveTimer?.isActive ?? false) ||
+              (_s._liveStableTimer?.isActive ?? false))) {
         return;
       }
 
@@ -499,12 +475,8 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
         if (_streamWorking) {
-          _logHealthyHold('buffering');
-          return;
-        }
-        if (_inProxyReconnectGrace) {
-          _ensureBufferingChrome(now);
-          _logHold('proxy reconnect grace (buffering)', healthy: false);
+          // RFC-113: healthy demuxer → clear sticky Buffering chrome (ipdigi).
+          _clearBufferingChrome();
           return;
         }
         _triggerRecovery(
@@ -525,11 +497,6 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
             _logHealthyHold('frozen');
             return;
           }
-          if (_inProxyReconnectGrace && _proxyReconnectRefilling) {
-            _ensureBufferingChrome(now);
-            _logHold('proxy reconnect grace (exo frozen)', healthy: false);
-            return;
-          }
           _triggerRecovery(
             reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
           );
@@ -537,11 +504,6 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         }
       } else if (_s._userPlayWhenReady && _s._playing) {
         // Detector 2b: MediaKit live paint stall while still "playing".
-        // Stall ON: also reopen on VO freeze with a full demuxer cushion.
-        // Stall OFF (Stalker Auto): only empty-cache underrun — do not wipe a
-        // healthy cushion when playhead sits at 0.
-        // Empty underrun: fps pulse must not abort — detector 1 / soft
-        // reopen owns recovery (macOS Stalker TextureSW stutter).
         if (_hlsColdOpenHold) {
           _ensureBufferingChrome(now);
           _logHold('hls cold open grace (paint)', healthy: false);
@@ -556,15 +518,11 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           _ensureBufferingChrome(now);
           if (frozenFor >= _PtPlayerScreenState._liveEmptyPauseReopen) {
             if (_s._livePaintMissStreak < 2) return;
-            if (_inProxyReconnectGrace && _proxyReconnectRefilling) {
-              _logHold('proxy reconnect grace (paint)', healthy: false);
-              return;
-            }
             final empty =
                 _s._cacheAheadSecs <
                 _PtPlayerScreenState._minHealthyCacheSecs;
             if (!empty && !_stallReopenRecovery) {
-              _logHealthyHold('paint idle, cache hold');
+              _clearBufferingChrome();
               return;
             }
             _triggerRecovery(
@@ -578,28 +536,19 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         }
       }
       // Detector 3: silent self-pause.
-      // Live Stable: playing=false with empty cache → Buffering, soft-reopen at 5s.
-      // Feed ticks alone must not hold — proxy keepalives fake "alive".
-      // (cache-pause refill path removed in I199-T05 — play-through reconnect.)
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
           if (_streamWorking) {
-            if (!_s._buffering) _logHealthyHold('self-pause');
+            _clearBufferingChrome();
             return;
           }
-          if (_inProxyReconnectGrace && _proxyReconnectRefilling) {
-            _ensureBufferingChrome(now);
-            _logHold('proxy reconnect grace (self-pause)', healthy: false);
-            return;
-          }
-          // Stall OFF: healthy demuxer still holds (MediaKit Stalker included).
           if (!_stallReopenRecovery &&
               _s._cacheAheadSecs >=
                   _PtPlayerScreenState._minHealthyCacheSecs) {
-            if (!_s._buffering) _logHealthyHold('self-pause');
+            _clearBufferingChrome();
             return;
           }
           _ensureBufferingChrome(now);

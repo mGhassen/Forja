@@ -16,8 +16,8 @@ class SettingsService {
   factory SettingsService() => _instance;
   SettingsService._internal();
 
-  bool? _cachedUseDebridForStreams;
-  String? _cachedDebridService;
+  String? _cachedMagnetResolvePluginId;
+  bool _magnetResolveMigrated = false;
 
   static PlatformProfile _platformProfile = PlatformProfile.phone;
 
@@ -69,6 +69,7 @@ class SettingsService {
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
+  static const String _magnetResolvePluginIdKey = 'magnet_resolve_plugin_id';
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
@@ -1293,46 +1294,96 @@ class SettingsService {
   Future<void> setSortPreference(String preference) async =>
       kvSetString(_sortPreferenceKey, preference);
 
-  Future<bool> useDebridForStreams() async => useDebridForStreamsSync();
+  Future<bool> useDebridForStreams() async =>
+      (await getMagnetResolvePluginId()).isNotEmpty;
 
   /// Sync — storage is sync under the hood; memoized after first read.
-  bool useDebridForStreamsSync() {
-    final cached = _cachedUseDebridForStreams;
-    if (cached != null) return cached;
-    final v = kvGetBoolSync(_useDebridKey, fallback: false);
-    _cachedUseDebridForStreams = v;
-    return v;
-  }
+  bool useDebridForStreamsSync() =>
+      getMagnetResolvePluginIdSync().isNotEmpty;
 
   Future<void> setUseDebridForStreams(bool enabled) async {
-    _cachedUseDebridForStreams = enabled;
-    await kvSetBool(_useDebridKey, enabled);
+    if (!enabled) {
+      await setMagnetResolvePluginId('');
+      return;
+    }
+    final current = getMagnetResolvePluginIdSync();
+    if (current.isNotEmpty) return;
+    // Caller should set a concrete plugin id; keep legacy toggle as empty→off.
+    await setMagnetResolvePluginId('');
   }
 
   Future<String> getDebridService() async {
-    // Off → no service read.
-    if (!useDebridForStreamsSync()) return 'None';
-    return getDebridServiceSync();
+    final id = await getMagnetResolvePluginId();
+    return id.isEmpty ? 'None' : id;
   }
 
   String getDebridServiceSync() {
-    final cached = _cachedDebridService;
-    if (cached != null) return cached;
-    final v = kvGetStringSync(_debridServiceKey) ?? 'None';
-    _cachedDebridService = v;
-    return v;
+    final id = getMagnetResolvePluginIdSync();
+    return id.isEmpty ? 'None' : id;
   }
 
-  /// Play-path snapshot: when debrid is off, skips the service key entirely.
+  /// Play-path snapshot: when magnet resolve is off, skips the service key.
   ({bool useDebrid, String service}) debridPlaybackPrefs() {
-    final use = useDebridForStreamsSync();
-    if (!use) return (useDebrid: false, service: 'None');
-    return (useDebrid: true, service: getDebridServiceSync());
+    final id = getMagnetResolvePluginIdSync();
+    if (id.isEmpty) return (useDebrid: false, service: 'None');
+    return (useDebrid: true, service: id);
   }
 
   Future<void> setDebridService(String service) async {
-    _cachedDebridService = service;
-    await kvSetString(_debridServiceKey, service);
+    final mapped = _legacyDebridServiceToPluginId(service) ??
+        (service == 'None' || service.trim().isEmpty ? '' : service.trim());
+    await setMagnetResolvePluginId(mapped);
+  }
+
+  static String? _legacyDebridServiceToPluginId(String service) {
+    return switch (service.trim()) {
+      'Real-Debrid' => 'realdebrid',
+      'TorBox' => 'torbox',
+      'AllDebrid' => 'alldebrid',
+      'Premiumize' => 'premiumize',
+      'Debrid-Link' => 'debrid_link',
+      _ => null,
+    };
+  }
+
+  /// Test hook for RFC-114 legacy service → plugin id map.
+  @visibleForTesting
+  static String? legacyDebridServiceToPluginIdForTest(String service) =>
+      _legacyDebridServiceToPluginId(service);
+
+  Future<void> _migrateMagnetResolvePluginIdIfNeeded() async {
+    if (_magnetResolveMigrated) return;
+    _magnetResolveMigrated = true;
+    if (await kvHasKey(_magnetResolvePluginIdKey)) return;
+    final use = await kvGetBool(_useDebridKey, fallback: false);
+    if (!use) {
+      await kvSetString(_magnetResolvePluginIdKey, '');
+      _cachedMagnetResolvePluginId = '';
+      return;
+    }
+    final service = await kvGetString(_debridServiceKey) ?? '';
+    final mapped = _legacyDebridServiceToPluginId(service) ?? '';
+    await kvSetString(_magnetResolvePluginIdKey, mapped);
+    _cachedMagnetResolvePluginId = mapped;
+  }
+
+  Future<String> getMagnetResolvePluginId() async {
+    await _migrateMagnetResolvePluginIdIfNeeded();
+    return getMagnetResolvePluginIdSync();
+  }
+
+  String getMagnetResolvePluginIdSync() {
+    final cached = _cachedMagnetResolvePluginId;
+    if (cached != null) return cached;
+    final v = kvGetStringSync(_magnetResolvePluginIdKey) ?? '';
+    _cachedMagnetResolvePluginId = v;
+    return v;
+  }
+
+  Future<void> setMagnetResolvePluginId(String id) async {
+    final next = id.trim();
+    _cachedMagnetResolvePluginId = next;
+    await kvSetString(_magnetResolvePluginIdKey, next);
   }
 
   Future<String> getExternalPlayer() async =>
@@ -2309,7 +2360,11 @@ class SettingsService {
       _streamingModeKey,
       fallback: false,
     );
-    prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
+    prefsMap[_magnetResolvePluginIdKey] =
+        await getMagnetResolvePluginId();
+    // Legacy keys kept readable for older backup importers.
+    prefsMap[_useDebridKey] =
+        (prefsMap[_magnetResolvePluginIdKey] as String).isNotEmpty;
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentStored();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioStored();
     prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
@@ -2323,6 +2378,7 @@ class SettingsService {
     prefsMap[_addonFeatureIptvKey] = await isAddonFeatureEnabled('iptv');
     for (final key in [
       _sortPreferenceKey,
+      _magnetResolvePluginIdKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -2419,6 +2475,7 @@ class SettingsService {
     }
     for (final key in [
       _sortPreferenceKey,
+      _magnetResolvePluginIdKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -2428,6 +2485,16 @@ class SettingsService {
       if (prefsMap.containsKey(key)) {
         await kvSetString(key, prefsMap[key] as String);
       }
+    }
+    // Prefer magnet_resolve; else rebuild from legacy use_debrid + service.
+    if (prefsMap.containsKey(_magnetResolvePluginIdKey)) {
+      await setMagnetResolvePluginId(
+        prefsMap[_magnetResolvePluginIdKey]?.toString() ?? '',
+      );
+    } else if (prefsMap[_useDebridKey] == true) {
+      final service = prefsMap[_debridServiceKey]?.toString() ?? '';
+      final mapped = _legacyDebridServiceToPluginId(service) ?? '';
+      await setMagnetResolvePluginId(mapped);
     }
     if (prefsMap.containsKey(_torrentDiskCacheGbKey)) {
       await kvSetInt(

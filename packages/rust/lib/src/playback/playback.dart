@@ -16,13 +16,8 @@ export 'proxy/site111477_proxy.dart';
 export 'providers/registry/stream_providers.dart';
 export 'domain/torrent_engine_backend.dart';
 export 'torrent/torrent_stream_service.dart';
-export 'torrent/debrid_api.dart'
-    show
-        DebridApi,
-        DebridAuthException,
-        DebridFile,
-        debridUserMessage,
-        isDebridAuthFailure;
+export 'torrent/debrid_errors.dart';
+export 'torrent/debrid_pack_bridge.dart';
 export 'stremio/stremio_stream_resolver.dart';
 export 'torrent/torrent_playback_resolver.dart';
 export 'lan_playback_bridge.dart';

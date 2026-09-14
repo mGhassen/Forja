@@ -17,7 +17,7 @@ Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/
 
 | Layer | Path | Owns | Forbidden |
 |-------|------|------|-----------|
-| **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent}` | Product tabs, layout/paint JSON, load actions, prefs, chrome, open shaping, enrich, portals product | Native unlock internals |
+| **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent,debrid}` | Product tabs, layout/paint JSON, load actions, prefs, chrome, open shaping, enrich, portals product, magnet→URL debrid | Native unlock internals |
 | **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin painter** at `shared/engine/runtime/kit/` (schema validate → foundation widgets), **opaque search wire** (`runPlugin(…, 'search')` only) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes (schedule/feed/panel/tabs chrome), **product search engines** (TMDB/AniList/addons) |
 | **Foundation** | `packages/forja_foundation` | Tokens (incl. ThemeExtension), components, widgets, blocks, protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
 
@@ -52,8 +52,9 @@ packages/rust/              ← native engine
 | `livesports/**` | Live schedule / resolve | Generic unlock + plugin run |
 | `iptv/**` | Portal packs (product in hub JS) | `vault` / `http` / `playback.open` / `plugin.run` — **not** `ctx.host.portals.*` product API |
 | `torrent/**` | Indexers | Engine torrent APIs |
+| `debrid/**` | Magnet → HTTP resolve | Thin `resolveMagnetForPlayback` fork → `runDebridResolve` |
 
-Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich) lives **only in forja-packs**.
+Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich, debrid vendors) lives **only in forja-packs**.
 
 ---
 

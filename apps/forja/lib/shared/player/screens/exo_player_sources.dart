@@ -480,12 +480,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
-    final debrid = SettingsService().debridPlaybackPrefs();
     final precheck = classifyStremioStream(
       stream,
       PlatformPlayback.capabilities,
-      useDebrid: debrid.useDebrid,
-      debridService: debrid.service,
     );
     if (precheck is StremioExternalLink) {
       await handleStremioStreamIfExternal(context, stream, popToRoot: true);
@@ -631,15 +628,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
-    final debrid = SettingsService().debridPlaybackPrefs();
-    final useDebrid = debrid.useDebrid;
-    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(
-      context,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    )) {
+    if (!await ensureLanP2pPlayback(context)) {
       return;
     }
     if (!mounted) return;
@@ -664,9 +654,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-        useDebrid: useDebrid,
-        debridService: debridService,
-      ),
+      debridLabel: DebridPackBridge.activePluginLabel?.call(),
+    ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -755,15 +744,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
-    final debrid = SettingsService().debridPlaybackPrefs();
-    final useDebrid = debrid.useDebrid;
-    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(
-      context,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    )) {
+    if (!await ensureLanP2pPlayback(context)) {
       return;
     }
     if (!mounted) return;
@@ -783,9 +765,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-        useDebrid: useDebrid,
-        debridService: debridService,
-      ),
+      debridLabel: DebridPackBridge.activePluginLabel?.call(),
+    ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -798,8 +779,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     try {
       final playback = await resolveMagnetForPlayback(
         magnet: result.magnet,
-        useDebrid: useDebrid,
-        debridService: debridService,
         localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,

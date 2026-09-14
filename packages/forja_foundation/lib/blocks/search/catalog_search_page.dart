@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/blocks/search/search_block.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
@@ -24,10 +25,9 @@ class CatalogSearchResult {
   final Object payload;
 }
 
-/// Catalog search page paint — field + results slots (Zone A).
+/// Catalog search page paint — wraps [SearchBlock] (RFC-112).
 ///
-/// Host wires MetaRuntime / recent queries / TV into callbacks.
-/// Optional [backdropUrl] paints a wide-layout atmosphere stack behind slots.
+/// Pack JSON: `{ "type": "search", "props": { "hintText": "…" } }` + results slot.
 class CatalogSearchPage extends StatelessWidget {
   const CatalogSearchPage({
     super.key,
@@ -45,6 +45,34 @@ class CatalogSearchPage extends StatelessWidget {
     this.backdropUrl,
   });
 
+  factory CatalogSearchPage.fromProps(
+    Map<String, dynamic> props, {
+    required Widget results,
+    TextEditingController? controller,
+    FocusNode? focusNode,
+    ValueChanged<String>? onChanged,
+    ValueChanged<String>? onSubmitted,
+    Widget? header,
+    Widget? filters,
+    Widget? field,
+    Widget? emptyChild,
+  }) {
+    return CatalogSearchPage(
+      results: results,
+      controller: controller,
+      focusNode: focusNode,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      hintText: propsStringOr(props, 'hintText', 'Search'),
+      header: header,
+      filters: filters,
+      field: field,
+      emptyChild: emptyChild,
+      backgroundColor: propsColor(props, 'backgroundColor'),
+      backdropUrl: propsString(props, 'backdropUrl'),
+    );
+  }
+
   final Widget results;
   final TextEditingController? controller;
   final FocusNode? focusNode;
@@ -53,13 +81,9 @@ class CatalogSearchPage extends StatelessWidget {
   final String hintText;
   final Widget? header;
   final Widget? filters;
-
-  /// Host-owned search field chrome; when set, default [Input] is skipped.
   final Widget? field;
   final Widget? emptyChild;
   final Color? backgroundColor;
-
-  /// Wide layout atmosphere — poster/backdrop behind a left→right gradient.
   final String? backdropUrl;
 
   @override

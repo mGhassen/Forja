@@ -48,11 +48,6 @@ Future<String> runIndexerRequestJson(String requestJson) =>
       'requestJson': requestJson,
     });
 
-Future<String> runDebridRequestJson(String requestJson) => EngineWorkerPool.run(
-  EngineJobKind.debridRequest,
-  {'requestJson': requestJson},
-);
-
 Future<String> runSite111477IndexRequestJson(String requestJson) =>
     EngineWorkerPool.run(EngineJobKind.site111477IndexRequest, {
       'requestJson': requestJson,

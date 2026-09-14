@@ -95,6 +95,39 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
         accent: const Color(0xFFA855F7),
       ),
     'tv' => (icon: Icons.live_tv_rounded, accent: const Color(0xFF8B5CF6)),
+    // Home / VOD mood tokens (pack `options[].icon`).
+    'psychology' || 'mind' => (
+        icon: Icons.psychology_rounded,
+        accent: const Color(0xFF8B5CF6),
+      ),
+    'wb_sunny' || 'feel' || 'sunny' => (
+        icon: Icons.wb_sunny_rounded,
+        accent: const Color(0xFFFBBF24),
+      ),
+    'dark_mode' || 'dark' => (
+        icon: Icons.dark_mode_rounded,
+        accent: const Color(0xFF64748B),
+      ),
+    'favorite' || 'romance' => (
+        icon: Icons.favorite_rounded,
+        accent: const Color(0xFFEC4899),
+      ),
+    'bedtime' || 'horror' => (
+        icon: Icons.bedtime_rounded,
+        accent: const Color(0xFF7C3AED),
+      ),
+    'local_fire_department' || 'action' => (
+        icon: Icons.local_fire_department_rounded,
+        accent: const Color(0xFFF97316),
+      ),
+    'brush' || 'animated' => (
+        icon: Icons.brush_rounded,
+        accent: const Color(0xFF06B6D4),
+      ),
+    'theaters' || 'drama' => (
+        icon: Icons.theaters_rounded,
+        accent: const Color(0xFF3B82F6),
+      ),
     _ => (
         icon: Icons.sports_rounded,
         accent: ForjaShellColors.sectionAccent,

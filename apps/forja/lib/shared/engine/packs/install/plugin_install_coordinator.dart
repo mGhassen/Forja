@@ -12,6 +12,7 @@ import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart'
 import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -506,6 +507,7 @@ class PluginInstallCoordinator {
     }
 
     await syncTorrentSearchCatalog();
+    await syncDebridResolveCatalog();
     if (notifyUpdates) {
       unawaited(notifyPendingUpdatesIfAny());
     }

@@ -49,5 +49,80 @@ void main() {
       expect(find.text('Home'), findsOneWidget);
       expect(find.text('Body'), findsOneWidget);
     });
+
+    testWidgets('fromProps reads sideRailWidth', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ShellBlock.fromProps(
+            {'sideRailWidth': 180},
+            body: const Text('Body'),
+            sideRail: const Text('Rail'),
+          ),
+        ),
+      );
+      expect(find.text('Body'), findsOneWidget);
+      expect(find.text('Rail'), findsOneWidget);
+    });
+  });
+
+  group('props_map + block fromProps (RFC-112)', () {
+    test('props readers', () {
+      expect(propsString({'a': ' x '}, 'a'), 'x');
+      expect(propsNumOr({'bottomGap': 24}, 'bottomGap', 0), 24);
+      expect(propsBool({'loading': true}, 'loading'), isTrue);
+      expect(propsColor({'c': '#FF0000'}, 'c'), const Color(0xFFFF0000));
+    });
+
+    testWidgets('CatalogBody.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          CatalogBody.fromProps(
+            {'bottomGap': 8},
+            sections: const [Text('Sec')],
+          ),
+        ),
+      );
+      expect(find.text('Sec'), findsOneWidget);
+    });
+
+    testWidgets('EmptyBlock.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(EmptyBlock.fromProps({'title': 'Nothing here'})),
+      );
+      expect(find.text('Nothing here'), findsOneWidget);
+    });
+
+    testWidgets('MatchDetailsPage.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          MatchDetailsPage.fromProps(
+            {'backgroundColor': '#112233'},
+            hero: const Text('Hero'),
+            overlay: const Text('Overlay'),
+          ),
+        ),
+      );
+      expect(find.text('Hero'), findsOneWidget);
+      expect(find.text('Overlay'), findsOneWidget);
+    });
+
+    testWidgets('EntryDetails.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          EntryDetails.fromProps(
+            {'title': 'Entry', 'emptyMessage': 'Empty'},
+            body: const Text('Panel'),
+          ),
+        ),
+      );
+      expect(find.text('Entry'), findsOneWidget);
+      expect(find.text('Panel'), findsOneWidget);
+    });
+
+    test('layout_map lists mounted block types', () {
+      expect(LayoutMap.slotToArtifactName['catalogBody'], contains('CatalogBody'));
+      expect(LayoutMap.slotToArtifactName['matchDetails'], contains('MatchDetailsPage'));
+      expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
+    });
   });
 }

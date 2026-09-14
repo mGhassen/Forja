@@ -18,7 +18,6 @@ enum EngineJobKind {
   hostHttpRequest,
   mediaExtraRequest,
   indexerRequest,
-  debridRequest,
   site111477IndexRequest,
   megaResolve,
   metadataRequest,
@@ -266,8 +265,6 @@ String _dispatchJob(_WorkerJob job) {
       return rust.mediaExtraRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.indexerRequest:
       return rust.indexerRequestJson(job.args['requestJson']! as String);
-    case EngineJobKind.debridRequest:
-      return rust.debridRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.site111477IndexRequest:
       return rust.site111477IndexRequestJson(
         job.args['requestJson']! as String,

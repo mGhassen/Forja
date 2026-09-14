@@ -1,40 +1,38 @@
 # Debrid
 
-> Instant playback from cached torrents via Real-Debrid, TorBox, and more.
+> Instant playback from cached torrents via your installed debrid pack.
 
 ## What it is
 
-Debrid services store popular torrents on fast servers. When you enable debrid, Forja can resolve a magnet to a direct HTTP link instead of peer-to-peer streaming — faster starts and less buffering for cached content.
+Debrid services store popular torrents on fast servers. When you enable a debrid plugin, Forja resolves a magnet to a direct HTTP link instead of peer-to-peer streaming — faster starts and less buffering for cached content.
+
+Vendors ship as installable pack plugins (Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link). The app only calls the active plugin; uninstall the pack and magnets still play via the local torrent engine or LAN.
 
 ## Supported services
 
-- **Real-Debrid** — API key or OAuth-style login
-- **TorBox** — API key
-- **AllDebrid** — API key
-- **Premiumize** — API key
-- **Debrid-Link** — API key
+Whatever `kind: debrid` plugins you have installed (ForjaHQ Debrid pack includes Real-Debrid, TorBox, AllDebrid, Premiumize, and Debrid-Link).
 
 ## How to open it
 
-**Settings → Debrid** (admin accounts only — enable debrid, pick a service, enter credentials).
+**Settings → Addons → Debrid** (admin accounts only — pick the active plugin and enter its API key).
 
 ## What you can do
 
-- Toggle debrid on/off globally
-- Select active service
-- Save API keys or log into Real-Debrid
-- Resolve torrents on [TMDB details](../movies-tv/tmdb-details.md) through debrid when cached
+- Turn magnet cloud-resolve on by selecting an active debrid plugin (or clear it for local/LAN only)
+- Save each plugin’s API key under that plugin’s settings
+- Resolve torrents on media details through the active plugin when the title is cached remotely
 
 ## Setup
 
-1. Create an account with your chosen service
-2. Copy API key (or complete Real-Debrid login flow in app)
-3. Enable **Use debrid for streams** in Settings
+1. Install the Debrid pack (if it is not already installed)
+2. Create an account with your chosen service
+3. Open **Addons → Debrid**, select that plugin, paste the API key
+4. Play a magnet — Forja resolves through the plugin when it is selected
 
 ## Tips
 
 - Debrid only helps when the torrent is already cached on the service
-- Uncached torrents may still fall back to normal [torrent playback](../playback/torrent-playback.md)
+- With no plugin selected, magnets use normal [torrent playback](../playback/torrent-playback.md)
 
 ## Related
 

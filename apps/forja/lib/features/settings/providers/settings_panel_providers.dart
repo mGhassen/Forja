@@ -12,6 +12,7 @@ import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:rust/rust.dart';
 
 // ── Playback ───────────────────────────────────────────────────────────────
@@ -333,40 +334,31 @@ class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
 @immutable
 class SettingsDebridSnapshot {
   const SettingsDebridSnapshot({
-    required this.useDebrid,
-    required this.service,
-    required this.torboxKey,
-    required this.alldebridKey,
-    required this.premiumizeKey,
-    required this.debridlinkKey,
-    required this.isRDLoggedIn,
+    required this.enabled,
+    required this.pluginId,
+    required this.pluginLabel,
+    required this.plugins,
   });
 
-  final bool useDebrid;
-  final String service;
-  final String torboxKey;
-  final String alldebridKey;
-  final String premiumizeKey;
-  final String debridlinkKey;
-  final bool isRDLoggedIn;
+  final bool enabled;
+  final String pluginId;
+  final String pluginLabel;
+  final List<({String id, String name})> plugins;
+
+  /// Master toggle for Addons list chrome.
+  bool get useDebrid => enabled;
 
   SettingsDebridSnapshot copyWith({
-    bool? useDebrid,
-    String? service,
-    String? torboxKey,
-    String? alldebridKey,
-    String? premiumizeKey,
-    String? debridlinkKey,
-    bool? isRDLoggedIn,
+    bool? enabled,
+    String? pluginId,
+    String? pluginLabel,
+    List<({String id, String name})>? plugins,
   }) {
     return SettingsDebridSnapshot(
-      useDebrid: useDebrid ?? this.useDebrid,
-      service: service ?? this.service,
-      torboxKey: torboxKey ?? this.torboxKey,
-      alldebridKey: alldebridKey ?? this.alldebridKey,
-      premiumizeKey: premiumizeKey ?? this.premiumizeKey,
-      debridlinkKey: debridlinkKey ?? this.debridlinkKey,
-      isRDLoggedIn: isRDLoggedIn ?? this.isRDLoggedIn,
+      enabled: enabled ?? this.enabled,
+      pluginId: pluginId ?? this.pluginId,
+      pluginLabel: pluginLabel ?? this.pluginLabel,
+      plugins: plugins ?? this.plugins,
     );
   }
 }
@@ -382,15 +374,23 @@ class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
 
   Future<SettingsDebridSnapshot> _load() async {
     final s = SettingsService();
-    final d = DebridApi();
+    await syncDebridResolveCatalog();
+    final plugins = installedDebridPlugins();
+    final id = (await s.getMagnetResolvePluginId()).trim();
+    final stillActive = plugins.any((p) => p.id == id);
+    final activeId = stillActive ? id : '';
+    var label = '';
+    for (final p in plugins) {
+      if (p.id == activeId) {
+        label = p.name;
+        break;
+      }
+    }
     return SettingsDebridSnapshot(
-      useDebrid: await s.useDebridForStreams(),
-      service: await s.getDebridService(),
-      torboxKey: await d.getTorBoxKey() ?? '',
-      alldebridKey: await d.getAllDebridKey() ?? '',
-      premiumizeKey: await d.getPremiumizeKey() ?? '',
-      debridlinkKey: await d.getDebridLinkKey() ?? '',
-      isRDLoggedIn: await d.getRDAccessToken() != null,
+      enabled: activeId.isNotEmpty,
+      pluginId: activeId,
+      pluginLabel: label,
+      plugins: plugins,
     );
   }
 

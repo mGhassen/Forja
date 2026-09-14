@@ -8,18 +8,9 @@ import 'lan_prefs.dart';
 /// True when this magnet / infoHash may start. Direct HTTP must not call this.
 ///
 /// Unpaired / desktop-offline ATV (no local engine) shows a pair dialog.
-Future<bool> ensureLanP2pPlayback(
-  BuildContext context, {
-  bool? useDebrid,
-  String? debridService,
-}) async {
-  final settings = SettingsService();
-  final prefs = settings.debridPlaybackPrefs();
-  final use = useDebrid ?? prefs.useDebrid;
-  final service = use
-      ? (debridService ?? prefs.service)
-      : 'None';
-  if (use && service != 'None') return true;
+Future<bool> ensureLanP2pPlayback(BuildContext context) async {
+  final pluginId = DebridPackBridge.activePluginId?.call()?.trim() ?? '';
+  if (pluginId.isNotEmpty) return true;
   final decision = await LanPlaybackRouter.routeTorrent(
     PlatformPlayback.capabilities,
   );

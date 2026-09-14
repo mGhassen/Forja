@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/props_map.dart';
 
-/// Catalog hub scroll body — section list + bottom gap (RFC-106 Zone A).
+/// Catalog hub scroll body — section list + bottom gap (RFC-106 G6 · RFC-112).
 ///
-/// Host builds section widgets (rails, hero, mood) and optional sliver
-/// wrappers; this composer owns [CustomScrollView] chrome only.
+/// Pack JSON: `{ "type": "catalogBody", "props": { "bottomGap": 24 }, "children": […] }`.
 class CatalogBody extends StatelessWidget {
   const CatalogBody({
     super.key,
@@ -13,6 +13,24 @@ class CatalogBody extends StatelessWidget {
     this.sectionSliver,
     this.emptyChild,
   });
+
+  /// Pack-callable factory — [sections] painted by host from `children`.
+  factory CatalogBody.fromProps(
+    Map<String, dynamic> props, {
+    required List<Widget> sections,
+    ScrollController? controller,
+    Widget? emptyChild,
+    Widget Function(BuildContext context, Widget section, int index)?
+        sectionSliver,
+  }) {
+    return CatalogBody(
+      sections: sections,
+      controller: controller,
+      bottomGap: propsNumOr(props, 'bottomGap', 0),
+      sectionSliver: sectionSliver,
+      emptyChild: emptyChild,
+    );
+  }
 
   final List<Widget> sections;
   final ScrollController? controller;

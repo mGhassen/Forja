@@ -77,7 +77,7 @@ Exact LOC drifts quickly — re-run `wc -l` when needed. Feature god-file invent
 | `anime` / `live-matches` | **Yes** | Hub extract/catalog pipelines |
 | `manga` / `books` / `catalog` | **Yes** | Vertical scrape/catalog |
 | `indexer` | **Yes** | Jackett / Prowlarr |
-| `debrid` | **Yes** | RD / AD / Premiumize / TorBox / Debrid-Link |
+| `debrid` | **Pack** | `forja-packs/debrid/` — RD / AD / Premiumize / TorBox / Debrid-Link |
 | `music` | **Yes** | Deezer / YouTube helpers |
 | `engine` | Mixed | QuickJS extract / StreamCrypto-style jobs |
 
@@ -166,7 +166,7 @@ Detail: [services-map.md](architecture/services-map.md).
 
 ## 8. Observations
 
-1. **Rust engine is broad** — playback resolve, catalog APIs, hub scrapers, debrid, indexers, LAN — not just webstreamr/torrent.
+1. **Rust engine is broad** — playback resolve, catalog APIs, hub scrapers, indexers, LAN — not just webstreamr/torrent. Debrid magnet resolve is pack JS.
 2. **Host still owns platform** — WebView, Nuvio, WASM, player surfaces, OAuth.
 3. **Riverpod migration is partial** — bootstrap has `ProviderScope`; many features still singleton + `setState`.
 4. **Product scope ≠ nav map** — `nav_config` lists ~20 tabs; active polish scope is smaller (Home / Search / Anime / Asian Drama / IPTV / Live Matches / Lists / Settings).

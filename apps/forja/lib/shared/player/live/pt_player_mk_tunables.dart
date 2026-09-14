@@ -7,7 +7,6 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   void _engineSetVolume(double volume);
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
-    required bool continuityProxy,
     String? streamUrl,
   });
   bool get _livePlaybackProfile;
@@ -96,9 +95,6 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         try {
           final brRaw = await p.getProperty('video-bitrate');
           bitrate = double.tryParse(brRaw.toString()) ?? 0;
-          if (bitrate.isFinite && bitrate > 0) {
-            _s._lastVideoBitrate = bitrate.round();
-          }
         } catch (_) {}
 
         if (_livePlaybackProfile && !_s.widget.vodPlayback) {
@@ -184,77 +180,41 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
     });
   }
 
-  /// Height + bitrate aware live demuxer window (I150-T05). VOD must never call.
-  /// Admin override [SettingsService.getIptvLiveBufferSecs] replaces the tier
-  /// (15 / 20 / 30) and matching demuxer byte cap (I150-T07).
+  /// Keep ipdigi live demuxer window after height probe (RFC-113).
+  /// Admin override still widens cache-secs only; demuxer bytes stay ipdigi.
   Future<void> _applyAtvLiveCacheProfile(
     NativePlayer p, {
     required int height,
     double videoBitrate = 0,
   }) async {
     if (_s.widget.vodPlayback) return;
-    if (!_s._atvMediaKit || !_livePlaybackProfile) return;
+    if (!_livePlaybackProfile) return;
     if (_s._liveCacheTierApplied && height == _s._lastVideoHeight) return;
 
+    const cacheSecs = 30;
+    const readaheadSecs = 8;
+    const demuxerMaxBytes = 128 * 1024 * 1024;
+    const demuxerMaxBackBytes = 64 * 1024 * 1024;
+
     final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
-    late ({
-      String tier,
-      int cacheSecs,
-      int readaheadSecs,
-      int demuxerMaxBytes,
-    }) profile;
+    final secs = overrideSecs > 0 ? overrideSecs : cacheSecs;
 
-    if (overrideSecs > 0) {
-      final forced = SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
-      profile = (
-        tier: forced.tier,
-        cacheSecs: forced.cacheSecs,
-        readaheadSecs: forced.readaheadSecs,
-        demuxerMaxBytes: forced.demuxerMaxBytes,
-      );
-      if (videoBitrate > 0) {
-        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
-        if (needBytes > profile.demuxerMaxBytes * 0.9) {
-          debugPrint(
-            '[IPTV Player] live/${profile.tier} demuxer may byte-bind at '
-            '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps '
-            '(override ${profile.cacheSecs}s)',
-          );
-        }
-      }
-    } else {
-      profile = height > 0
-          ? iptvAtvLiveCacheTierForHeight(height)
-          : iptvAtvLiveCacheTierForHeight(1080);
-
-      if (videoBitrate > 0) {
-        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
-        if (needBytes > profile.demuxerMaxBytes * 0.9) {
-          final bumped = iptvBumpAtvLiveCacheTier(profile);
-          if (bumped.tier != profile.tier) {
-            profile = bumped;
-          } else if (profile.tier == 'uhd' || profile.tier == 'fhd') {
-            debugPrint(
-              '[IPTV Player] live/uhd demuxer may still byte-bind at '
-              '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
-            );
-          }
-        }
-      }
-    }
-
-    await p.setProperty('cache-secs', '${profile.cacheSecs}');
-    await p.setProperty('demuxer-readahead-secs', '${profile.readaheadSecs}');
-    await p.setProperty('demuxer-max-bytes', '${profile.demuxerMaxBytes}');
-    await p.setProperty('demuxer-max-back-bytes', '0');
+    await p.setProperty('cache-secs', '$secs');
+    await p.setProperty('demuxer-readahead-secs', '$readaheadSecs');
+    await p.setProperty('demuxer-max-bytes', '$demuxerMaxBytes');
+    await p.setProperty('demuxer-max-back-bytes', '$demuxerMaxBackBytes');
     await p.setProperty('cache-pause', 'no');
     await p.setProperty('cache-pause-initial', 'no');
+    await p.setProperty('cache-pause-wait', '0');
+    if (_s._atvMediaKit) {
+      await p.setProperty('cache-on-disk', 'no');
+    }
 
     _s._liveCacheTierApplied = true;
     debugPrint(
-      '[IPTV Player] MediaKit cache profile=live/${profile.tier} '
+      '[IPTV Player] MediaKit cache profile=live/ipdigi '
       'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
-      'cache=${profile.cacheSecs}s bytes=${profile.demuxerMaxBytes}',
+      'cache=${secs}s bytes=$demuxerMaxBytes',
     );
   }
 
@@ -292,11 +252,10 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       );
       await p.setProperty('vd-lavc-threads', '0');
 
-      // Network: fail fast so the watchdog can step in
-      await p.setProperty('network-timeout', '15');
+      // Network: ipdigi uses 30s so lavf reconnect can finish.
+      await p.setProperty('network-timeout', '30');
 
-      // Cache: desktop Live keeps 30 s / 150 MB. ATV Live cold-open is FHD-sized
-      // (issue 155 — 150 MB + 4K MediaCodec OOMs). VOD never inherits Live fat.
+      // Cache: RFC-113 / ipdigi live profile (desktop + ATV same demuxer bytes).
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
         debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
@@ -309,49 +268,31 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
       } else {
-        // Live: continuity proxy absorbs CDN HTTP closes before mpv (I148-T21).
-        // cache-pause=yes turned every CDN reopen (bitrate-adaptive overlap skip)
-        // into a hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
-        // Play through demuxer cushion; watchdog holds soft-reopen during proxy
-        // reconnect grace while the queue refills (I199-T14–T16).
-        // Desktop keeps the fat live window. ATV cold-open is FHD-sized until
-        // height probe — 150 MB + 4K MediaCodec OOMs on physical boxes (issue 155).
-        var coldSecs = 30;
-        var coldReadahead = 20;
-        var coldBytes = 150000000;
-        var coldLabel = 'live/cold';
-        if (_s._atvMediaKit) {
-          final fhd = iptvAtvLiveCacheTierForHeight(1080);
-          coldSecs = fhd.cacheSecs;
-          coldReadahead = fhd.readaheadSecs;
-          coldBytes = fhd.demuxerMaxBytes;
-          coldLabel = 'live/cold (fhd-safe)';
-          final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
-          if (overrideSecs > 0) {
-            final forced =
-                SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
-            coldSecs = forced.cacheSecs;
-            coldReadahead = forced.readaheadSecs;
-            coldBytes = forced.demuxerMaxBytes;
-            coldLabel = 'live/cold (${forced.tier})';
-          }
-        }
-        debugPrint('[IPTV Player] MediaKit cache profile=$coldLabel');
+        // ipdigi live: 30s / 8s readahead / 128MiB / 64MiB back / cache-pause=no.
+        const coldSecs = 30;
+        const coldReadahead = 8;
+        const coldBytes = 128 * 1024 * 1024;
+        const coldBackBytes = 64 * 1024 * 1024;
+        debugPrint('[IPTV Player] MediaKit cache profile=live/ipdigi');
         await p.setProperty('cache-secs', '$coldSecs');
         await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
-        // No past cushion — underrun freezes; proxy read-ahead absorbs CDN closes.
-        await p.setProperty('demuxer-max-back-bytes', '0');
+        await p.setProperty('demuxer-max-back-bytes', '$coldBackBytes');
         await p.setProperty('audio-buffer', '1.0');
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
+        await p.setProperty('cache-pause-wait', '0');
+        // ipdigi: ATV disk cache locks frames — memory only on leanback.
+        if (_s._atvMediaKit) {
+          await p.setProperty('cache-on-disk', 'no');
+        }
       }
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
 
-      // Don't quit on EOF / brief disconnect - let us recover
-      await p.setProperty('keep-open', 'yes');
+      // ipdigi: keep-open=always so brief EOF does not tear down the player.
+      await p.setProperty('keep-open', 'always');
       await p.setProperty('keep-open-pause', 'no');
 
       // HLS: pick best variant. Desktop live forces software decode (TextureSW);
@@ -368,14 +309,13 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       // Many Xtream panels gate streams on a VLC user-agent
       await p.setProperty('user-agent', _PtPlayerScreenState._ua);
 
-      // FFmpeg reconnect — applied after open (proxy vs direct). VOD keeps direct.
+      // FFmpeg reconnect — applied after open for VOD; live sets before open.
       if (_s.widget.vodPlayback) {
         final url = _s._sources.isEmpty
             ? null
             : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
         await _applyStreamLavfReconnect(
           p,
-          continuityProxy: false,
           streamUrl: url,
         );
       }

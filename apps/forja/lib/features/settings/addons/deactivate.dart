@@ -20,7 +20,7 @@ Future<void> deactivateAddonChildren(String addonId) async {
     case SettingsAddonId.lan:
       await LanServerService.instance.stop();
     case SettingsAddonId.debrid:
-      break;
+      await SettingsService().setMagnetResolvePluginId('');
   }
 }
 

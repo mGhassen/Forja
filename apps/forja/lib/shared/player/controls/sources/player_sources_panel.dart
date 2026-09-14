@@ -3591,13 +3591,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     setState(() => _sourcePickInFlight = true);
     try {
-      final debrid = SettingsService().debridPlaybackPrefs();
       // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
-      if (!await ensureLanP2pPlayback(
-        context,
-        useDebrid: debrid.useDebrid,
-        debridService: debrid.service,
-      )) {
+      if (!await ensureLanP2pPlayback(context)) {
         return;
       }
       if (!mounted) return;
@@ -3623,19 +3618,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     setState(() => _sourcePickInFlight = true);
     try {
-      final debrid = SettingsService().debridPlaybackPrefs();
       final precheck = classifyStremioStream(
         stream,
         PlatformPlayback.capabilities,
-        useDebrid: debrid.useDebrid,
-        debridService: debrid.service,
       );
       if (precheck == null) {
-        if (!await ensureLanP2pPlayback(
-          context,
-          useDebrid: debrid.useDebrid,
-          debridService: debrid.service,
-        )) {
+        if (!await ensureLanP2pPlayback(context)) {
           return;
         }
         if (!mounted) return;

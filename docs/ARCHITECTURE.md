@@ -136,7 +136,7 @@ Workspace members (`crates/Cargo.toml`):
 | **`anime`** | Anime extractors, resolve, subtitles, mdblist, introdb, lyrics |
 | **`live-matches`** | Live sports catalog / fetch pipelines |
 | **`indexer`** | Jackett / Prowlarr HTTP |
-| **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
+| **`debrid`** | **Removed** — magnet resolve is `forja-packs/debrid/` (`kind: debrid`) |
 | **`music`** | Deezer / YouTube music HTTP |
 | **`engine`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) + provider reliability score store |
 

@@ -67,7 +67,7 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | Component | Location | Why |
 |-----------|----------|-----|
 | TMDB, Trakt, Jellyfin API calls | `packages/rust` + `crates/*-core` | C1 engine |
-| Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid`, `proxy` | C2/C7 engine |
+| Webstreamr, torrent, indexers, proxy | `crates/webstreamr`, `scrapers`, `proxy` | C2/C7 engine |
 | AniList GraphQL | archived — hub is JS `plugins/hubs/anime` | Was `crates/archive/anilist` |
 | Subtitle search (Wyzie / Levrx / …) | `crates/subtitles` | Engine |
 | mdblist + introdb | `crates/media-metadata` | Engine |
@@ -201,7 +201,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 | `WebStreamrService` | `playback/providers/services/webstreamr_service.dart` | C2 direct streaming | ✅ Engine |
 | `JackettService` / `ProwlarrService` | `playback/torrent/jackett_service.dart`, `prowlarr_service.dart` | C2 indexers | ✅ Engine |
 | `LinkResolver` | `playback/torrent/link_resolver.dart` | C2 magnet resolve | ✅ Engine |
-| `DebridApi` | `playback/torrent/debrid_api.dart` | C2 debrid | ✅ Engine |
+| `DebridPackBridge` | `playback/torrent/debrid_pack_bridge.dart` | C2 magnet→URL via pack | ✅ Host bridge |
 | `TorrentStreamService` | `playback/torrent/torrent_stream_service.dart` | C7 torrent playback | ✅ Engine |
 | `LocalServerService` | `playback/proxy/local_server_service.dart` | C7 loopback | ✅ Engine |
 | `Site111477Service` | `playback/providers/services/site111477_service.dart` | C2 index + C7 proxy glue | ✅ Engine |

@@ -28,7 +28,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 - Set **IPTV live max quality** under **Settings → Addons → IPTV**. **Auto** uses full portal quality. Optional **1080p / 720p / 480p** caps ExoPlayer adaptive live variants
 - Set **IPTV live recovery** under **Settings → Addons → IPTV**. **Auto** picks per source (Xtream, Stalker, Forja Live, Stremio). Or pick **Stable** (optional **Reopen on buffer stall**) or **Classic**. Applies the next time you open the IPTV player
 - On **Android TV**, **IPTV match display refresh** is on by default and shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; matches TV refresh rate to channel fps. Applies the next time you open the IPTV player
-- On **Android TV**, **IPTV live buffer** is shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; **Auto** uses HD 15s / FHD+UHD 20s, or pick **15 / 20 / 30 seconds**. Helps underruns, not frame judder. Applies the next time you open the IPTV player
+- On **Android TV**, **IPTV live buffer** is shown only to **admin** accounts under **Addons → IPTV**. MediaKit only; **Auto** uses a **30s** demuxer window (same on phone/desktop and TV), or pick **15 / 20 / 30 seconds**. Helps underruns, not frame judder. Applies the next time you open the IPTV player
 - Portal URL / username / password for the active Xtream portal are pack settings on the same **Addons → IPTV** page
 - Set **Max stream quality** to limit Auto ranking and HLS start bitrate (**4K** by default; Auto, 1440p, 1080p, 720p, …)
 - Choose **Anime title language**. **Romaji** (default), **English**, or **Native** for Anime hub / details / player titles. Stream matching still tries romaji, then English, native, and synonyms

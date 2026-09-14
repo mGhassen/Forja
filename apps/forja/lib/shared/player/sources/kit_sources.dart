@@ -135,10 +135,7 @@ Future<void> _playTorrent({
   int? episode,
   required KitPlayHooks hooks,
 }) async {
-  final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   if (!context.mounted) return;
   if (!await ensureLanP2pPlayback(context)) return;
   if (!context.mounted) return;
@@ -149,8 +146,7 @@ Future<void> _playTorrent({
     movie: movie,
     kind: StreamLoadingKind.torrent,
     initialTorrentStatus: initialTorrentResolveStatus(
-      useDebrid: useDebrid,
-      debridService: debridService,
+      debridLabel: DebridPackBridge.activePluginLabel?.call(),
     ),
     onCancel: () => cancelled = true,
   );
@@ -210,20 +206,16 @@ Future<void> _playTorrent({
 
     session.torrentStatusNotifier.value = torrentLoadingStatusGeneric(
       playbackResolveLabel(
-        useDebrid: useDebrid,
-        debridService: debridService,
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
       ),
       hint: playbackSourceHint(
-        useDebrid: useDebrid,
-        debridService: debridService,
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
       ),
     );
 
     final episodic = hubMediaIsEpisodic(movie);
     final playback = await resolveMagnetForPlayback(
       magnet: magnetLink,
-      useDebrid: useDebrid,
-      debridService: debridService,
       localTorrentEngine: profile.localTorrentEngine,
       season: episodic ? (season ?? 1) : null,
       episode: episodic ? (episode ?? 1) : null,
@@ -264,7 +256,7 @@ Future<void> _playTorrent({
       finishStreamLoadingSession(session);
       return;
     }
-    await fail(debridUserMessage(e, debridService));
+    await fail(debridUserMessage(e, DebridPackBridge.activePluginLabel?.call() ?? 'Debrid'));
     return;
   } finally {
     linkResolver.dispose();
@@ -325,8 +317,6 @@ Future<void> _playStremio({
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   if (!context.mounted) return;
 
   final episodic = hubMediaIsEpisodic(movie);
@@ -336,8 +326,6 @@ Future<void> _playStremio({
   final precheck = classifyStremioStream(
     stream,
     profile,
-    useDebrid: useDebrid,
-    debridService: debridService,
   );
 
   if (precheck is StremioResolveFailure) {
@@ -423,8 +411,7 @@ Future<void> _playStremio({
     kind: StreamLoadingKind.torrent,
     initialTorrentStatus: initialStremioTorrentResolveStatus(
       profile: profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
+      debridLabel: DebridPackBridge.activePluginLabel?.call(),
     ),
     onCancel: () => cancelled = true,
   );

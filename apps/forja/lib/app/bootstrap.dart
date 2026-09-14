@@ -50,6 +50,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/app/tmdb_user_region.dart';
 import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/playback/sources/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -264,6 +265,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // Hydrate theme preset before first frame
   await Engine.init();
   registerTorrentSearchBridge();
+  registerDebridPackBridge();
   _warnIfRustMissing();
   ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();

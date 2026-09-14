@@ -707,6 +707,83 @@ class EngineService {
     }
   }
 
+  /// Run one `kind: debrid` plugin (`action: resolve`).
+  ///
+  /// Fail-fast: JS errors / empty rows throw — magnet resolve must not
+  /// silently fall back to local torrent.
+  Future<List<Map<String, dynamic>>> runDebridResolve({
+    required String pluginId,
+    required String magnet,
+    int? season,
+    int? episode,
+    int? fileIdx,
+    Duration timeout = const Duration(seconds: 180),
+  }) async {
+    final packs = await listPacks();
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    if (hit == null) {
+      throw Exception('debrid plugin not installed: $pluginId');
+    }
+    if (!hit.plugin.isDebrid || !hit.pack.isPluginActive(hit.plugin)) {
+      throw Exception('debrid plugin inactive: $pluginId');
+    }
+    final plugin = hit.plugin;
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    var config = mergeEngineConfig(plugin.config, overlay);
+    final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
+      extractPluginId: plugin.id,
+      plugins: [
+        for (final pack in packs)
+          if (pack.enabled)
+            for (final p in pack.plugins) p,
+      ],
+    );
+    if (packSettings.isNotEmpty) {
+      config = mergeEngineConfig(config, packSettings);
+    }
+    final code = await _loadScript(
+      plugin,
+      sourceUrl: hit.pack.sourceUrl,
+      packPrelude: hit.pack.prelude,
+    );
+    if (code == null || code.isEmpty) {
+      throw Exception('debrid plugin script missing: $pluginId');
+    }
+
+    final params = <String, dynamic>{
+      'magnet': magnet,
+      if (season != null) 'season': season,
+      if (episode != null) 'episode': episode,
+      if (fileIdx != null) 'fileIdx': fileIdx,
+    };
+
+    final runtime = EngineRuntime.fork();
+    try {
+      await runtime.loadPlugin(pluginId: plugin.id, code: code);
+      final rows = await runtime.extractLive(
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        action: 'resolve',
+        params: params,
+        config: config,
+        packSourceUrl: hit.pack.sourceUrl,
+        timeout: timeout,
+      );
+      if (rows.isEmpty) {
+        throw Exception('debrid resolve failed');
+      }
+      debugPrint('[engine] debrid resolve $pluginId: ${rows.length} rows');
+      return rows;
+    } catch (e) {
+      debugPrint('[engine] debrid resolve $pluginId failed: $e');
+      if (e.toString().contains('debrid resolve failed')) rethrow;
+      throw Exception(e.toString());
+    } finally {
+      runtime.dispose();
+    }
+  }
+
   Future<void> removePack(String sourceUrl, {bool purgeDisk = true}) =>
       PluginRegistry.instance.removePack(sourceUrl, purgeDisk: purgeDisk);
 

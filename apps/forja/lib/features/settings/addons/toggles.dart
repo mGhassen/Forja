@@ -10,6 +10,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/p2p_streaming_ack_dialog.dart';
 
 import 'package:forja/shared/lan/lan_prefs.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:rust/rust.dart';
@@ -78,10 +79,35 @@ Future<bool> setAddonMasterEnabled(
       await settings.setPlaySourceNuvioEnabled(val);
       await notifier.patch((s) => s.copyWith(playSourceNuvio: val));
     case SettingsAddonId.debrid:
-      await settings.setUseDebridForStreams(val);
-      ref
-          .read(settingsDebridProvider.notifier)
-          .patch((s) => s.copyWith(useDebrid: val));
+      if (val) {
+        await syncDebridResolveCatalog();
+        final plugins = installedDebridPlugins();
+        final current = await settings.getMagnetResolvePluginId();
+        final keep = plugins.any((p) => p.id == current) ? current : '';
+        final id = keep.isNotEmpty
+            ? keep
+            : (plugins.isNotEmpty ? plugins.first.id : '');
+        await settings.setMagnetResolvePluginId(id);
+        var label = id;
+        for (final p in plugins) {
+          if (p.id == id) {
+            label = p.name;
+            break;
+          }
+        }
+        ref.read(settingsDebridProvider.notifier).patch(
+              (s) => s.copyWith(
+                enabled: id.isNotEmpty,
+                pluginId: id,
+                pluginLabel: label,
+              ),
+            );
+      } else {
+        await settings.setMagnetResolvePluginId('');
+        ref.read(settingsDebridProvider.notifier).patch(
+              (s) => s.copyWith(enabled: false, pluginId: '', pluginLabel: ''),
+            );
+      }
     case SettingsAddonId.lan:
       await LanPrefs.instance.setLanServerEnabled(val);
   }

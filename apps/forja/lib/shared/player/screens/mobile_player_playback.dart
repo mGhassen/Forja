@@ -587,11 +587,8 @@ mixin _MobilePlayerPlayback
               (widget.magnetLink != null && widget.magnetLink!.isNotEmpty)
               ? widget.magnetLink!
               : openUrl;
-          final settings = SettingsService();
           final playback = await resolveMagnetForPlayback(
             magnet: magnet,
-            useDebrid: await settings.useDebridForStreams(),
-            debridService: await settings.getDebridService(),
             localTorrentEngine:
                 PlatformPlayback.capabilities.localTorrentEngine,
             season: widget.selectedSeason,

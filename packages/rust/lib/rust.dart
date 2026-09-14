@@ -32,7 +32,6 @@ export 'src/models/book_result.dart';
 export 'src/playback/playback.dart';
 export 'src/catalog/catalog.dart';
 export 'src/indexer_http.dart';
-export 'src/debrid_http.dart';
 export 'src/music_host.dart';
 export 'src/anime_provider_catalog.dart';
 export 'src/metadata_http.dart';

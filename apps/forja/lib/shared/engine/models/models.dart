@@ -89,6 +89,7 @@ class EnginePlugin {
   bool get isHost => kind == 'host';
   bool get isHop => kind == 'hop';
   bool get isTorrent => kind == 'torrent';
+  bool get isDebrid => kind == 'debrid';
 
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isKitPlugin => kind == 'catalog';
@@ -112,7 +113,8 @@ class EnginePlugin {
       needsLiveFeedHost || needsListsHost || needsPortalPackHost;
 
   /// Pack install must cache JS for this plugin.
-  bool get needsScript => isHttp || isHop || isKitPlugin || isTorrent;
+  bool get needsScript =>
+      isHttp || isHop || isKitPlugin || isTorrent || isDebrid;
 
   bool hasCapability(String name) {
     final want = name.trim().toLowerCase();
@@ -499,6 +501,7 @@ class EnginePack {
       'catalog/manifest.json': 'catalog',
       'live/manifest.json': 'live',
       'torrent/manifest.json': 'torrent',
+      'debrid/manifest.json': 'debrid',
       'hubs/home/manifest.json': 'home',
       'hubs/manifest.json': 'home',
       'iptv/vod/manifest.json': 'iptv-vod',

@@ -9,11 +9,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _tuneDesktopMediaKitAfterOpen();
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {
-    required bool continuityProxy,
     String? streamUrl,
   });
-  int _continuityProxyMaxQueueBytes();
-  void _onProxyUpstreamReconnected();
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -21,6 +18,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     bool forceHard = false,
     bool userInitiated = false,
   });
+  void _scheduleIptvLiveGraceRecovery({required String reason});
   void _armTransientHwDecodeIgnore();
   Future<void> _disposePlayer();
   Future<void> _forceSoftwareDecode();
@@ -30,6 +28,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   void _resetDemuxerProbe();
   void _scheduleJumpToLive({bool force = false});
   void _invalidatePendingLiveEdgeSnaps();
+  void _clearBufferingChrome();
   bool get _streamWorking;
   bool get _bufferedRecovery;
 
@@ -257,16 +256,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         if (buffering) {
           _s._bufferingClearAt = null;
           _s._bufferingSince ??= DateTime.now();
-          final proxyOn = _s._liveContinuityProxy?.localUri != null;
-          final reconnectAt = _s._lastProxyReconnectAt;
-          final inGrace = reconnectAt != null &&
-              DateTime.now().difference(reconnectAt) <
-                  _PtPlayerScreenState._proxyReconnectRecoveryGrace;
           debugPrint(
             '[IPTV Exo] STATE_BUFFERING enter '
             'ahead=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
-            'proxy=$proxyOn live=$_livePlaybackProfile '
-            'grace=$inGrace',
+            'live=$_livePlaybackProfile',
           );
         } else {
           // Don't zero the 12s wall on a one-tick false — same as MediaKit.
@@ -518,45 +511,19 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         ...candidate.headers,
       };
       final kind = _liveSourceKindFor(candidate);
-      final useProxy = _livePlaybackProfile &&
-          _s._mediaKitBackend &&
-          iptvShouldUseContinuityProxy(kind: kind, url: candidate.url);
       var playUrl = candidate.url;
       // MediaKit/mpv only: pin one media playlist. AVPlayer/VLC/Exo do native ABR.
-      if (!useProxy &&
-          _s._mediaKitBackend &&
-          iptvUrlLooksLikeHls(playUrl)) {
+      if (_s._mediaKitBackend && iptvUrlLooksLikeHls(playUrl)) {
         playUrl = await iptvResolveHlsPlayUrl(
           url: playUrl,
           headers: headers,
         );
-      }
-      if (useProxy) {
-        final proxy = _s._liveContinuityProxy ??= LiveContinuityProxy(
-          onUpstreamReconnected: _onProxyUpstreamReconnected,
-        );
-        final local = await proxy.start(
-          upstreamUrl: candidate.url,
-          headers: headers,
-          maxQueueBytes: _continuityProxyMaxQueueBytes(),
-        );
-        playUrl = local.toString();
-        debugPrint(
-          '[IPTV Player] continuity proxy ($kind, '
-          '${_s._playerEngine.storageKey}, '
-          'live=${_s._exoBackend ? iptvExoUrlLooksLive(candidate.url) : 'n/a'}, '
-          'queue=${_continuityProxyMaxQueueBytes() >> 20}MiB)',
-        );
-      } else {
-        await _s._liveContinuityProxy?.stop();
       }
 
       if (_s._exoBackend) {
         // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
         _s._exoCueTexts.value = const [];
         _s._cacheAheadSecs = 0;
-        _s._lastProxyReconnectAt = null;
-        _s._cacheAheadAtProxyReconnect = 0;
         final live = iptvExoUrlLooksLive(candidate.url);
         // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
         var maxHeight = 0;
@@ -567,11 +534,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
             maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
           }
         }
-        // Loopback proxy already has CDN headers — do not forward them to Exo.
         await ExoPlayerBridge.open(
           viewId: _s._exoViewId!,
           url: playUrl,
-          headers: useProxy ? const <String, String>{} : headers,
+          headers: headers,
           live: live,
           maxVideoHeight: maxHeight,
           maxVideoBitrate: maxBitrate,
@@ -603,35 +569,23 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         _s._stallFrameDropBaseline = -1;
         _s._stallPaintWatchSince = null;
         await resetPlayerAudioForNewOpen(player);
-        // Live MediaKit: Xtream TS uses the localhost continuity relay; Stremio /
-        // engine plugins open directly with their own headers + lavf reconnect.
-        if (useProxy) {
-          await player.open(Media(playUrl));
-          final np = player.platform;
-          if (np is NativePlayer) {
-            await _applyStreamLavfReconnect(np, continuityProxy: true);
-          }
-        } else {
-          debugPrint('[IPTV Player] direct open ($kind)');
-          final np = player.platform;
-          if (np is NativePlayer) {
-            await applyMediaHttpHeaders(
-              player,
-              headers,
-              streamUrl: playUrl,
+        // RFC-113 / ipdigi: CDN direct + lavf reconnect (no continuity proxy).
+        debugPrint('[IPTV Player] direct open ($kind)');
+        final np = player.platform;
+        if (np is NativePlayer) {
+          await applyMediaHttpHeaders(
+            player,
+            headers,
+            streamUrl: playUrl,
+          );
+          if (_livePlaybackProfile) {
+            await _applyStreamLavfReconnect(
+              np,
+              streamUrl: candidate.url,
             );
-            // Before open: HLS must not inherit lavf reconnect-on-EOF (playlist
-            // body ends → "Will reconnect at N" death spiral).
-            if (_livePlaybackProfile) {
-              await _applyStreamLavfReconnect(
-                np,
-                continuityProxy: false,
-                streamUrl: candidate.url,
-              );
-            }
           }
-          await player.open(Media(playUrl, httpHeaders: headers));
         }
+        await player.open(Media(playUrl, httpHeaders: headers));
         await player.play();
         if (_s._atvMediaKit) {
           unawaited(_tuneAtvMediaKitAfterOpen());
@@ -946,8 +900,11 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        // Cache/feed gate inside recovery — do not reopen if still working.
-        _noteSocketTrouble(msg);
+        if (_livePlaybackProfile && _s._mediaKitBackend) {
+          _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
+        } else {
+          _noteSocketTrouble(msg);
+        }
         return;
       }
       // Hard open/format death: always reopen (never "healthy hold"). Soft
@@ -962,7 +919,18 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         );
         return;
       }
+      if (_livePlaybackProfile && _s._mediaKitBackend) {
+        _scheduleIptvLiveGraceRecovery(reason: 'error: $msg');
+        return;
+      }
       _triggerRecovery(reason: 'error: $msg');
+    });
+    _s._completedSub?.cancel();
+    _s._completedSub = player.stream.completed.listen((done) {
+      if (!done || !mounted || _s._disposed) return;
+      if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
+      if (!_s._userPlayWhenReady) return;
+      _scheduleIptvLiveGraceRecovery(reason: 'completed');
     });
     _s._logSub = player.stream.log.listen((l) {
       final text = l.text.toLowerCase();
@@ -1012,12 +980,15 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     });
   }
 
-  /// Socket blip: recover only if cache/feed says the stream is dead.
+  /// Socket blip: live MediaKit uses ipdigi silent grace → goLive (RFC-113).
   void _noteSocketTrouble(String what) {
-    // VT often one-shots while ffmpeg reconnects after CDN chunk close.
     _armTransientHwDecodeIgnore();
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
+      return;
+    }
+    if (_livePlaybackProfile && _s._mediaKitBackend) {
+      _scheduleIptvLiveGraceRecovery(reason: 'socket $what');
       return;
     }
     if (_streamWorking) {
@@ -1274,8 +1245,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     while (_recoveryInFlight) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
-    await _s._liveContinuityProxy?.stop();
-    _s._liveContinuityProxy = null;
+    _s._liveGraceTimer?.cancel();
+    _s._liveGoLiveTimer?.cancel();
+    _s._liveStableTimer?.cancel();
     await _disposePlayer();
   }
 

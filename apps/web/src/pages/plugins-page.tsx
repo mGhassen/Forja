@@ -135,9 +135,6 @@ export function PluginsPage() {
 
               <Reveal variant="right" delayMs={100} className="relative">
                 <PluginOrbitVisual />
-                <p className="font-mono-ui mt-5 text-center text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.38)]">
-                  Official starters · community packs · yours too
-                </p>
               </Reveal>
             </div>
           </header>

@@ -364,11 +364,6 @@ class RustLib {
     return _readString(_native.ffi_indexer_request_json(ptr));
   });
 
-  String debridRequestJson(String requestJson) => using((arena) {
-    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_debrid_request_json(ptr));
-  });
-
   String site111477IndexRequestJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_site111477_index_request_json(ptr));
@@ -824,11 +819,6 @@ final class _FfiNative {
             'ffi_indexer_request_json',
           )
           .asFunction(),
-      ffi_debrid_request_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_debrid_request_json',
-          )
-          .asFunction(),
       ffi_site111477_index_request_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
             'ffi_site111477_index_request_json',
@@ -1159,8 +1149,6 @@ final class _FfiNative {
   ffi_media_extra_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_indexer_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_debrid_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_site111477_index_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

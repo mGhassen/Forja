@@ -13,6 +13,7 @@ abstract final class PluginContract {
     'catalog',
     'host',
     'torrent',
+    'debrid',
   };
 
   static const catalogErrorCodes = {

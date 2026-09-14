@@ -36,7 +36,7 @@ import 'package:forja/shared/player/details/kit_list_status_hero.dart';
 import 'package:forja/shared/player/details/media_details.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
-import 'package:forja_foundation/widgets/details/details_screen.dart';
+import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';

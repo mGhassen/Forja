@@ -169,9 +169,6 @@ Future<EpisodeTorrentPlayback?> resolveEpisodeTorrentPlayback({
 
   torrents.sort((a, b) => b.seeders.compareTo(a.seeders));
 
-  final settings = SettingsService();
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
   final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
 
   final limit = torrents.length < _maxMagnetAttempts
@@ -183,8 +180,6 @@ Future<EpisodeTorrentPlayback?> resolveEpisodeTorrentPlayback({
     try {
       final playback = await resolveMagnetForPlayback(
         magnet: magnet,
-        useDebrid: useDebrid,
-        debridService: debridService,
         localTorrentEngine: localEngine,
         season: season,
         episode: episode,

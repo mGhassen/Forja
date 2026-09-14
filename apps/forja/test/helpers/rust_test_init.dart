@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:forja/shared/playback/sources/torrent_js_search.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:rust/rust.dart';
 
 Future<void> initEngineForTests() async {
@@ -8,4 +9,5 @@ Future<void> initEngineForTests() async {
   final dir = await Directory.systemTemp.createTemp('forja_engine_smoke_');
   await Engine.init(storagePath: '${dir.path}/store.json');
   registerTorrentSearchBridge();
+  registerDebridPackBridge();
 }

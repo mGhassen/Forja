@@ -108,7 +108,7 @@ Winner: **move the real host implementations** to `shell/`. Package `showForjaTo
 | `LoadingOverlay` / `dismissActiveLoadingOverlayRoute` | `package:forja/shell/feedback/loading_overlay.dart` |
 | `ShellCardPlayOverlay` | `package:forja/shell/feedback/shell_card_play_overlay.dart` |
 | `ShellErrorRetryPanel` | `package:forja/shell/feedback/shell_error_retry_panel.dart` |
-| `ShellMoodCircleLayout` / `ShellMoodCircleItem` | **deleted** (RFC-111) |
+| `ShellMoodCircleLayout` / `ShellMoodCircleItem` | `MoodCircle` / `MoodCircleLayout` + `MoodSection` |
 | `ForjaPosterCard` / `ForjaServerGrid` | `package:forja/shell/…` (moved) |
 
 ---
@@ -195,15 +195,17 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `rotating_hero_backdrop.dart` | `package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart` | ✅ |
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
 | `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shell/focus/hero_pill_buttons.dart` | ✅ |
-| `cinematic_hero.dart` / `catalog_hero_section.dart` | **deleted** (RFC-111) — live details hero is `widgets/details/details_hero.dart` | ✅ |
-| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_atmosphere.dart` · `kit_event_dense_tile` | **deleted** composers (RFC-111). Keep: `poster_card` / `event_card` / `home_loading_skeleton` under `widgets/catalog/`. | ✅ |
+| `cinematic_hero.dart` | **kept** (RFC-109 A69) — hub catalog carousel; details stay on `widgets/details/details_hero.dart` | ✅ |
+| `because_section.dart` · `continue_section.dart` · `continue_watching_card.dart` · `mood_section.dart` | **kept** (RFC-109 A69) — hub catalog sections; host mounts via `kit/slots/*` | ✅ |
+| `catalog_hero_section.dart` · `movie_poster*.dart` · `movie_atmosphere.dart` · `kit_event_dense_tile` | **deleted** composers (RFC-111). Keep: `poster_card` / `event_card` / `home_loading_skeleton` under `widgets/catalog/`. | ✅ |
 | `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,side_panel_overlay,portal_list_panel}.dart` | ✅ |
 | `kit_panel_tabs.dart` | `package:forja_foundation/widgets/sources/panel_tabs.dart` | ✅ |
 | `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/category_circle_meta.dart` | ✅ |
 | `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
 | `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` · `kit_chrome_top_bar.dart` | **RFC-111:** dead catalog layout composers deleted. Live: search stack + `CatalogBody` + `PortalsChip`; hub chrome = host `KitChromeTopBar`. | ✅ |
 | `kit_panel_host.dart` · `kit_feed_chrome.dart` · `kit_top_bar_host_hooks.dart` · `kit_top_menu_registry.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
-| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `package:forja_foundation/widgets/details/{details_screen,details_hero,play_row,entry_details,match_details_page,list_status_*}.dart` + `blocks/details/details_block.dart`. Host MetaRuntime/TV/ListFollow mappers: `package:forja/shared/player/details/<file>.dart` | ✅ |
+| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `blocks/details/{details_block,match_details_block}.dart` (`DetailsScreen` / `EntryDetails` / `MatchDetailsPage`) + `widgets/details/{details_hero,play_row,list_status_*}.dart`. Host MetaRuntime/TV/ListFollow: `package:forja/shared/player/details/<file>.dart` | ✅ |
+| Catalog / search page shells | `blocks/catalog/catalog_body_block.dart` · `blocks/search/catalog_search_page.dart` — PackPaintTree types `catalogBody` / `search` (RFC-112). Hubs share `catalogBody`; no `iptv*` / `liveSports*` / `myList*` block ids. | ✅ |
 | `kit_details_sections.dart` UI | `package:forja_foundation/widgets/details/details_rails.dart`; parse/fetch leftover: `package:forja/shared/engine/hub/kit_details_sections.dart` | ✅ |
 | `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
 | `kit_details_host_hooks.dart` · host `tmdb_details_enrich.dart` | **deleted** — packs own enrich | ✅ |

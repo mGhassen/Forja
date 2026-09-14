@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) |
-| **Current slice** | Host = validate+paint + opaque search wire. Product search lives in packs (`_search.js`). |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) |
+| **Current slice** | Catalog slot paint mounted (hero/filters/mood/continue/because) + pack paint stamps. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -539,6 +539,17 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 ---
 
+## Acceptance (catalog slot paint)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A69 | Restore foundation catalog paint: `CinematicHero`, `ContinueSection`, `BecauseSection`, `ContinueWatchingCard`, `MoodSection` | ✅ |
+| 2 | R109-A70 | `PackPaintTree` mounts hero / vertical_filters / mood / continue / because / ranked via `kit/slots/*` + shared `PackPaintArtifact` | ✅ |
+| 3 | R109-A71 | Pack `hubItems` stamps `hubPaintPoster` when missing; home `hubPaintHero` + `hubWithLoad` on hero/popular/mood/because/genres | ✅ |
+| 4 | R109-A72 | Asian Drama / Anime peers: `hubWithLoad` on hero/ranked/mood; layout_map lists mounted slots | ✅ |
+
+---
+
 ## Wave M notes (validate + paint law reset)
 
 | Done | Detail |
@@ -546,6 +557,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | A63 | `forja-pack-product-host.mdc` — validate+paint; ❌ KitListPaint / feed/schedule/panel/tabs host product |
 | A64 | Kit folder = painter + paint_tree + opaque run; fat wire/list/feed/schedule deleted (A50 closed by deletion) |
 | A65 | Hub manifests `nav.page.action`; SDK + `_kit.js` paint helpers; rails wrap `hubWithLoad`; anime/asian_drama paint metas |
+| A69–A72 | Catalog slot paint: DS hero/continue/because/mood kept; host `paint_artifact` + `kit/slots/*` (no mega paint_slots) |
 
 | Still open | Detail |
 |------------|--------|

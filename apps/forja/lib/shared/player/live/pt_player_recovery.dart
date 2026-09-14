@@ -25,6 +25,153 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
   bool get _playheadRecentlyMoved;
   void _noteStalkerHardOpenFail();
   void _invalidatePendingLiveEdgeSnaps();
+  void _clearBufferingChrome();
+
+  /// ipdigi-style: silent grace (≥ lavf reconnect_delay_max) then goLive.
+  void _scheduleIptvLiveGraceRecovery({required String reason}) {
+    if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
+    if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+    if (_recoveryInFlight) return;
+    if (_s._liveGraceTimer?.isActive ?? false) return;
+    _s._liveGoLiveTimer?.cancel();
+    _s._liveStableTimer?.cancel();
+    final grace = _s._atvMediaKit
+        ? _PtPlayerScreenState._liveGraceWindowAtv
+        : _PtPlayerScreenState._liveGraceWindow;
+    _s._liveGraceStartPos = _s._position;
+    debugPrint(
+      '[IPTV] live glitch ($reason) — '
+      '${grace.inMilliseconds}ms grace (lavf reconnect)',
+    );
+    _s._liveGraceTimer = Timer(grace, () {
+      if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+      final sPlaying = _s._playing;
+      final pos = _s._position;
+      final recovered = sPlaying && pos > _s._liveGraceStartPos;
+      if (recovered || _streamWorking) {
+        debugPrint(
+          '[IPTV] live glitch recovered '
+          '(${_s._liveGraceStartPos.inSeconds}s → ${pos.inSeconds}s) — no reopen',
+        );
+        _clearBufferingChrome();
+        return;
+      }
+      debugPrint('[IPTV] live glitch unrecovered — goLive');
+      unawaited(_tryIptvLiveGoLive(reason: reason));
+    });
+  }
+
+  Future<void> _tryIptvLiveGoLive({required String reason}) async {
+    if (!_livePlaybackProfile || !_s._mediaKitBackend) return;
+    if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+    if (_recoveryInFlight) return;
+    final last = _s._lastGoLiveAt;
+    if (last != null &&
+        DateTime.now().difference(last) <
+            _PtPlayerScreenState._liveGoLiveThrottle) {
+      debugPrint('[IPTV] goLive throttled — ended');
+      if (mounted) {
+        setState(() => _s._statusBanner = 'Stream ended');
+      }
+      return;
+    }
+    _s._lastGoLiveAt = DateTime.now();
+    _s._liveGoLiveAttempt = 1;
+    _s._liveStableTimer?.cancel();
+    final maxAttempts = _s._atvMediaKit
+        ? _PtPlayerScreenState._maxLiveGoLiveAttemptsAtv
+        : _PtPlayerScreenState._maxLiveGoLiveAttempts;
+    final poll = _s._atvMediaKit
+        ? _PtPlayerScreenState._liveGoLivePollWindowAtv
+        : _PtPlayerScreenState._liveGoLivePollWindow;
+    if (mounted) {
+      setState(() => _s._statusBanner = 'Reconnecting…');
+    }
+    debugPrint('[IPTV] goLive attempt 1/$maxAttempts ($reason)');
+    await _goLiveReopen();
+    _s._liveGoLiveTimer?.cancel();
+    _s._liveGoLiveTimer = Timer(poll, () => _checkIptvLiveGoLive(maxAttempts, poll));
+  }
+
+  void _checkIptvLiveGoLive(int maxAttempts, Duration poll) {
+    if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+    final playing = _s._playing && _s._position > Duration.zero;
+    if (playing || _streamWorking) {
+      // ipdigi: require stable playing+pos for 1.5s before clearing.
+      _s._liveStableTimer?.cancel();
+      final startPos = _s._position;
+      _s._liveStableTimer = Timer(
+        _PtPlayerScreenState._liveStableWindow,
+        () {
+          if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+          final ok = (_s._playing && _s._position > startPos) || _streamWorking;
+          if (!ok) {
+            debugPrint('[IPTV] goLive unstable — retry/end');
+            if (_s._liveGoLiveAttempt >= maxAttempts) {
+              if (mounted) {
+                setState(() => _s._statusBanner = 'Stream ended');
+              }
+              return;
+            }
+            _s._liveGoLiveAttempt++;
+            unawaited(_goLiveReopen());
+            _s._liveGoLiveTimer = Timer(
+              poll,
+              () => _checkIptvLiveGoLive(maxAttempts, poll),
+            );
+            return;
+          }
+          debugPrint('[IPTV] goLive succeeded');
+          _s._liveGoLiveAttempt = 0;
+          _clearBufferingChrome();
+          if (mounted && _s._statusBanner == 'Reconnecting…') {
+            setState(() => _s._statusBanner = null);
+          }
+        },
+      );
+      return;
+    }
+    if (_s._liveGoLiveAttempt >= maxAttempts) {
+      debugPrint('[IPTV] goLive exhausted — ended');
+      if (mounted) {
+        setState(() => _s._statusBanner = 'Stream ended');
+      }
+      return;
+    }
+    _s._liveGoLiveAttempt++;
+    debugPrint('[IPTV] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
+    unawaited(_goLiveReopen());
+    _s._liveGoLiveTimer = Timer(
+      poll,
+      () => _checkIptvLiveGoLive(maxAttempts, poll),
+    );
+  }
+
+  /// ipdigi `goLive`: stop + open same CDN URL (no continuity proxy).
+  Future<void> _goLiveReopen() async {
+    if (_s._disposed || _recoveryInFlight) return;
+    _recoveryInFlight = true;
+    try {
+      final player = _s._player;
+      if (player != null && _s._playerAlive) {
+        try {
+          await player.stop();
+        } catch (_) {}
+      }
+      final src = _s._sources.isEmpty
+          ? null
+          : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
+      if (src == null) return;
+      await _engineOpenSource(src, forceLiveRefresh: false);
+      if (_s._userPlayWhenReady) {
+        await _enginePlay();
+      }
+    } finally {
+      _recoveryInFlight = false;
+    }
+  }
+
+  /// Reopen / recreate only when the stream is **not** working.
 
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
@@ -83,6 +230,14 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     bool userInitiated = false,
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
+    if (!userInitiated &&
+        _livePlaybackProfile &&
+        _s._mediaKitBackend &&
+        ((_s._liveGraceTimer?.isActive ?? false) ||
+            (_s._liveGoLiveTimer?.isActive ?? false) ||
+            (_s._liveStableTimer?.isActive ?? false))) {
+      return;
+    }
     if (_giveUpDeadStalkerStream()) return;
     // Stable cache/feed hold is live-only — VOD must not skip recovery after a
     // false "video alive" / open fail (issue 163). Hard format/open death
@@ -451,6 +606,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     await _s._playingSub?.cancel();
     await _s._bufferingSub?.cancel();
     await _s._errorSub?.cancel();
+    await _s._completedSub?.cancel();
     await _s._logSub?.cancel();
     await _s._bufferSub?.cancel();
     _s._posSub = null;
@@ -458,6 +614,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     _s._playingSub = null;
     _s._bufferingSub = null;
     _s._errorSub = null;
+    _s._completedSub = null;
     _s._logSub = null;
     _s._bufferSub = null;
   }

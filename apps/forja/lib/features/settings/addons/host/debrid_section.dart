@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
+import 'package:rust/rust.dart';
 
-import 'package:forja/shell/tv/shell_tv_coordinator.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shell/feedback/forja_toast.dart';
-import 'package:forja/shell/focus/shell_focusable_tap.dart';
-import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-/// Debrid service selection and API key configuration.
+/// Magnet-resolve plugin picker (pack settings render above via RFC-089).
 class SettingsDebridSection extends ConsumerStatefulWidget {
   const SettingsDebridSection({super.key});
 
@@ -20,41 +15,95 @@ class SettingsDebridSection extends ConsumerStatefulWidget {
       _SettingsDebridSectionState();
 }
 
-class _SettingsDebridSectionState
-    extends ConsumerState<SettingsDebridSection> {
+class _SettingsDebridSectionState extends ConsumerState<SettingsDebridSection> {
   final SettingsService _settings = SettingsService();
-  final DebridApi _debrid = DebridApi();
-
-  final TextEditingController _torboxController = TextEditingController();
-  final TextEditingController _alldebridController = TextEditingController();
-  final TextEditingController _premiumizeController = TextEditingController();
-  final TextEditingController _debridlinkController = TextEditingController();
-  final TextEditingController _rdController = TextEditingController();
-  bool _isVerifyingRD = false;
-  bool _hydrated = false;
+  bool _migrated = false;
 
   @override
-  void dispose() {
-    _torboxController.dispose();
-    _alldebridController.dispose();
-    _premiumizeController.dispose();
-    _debridlinkController.dispose();
-    _rdController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _bootstrap();
   }
 
-  void _hydrate(SettingsDebridSnapshot snap) {
-    _torboxController.text = snap.torboxKey;
-    _alldebridController.text = snap.alldebridKey;
-    _premiumizeController.text = snap.premiumizeKey;
-    _debridlinkController.text = snap.debridlinkKey;
-    _hydrated = true;
+  Future<void> _bootstrap() async {
+    await migrateLegacyDebridSecretsToPackStore();
+    await syncDebridResolveCatalog();
+    if (!mounted) return;
+    setState(() => _migrated = true);
+    await ref.read(settingsDebridProvider.notifier).reload();
+  }
+
+  String _labelFor(SettingsDebridSnapshot snap, String id) {
+    for (final p in snap.plugins) {
+      if (p.id == id) return p.name;
+    }
+    return id;
+  }
+
+  Future<void> _setEnabled(bool enabled, SettingsDebridSnapshot snap) async {
+    if (!enabled) {
+      await _settings.setMagnetResolvePluginId('');
+      ref.read(settingsDebridProvider.notifier).patch(
+            (s) => s.copyWith(enabled: false, pluginId: '', pluginLabel: ''),
+          );
+      return;
+    }
+    var id = snap.pluginId.trim();
+    if (id.isEmpty) {
+      await syncDebridResolveCatalog();
+      final list = installedDebridPlugins();
+      if (list.isEmpty) {
+        await _settings.setMagnetResolvePluginId('');
+        ref.read(settingsDebridProvider.notifier).patch(
+              (s) => s.copyWith(enabled: false, pluginId: '', pluginLabel: ''),
+            );
+        return;
+      }
+      id = list.first.id;
+    }
+    await _settings.setMagnetResolvePluginId(id);
+    ref.read(settingsDebridProvider.notifier).patch(
+          (s) => s.copyWith(
+            enabled: true,
+            pluginId: id,
+            pluginLabel: _labelFor(snap, id),
+          ),
+        );
+  }
+
+  Future<void> _setPluginByLabel(
+    String? selection,
+    SettingsDebridSnapshot snap,
+  ) async {
+    if (selection == null || selection == 'None') {
+      await _setEnabled(false, snap);
+      return;
+    }
+    String? id;
+    for (final p in snap.plugins) {
+      if (p.name == selection || p.id == selection) {
+        id = p.id;
+        break;
+      }
+    }
+    if (id == null) {
+      await _setEnabled(false, snap);
+      return;
+    }
+    await _settings.setMagnetResolvePluginId(id);
+    ref.read(settingsDebridProvider.notifier).patch(
+          (s) => s.copyWith(
+            enabled: true,
+            pluginId: id!,
+            pluginLabel: selection,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     final snap = ref.watch(settingsDebridProvider).valueOrNull;
-    if (snap == null) {
+    if (snap == null || !_migrated) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
@@ -66,222 +115,37 @@ class _SettingsDebridSectionState
         ),
       );
     }
-    if (!_hydrated) _hydrate(snap);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final dropdownValue = snap.enabled && snap.pluginId.isNotEmpty
+        ? (snap.pluginLabel.isNotEmpty
+            ? snap.pluginLabel
+            : _labelFor(snap, snap.pluginId))
+        : 'None';
+    final options = <String>[
+      'None',
+      ...snap.plugins.map((p) => p.name),
+    ];
+
+    return SettingsGroup(
+      label: 'Debrid',
+      adminOnly: true,
       children: [
-        SettingsGroup(
-          label: 'Debrid',
-          adminOnly: true,
-          children: [
-            settingsFocusableToggle(
-              context,
-              'Use Debrid for Streams',
-              'Resolve torrents using your debrid account.',
-              snap.useDebrid,
-              (val) async {
-                await _settings.setUseDebridForStreams(val);
-                ref
-                    .read(settingsDebridProvider.notifier)
-                    .patch((s) => s.copyWith(useDebrid: val));
-              },
-            ),
-            settingsFocusableDropdown(
-              context,
-              'Debrid Service',
-              'Select your preferred provider.',
-              snap.service,
-              const [
-                'None',
-                'Real-Debrid',
-                'TorBox',
-                'AllDebrid',
-                'Premiumize',
-                'Debrid-Link',
-              ],
-              (val) async {
-                if (val != null) {
-                  await _settings.setDebridService(val);
-                  ref
-                      .read(settingsDebridProvider.notifier)
-                      .patch((s) => s.copyWith(service: val));
-                }
-              },
-            ),
-          ],
+        settingsFocusableToggle(
+          context,
+          'Resolve magnets with debrid',
+          'Use an installed debrid pack plugin for torrent magnets.',
+          snap.enabled,
+          (val) => _setEnabled(val, snap),
         ),
-        if (snap.service == 'Real-Debrid') _buildRDLogin(snap),
-        if (snap.service == 'TorBox') _buildTorBoxConfig(),
-        if (snap.service == 'AllDebrid') _buildAllDebridConfig(),
-        if (snap.service == 'Premiumize') _buildPremiumizeConfig(),
-        if (snap.service == 'Debrid-Link') _buildDebridLinkConfig(),
+        settingsFocusableDropdown(
+          context,
+          'Magnet resolve plugin',
+          'Only one debrid plugin can be active.',
+          dropdownValue,
+          options,
+          (val) => _setPluginByLabel(val, snap),
+        ),
       ],
-    );
-  }
-
-  Future<void> _saveRDApiKey() async {
-    final key = _rdController.text.trim();
-    if (key.isEmpty) {
-      if (mounted) {
-        ForjaToast.warning('Enter an API key');
-      }
-      return;
-    }
-
-    // Just save the key - no verify round-trip. The verify call hangs forever
-    // on macOS for some users, leaving the spinner stuck. If the key is wrong
-    // they'll find out the first time they try to stream.
-    await _debrid.saveRDApiKey(key);
-    if (!mounted) return;
-    _rdController.clear();
-    setState(() => _isVerifyingRD = false);
-    await ref.read(settingsDebridProvider.notifier).reload();
-    if (!mounted) return;
-    ForjaToast.success('Real-Debrid API key saved');
-  }
-
-  void _logoutRD() async {
-    await _debrid.logoutRD();
-    _rdController.clear();
-    await ref.read(settingsDebridProvider.notifier).reload();
-    if (mounted) {
-      ForjaToast.success('Logged out of Real-Debrid');
-    }
-  }
-  Widget _apiKeyConfig({
-    required TextEditingController controller,
-    required String hint,
-    required Future<void> Function() onSave,
-    bool busy = false,
-    String? linkLabel,
-    String? linkUrl,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SettingsTextField(
-            controller: controller,
-            label: 'API Key',
-            hint: hint,
-            obscureText: true,
-            onSubmitted: (_) => onSave(),
-          ),
-          const SizedBox(height: 14),
-          SettingsFilledButton(
-            label: 'Save',
-            icon: Icons.save,
-            busy: busy,
-            onPressed: onSave,
-          ),
-          if (linkLabel != null && linkUrl != null) ...[
-            const SizedBox(height: 10),
-            _apiKeyLink(linkLabel, linkUrl),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _apiKeyLink(String label, String url) {
-    return shellFocusableTap(
-      context: context,
-      onTap: () async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      borderRadius: SettingsTokens.categoryTileRadius,
-      scaleOnFocus: 1.0,
-      showFocusRail: true,
-      tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: ForjaShellColors.brandGreen,
-            fontSize: 12,
-            decoration: TextDecoration.underline,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRDLogin(SettingsDebridSnapshot snap) {
-    if (snap.isRDLoggedIn) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-        child: SettingsFilledButton(
-          label: 'Logout from Real-Debrid',
-          icon: Icons.logout,
-          secondary: true,
-          onPressed: _logoutRD,
-        ),
-      );
-    }
-    return _apiKeyConfig(
-      controller: _rdController,
-      hint: 'Enter Real-Debrid API Key',
-      busy: _isVerifyingRD,
-      onSave: _saveRDApiKey,
-      linkLabel: 'Get your API key at real-debrid.com/apitoken',
-      linkUrl: 'https://real-debrid.com/apitoken',
-    );
-  }
-
-  Widget _buildTorBoxConfig() {
-    return _apiKeyConfig(
-      controller: _torboxController,
-      hint: 'Enter TorBox API Key',
-      onSave: () async {
-        await _debrid.saveTorBoxKey(_torboxController.text);
-        if (mounted) ForjaToast.success('TorBox API key saved');
-      },
-    );
-  }
-
-  Widget _buildAllDebridConfig() {
-    return _apiKeyConfig(
-      controller: _alldebridController,
-      hint: 'Enter AllDebrid API Key',
-      onSave: () async {
-        await _debrid.saveAllDebridKey(_alldebridController.text);
-        if (mounted) ForjaToast.success('AllDebrid API key saved');
-      },
-      linkLabel: 'Get your API key at alldebrid.com/apikeys',
-      linkUrl: 'https://alldebrid.com/apikeys',
-    );
-  }
-
-  Widget _buildPremiumizeConfig() {
-    return _apiKeyConfig(
-      controller: _premiumizeController,
-      hint: 'Enter Premiumize API Key',
-      onSave: () async {
-        await _debrid.savePremiumizeKey(_premiumizeController.text);
-        if (mounted) ForjaToast.success('Premiumize API key saved');
-      },
-      linkLabel: 'Get your API key at premiumize.me/account',
-      linkUrl: 'https://www.premiumize.me/account',
-    );
-  }
-
-  Widget _buildDebridLinkConfig() {
-    return _apiKeyConfig(
-      controller: _debridlinkController,
-      hint: 'Enter Debrid-Link API Key',
-      onSave: () async {
-        await _debrid.saveDebridLinkKey(_debridlinkController.text);
-        if (mounted) ForjaToast.success('Debrid-Link API key saved');
-      },
-      linkLabel: 'Get your API key at debrid-link.com/webapp/apikey',
-      linkUrl: 'https://debrid-link.com/webapp/apikey',
     );
   }
 }
