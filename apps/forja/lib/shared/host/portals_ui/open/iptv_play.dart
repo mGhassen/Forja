@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/player/details/details_meta.dart';
 import 'package:forja/shared/playback/play_context.dart';

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/portals/iptv_vault_inventory.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -178,6 +180,9 @@ class IptvStore {
       await prefs.setString(_key, json.encode(arr));
     }
     if (scheduleSync) scheduleIptvSyncPush();
+    unawaited(
+      IptvVaultInventory.mirrorFromStore(portals: list),
+    );
   }
 
   static Future<Set<String>> loadFavorites() async {

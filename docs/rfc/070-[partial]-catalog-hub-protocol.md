@@ -454,3 +454,4 @@ Barrel: [`foundation.dart`](../../apps/forja/lib/shared/foundation/foundation.da
 - [RFC-066](fixed/066-[fixed]-hub-catalog-top-bar.md) — hub chrome the search slice reuses
 - [RFC-039](fixed/039-[fixed]-remote-provider-runtime-config.md) — overlay that feeds hub config
 - [RFC-064](064-[open]-rust-quickjs-engine-runtime.md) — Rust EngineJS invoker (R70-A12)
+- [RFC-110](110-[draft]-pack-surface-contributions.md) — surface contributions; enrich aliases to `meta.enrich` slot

@@ -9,7 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:forja/shared/host/portals_ui/iptv_shell_style.dart';
-import 'package:forja/shared/host/portals_ui/iptv_atv_live_cache.dart';
+import 'package:forja/shared/player/iptv/iptv_atv_live_cache.dart';
 import 'package:forja/shared/host/portals_ui/iptv_title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -33,15 +33,15 @@ import 'package:forja/shared/host/portals_ui/channel_guide/iptv_channel_search_o
 import 'package:forja/shared/engine/portals/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/storage.dart';
-import 'package:forja/shared/host/portals_ui/iptv_live_continuity_proxy.dart';
-import 'package:forja/shared/host/portals_ui/iptv_hls_play_url.dart';
-import 'package:forja/shared/host/portals_ui/iptv_proxy_reconnect_skip.dart';
+import 'package:forja/shared/player/iptv/iptv_live_continuity_proxy.dart';
+import 'package:forja/shared/player/iptv/iptv_hls_play_url.dart';
+import 'package:forja/shared/player/iptv/iptv_proxy_reconnect_skip.dart';
 import 'package:forja/shared/host/portals_ui/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/shared/host/portals_ui/iptv_lazy_url_health.dart';
 import 'package:forja/shared/host/portals_ui/iptv_tv_focus.dart';
 import 'package:forja/shared/host/portals_ui/providers/iptv_player_providers.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_player_chrome_profile.dart';
+import 'package:forja/shared/player/iptv/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
 

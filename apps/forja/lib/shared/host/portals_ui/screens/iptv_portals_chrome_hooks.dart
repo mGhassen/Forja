@@ -20,11 +20,17 @@ import 'package:forja/shared/shell/feedback/forja_toast.dart';
 abstract final class IptvPortalsChromeHooks {
   IptvPortalsChromeHooks._();
 
+  /// Pack `kit.list` source for IPTV hub browse.
+  static const iptvListSourceId = 'iptv';
+
+  static bool _hoistSource(String sourceId) =>
+      sourceId == LiveSurfaceOpen.listSourceId ||
+      sourceId == iptvListSourceId;
+
   static void ensureRegistered() {
     KitTopBarHostHooks.packActionBuilders['portals'] = _buildPortalsAction;
     KitTopBarHostHooks.wrapListBody = _wrapListBody;
-    KitTopBarHostHooks.shouldHoistListBody =
-        (sourceId) => sourceId == LiveSurfaceOpen.listSourceId;
+    KitTopBarHostHooks.shouldHoistListBody = _hoistSource;
   }
 
   static Widget? _buildPortalsAction(
@@ -38,8 +44,13 @@ abstract final class IptvPortalsChromeHooks {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
-    final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
-    if (enabled == false) return null;
+    // Live Sports may hide Portals when Forja Sports is off; IPTV hub always
+    // shows the portal inventory control.
+    final isIptvTab = tabId == 'iptv' || tabId.endsWith('/iptv');
+    if (!isIptvTab) {
+      final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
+      if (enabled == false) return null;
+    }
 
     final ctrl = ref.watch(iptvControllerProvider);
     final panelOpen = ctrl.portalPanelOpen;
@@ -70,7 +81,7 @@ abstract final class IptvPortalsChromeHooks {
     required String sourceId,
     required bool shellTabVisible,
   }) {
-    if (sourceId != LiveSurfaceOpen.listSourceId) return child;
+    if (!_hoistSource(sourceId) && tabId != 'iptv') return child;
     return _IptvPortalsPanelHost(
       shellTabVisible: shellTabVisible,
       child: child,
@@ -128,9 +139,6 @@ class _IptvPortalsPanelHostState
 
   @override
   Widget build(BuildContext context) {
-    final enabled = ref.watch(_forjaSportsEnabledProvider).asData?.value;
-    if (enabled == false) return widget.child;
-
     final ctrl = ref.watch(iptvControllerProvider);
 
     if (widget.shellTabVisible && !_prepared) {

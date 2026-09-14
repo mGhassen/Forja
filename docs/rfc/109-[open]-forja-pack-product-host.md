@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **0 / 1** A41 interim restore debt |
-| **Current slice** | A40: restored host `IptvPtScreen` for pack `nav.tabId` `iptv` (exact pre-kit UX); A41 tracks pack-owned chrome replacement |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **6 / 11** A41 pack migrate |
+| **Current slice** | A41: IPTV tab = pack layout; host engine.request/probe/disk cache + vault migrate; player under `shared/player/iptv`; Portals panel still Flutter interim |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -94,7 +94,17 @@
 | 4 | R109-A38 | Pack feed Live / Movies / Series (Xtream categories + streams); VOD details fetch series episodes | ✅ |
 | 5 | R109-A39 | Thin host `PackIptvPlayHooks` — vault portal → Xtream URL → `HostPlaybackOpen` (no portals_ui) | ✅ |
 | 6 | R109-A40 | Portals panel / Stalker / M3U / EPG guide / dedicated IPTV player chrome parity | ✅ |
-| 7 | R109-A41 | Replace interim host `IptvPtScreen` / `portals_ui` with pack-owned chrome (A19/A21 law) | ⬜ |
+| 7 | R109-A41 | Replace interim host `IptvPtScreen` / `portals_ui` with pack-owned chrome (A19/A21 law) | 🔄 |
+| 8 | R109-A42 | Host `engine.request` + `playback.probe` + durable `cache.disk*` (no `host.iptv`) | ✅ |
+| 9 | R109-A43 | Vault SoT + one-shot `IptvStore` → `iptv.portals` migrate + dual-write | ✅ |
+| 10 | R109-A44 | Flip nav: `iptv` tab mounts `PackLayoutHost` (no `IptvPtScreen`) | ✅ |
+| 11 | R109-A45 | Pack layout/feed: portals action + Live/Movies/Series + prefs/platforms modules | ✅ |
+| 12 | R109-A46 | Foundation paint: EPG guide + catalog split + PortalListPanel slots | ✅ |
+| 13 | R109-A47 | Pack portals product chrome (replace Flutter portal panel) | ⬜ |
+| 14 | R109-A48 | Pack EPG browse mode wired to foundation guide | ⬜ |
+| 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | 🔄 |
+| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ⬜ |
+| 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
 
 ---
 
@@ -419,3 +429,9 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 |------------|--------|
 | A30 | Stremio details load still host |
 | `pack_detail_meta` | generic rails/facts/backdrops readers — keep |
+
+---
+
+## Related (composition)
+
+- [RFC-110](110-[draft]-pack-surface-contributions.md) — packs declare surface slots (details / player chrome) without remapping open identity; layers on this pack-product host law

@@ -26,35 +26,82 @@ class PortalListItem {
 /// Presentational portals list panel shell — props / slots only (RFC-095).
 ///
 /// Features own search state, list filtering, and row actions. Pass [header],
-/// optional [search], [statusText], and [body] (or [items] + [itemBuilder]).
+/// optional [headerActions], [search], [status] / [statusText], and [body]
+/// (or [items] + [itemBuilder]).
 class PortalListPanel extends StatelessWidget {
   const PortalListPanel({
     super.key,
     required this.width,
     required this.header,
-    required this.body,
+    this.body,
     this.surfaceColor,
+    this.headerActions,
     this.search,
     this.searchOpen = false,
+    this.status,
     this.statusText = '',
+    this.items,
+    this.itemBuilder,
     this.focusNode,
     this.onEscape,
-  });
+  }) : assert(
+          body != null || (items != null && itemBuilder != null),
+          'PortalListPanel requires body, or items + itemBuilder',
+        );
 
   final double width;
   final Color? surfaceColor;
   final Widget header;
+
+  /// Optional trailing / secondary chrome under [header].
+  final Widget? headerActions;
+
   /// Collapsible search field; height animated via [searchOpen].
   final Widget? search;
   final bool searchOpen;
+
+  /// Optional status chrome. When null, [statusText] is used if non-empty.
+  final Widget? status;
   final String statusText;
-  final Widget body;
+
+  /// Full body slot. Prefer this when the host builds its own list.
+  final Widget? body;
+
+  /// Alternative to [body]: opaque rows + host [itemBuilder].
+  final List<PortalListItem>? items;
+  final Widget Function(BuildContext context, PortalListItem item, int index)?
+      itemBuilder;
+
   final FocusNode? focusNode;
   final VoidCallback? onEscape;
+
+  Widget _resolvedBody(BuildContext context) {
+    if (body != null) return body!;
+    final list = items!;
+    final build = itemBuilder!;
+    return ListView.builder(
+      itemCount: list.length,
+      itemBuilder: (context, i) => build(context, list[i], i),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final surface = surfaceColor ?? const Color(0xFF12141A);
+
+    Widget? statusChild = status;
+    if (statusChild == null && statusText.isNotEmpty) {
+      statusChild = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Text(
+          statusText,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white54,
+            fontSize: 11,
+          ),
+        ),
+      );
+    }
 
     Widget column = Material(
       color: surface,
@@ -64,6 +111,7 @@ class PortalListPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             header,
+            ?headerActions,
             if (search != null)
               ClipRect(
                 child: AnimatedAlign(
@@ -74,21 +122,8 @@ class PortalListPanel extends StatelessWidget {
                   child: search!,
                 ),
               ),
-            if (statusText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                child: Text(
-                  statusText,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white54,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            Expanded(child: body),
+            ?statusChild,
+            Expanded(child: _resolvedBody(context)),
           ],
         ),
       ),

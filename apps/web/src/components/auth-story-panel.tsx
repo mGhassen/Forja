@@ -7,31 +7,30 @@ const WORDS = ['stream', 'sync', 'live', 'play'] as const
 const BEATS = [
   {
     n: '01',
-    title: 'One player',
-    line: 'Movies, series, anime, live TV - same controls, same calm.',
+    title: 'One free player',
+    line: 'Movies, series, anime, live sport, and IPTV use the same controls in one app.',
     accent: 'brand' as const,
   },
   {
     n: '02',
-    title: 'Your sources',
-    line: 'Playlists you connect. Guides inside the player. Nothing hosted here.',
+    title: 'Community packs',
+    line: 'Install hubs and sources you want. Leave out everything else.',
     accent: 'flame' as const,
   },
   {
     n: '03',
     title: 'Every screen',
-    line: 'Desk, couch, TV - pick up where you left off when you sign in.',
+    line: 'Sign in to sync settings and packs across desk, couch, and Android TV.',
     accent: 'brand' as const,
   },
 ]
 
 const MARQUEE = [
   'Playback',
-  'Guides',
+  'Community packs',
   'Live lists',
-  'Subtitles',
+  'Profile sync',
   'Desk to TV',
-  'Sync',
 ]
 
 const CYCLE_MS = 3200
@@ -43,9 +42,9 @@ type AuthStoryPanelProps = {
 }
 
 export function AuthStoryPanel({
-  eyebrow = 'Creative player platform',
-  lead = 'One player. Your sources. Every screen.',
-  emphasis = 'Sign in to sync settings across your screens.',
+  eyebrow = 'Forja',
+  lead = 'One free player. Community packs for what you watch.',
+  emphasis = 'Sync across every screen.',
 }: AuthStoryPanelProps) {
   const [wordIndex, setWordIndex] = useState(0)
   const [reduced, setReduced] = useState(false)
@@ -87,9 +86,8 @@ export function AuthStoryPanel({
           </span>
         </h1>
 
-        <p className="mt-6 max-w-md font-disp text-[clamp(17px,2.2vw,24px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-          {lead}
-          <br />
+        <p className="mt-6 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
+          {lead}{' '}
           <span className="text-[#EDE6DA]">{emphasis}</span>
         </p>
       </div>

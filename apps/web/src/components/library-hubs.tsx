@@ -17,35 +17,35 @@ const MOODS: Mood[] = [
   {
     id: 'movies',
     label: 'Movies',
-    line: 'Open films & more',
+    line: 'Films in the player',
     accent: 'flame',
     backdrop: '/brand/open-films/big-buck-bunny-backdrop.jpg',
   },
   {
     id: 'series',
     label: 'Series',
-    line: 'Episodes & arcs',
+    line: 'Episodes that keep going',
     accent: 'brand',
     backdrop: '/brand/open-films/sintel-backdrop.jpg',
   },
   {
     id: 'anime',
     label: 'Anime',
-    line: 'Animated worlds',
+    line: 'Anime hubs you install',
     accent: 'flame',
     backdrop: '/brand/open-films/spring-backdrop.jpg',
   },
   {
     id: 'asian',
     label: 'Asian Drama',
-    line: 'Stories that hit',
+    line: 'Drama hubs you install',
     accent: 'brand',
     backdrop: '/brand/open-films/tears-of-steel-backdrop.jpg',
   },
   {
     id: 'iptv',
     label: 'Live TV',
-    line: 'On now',
+    line: 'Live TV from your lists',
     accent: 'flame',
     backdrop: '/brand/forja-iptv-live.jpg',
     logos: [
@@ -57,7 +57,7 @@ const MOODS: Mood[] = [
   {
     id: 'sport',
     label: 'Live Sport',
-    line: 'Never miss a game',
+    line: 'Matches as they happen',
     accent: 'brand',
     backdrop: '/brand/hubs/sport/football.jpg',
   },
@@ -128,15 +128,14 @@ export function LibraryHubs() {
   return (
     <section id="library" className="px-[5vw] py-[12vh]">
       <Reveal>
-        <h2 className="max-w-[14ch] font-disp text-[clamp(36px,6vw,72px)] uppercase leading-[0.92] tracking-[-0.03em]">
-          Pick a world.
+        <h2 className="max-w-[16ch] font-disp text-[clamp(36px,6vw,72px)] uppercase leading-[0.92] tracking-[-0.03em]">
+          Hubs and worlds
           <br />
-          <span className="text-flame">Disappear.</span>
+          <span className="text-flame">you can add</span>
         </h2>
-        <p className="mt-6 font-disp text-[clamp(20px,2.8vw,32px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-          Six doors.
-          <br />
-          <span className="text-[#EDE6DA]">Which one tonight?</span>
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+          Movies, series, anime, drama, live TV, and sport — install the packs
+          that match what you watch.
         </p>
       </Reveal>
 

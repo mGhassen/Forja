@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;

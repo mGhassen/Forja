@@ -82,3 +82,4 @@ Pack update can ship a new `lock.wasm` / `unlock.mjs` without an app release. Ap
 - [RFC-065](065-[open]-live-forja-scrapers.md)
 - [Issue 203](../issues/203-[open]-android-tv-goat-webview-unlock.md)
 - [ENGINE_BOUNDARY](../ENGINE_BOUNDARY.md) — C3/C5 host adapters stay in app
+- [RFC-110](110-[draft]-pack-surface-contributions.md) — `unlock.module` as contribution slot alias

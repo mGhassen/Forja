@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/host/portals_ui/iptv_proxy_reconnect_skip.dart';
+import 'package:forja/shared/player/iptv/iptv_proxy_reconnect_skip.dart';
 
 /// Live HTTP TS continuity: player reads loopback; we reopen the CDN when it
 /// closes the socket without tearing down the player's connection.

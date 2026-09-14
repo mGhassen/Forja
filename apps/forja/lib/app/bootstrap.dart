@@ -28,6 +28,7 @@ import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/host/portals_ui/open/iptv_kit_hooks_register.dart';
 import 'package:forja/shared/host/portals_ui/screens/iptv_portals_chrome_hooks.dart';
+import 'package:forja/shared/engine/portals/iptv_vault_inventory.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -146,6 +147,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   HostPlaybackOpen.ensureRegistered();
   IptvKitHooksRegister.ensureRegistered();
   IptvPortalsChromeHooks.ensureRegistered();
+  unawaited(IptvVaultInventory.ensureMigratedFromStore());
   SettingsKitHooksRegister.ensureRegistered();
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');

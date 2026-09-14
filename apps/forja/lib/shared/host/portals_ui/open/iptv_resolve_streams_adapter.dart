@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
 import 'package:forja/shared/host/portals_ui/channel_search/iptv_forja_sports_gate.dart';
 import 'package:forja/shared/host/portals_ui/open/live_play.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';

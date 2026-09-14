@@ -13,17 +13,17 @@ const PLAYER_POWERS = [
   },
   {
     title: 'Find anything fast',
-    copy: 'Search by name or category while you watch. Close it - you’re back in.',
+    copy: 'Search by name or category while you watch. Close search and you are back on the channel.',
     accent: 'brand' as const,
   },
   {
     title: 'What’s on now',
-    copy: 'See what’s playing and what’s next - with progress - when your list has a guide.',
+    copy: 'See what’s playing and what’s next — with progress — when your list has a guide.',
     accent: 'flame' as const,
   },
   {
     title: 'Live, films & series',
-    copy: 'Kickoff, then a film, then a season. Same screen. Different night.',
+    copy: 'Watch a match, then a film, then a season in the same player without switching apps.',
     accent: 'brand' as const,
   },
   {
@@ -42,7 +42,7 @@ const PLAYER_POWERS = [
 const MODES = [
   {
     k: 'Live',
-    v: 'Sports, news, and channels that never sleep.',
+    v: 'Sports, news, and channels from the lists you connect.',
     accent: 'flame' as const,
     posters: [
       '/brand/hubs/sport/football.jpg',
@@ -52,7 +52,7 @@ const MODES = [
   },
   {
     k: 'Movies',
-    v: 'Film night from the same player as the match.',
+    v: 'Watch films in the same player you use for live channels.',
     accent: 'brand' as const,
     posters: [
       '/brand/open-films/big-buck-bunny.jpg',
@@ -62,7 +62,7 @@ const MODES = [
   },
   {
     k: 'Series',
-    v: 'Seasons ready when the live night ends.',
+    v: 'Keep episodes rolling without leaving Forja after live ends.',
     accent: 'flame' as const,
     posters: [
       '/brand/open-films/sintel.jpg',
@@ -118,26 +118,22 @@ export function IptvPage() {
             <div className="hero-enter">
               <div className="mb-6 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-brand">
-                  New IPTV Player
+                  Live & IPTV
                 </span>
               </div>
 
-              <h1 className="font-disp text-[clamp(40px,7.5vw,96px)] uppercase leading-[0.88] tracking-[-0.04em]">
-                The player
+              <h1 className="font-disp text-[clamp(36px,6.5vw,72px)] uppercase leading-[0.9] tracking-[-0.04em]">
+                Live TV and IPTV
                 <br />
-                built for
-                <br />
-                <span className="font-serif-i normal-case text-flame">live.</span>
+                <span className="font-serif-i normal-case text-flame">
+                  inside Forja
+                </span>
               </h1>
 
-              <div className="mt-6 max-w-lg space-y-4 font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.55)]">
-                <p>Guide. Search. What’s on now.</p>
-                <p>
-                  <span className="text-[#EDE6DA]">
-                    Movies &amp; series in the same player.
-                  </span>
-                </p>
-              </div>
+              <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
+                Search channels, see what&apos;s on, and play live alongside movies
+                and series in one player.
+              </p>
 
               <div className="mt-9">
                 <DownloadCta className="btn-magnet inline-flex w-full items-center justify-center rounded-full px-9 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)] sm:w-auto sm:px-10 sm:text-[15px]" />
@@ -178,13 +174,14 @@ export function IptvPage() {
         {/* 2 - Why the player wins (capabilities only) */}
         <section className="px-[5vw] py-16 sm:py-28">
           <Reveal>
-            <h2 className="max-w-[16ch] font-disp text-[clamp(32px,5vw,64px)] uppercase leading-[0.95] tracking-[-0.03em]">
-              Why this player
+            <h2 className="max-w-[18ch] font-disp text-[clamp(32px,5vw,64px)] uppercase leading-[0.95] tracking-[-0.03em]">
+              Why the live player
               <br />
-              <span className="text-flame">wins the night.</span>
+              <span className="text-flame">works better</span>
             </h2>
-            <p className="mt-5 max-w-2xl font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.5)]">
-              Built for live - then ready for the film.
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Built for live guides and channel search — then ready for films and
+              series in the same app.
             </p>
           </Reveal>
 
@@ -217,14 +214,11 @@ export function IptvPage() {
             <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95] tracking-[-0.03em]">
               Controls that
               <br />
-              <span className="text-brand">stay out of the way.</span>
+              <span className="text-brand">stay out of the way</span>
             </h2>
-            <p className="mt-5 max-w-2xl font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-[-0.02em] text-[rgba(237,230,218,0.5)]">
-              Progress. Pause. Volume. Subtitles. Audio.
-              <br />
-              <span className="text-[#EDE6DA]">
-                The desk sits at the bottom - until you need it.
-              </span>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Progress, pause, volume, subtitles, and audio sit in a bottom desk
+              you can open when you need them — then get back to the picture.
             </p>
           </Reveal>
           <Reveal delayMs={80}>
@@ -251,12 +245,12 @@ export function IptvPage() {
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
           <Reveal>
             <h2 className="font-disp text-[clamp(28px,4.5vw,52px)] uppercase tracking-[-0.03em]">
-              Three shelves.
+              Live, movies, and series
               <br />
-              <span className="text-brand">One player.</span>
+              <span className="text-brand">in one player</span>
             </h2>
-            <p className="mt-4 max-w-xl font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.5)]">
-              Live. Movies. Series - open any of them without switching apps.
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Open live channels, films, or episodes without switching apps.
             </p>
           </Reveal>
 
@@ -325,14 +319,11 @@ export function IptvPage() {
               <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.95]">
                 Your portals.
                 <br />
-                <span className="text-flame">Your night.</span>
+                <span className="text-flame">Your catalog</span>
               </h2>
-              <p className="mt-5 max-w-xl font-disp text-[clamp(18px,2.2vw,26px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.55)]">
-                Add a list once. Browse Live, Movies, Series.
-                <br />
-                <span className="text-[#EDE6DA]">
-                  Favorites on top. Categories that actually make sense.
-                </span>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+                Add a list once, then browse Live, Movies, and Series. Favorites
+                stay on top with categories that match how you watch.
               </p>
             </Reveal>
             <Reveal delayMs={80}>
@@ -359,13 +350,14 @@ export function IptvPage() {
         {/* 6 - Single close CTA - platforms live on /download only */}
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-20 text-center sm:py-28">
           <Reveal>
-            <h2 className="font-disp text-[clamp(40px,8vw,96px)] uppercase leading-[0.9] tracking-[-0.04em]">
-              Press play
+            <h2 className="font-disp text-[clamp(36px,7vw,72px)] uppercase leading-[0.9] tracking-[-0.04em]">
+              Download Forja
               <br />
-              <span className="text-flame">on live.</span>
+              <span className="text-flame">and go live</span>
             </h2>
-            <p className="mx-auto mt-6 max-w-lg font-disp text-[clamp(18px,2.4vw,28px)] uppercase leading-snug tracking-tight text-[rgba(237,230,218,0.5)]">
-              <span className="text-[#EDE6DA]">The IPTV Player is waiting.</span>
+            <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
+              Get the free player, connect your IPTV list, and start watching live
+              alongside movies and series.
             </p>
             <div className="mt-10 flex flex-col items-center gap-5">
               <DownloadCta />

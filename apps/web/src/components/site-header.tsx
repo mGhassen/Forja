@@ -10,9 +10,10 @@ import { useProfiles } from '@/hooks/use-profiles'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { to: '/' as const, label: 'Streaming Player', exact: true },
-  { to: '/iptv' as const, label: 'Live Player' },
-  { to: '/plugins' as const, label: 'Community Packs' },
+  { to: '/' as const, label: 'Player', exact: true },
+  { to: '/iptv' as const, label: 'Live' },
+  { to: '/plugins' as const, label: 'Packs' },
+  { to: '/build' as const, label: 'Build' },
 ]
 
 function NavLink({
@@ -23,7 +24,15 @@ function NavLink({
   className,
   variant = 'desktop',
 }: {
-  to: '/' | '/iptv' | '/plugins' | '/download' | '/account' | '/login' | '/changelog'
+  to:
+    | '/'
+    | '/iptv'
+    | '/plugins'
+    | '/build'
+    | '/download'
+    | '/account'
+    | '/login'
+    | '/changelog'
   children: string
   exact?: boolean
   onNavigate?: () => void
@@ -221,7 +230,7 @@ function HeaderAccountMenu({
             onClick={onNavigate}
             className="text-sm font-medium text-forja-green transition-colors hover:text-forja-green-dim"
           >
-            Get Forja
+            Download
           </Link>
           <button
             type="button"
@@ -318,7 +327,7 @@ function HeaderAccountMenu({
             onClick={() => setMenuOpen(false)}
             className="block rounded-xl px-3 py-2.5 text-sm font-medium text-forja-green transition-colors hover:bg-forja-green/10"
           >
-            Get Forja
+            Download
           </Link>
           <button
             type="button"
@@ -459,7 +468,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
                     data-hover=""
                     className="inline-flex items-center justify-center rounded-full bg-forja-green px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-[#0B0A0A] shadow-[0_0_24px_rgba(28,231,131,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forja-flame hover:shadow-[0_0_28px_rgba(255,77,28,0.35)]"
                   >
-                    Get Forja
+                    Download
                   </Link>
                 </>
               )}
@@ -554,7 +563,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
                 variant="mobile"
                 className="text-forja-flame hover:text-forja-flame-dim"
               >
-                Get Forja
+                Download
               </NavLink>
               <NavLink to="/login" onNavigate={close} variant="mobile">
                 Log in

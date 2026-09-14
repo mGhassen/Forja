@@ -15,6 +15,7 @@ import 'package:forja/shared/engine/unlock/goat_unlock.dart';
 import 'package:forja/shared/engine/unlock/pack_unlock_files.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
+import 'package:forja/shared/engine/runtime/open/host_engine_request.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -565,6 +566,93 @@ class EngineRuntime {
             url: url,
             title: title,
             headers: headers.isEmpty ? null : headers,
+            gen: gen,
+          ),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('PlaybackProbeStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final url = (m['url'] ?? '').toString().trim();
+        final timeoutMs = (m['timeoutMs'] as num?)?.toInt() ??
+            (m['timeout_ms'] as num?)?.toInt() ??
+            8000;
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchPlaybackProbe(
+            id: id,
+            url: url,
+            timeoutMs: timeoutMs,
+            gen: gen,
+          ),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('EngineRequestStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final kind = (m['kind'] ?? '').toString();
+        final bodyRaw = m['body'];
+        final body = bodyRaw is Map
+            ? Map<String, dynamic>.from(bodyRaw)
+            : <String, dynamic>{};
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchEngineRequest(
+            id: id,
+            kind: kind,
+            body: body,
+            gen: gen,
+          ),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('CacheDiskGet', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final namespace = (m['namespace'] ?? '').toString();
+        final key = (m['key'] ?? '').toString();
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchCacheDiskGet(
+            id: id,
+            namespace: namespace,
+            key: key,
+            gen: gen,
+          ),
+        );
+      } catch (_) {}
+      return null;
+    });
+
+    br('CacheDiskSet', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final namespace = (m['namespace'] ?? '').toString();
+        final key = (m['key'] ?? '').toString();
+        final value = m['value'];
+        final ttlMs = (m['ttlMs'] as num?)?.toInt();
+        final gen = _fetchGeneration;
+        unawaited(
+          _dispatchCacheDiskSet(
+            id: id,
+            namespace: namespace,
+            key: key,
+            value: value,
+            ttlMs: ttlMs,
             gen: gen,
           ),
         );
@@ -1515,7 +1603,65 @@ class EngineRuntime {
               headers: o.headers == null ? {} : o.headers
             }));
           });
+        },
+        probe: function(opts) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__enginePlaybackSeq;
+            globalThis.__enginePlaybackPending[id] = function(env) {
+              resolve(env == null ? { ok: false } : env);
+            };
+            var o = opts == null ? {} : opts;
+            sendMessage('PlaybackProbeStart', JSON.stringify({
+              id: id,
+              url: o.url == null ? '' : String(o.url),
+              timeoutMs: o.timeoutMs == null ? (o.timeout_ms == null ? 8000 : o.timeout_ms) : o.timeoutMs
+            }));
+          });
         }
+      };
+      h.engine = {
+        request: function(kind, body) {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineEngineSeq;
+            globalThis.__engineEnginePending[id] = function(env) {
+              resolve(env == null ? { ok: false } : env);
+            };
+            sendMessage('EngineRequestStart', JSON.stringify({
+              id: id,
+              kind: String(kind == null ? '' : kind),
+              body: body == null ? {} : body
+            }));
+          });
+        }
+      };
+      h.cache.diskGet = function(namespace, key) {
+        return new Promise(function(resolve) {
+          var id = ++globalThis.__engineCacheDiskSeq;
+          globalThis.__engineCacheDiskPending[id] = function(env) {
+            resolve(env && env.value !== undefined ? env.value : null);
+          };
+          sendMessage('CacheDiskGet', JSON.stringify({
+            id: id,
+            namespace: String(namespace == null ? '' : namespace),
+            key: String(key == null ? '' : key)
+          }));
+        });
+      };
+      h.cache.diskSet = function(namespace, key, value, opts) {
+        return new Promise(function(resolve) {
+          var id = ++globalThis.__engineCacheDiskSeq;
+          globalThis.__engineCacheDiskPending[id] = function(env) {
+            resolve(!!(env && env.ok));
+          };
+          var o = opts == null ? {} : opts;
+          sendMessage('CacheDiskSet', JSON.stringify({
+            id: id,
+            namespace: String(namespace == null ? '' : namespace),
+            key: String(key == null ? '' : key),
+            value: value,
+            ttlMs: o.ttlMs == null ? null : o.ttlMs
+          }));
+        });
       };
       return h;
     })(),
@@ -2201,6 +2347,87 @@ class EngineRuntime {
     _resolvePlayback(id: id, gen: gen, envelope: {'ok': ok});
   }
 
+  Future<void> _dispatchPlaybackProbe({
+    required int id,
+    required String url,
+    required int timeoutMs,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    Map<String, dynamic> envelope = {'ok': false};
+    try {
+      if (url.isEmpty) {
+        envelope = {'ok': false, 'error': 'missing_url'};
+      } else {
+        final secs = (timeoutMs / 1000).ceil().clamp(1, 60);
+        final raw = await runIptvProbeStreamJson(url, timeoutSecs: secs);
+        envelope = _probeEnvelope(raw);
+      }
+    } catch (e, st) {
+      _forjaRuntimeLog('playback.probe failed: $e\n$st');
+      envelope = {'ok': false, 'error': e.toString()};
+    }
+    if (gen != _fetchGeneration) return;
+    _resolvePlayback(id: id, gen: gen, envelope: envelope);
+  }
+
+  Map<String, dynamic> _probeEnvelope(String raw) {
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) {
+        final m = Map<String, dynamic>.from(parsed);
+        if (!m.containsKey('ok')) {
+          m['ok'] = m['alive'] == true || !m.containsKey('error');
+        }
+        return m;
+      }
+    } catch (_) {}
+    return {'ok': raw.isNotEmpty, 'raw': raw};
+  }
+
+  Future<void> _dispatchEngineRequest({
+    required int id,
+    required String kind,
+    required Map<String, dynamic> body,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    final envelope = await HostEngineRequest.run(kind: kind, body: body);
+    if (gen != _fetchGeneration) return;
+    _resolveEngine(id: id, gen: gen, envelope: envelope);
+  }
+
+  Future<void> _dispatchCacheDiskGet({
+    required int id,
+    required String namespace,
+    required String key,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    final value = await EngineCache.instance.diskGet(namespace, key);
+    if (gen != _fetchGeneration) return;
+    _resolveCacheDisk(id: id, gen: gen, envelope: {'value': value});
+  }
+
+  Future<void> _dispatchCacheDiskSet({
+    required int id,
+    required String namespace,
+    required String key,
+    required Object? value,
+    required int? ttlMs,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    await EngineCache.instance.diskSet(
+      namespace,
+      key,
+      value ?? '',
+      ttl: ttlMs == null ? null : Duration(milliseconds: ttlMs),
+    );
+    if (gen != _fetchGeneration) return;
+    _resolveCacheDisk(id: id, gen: gen, envelope: {'ok': true});
+  }
+
   void _resolvePlugin({
     required int id,
     required int gen,
@@ -2288,6 +2515,36 @@ class EngineRuntime {
       rt,
       'try { globalThis.__enginePlaybackResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
       sourceUrl: 'engine://playback/$id',
+    );
+  }
+
+  void _resolveEngine({
+    required int id,
+    required int gen,
+    required Map<String, dynamic> envelope,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineEngineResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://engine/$id',
+    );
+  }
+
+  void _resolveCacheDisk({
+    required int id,
+    required int gen,
+    required Map<String, dynamic> envelope,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineCacheDiskResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://cacheDisk/$id',
     );
   }
 
@@ -2763,6 +3020,18 @@ class EngineRuntime {
   globalThis.__enginePlaybackResolve = function(id, envelope){
     var p = globalThis.__enginePlaybackPending[id];
     if (p) { delete globalThis.__enginePlaybackPending[id]; p(envelope); }
+  };
+  globalThis.__engineEnginePending = globalThis.__engineEnginePending || {};
+  globalThis.__engineEngineSeq = globalThis.__engineEngineSeq || 0;
+  globalThis.__engineEngineResolve = function(id, envelope){
+    var p = globalThis.__engineEnginePending[id];
+    if (p) { delete globalThis.__engineEnginePending[id]; p(envelope); }
+  };
+  globalThis.__engineCacheDiskPending = globalThis.__engineCacheDiskPending || {};
+  globalThis.__engineCacheDiskSeq = globalThis.__engineCacheDiskSeq || 0;
+  globalThis.__engineCacheDiskResolve = function(id, envelope){
+    var p = globalThis.__engineCacheDiskPending[id];
+    if (p) { delete globalThis.__engineCacheDiskPending[id]; p(envelope); }
   };
   globalThis.__engineHost = function(hostId){
     return new Promise(function(resolve){

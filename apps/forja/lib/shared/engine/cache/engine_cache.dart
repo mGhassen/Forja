@@ -4,14 +4,18 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Generic namespaced cache + catalog response entries (RFC-109).
 ///
 /// Catalog helpers use a separate entry map with SWR semantics;
 /// [get]/[set]/[invalidate] are opaque namespace/key slots.
+/// [diskGet]/[diskSet]/[diskInvalidate] persist across process restarts.
 class EngineCache {
   EngineCache._();
   static final EngineCache instance = EngineCache._();
+
+  static const _diskPrefix = 'engine_cache_disk_v1|';
 
   final Map<String, _EngineCacheSlot> _slots = {};
   final Map<String, EngineCacheEntry> _catalog = {};
@@ -59,6 +63,70 @@ class EngineCache {
       return;
     }
     _slots.remove(_slot(ns, k));
+  }
+
+  Future<Object?> diskGet(String namespace, String key) async {
+    final ns = namespace.trim();
+    final k = key.trim();
+    if (ns.isEmpty || k.isEmpty) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_diskPrefix$ns|$k');
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return decoded;
+      final m = Map<String, dynamic>.from(decoded);
+      final expMs = (m['expMs'] as num?)?.toInt();
+      if (expMs != null && DateTime.now().millisecondsSinceEpoch > expMs) {
+        await prefs.remove('$_diskPrefix$ns|$k');
+        return null;
+      }
+      return m['v'];
+    } catch (e) {
+      debugPrint('[EngineCache] diskGet failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> diskSet(
+    String namespace,
+    String key,
+    Object value, {
+    Duration? ttl,
+  }) async {
+    final ns = namespace.trim();
+    final k = key.trim();
+    if (ns.isEmpty || k.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = <String, dynamic>{
+        'v': value,
+        if (ttl != null)
+          'expMs': DateTime.now().add(ttl).millisecondsSinceEpoch,
+      };
+      await prefs.setString('$_diskPrefix$ns|$k', jsonEncode(payload));
+    } catch (e) {
+      debugPrint('[EngineCache] diskSet failed: $e');
+    }
+  }
+
+  Future<void> diskInvalidate(String namespace, [String? key]) async {
+    final ns = namespace.trim();
+    if (ns.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final k = key?.trim() ?? '';
+      if (k.isNotEmpty) {
+        await prefs.remove('$_diskPrefix$ns|$k');
+        return;
+      }
+      final prefix = '$_diskPrefix$ns|';
+      for (final pk in prefs.getKeys().where((x) => x.startsWith(prefix))) {
+        await prefs.remove(pk);
+      }
+    } catch (e) {
+      debugPrint('[EngineCache] diskInvalidate failed: $e');
+    }
   }
 
   void wipeAll() {

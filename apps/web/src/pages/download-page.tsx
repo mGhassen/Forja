@@ -753,17 +753,15 @@ export function DownloadPage() {
       <main className="relative px-[5vw] pb-16 pt-20 sm:pb-24 sm:pt-28">
         <Reveal>
           <h1 className="font-disp max-w-[14ch] text-[clamp(40px,11vw,140px)] uppercase leading-[0.84] tracking-[-0.04em]">
-            Get the
+            Download
             <br />
-            <span className="text-flame">player.</span>
+            <span className="text-flame">Forja</span>
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Forja is a free media player for streaming - playback, live playlists,
-              and controls on the screen you use.
-            </p>
-            <p>
-              Windows, Mac, Linux, or Android TV. Same player everywhere.
+              Get the free modular streaming player for Windows, macOS, Linux, or
+              Android TV. Add community packs for hubs and sources, then stream
+              with the same controls on every screen.
             </p>
           </div>
         </Reveal>

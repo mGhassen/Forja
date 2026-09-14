@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/portals/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/storage.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
 import 'package:forja/shared/engine/portals/channel_search/match_fixture_keys.dart';
 import 'package:rust/rust.dart' show runLiveSportsFetchJson;
 

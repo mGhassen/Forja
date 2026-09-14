@@ -8,7 +8,7 @@ import 'package:forja/shared/host/portals_ui/open/iptv_play.dart';
 import 'package:forja/shared/host/portals_ui/open/iptv_resolve_streams_adapter.dart';
 import 'package:forja/shared/host/portals_ui/open/live_play.dart';
 import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
-import 'package:forja/shared/host/portals_ui/screens/iptv_pt_player_screen.dart';
+import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/sources/iptv_play_hooks.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';

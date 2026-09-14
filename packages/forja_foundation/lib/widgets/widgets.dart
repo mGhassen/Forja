@@ -56,6 +56,8 @@ export 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 export 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 export 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 export 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+export 'package:forja_foundation/widgets/chrome/epg_guide.dart';
+export 'package:forja_foundation/widgets/chrome/catalog_split.dart';
 export 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar.dart';
 export 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
