@@ -1240,7 +1240,10 @@ class PluginRegistry {
     }
 
     // Commit disk (remote only) + prefs index only after all fetches succeed.
+    // Wipe the pack tree first so removed plugins / bundle files / preludes
+    // cannot linger as orphans across updates (ISO replace).
     if (!localCheckout) {
+      await PluginScriptDiskStore.removeEnginePack(manifestUrl);
       for (final e in preludes.entries) {
         await PluginScriptDiskStore.saveEnginePrelude(
           sourceUrl: manifestUrl,
@@ -1265,31 +1268,24 @@ class PluginRegistry {
       }
     }
 
-    // Drop scripts removed from this pack on refresh.
+    // Drop legacy prefs keys for scripts removed from this pack on refresh.
     if (previous != null) {
       final nextIds = {for (final p in pack.plugins) p.id};
       final nextPreludes = {
+        if (pack.prelude.isNotEmpty) pack.prelude,
         for (final p in pack.plugins)
           if (p.prelude.isNotEmpty) p.prelude,
       };
       final prefs = await _prefs;
+      if (previous.prelude.isNotEmpty &&
+          !nextPreludes.contains(previous.prelude)) {
+        await prefs.remove(preludePrefsKey(manifestUrl, previous.prelude));
+      }
       for (final p in previous.plugins) {
         if (!nextIds.contains(p.id)) {
-          if (!localCheckout) {
-            await PluginScriptDiskStore.removeEngineScript(
-              sourceUrl: manifestUrl,
-              pluginId: p.id,
-            );
-          }
           await prefs.remove(scriptPrefsKey(manifestUrl, p.id));
         }
         if (p.prelude.isNotEmpty && !nextPreludes.contains(p.prelude)) {
-          if (!localCheckout) {
-            await PluginScriptDiskStore.removeEnginePrelude(
-              sourceUrl: manifestUrl,
-              preludeEntry: p.prelude,
-            );
-          }
           await prefs.remove(preludePrefsKey(manifestUrl, p.prelude));
         }
       }
