@@ -1,5 +1,5 @@
-# Host update UI (RFC-106 G11)
+# Shell update UI
 
-App updater dialog + toast-stack progress. Not design-system.
+App updater dialog + toast-stack progress banner. Not design-system.
 
-Foundation `components/update/**` re-exports until G14-E.
+Service/download/manifest live in `shared/services/update/`.

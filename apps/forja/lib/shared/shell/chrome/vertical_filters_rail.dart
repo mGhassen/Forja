@@ -9,7 +9,7 @@ import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja_foundation/widgets/logo_menu_rail.dart';
+import 'package:forja_foundation/widgets/chrome/logo_menu_rail.dart';
 
 /// Pack-owned logo on a contrasting tile.
 class VerticalFilterLogoMark extends StatefulWidget {

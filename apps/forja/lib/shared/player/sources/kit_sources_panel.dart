@@ -7,7 +7,7 @@ import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
-import 'package:forja_foundation/widgets/chrome/panel_tabs.dart' show kitPanelTabIcon;
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';
 

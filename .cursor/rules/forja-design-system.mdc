@@ -18,7 +18,7 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 |----------|-------------|
 | Buttons | `Button`, `ButtonGroup` — `package:forja_foundation/components/button.dart` |
 | Vertical flyout | `VerticalMenu.item` — `package:forja_foundation/components/vertical_menu.dart` |
-| Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/logo_menu_rail.dart` |
+| Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/chrome/logo_menu_rail.dart` |
 | Protocol / kit **types** | `protocol/` · `kit/` — types only |
 
 ## Visual language

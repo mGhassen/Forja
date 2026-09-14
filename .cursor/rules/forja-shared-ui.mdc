@@ -21,11 +21,11 @@ apps/forja/lib/shared/engine/runtime/kit/  # thin kit interpreter (layout JSON â
 apps/forja/lib/shared/player/details/
 apps/forja/lib/shared/player/sources/
 apps/forja/lib/shared/playback/
-apps/forja/lib/shared/shell/{core,chrome,focus,feedback,desktop,brand,tv}/
+apps/forja/lib/shared/shell/{core,chrome,focus,feedback,desktop,brand,tv,update}/
 apps/forja/lib/shared/engine/{store,unlock,portals,packs}/
 apps/forja/lib/shared/engine/runtime/{kit,search,nav,open}/
 apps/forja/lib/features/settings/packs/  # pack install UI
-apps/forja/lib/shared/host/{update,watch}/
+apps/forja/lib/shared/host/watch/
 forja-packs/hubs/**                     # product
 ```
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shared/player/details/kit_list_entry.dart';
-import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';

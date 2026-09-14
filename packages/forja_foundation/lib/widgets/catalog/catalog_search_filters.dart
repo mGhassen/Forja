@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-export 'package:forja_foundation/widgets/chrome/catalog_search_filter_lens.dart';
+export 'package:forja_foundation/widgets/catalog/catalog_search_filter_lens.dart';
 
 enum SearchMediaFilter { all, movie, tv }
 

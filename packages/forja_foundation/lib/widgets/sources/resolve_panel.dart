@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 import 'package:forja_foundation/widgets/sources/sources_panel_chrome.dart';
 
 export 'package:forja_foundation/widgets/sources/sources_types.dart';

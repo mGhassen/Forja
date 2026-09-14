@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/pack_assets.dart';
-import 'package:forja_foundation/widgets/logo_menu_rail.dart';
+import 'package:forja_foundation/widgets/chrome/logo_menu_rail.dart';
 
 import 'package:forja_foundation/protocol/protocol.dart';
 

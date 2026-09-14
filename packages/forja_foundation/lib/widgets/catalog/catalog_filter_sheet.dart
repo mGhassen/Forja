@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
+import 'package:forja_foundation/widgets/catalog/filter_sheet_option.dart';
 
 /// Generic catalog picker — flat [FilterSheetOption] rows (Zone A).
 Future<String?> showCatalogFilterSheet(

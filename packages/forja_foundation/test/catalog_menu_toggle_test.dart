@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/widgets/chrome/catalog_menu.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_menu.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
 void main() {

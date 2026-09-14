@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/widgets/chrome/catalog_search_page.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_page.dart';
 
 /// Catalog search screen chrome — slots only (Zone A).
 ///

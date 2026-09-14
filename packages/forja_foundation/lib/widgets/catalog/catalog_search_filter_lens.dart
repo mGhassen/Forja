@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/catalog_search_filters.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
 
 bool _searchFilterActivateKey(KeyEvent event) {
   if (event is! KeyDownEvent) return false;

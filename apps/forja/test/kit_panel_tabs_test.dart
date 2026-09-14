@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 
 void main() {
   test('panelTabsFromSpec reads pack tabs', () {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/shell_block.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
-import 'package:forja_foundation/widgets/chrome/catalog_body.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_body.dart';
 
 /// Catalog hub page paint — loading / error / body slots (RFC-106 Zone A).
 ///

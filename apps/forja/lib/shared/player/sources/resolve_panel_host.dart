@@ -6,7 +6,7 @@ import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 import 'package:forja/shared/player/details/kit_match_details_page.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
+import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 
 export 'package:forja_foundation/widgets/sources/resolve_panel.dart'
     show ResolvePanel;
