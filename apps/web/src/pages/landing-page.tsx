@@ -116,9 +116,8 @@ export function LandingPage() {
                 Add anime, sport, IPTV, and more
               </h2>
               <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
-                Community packs drop hubs and stream sources into Forja. Pick a
-                set or browse the catalog — they land on your profile and open
-                with the app.
+                Community packs add anime, live sport, IPTV, torrent search, and
+                more to Forja. Pick a ready-made set or browse the full catalog.
               </p>
               <Link
                 to="/plugins"
