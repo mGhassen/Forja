@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/host/packs/pack_assets.dart';
+import 'package:forja/shared/engine/packs/pack_assets.dart';
 import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/focus/forja_interactive.dart';

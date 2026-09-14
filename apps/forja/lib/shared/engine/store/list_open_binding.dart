@@ -4,7 +4,7 @@ import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/host/packs/services/pack_hub_select_options.dart';
+import 'package:forja/shared/engine/packs/settings/pack_hub_select_options.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 

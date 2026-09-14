@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Cloud, Download, Puzzle } from 'lucide-react'
+import { Download, Puzzle } from 'lucide-react'
 import { PluginBundlesShowcase } from '@/components/plugin-bundles-showcase'
 import { PluginCatalogBrowser } from '@/components/plugin-catalog-browser'
 import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
@@ -71,11 +71,6 @@ export function PluginsPage() {
     })
   }
 
-  const totalPlugins = useMemo(
-    () => packs?.reduce((sum, p) => sum + (p.pluginCount ?? 0), 0) ?? 0,
-    [packs],
-  )
-
   return (
     <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
       <PageAtmosphere recipe="plugins" />
@@ -136,36 +131,6 @@ export function PluginsPage() {
                     Download Forja
                   </Link>
                 </div>
-
-                {!isLoading && packs ? (
-                  <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:max-w-md">
-                    <div>
-                      <dt className="font-mono-ui text-[9px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)]">
-                        Packs
-                      </dt>
-                      <dd className="mt-1 font-disp text-3xl uppercase tracking-tight text-[#EDE6DA]">
-                        {packs.length}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono-ui text-[9px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)]">
-                        Plugins
-                      </dt>
-                      <dd className="mt-1 font-disp text-3xl uppercase tracking-tight text-forja-green">
-                        {totalPlugins || 'n/a'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono-ui text-[9px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)]">
-                        Hosted
-                      </dt>
-                      <dd className="mt-1 flex items-center gap-1.5 font-disp text-lg uppercase tracking-tight text-[#EDE6DA]">
-                        <Cloud className="size-4 text-forja-flame" aria-hidden />
-                        GitHub
-                      </dd>
-                    </div>
-                  </dl>
-                ) : null}
               </div>
 
               <Reveal variant="right" delayMs={100} className="relative">

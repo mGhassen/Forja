@@ -21,7 +21,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | DS `LogoMenuRail` + `VerticalMenu` | ✅ |
 | Sources / resolve panel | Kit hooks + SourcesPanel | `shared/player/sources/**` | ✅ |
 | Follow / list status | Engine lists + pack My List | `shared/engine/lists/**` + My List hub | ✅ |
-| Pack install / update / keychain | App-only modules | `shared/host/packs|update|account/**` (leftover paths — not a product layer) | ✅ |
+| Pack install / update / keychain | Engine + settings feature | `shared/engine/packs/**` + `features/settings/packs/**` (+ `host/update|account` leftovers) | ✅ |
 | Torrent sources UI | Player sources | `shared/player/sources/**` | ✅ |
 | Watch history | App prefs store | `shared/host/watch/watch_history.dart` (leftover path) | ✅ |
 | TMDB / enrich images | Pack enrich companions | Pack `enrich` + kit render-only | ✅ |

@@ -1,6 +1,6 @@
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/host/packs/services/pack_connected_auth_service.dart';
-import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
+import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 
 class PackAddonSettingsOption {
   const PackAddonSettingsOption({required this.id, required this.label});

@@ -3,8 +3,8 @@ import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/host/packs/services/pack_connected_auth_spec.dart';
-import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
+import 'package:forja/shared/engine/packs/settings/pack_connected_auth_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Session secrets + profile label for pack Connected Services auth (RFC-102).

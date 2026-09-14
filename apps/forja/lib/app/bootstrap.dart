@@ -38,7 +38,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/host/update/app_update_progress_banner.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
-import 'package:forja/shared/host/packs/components/plugin_install_progress_banner.dart';
+import 'package:forja/features/settings/packs/plugin_install_progress_banner.dart';
 
 import 'package:forja/shared/shell/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';

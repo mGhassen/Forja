@@ -1,6 +1,6 @@
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/models/models.dart';
-import 'package:forja/shared/host/packs/services/pack_addon_settings_spec.dart';
+import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 
 /// Resolve [PackAddonSettingsFieldType.hubSelect] options from installed hubs.
 abstract final class PackHubSelectOptions {

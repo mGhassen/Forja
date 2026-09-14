@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/host/packs/pack_assets.dart';
-import 'package:forja/shared/host/packs/forja_host_assets.dart';
+import 'package:forja/shared/engine/packs/pack_assets.dart';
+import 'package:forja/shared/engine/packs/forja_host_assets.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_layout_painter.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';

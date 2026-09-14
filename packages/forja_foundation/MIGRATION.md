@@ -155,7 +155,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `package:forja/shared/player/sources/**` |
 | Generic catalog kit UI | `package:forja_foundation/widgets/**` · `blocks/**` · `kit/**` — see evacuate table. Glue: `shared/engine/hub/` |
-| Packs / PackAssets | `package:forja/shared/host/packs/**` |
+| Packs / PackAssets | `package:forja/shared/engine/packs/**` · UI: `package:forja/features/settings/packs/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
 | Update dialog / banner | `package:forja/shared/host/update/**` |
 | Keychain consent | `package:forja/features/settings/about/macos_keychain_consent_screen.dart` |
@@ -216,7 +216,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop/desktop_selectable_title.dart` | ✅ |
 | `kit_focus.dart` | `package:forja/shared/shell/focus/focus_edge.dart` | ✅ |
 | `lib/kit/kit_types.dart` · `kit_layout_map.dart` | `package:forja_foundation/protocol/{layout_types,layout_map}.dart` (`LayoutTypes` / `LayoutMap`) — `lib/kit/` deleted | ✅ |
-| `forja_host_assets.dart` | `package:forja/shared/host/packs/forja_host_assets.dart` | ✅ |
+| `forja_host_assets.dart` | `package:forja/shared/engine/packs/forja_host_assets.dart` | ✅ |
 
 Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters registry stays `shared/shell/` (paint via `LogoMenuRail`).
 

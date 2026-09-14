@@ -21,7 +21,7 @@ import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/shared/engine/packs/install/pack_install_refs.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
-import 'package:forja/shared/host/packs/components/forja_pack_choice_cards.dart';
+import 'package:forja/features/settings/packs/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
