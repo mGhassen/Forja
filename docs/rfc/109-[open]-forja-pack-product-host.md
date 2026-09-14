@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) · **4 / 4** live guide paint (A73–A76) |
 | **Current slice** | Catalog slot paint mounted (hero/filters/mood/continue/because) + pack paint stamps. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -569,3 +569,30 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | IPTV | `hubWithLoad(…, 'feed')` on list; `hubPaintPoster` on live/VOD/setup rows; paint helpers in `_prelude.js` (v1.5.5) |
 | Live Sports | `hubWithLoad(…, 'feed')` on schedule list; `hubPaintEvent` on shaped rows; paint helpers in `_prelude.js` (v1.0.29) |
 | Search | Home + anime/asian_drama/arabic/aflem/cartoon/kids/shahid each ship `_search.js`; host has no product search engine |
+
+---
+
+## Acceptance (live channel-guide paint)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A73 | Channel-guide / EPG / search / stats paint in `forja_foundation/widgets/guide/` (props + callbacks only; no `package:forja`) | ✅ |
+| 2 | R109-A74 | Host thin adapters under `player/live/channel_guide/` (factories, `GuideEpgCache`, MediaKit/Exo stats); delete `engine/portals/channel_guide/` | ✅ |
+| 3 | R109-A75 | Delete `player/iptv/` product tree; live decode under `player/live/`; dead catalog-recs IPTV path removed from details hooks | ✅ |
+| 4 | R109-A76 | Guide chrome / focus paint tokens in foundation (`GuideChromeStyle`); host `tv_focus` renamed off `Iptv*` action widgets | ✅ |
+
+---
+
+## Wave N notes (live channel-guide dissolve)
+
+| Done | Detail |
+|------|--------|
+| A73 | Foundation: `ChannelGuidePanel`, `ChannelSearchOverlay`, `GuideEpgCard`, `PlayerStatsList`, hold-accel / letter-jump paint helpers |
+| A74 | Host: `player/live/channel_guide/*` wires portal client + shell TV into callbacks; portals barrel no longer exports guide UI |
+| A75 | `shared/player/iptv/` gone; `loadCatalogRecs` / `_iptvRecHits` deleted; `LivePlaySource` rename on player path |
+| A76 | `GuideChromeStyle` + `LiveTvScrollbar` in DS; host focus actions use `FocusIconAction` names |
+
+| Still open | Detail |
+|------------|--------|
+| A50 | Fat `IptvClient` / portal store models still product-named under `engine/portals` — not sync/FFI-only |
+| A13 / A17 / A30 / A32 | Prior 🔄 debt unchanged |
