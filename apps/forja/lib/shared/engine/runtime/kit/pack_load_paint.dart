@@ -104,31 +104,33 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Widget build(BuildContext context) {
     final future = _future;
     if (future == null) {
-      // No SizedBox.expand — CatalogBody mounts this in SliverToBoxAdapter
-      // (unbounded height). Expand → infinite constraints crash.
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      // Finite height — CatalogBody mounts this in SliverToBoxAdapter
+      // (unbounded max height). SizedBox.expand → infinite constraints crash.
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
     }
     return FutureBuilder<MetaEnvelope>(
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
+          return const SizedBox(
+            height: 120,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         }
         final env = snap.data;
         if (env == null || !env.ok) {
           final msg = env?.error?.message.trim();
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                (msg != null && msg.isNotEmpty)
-                    ? msg
-                    : 'Could not load this section.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: ForjaShellColors.textSecondary),
-              ),
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              (msg != null && msg.isNotEmpty)
+                  ? msg
+                  : 'Could not load this section.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: ForjaShellColors.textSecondary),
             ),
           );
         }
