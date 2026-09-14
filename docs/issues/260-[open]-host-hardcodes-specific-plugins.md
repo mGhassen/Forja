@@ -4,7 +4,7 @@
 **Priority:** P0  
 **Severity:** Critical  
 **Area:** foundation / engine / packs  
-**Rule:** [forja-plugins-community-owned](../../.cursor/rules/forja-plugins-community-owned.mdc)
+**Rule:** [forja-pack-product-host](../../.cursor/rules/forja-pack-product-host.mdc)
 
 ## Status at a glance
 
@@ -79,7 +79,5 @@ Player `mediaType == anime|asian_drama`, Simkl `anilistId`, chrome `tabId == 'ho
 ### Related
 
 - [255](255-[open]-provider-runtime-config-builtins-debt.md) — ProviderRuntimeConfig builtins slice
-- [forja-plugins-community-owned](../../.cursor/rules/forja-plugins-community-owned.mdc)
-- [forja-external-plugins-host](../../.cursor/rules/forja-external-plugins-host.mdc)
-- [catalog-hub-host-generic](../../.cursor/rules/catalog-hub-host-generic.mdc)
+- [forja-pack-product-host](../../.cursor/rules/forja-pack-product-host.mdc)
 - [forja-host-tests-no-pack-contracts](../../.cursor/rules/forja-host-tests-no-pack-contracts.mdc)

@@ -10,24 +10,21 @@ Extract **presentation** into the design system; keep **state, fetching, navigat
 
 **Source of truth:** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import the file, not the gallery barrel.
 
-**Design alone / data alone:** DS `components/` / `widgets/` must not import `features/**` or take feature god objects (`IptvController`, …). Pass display fields + callbacks. Features adapt. Host-only chrome (e.g. `VerticalFiltersRail` with `PackAssets`) documents the DS target (`LogoMenuRail`) until pack logos are props-only.
+Architecture: [pack-product host](./forja-pack-product-host.mdc). DS widgets: props + callbacks only — no feature god objects.
 
 ## Folder map
 
 ```
-packages/forja_foundation/lib/widgets|components|blocks/  # catalog composers
-shared/player/details/           # episode picker, media-details body/hero, kit details
-shared/player/sources/           # torrent + kit sources panels
-shared/playback/                 # play hooks, probe, stream loading
-shared/shell/{core,chrome,focus,feedback,desktop,brand,tv}/
-shared/engine/runtime/{vm,meta,nav,open,details,list}/  # JS VM, MetaRuntime, nav/filters, open, details, kit.list
-shared/engine/store/             # EngineStore + list follow / open binding
-shared/engine/unlock/            # goat/gasm unlock + live plugin meta
-shared/engine/portals/           # portal data + match helpers for channel search
-shared/engine/store/             # list open flow / bind sheet / Riverpod providers
-shared/host/layout/              # PackLayoutHost + hooks only; MetaItem/TV glue in layout/private/
-shared/shell/chrome/             # frame chrome only (e.g. VerticalFiltersRegistry / rail)
-shared/host/packs|update|watch/
+packages/forja_foundation/lib/{tokens,theme,primitives,components,widgets,blocks,protocol,kit}/
+apps/forja/lib/shell/
+apps/forja/lib/shared/engine/runtime/   # engines + thin kit interpreter
+apps/forja/lib/shared/player/details/
+apps/forja/lib/shared/player/sources/
+apps/forja/lib/shared/playback/
+apps/forja/lib/shared/shell/{core,chrome,focus,feedback,desktop,brand,tv}/
+apps/forja/lib/shared/engine/{store,unlock,portals}/
+apps/forja/lib/shared/host/packs|update|watch/
+forja-packs/hubs/**                     # product
 ```
 
 Barrel: `package:forja/shared/player/details/media_details.dart` for details widgets.
@@ -69,8 +66,6 @@ MediaDetailsScrollPage(
 2. Export from barrel if in `media_details/`.
 3. Use `ShellTokens` / `DetailsTokens` + `ForjaShellColors` + design buttons — no inline style copies from old god files.
 4. Update RFC-026 component row if part of the media-details UX arc.
-
-Do **not** put app-shell orchestration under DS `components/`. App frame → `lib/shell/`. Hub catalog UI → `packages/forja_foundation` widgets/blocks. Glue only in engine/player.
 
 ## Do not
 

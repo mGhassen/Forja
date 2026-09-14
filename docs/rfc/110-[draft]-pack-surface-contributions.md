@@ -461,4 +461,4 @@ No big-bang rewrite — aliases first, then packs opt into explicit `contributes
 - [RFC-106](fixed/106-[fixed]-forja-foundation-design-system-package.md) — foundation mounts
 - [RFC-109](109-[open]-forja-pack-product-host.md) — pack-product host law
 - [RFC-020](020-[draft]-media-details-routing.md) · [RFC-026](026-[draft]-media-details-player-ux.md) — details UX history
-- Cursor: [pack-product host](../../.cursor/rules/forja-pack-product-host.mdc) · [community-owned](../../.cursor/rules/forja-plugins-community-owned.mdc) · [external plugins](../../.cursor/rules/forja-external-plugins-host.mdc)
+- Cursor: [pack-product host](../../.cursor/rules/forja-pack-product-host.mdc) · [host tests](../../.cursor/rules/forja-host-tests-no-pack-contracts.mdc)

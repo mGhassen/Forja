@@ -8,29 +8,18 @@ alwaysApply: false
 
 **Source of truth (new components):** [`packages/forja_foundation`](../../packages/forja_foundation). Import the **file** you use — not `forja_foundation.dart` (gallery/test barrel). Never `hide Switch, Chip, …` against Material.
 
-Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Catalog composers are this package (`widgets/` / `components/` / `blocks/`). Shell chrome is `shared/shell/`.
+Architecture (who owns kit runner / product): [pack-product host](./forja-pack-product-host.mdc). This rule is **paint only** — tokens, components, visual language.
 
-Host-only APIs stay on host paths (`ForjaInteractive`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
+Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Composers: `widgets/` / `components/` / `blocks/`. Shell chrome: `apps/forja` `shared/shell/`. Host-only APIs stay on host paths. Never add imports to `part of` files.
+
+Composers take **props + callbacks only** (RFC-095). No `features/**` imports, god controllers, or product Riverpod in the DS package.
 
 | New work | Package API |
 |----------|-------------|
 | Buttons | `Button`, `ButtonGroup` — `package:forja_foundation/components/button.dart` |
 | Vertical flyout | `VerticalMenu.item` — `package:forja_foundation/components/vertical_menu.dart` |
 | Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/logo_menu_rail.dart` |
-| Kit layout types | `KitTypes` — `package:forja_foundation/kit/kit_types.dart` |
-
-## Design alone / data alone (RFC-095)
-
-Foundation is a **shadcn-style** design system. Composers under `foundation/components/` take **props + callbacks only**. Features own controllers/stores and map domain data into those props.
-
-| Layer | Owns | Forbidden |
-|-------|------|-----------|
-| `primitives/` · `components/` | Visual chrome, layout, tokens | `features/**` imports, god controllers, `ref.watch` for product state |
-| `features/**` + boot hooks | Controllers, match, config; fill chip/panel props | Re-drawing shared chrome that belongs in foundation |
-
-**Example:** `KitPortalsChip` / `KitSidePanelOverlay` / `KitPortalListPanel` ← IPTV (`IptvPortalsTopBarButton`, `IptvPortalsChromeHooks`) wires portal label, health, seats, list.
-
-Golden reference: `KitSourcesPanel` — features wire load/play via callbacks.
+| Protocol / kit **types** | `protocol/` · `kit/` — types only |
 
 ## Visual language
 
