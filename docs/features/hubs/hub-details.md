@@ -14,12 +14,13 @@ Pack data (AniList, KissKH, …) stays primary; companion enrich plugins add bac
 
 ## How to open it
 
-From **Home**, **Anime**, **Asian Drama**, or **My List**:
+From **Home**, **Anime**, **Asian Drama**, **IPTV** (Movies / Series), or **My List**:
 
 - Hero **View details** or a catalog poster
 - Hub top-bar **Search** overlay — tap a result (not the archived Search nav tab)
 - **Continue watching** on the hub tab
 - **My List** poster — nav switches to the owning hub (Anime / Asian Drama / Home) while details is open
+- IPTV **Movies** / **Series** tiles — same kit; episodes for series come from the IPTV pack `details` action (`meta.videos`)
 
 ## What you can do
 

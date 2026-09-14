@@ -31,21 +31,21 @@ const MOODS: Mood[] = [
   {
     id: 'anime',
     label: 'Anime',
-    line: 'Anime hubs you install',
+    line: 'Anime hubs and shelves',
     accent: 'flame',
     backdrop: '/brand/open-films/spring-backdrop.jpg',
   },
   {
     id: 'asian',
     label: 'Asian Drama',
-    line: 'Drama hubs you install',
+    line: 'Drama hubs and shelves',
     accent: 'brand',
     backdrop: '/brand/open-films/tears-of-steel-backdrop.jpg',
   },
   {
     id: 'iptv',
     label: 'Live TV',
-    line: 'Live TV from your lists',
+    line: 'Channels from your lists',
     accent: 'flame',
     backdrop: '/brand/forja-iptv-live.jpg',
     logos: [
@@ -128,13 +128,12 @@ export function LibraryHubs() {
   return (
     <section id="library" className="px-[5vw] py-[12vh]">
       <Reveal>
-        <h2 className="max-w-[20ch] font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
-          Catalog worlds you can add with packs
+        <h2 className="max-w-[18ch] font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
+          Movies, series, anime, live TV, and sport
         </h2>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-          Movies, series, anime, drama, live TV, and sport are available through
-          the hubs and lists you install. Pick the packs that match what you
-          watch.
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
+          Forja covers the nights people actually watch: films, series, anime,
+          drama, live TV, and sport, all inside one app.
         </p>
       </Reveal>
 

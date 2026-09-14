@@ -1,4 +1,4 @@
-import 'package:forja/shared/host/layout/pack_layout_host_wire.dart';
+import 'package:forja_foundation/layout/pack_layout_host_wire.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

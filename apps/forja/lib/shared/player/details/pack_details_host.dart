@@ -15,8 +15,8 @@ import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja/shared/player/sources/iptv_play_hooks.dart';
-import 'package:forja/shared/host/layout/panel_source_flags_hooks.dart';
+import 'package:forja/shared/player/sources/stream_play_hooks.dart';
+import 'package:forja_foundation/layout/panel_source_flags_hooks.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
@@ -131,7 +131,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   Set<String> _watchedEpisodes = {};
   bool _autoPlayConsumed = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
-  List<KitIptvRecHit> _iptvRecHits = const [];
+  List<KitStreamRecHit> _iptvRecHits = const [];
   Object? _iptvPortal;
 
   @override
@@ -563,7 +563,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       pluginId: widget.pluginId,
       action: 'details',
       params: hubMetaIsIptv(widget.item)
-          ? (KitIptvPlayHooks.hubDetailsParams?.call(widget.item) ??
+          ? (KitStreamPlayHooks.hubDetailsParams?.call(widget.item) ??
               hubDetailsParams(widget.item))
           : hubDetailsParams(widget.item),
     );
@@ -610,7 +610,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _selectedEpisode = firstEp;
     });
     if (hubMetaIsIptv(meta)) {
-      final resolve = KitIptvPlayHooks.resolvePortalFromMeta;
+      final resolve = KitStreamPlayHooks.resolvePortalFromMeta;
       _iptvPortal = resolve == null ? null : await resolve(meta);
     }
     unawaited(_loadWatchProgress());
@@ -959,7 +959,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             MediaDetailsRecommendationsSection(
               movies: iptvRecs,
               onMovieTap: (movie) {
-                final open = KitIptvPlayHooks.openVodStream;
+                final open = KitStreamPlayHooks.openVodStream;
                 final portal = _iptvPortal;
                 if (open == null || portal == null) return;
                 for (final hit in _iptvRecHits) {

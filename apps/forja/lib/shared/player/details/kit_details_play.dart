@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/play_context.dart';
-import 'package:forja/shared/player/sources/iptv_play_hooks.dart';
+import 'package:forja/shared/player/sources/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit_sources.dart';
@@ -23,7 +23,7 @@ Future<void> runPlayFromContext({
 }) {
   final open = ctx.effectiveOpen;
   if (open?.effectiveExtract.resolveType == 'iptv') {
-    final play = KitIptvPlayHooks.playPortalFromContext;
+    final play = KitStreamPlayHooks.playPortalFromContext;
     if (play == null) return Future.value();
     return play(context: context, ctx: ctx);
   }

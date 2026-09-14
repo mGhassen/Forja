@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate |
-| **Current slice** | A41: IPTV tab = PackLayoutHost like Live Sports; `portals_ui` deleted; pack layout+feed+portals actions; EPG browse mode (A48) still open |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) |
+| **Current slice** | `shared/host/layout/` wiped — `PackLayoutHost` in `forja_foundation`; host mounts via `engine/runtime/layout/pack_layout_host_bridge.dart`. Pack owns live_sports progressive feed + listPortals items/layout. Kit list **EPG** view → foundation `EpgGuide`. Fat bridge remains (A50 Wave K). |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,7 +48,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R109-A09 | `PackLayoutHost` mounts foundation layout; no product branches | 🔄 |
+| 1 | R109-A09 | `PackLayoutHost` mounts foundation layout; no product branches | ✅ |
 | 2 | R109-A10 | Zero `kit_` under `shared/shell` | ✅ |
 | 3 | R109-A11 | No dirs `engine/hub`, `engine/lists`, `engine/live`, `features/iptv` | ✅ |
 | 4 | R109-A12 | Generic `engine/cache` replaces `MetaCache` | ✅ |
@@ -101,15 +101,25 @@
 | 11 | R109-A45 | Pack layout/feed: portals action + Live/Movies/Series + prefs/platforms modules | ✅ |
 | 12 | R109-A46 | Foundation paint: EPG guide + catalog split + PortalListPanel slots | ✅ |
 | 13 | R109-A47 | Pack portals product chrome (replace Flutter portal panel) | ✅ |
-| 14 | R109-A48 | Pack EPG browse mode wired to foundation guide | ⬜ |
+| 14 | R109-A48 | Pack EPG browse mode wired to foundation guide | ✅ |
 | 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | ✅ |
-| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ✅ |
+| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | 🔄 |
 | 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
 | 18 | R109-A52 | Remount exact `IptvPtScreen` catalog UX until pack/foundation catalog chrome parity (shelf/search/sort/cats/channels/EPG) | ✅ |
 | 19 | R109-A53 | Merge VOD `details` into `iptv-hub` — drop separate `iptv-vod` plugin; enrich stays companion | ✅ |
 | 20 | R109-A54 | Host opens IPTV movie/series details via hub plugin id (tab / engine type) | ✅ |
 | 21 | R109-A55 | Pack layout: search / sort / view chrome; feed `q` + `sort` params (Live Sports kit model) | ✅ |
 | 22 | R109-A56 | Host `PortalsChromeHooks` — pack `listPortals` / select / add / remove; no `IptvController` | ✅ |
+
+---
+
+## Acceptance (host/layout wipe)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A57 | Law: wipe entire `apps/forja/lib/shared/host/layout/` — layout runner lives in `forja_foundation`; product chrome/feed/details in pack JS only | ✅ |
+| 2 | R109-A58 | Pack `listPortals` returns foundation-paintable `items` + `layout`; host portals panel is generic paint (no product inventory logic beyond `runPlugin`) | ✅ |
+| 3 | R109-A59 | `live_sports` pack owns progressive catalog fan-out in `_feed.js`; delete host `live_schedule_progressive.dart` (schedule list = `PluginFeedSource` + pack feed) | ✅ |
 
 ---
 
@@ -124,8 +134,10 @@
 | Layer | Owns | Forbidden |
 |-------|------|-----------|
 | **Pack** (`forja-packs`) | Product tabs, layout, feed shaping, product chrome, `open` shaping | Native unlock internals |
-| **Host** (`apps/forja`) | App frame, generic engines (`runPlugin`, cache, store, portals, unlock, playback open) | Product screens, product-named folders (`hub`/`lists`/`live`/`iptv`), pack-id business logic |
-| **Foundation** (`forja_foundation`) | Widgets + layout protocol/runner | Product domain policy |
+| **Host** (`apps/forja`) | App frame, generic engines (`runPlugin`, cache, store, vault, unlock, playback open) | Product screens, product-named folders (`hub`/`lists`/`live`/`iptv`), pack-id business logic, **`shared/host/layout/`** |
+| **Foundation** (`forja_foundation`) | Widgets + **layout protocol/runner** (`PackLayoutHost` / kit compose) | Product domain policy |
+
+**Wipe law (A57):** Delete the entire `apps/forja/lib/shared/host/layout/` tree. Layout runner + generic kit paint live in `packages/forja_foundation`. Product (IPTV portals panel, Live Sports progressive scrape, hub list shaping) lives in pack JS. Host only mounts foundation for `pluginId` and runs generic `MetaRuntime` / `ctx.host.*` bridges — zero product layout adapters in root.
 
 ### Target trees (finish pass)
 
@@ -134,10 +146,11 @@ apps/forja/lib/shared/engine/
   runtime/  packs/  cache/  store/  vault/  unlock/
   # NO portals/  NO feeds/  NO hub/  NO lists/  NO live/
 apps/forja/lib/shared/shell/   # core desktop tv focus brand feedback(toast) chrome(filters)
-apps/forja/lib/shared/host/layout/  # PackLayoutHost + thin hooks only
+apps/forja/lib/shared/host/    # NO layout/ (wiped — runner in foundation)
 apps/forja/lib/features/       # account + settings only
-forja-packs/hubs/iptv          # IPTV product
-forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
+packages/forja_foundation/lib/layout/  # PackLayoutHost + kit runner
+forja-packs/hubs/iptv          # IPTV product (layout/feed/details/listPortals)
+forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed.js)
 ```
 
 ### Generic `ctx.host` (finish)
@@ -310,7 +323,10 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 
 | Still open | Detail |
 |------------|--------|
+| A47 | Pack returns `listPortals` `items`/`layout`; Flutter `PortalListPanel` host wire still product-shaped (`portals_action_host.dart`) |
 | A48 | Pack EPG browse mode → foundation `EpgGuide` |
+| A50 | Fat `PackLayoutHost` / wire / progressive still under `shared/host/layout/` (~7k lines) — not sync/FFI-only |
+| A57–A59 | Wipe `host/layout/`; foundation owns runner; pack owns progressive + portals paint data |
 | Kit gaps | Category pin/reorder, channel health borders, scrape ticker parity vs old Flutter chrome |
 
 ---
@@ -455,3 +471,21 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 ## Related (composition)
 
 - [RFC-110](110-[draft]-pack-surface-contributions.md) — packs declare surface slots (details / player chrome) without remapping open identity; layers on this pack-product host law
+
+---
+
+## Wave K notes (pack JS parity + host/layout wipe law)
+
+| Done | Detail |
+|------|--------|
+| IPTV pack | `listPortals` returns `items` + `layout` (portalList); `details` fills `meta.videos` via engine `series_episodes` / Xtream HTTP (replaces deleted Dart episode list) |
+| live_sports | `_feed.js` owns sequential catalog fan-out; host `liveScheduleFeedProvider` calls hub `feed` once (no host progressive fan-out) |
+| Law | **`apps/forja/lib/shared/host/layout/` wiped** — runner in foundation; host bridge `engine/runtime/layout/pack_layout_host_bridge.dart`; product in pack JS (A57) |
+| Portals hoist | Opaque `PortalsActionHost.registerHoistSource` + foundation hoist when layout topBar declares `action: portals` (no `iptv`/`portals` product ids) |
+| A48 | Kit list View cycles Cards/List/EPG; `style: epg` paints foundation `EpgGuide` from feed rows (+ optional pack `programmes`) |
+| Pin order | Category bar keeps pack feed first-seen order; IPTV pack sorts streams by `pinnedCats` first |
+| A26 / A31 | Historical ✅ described `host/layout/` paths — frozen; wipe done (paths now foundation + engine bridge) |
+
+| Still open | Detail |
+|------------|--------|
+| A50 | Fat `pack_layout_host_bridge.dart` still hosts orchestration (sync/FFI + layout wire) — not sync/FFI-only yet |

@@ -9,7 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_riverpod: ^2.6.1
   google_fonts: ^8.0.2
+  visibility_detector: ^0.4.0+2
+  shared_preferences: ^2.5.2
 
 dev_dependencies:
   flutter_test:

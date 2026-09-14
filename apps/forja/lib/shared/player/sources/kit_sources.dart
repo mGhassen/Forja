@@ -15,22 +15,11 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shell/routing/app_router.dart';
+import 'package:forja_foundation/layout/panel_source_flags_hooks.dart';
 import 'package:rust/rust.dart';
 
-/// Effective play-source toggles for hub details Sources chrome (RFC-095).
-class KitPanelSourceFlags {
-  const KitPanelSourceFlags({
-    required this.torrent,
-    required this.stremio,
-    required this.nuvio,
-    required this.engine,
-  });
-
-  final bool torrent;
-  final bool stremio;
-  final bool nuvio;
-  final bool engine;
-}
+export 'package:forja_foundation/layout/panel_source_flags_hooks.dart'
+    show KitPanelSourceFlags;
 
 /// Whether hub details should show the white link Play (catalog Sources).
 ///

@@ -2,27 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja_foundation/layout/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/play_filters.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-
-/// One pack-declared top-bar menu tab (`filters.menus[]`).
-class ChromeMenuItem {
-  const ChromeMenuItem({
-    required this.id,
-    required this.label,
-    this.filter,
-    this.hideTypeFilterRails = false,
-  });
-
-  final String id;
-  final String label;
-  final Map<String, dynamic>? filter;
-
-  /// When selected, hide layout rails marked `hideWhenTypeFilter`.
-  final bool hideTypeFilterRails;
-}
 
 /// Pack-declared `filters` action — loaded per [pluginId], no tab/product names.
 class PackFiltersRegistry {

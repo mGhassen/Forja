@@ -1,45 +1,35 @@
 # IPTV — M3U
 
-> Add M3U/M3U8 playlist portals by URL — browse live channels in the main IPTV catalog.
+> Add M3U/M3U8 playlist portals by URL — browse live channels in the IPTV pack catalog.
 
 ## What it is
 
-Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and Stalker. Add a playlist URL (optional User-Agent), then browse groups as categories on the **Live** shelf.
+**M3U/M3U8** playlists are portals next to Xtream and Stalker in the **IPTV hub pack**. Add a playlist URL (optional User-Agent), then browse groups as categories on **Live**.
 
 ## How to open it
 
-**IPTV** → **Portals** → **Add** → choose **M3U**.
+**IPTV** → **Portals** → **Add** → choose **M3U** (or **Settings → Addons → IPTV** → Platform **M3U**).
 
 ## What you can do
 
-- Add a playlist by URL (optional custom User-Agent for hosts that reject the default)
-- Tap the dice icon next to the portal name field for a random name
-- Tap the folder icon next to the URL field to pick a local `.m3u`/`.m3u8` file instead of pasting a link
-- Browse live channels by `group-title` in the same catalog browser as Xtream
-- Play a channel in the IPTV player — in-player guide and search work for live. **HLS** (`.m3u8`) uses the platform player when available: **AVPlayer on Mac**, **VLC on Windows** (if VLC is installed), **ExoPlayer on Android**; **MediaKit** remains selectable and is the fallback. Progressive MPEG-TS still uses MediaKit with the continuity proxy — AVPlayer / VLC stay listed but greyed with that reason on TS channels
-- Manage M3U portals in the Portals panel (edit, favorite, delete, share/CSV)
-- Sync M3U portals to your signed-in profile (same cloud list as Xtream)
+- Add a playlist by URL (optional custom User-Agent)
+- Browse live channels by `group-title` in the pack catalog (same Live shelf as Xtream)
+- Play in the IPTV player — in-player guide and search work for live
+- Manage M3U portals in **Portals** (select / remove; edit via Addons fields)
 
 ## Setup
 
-1. Obtain an M3U/M3U8 URL from your provider, or pick a local playlist file
-2. **Portals** → **Add** → **M3U** → enter a **portal name** (required; dice icon fills a random one), paste the URL (or choose a file) → confirm
-3. Open the portal from the list
+1. Obtain an M3U/M3U8 URL from your provider
+2. **Portals → Add** → **M3U** → paste URL → save
+3. Select the portal from the list
 
 ## Tips
 
-- **Movies** and **Series** shelf chips are hidden for M3U (playlists are live-only)
-- Existing device-local playlists with a URL are migrated into portal entries once
-- Large playlists download to a temp file and parse from disk, so multi-hundred-MB provider exports don't stall the app
-- `get.php?...&type=...` links are normalized to `type=m3u_plus` automatically so logos and groups aren't missing
-- A link that returns an Enigma2/Gigablue set-top-box bouquet (not an m3u) fails with a clear error instead of "no channels"
-- Channel logos and groups depend on M3U metadata
-- Local file-only playlists from older builds are not migrated — re-add via URL or the file picker
-- Public GitHub playlists need the **raw** URL (`raw.githubusercontent.com/…`), not the `/blob/` page — or download the file and use the folder picker
-- Each M3U portal is unique by playlist URL (not username) — you can add many playlists; a portal name is required so they stay distinguishable in the list
+- Movies / Series shelves may be empty for live-only playlists
+- Prefer the **raw** playlist URL (not a GitHub `/blob/` page)
+- Each M3U portal is unique by playlist URL
 
 ## Related
 
 - [IPTV — Xtream](iptv-xtream.md)
 - [IPTV — Stalker](iptv-stalker.md)
-- [Player](../playback/player.md)

@@ -6,10 +6,10 @@ enum BuiltInPlayerMenuSurface {
   /// Home / Search / Anime / Drama / etc. ([PlayerScreen]).
   catalogVod,
 
-  /// IPTV live channels ([IptvPtPlayerScreen] with `vodPlayback: false`).
+  /// IPTV live channels ([PtPlayerScreen] with `vodPlayback: false`).
   iptvLive,
 
-  /// IPTV Movies / Series ([IptvPtPlayerScreen] with `vodPlayback: true`).
+  /// IPTV Movies / Series ([PtPlayerScreen] with `vodPlayback: true`).
   iptvVod,
 }
 

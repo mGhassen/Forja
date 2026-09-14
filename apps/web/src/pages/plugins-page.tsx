@@ -35,19 +35,19 @@ const STEPS = [
   {
     n: '01',
     title: 'Browse packs',
-    copy: 'Official starters and community manifests for providers, hubs, live, torrent, and IPTV.',
+    copy: 'Find hubs, sources, live feeds, torrent search, and IPTV in the catalog.',
     accent: 'brand' as const,
   },
   {
     n: '02',
     title: 'Add to your profile',
-    copy: 'Save the pack on the web, then open Forja on a device to download and install.',
+    copy: 'Save a pack on the web, then open Forja on a device to download and install.',
     accent: 'flame' as const,
   },
   {
     n: '03',
-    title: 'Share your own',
-    copy: 'Host a pack URL on GitHub or your CDN. Anyone can add it from Community Packs.',
+    title: 'Watch',
+    copy: 'New shelves, sources, and live feeds appear in the app once the pack is installed.',
     accent: 'brand' as const,
   },
 ]
@@ -132,9 +132,9 @@ export function PluginsPage() {
                 </h1>
 
                 <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-                  Browse hubs, sources, and live feeds built by the community. Add
-                  a pack to your profile, open Forja on a device, and it installs
-                  ready to play.
+                  Anime, live sport, IPTV, torrent search, and more come from
+                  community packs. Add a pack to your profile and Forja installs
+                  it the next time you open the app.
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3">
@@ -232,12 +232,12 @@ export function PluginsPage() {
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
                 <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  How community packs{' '}
-                  <span className="text-forja-green">work</span>
+                  From the catalog to your{' '}
+                  <span className="text-forja-green">screen</span>
                 </h2>
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Forja is the player host. Packs are how the community extends
-                  what you can watch.
+                  Three quiet steps. Pick a pack, save it to your profile, watch
+                  it show up in Forja.
                 </p>
               </Reveal>
               <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -283,8 +283,8 @@ export function PluginsPage() {
                     <span className="text-forja-flame">bundle</span>
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Ready-made pack sets you can add in one step. Prefer to pick
-                    packs one by one? Use the catalog below.
+                    Ready-made pack sets you can add in one step. The full
+                    catalog is below if you want packs one by one.
                   </p>
                 </div>
               </Reveal>
@@ -311,9 +311,8 @@ export function PluginsPage() {
                     <span className="text-forja-flame">pack catalog</span>
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Search individual packs, add one to your profile, and open
-                    Forja on a device to download and install it. Anyone can
-                    publish a pack URL the community can add.
+                    Search packs, add them to your profile, and open Forja on a
+                    device to download and install.
                   </p>
                 </div>
               </Reveal>
@@ -343,10 +342,9 @@ export function PluginsPage() {
                     <span className="text-forja-green">community</span>
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Forja is open source. The host stays generic; you ship hubs,
-                    providers, and live modules anyone can install. Start from
-                    the SDK, follow the guide, host your manifest URL, and share
-                    it here.
+                    Forja is open source. Build a hub, a source, or a live module
+                    with the SDK, host your manifest URL, and share it with
+                    people who want to install it.
                   </p>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <a

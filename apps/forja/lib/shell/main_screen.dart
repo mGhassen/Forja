@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
-import 'package:forja/shared/host/layout/pack_layout_host.dart';
+import 'package:forja_foundation/layout/pack_layout_host.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/shell/chrome/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
