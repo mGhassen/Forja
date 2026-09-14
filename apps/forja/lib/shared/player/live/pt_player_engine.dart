@@ -7,10 +7,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(
-    NativePlayer p, {
-    String? streamUrl,
-  });
+  Future<void> _applyStreamLavfReconnect(NativePlayer p);
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
   Future<void> _triggerRecovery({
@@ -580,10 +577,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
             streamUrl: playUrl,
           );
           if (_livePlaybackProfile) {
-            await _applyStreamLavfReconnect(
-              np,
-              streamUrl: candidate.url,
-            );
+            await _applyStreamLavfReconnect(np);
           }
         }
         await player.open(Media(playUrl, httpHeaders: headers));

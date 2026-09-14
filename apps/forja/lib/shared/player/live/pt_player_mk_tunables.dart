@@ -5,10 +5,7 @@ part of 'pt_player_screen.dart';
 
 mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
   void _engineSetVolume(double volume);
-  Future<void> _applyStreamLavfReconnect(
-    NativePlayer p, {
-    String? streamUrl,
-  });
+  Future<void> _applyStreamLavfReconnect(NativePlayer p);
   bool get _livePlaybackProfile;
   bool get _useSoftwareDecode;
 
@@ -325,13 +322,7 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
       // FFmpeg reconnect — applied after open for VOD; live sets before open.
       if (_s.widget.vodPlayback) {
-        final url = _s._sources.isEmpty
-            ? null
-            : _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
-        await _applyStreamLavfReconnect(
-          p,
-          streamUrl: url,
-        );
+        await _applyStreamLavfReconnect(p);
       }
 
       // MPEG-TS / HLS demux tuning.

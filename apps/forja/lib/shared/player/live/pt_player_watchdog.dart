@@ -430,23 +430,14 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       // Recovery stays native error + startup failover only.
       if (_nativeHlsEngine) return;
 
-      // RFC-113 / ipdigi: lavf grace + goLive own MediaKit live EOF/error —
-      // do not soft-reopen mid-grace.
-      if (_mediaKitLiveProfile &&
-          ((_s._liveGraceTimer?.isActive ?? false) ||
-              (_s._liveGoLiveTimer?.isActive ?? false) ||
-              (_s._liveStableTimer?.isActive ?? false))) {
+      // ipdigi: MediaKit live recovery is grace → goLive only. No soft-reopen
+      // underrun / paint / self-pause (that was Forja's reconnect storm).
+      if (_mediaKitLiveProfile) {
+        if (_streamWorking) _clearBufferingChrome();
         return;
       }
 
-      // Detector 1: long buffering — only if cache is empty / not working.
-      // Empty underrun (cache < 0.5s): shorter grace so Stalker/direct live
-      // soft-reopens instead of forever `skip recovery … working` on fps pulse.
-      // HLS cold open: hold — 5s TS grace aborts ABR probe (issue 273).
-      if (_hlsColdOpenHold) {
-        _logHold('hls cold open grace (buffering)', healthy: false);
-        return;
-      }
+      // Detector 1: long buffering — Exo / non–MediaKit-live only.
       final emptyUnderrun = _s._cacheAheadSecs <
           _PtPlayerScreenState._liveEmptyUnderrunCacheSecs;
       final bufferGrace = emptyUnderrun
@@ -458,7 +449,6 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
         if (_streamWorking) {
-          // RFC-113: healthy demuxer → clear sticky Buffering chrome (ipdigi).
           _clearBufferingChrome();
           return;
         }
@@ -469,55 +459,21 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         );
         return;
       }
-      // Detector 2: position frozen — Exo/VOD only. MediaKit live playhead is
-      // often idle at 0 while HLS/TS paints (liveEngine false reopen loops).
-      if (!_mediaKitLiveProfile) {
-        final frozenFor = now.difference(_s._lastPosChange);
-        if (_s._userPlayWhenReady &&
-            _s._lastPos > Duration.zero &&
-            frozenFor > const Duration(milliseconds: 8000)) {
-          if (_streamWorking) {
-            _logHealthyHold('frozen');
-            return;
-          }
-          _triggerRecovery(
-            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
-          );
+      // Detector 2: position frozen — Exo/VOD.
+      final frozenFor = now.difference(_s._lastPosChange);
+      if (_s._userPlayWhenReady &&
+          _s._lastPos > Duration.zero &&
+          frozenFor > const Duration(milliseconds: 8000)) {
+        if (_streamWorking) {
+          _logHealthyHold('frozen');
           return;
         }
-      } else if (_s._userPlayWhenReady && _s._playing) {
-        // Detector 2b: MediaKit live paint stall while still "playing".
-        // Buffering chrome = engine stream only (ipdigi) — do not force latch.
-        if (_hlsColdOpenHold) {
-          _logHold('hls cold open grace (paint)', healthy: false);
-          return;
-        }
-        if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
-          _s._livePaintMissStreak = 0;
-          return;
-        }
-        final frozenFor = now.difference(_s._lastPosChange);
-        if (frozenFor > const Duration(milliseconds: 1500)) {
-          if (frozenFor >= _PtPlayerScreenState._liveEmptyPauseReopen) {
-            if (_s._livePaintMissStreak < 2) return;
-            final empty =
-                _s._cacheAheadSecs <
-                _PtPlayerScreenState._minHealthyCacheSecs;
-            if (!empty && !_stallReopenRecovery) {
-              _clearBufferingChrome();
-              return;
-            }
-            _triggerRecovery(
-              reason: empty
-                  ? 'live underrun, cache empty'
-                  : 'live vo freeze, paint stalled '
-                        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
-            );
-            return;
-          }
-        }
+        _triggerRecovery(
+          reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
+        );
+        return;
       }
-      // Detector 3: silent self-pause.
+      // Detector 3: silent self-pause (Exo / non–MediaKit-live).
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
@@ -533,7 +489,6 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
             _clearBufferingChrome();
             return;
           }
-          // Do not force Buffering chrome — wait for engine buffering stream.
           if (pausedFor < _PtPlayerScreenState._liveEmptyPauseReopen) {
             if (pausedFor.inMilliseconds < 1200) {
               _logHold('self-pause refill', healthy: false);
