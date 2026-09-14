@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -16,16 +14,24 @@ class ForjaToastEntry {
     required this.message,
     required this.kind,
     required this.duration,
+    this.count = 1,
     this.actionLabel,
     this.onAction,
   });
 
   final String id;
-  final String message;
+  String message;
   final ForjaToastKind kind;
-  final Duration duration;
+  Duration duration;
+  int count;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// Bumped when coalesced / duration reset so the card restarts progress.
+  int progressEpoch = 0;
+
+  bool get isTimed => duration > Duration.zero;
+  bool get hasAction => actionLabel != null && onAction != null;
 }
 
 class _QueuedToast {
@@ -42,12 +48,18 @@ class _QueuedToast {
   final Duration duration;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  bool get isTimed => duration > Duration.zero;
+  bool get hasAction => actionLabel != null && onAction != null;
 }
 
 /// Top-right floating status toasts. Mount [ForjaToastHost] once at app root.
 ///
 /// Pass [duration] `Duration.zero` to keep the toast until the user closes it
 /// or taps its action (sticky — no auto-dismiss timer).
+///
+/// Same-[ForjaToastKind] timed toasts without actions coalesce into one card
+/// with a count badge. Hover pauses the dismiss progress bar.
 abstract final class ForjaToast {
   static final ForjaToastController controller = ForjaToastController();
 
@@ -127,7 +139,6 @@ abstract final class ForjaToast {
 class ForjaToastController extends ChangeNotifier {
   final List<ForjaToastEntry> _entries = [];
   final List<_QueuedToast> _queued = [];
-  final Map<String, Timer> _timers = {};
   int _seq = 0;
   bool _suppress = false;
   bool _flushScheduled = false;
@@ -170,22 +181,15 @@ class ForjaToastController extends ChangeNotifier {
   }
 
   void dismiss(String id) {
-    _timers.remove(id)?.cancel();
     final before = _entries.length;
     _entries.removeWhere((e) => e.id == id);
     if (_entries.length != before) notifyListeners();
   }
 
   void _dismissAllVisible() {
-    if (_entries.isEmpty && _timers.isEmpty) return;
-    for (final t in _timers.values) {
-      t.cancel();
-    }
-    _timers.clear();
-    if (_entries.isNotEmpty) {
-      _entries.clear();
-      notifyListeners();
-    }
+    if (_entries.isEmpty) return;
+    _entries.clear();
+    notifyListeners();
   }
 
   void _scheduleFlush() {
@@ -205,6 +209,28 @@ class ForjaToastController extends ChangeNotifier {
   }
 
   void _present(_QueuedToast item) {
+    // Timed, action-less toasts of the same kind stack into one card.
+    if (item.isTimed && !item.hasAction) {
+      final idx = _entries.lastIndexWhere(
+        (e) => e.kind == item.kind && e.isTimed && !e.hasAction,
+      );
+      if (idx >= 0) {
+        final existing = _entries.removeAt(idx);
+        existing.message = item.message;
+        existing.count += 1;
+        existing.duration = item.duration;
+        existing.progressEpoch++;
+        _entries.add(existing);
+        while (_entries.length > 4) {
+          final timedIdx =
+              _entries.indexWhere((e) => e.duration > Duration.zero);
+          dismiss(_entries[timedIdx >= 0 ? timedIdx : 0].id);
+        }
+        notifyListeners();
+        return;
+      }
+    }
+
     final id = 'toast_${++_seq}';
     final entry = ForjaToastEntry(
       id: id,
@@ -221,18 +247,10 @@ class ForjaToastController extends ChangeNotifier {
       dismiss(_entries[timedIdx >= 0 ? timedIdx : 0].id);
     }
     notifyListeners();
-    // Duration.zero = sticky until close / action (Timer(0) would dismiss now).
-    if (item.duration > Duration.zero) {
-      _timers[id] = Timer(item.duration, () => dismiss(id));
-    }
   }
 
   @override
   void dispose() {
-    for (final t in _timers.values) {
-      t.cancel();
-    }
-    _timers.clear();
     _entries.clear();
     _queued.clear();
     super.dispose();
@@ -316,7 +334,11 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                     for (final entry in entries)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _ForjaToastCard(entry: entry, tvFocus: tv),
+                        child: _ForjaToastCard(
+                          key: ValueKey(entry.id),
+                          entry: entry,
+                          tvFocus: tv,
+                        ),
                       ),
                   ],
                 );
@@ -340,7 +362,11 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
 }
 
 class _ForjaToastCard extends StatefulWidget {
-  const _ForjaToastCard({required this.entry, required this.tvFocus});
+  const _ForjaToastCard({
+    super.key,
+    required this.entry,
+    required this.tvFocus,
+  });
 
   final ForjaToastEntry entry;
   final bool tvFocus;
@@ -349,19 +375,24 @@ class _ForjaToastCard extends StatefulWidget {
   State<_ForjaToastCard> createState() => _ForjaToastCardState();
 }
 
-class _ForjaToastCardState extends State<_ForjaToastCard> {
+class _ForjaToastCardState extends State<_ForjaToastCard>
+    with SingleTickerProviderStateMixin {
   FocusNode? _actionFocus;
   FocusNode? _returnFocus;
   bool _stoleFocus = false;
+  AnimationController? _progress;
+  bool _hovered = false;
 
-  bool get _hasAction =>
-      widget.entry.actionLabel != null && widget.entry.onAction != null;
+  bool get _hasAction => widget.entry.hasAction;
 
   bool get _tvActionFocus => widget.tvFocus && _hasAction;
+
+  bool get _timed => widget.entry.isTimed;
 
   @override
   void initState() {
     super.initState();
+    _startProgress();
     if (!_tvActionFocus) return;
     // Capture before autofocus steals primary focus on the next frame.
     _returnFocus = FocusManager.instance.primaryFocus;
@@ -376,7 +407,49 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
   }
 
   @override
+  void didUpdateWidget(covariant _ForjaToastCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.progressEpoch != widget.entry.progressEpoch ||
+        oldWidget.entry.duration != widget.entry.duration) {
+      _startProgress();
+    }
+  }
+
+  void _startProgress() {
+    _progress?.dispose();
+    _progress = null;
+    if (!_timed) return;
+    final controller = AnimationController(
+      vsync: this,
+      duration: widget.entry.duration,
+    );
+    _progress = controller;
+    controller.addStatusListener((status) {
+      if (status != AnimationStatus.completed) return;
+      if (!mounted) return;
+      ForjaToast.controller.dismiss(widget.entry.id);
+    });
+    if (!_hovered) {
+      controller.forward();
+    }
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hovered == hovered) return;
+    _hovered = hovered;
+    final progress = _progress;
+    if (progress == null) return;
+    if (hovered) {
+      progress.stop();
+    } else if (progress.status != AnimationStatus.completed) {
+      progress.forward();
+    }
+  }
+
+  @override
   void dispose() {
+    _progress?.dispose();
+    _progress = null;
     final heldFocus = _stoleFocus && (_actionFocus?.hasFocus ?? false);
     final back = _returnFocus;
     _returnFocus = null;
@@ -419,6 +492,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
     final entry = widget.entry;
     final tvFocus = widget.tvFocus;
     final style = forjaToastStyle(entry.kind);
+    final progress = _progress;
 
     Widget actionButton() {
       final label = Text(
@@ -513,8 +587,46 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
       );
     }
 
-    return ForjaToastChrome(
+    Widget countBadge() {
+      return Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: style.accent.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: style.accent.withValues(alpha: 0.45)),
+        ),
+        child: Text(
+          '×${entry.count}',
+          style: TextStyle(
+            color: style.accent,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+      );
+    }
+
+    final card = ForjaToastChrome(
       kind: entry.kind,
+      bottom: progress == null
+          ? null
+          : AnimatedBuilder(
+              animation: progress,
+              builder: (context, _) {
+                return LinearProgressIndicator(
+                  // Drain left → right (remaining time).
+                  value: 1.0 - progress.value,
+                  minHeight: 2,
+                  backgroundColor: ForjaShellColors.borderSubtle
+                      .withValues(alpha: 0.35),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    style.accent.withValues(alpha: 0.85),
+                  ),
+                );
+              },
+            ),
       child: Row(
         children: [
           Icon(style.icon, size: 18, color: style.accent),
@@ -530,6 +642,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
               ),
             ),
           ),
+          if (entry.count > 1) countBadge(),
           if (_hasAction) ...[
             const SizedBox(width: 8),
             actionButton(),
@@ -537,6 +650,14 @@ class _ForjaToastCardState extends State<_ForjaToastCard> {
           closeButton(),
         ],
       ),
+    );
+
+    if (tvFocus || progress == null) return card;
+
+    return MouseRegion(
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
+      child: card,
     );
   }
 }
@@ -554,11 +675,13 @@ class ForjaToastChrome extends StatelessWidget {
     required this.kind,
     required this.child,
     this.padding = const EdgeInsets.fromLTRB(12, 10, 8, 10),
+    this.bottom,
   });
 
   final ForjaToastKind kind;
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Widget? bottom;
 
   @override
   Widget build(BuildContext context) {
@@ -580,19 +703,26 @@ class ForjaToastChrome extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: style.accent),
-                Expanded(
-                  child: Padding(
-                    padding: padding,
-                    child: child,
-                  ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(width: 4, color: style.accent),
+                    Expanded(
+                      child: Padding(
+                        padding: padding,
+                        child: child,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (bottom != null) bottom!,
+            ],
           ),
         ),
       ),

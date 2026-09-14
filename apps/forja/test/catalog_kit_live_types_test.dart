@@ -40,7 +40,7 @@ void main() {
         isTrue,
       );
       expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
-      // Pack MetaRuntime feed — no special host list source registration.
+      // Progressive source is built in KitListWidget (not HostListRegistry).
       expect(
         HostListRegistry.resolve(sourceId: 'live_schedule'),
         isNull,

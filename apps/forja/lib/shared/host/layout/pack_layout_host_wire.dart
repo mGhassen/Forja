@@ -24,6 +24,8 @@ import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/host/layout/list/panel_host.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/host/layout/list/plugin_feed_source.dart';
+import 'package:forja/shared/host/layout/list/live_schedule_progressive.dart';
+import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/nav/top_menu_registry.dart';
@@ -3035,6 +3037,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
     if (registered != null) return registered;
     final pluginId = widget.pluginId.trim();
     if (pluginId.isEmpty) return null;
+    // Live Sports schedule — host progressive catalog fan-out + pack reduce.
+    if (widget.listSource == LiveSurfaceOpen.listSourceId) {
+      return LiveScheduleFeedSource(pluginId);
+    }
     // Pack-owned list feed — no host product registration required.
     return PluginFeedSource(pluginId);
   }

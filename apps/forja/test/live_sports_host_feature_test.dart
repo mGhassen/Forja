@@ -61,9 +61,12 @@ void main() {
     expect(ids, isNot(contains('settings')));
   });
 
-  test('live_schedule has no special host list source', () {
+  test('live_schedule resolves progressive host list source via wire constant', () {
+    // HostListRegistry stays panel-only; KitListWidget builds LiveScheduleFeedSource
+    // when listSource == LiveSurfaceOpen.listSourceId.
     expect(HostListRegistry.resolve(sourceId: 'live_schedule'), isNull);
     expect(HostListRegistry.isFullPageHost('live_schedule'), isFalse);
+    expect(LiveSurfaceOpen.listSourceId, 'live_schedule');
   });
 
   test('live_schedule registers streams panel host', () {

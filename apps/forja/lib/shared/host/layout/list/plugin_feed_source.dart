@@ -23,6 +23,7 @@ class PluginFeedPage implements KitListPage {
   const PluginFeedPage({
     required this.byKind,
     required this.loadingRemote,
+    this.loadingProgressLabel,
   });
 
   final Map<String, List<KitListEntry>> byKind;
@@ -30,11 +31,11 @@ class PluginFeedPage implements KitListPage {
   final bool loadingRemote;
 
   @override
-  int get totalCount =>
-      byKind.values.fold<int>(0, (sum, list) => sum + list.length);
+  final String? loadingProgressLabel;
 
   @override
-  String? get loadingProgressLabel => null;
+  int get totalCount =>
+      byKind.values.fold<int>(0, (sum, list) => sum + list.length);
 
   @override
   List<KitListEntry> entriesForKind(String? kind) {
@@ -45,11 +46,11 @@ class PluginFeedPage implements KitListPage {
   }
 }
 
-@visibleForTesting
 PluginFeedPage pluginFeedPageFromRows(
   List<Map<String, dynamic>> rows,
   String status, {
   required bool loadingRemote,
+  String? loadingProgressLabel,
 }) {
   final byKind = <String, List<KitListEntry>>{};
   for (final raw in rows) {
@@ -70,7 +71,11 @@ PluginFeedPage pluginFeedPageFromRows(
     );
     (byKind[resolved] ??= []).add(entry);
   }
-  return PluginFeedPage(byKind: byKind, loadingRemote: loadingRemote);
+  return PluginFeedPage(
+    byKind: byKind,
+    loadingRemote: loadingRemote,
+    loadingProgressLabel: loadingProgressLabel,
+  );
 }
 
 /// Per-plugin enrich overlay for flat `items` feeds (MetaRuntime feed enrich
@@ -155,7 +160,7 @@ Map<String, dynamic> _overlayEnrich(
   return out;
 }
 
-List<Map<String, dynamic>> _applyEnrichCacheSync(
+List<Map<String, dynamic>> applyPluginFeedEnrichCacheSync(
   String pluginId,
   List<Map<String, dynamic>> rows,
 ) {
@@ -205,7 +210,7 @@ Future<List<Map<String, dynamic>>> _enrichRowsWithCache(
   } catch (e, st) {
     debugPrint('[plugin-feed] enrich failed ($pluginId): $e\n$st');
   }
-  return _applyEnrichCacheSync(pluginId, out);
+  return applyPluginFeedEnrichCacheSync(pluginId, out);
 }
 
 final pluginFeedForceRefreshProvider =
@@ -330,7 +335,7 @@ final pluginFeedCatalogProvider =
     skipLoadingOnReload: true,
     skipLoadingOnRefresh: true,
     data: (rawItems) {
-      final enriched = _applyEnrichCacheSync(key.pluginId, rawItems);
+      final enriched = applyPluginFeedEnrichCacheSync(key.pluginId, rawItems);
       final pending = List<Map<String, dynamic>>.from(rawItems);
       Future.microtask(() {
         try {

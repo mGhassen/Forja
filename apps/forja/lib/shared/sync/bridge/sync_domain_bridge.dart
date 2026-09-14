@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -95,11 +98,11 @@ class SyncDomainBridge {
   Future<void> clearAccountBoundLocalState() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
-    // pack vault owns portals (RFC-109 C)
-    
-    
-    
-    
+    await IptvStore.clearLastPortalKey();
+    await IptvAliveStore.clearAll();
+    await IptvChannelResultsStore.clearAll();
+    await IptvCatalogDiskStore.clearAll();
+    IptvStore.notifyListChanged();
   }
 
   /// Fail-closed IPTV cache wipe for profile boundaries (issue 217).
@@ -114,7 +117,10 @@ class SyncDomainBridge {
     _pushTimers.remove(_domainIptv)?.cancel();
     _iptvLocalGen = 0;
     _iptvSyncedGen = 0;
-    // Pack vault owns portals (RFC-109 C).
+    await IptvStore.save(const [], scheduleSync: false);
+    await IptvStore.saveFavorites({}, scheduleSync: false);
+    await IptvStore.clearLastPortalKey();
+    if (notify) IptvStore.notifyListChanged();
   }
 
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
@@ -189,7 +195,11 @@ class SyncDomainBridge {
     }
 
     if (clearIptv) {
-      // Pack vault owns portals (RFC-109 C) — no host IptvStore wipe.
+      // Local cache only - never schedule a cloud push from a wipe.
+      await IptvStore.save(const [], scheduleSync: false);
+      await IptvStore.saveFavorites({}, scheduleSync: false);
+      await IptvStore.clearLastPortalKey();
+      if (notify) IptvStore.notifyListChanged();
     }
   }
 
@@ -1069,24 +1079,184 @@ class SyncDomainBridge {
     }
   }
 
-  /// Host no longer owns portal inventory (RFC-109 Wave C) — pack vault does.
   Future<bool> _pushUserIptvPortals({
     required bool pushIfLocalEmpty,
     required bool allowEmptyWipe,
     required bool allowShrink,
   }) async {
-    debugPrint('[Sync] skip IPTV push — portals are pack-owned');
+    final portals = await IptvStore.load();
+    if (portals.isEmpty) {
+      if (!pushIfLocalEmpty) {
+        debugPrint(
+          '[Sync] skip IPTV push - empty local cache (cloud is master)',
+        );
+        return false;
+      }
+      if (!allowEmptyWipe) {
+        debugPrint(
+          '[Sync] refuse empty IPTV replace - empty cache must not wipe cloud',
+        );
+        return false;
+      }
+      await SyncService.instance.replaceUserIptvPortals(
+        const [],
+        allowShrink: true,
+      );
+      return true;
+    }
+
+    final cloudCount = await SyncService.instance.countUserIptvPortals();
+    if (cloudCount < 0) {
+      debugPrint('[Sync] refuse IPTV replace - cloud count unavailable');
+      return false;
+    }
+    // Thin local cache must never replace a larger cloud inventory (096 / 118).
+    if (!allowEmptyWipe && !allowShrink && cloudCount > portals.length) {
+      debugPrint(
+        '[Sync] refuse IPTV shrink - local ${portals.length} < cloud $cloudCount',
+      );
+      return false;
+    }
+
+    final favorites = await IptvStore.loadFavorites();
+    final assignments =
+        <({String portalId, String portalName, bool favorite})>[];
+
+    for (final v in portals) {
+      final portalId = await SyncService.instance.upsertIptvPortal(
+        url: v.portal.url,
+        username: v.portal.username,
+        password: v.portal.password,
+        source: v.portal.source.isEmpty ? null : v.portal.source,
+        expiry: v.expiry.isEmpty ? null : v.expiry,
+        maxConnections: v.maxConnections.isEmpty ? null : v.maxConnections,
+        platform: v.portal.platform.wire,
+      );
+      if (portalId == null) continue;
+      final portalName = v.label.trim().isNotEmpty
+          ? v.label.trim()
+          : v.portal.username;
+      assignments.add((
+        portalId: portalId,
+        portalName: portalName,
+        favorite: favorites.contains(v.portal.key),
+      ));
+    }
+
+    // Upserts failed entirely - do not delete cloud assignments.
+    if (assignments.isEmpty) {
+      debugPrint('[Sync] refuse IPTV replace - no portal ids resolved');
+      return false;
+    }
+    // Partial upsert must never over-shrink (even intentional delete).
+    if (assignments.length < portals.length) {
+      debugPrint(
+        '[Sync] refuse IPTV replace - resolved ${assignments.length} of '
+        '${portals.length} local portals',
+      );
+      return false;
+    }
+    if (!allowEmptyWipe && !allowShrink && cloudCount > assignments.length) {
+      debugPrint(
+        '[Sync] refuse IPTV shrink after upsert - '
+        'resolved ${assignments.length} < cloud $cloudCount',
+      );
+      return false;
+    }
+
+    await SyncService.instance.replaceUserIptvPortals(
+      assignments,
+      allowShrink: allowEmptyWipe || allowShrink,
+    );
+    debugPrint(
+      '[Sync] IPTV replace ok assignments=${assignments.length}',
+    );
     return true;
   }
 
   Future<bool> _pullAndApplyUserIptvPortals() async {
+    final List<Map<String, dynamic>> rows;
     try {
-      await SyncService.instance.pullUserIptvPortals();
+      rows = await SyncService.instance.pullUserIptvPortals();
     } catch (e) {
-      debugPrint('[Sync] pullUserIptvPortals failed: $e');
+      // Focus/resume re-pull: keep whatever is already in the cache for this
+      // profile. Profile-switch paths wipe first (issue 217), so failure stays
+      // empty — never rehydrate the previous profile's portals.
+      debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
       return false;
     }
-    // Pack vault is source of truth locally; cloud apply deferred.
+    final local = await IptvStore.load();
+    final localByKey = {for (final v in local) v.key: v};
+    final localFav = await IptvStore.loadFavorites();
+
+    // Cloud is master for *which* portals are assigned. Existing local rows
+    // keep probe fields (name / seats / expiry) — only append new keys and
+    // drop unassigned; never wipe local account probes on a re-pull.
+    final portals = <VerifiedPortal>[];
+    final favoriteKeys = <String>{};
+    for (final row in rows) {
+      final portal = row['portal'];
+      if (portal is! Map) continue;
+      final g = Map<String, dynamic>.from(portal);
+      final url = g['url'] as String? ?? '';
+      final username = g['username'] as String? ?? '';
+      final password = g['password'] as String? ?? '';
+      final cloudLabel = (row['portal_name'] as String?)?.trim() ?? '';
+      final cloudPortal = IptvPortal(
+        url: url,
+        username: username,
+        password: password,
+        source: g['source'] as String? ?? '',
+        platform: IptvPortalPlatform.fromString(g['platform'] as String?),
+      );
+      final key = cloudPortal.key;
+      final existing = localByKey[key];
+      if (existing != null) {
+        portals.add(
+          cloudLabel.isNotEmpty && cloudLabel != existing.label
+              ? existing.withLabel(cloudLabel)
+              : existing,
+        );
+      } else {
+        portals.add(
+          VerifiedPortal(
+            portal: cloudPortal,
+            label: cloudLabel,
+            name: '',
+            expiry: g['expiry'] as String? ?? '',
+            maxConnections: g['max_connections'] as String? ?? '1',
+            activeConnections: '0',
+          ),
+        );
+      }
+      if (row['favorite'] == true) {
+        favoriteKeys.add(key);
+      }
+    }
+
+    final localKeys = local.map((v) => v.key).toSet();
+    final nextKeys = portals.map((v) => v.key).toSet();
+    final keysSame =
+        localKeys.length == nextKeys.length && localKeys.containsAll(nextKeys);
+    final favSame =
+        localFav.length == favoriteKeys.length &&
+        localFav.containsAll(favoriteKeys);
+    var labelChanged = false;
+    if (keysSame) {
+      for (final p in portals) {
+        final prev = localByKey[p.key];
+        if (prev != null && prev.label != p.label) {
+          labelChanged = true;
+          break;
+        }
+      }
+    }
+    if (keysSame && favSame && !labelChanged) return true;
+
+    // Cloud → local cache only; never schedule a push that could race-wipe.
+    await IptvStore.save(portals, scheduleSync: false);
+    await IptvStore.saveFavorites(favoriteKeys, scheduleSync: false);
+    IptvStore.notifyListChanged();
     return true;
   }
 

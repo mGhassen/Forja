@@ -588,7 +588,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       unawaited(ctrl.dealFromPool());
                     },
                     icon: Icons.casino_rounded,
-                    color: credits > 0 ? IptvShellStyle.accent : null,
+                    // Idle muted like search/add — accent only on hover/focus.
+                    // (casino glyph is a filled die; idle accent looked like a
+                    // permanent green button.) Credits stay in the "N cr" label.
+                    color: credits < 1 ? Colors.white38 : null,
                     tvRowId: 'iptv-portal-header',
                     tvItemIndex: dealIndex,
                     tvZone: ShellTvZone.topBar,
