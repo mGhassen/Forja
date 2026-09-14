@@ -18,8 +18,6 @@ import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart' show HubTopBar;
-
 /// Sentinel for the "All" entry in the categories popup menu.
 const catalogAllCategoriesSentinel = '__all__';
 

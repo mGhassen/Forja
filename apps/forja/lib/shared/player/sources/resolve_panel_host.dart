@@ -8,12 +8,9 @@ import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 
-export 'package:forja_foundation/widgets/sources/resolve_panel.dart'
-    show ResolvePanel;
-
 /// Thin registry host — load/play via [KitResolveStreamsHooks] (RFC-095 D).
 ///
-/// Side panel chrome paint lives in [ResolvePanel]; this host maps hooks + TV.
+/// Side panel chrome paint lives in [SourcesPanelChrome]; this host maps hooks + TV.
 final class KitResolvePanelHost implements KitPanelHost {
   const KitResolvePanelHost();
 

@@ -555,4 +555,4 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 |--------------------|--------|
 | IPTV | `hubWithLoad(…, 'feed')` on list; `hubPaintPoster` on live/VOD/setup rows; paint helpers in `_prelude.js` (v1.5.5) |
 | Live Sports | `hubWithLoad(…, 'feed')` on schedule list; `hubPaintEvent` on shaped rows; paint helpers in `_prelude.js` (v1.0.29) |
-| Search | Home `_search.js` owns TMDB search; host `host_search` / `HostSearchEngine` deleted (A66–A68) |
+| Search | Home + anime/asian_drama/arabic/aflem/cartoon/kids/shahid each ship `_search.js`; host has no product search engine |

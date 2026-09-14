@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/details/details_host_wire.dart';
 import 'package:forja/shared/player/details/kit_details_play.dart';
 import 'package:forja/shared/player/details/details_stremio.dart';
-import 'package:forja/shared/host/watch/watch_history.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
 import 'package:forja_foundation/protocol/protocol.dart';

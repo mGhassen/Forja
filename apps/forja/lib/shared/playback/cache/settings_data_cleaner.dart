@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shared/host/watch/watch_history.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/services/update/app_update_download_service.dart';
 import 'package:forja/shared/services/update/app_update_download_storage.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';

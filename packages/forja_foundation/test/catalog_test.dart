@@ -47,18 +47,13 @@ void main() {
       expect(find.text('Email'), findsOneWidget);
     });
 
-    testWidgets('Tabs Skeleton Alert Progress Avatar build', (tester) async {
+    testWidgets('Skeleton Alert Progress Avatar build', (tester) async {
       await tester.pumpWidget(
         _wrap(
           SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Tabs(
-                  labels: const ['Films', 'TV'],
-                  selectedIndex: 0,
-                  onChanged: (_) {},
-                ),
                 const Skeleton(width: 120, height: 12),
                 const SkeletonText(lines: 2),
                 const SkeletonPoster(width: 80),
@@ -119,7 +114,6 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Films'), findsOneWidget);
       expect(find.text('Heads up'), findsOneWidget);
       expect(find.text('Title'), findsOneWidget);
       expect(find.text('More'), findsOneWidget);
@@ -145,37 +139,6 @@ void main() {
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       expect(value, isTrue);
-    });
-  });
-
-  group('Chip', () {
-    testWidgets('idle and selected variants build', (tester) async {
-      var tapped = false;
-      await tester.pumpWidget(
-        _wrap(
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Chip(
-                label: 'Idle',
-                variant: ChipVariant.idle,
-                size: ChipSize.sm,
-                onPressed: () {},
-              ),
-              Chip(
-                label: 'Selected',
-                variant: ChipVariant.selected,
-                size: ChipSize.md,
-                onPressed: () => tapped = true,
-              ),
-            ],
-          ),
-        ),
-      );
-      expect(find.text('Idle'), findsOneWidget);
-      expect(find.text('Selected'), findsOneWidget);
-      await tester.tap(find.text('Selected'));
-      expect(tapped, isTrue);
     });
   });
 

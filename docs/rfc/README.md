@@ -132,6 +132,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [108-[fixed]-…](fixed/108-[fixed]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | fixed | Complete · 7/7 · 20/20 | — |
 | [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **25 / 29** code · 4 🔄 · **8 / 8** IPTV pack · **11 / 12** A41 · **3 / 3** wipe · **3 / 3** kit evacuate · **3 / 3** validate+paint · **3 / 3** pack search | — |
 | [110-[draft]-…](110-[draft]-pack-surface-contributions.md) | Pack surface contributions (layers / modules / slots) | — | draft | **0 / 8** C · **26 / 28** spec · **0 / 12** registry · **0 / 10** details+player · **0 / 6** conflict UX · **0 / 4** reference packs | — |
+| [111-[fixed]-…](fixed/111-[fixed]-foundation-widgets-delete-dead.md) | Foundation widgets — delete dead / honesty vs PackPaintTree | — | fixed | Complete · 4/4 · 6/6 | — |
 
 ## Related
 

@@ -29,26 +29,10 @@ void main() {
       expect(layoutArtifactFor('unknown.slot'), isNull);
       expect(LayoutArtifact.hero.id, LayoutArtifactId.hero);
       expect(
-        LayoutMap.slotToArtifactName[LayoutTypes.hero],
-        contains('CatalogHeroSection'),
+        LayoutMap.slotToArtifactName[LayoutTypes.stack],
+        'LayoutStack',
       );
-    });
-  });
-
-  group('CatalogHeroSection', () {
-    testWidgets('renders title and fires onPlay', (tester) async {
-      var played = 0;
-      await tester.pumpWidget(
-        _wrap(
-          CatalogHeroSection(
-            title: 'Demo Show',
-            onPlay: () => played++,
-          ),
-        ),
-      );
-      expect(find.text('Demo Show'), findsOneWidget);
-      await tester.tap(find.text('Play'));
-      expect(played, 1);
+      expect(LayoutMap.slotToArtifactName.containsKey(LayoutTypes.hero), isFalse);
     });
   });
 
@@ -57,7 +41,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           const ShellBlock(
-            topBar: TopBar(title: 'Home'),
+            topBar: ShellTabHeader(title: 'Home'),
             body: Center(child: Text('Body')),
           ),
         ),
