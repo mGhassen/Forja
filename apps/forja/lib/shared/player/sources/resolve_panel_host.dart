@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
-import 'package:forja/shared/engine/runtime/kit/list/panel_host.dart';
+import 'package:forja/shared/player/sources/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 import 'package:forja/shared/player/details/kit_match_details_page.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';

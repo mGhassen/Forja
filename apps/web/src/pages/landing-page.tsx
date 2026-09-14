@@ -16,7 +16,6 @@ const MARQUEE = [
   'IPTV',
   'Community packs',
   'Open source',
-  'Every screen',
 ]
 
 export function LandingPage() {
@@ -83,13 +82,11 @@ export function LandingPage() {
               </h2>
               <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
                 Forja opens on a featured title, rich posters, and shelves you can
-                skim in seconds. The layout stays clear from a laptop window to a
-                living-room TV.
+                skim in seconds.
               </p>
               <ul className="mt-6 space-y-3 text-base leading-relaxed text-[rgba(237,230,218,0.78)] sm:text-lg">
                 <li>Featured heroes and poster shelves</li>
                 <li>Movies, series, anime, sport, and live TV in one place</li>
-                <li>Desktop, mobile, and Android TV in the same design</li>
               </ul>
               <Link
                 to="/platform"
@@ -111,8 +108,8 @@ export function LandingPage() {
               </h2>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
                 Packs bring anime hubs, live sport, IPTV, torrent search, and
-                more into Forja. They live on your profile and install on each
-                device when you sign in.
+                more into Forja. They live on your profile and install when you
+                open the app.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
@@ -134,42 +131,41 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
-          <Reveal>
-            <div className="mx-auto max-w-[1100px] text-center">
-              <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                One app across every screen
-              </h2>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
-                Forja runs on Windows, macOS, Linux, Android, and Android TV.
-                Packs, preferences, and profiles stay with your account.
-              </p>
-            </div>
-          </Reveal>
-        </section>
-
         <section
           id="drop"
           className="grid grid-cols-1 items-center gap-10 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"
         >
           <Reveal>
             <h2 className="font-disp text-[clamp(28px,5vw,52px)] uppercase leading-[0.95] tracking-[-0.03em]">
-              Available for desktop, mobile, and TV
+              Your sources.
+              <br />
+              <span className="font-serif-i normal-case text-flame">
+                Your player.
+              </span>
             </h2>
             <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:mt-8 sm:text-lg">
-              Forja is a player. Your sources and packs decide what appears on
-              screen. Builds are ready for Windows, macOS, Linux, and Android.
+              Forja is a modular player platform. Your sources and packs decide
+              what lands on screen tonight.
             </p>
-            <Link
-              ref={magnetRef}
-              to="/download"
-              data-hover=""
-              onMouseMove={onMagnetMove}
-              onMouseLeave={onMagnetLeave}
-              className="btn-magnet mt-7 inline-flex w-full items-center justify-center rounded-full px-8 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] will-change-transform sm:mt-8 sm:w-auto sm:px-[34px] sm:py-5 sm:text-[15px]"
-            >
-              Download
-            </Link>
+            <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
+              <Link
+                ref={magnetRef}
+                to="/download"
+                data-hover=""
+                onMouseMove={onMagnetMove}
+                onMouseLeave={onMagnetLeave}
+                className="btn-magnet inline-flex w-full items-center justify-center rounded-full px-8 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] will-change-transform sm:w-auto sm:px-[34px] sm:py-5 sm:text-[15px]"
+              >
+                Download
+              </Link>
+              <Link
+                to="/plugins"
+                data-hover=""
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-8 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] text-[rgba(237,230,218,0.75)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:w-auto sm:px-8 sm:text-[15px]"
+              >
+                Packs
+              </Link>
+            </div>
           </Reveal>
 
           <Reveal delayMs={100} className="w-full min-w-0">

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/host/packs/forja_host_assets.dart';
-import 'package:forja/shared/engine/runtime/kit/pack_layout_host.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_painter.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
@@ -28,13 +28,13 @@ abstract final class PluginNavRegistry {
     String? packSourceUrl,
   }) {
     if (pluginId != null && pluginId.isNotEmpty) {
-      return PackLayoutHost(
+    return PackLayoutPainter(
         pluginId: pluginId,
         tabId: tabId,
         packSourceUrl: packSourceUrl,
       );
     }
-    return PackLayoutHostLoader(tabId: tabId);
+    return PackLayoutPainterLoader(tabId: tabId);
   }
 
   static const _navCacheKey = 'shell_hub_nav_cache_v1';
@@ -45,6 +45,9 @@ abstract final class PluginNavRegistry {
   static Map<String, String> _tabPluginIds = {};
   /// Host Features/rail id → pack install URL (RFC-094).
   static Map<String, String> _tabPackUrls = {};
+  /// Opaque pack page action per tab (`nav.page.action`).
+  static Map<String, String> _tabPageActions = {};
+  static Map<String, Map<String, dynamic>> _tabPageParams = {};
   static bool _seeded = false;
   static bool _testNavLocked = false;
   /// Set when [refresh] skips an empty-hub prefs wipe because packs are still
@@ -172,6 +175,8 @@ abstract final class PluginNavRegistry {
     _accents = {};
     _tabPluginIds = {};
     _tabPackUrls = {};
+    _tabPageActions = {};
+    _tabPageParams = {};
     _builders = {};
     _seeded = true;
   }
@@ -222,7 +227,7 @@ abstract final class PluginNavRegistry {
     _tabPackUrls = Map<String, String>.from(tabPackUrls ?? const {});
     _builders = {
       for (final tabId in _destinations.keys)
-        tabId: () => PackLayoutHostLoader(tabId: tabId),
+        tabId: () => PackLayoutPainterLoader(tabId: tabId),
     };
     _seeded = true;
   }
@@ -500,6 +505,8 @@ abstract final class PluginNavRegistry {
       _builders = {};
       _tabPluginIds = {};
       _tabPackUrls = {};
+      _tabPageActions = {};
+      _tabPageParams = {};
       _seeded = true;
       await _clearNavSnapshot();
       // No packs left — drop hub tabs from the rail (orphan wipe only).
@@ -524,6 +531,8 @@ abstract final class PluginNavRegistry {
     final builders = <String, TabBuilder>{};
     final tabPluginIds = <String, String>{};
     final tabPackUrls = <String, String>{};
+    final tabPageActions = <String, String>{};
+    final tabPageParams = <String, Map<String, dynamic>>{};
     final extras = <String>[];
     final cacheRows = <Map<String, dynamic>>[];
 
@@ -559,6 +568,13 @@ abstract final class PluginNavRegistry {
           );
       tabPluginIds[railId] = pl.id;
       tabPackUrls[railId] = pack.sourceUrl;
+      final pageAction = nav.pageAction?.trim() ?? '';
+      if (pageAction.isNotEmpty) {
+        tabPageActions[railId] = pageAction;
+        if (nav.pageParams.isNotEmpty) {
+          tabPageParams[railId] = Map<String, dynamic>.from(nav.pageParams);
+        }
+      }
       final accent = accentFor(nav);
       if (accent != null) accents[railId] = accent;
       if (!SettingsService.allNavIds.contains(railId)) {
@@ -586,6 +602,8 @@ abstract final class PluginNavRegistry {
     _builders = builders;
     _tabPluginIds = tabPluginIds;
     _tabPackUrls = tabPackUrls;
+    _tabPageActions = tabPageActions;
+    _tabPageParams = tabPageParams;
     _seeded = true;
 
     // Folder slot may differ from author `nav.tabId`. Soft-pull /
@@ -771,6 +789,19 @@ abstract final class PluginNavRegistry {
   static String? pluginIdForTabSync(String tabId) {
     _ensureSeeded();
     return _tabPluginIds[tabId];
+  }
+
+  /// Opaque `nav.page.action` for [tabId], if the pack declared one.
+  static String? pageActionForTab(String tabId) {
+    _ensureSeeded();
+    return _tabPageActions[tabId];
+  }
+
+  static Map<String, dynamic>? pageParamsForTab(String tabId) {
+    _ensureSeeded();
+    final p = _tabPageParams[tabId];
+    if (p == null || p.isEmpty) return null;
+    return Map<String, dynamic>.from(p);
   }
 
   static String? packSourceUrlForTabSync(String tabId) {

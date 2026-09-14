@@ -147,16 +147,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
         pluginId: child.pluginId,
         tabId: child.tabId,
         packSourceUrl: child.packSourceUrl,
-        hostLayout: child.hostLayout,
-      );
-    }
-    if (child is PackLayoutHost) {
-      return PackLayoutHost(
-        key: key,
-        pluginId: child.pluginId,
-        tabId: child.tabId,
-        packSourceUrl: child.packSourceUrl,
-        hostLayout: child.hostLayout,
+        pageAction: child.pageAction,
+        pageParams: child.pageParams,
       );
     }
     return KeyedSubtree(key: key, child: child);
@@ -764,7 +756,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             null => null,
             // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
             final id when PluginNavRegistry.isKitTab(id) =>
-              PluginKitTopBar(key: ValueKey(id), tabId: id),
+              SizedBox.shrink(key: ValueKey(id)),
             _ => null,
           };
         }

@@ -759,7 +759,7 @@ export function DownloadPage() {
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Get the modular streaming player for Windows, macOS, Linux, or
+              Get the modular player platform for Windows, macOS, Linux, or
               Android TV. Add community packs for hubs and sources, then stream
               with the same controls on every screen. Forja is open source.
             </p>

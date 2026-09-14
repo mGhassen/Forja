@@ -10,7 +10,7 @@ const FAQ: {
 }[] = [
   {
     q: 'What is Forja?',
-    a: 'Forja is an open-source modular player for movies, series, anime, live sport, and live TV, everything in one place. Download it for your computer or living-room TV. This site is for getting the app and your account.',
+    a: 'Forja is an open-source modular player platform for movies, series, anime, live sport, and live TV, everything in one place. Download it for your computer or living-room TV. This site is for getting the app and your account.',
   },
   {
     q: 'Which download should I pick?',
@@ -22,7 +22,7 @@ const FAQ: {
   },
   {
     q: 'Do I need an account?',
-    a: 'No. Download and watch. An account is optional if you want preferences across devices later.',
+    a: 'No. You can use Forja without signing in. An account is a settings store across devices if you want profiles and preferences on more than one screen.',
   },
   {
     q: 'Windows says the app is unrecognized / blocked',

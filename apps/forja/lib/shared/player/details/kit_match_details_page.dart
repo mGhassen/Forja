@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
-import 'package:forja/shared/engine/runtime/kit/list/kit_list_paint.dart';
-import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
+import 'package:forja/shared/player/details/kit_list_entry.dart';
 import 'package:forja_foundation/widgets/chrome/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
@@ -19,6 +18,61 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/widgets/details/match_details_page.dart';
 
+/// Pack-emitted paint props for match details (no host field heuristics).
+class _PackEntryPaint {
+  const _PackEntryPaint({
+    required this.title,
+    required this.poster,
+    required this.categoryLabel,
+    required this.timeLabel,
+    required this.viewers,
+    required this.isLive,
+  });
+
+  final String title;
+  final String poster;
+  final String categoryLabel;
+  final String timeLabel;
+  final int viewers;
+  final bool isLive;
+
+  factory _PackEntryPaint.from(KitListEntry entry) {
+    final paint = entry.legacyRow['paint'];
+    var props = <String, dynamic>{};
+    if (paint is Map) {
+      final p = paint['props'];
+      props = p is Map
+          ? Map<String, dynamic>.from(p)
+          : Map<String, dynamic>.from(paint);
+    }
+    String s(String key, [String fb = '']) {
+      final v = props[key];
+      if (v == null) return fb;
+      final t = v.toString().trim();
+      return t.isEmpty ? fb : t;
+    }
+
+    int viewers = 0;
+    final raw = props['viewers'];
+    if (raw is num) {
+      viewers = raw.toInt();
+    } else if (raw is String) {
+      viewers = int.tryParse(raw.replaceAll(',', '')) ?? 0;
+    }
+
+    return _PackEntryPaint(
+      title: s('title', entry.meta.name),
+      poster: s(
+        'posterUrl',
+        s('imageUrl', entry.meta.poster),
+      ),
+      categoryLabel: s('categoryLabel'),
+      timeLabel: s('timeLabel'),
+      viewers: viewers,
+      isLive: props['live'] == true,
+    );
+  }
+}
 /// Full-bleed list-entry details — [DetailsHero] + pack [panelTabs].
 class KitMatchDetailsPage extends StatefulWidget {
   const KitMatchDetailsPage({
@@ -66,7 +120,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     super.dispose();
   }
 
-  KitListPaint get _paint => KitListPaint.fromKitEntry(widget.entry);
+  _PackEntryPaint get _paint => _PackEntryPaint.from(widget.entry);
 
   ({List<PanelTabSpec> tabs, String? initial}) get _chrome =>
       panelChromeFromLayouts(widget.layoutWidgets);

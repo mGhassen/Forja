@@ -5,10 +5,8 @@ import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 
 const JUMP = [
-  { href: '#platforms', label: 'Platforms' },
   { href: '#catalogs', label: 'Catalogs' },
-  { href: '#webstreaming', label: 'Webstreaming' },
-  { href: '#torrents', label: 'Torrents' },
+  { href: '#sources', label: 'Sources' },
   { href: '#player', label: 'Player' },
   { href: '#iptv', label: 'Live TV' },
   { href: '#sports', label: 'Sports' },
@@ -22,48 +20,56 @@ const STATS = [
   { value: '1', label: 'Native player for every source' },
 ]
 
-const PLATFORMS = [
-  'Windows installer · macOS DMG for Apple Silicon and Intel · Linux AppImage',
-  'Android phone and Android TV with a D-pad shell',
-  'iOS build · the same account across devices',
-]
-
 const CATALOG_LINES = [
   'Featured heroes and poster shelves you can skim in seconds',
   'Title pages with episodes, related rows, and continue watching',
   'My List statuses and a navigation rail you can reshape',
 ]
 
-const WEBSTREAM_LINES = [
-  'Provider and resolver network for movies, series, anime, and drama',
-  'Automatic resolve with the option to pin a server',
-  'Links checked before they reach the player when possible',
-]
-
-const TORRENT_TRIO = [
+const SOURCE_WAYS = [
   {
     n: '01',
+    title: 'Provider plugins',
+    copy: 'The main path for movies, series, anime, and drama. Stream provider plugins resolve links. Enable the ones you want, use automatic resolve, or pin a server.',
+  },
+  {
+    n: '02',
     title: 'Torrents',
     copy: 'Search torrents and play magnets in the native player without waiting on a full download.',
   },
   {
-    n: '02',
+    n: '03',
     title: 'Stremio',
     copy: 'Stremio-compatible addons bring extra streams into Forja, including sport when the addon supports it.',
   },
   {
-    n: '03',
+    n: '04',
     title: 'Nuvio',
     copy: 'Nuvio scrapers add more stream links. Direct HTTP plays in place; magnets use the torrent engine.',
   },
 ]
 
-const PLAYER_LINES = [
-  'MediaKit and ExoPlayer where the platform allows, switchable while you watch',
-  'Subtitles, audio tracks, quality, speed, and aspect',
-  'Skip intro and credits, auto next episode, continue watching',
-  'Picture-in-picture, desktop mini player, and external players such as VLC, mpv, and IINA',
-  'Change torrent, Stremio, or Nuvio sources mid-session without leaving the player',
+const PLAYER_FEATURES = [
+  {
+    title: 'Engines',
+    copy: 'MediaKit and ExoPlayer where the platform allows. Switch engines while the title is open.',
+  },
+  {
+    title: 'Series',
+    copy: 'Skip intro and credits, auto next episode, and resume from where you stopped.',
+  },
+  {
+    title: 'Tracks',
+    copy: 'Subtitles, audio, quality, speed, and aspect from compact menus on the player.',
+  },
+  {
+    title: 'Chrome',
+    copy: 'Picture-in-picture, desktop mini player, and handoff to VLC, mpv, or IINA.',
+  },
+  {
+    title: 'Sources',
+    copy: 'Change provider plugins, torrents, Stremio, or Nuvio without leaving playback.',
+  },
 ]
 
 const IPTV_LINES = [
@@ -72,16 +78,49 @@ const IPTV_LINES = [
   'Channel guide and search inside the live player',
 ]
 
-const SPORTS_LINES = [
-  'Match schedules for the nights that matter',
-  'Native stream playback in the same player as everything else',
-  'Live TV channel matching when a broadcast sits on your portals',
+const SPORT_MOODS = [
+  { label: 'Football', src: '/brand/hubs/sport/football.jpg' },
+  { label: 'Basketball', src: '/brand/hubs/sport/basketball.jpg' },
+  { label: 'Tennis', src: '/brand/hubs/sport/tennis.jpg' },
+  { label: 'Racing', src: '/brand/hubs/sport/racing.jpg' },
 ]
 
-const LAN_LINES = [
-  'Desktop runs as a LAN server on the home network',
-  'Phone and Android TV pair once with a short code',
-  'Torrents on the TV pass through the paired desktop; direct streams still play on the device',
+const SPORT_FEATURES = [
+  {
+    title: 'Schedule',
+    copy: 'Airing and upcoming fixtures with sport filters, search, and list or card views.',
+  },
+  {
+    title: 'Providers',
+    copy: 'Open a match and pick from stream mirrors as they appear for that fixture.',
+  },
+  {
+    title: 'Live TV',
+    copy: 'Match the broadcast to channels on your IPTV portals when the game is on linear TV.',
+  },
+  {
+    title: 'Native play',
+    copy: 'Kickoff opens in Forja’s live player — the same native surface as IPTV.',
+  },
+]
+
+const LAN_FEATURES = [
+  {
+    title: 'Desktop server',
+    copy: 'Forja on the PC listens on your Wi-Fi and keeps the torrent engine warm for the house.',
+  },
+  {
+    title: 'Pair once',
+    copy: 'Phone and Android TV discover the desktop or join with a short code. Same trust for every title after that.',
+  },
+  {
+    title: 'Torrent passthrough',
+    copy: 'Pick a magnet on the TV. The desktop downloads; the TV plays. Leave the player and that download stops.',
+  },
+  {
+    title: 'Direct streams',
+    copy: 'HTTP streams from Stremio and Nuvio still play on the phone or TV when the desktop is offline.',
+  },
 ]
 
 const MORE = [
@@ -99,14 +138,14 @@ const MORE = [
   },
   {
     title: 'Open source',
-    copy: 'The host is open to inspect and extend. Modular by design.',
+    copy: 'Forja is a modular player platform, open to inspect and extend. The community ships hubs, providers, and live modules as packs.',
   },
 ]
 
 const FAQ = [
   {
     q: 'Does Forja include movies or channels?',
-    a: 'No. Forja is a player. You connect your own sources and portals. Forja does not sell or host media files.',
+    a: 'No. Forja is a modular player platform. You connect your own sources and portals. Forja does not sell or host media files.',
   },
   {
     q: 'Which platforms are supported?',
@@ -114,7 +153,7 @@ const FAQ = [
   },
   {
     q: 'Do I need an account?',
-    a: 'No. Forja works offline. An account unlocks up to five profiles, sync, and device link for desktop and TV.',
+    a: 'No. You can use Forja without signing in. An account is a settings store across devices: up to five profiles, sync, and device link for desktop and TV.',
   },
 ]
 
@@ -122,6 +161,7 @@ const MARQUEE = [
   'Movies',
   'Series',
   'Anime',
+  'Providers',
   'Torrents',
   'Stremio',
   'Nuvio',
@@ -151,14 +191,14 @@ export function PlatformPage() {
                   Open-source modular
                   <br />
                   <span className="font-serif-i normal-case text-flame">
-                    streaming player
+                    player platform
                   </span>
                 </h1>
                 <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
-                  Forja is a modular open-source player for movies, series,
-                  anime, live sport, and IPTV. Catalogs, providers, torrents,
-                  Stremio, Nuvio, portals, and LAN all sit in one native app
-                  across desktop, mobile, and TV.
+                  Forja is a modular player platform for movies, series, anime,
+                  live sport, and IPTV. Catalogs, provider plugins, torrents,
+                  Stremio, Nuvio, portals, and LAN sit in one native app across
+                  desktop, mobile, and TV.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link
@@ -231,45 +271,7 @@ export function PlatformPage() {
             </div>
           </div>
 
-          {/* 01 Platforms — sticky label + flowing list */}
-          <section
-            id="platforms"
-            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24"
-          >
-            <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:gap-16">
-              <Reveal className="lg:sticky lg:top-24 lg:self-start">
-                <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
-                  01 / Platforms
-                </p>
-                <h2 className="mt-4 font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  One Forja on every screen
-                </h2>
-              </Reveal>
-              <Reveal delayMs={80}>
-                <p className="text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  Native builds for desk, couch, and TV. Sign in and your
-                  profiles travel with you.
-                </p>
-                <ul className="mt-10 space-y-0">
-                  {PLATFORMS.map((line, i) => (
-                    <li
-                      key={line}
-                      className="grid grid-cols-[3.5rem_1fr] gap-4 border-t border-[rgba(237,230,218,0.12)] py-6 last:border-b sm:grid-cols-[4.5rem_1fr]"
-                    >
-                      <span className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-forja-green">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <span className="text-base leading-relaxed text-[rgba(237,230,218,0.78)] sm:text-lg">
-                        {line}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
-            </div>
-          </section>
-
-          {/* 02 Catalogs — full-bleed image with overlay copy on large */}
+          {/* 01 Catalogs — full-bleed image with overlay copy on large */}
           <section
             id="catalogs"
             className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)]"
@@ -291,7 +293,7 @@ export function PlatformPage() {
               <div className="relative px-[5vw] py-12 sm:py-16 lg:flex lg:min-h-[520px] lg:items-center lg:py-20">
                 <Reveal className="max-w-lg">
                   <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                    02 / Catalogs
+                    01 / Catalogs
                   </p>
                   <h2 className="mt-4 font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
                     A cinematic home for what is on next
@@ -313,69 +315,29 @@ export function PlatformPage() {
             </div>
           </section>
 
-          {/* 03 Webstreaming — huge number + diagonal feel via offset columns */}
+          {/* 02 Sources — provider plugins first, then torrents / Stremio / Nuvio */}
           <section
-            id="webstreaming"
-            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)] bg-[#121110] px-[5vw] py-16 sm:py-24"
-          >
-            <div className="mx-auto max-w-[1100px]">
-              <Reveal>
-                <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
-                      03 / Webstreaming
-                    </p>
-                    <h2 className="mt-4 max-w-[16ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                      Providers and resolvers built into the app
-                    </h2>
-                  </div>
-                  <p className="font-disp text-[clamp(64px,12vw,120px)] leading-none tracking-tight text-forja-green/25">
-                    03
-                  </p>
-                </div>
-                <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  Forja resolves streams through a provider network for movies,
-                  series, anime, and drama. Pick automatic resolve or stay on a
-                  server you trust.
-                </p>
-              </Reveal>
-              <div className="mt-14 grid gap-8 sm:grid-cols-3">
-                {WEBSTREAM_LINES.map((line, i) => (
-                  <Reveal key={line} delayMs={i * 70}>
-                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
-                      {String(i + 1).padStart(2, '0')}
-                    </p>
-                    <p className="mt-3 border-t border-[rgba(237,230,218,0.14)] pt-4 text-base leading-relaxed text-[rgba(237,230,218,0.75)]">
-                      {line}
-                    </p>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* 04 Torrents / Stremio / Nuvio — stacked full-width bands, not cards */}
-          <section
-            id="torrents"
+            id="sources"
             className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-14 sm:py-16">
+            <div className="border-b border-[rgba(237,230,218,0.14)] bg-[#121110] px-[5vw] py-14 sm:py-16">
               <div className="mx-auto max-w-[1100px]">
                 <Reveal>
-                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                    04 / Torrents · Stremio · Nuvio
+                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
+                    02 / Sources
                   </p>
-                  <h2 className="mt-4 max-w-[20ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                    Three ways to find a stream, one player
+                  <h2 className="mt-4 max-w-[22ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    Four ways to find a stream, one player
                   </h2>
                   <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                    Torrents, Stremio addons, and Nuvio scrapers live beside each
-                    other. Switch sources while a title is playing.
+                    Provider plugins come first for everyday webstreaming.
+                    Torrents, Stremio, and Nuvio sit beside them. Switch sources
+                    while a title is playing.
                   </p>
                 </Reveal>
               </div>
             </div>
-            {TORRENT_TRIO.map((item, i) => (
+            {SOURCE_WAYS.map((item, i) => (
               <div
                 key={item.title}
                 className={
@@ -386,7 +348,13 @@ export function PlatformPage() {
               >
                 <Reveal delayMs={i * 40}>
                   <div className="mx-auto grid max-w-[1100px] items-baseline gap-4 sm:grid-cols-[5rem_1fr_1.2fr] sm:gap-10">
-                    <span className="font-disp text-4xl uppercase tracking-tight text-forja-flame sm:text-5xl">
+                    <span
+                      className={
+                        i === 0
+                          ? 'font-disp text-4xl uppercase tracking-tight text-forja-green sm:text-5xl'
+                          : 'font-disp text-4xl uppercase tracking-tight text-forja-flame sm:text-5xl'
+                      }
+                    >
                       {item.n}
                     </span>
                     <h3 className="font-disp text-2xl uppercase tracking-tight text-[#EDE6DA] sm:text-3xl">
@@ -401,30 +369,55 @@ export function PlatformPage() {
             ))}
           </section>
 
-          {/* 05 Player — dense checklist on dark */}
+          {/* 03 Player — image + prose, then horizontal feature rail */}
           <section
             id="player"
-            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)] bg-[#121110] px-[5vw] py-16 sm:py-24"
+            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="mx-auto max-w-[1100px]">
-              <Reveal>
-                <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
-                  05 / Player
-                </p>
-                <h2 className="mt-4 max-w-[18ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  A native player for long sessions
-                </h2>
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  Movies, series, live sport, and IPTV open in the same player
-                  with the tools a real night of watching needs.
-                </p>
-              </Reveal>
-              <div className="mt-12 columns-1 gap-x-12 sm:columns-2">
-                {PLAYER_LINES.map((line, i) => (
-                  <Reveal key={line} delayMs={(i % 3) * 40}>
-                    <p className="mb-6 break-inside-avoid border-l-2 border-forja-green/40 pl-4 text-base leading-relaxed text-[rgba(237,230,218,0.75)]">
-                      {line}
-                    </p>
+            <div className="border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-20">
+              <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
+                <Reveal variant="left">
+                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
+                    03 / Player
+                  </p>
+                  <h2 className="mt-4 font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    One native player from first frame to last
+                  </h2>
+                  <p className="mt-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
+                    Movies, series, live sport, and IPTV share the same player.
+                    Engines, episodes, tracks, and sources stay with you for the
+                    whole session.
+                  </p>
+                </Reveal>
+                <Reveal variant="right">
+                  <img
+                    src="/brand/forja-iptv-player.png"
+                    alt="Forja native player with playback controls"
+                    width={1024}
+                    height={640}
+                    className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </Reveal>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border-b border-[rgba(237,230,218,0.1)] bg-[#0f0e0d] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="mx-auto flex min-w-max max-w-[1400px] divide-x divide-[rgba(237,230,218,0.12)]">
+                {PLAYER_FEATURES.map((item, i) => (
+                  <Reveal key={item.title} delayMs={i * 50}>
+                    <article className="w-[min(78vw,280px)] shrink-0 px-[5vw] py-12 sm:w-[260px] sm:px-10 sm:py-14 lg:w-[280px]">
+                      <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
+                        {String(i + 1).padStart(2, '0')}
+                      </p>
+                      <h3 className="font-disp mt-4 text-2xl uppercase tracking-tight text-[#EDE6DA]">
+                        {item.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-base">
+                        {item.copy}
+                      </p>
+                    </article>
                   </Reveal>
                 ))}
               </div>
@@ -439,7 +432,7 @@ export function PlatformPage() {
             <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-2 lg:gap-14">
               <Reveal variant="left">
                 <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                  06 / Live TV and IPTV
+                  04 / Live TV and IPTV
                 </p>
                 <h2 className="mt-4 font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
                   Portals, channels, and a guide in one place
@@ -479,83 +472,120 @@ export function PlatformPage() {
             </div>
           </section>
 
-          {/* 07 Sports — centered statement */}
+          {/* 05 Live Sports — hero mosaic + feature rail */}
           <section
             id="sports"
-            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-20 sm:py-28"
+            className="scroll-mt-32 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="mx-auto max-w-[900px] text-center">
-              <Reveal>
-                <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
-                  07 / Live Sports
-                </p>
-                <h2 className="mt-4 font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  Schedules and native play for match night
-                </h2>
-                <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  Browse the schedule, open a match, and watch in the same native
-                  player as the rest of Forja.
-                </p>
-                <ul className="mx-auto mt-10 max-w-lg space-y-4 text-left text-base leading-relaxed text-[rgba(237,230,218,0.75)]">
-                  {SPORTS_LINES.map((line) => (
-                    <li key={line} className="flex gap-3">
-                      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-forja-green" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0">
+                <img
+                  src="/brand/hubs/sport/football.jpg"
+                  alt=""
+                  aria-hidden
+                  className="h-full w-full object-cover opacity-40"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0c0b0a] via-[#0c0b0a]/90 to-[#0c0b0a]/55" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0b0a] via-transparent to-[#0c0b0a]/40" />
+              </div>
+
+              <div className="relative px-[5vw] py-16 sm:py-24">
+                <div className="mx-auto max-w-[1200px]">
+                  <Reveal>
+                    <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
+                      05 / Live Sports
+                    </p>
+                    <h2 className="mt-4 max-w-[16ch] font-disp text-[clamp(32px,5vw,52px)] uppercase leading-[0.92] tracking-[-0.03em]">
+                      From the fixture list to kickoff
+                    </h2>
+                    <p className="mt-5 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.72)] sm:text-lg">
+                      Live Sports is built for match night. Skim airing and
+                      upcoming fixtures, open a game, and watch in the native
+                      live player with Providers and Live TV on the same match.
+                    </p>
+                  </Reveal>
+
+                  <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                    {SPORT_MOODS.map((mood, i) => (
+                      <Reveal key={mood.label} delayMs={i * 60} variant="scale">
+                        <figure className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-white/10">
+                          <img
+                            src={mood.src}
+                            alt={mood.label}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                          <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[#EDE6DA]">
+                            {mood.label}
+                          </figcaption>
+                        </figure>
+                      </Reveal>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid border-t border-[rgba(237,230,218,0.12)] bg-[#0f0e0d] sm:grid-cols-2 lg:grid-cols-4">
+              {SPORT_FEATURES.map((item, i) => (
+                <Reveal key={item.title} delayMs={i * 50}>
+                  <article className="border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 sm:last:border-r-0 lg:px-10">
+                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
+                      {String(i + 1).padStart(2, '0')}
+                    </p>
+                    <h3 className="font-disp mt-3 text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-base">
+                      {item.copy}
+                    </p>
+                  </article>
+                </Reveal>
+              ))}
             </div>
           </section>
 
-          {/* 08 LAN — asymmetric two-column with oversized word */}
+          {/* 06 LAN — clear product story + feature rail */}
           <section
             id="lan"
-            className="scroll-mt-32 overflow-hidden border-b border-[rgba(237,230,218,0.14)] bg-[#0f0e0d] px-[5vw] py-16 sm:py-24"
+            className="scroll-mt-32 overflow-hidden border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="mx-auto max-w-[1200px]">
-              <Reveal>
-                <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                  08 / LAN and passthrough
-                </p>
-                <div className="mt-4 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                  <h2 className="max-w-[14ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                    Your desktop feeds the room
+            <div className="bg-[#0f0e0d] px-[5vw] py-16 sm:py-20">
+              <div className="mx-auto max-w-[1100px]">
+                <Reveal>
+                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
+                    06 / LAN and passthrough
+                  </p>
+                  <h2 className="mt-4 max-w-[18ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    Magnets on the TV. Torrents on the desktop.
                   </h2>
-                  <p
-                    aria-hidden
-                    className="font-disp text-[clamp(72px,18vw,180px)] leading-[0.8] tracking-tight text-forja-green/15"
-                  >
-                    LAN
+                  <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
+                    Forja pairs Android TV and phones with a desktop on the same
+                    Wi-Fi. Magnets open on the PC; the living-room screen plays
+                    the stream. Pair once, then every torrent night uses that
+                    link.
                   </p>
-                </div>
-              </Reveal>
-              <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.1fr]">
-                <Reveal delayMs={40}>
-                  <p className="text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                    Pair once on the home network. The desktop runs the torrent
-                    work so phones and Android TV can watch without doing the
-                    heavy lifting alone.
-                  </p>
-                </Reveal>
-                <Reveal delayMs={80}>
-                  <ol className="space-y-6">
-                    {LAN_LINES.map((line, i) => (
-                      <li
-                        key={line}
-                        className="flex gap-5 border-t border-[rgba(237,230,218,0.12)] pt-5"
-                      >
-                        <span className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-flame">
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                        <span className="text-base leading-relaxed text-[rgba(237,230,218,0.75)]">
-                          {line}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
                 </Reveal>
               </div>
+            </div>
+
+            <div className="grid border-t border-[rgba(237,230,218,0.12)] sm:grid-cols-2 lg:grid-cols-4">
+              {LAN_FEATURES.map((item, i) => (
+                <Reveal key={item.title} delayMs={i * 50}>
+                  <article className="border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 sm:last:border-r-0 lg:px-10">
+                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-flame">
+                      {String(i + 1).padStart(2, '0')}
+                    </p>
+                    <h3 className="font-disp mt-3 text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-base">
+                      {item.copy}
+                    </p>
+                  </article>
+                </Reveal>
+              ))}
             </div>
           </section>
 
@@ -578,22 +608,22 @@ export function PlatformPage() {
               </Reveal>
               <Reveal delayMs={80} variant="right">
                 <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-flame">
-                  09 / Profiles and sync
+                  07 / Profiles and sync
                 </p>
                 <h2 className="mt-4 font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
                   Up to five profiles across your devices
                 </h2>
                 <p className="mt-5 text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  An account is optional. When you sign in, each profile keeps
-                  its own preferences and syncs across desktop, phone, and TV.
-                  Device link pairs a computer with Android TV through the
-                  portal.
+                  You can use Forja without signing in. An account is a settings
+                  store across devices: each profile keeps its own preferences
+                  and syncs across desktop, phone, and TV. Device link pairs a
+                  computer with Android TV through the portal.
                 </p>
               </Reveal>
             </div>
           </section>
 
-          {/* More — definition list, not cards */}
+          {/* More — definition list + community build CTA */}
           <section className="border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
             <div className="mx-auto max-w-[1100px]">
               <Reveal>
@@ -615,6 +645,41 @@ export function PlatformPage() {
                   </Reveal>
                 ))}
               </dl>
+
+              <Reveal delayMs={80}>
+                <div className="mt-16 grid gap-8 border border-[rgba(237,230,218,0.14)] bg-[#121110] px-8 py-10 sm:px-12 sm:py-12 lg:grid-cols-[1.2fr_auto] lg:items-end lg:gap-12">
+                  <div>
+                    <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
+                      Community
+                    </p>
+                    <h3 className="mt-3 font-disp text-[clamp(24px,3.5vw,36px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                      Build packs for Forja
+                    </h3>
+                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
+                      Authors extend the modular player platform with hubs,
+                      stream providers, live modules, and more. Ship a pack,
+                      share the URL, and the catalog can install it.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      to="/plugins"
+                      hash="build"
+                      data-hover=""
+                      className="btn-magnet inline-flex items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
+                    >
+                      Build
+                    </Link>
+                    <Link
+                      to="/plugins"
+                      data-hover=""
+                      className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:text-xs"
+                    >
+                      Packs
+                    </Link>
+                  </div>
+                </div>
+              </Reveal>
             </div>
           </section>
 
@@ -642,30 +707,51 @@ export function PlatformPage() {
             </div>
           </section>
 
-          <section className="px-[5vw] py-20 text-center sm:py-28">
+          <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-20 sm:py-28">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(28,231,131,0.08),transparent_55%)]"
+            />
             <Reveal>
-              <h2 className="mx-auto max-w-[16ch] font-disp text-[clamp(32px,6vw,56px)] uppercase leading-[0.92] tracking-[-0.04em]">
-                Available for desktop, mobile, and TV
-              </h2>
-              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-                Forja is a modular open-source player. Builds are ready for
-                Windows, macOS, Linux, and Android.
-              </p>
-              <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                <Link
-                  to="/download"
-                  data-hover=""
-                  className="btn-magnet inline-flex items-center justify-center rounded-full px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)]"
-                >
-                  Download
-                </Link>
-                <Link
-                  to="/plugins"
-                  data-hover=""
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] text-[rgba(237,230,218,0.75)] transition hover:border-forja-flame/40 hover:text-forja-flame"
-                >
-                  Packs
-                </Link>
+              <div className="relative mx-auto max-w-[900px] text-center">
+                <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
+                  Modular player platform
+                </p>
+                <h2 className="mx-auto mt-5 max-w-[14ch] font-disp text-[clamp(32px,6vw,56px)] uppercase leading-[0.92] tracking-[-0.04em]">
+                  Shape the night.
+                  <br />
+                  <span className="font-serif-i normal-case text-flame">
+                    Press play.
+                  </span>
+                </h2>
+                <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
+                  Catalogs, provider plugins, torrents, live sport, and IPTV in
+                  one place. Browse community packs, or build the next one.
+                </p>
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                  <Link
+                    to="/download"
+                    data-hover=""
+                    className="btn-magnet inline-flex items-center justify-center rounded-full px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] shadow-[0_0_32px_rgba(28,231,131,0.35)]"
+                  >
+                    Download
+                  </Link>
+                  <Link
+                    to="/plugins"
+                    data-hover=""
+                    className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] text-[rgba(237,230,218,0.75)] transition hover:border-forja-flame/40 hover:text-forja-flame"
+                  >
+                    Packs
+                  </Link>
+                  <Link
+                    to="/plugins"
+                    hash="build"
+                    data-hover=""
+                    className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-10 py-4 font-mono-ui text-sm font-bold uppercase tracking-[0.08em] text-[rgba(237,230,218,0.75)] transition hover:border-forja-green/40 hover:text-forja-green"
+                  >
+                    Build
+                  </Link>
+                </div>
               </div>
             </Reveal>
           </section>

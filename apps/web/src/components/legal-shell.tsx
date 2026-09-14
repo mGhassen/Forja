@@ -65,12 +65,12 @@ export function SiteFooter() {
               Open-source modular
               <br />
               <span className="font-serif-i normal-case text-flame">
-                streaming player
+                player platform
               </span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Modular streaming player with community packs for hubs and sources.
-              Open source. Forja does not host media files.
+              A modular player platform with community packs for hubs and
+              sources. Open source. Forja does not host media files.
             </p>
             <Link
               to="/download"
@@ -181,7 +181,7 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
-              © {year} Forja · Open-source modular player
+              © {year} Forja · Open-source modular player platform
             </p>
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.28)]">
               Desk · Couch · TV

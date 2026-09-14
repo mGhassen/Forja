@@ -411,7 +411,7 @@ function LoginForm() {
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
               {isDesktopLogin
                 ? 'After you sign in here, Forja on your desktop finishes automatically.'
-                : 'Your player settings, synced. Account is optional. Download the open-source player anytime.'}
+                : 'Your settings, synced. Account is optional. Download the modular player platform anytime.'}
             </CardDescription>
           </CardHeader>
 

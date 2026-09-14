@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) |
-| **Current slice** | Thin kit interpreter at `engine/runtime/kit/` (evacuated from foundation). Foundation = paint only. Fat wire remains (A50). |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) |
+| **Current slice** | Host = validate+paint only (`PackLayoutPainter`). Product kit gods deleted. Packs emit paint + opaque loads. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -516,3 +516,27 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | Still open | Detail |
 |------------|--------|
 | A50 | Fat kit wire (~7k) still not sync/FFI-only |
+
+---
+
+## Acceptance (validate + paint)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A63 | Law: host = schema validate + paint only; forbidden field mappers / schedule·feed·panel·tabs product runtimes | ✅ |
+| 2 | R109-A64 | Deleted kit product surface (`pack_layout_host_wire`, list/feed/schedule/chrome hooks); thin `PackLayoutPainter` + opaque `packOpaqueRun` | ✅ |
+| 3 | R109-A65 | Packs declare `nav.page.action` + `hubPaintPoster` / `hubWithLoad`; anime (+ peers) reference migration | ✅ |
+
+---
+
+## Wave M notes (validate + paint law reset)
+
+| Done | Detail |
+|------|--------|
+| A63 | `forja-pack-product-host.mdc` — validate+paint; ❌ KitListPaint / feed/schedule/panel/tabs host product |
+| A64 | Kit folder = painter + paint_tree + opaque run; fat wire/list/feed/schedule deleted (A50 closed by deletion) |
+| A65 | Hub manifests `nav.page.action`; SDK + `_kit.js` paint helpers; rails wrap `hubWithLoad`; anime/asian_drama paint metas |
+
+| Still open | Detail |
+|------------|--------|
+| Pack parity | IPTV / Live Sports list/timeline nodes need full paint-ready migration beyond rail wrap |

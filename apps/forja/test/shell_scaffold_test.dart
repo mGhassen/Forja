@@ -10,8 +10,6 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/frame/shell_scaffold.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shared/engine/runtime/kit/pack_layout_host.dart';
-import 'package:forja/shared/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/shell/chrome/vertical_filters.dart';
@@ -203,206 +201,7 @@ void main() {
     expect(find.byType(ShellBottomNav), findsNothing);
   });
 
-  testWidgets('ShellScaffold shows rail on desktop; top bar only when passed', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.byType(ShellNavRail), findsOneWidget);
-    expect(find.byType(PluginKitTopBar), findsNothing);
-    expect(find.byType(ShellBottomNav), findsNothing);
-    expect(find.text('Films'), findsNothing);
-  });
-
-  testWidgets('ShellScaffold shows home top bar when shellTopBar is set', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.byType(PluginKitTopBar), findsOneWidget);
-    expect(find.text('Films'), findsOneWidget);
-    expect(find.text('Series'), findsOneWidget);
-  });
-
-  testWidgets(
-    'PluginKitTopBar drops Films when tabId changes to hub without chrome',
-    (tester) async {
-      // hubA has vertical filters → VOD chrome. hubB has none. State must not
-      // keep painting Search/Films after a hub switch (Live Sports regression).
-      await pumpScaffold(
-        tester,
-        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-        size: const Size(1200, 800),
-        profile: ShellProfile.desktop,
-      );
-      expect(find.text('Films'), findsOneWidget);
-
-      await pumpScaffold(
-        tester,
-        desktopScaffold(
-          shellTopBar: PluginKitTopBar(
-            key: ValueKey(hubB),
-            tabId: hubB,
-          ),
-        ),
-        size: const Size(1200, 800),
-        profile: ShellProfile.desktop,
-      );
-      await tester.pump();
-
-      expect(find.text('Films'), findsNothing);
-      expect(find.text('Series'), findsNothing);
-      expect(find.text('Search'), findsNothing);
-    },
-  );
-
-  testWidgets('PluginKitTopBar Categories menu sets genre filter', (tester) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    await tester.tap(find.text('Categories'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Action'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedCategoryIdFor(hubA).value, 'action');
-  });
-
-  testWidgets('PluginKitTopBar Films tap toggles pack menu id', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
-
-    await tester.tap(find.text('Films'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, 'films');
-
-    await tester.tap(find.text('Films'));
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
-  });
-
-  testWidgets('PluginKitTopBar shows provider rail when menu visible', (
-    tester,
-  ) async {
-    VerticalFiltersRegistry.menuVisibleFor(hubA).value = true;
-    await pumpScaffold(
-      tester,
-      desktopScaffold(
-        shellTopBar: const PluginKitTopBar(tabId: hubA),
-        selectedIndex: 0,
-      ),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-    await tester.pump();
-
-    expect(find.byType(VerticalFiltersRail), findsOneWidget);
-  });
-
-  testWidgets('PluginKitTopBar shows selected provider logo before Films', (
-    tester,
-  ) async {
-    ShellBus.selectedWatchProviderId.value = 8; // legacy — logo uses registry
-    VerticalFiltersRegistry.selectedIdFor(hubA).value = 'netflix';
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-    await tester.pump();
-
-    expect(find.byType(VerticalFilterTopBarLogo), findsOneWidget);
-  });
-
-  testWidgets('PluginKitTopBar slides away after scrolling past hero height', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    Offset hideOffset() {
-      final transforms = tester
-          .widgetList<Transform>(
-            find.descendant(
-              of: find.byType(PluginKitTopBar),
-              matching: find.byType(Transform),
-            ),
-          )
-          .toList();
-      expect(transforms, isNotEmpty);
-      final t = transforms.first.transform.getTranslation();
-      return Offset(t.x, t.y);
-    }
-
-    ShellBus.hubHeroHeightFor(hubA).value = 400;
-    ShellBus.hubScrollOffsetFor(hubA).value = 0;
-    await tester.pump();
-    expect(hideOffset().dy, 0);
-
-    // hideStart = heroHeight - barHeight; fully hidden well past that.
-    ShellBus.hubScrollOffsetFor(hubA).value = 2000;
-    await tester.pump();
-    expect(hideOffset().dy, lessThan(0));
-  });
-
-  testWidgets('ShellScaffold hides home top bar when shell overlay has page', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    expect(find.text('Films'), findsOneWidget);
-
-    shellOverlayNavigatorKey.currentState!.push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(body: Text('Details')),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.shellOverlayHasPage.value, isTrue);
-
-    shellOverlayNavigatorKey.currentState!.pop();
-    await tester.pumpAndSettle();
-
-    expect(ShellBus.shellOverlayHasPage.value, isFalse);
-  });
-
-  testWidgets(
+                    testWidgets(
     'ShellScaffold dismisses shell overlay when nav destination selected',
     (tester) async {
       await pumpScaffold(
@@ -430,30 +229,7 @@ void main() {
     },
   );
 
-  testWidgets(
-    'ShellScaffold collapses nav rail to left menu on home when narrow',
-    (tester) async {
-      await pumpScaffold(
-        tester,
-        desktopScaffold(shellTopBar: const PluginKitTopBar(tabId: hubA)),
-        size: const Size(800, 800),
-      );
-
-      expect(find.byType(ShellNavRail), findsNothing);
-      expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
-
-      final menuCenter = tester.getCenter(find.byIcon(Icons.menu_rounded));
-      expect(menuCenter.dx, lessThan(120));
-
-      await tester.tap(find.byIcon(Icons.menu_rounded));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ShellNavRail), findsOneWidget);
-      expect(find.byIcon(Icons.live_tv), findsOneWidget);
-    },
-  );
-
-  testWidgets('ShellNavRail uses fixed width without hover expand', (
+    testWidgets('ShellNavRail uses fixed width without hover expand', (
     tester,
   ) async {
     await pumpScaffold(
@@ -788,28 +564,7 @@ void main() {
     expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
-  testWidgets('ShellScaffold keeps rail Offstage when hideGlobalNav is true', (
-    tester,
-  ) async {
-    await pumpScaffold(
-      tester,
-      desktopScaffold(hideGlobalNav: true),
-      size: const Size(1200, 800),
-      profile: ShellProfile.desktop,
-    );
-
-    // Keep-alive: rail Element stays mounted so player exit does not remount.
-    final rail = find.byType(ShellNavRail, skipOffstage: false);
-    expect(rail, findsOneWidget);
-    expect(find.byType(ShellNavRail), findsNothing);
-    final offstage = tester
-        .widgetList<Offstage>(find.byType(Offstage, skipOffstage: false))
-        .firstWhere((o) => o.offstage);
-    expect(offstage.offstage, isTrue);
-    expect(find.byType(PluginKitTopBar), findsNothing);
-  });
-
-  testWidgets(
+    testWidgets(
     'ShellScaffold collapses rail gutter when hideGlobalNav is true',
     (tester) async {
       await pumpScaffold(

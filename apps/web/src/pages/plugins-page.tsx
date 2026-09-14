@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Cloud, Download, Puzzle, Sparkles } from 'lucide-react'
+import { Cloud, Download, Puzzle } from 'lucide-react'
 import { PluginBundlesShowcase } from '@/components/plugin-bundles-showcase'
 import { PluginCatalogBrowser } from '@/components/plugin-catalog-browser'
 import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
@@ -19,38 +19,6 @@ const BUILD_GUIDE_URL =
 const STARTERS_URL =
   'https://github.com/mGhassen/forja-sdk/tree/main/starters'
 const FORJA_SOURCE_URL = 'https://github.com/forjahq/forja'
-
-const MARQUEE = [
-  'Hubs',
-  'Providers',
-  'Live',
-  'Torrent',
-  'IPTV',
-  'Open source',
-  'Fork & ship',
-  'Profile sync',
-] as const
-
-const STEPS = [
-  {
-    n: '01',
-    title: 'Browse packs',
-    copy: 'Find hubs, sources, live feeds, torrent search, and IPTV in the catalog.',
-    accent: 'brand' as const,
-  },
-  {
-    n: '02',
-    title: 'Add to your profile',
-    copy: 'Save a pack on the web, then open Forja on a device to download and install.',
-    accent: 'flame' as const,
-  },
-  {
-    n: '03',
-    title: 'Watch',
-    copy: 'New shelves, sources, and live feeds appear in the app once the pack is installed.',
-    accent: 'brand' as const,
-  },
-]
 
 const BUILD_STEPS = [
   {
@@ -132,9 +100,9 @@ export function PluginsPage() {
                 </h1>
 
                 <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-                  Anime, live sport, IPTV, torrent search, and more come from
-                  community packs. Add a pack to your profile and Forja installs
-                  it the next time you open the app.
+                  Packs extend Forja, the modular player platform. Anime, live
+                  sport, IPTV, torrent search, and more install from the catalog
+                  onto your profile.
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3">
@@ -209,82 +177,23 @@ export function PluginsPage() {
             </div>
           </header>
 
-          <div className="overflow-hidden border-y border-[rgba(237,230,218,0.12)] bg-[#0f0e0d] py-4">
-            <div className="animate-marquee flex w-max gap-10 whitespace-nowrap px-4">
-              {[...MARQUEE, ...MARQUEE].map((word, i) => (
-                <span key={`${word}-${i}`} className="inline-flex items-center gap-3">
-                  <b className="font-serif-i text-[clamp(1.25rem,2.8vw,2rem)] text-[#EDE6DA]">
-                    {word}
-                  </b>
-                  <Sparkles
-                    className={cn(
-                      'size-4',
-                      i % 2 === 0 ? 'text-forja-green' : 'text-forja-flame',
-                    )}
-                    aria-hidden
-                  />
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <section className="px-[5vw] py-14 sm:py-20">
-            <div className="mx-auto max-w-[1400px]">
-              <Reveal>
-                <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  From the catalog to your{' '}
-                  <span className="text-forja-green">screen</span>
-                </h2>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Three quiet steps. Pick a pack, save it to your profile, watch
-                  it show up in Forja.
-                </p>
-              </Reveal>
-              <div className="mt-10 grid gap-4 md:grid-cols-3">
-                {STEPS.map((step, i) => (
-                  <Reveal key={step.n} delayMs={i * 80} variant="scale">
-                    <LiquidGlass className="hover-lift h-full border-white/10 p-6 sm:p-7">
-                      <p
-                        className={cn(
-                          'font-mono-ui text-[10px] font-bold uppercase tracking-[0.2em]',
-                          step.accent === 'flame'
-                            ? 'text-forja-flame'
-                            : 'text-forja-green',
-                        )}
-                      >
-                        Step {step.n}
-                      </p>
-                      <h3 className="mt-3 font-disp text-xl uppercase tracking-tight text-[#EDE6DA]">
-                        {step.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-[rgba(237,230,218,0.58)]">
-                        {step.copy}
-                      </p>
-                    </LiquidGlass>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
-          </section>
-
           <section
             id="bundles"
-            className="scroll-mt-28 border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20"
+            className="scroll-mt-28 border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:py-14"
           >
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
-                <div className="mb-8 max-w-xl">
-                  <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-flame">
-                    Product sets
-                  </p>
-                  <h2 className="mt-2 font-disp text-[clamp(2rem,5vw,3.5rem)] uppercase leading-[0.92] tracking-[-0.03em]">
-                    Start with a
-                    <br />
-                    <span className="text-forja-flame">bundle</span>
-                  </h2>
-                  <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Ready-made pack sets you can add in one step. The full
-                    catalog is below if you want packs one by one.
+                <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+                  <div>
+                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-flame">
+                      Sets
+                    </p>
+                    <h2 className="mt-1 font-disp text-[clamp(1.5rem,3vw,2rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                      Start with a bundle
+                    </h2>
+                  </div>
+                  <p className="max-w-md text-sm leading-relaxed text-[rgba(237,230,218,0.5)]">
+                    Ready-made pack sets in one step. Full catalog below.
                   </p>
                 </div>
               </Reveal>
@@ -342,9 +251,9 @@ export function PluginsPage() {
                     <span className="text-forja-green">community</span>
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                    Forja is open source. Build a hub, a source, or a live module
-                    with the SDK, host your manifest URL, and share it with
-                    people who want to install it.
+                    Forja is a modular player platform. Build a hub, a source, or
+                    a live module with the SDK, host your manifest URL, and share
+                    it with people who want to install it.
                   </p>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <a

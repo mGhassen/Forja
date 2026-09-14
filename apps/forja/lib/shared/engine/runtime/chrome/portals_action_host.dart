@@ -5,27 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shared/engine/runtime/kit/chrome/kit_inventory_chip.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
-import 'package:forja/shared/engine/runtime/kit/top_bar_host_hooks.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 
-/// Generic `kit.topBar` inventory action — pack verb + `listPortals` capability.
+/// Generic portals inventory — pack owns when/how to paint the chip.
 ///
-/// Capability-only. Host runs pack actions + paints foundation [PortalsChip]
-/// via [KitInventoryChip]. No pack-id allowlist.
+/// Host runs pack actions + paints foundation [PortalsChip]. No pack-id allowlist.
 abstract final class PortalsActionHost {
   PortalsActionHost._();
 
-  /// Opaque `kit.list` source ids that hoist the inventory overlay.
-  ///
-  /// Packs declare `hoistSource` / `source` on the topBar action, or surfaces
-  /// call [registerHoistSource] at boot.
+  /// Opaque source ids that hoist the inventory overlay.
   static final Set<String> _hoistSources = {};
 
   /// Register an opaque list source that should hoist the inventory panel.
@@ -43,23 +38,21 @@ abstract final class PortalsActionHost {
 
   static void ensureRegistered() {
     registerHoistSource(LiveSurfaceOpen.listSourceId);
-    KitTopBarHostHooks.packActionBuilders['portals'] = _buildPortalsAction;
-    KitTopBarHostHooks.wrapListBody = _wrapListBody;
-    KitTopBarHostHooks.shouldHoistListBody = _hoistSource;
   }
 
-  static Widget? _buildPortalsAction(
+  /// Paint portals chip when a pack paint node asks the host (opaque action).
+  static Widget buildPortalsChip(
     BuildContext context,
     WidgetRef ref, {
-    required Map<String, dynamic> action,
     required String tabId,
     required String rowId,
     required int itemIndex,
+    Map<String, dynamic>? action,
     VoidCallback? onDownEdge,
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
-    final hoist = (action['hoistSource'] ?? action['source'] ?? '')
+    final hoist = (action?['hoistSource'] ?? action?['source'] ?? '')
         .toString()
         .trim();
     if (hoist.isNotEmpty) registerHoistSource(hoist);
@@ -69,7 +62,7 @@ abstract final class PortalsActionHost {
     final active = inv.asData?.value.activeLabel ?? 'Portals';
 
     final policy = ShellScope.inputPolicyOf(context);
-    return KitInventoryChip(
+    return PortalsChip(
       label: active,
       hasPortal: (inv.asData?.value.portals.isNotEmpty ?? false),
       selected: open,
@@ -105,7 +98,7 @@ abstract final class PortalsActionHost {
     );
   }
 
-  static Widget _wrapListBody(
+  static Widget wrapListBody(
     BuildContext context, {
     required Widget child,
     required String tabId,

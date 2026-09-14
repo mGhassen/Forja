@@ -572,7 +572,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
-          Open-source player
+          Modular player platform
         </p>
       </div>
     </header>

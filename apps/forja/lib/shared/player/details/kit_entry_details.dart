@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
-import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
+import 'package:forja/shared/player/details/kit_list_entry.dart';
+import 'package:forja/shared/player/sources/kit_panel_host.dart';
+import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja_foundation/widgets/details/entry_details.dart';
 
-/// Generic kit entry details — host wires list registry into [EntryDetails].
+/// Generic kit entry details — resolve panel host when source matches.
 class KitEntryDetailsPage extends StatelessWidget {
   const KitEntryDetailsPage({
     super.key,
@@ -20,6 +21,14 @@ class KitEntryDetailsPage extends StatelessWidget {
   final List<Map<String, dynamic>> layoutWidgets;
   final int refreshEpoch;
 
+  static KitPanelHost? _hostFor(String listSourceId) {
+    final id = listSourceId.trim();
+    if (id == KitResolvePanelHost.instance.listSourceId) {
+      return KitResolvePanelHost.instance;
+    }
+    return null;
+  }
+
   static Future<void> open(
     BuildContext context, {
     required KitListEntry entry,
@@ -28,7 +37,7 @@ class KitEntryDetailsPage extends StatelessWidget {
     int refreshEpoch = 0,
     String? shellTabId,
   }) {
-    final host = HostListRegistry.resolvePanel(listSourceId);
+    final host = _hostFor(listSourceId);
     final custom = host?.buildDetailsPage(
       context: context,
       entry: entry,
@@ -55,7 +64,7 @@ class KitEntryDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final host = HostListRegistry.resolvePanel(listSourceId);
+    final host = _hostFor(listSourceId);
     final title = entry.meta.name.trim().isEmpty ? 'Details' : entry.meta.name;
 
     return EntryDetails(

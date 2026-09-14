@@ -968,6 +968,8 @@ class MetaNavSpec {
     this.pluginId,
     this.icon,
     this.accent,
+    this.pageAction,
+    this.pageParams = const {},
   });
 
   final String tabId;
@@ -976,6 +978,10 @@ class MetaNavSpec {
   final String? pluginId;
   final String? icon;
   final String? accent;
+
+  /// Opaque pack action that returns the hub page tree (`nav.page.action`).
+  final String? pageAction;
+  final Map<String, dynamic> pageParams;
 
   static MetaNavSpec? fromPluginNav(
     Map<String, dynamic>? nav, {
@@ -994,6 +1000,17 @@ class MetaNavSpec {
     final label = (nav['label'] ?? fallbackLabel ?? '').toString().trim();
     // tabId optional (RFC-094) — host derives Features/rail id from install URL.
     if (label.isEmpty) return null;
+    final pageRaw = nav['page'];
+    String? pageAction;
+    var pageParams = const <String, dynamic>{};
+    if (pageRaw is Map) {
+      pageAction = (pageRaw['action'] ?? '').toString().trim();
+      if (pageAction.isEmpty) pageAction = null;
+      final pr = pageRaw['params'];
+      if (pr is Map) {
+        pageParams = Map<String, dynamic>.from(pr);
+      }
+    }
     return MetaNavSpec(
       tabId: tabId,
       label: label,
@@ -1001,6 +1018,8 @@ class MetaNavSpec {
       pluginId: pluginId,
       icon: icon,
       accent: nav['accent']?.toString(),
+      pageAction: pageAction,
+      pageParams: pageParams,
     );
   }
 

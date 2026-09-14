@@ -1,0 +1,280 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
+import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shell/routing/shell_tab_refresh.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_body.dart';
+import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
+
+/// Hub tab mount — validate pack page JSON and paint. No product field mappers.
+///
+/// Page action comes from pack [nav.page.action] (opaque). Default empty → error.
+class PackLayoutPainter extends StatefulWidget {
+  const PackLayoutPainter({
+    super.key,
+    required this.pluginId,
+    this.tabId,
+    this.packSourceUrl,
+    this.pageAction,
+    this.pageParams,
+  });
+
+  final String pluginId;
+  final String? tabId;
+  final String? packSourceUrl;
+
+  /// Opaque pack action that returns the page tree (`pages` / `widgets`).
+  final String? pageAction;
+  final Map<String, dynamic>? pageParams;
+
+  @override
+  State<PackLayoutPainter> createState() => _PackLayoutPainterState();
+}
+
+class _PackLayoutPainterState extends State<PackLayoutPainter>
+    with AutomaticKeepAliveClientMixin, ShellTabRefresh<PackLayoutPainter> {
+  List<Map<String, dynamic>> _widgets = const [];
+  String? _error;
+  bool _loading = true;
+
+  String get _pageKey {
+    final t = widget.tabId?.trim();
+    if (t != null && t.isNotEmpty) return t;
+    return 'home';
+  }
+
+  String get _pageAction {
+    final fromWidget = widget.pageAction?.trim() ?? '';
+    if (fromWidget.isNotEmpty) return fromWidget;
+    final fromNav = PluginNavRegistry.pageActionForTab(_pageKey);
+    if (fromNav != null && fromNav.isNotEmpty) return fromNav;
+    return '';
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPage());
+  }
+
+  @override
+  void didUpdateWidget(covariant PackLayoutPainter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pluginId != widget.pluginId ||
+        oldWidget.tabId != widget.tabId ||
+        oldWidget.packSourceUrl != widget.packSourceUrl ||
+        oldWidget.pageAction != widget.pageAction) {
+      unawaited(_loadPage(force: true));
+    }
+  }
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) =>
+      _loadPage(force: force);
+
+  Future<void> _loadPage({bool force = false}) async {
+    final action = _pageAction;
+    if (action.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error =
+            'This hub did not declare nav.page.action — pack must own the page load.';
+        _widgets = const [];
+      });
+      return;
+    }
+
+    final soft = _widgets.isNotEmpty && !force;
+    if (!soft) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
+    await PluginInstallCoordinator.instance.waitUntilIdle();
+    if (!mounted) return;
+
+    final enabled = await PluginNavRegistry.isKitPluginEnabled(
+      widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+    );
+    if (!mounted) return;
+    if (!enabled) {
+      setState(() {
+        _loading = false;
+        _widgets = const [];
+        _error =
+            'This hub plugin is off. Enable it under Settings → Sources → Forja (Hubs).';
+      });
+      return;
+    }
+
+    final params = <String, dynamic>{
+      ...?widget.pageParams,
+      ...?PluginNavRegistry.pageParamsForTab(_pageKey),
+      'page': _pageKey,
+    };
+
+    final envelope = await packOpaqueRun(
+      pluginId: widget.pluginId,
+      action: action,
+      params: params,
+      packSourceUrl: widget.packSourceUrl,
+      forceRefresh: force,
+    );
+    if (!mounted) return;
+
+    if (!envelope.ok) {
+      setState(() {
+        _loading = false;
+        _error = envelope.error?.message.isNotEmpty == true
+            ? envelope.error!.message
+            : 'Pack page load failed.';
+      });
+      return;
+    }
+
+    final invalid = validateLayoutData(envelope.data);
+    if (invalid != null) {
+      setState(() {
+        _loading = false;
+        _error = 'This hub’s layout is invalid.';
+      });
+      return;
+    }
+
+    final data = envelope.data!;
+    final pages = data['pages'];
+    var widgets = <Map<String, dynamic>>[];
+    if (pages is Map && pages.isNotEmpty) {
+      final page = pages[_pageKey] ?? pages.values.first;
+      if (page is Map) {
+        final raw = page['widgets'];
+        if (raw is List) {
+          widgets = [
+            for (final w in raw)
+              if (w is Map) Map<String, dynamic>.from(w),
+          ];
+        }
+      }
+    } else {
+      final raw = data['widgets'];
+      if (raw is List) {
+        widgets = [
+          for (final w in raw)
+            if (w is Map) Map<String, dynamic>.from(w),
+        ];
+      }
+    }
+
+    setState(() {
+      _loading = false;
+      _error = null;
+      _widgets = widgets;
+    });
+    markShellTabFresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    if (_loading && _widgets.isEmpty) {
+      return const ColoredBox(
+        color: ForjaShellColors.surfaceElevated,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (_error != null && _widgets.isEmpty) {
+      return ColoredBox(
+        color: ForjaShellColors.surfaceElevated,
+        child: ShellErrorRetryPanel(
+          message: _error!,
+          onRetry: () => unawaited(onShellTabRefresh(force: true)),
+        ),
+      );
+    }
+
+    return CatalogBody(
+      sections: [
+        for (final w in _widgets)
+          PackPaintTree(
+            spec: w,
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+            tabId: _pageKey,
+          ),
+      ],
+    );
+  }
+}
+
+/// Resolves [tabId] → hub pluginId then mounts [PackLayoutPainter].
+class PackLayoutPainterLoader extends StatefulWidget {
+  const PackLayoutPainterLoader({super.key, required this.tabId});
+
+  final String tabId;
+
+  @override
+  State<PackLayoutPainterLoader> createState() =>
+      _PackLayoutPainterLoaderState();
+}
+
+class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
+  String? _pluginId;
+  String? _packSourceUrl;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_resolve());
+  }
+
+  @override
+  void didUpdateWidget(covariant PackLayoutPainterLoader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tabId != widget.tabId) unawaited(_resolve());
+  }
+
+  Future<void> _resolve() async {
+    setState(() => _loading = true);
+    final pluginId = await PluginNavRegistry.pluginIdForTab(widget.tabId);
+    final url = await PluginNavRegistry.packSourceUrlForTab(widget.tabId);
+    if (!mounted) return;
+    setState(() {
+      _pluginId = pluginId;
+      _packSourceUrl = url;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    final id = _pluginId?.trim() ?? '';
+    if (id.isEmpty) {
+      return const Center(child: Text('No hub pack for this tab.'));
+    }
+    return PackLayoutPainter(
+      pluginId: id,
+      tabId: widget.tabId,
+      packSourceUrl: _packSourceUrl,
+    );
+  }
+}
+
+/// Backward-compatible aliases while call sites migrate.
+typedef PackLayoutHost = PackLayoutPainter;
+typedef PackLayoutHostLoader = PackLayoutPainterLoader;

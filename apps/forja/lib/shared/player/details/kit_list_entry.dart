@@ -1,6 +1,6 @@
 import 'package:forja_foundation/protocol/protocol.dart';
 
-/// One row in a host-backed [`LayoutTypes.list`] grid.
+/// Opaque list/details row — meta + pack row map. No host field rematerialization.
 class KitListEntry {
   const KitListEntry({
     required this.meta,

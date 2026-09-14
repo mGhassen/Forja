@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/filter.dart';
-import 'package:forja/shared/engine/runtime/kit/chrome_menu_item.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/play_filters.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';

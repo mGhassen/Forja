@@ -245,8 +245,8 @@ function SignupForm() {
               Sign up
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Optional account for synced settings. Download the open-source
-              player either way.
+              Optional account for synced settings. Download the modular player
+              platform either way.
             </CardDescription>
           </CardHeader>
 

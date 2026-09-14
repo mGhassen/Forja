@@ -7,7 +7,7 @@ const WORDS = ['stream', 'sync', 'live', 'play'] as const
 const BEATS = [
   {
     n: '01',
-    title: 'One better player',
+    title: 'One modular platform',
     line: 'Movies, series, anime, live sport, and IPTV use the same controls in one app.',
     accent: 'brand' as const,
   },
@@ -43,7 +43,7 @@ type AuthStoryPanelProps = {
 
 export function AuthStoryPanel({
   eyebrow = 'Forja',
-  lead = 'The modular streaming player. Community packs for what you watch.',
+  lead = 'The modular player platform. Community packs for what you watch.',
   emphasis = 'Open source. Sync across every screen.',
 }: AuthStoryPanelProps) {
   const [wordIndex, setWordIndex] = useState(0)
