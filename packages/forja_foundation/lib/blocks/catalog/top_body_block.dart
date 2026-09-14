@@ -28,6 +28,7 @@ class TopBodyBlock extends StatelessWidget {
     this.selectedKindId,
     this.items = const [],
     this.grid,
+    this.kindsBar,
     this.cardKind = 'event',
     this.backgroundColor,
     this.title,
@@ -41,6 +42,7 @@ class TopBodyBlock extends StatelessWidget {
   factory TopBodyBlock.fromProps(
     Map<String, dynamic> props, {
     Widget? grid,
+    Widget? kindsBar,
     Map<String, String> actionSelections = const {},
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onKindSelect,
@@ -54,6 +56,7 @@ class TopBodyBlock extends StatelessWidget {
           propsString(props, 'defaultKindId'),
       items: CatalogCardsGrid.itemsFromProps(props),
       grid: grid,
+      kindsBar: kindsBar,
       cardKind: propsStringOr(props, 'cardKind', 'event'),
       backgroundColor: propsColor(props, 'backgroundColor'),
       title: propsString(props, 'title'),
@@ -71,6 +74,9 @@ class TopBodyBlock extends StatelessWidget {
   final String? selectedKindId;
   final List<Map<String, dynamic>> items;
   final Widget? grid;
+
+  /// Host mood-circle strip (e.g. Live Sports `kindIcons`). Wins over [kindItems].
+  final Widget? kindsBar;
   final String cardKind;
   final Color? backgroundColor;
   final String? title;
@@ -89,12 +95,13 @@ class TopBodyBlock extends StatelessWidget {
       onSelect: onActionSelect,
       title: title,
     );
-    final kinds = CatalogChipBar(
-      items: kindItems,
-      selectedId: selectedKindId ??
-          (kindItems.isEmpty ? null : kindItems.first.id),
-      onSelect: onKindSelect,
-    );
+    final kinds = kindsBar ??
+        CatalogChipBar(
+          items: kindItems,
+          selectedId: selectedKindId ??
+              (kindItems.isEmpty ? null : kindItems.first.id),
+          onSelect: onKindSelect,
+        );
     final body = grid ??
         CatalogCardsGrid(
           items: items,

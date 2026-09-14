@@ -31,6 +31,25 @@ void main() {
       );
     });
 
+    test('catalog VOD greys AVPlayer for DASH', () {
+      expect(
+        builtInPlayerEngineUnsuitableReason(
+          BuiltInPlayerEngine.avPlayer,
+          surface: BuiltInPlayerMenuSurface.catalogVod,
+          streamUrl: 'https://cdn.example/dash/x/index_web.mpd',
+        ),
+        'DASH needs MediaKit',
+      );
+      expect(
+        builtInPlayerEngineUnsuitableReason(
+          BuiltInPlayerEngine.vlc,
+          surface: BuiltInPlayerMenuSurface.catalogVod,
+          streamUrl: 'https://cdn.example/dash/x/index_web.mpd',
+        ),
+        isNull,
+      );
+    });
+
     test('catalog VOD greys AVPlayer / VLC for torrent / dual audio', () {
       expect(
         builtInPlayerEngineUnsuitableReason(

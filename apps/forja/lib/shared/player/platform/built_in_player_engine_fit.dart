@@ -26,6 +26,7 @@ String? builtInPlayerEngineUnsuitableReason(
   bool separateAudioUrl = false,
 }) {
   final hls = _looksLikeHls(streamUrl);
+  final dash = _looksLikeDash(streamUrl);
 
   switch (engine) {
     case BuiltInPlayerEngine.mediaKit:
@@ -38,6 +39,20 @@ String? builtInPlayerEngineUnsuitableReason(
       return null;
 
     case BuiltInPlayerEngine.avPlayer:
+      if (torrentLocalhost) return 'Torrent streams need MediaKit';
+      if (separateAudioUrl) return 'Separate audio needs MediaKit';
+      if (needsWidevine) return 'DRM needs ExoPlayer';
+      // AVFoundation plays HLS / progressive — not MPEG-DASH.
+      if (dash) return 'DASH needs MediaKit';
+      switch (surface) {
+        case BuiltInPlayerMenuSurface.catalogVod:
+          return null;
+        case BuiltInPlayerMenuSurface.iptvLive:
+        case BuiltInPlayerMenuSurface.iptvVod:
+          if (!hls) return 'MPEG-TS needs MediaKit';
+          return null;
+      }
+
     case BuiltInPlayerEngine.vlc:
       if (torrentLocalhost) return 'Torrent streams need MediaKit';
       if (separateAudioUrl) return 'Separate audio needs MediaKit';
@@ -57,6 +72,12 @@ bool _looksLikeHls(String url) {
   final lower = url.trim().toLowerCase();
   if (lower.isEmpty) return false;
   return lower.contains('.m3u8');
+}
+
+bool _looksLikeDash(String url) {
+  final lower = url.trim().toLowerCase();
+  if (lower.isEmpty) return false;
+  return lower.contains('.mpd') || lower.contains('/dash/');
 }
 
 /// Which built-in row to mark selected in the Player menu.

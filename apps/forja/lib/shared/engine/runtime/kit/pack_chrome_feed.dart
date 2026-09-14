@@ -45,6 +45,8 @@ Map<String, dynamic> packChromeFeedParams(
     if (kind != null && kind.isNotEmpty && kind != 'all') {
       params['categoryId'] = kind;
       params['sport'] = kind;
+      // Live Sports pack reads sportFilter (not sport).
+      params['sportFilter'] = kind;
     }
   }
 

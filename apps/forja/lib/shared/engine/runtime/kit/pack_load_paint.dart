@@ -4,6 +4,8 @@ import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+
 
 /// Runs an opaque pack [action], merges envelope fields into [fallbackSpec],
 /// then builds via [builder] (caller paints — no paint_tree import).
@@ -156,36 +158,56 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (barId.isEmpty) return;
     final raw = merged['items'];
     if (raw is! List) return;
-    final kinds = <String>{};
+    final kinds = <String>[];
+    final labels = <String, String>{};
     for (final e in raw) {
       if (e is! Map) continue;
       final item = Map<String, dynamic>.from(e);
-      final kind = (item['kind'] ??
-              (item['meta'] is Map
-                  ? (item['meta'] as Map)['kind'] ??
-                      (item['meta'] as Map)['type']
+      final kind = _dynamicKindOf(item);
+      if (kind.isEmpty || kind == 'all' || kind == 'live_match') continue;
+      if (!kinds.contains(kind)) kinds.add(kind);
+      final cn = (item['categoryName'] ??
+              item['category'] ??
+              (item['paint'] is Map && (item['paint'] as Map)['props'] is Map
+                  ? ((item['paint'] as Map)['props'] as Map)['categoryLabel']
                   : null) ??
               '')
           .toString()
           .trim();
-      if (kind.isEmpty || kind == 'all') continue;
-      kinds.add(kind);
+      if (cn.isNotEmpty) labels.putIfAbsent(kind, () => cn);
     }
     if (kinds.isEmpty) return;
-    final sorted = kinds.toList()..sort();
     final items = <Map<String, dynamic>>[
       {'id': 'all', 'label': 'All', 'icon': 'grid'},
-      for (final id in sorted)
+      for (final id in kinds)
         {
           'id': id,
-          'label': id.isEmpty
-              ? id
-              : '${id[0].toUpperCase()}${id.length > 1 ? id.substring(1) : ''}',
+          'label': catalogKitCategoryLabel(id, label: labels[id]),
         },
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
       chrome.onDynamicBarItems(barId, items);
     });
+  }
+
+  String _dynamicKindOf(Map<String, dynamic> item) {
+    final props = item['paint'] is Map && (item['paint'] as Map)['props'] is Map
+        ? Map<String, dynamic>.from((item['paint'] as Map)['props'] as Map)
+        : const <String, dynamic>{};
+    for (final key in [
+      item['kind'],
+      item['category'],
+      item['sport'],
+      props['kind'],
+      props['categoryLabel'],
+      props['category'],
+      if (item['meta'] is Map) (item['meta'] as Map)['kind'],
+      if (item['meta'] is Map) (item['meta'] as Map)['type'],
+    ]) {
+      final v = (key ?? '').toString().trim();
+      if (v.isNotEmpty) return v;
+    }
+    return '';
   }
 }

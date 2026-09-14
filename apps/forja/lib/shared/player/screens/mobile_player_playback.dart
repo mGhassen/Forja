@@ -921,7 +921,15 @@ mixin _MobilePlayerPlayback
   }
 
   Future<void> _retryCurrentPlayback() async {
-    final idx = _s._currentFallbackSourceIndex;
+    // After the last source fails the index advances past the end — clamp so
+    // Retry re-opens that row instead of trying nothing.
+    final len = _s._currentSources?.length ?? 0;
+    var idx = _s._currentFallbackSourceIndex;
+    if (len <= 0) {
+      idx = 0;
+    } else if (idx < 0 || idx >= len) {
+      idx = (idx < 0 ? 0 : idx - 1).clamp(0, len - 1);
+    }
     _s._failedSourceIndices.remove(idx);
     await _invalidatePlayerStreamExtractCacheForCurrent();
     await _initPlayback(sourceStartIndex: idx);

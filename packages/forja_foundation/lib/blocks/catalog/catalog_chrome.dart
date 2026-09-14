@@ -73,6 +73,23 @@ class CatalogChipBar extends StatelessWidget {
   }
 }
 
+/// Pack action `icon` token → Material icon (refresh / search / view / …).
+IconData? catalogChromeActionIcon(Map<String, dynamic> action) {
+  final name = (action['icon'] ?? '').toString().trim().toLowerCase();
+  return switch (name) {
+    'refresh' => Icons.refresh_rounded,
+    'search' => Icons.search_rounded,
+    'filter' || 'catalog' => Icons.filter_list_rounded,
+    'schedule' || 'time' || 'horizon' => Icons.schedule_rounded,
+    'view' || 'list' => Icons.view_list_rounded,
+    'cards' || 'grid' => Icons.grid_view_rounded,
+    'live_tv' || 'tv' => Icons.live_tv_rounded,
+    'portals' || 'inbox' => Icons.inbox_outlined,
+    'dns' => Icons.dns_outlined,
+    _ => null,
+  };
+}
+
 /// Top action chrome — leading + trailing chip groups from pack `actions[]`.
 class CatalogTopChrome extends StatelessWidget {
   const CatalogTopChrome({
@@ -120,10 +137,12 @@ class CatalogTopChrome extends StatelessWidget {
       final label = (action['label'] ?? actionId).toString();
       final isTrailing = action['trailing'] == true;
       final nested = propsIdLabelList(action, 'items');
+      final icon = catalogChromeActionIcon(action);
       late final Widget chip;
       if (nested.isEmpty) {
         chip = ForjaShellChip(
           label: label,
+          icon: icon,
           selected: false,
           onTap: onSelect == null
               ? null
@@ -141,6 +160,7 @@ class CatalogTopChrome extends StatelessWidget {
         }
         chip = ForjaShellChip(
           label: chipLabel,
+          icon: icon,
           selected: true,
           onTap: onSelect == null
               ? null

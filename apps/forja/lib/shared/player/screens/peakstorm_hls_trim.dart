@@ -11,8 +11,8 @@ import 'package:path_provider/path_provider.dart';
 
 /// Trim a peakstorm fMP4 HLS playlist to start near [target] without mpv `start`.
 ///
-/// Returns a `file://` playlist (or loopback `http://` for dmcdn) mpv can open —
-/// segment URIs stay absolute CDN URLs.
+/// Returns a loopback `http://` playlist (file:// only if bind fails) mpv can
+/// open — segment URIs stay absolute CDN URLs.
 Future<String?> buildPeakstormTrimmedPlaylistFile({
   required String catalogUrl,
   required Duration target,
@@ -42,18 +42,17 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     );
     if (trimmed == null) return null;
 
-    // dmcdn: file:// demux fails ("Failed to recognize file format"); serve
-    // the same body over loopback so mpv treats it as remote HLS + headers.
-    if (isDailymotionDmcdnHlsUrl(catalogUrl)) {
-      final loop = await _serveTrimmedPlaylistLoopback(trimmed);
-      if (loop != null) {
-        logPeakstormResume(
-          'trim playlist',
-          target: target,
-          detail: 'seg=${_segmentIndexFromTrimmed(trimmed)} loopback=$loop',
-        );
-        return loop;
-      }
+    // file:// demux fails ("Failed to recognize file format") on fMP4 HLS
+    // (peakstorm / Videasy / dmcdn). Serve over loopback so mpv treats it as
+    // remote HLS and keeps CDN headers on segment fetches.
+    final loop = await _serveTrimmedPlaylistLoopback(trimmed);
+    if (loop != null) {
+      logPeakstormResume(
+        'trim playlist',
+        target: target,
+        detail: 'seg=${_segmentIndexFromTrimmed(trimmed)} loopback=$loop',
+      );
+      return loop;
     }
 
     final dir = await getTemporaryDirectory();

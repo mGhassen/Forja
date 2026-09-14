@@ -10,6 +10,7 @@ import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_view.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
@@ -99,6 +100,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   bool _resumeApplied = false;
   bool _playbackStartedNotified = false;
   bool _escapeArmed = false;
+  bool _failoverToMediaKitUsed = false;
 
   bool get _av => widget.builtInEngine == BuiltInPlayerEngine.avPlayer;
   bool get _vlc => widget.builtInEngine == BuiltInPlayerEngine.vlc;
@@ -136,6 +138,13 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       _resumeApplied = false;
     });
     try {
+      final prepared = await _prepareOpenTarget();
+      _url = prepared.url;
+      _headers = prepared.headers;
+      debugPrint(
+        '[DesktopNative] open ${_av ? 'AVPlayer' : 'VLC'} '
+        'url=${_shortUrl(_url)} headers=${_headers?.length ?? 0}',
+      );
       if (_av) {
         await AvPlayerBridge.open(
           viewId: _viewId,
@@ -155,10 +164,76 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       }
     } catch (e) {
       debugPrint('[DesktopNative] open failed: $e');
-      if (mounted) {
-        ForjaToast.error('Could not open stream');
-      }
+      await _failoverToMediaKit('open failed: $e');
     }
+  }
+
+  /// Same header / proxy prep as MediaKit [openPlayerStream] (mwVault strip, etc.).
+  Future<({String url, Map<String, String>? headers})> _prepareOpenTarget()
+      async {
+    var openUrl = normalizePlaybackStreamUrl(widget.mediaPath);
+    final rawHeaders = widget.headers ?? const <String, String>{};
+    final proxied1shows = await proxy1showsHlsIfNeeded(
+      streamUrl: openUrl,
+      headers: rawHeaders,
+      providerId: widget.activeProvider,
+    );
+    openUrl = proxied1shows.url;
+    final proxiedExt = await proxyExtensionlessHlsIfNeeded(
+      streamUrl: openUrl,
+      headers: proxied1shows.headers.isEmpty
+          ? rawHeaders
+          : proxied1shows.headers,
+      providerId: widget.activeProvider,
+    );
+    openUrl = proxiedExt.url;
+    final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
+    final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
+    final hdrs =
+        (isLocalLoopbackPlayUrl(openUrl) &&
+            (is1showsCdnStreamUrl(catalogForHeaders) ||
+                shouldProxyExtensionlessHls(catalogForHeaders)))
+        ? const <String, String>{}
+        : resolvePlaybackHttpHeaders(
+            widget.headers,
+            streamUrl: catalogForHeaders,
+            providerId: widget.activeProvider,
+          );
+    final isRemoteHttp =
+        (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
+        !isLocalTorrentStreamUrl(openUrl) &&
+        !isLocalLoopbackPlayUrl(openUrl);
+    final attachHeaders =
+        !mwVaultProxy && hdrs.isNotEmpty && isRemoteHttp;
+    return (
+      url: openUrl,
+      headers: attachHeaders ? hdrs : null,
+    );
+  }
+
+  String _shortUrl(String url) {
+    if (url.length <= 96) return url;
+    return '${url.substring(0, 96)}…';
+  }
+
+  Future<void> _failoverToMediaKit(String reason) async {
+    if (_failoverToMediaKitUsed || _disposed) return;
+    final handler = widget.onSwitchPlayer;
+    if (handler == null) {
+      if (mounted) ForjaToast.error('Could not open stream');
+      return;
+    }
+    _failoverToMediaKitUsed = true;
+    debugPrint('[DesktopNative] failover → MediaKit ($reason)');
+    if (mounted) ForjaToast.info('Switching to MediaKit…');
+    await handler(
+      _position,
+      builtInEngine: BuiltInPlayerEngine.mediaKit,
+      streamUrl: _url.isNotEmpty ? _url : widget.mediaPath,
+      headers: _headers ?? widget.headers,
+      activeProvider: widget.activeProvider,
+      sources: widget.sources,
+    );
   }
 
   void _onEvent(Map<dynamic, dynamic> event) {
@@ -212,7 +287,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       case 'error':
         final msg = event['value']?.toString() ?? 'playback error';
         debugPrint('[DesktopNative] error: $msg');
-        if (mounted) ForjaToast.error(msg);
+        unawaited(_failoverToMediaKit(msg));
         break;
     }
   }

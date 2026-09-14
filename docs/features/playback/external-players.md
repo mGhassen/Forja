@@ -18,7 +18,7 @@ While already handed off: **Change player** on the handoff screen → **Choose p
 
 - Switch the current stream to an external app (one-time per playback session)
 - Re-launch or change external app from the handoff screen
-- Return to the built-in player with **Watch in Forja instead**
+- Return to the built-in player with **Watch in Forja instead** (playback resumes near where you left off)
 
 ## Tips
 

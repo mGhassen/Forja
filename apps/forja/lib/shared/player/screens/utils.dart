@@ -676,10 +676,12 @@ Future<String> openPlayerStream(
   }
   if (mpvStart != null) await _mpvStartAt(player, mpvStart);
   // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
-  // file:// trimmed HLS still fetches CDN segments — keep Referer/UA on Media.
+  // Trimmed HLS (file:// or loopback) still fetches CDN segments — keep Referer/UA.
   final isFile = playUrl.startsWith('file://');
-  final attachHeaders =
-      !mwVaultProxy && hdrs.isNotEmpty && (isRemoteHttp || isFile);
+  final isTrimLoopback = isLocalLoopbackPlayUrl(playUrl);
+  final attachHeaders = !mwVaultProxy &&
+      hdrs.isNotEmpty &&
+      (isRemoteHttp || isFile || isTrimLoopback);
   await player.open(
     Media(
       playUrl,
@@ -704,11 +706,15 @@ Future<String> openPlayerStream(
       state: player.state,
       target: mpvStart,
     );
-  } else if (resumeAt != null && playUrl.startsWith('file://')) {
+  } else if (resumeAt != null && lastPeakstormOpenUsedTrim) {
     logPeakstormResume(
       'openPlayerStream trimmed open',
       state: player.state,
       target: resumeAt,
+      detail: playUrl.startsWith('http://127.0.0.1') ||
+              playUrl.startsWith('http://localhost')
+          ? 'loopback'
+          : null,
     );
   }
   return openUrl;
