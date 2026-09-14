@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja_foundation/layout/list/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';

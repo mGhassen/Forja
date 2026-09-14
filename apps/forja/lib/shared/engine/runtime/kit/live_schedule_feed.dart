@@ -8,11 +8,11 @@ import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
 import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
-import 'package:forja_foundation/layout/list/list_event_query.dart';
-import 'package:forja_foundation/layout/list/list_source.dart';
-import 'package:forja/shared/engine/runtime/layout/plugin_feed_source.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_event_query.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
+import 'package:forja/shared/engine/runtime/kit/plugin_feed_source.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
-import 'package:forja_foundation/layout/top_bar_host_hooks.dart';
+import 'package:forja/shared/engine/runtime/kit/top_bar_host_hooks.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
 /// Top-bar scrape chip for [LiveSurfaceOpen.listSourceId] schedule loads.

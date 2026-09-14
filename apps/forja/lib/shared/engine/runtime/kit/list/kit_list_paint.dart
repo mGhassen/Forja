@@ -1,4 +1,4 @@
-import 'package:forja_foundation/layout/list/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
 
 /// Pack-emitted kit.list paint fields for EventCard / dense tiles.
 ///

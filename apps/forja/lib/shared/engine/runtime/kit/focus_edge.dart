@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart';
 
 VoidCallback? kitFocusEdge(
   String tabId,

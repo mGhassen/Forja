@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Opaque key for kit chrome prefs — prefer hub [pluginId], else `tab:<tabId>`.

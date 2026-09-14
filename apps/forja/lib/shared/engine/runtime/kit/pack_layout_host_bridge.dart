@@ -47,11 +47,11 @@ import 'package:forja/shared/theme/app_theme.dart' as theme;
 import 'package:forja/shell/bus/shell_bus.dart' as bus;
 import 'package:forja/shell/chrome/kit_chrome_top_bar.dart' as kchrome;
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart' as pstub;
-import 'package:forja_foundation/layout/chrome_menu_item.dart';
-import 'package:forja_foundation/layout/list/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/chrome_menu_item.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
 import 'package:forja/shared/shell/desktop/desktop_selectable_title.dart'
     as dtitle;
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart'
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart'
     hide SettingsService, ShellBus, ShellTvFocus, TvKitRow, WatchHistoryService;
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart' as rust;

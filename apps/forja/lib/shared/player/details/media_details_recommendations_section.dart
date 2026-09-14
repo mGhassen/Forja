@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/shell/core/forja_shell_layout.dart';
 import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart' show PackLayoutMovie;
-import 'package:forja_foundation/layout/pack_layout_host_wire.dart' show MoviePosterCard;
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart' show PackLayoutMovie;
+import 'package:forja/shared/engine/runtime/kit/pack_layout_host_wire.dart' show MoviePosterCard;
 import 'package:forja_foundation/widgets/details/recommendations_section.dart';
 import 'package:rust/rust.dart';
 

@@ -25,7 +25,7 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
-import 'package:forja/shared/engine/runtime/layout/pack_layout_host_bridge.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_host_bridge.dart';
 import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';

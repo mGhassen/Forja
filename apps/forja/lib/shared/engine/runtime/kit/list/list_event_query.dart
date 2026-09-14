@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/layout/list/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
 
 /// Session-only list search query — per hub chrome key.
 final kitListEventQueryProvider =

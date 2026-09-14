@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/layout/list/list_source.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
 
 /// Side panel for a `kit.list` source.
 ///

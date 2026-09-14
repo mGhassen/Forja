@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja_foundation/layout/chrome_menu_item.dart';
+import 'package:forja/shared/engine/runtime/kit/chrome_menu_item.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 export 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart' show ShellPaintEnsureVisible;
 

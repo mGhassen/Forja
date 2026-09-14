@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/layout/list/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
 
-export 'package:forja_foundation/layout/list/kit_list_entry.dart';
+export 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
 
 /// Page of entries returned by a [KitListSource].
 abstract class KitListPage {

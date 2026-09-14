@@ -4,25 +4,25 @@
 /// colocated with PackLayoutHost (not a product folder).
 library;
 
-import 'package:forja_foundation/layout/list/kit_list_entry.dart';
-import 'package:forja_foundation/layout/top_menu_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/top_menu_registry.dart';
 
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart';
-import 'package:forja_foundation/layout/feed_chrome.dart';
-import 'package:forja_foundation/layout/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart';
+import 'package:forja/shared/engine/runtime/kit/feed_chrome.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja_foundation/layout/list/host_list_registry.dart';
-import 'package:forja_foundation/layout/list/kit_list_paint.dart';
-import 'package:forja_foundation/layout/list/list_event_query.dart';
-import 'package:forja_foundation/layout/list/list_open_mode.dart';
-import 'package:forja_foundation/layout/list/list_source.dart';
-import 'package:forja_foundation/layout/list/panel_host.dart';
+import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/kit_list_paint.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_event_query.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
+import 'package:forja/shared/engine/runtime/kit/list/panel_host.dart';
 import 'package:forja_foundation/kit/row_prefetch.dart';
-import 'package:forja_foundation/layout/top_bar_host_hooks.dart';
+import 'package:forja/shared/engine/runtime/kit/top_bar_host_hooks.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';

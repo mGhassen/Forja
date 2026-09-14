@@ -18,7 +18,7 @@ Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/
 | Layer | Path | Owns | Forbidden |
 |-------|------|------|-----------|
 | **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent}` | Product tabs, layout JSON, feed, prefs, chrome, open shaping, enrich, portals product | Native unlock internals |
-| **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin kit interpreter** (layout JSON → foundation widgets) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory |
+| **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin kit interpreter** at `shared/engine/runtime/kit/` (layout JSON → foundation widgets) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`** |
 | **Foundation** | `packages/forja_foundation` | Tokens, theme, primitives, components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
 
 ```
@@ -81,12 +81,13 @@ Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich) lives **onl
 | Assert shipped packs in host tests | [host tests](./forja-host-tests-no-pack-contracts.mdc) |
 
 ```
-❌ packages/forja_foundation/lib/layout/pack_layout_host.dart
+❌ packages/forja_foundation/lib/layout/… (DS is not an app)
+❌ apps/forja/lib/shared/host/layout/… (parking — deleted)
 ❌ PluginRegistry.officialHubNavIdForSlot = { home, anime, … }
 ❌ switch (slot) { case 'live_sports': … }
 ❌ KitDetailsScreen → TmdbApi().getRichDetails
 ❌ ctx.host.portals.searchChannels
-✅ pack layout JSON → host thin interpreter → foundation widgets
+✅ pack layout JSON → apps/forja/…/engine/runtime/kit/ → foundation widgets
 ✅ hostNavId: authorTabId \|\| forjaHqSlot(url) \|\| p_<hash>
 ✅ live_sports → plugin.run(iptv hub, searchChannels)
 ```
@@ -96,7 +97,7 @@ Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich) lives **onl
 - App frame: `shell/nav`, `shell/frame`, window, TV focus, account, settings shell
 - Install packs, `runPlugin(pluginId, action, params)`
 - Generic cache / store / http / vault / unlock / playback open
-- Thin kit interpreter: opaque layout/feed → foundation composers (zero pack-id branches)
+- Thin kit interpreter under `shared/engine/runtime/kit/` — opaque layout/feed → foundation composers (zero pack-id branches)
 - Opaque meta fields / cover URL normalize — no upstream match
 - Pack **kind** buckets from URL tree shape (install UI grouping only)
 - Boot hooks registering **opaque** verbs/sources from pack-declared ids

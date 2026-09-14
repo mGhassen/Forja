@@ -1,1 +1,1 @@
-export 'package:forja_foundation/layout/top_menu_registry.dart';
+export 'package:forja/shared/engine/runtime/kit/top_menu_registry.dart';

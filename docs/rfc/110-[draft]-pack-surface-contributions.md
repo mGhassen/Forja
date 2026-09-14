@@ -367,7 +367,7 @@ if empty → host/foundation default for that slot
 | Layer | Owns | Forbidden |
 |-------|------|-----------|
 | **Host** | ContributionRegistry, prefs overrides, thin mounts, pack install | Pack-id product branches, product screens |
-| **Foundation** | Details/player widgets + layout runner for contribution payloads | Knowing which community pack won |
+| **Foundation** | Details/player widgets (paint only) for contribution payloads | Knowing which community pack won; kit interpreter / PackLayoutHost |
 | **Pack** | `contributes` payloads (JSON layouts, section lists, enrich JS) | Dart UI injection, open identity theft |
 
 Sniff test (RFC-109): if contribution pack is uninstalled, host Dart still makes sense — yes (defaults). If source hub is uninstalled, contribution chrome has nothing to bind to — open gone, chrome idle.

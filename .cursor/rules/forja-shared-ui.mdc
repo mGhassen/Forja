@@ -17,7 +17,7 @@ Architecture: [pack-product host](./forja-pack-product-host.mdc). DS widgets: pr
 ```
 packages/forja_foundation/lib/{tokens,theme,primitives,components,widgets,blocks,protocol,kit}/
 apps/forja/lib/shell/
-apps/forja/lib/shared/engine/runtime/   # engines + thin kit interpreter
+apps/forja/lib/shared/engine/runtime/kit/  # thin kit interpreter (layout JSON → DS)
 apps/forja/lib/shared/player/details/
 apps/forja/lib/shared/player/sources/
 apps/forja/lib/shared/playback/

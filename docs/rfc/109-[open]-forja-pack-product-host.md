@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) |
-| **Current slice** | Foundation layout is pack-agnostic (`grid`/`list`/`cards`/`timeline`). IPTV hub owns Timeline view + `programmes[]` + portals `hoistSource`. Fat bridge remains (A50 Wave K). |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) |
+| **Current slice** | Thin kit interpreter at `engine/runtime/kit/` (evacuated from foundation). Foundation = paint only. Fat wire remains (A50). |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -123,32 +123,43 @@
 
 ---
 
+## Acceptance (foundation layout evacuate)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A60 | Evacuated `packages/forja_foundation/lib/layout/` → `apps/forja/lib/shared/engine/runtime/kit/` — DS paint-only; no `host/layout/` parking | ✅ |
+| 2 | R109-A61 | Law + cursor rule: foundation forbids PackLayoutHost/hooks/Riverpod kit session; host owns thin kit interpreter | ✅ |
+| 3 | R109-A62 | Foundation pubspec drops Riverpod/shared_preferences/visibility_detector; barrel no longer exports PackLayoutHost | ✅ |
+
+---
+
 ## Summary
 
-**One-liner:** Host is capability-only. Packs are product-only. Packs call generic `ctx.host`. The host never owns hub / IPTV / Live Sports / My List screens.
+**One-liner:** Empty shell + engines. Packs are product. Foundation is a design system (paint only). Packs call `ctx.host` / `runPlugin`.
 
-**Sniff test:** If this pack is uninstalled, does this Dart file still make sense as a **generic capability**? No → pack product wrongly in root.
+**Sniff test:** If this pack is uninstalled, does this Dart file still make sense as a **generic capability**? No → pack product wrongly in root. Foundation: would this belong in a shadcn-style DS? No → host engine or pack.
 
 ### Law
 
 | Layer | Owns | Forbidden |
 |-------|------|-----------|
-| **Pack** (`forja-packs`) | Product tabs, layout, feed shaping, product chrome, `open` shaping | Native unlock internals |
-| **Host** (`apps/forja`) | App frame, generic engines (`runPlugin`, cache, store, vault, unlock, playback open) | Product screens, product-named folders (`hub`/`lists`/`live`/`iptv`), pack-id business logic, **`shared/host/layout/`** |
-| **Foundation** (`forja_foundation`) | Widgets + **layout protocol/runner** (`PackLayoutHost` / kit compose) | Product domain policy |
+| **Pack** (`forja-packs`) | Product tabs, layout JSON, feed, prefs, chrome, `open` shaping | Native unlock internals |
+| **Host** (`apps/forja`) | App frame, generic engines, **thin kit interpreter** at `shared/engine/runtime/kit/` | Product screens, product-named folders, pack-id business logic, **`shared/host/layout/`** |
+| **Foundation** (`forja_foundation`) | Tokens, theme, primitives, components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration |
 
-**Wipe law (A57):** Delete the entire `apps/forja/lib/shared/host/layout/` tree. Layout runner + generic kit paint live in `packages/forja_foundation`. Product (IPTV portals panel, Live Sports progressive scrape, hub list shaping) lives in pack JS. Host only mounts foundation for `pluginId` and runs generic `MetaRuntime` / `ctx.host.*` bridges — zero product layout adapters in root.
+**Wipe law (A57 historical):** Deleted `apps/forja/lib/shared/host/layout/`. **Evacuate (A60):** runner left foundation — lives in `engine/runtime/kit/`. Product stays in pack JS. Foundation paints only.
 
 ### Target trees (finish pass)
 
 ```text
 apps/forja/lib/shared/engine/
+  runtime/kit/   # thin kit interpreter (PackLayoutHost + wire + list/feed hooks)
   runtime/  packs/  cache/  store/  vault/  unlock/
   # NO portals/  NO feeds/  NO hub/  NO lists/  NO live/
 apps/forja/lib/shared/shell/   # core desktop tv focus brand feedback(toast) chrome(filters)
-apps/forja/lib/shared/host/    # NO layout/ (wiped — runner in foundation)
+apps/forja/lib/shared/host/    # NO layout/ (parking forbidden)
 apps/forja/lib/features/       # account + settings only
-packages/forja_foundation/lib/layout/  # PackLayoutHost + kit runner
+packages/forja_foundation/     # paint only — NO lib/layout/
 forja-packs/hubs/iptv          # IPTV product (layout/feed/details/listPortals)
 forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed.js)
 ```
@@ -490,3 +501,18 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | Still open | Detail |
 |------------|--------|
 | A50 | Fat `pack_layout_host_bridge.dart` still hosts orchestration (sync/FFI + layout wire) — not sync/FFI-only yet |
+
+---
+
+## Wave L notes (foundation layout evacuate)
+
+| Done | Detail |
+|------|--------|
+| A60 | `forja_foundation/lib/layout/*` → `apps/forja/lib/shared/engine/runtime/kit/`; deleted foundation layout zone + `forja_foundation_layout.dart` |
+| A61 | `forja-pack-product-host.mdc`: DS = paint; host = thin interpreter under `runtime/kit/`; ❌ `host/layout/` parking |
+| A62 | Foundation deps: flutter + google_fonts only; barrel exports paint/protocol — not PackLayoutHost |
+| A57 historical | host/layout wipe remains ✅; A60 corrects where the runner lives (engine kit, not DS) |
+
+| Still open | Detail |
+|------------|--------|
+| A50 | Fat kit wire (~7k) still not sync/FFI-only |

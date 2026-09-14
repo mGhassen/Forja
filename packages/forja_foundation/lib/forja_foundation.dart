@@ -8,7 +8,6 @@ library;
 
 export 'package:forja_foundation/forja_foundation_primitives.dart';
 export 'package:forja_foundation/forja_foundation_kit.dart';
-export 'package:forja_foundation/forja_foundation_layout.dart';
 export 'package:forja_foundation/widgets/widgets.dart';
 export 'package:forja_foundation/utils/title_clean.dart';
 export 'package:forja_foundation/protocol/layout_types.dart';

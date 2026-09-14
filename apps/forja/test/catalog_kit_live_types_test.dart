@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja_foundation/layout/list/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

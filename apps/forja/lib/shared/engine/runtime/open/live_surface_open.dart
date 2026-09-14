@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
-import 'package:forja/shared/engine/runtime/layout/live_schedule_feed.dart';
-import 'package:forja/shared/engine/runtime/layout/plugin_feed_source.dart';
+import 'package:forja/shared/engine/runtime/kit/live_schedule_feed.dart';
+import 'package:forja/shared/engine/runtime/kit/plugin_feed_source.dart';
 import 'package:forja/shared/host/packs/services/pack_settings_store.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja_foundation/layout/list/host_list_registry.dart';
-import 'package:forja_foundation/layout/list/list_open_mode.dart';
+import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 /// `open.surface: live` → switch to pack [tabId] from open payload (opaque).

@@ -1,9 +1,9 @@
-import 'package:forja_foundation/layout/top_menu_registry.dart';
-import 'package:forja_foundation/layout/pack_layout_capabilities.dart';
-import 'package:forja_foundation/layout/focus_edge.dart';
-import 'package:forja_foundation/layout/shell_tab_refresh.dart';
-import 'package:forja_foundation/layout/pack_layout_host_wire.dart';
-export 'package:forja_foundation/layout/pack_layout_host_wire.dart' show PluginKitTopBar;
+import 'package:forja/shared/engine/runtime/kit/top_menu_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_capabilities.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/shell_tab_refresh.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_layout_host_wire.dart';
+export 'package:forja/shared/engine/runtime/kit/pack_layout_host_wire.dart' show PluginKitTopBar;
 import 'dart:async';
 import 'dart:math';
 
@@ -26,9 +26,9 @@ import 'package:forja_foundation/kit/row_prefetch.dart';
 
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja_foundation/layout/list/host_list_registry.dart';
-import 'package:forja_foundation/layout/top_bar_host_hooks.dart';
-import 'package:forja_foundation/layout/list/list_source.dart';
+import 'package:forja/shared/engine/runtime/kit/list/host_list_registry.dart';
+import 'package:forja/shared/engine/runtime/kit/top_bar_host_hooks.dart';
+import 'package:forja/shared/engine/runtime/kit/list/list_source.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_body.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_shell.dart';

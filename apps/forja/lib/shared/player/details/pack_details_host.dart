@@ -16,7 +16,7 @@ import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/player/sources/stream_play_hooks.dart';
-import 'package:forja_foundation/layout/panel_source_flags_hooks.dart';
+import 'package:forja/shared/engine/runtime/kit/panel_source_flags_hooks.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
