@@ -152,7 +152,7 @@ Winner: **move the real host implementations** to `shell/`. Package `showForjaTo
 | List-follow / merge | `package:forja/shared/engine/lists/**` |
 | Torrent release parse | `package:forja/shared/engine/models/torrent_release_metadata.dart` |
 | Torrent source panels | `package:forja/shared/player/sources/**` |
-| Generic catalog kit UI | `package:forja_foundation/widgets/**` · `blocks/**` · `kit/**` — see evacuate table. Glue: `shared/engine/hub/` |
+| Generic catalog kit UI | `package:forja_foundation/widgets/**` · `blocks/**` — see evacuate table. Glue: `shared/engine/hub/` |
 | Packs / PackAssets | `package:forja/shared/engine/packs/**` · UI: `package:forja/features/settings/packs/**` |
 | Watch history | `package:forja/shared/engine/store/watch_history.dart` |
 | Update dialog / banner | `package:forja/shell/update/**` |

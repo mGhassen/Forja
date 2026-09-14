@@ -438,7 +438,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | Done | Detail |
 |------|--------|
 | Deleted | `apps/forja/lib/shared/engine/runtime/list/` |
-| Foundation (generic only) | `kit/row_prefetch.dart` |
+| Foundation | (none — orphan `kit/row_prefetch.dart` deleted; no consumers) |
 | Host layout | `host/layout/list/` — registry, panel, Riverpod query/open, `plugin_feed_source`, thin `KitListPaint` reader |
 | Pack (Live Sports) | `liveSportsShapeRow` emits flat paint + `timeLabel`/`scheduleLabel`/`searchText`; feed accepts `q` |
 

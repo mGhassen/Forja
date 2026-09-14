@@ -1,4 +1,4 @@
-/// Kit entry — protocol + kit + blocks (populated as layers land).
+/// Kit entry — protocol + blocks + platform/utils (name historical; no `lib/kit/`).
 library;
 
 export 'package:forja_foundation/protocol/layout_types.dart';
