@@ -285,7 +285,9 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
+    final pointerHover = policy.scaleOnHover;
 
     return Stack(
       children: [
@@ -314,6 +316,7 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                           key: ValueKey(entry.id),
                           entry: entry,
                           tvFocus: tv,
+                          pointerHover: pointerHover,
                         ),
                       ),
                   ],
@@ -342,10 +345,15 @@ class _ForjaToastCard extends StatefulWidget {
     super.key,
     required this.entry,
     required this.tvFocus,
+    required this.pointerHover,
   });
 
   final ForjaToastEntry entry;
   final bool tvFocus;
+
+  /// Desktop hybrid — mouse hover pause + Material button overlays.
+  /// Leanback TV has focus chips but not pointer hover.
+  final bool pointerHover;
 
   @override
   State<_ForjaToastCard> createState() => _ForjaToastCardState();
@@ -361,9 +369,11 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
 
   bool get _hasAction => widget.entry.hasAction;
 
-  bool get _tvActionFocus => widget.tvFocus && _hasAction;
+  bool get _tvActionFocus => widget.tvFocus && !widget.pointerHover && _hasAction;
 
   bool get _timed => widget.entry.isTimed;
+
+  bool get _usePointerButtons => widget.pointerHover || !widget.tvFocus;
 
   @override
   void initState() {
@@ -457,9 +467,20 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
-    final tvFocus = widget.tvFocus;
     final style = forjaToastStyle(entry.kind);
     final progress = _progress;
+    final hoverFill = ForjaShellColors.textPrimary.withValues(alpha: 0.10);
+    final pressFill = ForjaShellColors.textPrimary.withValues(alpha: 0.16);
+
+    WidgetStateProperty<Color?> buttonOverlay() =>
+        WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return pressFill;
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
+            return hoverFill;
+          }
+          return Colors.transparent;
+        });
 
     Widget actionButton() {
       final label = Text(
@@ -472,14 +493,18 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       );
       void onTap() => _runActionSafe(entry.onAction, dismiss: true);
 
-      if (!tvFocus) {
+      if (_usePointerButtons) {
         return TextButton(
           onPressed: onTap,
-          style: TextButton.styleFrom(
-            foregroundColor: style.accent,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: Size.zero,
+          style: ButtonStyle(
+            foregroundColor: WidgetStatePropertyAll(style.accent),
+            overlayColor: buttonOverlay(),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 8),
+            ),
+            minimumSize: const WidgetStatePropertyAll(Size.zero),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
           ),
           child: label,
         );
@@ -491,6 +516,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
         focusNode: _actionFocus,
         borderRadius: 6,
         showFocusBorder: true,
+        scaleOnFocus: 1.0,
         // D-pad leave / Back → dismiss + prior control (close is not focusable).
         onLeftEdge: _leaveToastFocus,
         onRightEdge: _leaveToastFocus,
@@ -516,13 +542,21 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       );
       void onTap() => _runActionSafe(null, dismiss: true);
 
-      if (!tvFocus) {
+      if (_usePointerButtons) {
         return IconButton(
           onPressed: onTap,
           icon: icon,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-          splashRadius: 14,
+          style: ButtonStyle(
+            foregroundColor: WidgetStatePropertyAll(
+              ForjaShellColors.textSecondary.withValues(alpha: 0.8),
+            ),
+            overlayColor: buttonOverlay(),
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            minimumSize: const WidgetStatePropertyAll(Size(28, 28)),
+            maximumSize: const WidgetStatePropertyAll(Size(28, 28)),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
         );
       }
 
@@ -546,6 +580,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
         onTap: onTap,
         borderRadius: 14,
         showFocusBorder: true,
+        scaleOnFocus: 1.0,
         child: SizedBox(
           width: 28,
           height: 28,
@@ -599,7 +634,9 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       ),
     );
 
-    if (tvFocus || progress == null) return card;
+    // Desktop hybrid also has tv focus chips — do not gate MouseRegion on
+    // tvFocus or pause never runs (same trap as liveLeanbackOnly vs liveUseTvFocus).
+    if (!widget.pointerHover || progress == null) return card;
 
     return MouseRegion(
       onEnter: (_) => _setHovered(true),
