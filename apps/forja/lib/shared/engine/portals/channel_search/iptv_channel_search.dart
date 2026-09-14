@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:forja/shared/engine/portals/iptv_catalog_disk_store.dart';
-import 'package:forja/shared/engine/portals/iptv_network.dart';
+import 'package:forja/shared/engine/portals/catalog/iptv_catalog_disk_store.dart';
+import 'package:forja/shared/engine/portals/network/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/storage.dart';
 import 'package:forja/shared/player/iptv/iptv_pt_player_screen.dart';
@@ -29,7 +29,7 @@ abstract final class IptvChannelSearch {
   static int _session = 0;
 
   /// In-session Portals pick (Live Sports / IPTV). Prefer over disk last-key.
-  /// Set from [IptvController] when the active portal changes.
+  /// Active portal key for search ranking (set when the portals pack selects).
   static String? sessionPortalKey;
 
   /// Drop in-flight Live TV matching. Safe while Providers is open.

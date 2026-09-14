@@ -27,7 +27,7 @@ shared/engine/portals/           # portal data + match helpers for channel searc
 shared/engine/store/             # list open flow / bind sheet / Riverpod providers
 shared/host/layout/              # PackLayoutHost + hooks only; MetaItem/TV glue in layout/private/
 shared/shell/chrome/             # frame chrome only (e.g. VerticalFiltersRegistry / rail)
-shared/host/packs|update|account|watch/
+shared/host/packs|update|watch/
 ```
 
 Barrel: `package:forja/shared/player/details/media_details.dart` for details widgets.

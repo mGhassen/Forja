@@ -160,7 +160,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | Packs / PackAssets | `package:forja/shared/host/packs/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
 | Update dialog / banner | `package:forja/shared/host/update/**` |
-| Keychain consent | `package:forja/shared/host/account/**` |
+| Keychain consent | `package:forja/features/settings/about/macos_keychain_consent_screen.dart` |
 
 **Forbidden destinations:** `shared/kit/**`, `shared/host/kit/**`, `shared/host/lists/**`, `shared/host/live_sports/**`, `shared/host/sources/**`.
 

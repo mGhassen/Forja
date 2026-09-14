@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **7 / 12** A41 pack migrate |
-| **Current slice** | A41: remounted exact `IptvPtScreen` catalog UX; VOD details merged into `iptv-hub` (no `iptv-vod` plugin) |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate |
+| **Current slice** | A41: IPTV tab = PackLayoutHost like Live Sports; `portals_ui` deleted; pack layout+feed+portals actions; EPG browse mode (A48) still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -94,20 +94,22 @@
 | 4 | R109-A38 | Pack feed Live / Movies / Series (Xtream categories + streams); VOD details fetch series episodes | ✅ |
 | 5 | R109-A39 | Thin host `PackIptvPlayHooks` — vault portal → Xtream URL → `HostPlaybackOpen` (no portals_ui) | ✅ |
 | 6 | R109-A40 | Portals panel / Stalker / M3U / EPG guide / dedicated IPTV player chrome parity | ✅ |
-| 7 | R109-A41 | Replace interim host `IptvPtScreen` / `portals_ui` with pack-owned chrome (A19/A21 law) | 🔄 |
+| 7 | R109-A41 | Replace interim host `IptvPtScreen` / `portals_ui` with pack-owned chrome (A19/A21 law) | ✅ |
 | 8 | R109-A42 | Host `engine.request` + `playback.probe` + durable `cache.disk*` (no `host.iptv`) | ✅ |
 | 9 | R109-A43 | Vault SoT + one-shot `IptvStore` → `iptv.portals` migrate + dual-write | ✅ |
 | 10 | R109-A44 | Flip nav: `iptv` tab mounts `PackLayoutHost` (no `IptvPtScreen`) | ✅ |
 | 11 | R109-A45 | Pack layout/feed: portals action + Live/Movies/Series + prefs/platforms modules | ✅ |
 | 12 | R109-A46 | Foundation paint: EPG guide + catalog split + PortalListPanel slots | ✅ |
-| 13 | R109-A47 | Pack portals product chrome (replace Flutter portal panel) | ⬜ |
+| 13 | R109-A47 | Pack portals product chrome (replace Flutter portal panel) | ✅ |
 | 14 | R109-A48 | Pack EPG browse mode wired to foundation guide | ⬜ |
-| 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | 🔄 |
-| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ⬜ |
+| 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | ✅ |
+| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ✅ |
 | 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
 | 18 | R109-A52 | Remount exact `IptvPtScreen` catalog UX until pack/foundation catalog chrome parity (shelf/search/sort/cats/channels/EPG) | ✅ |
 | 19 | R109-A53 | Merge VOD `details` into `iptv-hub` — drop separate `iptv-vod` plugin; enrich stays companion | ✅ |
 | 20 | R109-A54 | Host opens IPTV movie/series details via hub plugin id (tab / engine type) | ✅ |
+| 21 | R109-A55 | Pack layout: search / sort / view chrome; feed `q` + `sort` params (Live Sports kit model) | ✅ |
+| 22 | R109-A56 | Host `PortalsChromeHooks` — pack `listPortals` / select / add / remove; no `IptvController` | ✅ |
 
 ---
 
@@ -295,6 +297,21 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 |------------|--------|
 | Pack feed rows | Hub feed empty until pack shapes portal list via `ctx.host.portals` |
 | portals_ui dissolve | Browse/player leave `portals_ui` when pack layout owns them |
+
+### Evacuate notes (path 1 — pack-owned like Live Sports)
+
+| Done | Detail |
+|------|--------|
+| Nav | `plugin_nav` → `PackLayoutHost` only (no `IptvPtScreen` / tabId branch) |
+| Deleted | `shared/host/portals_ui/**` (browse + controller) |
+| Pack | `hubs/iptv` v1.5.0 layout: catalog/sort/search/view/portals + feed `q`/`sort` |
+| Portals chrome | `host/layout/portals/portals_chrome_hooks.dart` → pack `listPortals` / add / select / remove |
+| Player | `shared/player/iptv/**` (playback + channel guide + open hooks) |
+
+| Still open | Detail |
+|------------|--------|
+| A48 | Pack EPG browse mode → foundation `EpgGuide` |
+| Kit gaps | Category pin/reorder, channel health borders, scrape ticker parity vs old Flutter chrome |
 
 ---
 

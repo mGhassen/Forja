@@ -38,7 +38,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | Live schedule | Hub pack `feed` + opaque `live_schedule` registry |
 | Follow / list | My List hub + engine list follow |
 | Pack install | Settings Forja Packs + install banner |
-| App update / Keychain | `shared/host/update` · `shared/host/account` (app-only leftovers) |
+| App update / Keychain | `shared/host/update` · Settings About (`features/settings/about/macos_keychain_consent_screen.dart`) |
 | Vertical filters | Home platforms → LogoMenuRail |
 | Sources panel | `shared/player/sources/**` |
 | Torrent | Media details torrent panels under player sources |

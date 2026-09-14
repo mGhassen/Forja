@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **13 / 14** acceptance (1 manual QA) |
-| **Current slice** | Engine fit greying shipped — manual Mac/Win XUMO QA open |
+| **Progress** | **8 / 8** components · **14 / 15** acceptance (1 manual QA) |
+| **Current slice** | Unsuitable engines omitted from Player menu — manual Mac/Win XUMO QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 5 | R107-C05 | HLS auto-route + one-hop engine failover | ✅ |
 | 6 | R107-C06 | Feature docs + changelog | ✅ |
 | 7 | R107-C07 | In-player engine fit: grey + reason (no hide) | ✅ |
+| 8 | R107-C08 | In-player Player menu omits unsuitable engines (no grey/reason) | ✅ |
 
 ---
 
@@ -47,6 +48,7 @@
 | 12 | R107-A12 | Manual QA: Mac AVPlayer + Win VLC XUMO/CBS; Xtream TS MediaKit | ⬜ |
 | 13 | R107-A13 | Player menu greys AVPlayer/VLC on catalog VOD + MPEG-TS IPTV with reason | ✅ |
 | 14 | R107-A14 | Hot-swap / select blocked for unsuitable engines (toast); MediaKit stays | ✅ |
+| 15 | R107-A15 | Player menu omits unsuitable engines (no grey subtitle); Settings still lists all | ✅ |
 
 ---
 

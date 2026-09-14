@@ -1,4 +1,4 @@
-import 'package:forja/shared/engine/portals/iptv_network.dart';
+import 'package:forja/shared/engine/portals/network/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 
 /// Memoized short-EPG fetches for the in-player channel guide.

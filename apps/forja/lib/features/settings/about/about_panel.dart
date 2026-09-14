@@ -10,7 +10,7 @@ import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
-import 'package:forja/shared/host/account/macos_keychain_consent_screen.dart';
+import 'package:forja/features/settings/about/macos_keychain_consent_screen.dart';
 import 'package:forja/shared/host/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

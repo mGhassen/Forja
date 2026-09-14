@@ -2362,6 +2362,12 @@ class KitTopBarActions extends ConsumerWidget {
         setKitListStyle(ref, key, picked);
       }
     }
+    if (id == 'sort' || verb == 'sort') {
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isNotEmpty) {
+        ref.read(kitFeedSortPrefProvider(key).notifier).state = picked;
+      }
+    }
   }
 
   Future<String?> _genericPicker(
@@ -3309,12 +3315,16 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
         (widget.layoutSpec['catalogMenu'] ?? 'catalog').toString();
     final horizonMenuId =
         (widget.layoutSpec['horizonMenu'] ?? 'horizon').toString();
+    final sortMenuId =
+        (widget.layoutSpec['sortMenu'] ?? 'sort').toString();
     if (scope != null) {
       final filters = <String, String>{};
       final catalog = scope.selectedId(catalogMenuId);
       final horizon = scope.selectedId(horizonMenuId);
+      final sort = scope.selectedId(sortMenuId);
       if (catalog != null) filters['catalog'] = catalog;
       if (horizon != null) filters['horizon'] = horizon;
+      if (sort != null) filters['sort'] = sort;
       // Kind/sport stays in layout scope only (entriesForKind) — no reload.
       if (filters.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

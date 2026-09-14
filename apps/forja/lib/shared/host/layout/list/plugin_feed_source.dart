@@ -274,6 +274,9 @@ final pluginFeedProvider =
   final horizonPref = chromeKey.isEmpty
       ? ''
       : ref.watch(kitFeedHorizonPrefProvider(chromeKey));
+  final sortPref = chromeKey.isEmpty
+      ? ''
+      : ref.watch(kitFeedSortPrefProvider(chromeKey));
   final searchQ = chromeKey.isEmpty
       ? ''
       : ref.watch(kitListEventQueryProvider(chromeKey)).trim();
@@ -300,6 +303,7 @@ final pluginFeedProvider =
         '_rev': revision,
         'catalogFilter': catalogFilter,
         if (horizonPref.isNotEmpty) 'horizon': horizonPref,
+        if (sortPref.isNotEmpty) 'sort': sortPref,
         if (searchQ.isNotEmpty) 'q': searchQ,
       },
       forceRefresh: true,
@@ -454,6 +458,13 @@ final class PluginFeedSource extends KitListSource {
       final current = ref.read(kitFeedHorizonPrefProvider(key));
       if (horizon != current) {
         ref.read(kitFeedHorizonPrefProvider(key).notifier).state = horizon;
+      }
+    }
+    final sort = filters['sort'];
+    if (sort != null && sort.isNotEmpty) {
+      final current = ref.read(kitFeedSortPrefProvider(key));
+      if (sort != current) {
+        ref.read(kitFeedSortPrefProvider(key).notifier).state = sort;
       }
     }
   }

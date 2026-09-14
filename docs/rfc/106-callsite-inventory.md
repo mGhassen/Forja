@@ -149,7 +149,7 @@ Checklist (paths only — migrate batches tick these):
 - [ ] `apps/forja/lib/shared/foundation/blocks/shell/legacy_list_item.dart`
 - [ ] `apps/forja/lib/shared/foundation/blocks/shell/legacy_movie_meta.dart`
 - [x] `apps/forja/lib/shared/foundation/compat_exports.dart`
-- [ ] `apps/forja/lib/shared/foundation/components/account/macos_keychain_consent_screen.dart`
+- [x] `apps/forja/lib/features/settings/about/macos_keychain_consent_screen.dart` (moved out of shared/host/account)
 - [ ] `apps/forja/lib/shared/foundation/components/cards/kit_event_card.dart`
 - [ ] `apps/forja/lib/shared/foundation/components/cards/kit_event_dense_tile.dart`
 - [x] `apps/forja/lib/shared/foundation/components/cards/kit_poster_card.dart`

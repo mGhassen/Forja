@@ -128,9 +128,9 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [104-[fixed]-…](fixed/104-[fixed]-merge-live-sports-hubs.md) | Merge Live Sports hubs (list/cards + panel/details) | — | fixed | **Complete** · **5 / 5** · **8 / 8** | — |
 | [105-[fixed]-…](fixed/105-[fixed]-live-providers-plugin-search.md) | Providers — plugin-owned fixture search + progressive paint | — | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 | [106-[fixed]-…](fixed/106-[fixed]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | fixed | Complete · 9/9 · Part1/2 ✅ · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
-| [107-[open]-…](107-[open]-iptv-multi-engine-avplayer-vlc.md) | IPTV multi-engine (AVPlayer Mac · VLC Windows · Exo Android) | — | open | **7 / 7** · **13 / 14** | — |
+| [107-[open]-…](107-[open]-iptv-multi-engine-avplayer-vlc.md) | IPTV multi-engine (AVPlayer Mac · VLC Windows · Exo Android) | — | open | **8 / 8** · **14 / 15** | — |
 | [108-[fixed]-…](fixed/108-[fixed]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | fixed | Complete · 7/7 · 20/20 | — |
-| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **21 / 26** code · 5 🔄 · **8 / 8** IPTV pack · **7 / 12** A41 | — |
+| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **21 / 26** code · 5 🔄 · **8 / 8** IPTV pack · **11 / 12** A41 | — |
 | [110-[draft]-…](110-[draft]-pack-surface-contributions.md) | Pack surface contributions (layers / modules / slots) | — | draft | **0 / 8** C · **26 / 28** spec · **0 / 12** registry · **0 / 10** details+player · **0 / 6** conflict UX · **0 / 4** reference packs | — |
 
 ## Related

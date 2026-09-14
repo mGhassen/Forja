@@ -4,7 +4,6 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 export 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -79,9 +78,20 @@ class PlayerAppMenu {
     bool separateAudioUrl = false,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
-    // Never omit MediaKit from this menu (see .cursor/rules/no-hide-as-fix.mdc).
+    // Unsuitable engines for this stream are omitted (not greyed with a reason).
     final showExternal = !PlatformInfo.isAndroidTv;
-    final engines = builtInPlayerEngineOptionsForUi;
+    final engines = builtInPlayerEngineOptionsForUi.where((engine) {
+      if (surface == null) return true;
+      return builtInPlayerEngineUnsuitableReason(
+            engine,
+            surface: surface,
+            streamUrl: streamUrl,
+            torrentLocalhost: torrentLocalhost,
+            needsWidevine: needsWidevine,
+            separateAudioUrl: separateAudioUrl,
+          ) ==
+          null;
+    });
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
@@ -89,28 +99,11 @@ class PlayerAppMenu {
       children: [
         if (showExternal) const _SectionLabel('Built-in'),
         ...engines.map((engine) {
-          final reason = surface == null
-              ? null
-              : builtInPlayerEngineUnsuitableReason(
-                  engine,
-                  surface: surface,
-                  streamUrl: streamUrl,
-                  torrentLocalhost: torrentLocalhost,
-                  needsWidevine: needsWidevine,
-                  separateAudioUrl: separateAudioUrl,
-                );
-          final disabled = reason != null;
           return PlayerPopupOptionChip(
             label: engine.displayName,
-            subtitle: reason,
-            disabled: disabled,
             selected: usingBuiltIn && engine == builtInEngine,
             expanded: true,
             onTap: () async {
-              if (reason != null) {
-                ForjaToast.info(reason);
-                return;
-              }
               onDismiss?.call();
               if (usingBuiltIn && engine == builtInEngine) {
                 return;

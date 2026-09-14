@@ -13,9 +13,10 @@ enum BuiltInPlayerMenuSurface {
   iptvVod,
 }
 
-/// Why [engine] should stay visible but not selectable for this stream.
+/// Why [engine] cannot play this stream.
 ///
-/// `null` = OK to pick. Never hide engines ([no-hide-as-fix]); grey + reason.
+/// `null` = OK to pick. Non-null → omit from the in-player Player menu (and
+/// block hot-swap with a toast). Settings still lists every installed engine.
 String? builtInPlayerEngineUnsuitableReason(
   BuiltInPlayerEngine engine, {
   required BuiltInPlayerMenuSurface surface,

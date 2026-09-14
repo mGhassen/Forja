@@ -24,6 +24,10 @@ final kitFeedCatalogFilterProvider =
 final kitFeedHorizonPrefProvider =
     StateProvider.family<String, String>((ref, chromeKey) => '');
 
+/// Pack sort menu token — per hub. Empty until pack default / user pick.
+final kitFeedSortPrefProvider =
+    StateProvider.family<String, String>((ref, chromeKey) => '');
+
 /// Pack View menu (`list` / `cards`) — per hub. Empty = use `kit.list.style`.
 final kitListStyleOverrideProvider =
     StateProvider.family<String, String>((ref, chromeKey) => '');
