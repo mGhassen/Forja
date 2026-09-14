@@ -212,24 +212,22 @@ class ForjaToastController extends ChangeNotifier {
   }
 
   void _present(_QueuedToast item) {
-    // Timed, action-less toasts of the same kind stack into one card.
-    if (item.isTimed && !item.hasAction) {
-      final idx = _entries.lastIndexWhere(
-        (e) => e.kind == item.kind && e.isTimed && !e.hasAction,
-      );
+    // One timed toast card at a time — any kind. Stacking info+success looked
+    // like two superimposed toasts. Sticky (duration zero) stay separate.
+    if (item.isTimed) {
+      final idx = _entries.lastIndexWhere((e) => e.isTimed);
       if (idx >= 0) {
         final existing = _entries.removeAt(idx);
-        // Keep first message + bar position. Only count (+ linger) updates.
-        existing.count += 1;
-        existing.pendingExtend = item.duration;
-        _entries.add(existing);
-        while (_entries.length > 4) {
-          final timedIdx =
-              _entries.indexWhere((e) => e.duration > Duration.zero);
-          dismiss(_entries[timedIdx >= 0 ? timedIdx : 0].id);
+        if (!item.hasAction && !existing.hasAction) {
+          // Keep first message/kind; only count (+ linger) updates.
+          existing.count += 1;
+          existing.pendingExtend = item.duration;
+          _entries.add(existing);
+          _trimEntries();
+          notifyListeners();
+          return;
         }
-        notifyListeners();
-        return;
+        // Action toast or kind switch: replace — don't stack two timed cards.
       }
     }
 
@@ -243,12 +241,16 @@ class ForjaToastController extends ChangeNotifier {
       onAction: item.onAction,
     );
     _entries.add(entry);
+    _trimEntries();
+    notifyListeners();
+  }
+
+  void _trimEntries() {
     while (_entries.length > 4) {
       // Prefer dropping timed toasts so sticky (duration zero) stay put.
       final timedIdx = _entries.indexWhere((e) => e.duration > Duration.zero);
-      dismiss(_entries[timedIdx >= 0 ? timedIdx : 0].id);
+      _entries.removeAt(timedIdx >= 0 ? timedIdx : 0);
     }
-    notifyListeners();
   }
 
   @override

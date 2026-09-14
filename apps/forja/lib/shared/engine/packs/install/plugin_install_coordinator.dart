@@ -499,6 +499,9 @@ class PluginInstallCoordinator {
     }
 
     if (installedNames.isNotEmpty) {
+      // Drop the progress card before the result toast — same chrome/column
+      // made them look like two stacked toasts.
+      progress.value = null;
       await notifyCloudPacksInstalled(installedNames);
     }
 

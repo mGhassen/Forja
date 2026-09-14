@@ -7,15 +7,18 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Sticky progress card while Engine/Nuvio packs download or update.
 /// Place in [ForjaToastHost.stackAbove] — not a separate overlay.
+/// Hidden while a toast is visible (same chrome — looked like stacked toasts).
 class PluginInstallProgressBanner extends StatelessWidget {
   const PluginInstallProgressBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
     final coordinator = PluginInstallCoordinator.instance;
+    final toasts = ForjaToast.controller;
     final listenable = Listenable.merge([
       coordinator.progress,
       coordinator.suppressBanner,
+      toasts,
       ShellBus.playerSurfaceActive,
       ShellBus.splashDismissed,
     ]);
@@ -26,7 +29,8 @@ class PluginInstallProgressBanner extends StatelessWidget {
         // Intro splash + profile warm use the splash status line.
         if (coordinator.suppressBanner.value ||
             !ShellBus.splashDismissed.value ||
-            ShellBus.playerSurfaceActive.value) {
+            ShellBus.playerSurfaceActive.value ||
+            toasts.entries.isNotEmpty) {
           return const SizedBox.shrink();
         }
         final current = coordinator.progress.value;
