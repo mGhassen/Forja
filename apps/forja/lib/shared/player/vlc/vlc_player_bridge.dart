@@ -70,6 +70,12 @@ class VlcPlayerBridge {
         'volume': (volume.clamp(0.0, 1.0) * 100).round(),
       });
 
+  static Future<void> seek(int viewId, Duration position) =>
+      _channel.invokeMethod<void>('seek', {
+        'viewId': viewId,
+        'positionMs': position.inMilliseconds,
+      });
+
   static Future<void> dispose(int viewId) =>
       _channel.invokeMethod<void>('dispose', {'viewId': viewId});
 }

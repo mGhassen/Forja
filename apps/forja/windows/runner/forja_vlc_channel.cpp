@@ -11,6 +11,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -34,6 +35,9 @@ using FnPlayerPlay = int (*)(libvlc_media_player_t*);
 using FnPlayerStop = void (*)(libvlc_media_player_t*);
 using FnPlayerSetPause = void (*)(libvlc_media_player_t*, int);
 using FnAudioSetVolume = int (*)(libvlc_media_player_t*, int);
+using FnPlayerSetTime = int (*)(libvlc_media_player_t*, int64_t);
+using FnPlayerGetTime = int64_t (*)(libvlc_media_player_t*);
+using FnPlayerGetLength = int64_t (*)(libvlc_media_player_t*);
 using FnVideoSetFormat = void (*)(libvlc_media_player_t*, const char*, unsigned,
                                   unsigned, unsigned);
 using FnVideoSetCallbacks = void (*)(
@@ -55,6 +59,9 @@ struct VlcApi {
   FnPlayerStop player_stop = nullptr;
   FnPlayerSetPause player_set_pause = nullptr;
   FnAudioSetVolume audio_set_volume = nullptr;
+  FnPlayerSetTime player_set_time = nullptr;
+  FnPlayerGetTime player_get_time = nullptr;
+  FnPlayerGetLength player_get_length = nullptr;
   FnVideoSetFormat video_set_format = nullptr;
   FnVideoSetCallbacks video_set_callbacks = nullptr;
 
@@ -93,6 +100,12 @@ struct VlcApi {
         GetProcAddress(module, "libvlc_media_player_set_pause"));
     audio_set_volume = reinterpret_cast<FnAudioSetVolume>(
         GetProcAddress(module, "libvlc_audio_set_volume"));
+    player_set_time = reinterpret_cast<FnPlayerSetTime>(
+        GetProcAddress(module, "libvlc_media_player_set_time"));
+    player_get_time = reinterpret_cast<FnPlayerGetTime>(
+        GetProcAddress(module, "libvlc_media_player_get_time"));
+    player_get_length = reinterpret_cast<FnPlayerGetLength>(
+        GetProcAddress(module, "libvlc_media_player_get_length"));
     video_set_format = reinterpret_cast<FnVideoSetFormat>(
         GetProcAddress(module, "libvlc_video_set_format"));
     video_set_callbacks = reinterpret_cast<FnVideoSetCallbacks>(
@@ -107,6 +120,8 @@ struct VlcApi {
   }
 };
 
+struct ForjaVlcChannel::Impl;
+
 struct VlcSession {
   flutter::TextureRegistrar* textures = nullptr;
   std::unique_ptr<flutter::TextureVariant> texture;
@@ -114,6 +129,10 @@ struct VlcSession {
   int64_t view_id = -1;
   libvlc_media_player_t* player = nullptr;
   VlcApi* api = nullptr;
+  ForjaVlcChannel::Impl* channel = nullptr;
+  std::atomic<bool> progress_running{false};
+  std::thread progress_thread;
+  int64_t pending_seek_ms = -1;
 
   std::mutex mu;
   std::vector<uint8_t> front;
@@ -136,11 +155,22 @@ struct VlcSession {
   }
 
   ~VlcSession() {
+    StopProgress();
     DisposePlayer();
     if (textures && texture_id >= 0) {
       textures->UnregisterTexture(texture_id);
     }
   }
+
+  void StopProgress() {
+    progress_running = false;
+    if (progress_thread.joinable()) {
+      progress_thread.join();
+    }
+  }
+
+  void StartProgress();
+  void EmitProgress();
 
   static void* Lock(void* opaque, void** planes) {
     auto* self = static_cast<VlcSession*>(opaque);
@@ -166,11 +196,13 @@ struct VlcSession {
   }
 
   void DisposePlayer() {
+    StopProgress();
     if (player && api) {
       api->player_stop(player);
       api->player_release(player);
     }
     player = nullptr;
+    pending_seek_ms = -1;
   }
 };
 
@@ -196,7 +228,47 @@ struct ForjaVlcChannel::Impl {
     }
     event_sink->Success(flutter::EncodableValue(map));
   }
+
+  void EmitProgress(int64_t view_id, int64_t position_ms, int64_t duration_ms) {
+    if (!event_sink) return;
+    flutter::EncodableMap map = {
+        {flutter::EncodableValue("viewId"), flutter::EncodableValue(view_id)},
+        {flutter::EncodableValue("type"), flutter::EncodableValue("progress")},
+        {flutter::EncodableValue("position"),
+         flutter::EncodableValue(position_ms)},
+        {flutter::EncodableValue("duration"),
+         flutter::EncodableValue(duration_ms)},
+        {flutter::EncodableValue("buffered"), flutter::EncodableValue(0)},
+    };
+    event_sink->Success(flutter::EncodableValue(map));
+  }
 };
+
+namespace {
+
+void VlcSession::EmitProgress() {
+  if (!channel || !player || !api || !api->player_get_time ||
+      !api->player_get_length) {
+    return;
+  }
+  const int64_t pos = api->player_get_time(player);
+  const int64_t len = api->player_get_length(player);
+  if (pos < 0 && len < 0) return;
+  channel->EmitProgress(view_id, pos < 0 ? 0 : pos, len < 0 ? 0 : len);
+}
+
+void VlcSession::StartProgress() {
+  StopProgress();
+  progress_running = true;
+  progress_thread = std::thread([this]() {
+    while (progress_running.load()) {
+      EmitProgress();
+      Sleep(400);
+    }
+  });
+}
+
+}  // namespace
 
 std::unique_ptr<ForjaVlcChannel> ForjaVlcChannel::Register(
     flutter::BinaryMessenger* messenger,
@@ -245,6 +317,7 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
           auto session = std::make_unique<VlcSession>(impl_->textures);
           session->view_id = view_id;
           session->api = &impl_->api;
+          session->channel = impl_.get();
           const int64_t tex = session->texture_id;
           impl_->sessions[view_id] = std::move(session);
           result->Success(flutter::EncodableValue(tex));
@@ -317,6 +390,11 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
           impl_->api.media_release(media);
           impl_->Emit(view_id, "buffering", flutter::EncodableValue(true));
           impl_->api.player_play(session->player);
+          if (session->pending_seek_ms >= 0 && impl_->api.player_set_time) {
+            impl_->api.player_set_time(session->player, session->pending_seek_ms);
+            session->pending_seek_ms = -1;
+          }
+          session->StartProgress();
           impl_->Emit(view_id, "ready");
           impl_->Emit(view_id, "playing", flutter::EncodableValue(true));
           result->Success();
@@ -335,6 +413,28 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
           auto it = impl_->sessions.find(view_id);
           if (it != impl_->sessions.end() && it->second->player) {
             impl_->api.player_set_pause(it->second->player, 1);
+          }
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "seek") {
+          int64_t ms = 0;
+          if (args) {
+            auto sit = args->find(flutter::EncodableValue("positionMs"));
+            if (sit != args->end()) {
+              if (const auto* i = std::get_if<int32_t>(&sit->second)) ms = *i;
+              if (const auto* i = std::get_if<int64_t>(&sit->second)) ms = *i;
+            }
+          }
+          auto it = impl_->sessions.find(view_id);
+          if (it != impl_->sessions.end()) {
+            auto* session = it->second.get();
+            if (session->player && impl_->api.player_set_time) {
+              impl_->api.player_set_time(session->player, ms < 0 ? 0 : ms);
+              session->EmitProgress();
+            } else {
+              session->pending_seek_ms = ms;
+            }
           }
           result->Success();
           return;

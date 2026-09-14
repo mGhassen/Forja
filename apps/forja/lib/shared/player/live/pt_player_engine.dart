@@ -192,6 +192,49 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         debugPrint('[IPTV ${_s._playerEngine.storageKey}] error: $msg');
         unawaited(_s._failoverIptvEngineOnce(msg));
         break;
+      case 'progress':
+        final posMs = (event['position'] as num?)?.toInt() ?? 0;
+        final durMs = (event['duration'] as num?)?.toInt() ?? 0;
+        final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
+        _noteFeedProgress(bufMs, positionMs: posMs);
+        final pos = Duration(milliseconds: posMs);
+        final durChanged = durMs > 0 && durMs != _s._duration.inMilliseconds;
+        final posChanged = !_s._isSeeking && pos != _s._position;
+        if (posChanged || durChanged) {
+          if (durMs > 0) {
+            final needUi = _s._controlsVisible || _s._isPipMode || durChanged;
+            if (needUi) {
+              setState(() {
+                if (posChanged) _s._position = pos;
+                _s._duration = Duration(milliseconds: durMs);
+                if (bufMs > 0) {
+                  _s._buffered = Duration(milliseconds: bufMs);
+                }
+              });
+            } else {
+              if (posChanged) _s._position = pos;
+              _s._duration = Duration(milliseconds: durMs);
+              if (bufMs > 0) {
+                _s._buffered = Duration(milliseconds: bufMs);
+              }
+            }
+          } else if (posChanged) {
+            _s._position = pos;
+          }
+        }
+        if (pos != _s._lastPos) {
+          _s._lastPos = pos;
+          _s._lastPosChange = DateTime.now();
+          if (!_playbackStarted && pos > Duration.zero) {
+            _playbackStarted = true;
+          }
+          _syncPlaybackBannerVisibility();
+        } else if (_playbackStarted || _s._playing) {
+          _s._lastPosChange = DateTime.now();
+          _syncPlaybackBannerVisibility();
+        }
+        _noteVideoFrame(reason: '${_s._playerEngine.storageKey} progress');
+        break;
     }
   }
 
@@ -463,8 +506,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _engineSeek(Duration target) async {
     if (_s._exoBackend) {
       await ExoPlayerBridge.seekTo(_s._exoViewId!, target);
-    } else if (_s._avPlayerBackend || _s._vlcBackend) {
-      // Live HLS — seek not wired on AVPlayer/VLC IPTV path.
+    } else if (_s._avPlayerBackend) {
+      await AvPlayerBridge.seek(_s._avViewId!, target);
+    } else if (_s._vlcBackend) {
+      await VlcPlayerBridge.seek(_s._vlcViewId!, target);
     } else {
       await _s._player!.seek(target);
     }

@@ -4,14 +4,14 @@ import 'package:rust/rust.dart';
 
 void main() {
   group('builtInPlayerEngineUnsuitableReason', () {
-    test('catalog VOD greys AVPlayer / VLC', () {
+    test('catalog VOD allows AVPlayer / VLC for normal streams', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.avPlayer,
           surface: BuiltInPlayerMenuSurface.catalogVod,
           streamUrl: 'https://cdn.example/master.m3u8',
         ),
-        'Movies & series use MediaKit',
+        isNull,
       );
       expect(
         builtInPlayerEngineUnsuitableReason(
@@ -19,7 +19,7 @@ void main() {
           surface: BuiltInPlayerMenuSurface.catalogVod,
           streamUrl: 'https://cdn.example/file.mp4',
         ),
-        'Movies & series use MediaKit',
+        isNull,
       );
       expect(
         builtInPlayerEngineUnsuitableReason(
@@ -28,6 +28,27 @@ void main() {
           streamUrl: 'https://cdn.example/file.mp4',
         ),
         isNull,
+      );
+    });
+
+    test('catalog VOD greys AVPlayer / VLC for torrent / dual audio', () {
+      expect(
+        builtInPlayerEngineUnsuitableReason(
+          BuiltInPlayerEngine.avPlayer,
+          surface: BuiltInPlayerMenuSurface.catalogVod,
+          streamUrl: 'http://127.0.0.1:8090/stream',
+          torrentLocalhost: true,
+        ),
+        'Torrent streams need MediaKit',
+      );
+      expect(
+        builtInPlayerEngineUnsuitableReason(
+          BuiltInPlayerEngine.vlc,
+          surface: BuiltInPlayerMenuSurface.catalogVod,
+          streamUrl: 'https://cdn.example/a.mp4',
+          separateAudioUrl: true,
+        ),
+        'Separate audio needs MediaKit',
       );
     });
 
@@ -52,10 +73,19 @@ void main() {
       );
     });
 
-    test('Widevine greys MediaKit', () {
+    test('Widevine greys MediaKit and AVPlayer / VLC', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.mediaKit,
+          surface: BuiltInPlayerMenuSurface.catalogVod,
+          streamUrl: 'https://cdn.example/dash.mpd',
+          needsWidevine: true,
+        ),
+        'DRM needs ExoPlayer',
+      );
+      expect(
+        builtInPlayerEngineUnsuitableReason(
+          BuiltInPlayerEngine.avPlayer,
           surface: BuiltInPlayerMenuSurface.catalogVod,
           streamUrl: 'https://cdn.example/dash.mpd',
           needsWidevine: true,

@@ -39,9 +39,12 @@ String? builtInPlayerEngineUnsuitableReason(
 
     case BuiltInPlayerEngine.avPlayer:
     case BuiltInPlayerEngine.vlc:
+      if (torrentLocalhost) return 'Torrent streams need MediaKit';
+      if (separateAudioUrl) return 'Separate audio needs MediaKit';
+      if (needsWidevine) return 'DRM needs ExoPlayer';
       switch (surface) {
         case BuiltInPlayerMenuSurface.catalogVod:
-          return 'Movies & series use MediaKit';
+          return null;
         case BuiltInPlayerMenuSurface.iptvLive:
         case BuiltInPlayerMenuSurface.iptvVod:
           if (!hls) return 'MPEG-TS needs MediaKit';
@@ -59,7 +62,7 @@ bool _looksLikeHls(String url) {
 /// Which built-in row to mark selected in the Player menu.
 ///
 /// When Settings prefers an engine that this stream filtered out (e.g. AVPlayer
-/// on catalog VOD), highlight the engine that can actually play — usually
+/// on a torrent), highlight the engine that can actually play — usually
 /// MediaKit — so the menu is not empty of selection.
 BuiltInPlayerEngine? resolvePlayerMenuBuiltInSelection({
   required bool usingBuiltIn,

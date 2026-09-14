@@ -67,6 +67,12 @@ final class ForjaAvPlayerPlugin: NSObject, FlutterPlugin {
       let volume = (args["volume"] as? NSNumber)?.doubleValue ?? 1.0
       players[viewId]?.setVolume(Float(volume))
       result(nil)
+    case "seek":
+      let ms = (args["positionMs"] as? NSNumber)?.int64Value
+        ?? (args["positionMs"] as? Int).map { Int64($0) }
+        ?? 0
+      players[viewId]?.seek(positionMs: ms)
+      result(nil)
     case "dispose":
       players[viewId]?.dispose()
       players.removeValue(forKey: viewId)
@@ -81,6 +87,19 @@ final class ForjaAvPlayerPlugin: NSObject, FlutterPlugin {
     if let value {
       payload["value"] = value
     }
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?(payload)
+    }
+  }
+
+  func emitProgress(viewId: Int64, positionMs: Int64, durationMs: Int64, bufferedMs: Int64 = 0) {
+    let payload: [String: Any] = [
+      "viewId": viewId,
+      "type": "progress",
+      "position": positionMs,
+      "duration": durationMs,
+      "buffered": bufferedMs,
+    ]
     DispatchQueue.main.async { [weak self] in
       self?.eventSink?(payload)
     }
@@ -166,6 +185,8 @@ final class AvPlayerSession {
   private var itemStatusObs: NSKeyValueObservation?
   private var failObs: NSObjectProtocol?
   private var stallObs: NSObjectProtocol?
+  private var timeObserver: Any?
+  private var pendingSeekMs: Int64?
 
   init(viewId: Int64, plugin: ForjaAvPlayerPlugin) {
     self.viewId = viewId
@@ -196,11 +217,24 @@ final class AvPlayerSession {
     self.player = player
     container?.playerLayer.player = player
 
+    let interval = CMTime(seconds: 0.4, preferredTimescale: 600)
+    timeObserver = player.addPeriodicTimeObserver(
+      forInterval: interval,
+      queue: .main
+    ) { [weak self] time in
+      self?.emitProgress(at: time)
+    }
+
     itemStatusObs = item.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
       guard let self else { return }
       switch item.status {
       case .readyToPlay:
         self.plugin?.emit(viewId: self.viewId, type: "ready")
+        self.emitProgress(at: player.currentTime())
+        if let pending = self.pendingSeekMs {
+          self.pendingSeekMs = nil
+          self.seek(positionMs: pending)
+        }
         player.play()
         self.plugin?.emit(viewId: self.viewId, type: "playing", value: true)
       case .failed:
@@ -259,10 +293,50 @@ final class AvPlayerSession {
     player?.volume = max(0, min(1, volume))
   }
 
+  func seek(positionMs: Int64) {
+    guard let player else {
+      pendingSeekMs = positionMs
+      return
+    }
+    let item = player.currentItem
+    if item == nil || item?.status != .readyToPlay {
+      pendingSeekMs = positionMs
+      return
+    }
+    let t = CMTime(value: positionMs, timescale: 1000)
+    player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+      guard let self else { return }
+      self.emitProgress(at: player.currentTime())
+    }
+  }
+
   func dispose() {
     disposePlayerOnly()
     container?.playerLayer.player = nil
     container = nil
+  }
+
+  private func emitProgress(at time: CMTime) {
+    guard let player, let item = player.currentItem else { return }
+    let posMs = max(0, Int64((CMTimeGetSeconds(time) * 1000).rounded()))
+    var durMs: Int64 = 0
+    let dur = item.duration
+    if dur.isNumeric && !dur.isIndefinite {
+      durMs = max(0, Int64((CMTimeGetSeconds(dur) * 1000).rounded()))
+    }
+    var bufferedMs: Int64 = 0
+    if let range = item.loadedTimeRanges.first?.timeRangeValue {
+      let end = CMTimeAdd(range.start, range.duration)
+      if end.isNumeric {
+        bufferedMs = max(0, Int64((CMTimeGetSeconds(end) * 1000).rounded()))
+      }
+    }
+    plugin?.emitProgress(
+      viewId: viewId,
+      positionMs: posMs,
+      durationMs: durMs,
+      bufferedMs: bufferedMs
+    )
   }
 
   private func disposePlayerOnly() {
@@ -274,6 +348,11 @@ final class AvPlayerSession {
       NotificationCenter.default.removeObserver(stallObs)
       self.stallObs = nil
     }
+    if let timeObserver, let player {
+      player.removeTimeObserver(timeObserver)
+    }
+    timeObserver = nil
+    pendingSeekMs = nil
     statusObs = nil
     rateObs = nil
     itemStatusObs = nil

@@ -24,6 +24,9 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   fileprivate typealias PlayerSetPause = @convention(c) (OpaquePointer?, Int32) -> Void
   fileprivate typealias PlayerSetVolume = @convention(c) (OpaquePointer?, Int32) -> Int32
   fileprivate typealias PlayerSetNsobject = @convention(c) (OpaquePointer?, UnsafeMutableRawPointer?) -> Void
+  fileprivate typealias PlayerSetTime = @convention(c) (OpaquePointer?, Int64) -> Int32
+  fileprivate typealias PlayerGetTime = @convention(c) (OpaquePointer?) -> Int64
+  fileprivate typealias PlayerGetLength = @convention(c) (OpaquePointer?) -> Int64
 
   private var libvlc_new: LibVlcNew?
   private var libvlc_release: LibVlcRelease?
@@ -38,6 +41,9 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   private var player_set_pause: PlayerSetPause?
   private var player_set_volume: PlayerSetVolume?
   private var player_set_nsobject: PlayerSetNsobject?
+  private var player_set_time: PlayerSetTime?
+  private var player_get_time: PlayerGetTime?
+  private var player_get_length: PlayerGetLength?
 
   private var instance: OpaquePointer?
 
@@ -92,6 +98,9 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       player_set_pause = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_pause"), to: PlayerSetPause?.self)
       player_set_volume = unsafeBitCast(dlsym(handle, "libvlc_audio_set_volume"), to: PlayerSetVolume?.self)
       player_set_nsobject = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_nsobject"), to: PlayerSetNsobject?.self)
+      player_set_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_time"), to: PlayerSetTime?.self)
+      player_get_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_time"), to: PlayerGetTime?.self)
+      player_get_length = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_length"), to: PlayerGetLength?.self)
 
       guard libvlc_new != nil, player_new != nil, media_new != nil else { continue }
 
@@ -143,6 +152,12 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       let volume = (args["volume"] as? NSNumber)?.intValue ?? 100
       sessions[viewId]?.setVolume(volume)
       result(nil)
+    case "seek":
+      let ms = (args["positionMs"] as? NSNumber)?.int64Value
+        ?? (args["positionMs"] as? Int).map { Int64($0) }
+        ?? 0
+      sessions[viewId]?.seek(positionMs: ms)
+      result(nil)
     case "dispose":
       sessions[viewId]?.dispose()
       sessions.removeValue(forKey: viewId)
@@ -155,6 +170,19 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   func emit(viewId: Int64, type: String, value: Any? = nil) {
     var payload: [String: Any] = ["viewId": viewId, "type": type]
     if let value { payload["value"] = value }
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?(payload)
+    }
+  }
+
+  func emitProgress(viewId: Int64, positionMs: Int64, durationMs: Int64) {
+    let payload: [String: Any] = [
+      "viewId": viewId,
+      "type": "progress",
+      "position": positionMs,
+      "duration": max(0, durationMs),
+      "buffered": 0,
+    ]
     DispatchQueue.main.async { [weak self] in
       self?.eventSink?(payload)
     }
@@ -185,7 +213,10 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
     player_stop: PlayerStop?,
     player_set_pause: PlayerSetPause?,
     player_set_volume: PlayerSetVolume?,
-    player_set_nsobject: PlayerSetNsobject?
+    player_set_nsobject: PlayerSetNsobject?,
+    player_set_time: PlayerSetTime?,
+    player_get_time: PlayerGetTime?,
+    player_get_length: PlayerGetLength?
   ) {
     (
       media_release,
@@ -196,7 +227,10 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       player_stop,
       player_set_pause,
       player_set_volume,
-      player_set_nsobject
+      player_set_nsobject,
+      player_set_time,
+      player_get_time,
+      player_get_length
     )
   }
 }
@@ -254,6 +288,8 @@ final class VlcSession {
   private weak var plugin: ForjaVlcPlugin?
   private var player: OpaquePointer?
   private weak var view: VlcContainerView?
+  private var progressTimer: Timer?
+  private var pendingSeekMs: Int64?
 
   init(viewId: Int64, plugin: ForjaVlcPlugin) {
     self.viewId = viewId
@@ -287,6 +323,11 @@ final class VlcSession {
     _ = plugin.api.player_play?(player)
     plugin.emit(viewId: viewId, type: "ready")
     plugin.emit(viewId: viewId, type: "playing", value: true)
+    if let pending = pendingSeekMs {
+      pendingSeekMs = nil
+      seek(positionMs: pending)
+    }
+    startProgressTimer()
   }
 
   /// Live IPTV (esp. progressive MPEG-TS) needs loose clock + cache.
@@ -336,12 +377,43 @@ final class VlcSession {
     _ = plugin?.api.player_set_volume?(player, Int32(max(0, min(100, volume))))
   }
 
+  func seek(positionMs: Int64) {
+    guard let player else {
+      pendingSeekMs = positionMs
+      return
+    }
+    _ = plugin?.api.player_set_time?(player, max(0, positionMs))
+    emitProgressNow()
+  }
+
   func dispose() {
     disposePlayerOnly()
     view = nil
   }
 
+  private func startProgressTimer() {
+    progressTimer?.invalidate()
+    progressTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+      self?.emitProgressNow()
+    }
+  }
+
+  private func emitProgressNow() {
+    guard let plugin, let player else { return }
+    let pos = plugin.api.player_get_time?(player) ?? -1
+    let len = plugin.api.player_get_length?(player) ?? -1
+    if pos < 0 && len < 0 { return }
+    plugin.emitProgress(
+      viewId: viewId,
+      positionMs: max(0, pos),
+      durationMs: max(0, len)
+    )
+  }
+
   private func disposePlayerOnly() {
+    progressTimer?.invalidate()
+    progressTimer = nil
+    pendingSeekMs = nil
     if let player {
       plugin?.api.player_stop?(player)
       plugin?.api.player_release?(player)

@@ -12,6 +12,9 @@ import 'package:forja/shared/player/screens/exo_player_screen.dart';
 import 'package:forja/shared/player/screens/mobile_player_screen.dart';
 import 'package:forja/shared/player/screens/tv_player_screen.dart';
 import 'package:forja/shared/player/screens/desktop_player_screen.dart';
+import 'package:forja/shared/player/screens/desktop_native_player_screen.dart';
+import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
+import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
@@ -180,6 +183,31 @@ class _PlayerScreenState extends State<PlayerScreen> {
       engine = BuiltInPlayerEngine.exoPlayer;
     }
 
+    // Desktop catalog: AVPlayer is macOS-only; VLC needs a system install.
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      if (engine == BuiltInPlayerEngine.avPlayer &&
+          !AvPlayerBridge.isSupported) {
+        engine = BuiltInPlayerEngine.mediaKit;
+      }
+      if (engine == BuiltInPlayerEngine.vlc &&
+          !await VlcPlayerBridge.isAvailable()) {
+        engine = BuiltInPlayerEngine.mediaKit;
+      }
+    }
+
+    final unfit = builtInPlayerEngineUnsuitableReason(
+      engine,
+      surface: BuiltInPlayerMenuSurface.catalogVod,
+      streamUrl: _sessionStreamUrl,
+      torrentLocalhost: isLocalTorrentStreamUrl(_sessionStreamUrl),
+      needsWidevine: _sessionNeedsWidevine(),
+      separateAudioUrl:
+          widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
+    );
+    if (unfit != null) {
+      engine = BuiltInPlayerEngine.mediaKit;
+    }
+
     if (!mounted) return;
 
     setState(() {
@@ -333,6 +361,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (builtInEngine == null) return;
     if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
+
+    if (builtInEngine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      if (mounted) {
+        ForjaToast.info('VLC (libVLC) is not installed');
+      }
+      return;
+    }
+    if (builtInEngine == BuiltInPlayerEngine.avPlayer &&
+        !AvPlayerBridge.isSupported) {
+      if (mounted) ForjaToast.info('AVPlayer is macOS-only');
+      return;
+    }
 
     final unfit = builtInPlayerEngineUnsuitableReason(
       builtInEngine,
@@ -653,6 +694,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
         providerSourcesCache: widget.providerSourcesCache,
         providerProbesNotifier: widget.providerProbesNotifier,
         builtInEngine: _builtInEngine,
+        onSwitchPlayer: _switchPlayer,
+      );
+    } else if (_builtInEngine == BuiltInPlayerEngine.avPlayer ||
+        _builtInEngine == BuiltInPlayerEngine.vlc) {
+      return DesktopNativePlayerScreen(
+        key: ValueKey(
+          'native_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+        ),
+        mediaPath: _sessionStreamUrl,
+        title: widget.title,
+        builtInEngine: _builtInEngine,
+        headers: _sessionHeaders,
+        movie: widget.movie,
+        selectedSeason: widget.selectedSeason,
+        selectedEpisode: widget.selectedEpisode,
+        activeProvider: _sessionActiveProvider,
+        startPosition: _effectiveStartPosition,
+        sources: _sessionSources,
+        onNextEpisode: widget.onNextEpisode,
+        hasNextEpisode: widget.hasNextEpisode,
+        episodes: widget.episodes,
+        hubEpisodeNumber: widget.hubEpisodeNumber,
+        onHubEpisodeSelected: widget.onHubEpisodeSelected,
+        episodeOverview: widget.episodeOverview,
+        enginePlaySession: widget.enginePlaySession,
+        onSaveProgress: widget.onSaveProgress,
+        onPlaybackStarted: widget.onPlaybackStarted,
         onSwitchPlayer: _switchPlayer,
       );
     } else {
