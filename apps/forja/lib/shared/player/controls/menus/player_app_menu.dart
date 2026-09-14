@@ -91,7 +91,12 @@ class PlayerAppMenu {
             separateAudioUrl: separateAudioUrl,
           ) ==
           null;
-    });
+    }).toList();
+    final selectedBuiltIn = resolvePlayerMenuBuiltInSelection(
+      usingBuiltIn: usingBuiltIn,
+      preferred: builtInEngine,
+      visible: engines,
+    );
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
@@ -101,11 +106,11 @@ class PlayerAppMenu {
         ...engines.map((engine) {
           return PlayerPopupOptionChip(
             label: engine.displayName,
-            selected: usingBuiltIn && engine == builtInEngine,
+            selected: selectedBuiltIn == engine,
             expanded: true,
             onTap: () async {
               onDismiss?.call();
-              if (usingBuiltIn && engine == builtInEngine) {
+              if (selectedBuiltIn == engine) {
                 return;
               }
               await onSelect(builtInEngine: engine);

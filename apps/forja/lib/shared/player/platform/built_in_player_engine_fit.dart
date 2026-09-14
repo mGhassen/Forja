@@ -55,3 +55,22 @@ bool _looksLikeHls(String url) {
   if (lower.isEmpty) return false;
   return lower.contains('.m3u8');
 }
+
+/// Which built-in row to mark selected in the Player menu.
+///
+/// When Settings prefers an engine that this stream filtered out (e.g. AVPlayer
+/// on catalog VOD), highlight the engine that can actually play — usually
+/// MediaKit — so the menu is not empty of selection.
+BuiltInPlayerEngine? resolvePlayerMenuBuiltInSelection({
+  required bool usingBuiltIn,
+  required BuiltInPlayerEngine preferred,
+  required Iterable<BuiltInPlayerEngine> visible,
+}) {
+  if (!usingBuiltIn) return null;
+  final list = List<BuiltInPlayerEngine>.of(visible);
+  if (list.contains(preferred)) return preferred;
+  if (list.contains(BuiltInPlayerEngine.mediaKit)) {
+    return BuiltInPlayerEngine.mediaKit;
+  }
+  return list.isEmpty ? null : list.first;
+}

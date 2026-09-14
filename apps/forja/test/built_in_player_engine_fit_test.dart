@@ -91,4 +91,42 @@ void main() {
       );
     });
   });
+
+  group('resolvePlayerMenuBuiltInSelection', () {
+    test('keeps preferred when still visible', () {
+      expect(
+        resolvePlayerMenuBuiltInSelection(
+          usingBuiltIn: true,
+          preferred: BuiltInPlayerEngine.mediaKit,
+          visible: const [
+            BuiltInPlayerEngine.mediaKit,
+            BuiltInPlayerEngine.exoPlayer,
+          ],
+        ),
+        BuiltInPlayerEngine.mediaKit,
+      );
+    });
+
+    test('falls back to MediaKit when preferred was filtered out', () {
+      expect(
+        resolvePlayerMenuBuiltInSelection(
+          usingBuiltIn: true,
+          preferred: BuiltInPlayerEngine.avPlayer,
+          visible: const [BuiltInPlayerEngine.mediaKit],
+        ),
+        BuiltInPlayerEngine.mediaKit,
+      );
+    });
+
+    test('external mode selects nothing built-in', () {
+      expect(
+        resolvePlayerMenuBuiltInSelection(
+          usingBuiltIn: false,
+          preferred: BuiltInPlayerEngine.mediaKit,
+          visible: const [BuiltInPlayerEngine.mediaKit],
+        ),
+        isNull,
+      );
+    });
+  });
 }
