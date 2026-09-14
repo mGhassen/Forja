@@ -44,10 +44,11 @@ export function AuthShell() {
           instead of stacking another full min-h-screen.
         */}
         <main className="relative grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <div className="min-h-0 min-w-0 overflow-hidden">
+          {/* Form first on mobile; story left / form right from lg up. */}
+          <div className="order-2 min-h-0 min-w-0 overflow-hidden lg:order-1">
             <AuthStoryPanel emphasis={emphasis} />
           </div>
-          <div className="min-h-0 min-w-0">
+          <div className="order-1 min-h-0 min-w-0 lg:order-2">
             <Outlet />
           </div>
         </main>

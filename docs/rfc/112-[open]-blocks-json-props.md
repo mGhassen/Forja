@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **14 / 15** acceptance · **1** ⏭️ deferred |
-| **Current slice** | One mount catalog — `kit.stack` composes any foundation component |
+| **Progress** | **4 / 4** components · **15 / 16** acceptance · **1** ⏭️ obsolete deferred (mounts shipped A10–A14) |
+| **Current slice** | Blocks mount complete — chrome **behavior** tracked in [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -45,6 +45,7 @@
 | 13 | R112-A13 | Delete `kit/slots/`; topBar/categoryBar/menu/tabs mount foundation Catalog* chrome; host glue lives in `kit/paint_*.dart` (no Pack*Slot) | ✅ |
 | 14 | R112-A14 | Delete host section painters (`paint_hero`/`mood`/`because`/`continue`/`list`/`vertical_filters`); PackPaintTree mounts blocks + chrome + CatalogCardsGrid + posterRow only | ✅ |
 | 15 | R112-A15 | One mount table (no atoms-vs-blocks fork); packs compose via `kit.stack` (or any type) of foundation components; host injects callbacks only | ✅ |
+| 16 | R112-A16 | Doc: A06 remount deferral obsolete — menu/tabs/list/topBar/categoryBar mount via A10–A14; product chrome behavior → [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) A11 | ✅ |
 
 ---
 
@@ -52,6 +53,8 @@
 
 Blocks are **prebuilt composed surfaces** with JSON props (`title`, `backdropUrl`, `overview`, …). Host injects callbacks / action rows only. Hub catalogs share `catalogBody`. Details/match blocks own `DetailsHero` paint — not empty Column shells.
 
+`kit.menu` / `kit.tabs` / `kit.list` / `kit.topBar` / `kit.categoryBar` **mount** in `PackPaintTree`. Remaining IPTV/Live/My List chrome fidelity (selection→feed, dynamic bars, verbs) is [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md), not a blocks remount.
+
 ## Out of scope
 
-Product-named catalog blocks; `SourcesPanelChrome`; remounting `kit.menu` / `kit.tabs` / `kit.list`.
+Product-named catalog blocks; `SourcesPanelChrome`. Chrome **behavior** parity is issue 279 (not this RFC).

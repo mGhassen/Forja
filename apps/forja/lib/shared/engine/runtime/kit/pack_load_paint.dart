@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
-import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
-import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 
 /// Runs an opaque pack [action], merges envelope fields into [fallbackSpec],
 /// then builds via [builder] (caller paints — no paint_tree import).
@@ -57,52 +56,35 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         !_mapEquals(oldWidget.params, widget.params) ||
         oldWidget.fallbackSpec['statusTab'] !=
             widget.fallbackSpec['statusTab'] ||
-        oldWidget.fallbackSpec['kindMenu'] != widget.fallbackSpec['kindMenu']) {
+        oldWidget.fallbackSpec['kindMenu'] != widget.fallbackSpec['kindMenu'] ||
+        oldWidget.fallbackSpec['catalogMenu'] !=
+            widget.fallbackSpec['catalogMenu'] ||
+        oldWidget.fallbackSpec['sortMenu'] != widget.fallbackSpec['sortMenu'] ||
+        oldWidget.fallbackSpec['horizonMenu'] !=
+            widget.fallbackSpec['horizonMenu']) {
       _scopeEpoch = _selectionEpoch();
       _future = _run();
     }
   }
 
-  String _selectionEpoch() {
-    final scope = LayoutScope.maybeOf(context);
-    final statusTab = (widget.fallbackSpec['statusTab'] ?? '').toString();
-    final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString();
-    final status = statusTab.isEmpty
-        ? ''
-        : (scope?.selectedId(statusTab) ??
-            widget.fallbackSpec['default']?.toString() ??
-            'plantowatch');
-    final kind = kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '');
-    final chrome = catalogChromeFilterEpoch(widget.tabId);
-    return '$status|$kind|$chrome';
-  }
+  String _selectionEpoch() => packChromeSelectionEpoch(
+        context,
+        listSpec: widget.fallbackSpec,
+        tabId: widget.tabId,
+      );
 
   Future<MetaEnvelope> _run() {
-    final scope = LayoutScope.maybeOf(context);
-    final statusTab = (widget.fallbackSpec['statusTab'] ?? '').toString();
-    final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString();
-    final params = <String, dynamic>{
-      ...widget.params,
-      'page': widget.tabId ?? widget.params['page'],
-    };
-    if (statusTab.isNotEmpty) {
-      params['status'] = scope?.selectedId(statusTab) ??
-          params['status'] ??
-          'plantowatch';
-      params['listStatus'] = params['status'];
-    }
-    if (kindMenu.isNotEmpty) {
-      final kind = scope?.selectedId(kindMenu);
-      if (kind != null && kind.isNotEmpty) params['kind'] = kind;
-    }
-    final filters = catalogChromeFilters(
+    final params = packChromeFeedParams(
+      context,
+      baseParams: widget.params,
+      listSpec: widget.fallbackSpec,
       tabId: widget.tabId,
       pluginId: widget.pluginId,
     );
     return packOpaqueRun(
       pluginId: widget.pluginId,
       action: widget.action,
-      params: catalogParamsWithFilters(params, filters: filters),
+      params: params,
       packSourceUrl: widget.packSourceUrl,
     );
   }
@@ -163,8 +145,49 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           merged['canShuffle'] = data['canShuffle'];
         }
         merged.remove('load');
+        _publishDynamicKinds(context, merged);
         return widget.builder(context, merged);
       },
     );
+  }
+
+  void _publishDynamicKinds(BuildContext context, Map<String, dynamic> merged) {
+    final chrome = PackChromeScope.maybeOf(context);
+    if (chrome == null) return;
+    final barId = (merged['kindMenu'] ?? '').toString().trim();
+    if (barId.isEmpty) return;
+    final raw = merged['items'];
+    if (raw is! List) return;
+    final kinds = <String>{};
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final item = Map<String, dynamic>.from(e);
+      final kind = (item['kind'] ??
+              (item['meta'] is Map
+                  ? (item['meta'] as Map)['kind'] ??
+                      (item['meta'] as Map)['type']
+                  : null) ??
+              '')
+          .toString()
+          .trim();
+      if (kind.isEmpty || kind == 'all') continue;
+      kinds.add(kind);
+    }
+    if (kinds.isEmpty) return;
+    final sorted = kinds.toList()..sort();
+    final items = <Map<String, dynamic>>[
+      {'id': 'all', 'label': 'All', 'icon': 'grid'},
+      for (final id in sorted)
+        {
+          'id': id,
+          'label': id.isEmpty
+              ? id
+              : '${id[0].toUpperCase()}${id.length > 1 ? id.substring(1) : ''}',
+        },
+    ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      chrome.onDynamicBarItems(barId, items);
+    });
   }
 }

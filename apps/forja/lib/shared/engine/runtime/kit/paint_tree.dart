@@ -1,19 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
+import 'package:forja/shared/engine/details/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/continue_entries.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
+import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/catalog/columns_header_block.dart';
@@ -444,6 +456,7 @@ class PackPaintTree extends StatelessWidget {
     final items = node['items'];
     if (items is! List || items.isEmpty) return const SizedBox.shrink();
     final slides = <CinematicHeroSlide>[];
+    final slideMetas = <MetaItem?>[];
     for (final raw in items) {
       if (raw is! Map) continue;
       if (slides.length >= 5) break;
@@ -507,12 +520,21 @@ class PackPaintTree extends StatelessWidget {
           ),
         ),
       );
+      slideMetas.add(meta);
     }
     if (slides.isEmpty) return const SizedBox.shrink();
     final compact = MediaQuery.sizeOf(context).width <
         ShellTokens.heroDesktopMinBodyWidth;
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
+    final scope = LayoutScope.maybeOf(context);
+    final bleed = (node['bleed'] ?? '').toString().trim();
+    final focusDown = bleed.isNotEmpty
+        ? scope?.resolveFocusEdge(bleed)
+        : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+    final tv = policy.useFocusableMoodChips;
+    final tab = (tabId ?? scope?.tabId ?? '').trim();
+
     return CinematicHero(
       slides: slides,
       layout: CinematicHeroLayout(
@@ -525,6 +547,114 @@ class PackPaintTree extends StatelessWidget {
         heroCompactRightInset: metrics.heroCompactRightInset,
         sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
       ),
+      actionRowBuilder: (ctx, slide, {required isActive}) {
+        final idx = slides.indexWhere((s) => s.id == slide.id);
+        final meta = idx >= 0 && idx < slideMetas.length ? slideMetas[idx] : null;
+        final details = slide.onDetails;
+        void play() {
+          if (meta == null) {
+            details?.call();
+            return;
+          }
+          unawaited(
+            openMetaItem(
+              ctx,
+              pluginId: pluginId,
+              item: meta,
+              shellTabId: tabId,
+              autoPlay: true,
+            ),
+          );
+        }
+
+        final follow = meta == null
+            ? null
+            : ListFollowTarget.fromMeta(meta: meta, pluginId: pluginId);
+        final playBtn = HeroPillPlayButton(
+          label: 'Play',
+          onTap: isActive ? play : null,
+          autoFocus: tv && isActive && policy.heroPlayAutoFocus,
+          tvTabId: tab.isEmpty ? null : tab,
+          tvRowId: 'hero-play',
+        );
+        final detailsBtn = details == null
+            ? null
+            : HeroPillPlayButton(
+                label: 'View details',
+                tone: HeroPillPlayTone.secondary,
+                onTap: isActive ? details : null,
+                tvTabId: tab.isEmpty ? null : tab,
+                tvRowId: 'hero-details',
+              );
+        final pin = follow == null
+            ? null
+            : KitListStatusButton.follow(
+                followTarget: follow,
+                excludeFromTvTraversal: !isActive,
+              );
+        final row = Row(
+          children: [
+            playBtn,
+            if (detailsBtn != null) ...[
+              const SizedBox(width: 12),
+              detailsBtn,
+            ],
+            if (pin != null) ...[
+              const SizedBox(width: 12),
+              pin,
+            ],
+          ],
+        );
+        if (!tv || focusDown == null) return row;
+        return Focus(
+          skipTraversal: true,
+          onKeyEvent: (node, event) {
+            if (event is! KeyDownEvent) return KeyEventResult.ignored;
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              focusDown();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: row,
+        );
+      },
+      galleryOverlayBuilder: tv && slides.length > 1
+          ? (ctx) {
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < slides.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: shellFocusableTap(
+                            context: ctx,
+                            onTap: () {},
+                            tvTabId: tab,
+                            tvRowId: 'hero-gallery',
+                            tvItemIndex: i,
+                            onDownEdge: focusDown,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: ForjaShellColors.textPrimary
+                                    .withValues(alpha: 0.55),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          : null,
     );
   }
 
@@ -537,6 +667,7 @@ class PackPaintTree extends StatelessWidget {
             constraints.maxHeight < 1) {
           return const SizedBox.shrink();
         }
+        final chrome = PackChromeScope.maybeOf(context);
         final raw = spec['items'];
         final items = <Map<String, dynamic>>[
           if (raw is List)
@@ -554,29 +685,138 @@ class PackPaintTree extends StatelessWidget {
                   if (_itemKind(e) == kindFilter) e,
               ];
         var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
+        final viewOverride = (chrome?.viewStyle ??
+                LayoutScope.maybeOf(context)?.selectedId('view') ??
+                '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        if (viewOverride.isNotEmpty) {
+          if (viewOverride == 'cards') {
+            style = 'grid';
+          } else if (viewOverride == 'list' ||
+              viewOverride == 'timeline' ||
+              viewOverride == 'epg' ||
+              viewOverride == 'guide') {
+            style = viewOverride;
+          }
+        }
         if (style == 'epg' || style == 'guide') style = 'timeline';
         final cardKind =
             style == 'list' || style == 'timeline' ? 'event' : 'poster';
-        return SizedBox(
+        final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
+        final selected = chrome?.selectedListItem;
+        final wide = constraints.maxWidth >= 900;
+        final showPanel = openMode == 'panel' && selected != null && wide;
+
+        final grid = CatalogCardsGrid(
+          items: filtered,
+          cardKind: cardKind,
+          emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
+          emptyDescription: (spec['emptyDescription'] ?? '').toString().isEmpty
+              ? null
+              : spec['emptyDescription']?.toString(),
+          onItemTap: (item) {
+            if (openMode == 'panel') {
+              chrome?.onSelectListItem(item);
+              return;
+            }
+            PackPaintArtifact.openTap(
+              context,
+              pluginId: pluginId,
+              props: PackPaintArtifact.propsOf(item),
+              open: item['open'],
+              meta: item['meta'],
+            )?.call();
+          },
+        );
+
+        Widget body = SizedBox(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
-          child: CatalogCardsGrid(
-            items: filtered,
-            cardKind: cardKind,
-            emptyTitle: 'Nothing here yet.',
-            onItemTap: (item) {
-              PackPaintArtifact.openTap(
-                context,
-                pluginId: pluginId,
-                props: PackPaintArtifact.propsOf(item),
-                open: item['open'],
-                meta: item['meta'],
-              )?.call();
-            },
-          ),
+          child: grid,
         );
+
+        if (showPanel) {
+          final entry = _listEntryFromItem(selected);
+          final panel = KitResolvePanelHost.instance.buildSidePanel(
+            context: context,
+            entry: entry,
+            layoutWidgets: [
+              if (spec['panelTabs'] is List)
+                {
+                  'type': 'kit.list',
+                  'panelTabs': spec['panelTabs'],
+                  'panelTab': spec['panelTab'],
+                },
+            ],
+            shellTabVisible: true,
+            refreshEpoch: chrome?.refreshEpoch ?? 0,
+            onClosed: () => chrome?.onSelectListItem(null),
+          );
+          body = SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 60, child: grid),
+                Expanded(flex: 40, child: panel),
+              ],
+            ),
+          );
+        }
+
+        final hoist = _hoistSourceFromPage(context);
+        if (hoist != null && (tabId ?? '').isNotEmpty) {
+          return PortalsActionHost.wrapListBody(
+            context,
+            tabId: tabId!,
+            sourceId: hoist,
+            shellTabVisible: true,
+            child: body,
+          );
+        }
+        return body;
       },
     );
+  }
+
+  KitListEntry _listEntryFromItem(Map<String, dynamic> item) {
+    final metaMap = item['meta'] is Map
+        ? Map<String, dynamic>.from(item['meta'] as Map)
+        : <String, dynamic>{
+            'id': (item['id'] ?? PackPaintArtifact.propsOf(item)['id'] ?? '')
+                .toString(),
+            'type': (item['type'] ?? 'other').toString(),
+            'name': (PackPaintArtifact.propsOf(item)['title'] ??
+                    item['name'] ??
+                    '')
+                .toString(),
+          };
+    final meta = MetaItem.fromJson(metaMap);
+    return KitListEntry(
+      meta: meta,
+      legacyRow: Map<String, dynamic>.from(item),
+      kind: _itemKind(item),
+      pluginId: pluginId,
+    );
+  }
+
+  String? _hoistSourceFromPage(BuildContext context) {
+    final scope = LayoutScope.maybeOf(context);
+    final specs = scope?.widgetSpecs.values ?? const [];
+    for (final spec in specs) {
+      final actions = propsActionMaps(spec);
+      for (final a in actions) {
+        final verb = (a['action'] ?? '').toString().trim().toLowerCase();
+        if (verb != 'portals') continue;
+        final hoist =
+            (a['hoistSource'] ?? a['source'] ?? '').toString().trim();
+        if (hoist.isNotEmpty) return hoist;
+      }
+    }
+    return null;
   }
 
   String _itemKind(Map<String, dynamic> item) {
@@ -632,19 +872,33 @@ class PackPaintTree extends StatelessWidget {
   }
 
   Widget _chromeCategoryBar(BuildContext context, Map<String, dynamic> spec) {
-    final items = layoutItemsFromSpec(spec);
+    final chrome = PackChromeScope.maybeOf(context);
+    final id = (spec['id'] ?? '').toString();
+    final dynamicItems = chrome?.barItems(id);
+    final seed = layoutItemsFromSpec(spec);
+    final items = <({String id, String label})>[
+      if (dynamicItems != null && dynamicItems.isNotEmpty)
+        for (final raw in dynamicItems)
+          (
+            id: (raw['id'] ?? '').toString(),
+            label: (raw['label'] ?? raw['title'] ?? raw['id'] ?? '').toString(),
+          )
+      else
+        ...seed,
+    ].where((e) => e.id.isNotEmpty).toList();
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
-    final id = (spec['id'] ?? '').toString();
     final selected = scope?.selectedId(id) ??
         (spec['default'] ?? items.first.id).toString();
     final orientation = (spec['orientation'] ?? spec['axis'] ?? '')
         .toString()
         .trim()
         .toLowerCase();
+    final source = (spec['source'] ?? '').toString().trim().toLowerCase();
     final vertical = orientation == 'vertical' ||
         orientation == 'rail' ||
-        spec['vertical'] == true;
+        spec['vertical'] == true ||
+        source == 'iptv';
     if (vertical) {
       final width =
           (spec['width'] is num) ? (spec['width'] as num).toDouble() : 220.0;
@@ -664,6 +918,7 @@ class PackPaintTree extends StatelessWidget {
 
   Widget _chromeTopBar(BuildContext context, Map<String, dynamic> spec) {
     final scope = LayoutScope.maybeOf(context);
+    final chrome = PackChromeScope.maybeOf(context);
     final actions = propsActionMaps(spec);
     return CatalogTopChrome(
       actions: actions,
@@ -676,9 +931,104 @@ class PackPaintTree extends StatelessWidget {
                     (a['default'] ?? '').toString(),
       },
       onSelect: (actionId, value) {
+        final action = actions.cast<Map<String, dynamic>?>().firstWhere(
+              (a) => a != null && (a['id'] ?? '').toString() == actionId,
+              orElse: () => null,
+            );
+        final verb =
+            (action?['action'] ?? actionId).toString().trim().toLowerCase();
+        if (verb == 'refresh' || actionId == 'refresh') {
+          chrome?.onBumpRefresh();
+          return;
+        }
+        if (verb == 'eventsearch' ||
+            verb == 'search' ||
+            actionId == 'search') {
+          unawaited(_openEventSearch(context, action ?? const {}));
+          return;
+        }
+        if (verb == 'portals' || actionId == 'portals') {
+          final hoist =
+              (action?['hoistSource'] ?? action?['source'] ?? '').toString();
+          if (hoist.isNotEmpty) {
+            PortalsActionHost.registerHoistSource(hoist);
+          }
+          try {
+            final container = ProviderScope.containerOf(context);
+            final open = container.read(portalsPanelOpenProvider);
+            container.read(portalsPanelOpenProvider.notifier).state = !open;
+            if (!open) {
+              container.invalidate(portalsInventoryProvider);
+            }
+          } catch (_) {
+            ForjaToast.show('Portals unavailable');
+          }
+          return;
+        }
+        if (actionId == 'view' || verb == 'view') {
+          chrome?.onViewStyle(value);
+        }
         scope?.onSelect(actionId, value, toggle: false);
       },
     );
+  }
+
+  Future<void> _openEventSearch(
+    BuildContext context,
+    Map<String, dynamic> action,
+  ) async {
+    final chrome = PackChromeScope.maybeOf(context);
+    final hint = (action['placeholder'] ?? action['hint'] ?? 'Search…')
+        .toString()
+        .trim();
+    final verb = (action['action'] ?? '').toString().trim().toLowerCase();
+    final tab = (tabId ?? '').trim();
+    // eventSearch filters the current list; hub `search` opens catalog search.
+    if (verb != 'eventsearch' && tab.isNotEmpty) {
+      await openCatalogSearch(
+        context,
+        pluginId: pluginId,
+        tabId: tab,
+        hintText: hint.isEmpty ? 'Search…' : hint,
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    final initial = chrome?.eventQuery ?? '';
+    final controller = TextEditingController(text: initial);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ForjaShellColors.surfaceElevated,
+        title: Text(
+          (action['label'] ?? 'Search').toString(),
+          style: const TextStyle(color: ForjaShellColors.textPrimary),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: ForjaShellColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: hint.isEmpty ? 'Search…' : hint,
+            hintStyle: const TextStyle(color: ForjaShellColors.textSecondary),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(''),
+            child: const Text('Clear'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || !context.mounted) return;
+    chrome?.onEventQuery(result.trim());
   }
 }
 
@@ -1064,32 +1414,40 @@ class _ContinueMountState extends State<_ContinueMount> {
             ? ShellTokens.shellContinueWatchingCardWidthDesktop
             : ShellTokens.shellContinueWatchingCardWidthCompact);
     final pad = catalogSectionHorizontalPadding(context);
-    return ContinueSection(
-      scrollController: _scroll,
-      showScrollArrows: showArrows,
-      cardWidth: cardW,
-      cardHeight: cardW * 9 / 16,
-      titlePadding: EdgeInsets.fromLTRB(
-        pad,
-        shellSectionTitleTopCompact(context),
-        pad,
-        16,
+    final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
+    return TvKitRow(
+      tabId: tab,
+      rowId: 'continue_watching',
+      sortOrder: 20,
+      itemCount: _entries.length,
+      onFocusUp: LayoutScope.maybeOf(context)?.resolveFocusEdge('spotlight'),
+      child: ContinueSection(
+        scrollController: _scroll,
+        showScrollArrows: showArrows,
+        cardWidth: cardW,
+        cardHeight: cardW * 9 / 16,
+        titlePadding: EdgeInsets.fromLTRB(
+          pad,
+          shellSectionTitleTopCompact(context),
+          pad,
+          16,
+        ),
+        listPadding: EdgeInsets.symmetric(horizontal: pad),
+        entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
+        resumingMetaId: _resumingMetaId,
+        onResume: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_resume(raw));
+        },
+        onInfo: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_openDetails(raw));
+        },
+        onRemove: (entry) {
+          final raw = _byId(entry.metaId);
+          if (raw != null) unawaited(_remove(raw));
+        },
       ),
-      listPadding: EdgeInsets.symmetric(horizontal: pad),
-      entries: [for (final e in _entries) ContinueEntry.fromMap(e)],
-      resumingMetaId: _resumingMetaId,
-      onResume: (entry) {
-        final raw = _byId(entry.metaId);
-        if (raw != null) unawaited(_resume(raw));
-      },
-      onInfo: (entry) {
-        final raw = _byId(entry.metaId);
-        if (raw != null) unawaited(_openDetails(raw));
-      },
-      onRemove: (entry) {
-        final raw = _byId(entry.metaId);
-        if (raw != null) unawaited(_remove(raw));
-      },
     );
   }
 }

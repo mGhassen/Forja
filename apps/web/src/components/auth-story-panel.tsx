@@ -68,7 +68,7 @@ export function AuthStoryPanel({
   const word = WORDS[wordIndex]!
 
   return (
-    <section className="relative flex h-full min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-b border-[rgba(237,230,218,0.1)] py-14 lg:min-h-0 lg:border-b-0 lg:border-r lg:py-16">
+    <section className="relative flex h-full min-h-[min(52vh,520px)] flex-col justify-center overflow-hidden border-t border-[rgba(237,230,218,0.1)] py-14 lg:min-h-0 lg:border-t-0 lg:border-r lg:py-16">
       <div className="hero-enter relative z-[1] w-full max-w-xl px-5 sm:px-8 lg:px-10">
         <p className="font-mono-ui text-[11px] uppercase tracking-[0.22em] text-forja-green">
           <span className="animate-live-dot mr-2 inline-block h-1.5 w-1.5 rounded-full bg-forja-green align-middle" />

@@ -6,7 +6,7 @@
 
 Asian Drama is a catalog hub from the ForjaHQ **Asian Drama** pack plugin `kisskh-hub` (`kind: catalog`). **Browse rails** are pack-defined; spotlight and details get TMDB enrich from companion plugin `enrich-tmdb`. The shell renders the shared **cinematic hero**, host **Continue Watching**, and **Search** via the pack `search` action. Toggle the tab under **Settings → Features**.
 
-KissKH title pages use [Hub details](hub-details.md). The **Popular** row is TMDB Asian TV — those cards open [TMDB details](../movies-tv/tmdb-details.md).
+KissKH title pages use [Hub details](hub-details.md). The **Popular** row is KissKH `most_viewed` (same order as the pre-CatalogShell Asian Drama hub) — cards open [Hub details](hub-details.md) on the KissKH title.
 
 ## How to open it
 
@@ -14,7 +14,7 @@ Tap **Asian Drama** in the navigation bar.
 
 ## What you can do
 
-- Browse hero and explore sections — cards use **wide 16:9** KissKH banners. Top menu: **Search**, **Films**, **Series**, **Categories** (country filters). Films/Series/country **refill KissKH rails** (Latest, Trending, …). **Popular** is TMDB-only (opens TMDB details). **Upcoming** shows **Coming soon** in hero meta when KissKH marks a title unreleased.
+- Browse hero and explore sections — cards use **wide 16:9** KissKH banners. Top menu: **Search**, **Films**, **Series**, **Categories** (country filters). Films/Series/country **refill KissKH rails** (Latest, Trending, Popular, …). **Upcoming** shows **Coming soon** in hero meta when KissKH marks a title unreleased.
 - **Search** — hub top-bar **Search** overlay (same two-column pattern as Anime on desktop/TV). Plain KissKH title search via the pack `search` action (no structured DSL unless the pack declares `structured_search`). **Cmd+F** / **Ctrl+F** on desktop.
 - **View details** on KissKH cards → [Hub details](hub-details.md) (episodes, KissKH native play, Sources when TMDB matched).
 - **Torrents in Sources** — pack sets `open.torrentEp` (`Title 05` search) and enrich can supply IMDb for Torrentio (see [Torrent scrapers](../scrapers/torrent.md)).

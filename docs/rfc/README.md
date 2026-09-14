@@ -133,7 +133,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **26 / 29** code · 4 🔄 · **8 / 8** IPTV pack · **12 / 12** A41 · **3 / 3** wipe · **3 / 3** kit evacuate · **3 / 3** validate+paint · **3 / 3** pack search · **4 / 4** catalog slots · **4 / 4** live guide · **2 / 2** guide out of player · **4 / 5** empty-shell (A79 🔄) | — |
 | [110-[draft]-…](110-[draft]-pack-surface-contributions.md) | Pack surface contributions (layers / modules / slots) | — | draft | **0 / 8** C · **26 / 28** spec · **0 / 12** registry · **0 / 10** details+player · **0 / 6** conflict UX · **0 / 4** reference packs | — |
 | [111-[fixed]-…](fixed/111-[fixed]-foundation-widgets-delete-dead.md) | Foundation widgets — delete dead / honesty vs PackPaintTree | — | fixed | Complete · 4/4 · 6/6 | — |
-| [112-[open]-…](112-[open]-blocks-json-props.md) | Blocks with JSON props (pack-callable) | — | open | **4 / 4** · **14 / 15** · 1 ⏭️ | — |
+| [112-[open]-…](112-[open]-blocks-json-props.md) | Blocks with JSON props (pack-callable) | — | open | **4 / 4** · **15 / 16** · 1 ⏭️ | [279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) |
 | [113-[open]-…](113-[open]-iptv-mediakit-ipdigi-direct-reconnect.md) | IPTV MediaKit — ipdigi direct CDN + lavf reconnect | — | open | **11 / 11** · **0 / 9** | — |
 | [114-[open]-…](114-[open]-debrid-magnet-resolve-packs.md) | Debrid magnet-resolve packs (kind: debrid; delete crates/debrid) | — | open | **6 / 6** · **12 / 12** | — |
 

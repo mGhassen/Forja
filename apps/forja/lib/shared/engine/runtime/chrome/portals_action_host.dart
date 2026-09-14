@@ -6,6 +6,8 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
+import 'package:forja/shared/sync/api/sync_service.dart';
+import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -364,6 +366,36 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
     );
   }
 
+  Future<void> _dealPortals() async {
+    if (!AccountFeatures.instance.isDealPortalEnabled) {
+      ForjaToast.error('Deal is not enabled on this account');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final profile = await SyncService.instance.activeProfile();
+      final profileId = profile?.id.trim() ?? '';
+      if (profileId.isEmpty) {
+        ForjaToast.error('Sign in and pick a profile to Deal');
+        return;
+      }
+      final ids = await SyncService.instance.dealPortals(profileId: profileId);
+      if (!mounted) return;
+      if (ids.isEmpty) {
+        ForjaToast.show('No portals dealt — pool may be empty');
+      } else {
+        ForjaToast.success(
+          'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',
+        );
+      }
+      ref.invalidate(portalsInventoryProvider);
+    } catch (e) {
+      ForjaToast.error(e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncInv = ref.watch(portalsInventoryProvider);
@@ -397,6 +429,12 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
             onPressed: _busy ? null : _addPortalDialog,
             icon: const Icon(Icons.add, color: Colors.white70),
           ),
+          if (AccountFeatures.instance.isDealPortalEnabled)
+            IconButton(
+              tooltip: 'Deal',
+              onPressed: _busy ? null : () => unawaited(_dealPortals()),
+              icon: const Icon(Icons.casino_outlined, color: Colors.white70),
+            ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _busy

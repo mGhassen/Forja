@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
@@ -46,6 +49,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     with AutomaticKeepAliveClientMixin, ShellTabRefresh<PackLayoutPainter> {
   List<Map<String, dynamic>> _widgets = const [];
   final Map<String, String> _layoutSelections = {};
+  String _eventQuery = '';
+  int _refreshEpoch = 0;
+  String _viewStyle = '';
+  final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
+  Map<String, dynamic>? _selectedListItem;
+  bool _layoutRtl = false;
   String? _error;
   bool _loading = true;
 
@@ -193,6 +202,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _loading = false;
       _error = null;
       _widgets = widgets;
+      _layoutRtl = catalogLayoutIsRtl(data);
       initLayoutTabSelections(_layoutSelections, widgets);
     });
     final tab = widget.tabId?.trim();
@@ -214,18 +224,65 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       } else {
         _layoutSelections[widgetId] = value;
       }
+      if (widgetId == 'view') {
+        _viewStyle = value;
+      }
     });
   }
 
   Widget _wrapLayoutScope(Widget child) {
-    return LayoutScope(
-      selections: Map<String, String>.unmodifiable(
-        Map<String, String>.from(_layoutSelections),
+    return PackChromeScope(
+      eventQuery: _eventQuery,
+      refreshEpoch: _refreshEpoch,
+      viewStyle: _viewStyle,
+      dynamicBarItems: Map<String, List<Map<String, dynamic>>>.unmodifiable(
+        Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),
       ),
-      widgetSpecs: layoutWidgetSpecIndex(_widgets),
-      tabId: _pageKey,
-      onSelect: _onLayoutSelect,
-      child: child,
+      selectedListItem: _selectedListItem,
+      onEventQuery: (q) {
+        if (_eventQuery == q) return;
+        setState(() => _eventQuery = q);
+      },
+      onBumpRefresh: () {
+        setState(() {
+          _refreshEpoch++;
+          _selectedListItem = null;
+        });
+        unawaited(onShellTabRefresh(force: true));
+      },
+      onViewStyle: (style) {
+        if (_viewStyle == style) return;
+        setState(() {
+          _viewStyle = style;
+          _layoutSelections['view'] = style;
+        });
+      },
+      onDynamicBarItems: (barId, items) {
+        final prev = _dynamicBarItems[barId];
+        if (prev != null &&
+            prev.length == items.length &&
+            listEquals(
+              [for (final e in prev) e['id']],
+              [for (final e in items) e['id']],
+            )) {
+          return;
+        }
+        setState(() => _dynamicBarItems[barId] = items);
+      },
+      onSelectListItem: (item) {
+        setState(() => _selectedListItem = item);
+      },
+      child: LayoutScope(
+        selections: Map<String, String>.unmodifiable(
+          Map<String, String>.from(_layoutSelections),
+        ),
+        widgetSpecs: layoutWidgetSpecIndex(_widgets),
+        tabId: _pageKey,
+        onSelect: _onLayoutSelect,
+        focusEdge: (rowId, {last = false}) =>
+            kitFocusEdge(_pageKey, rowId, last: last),
+        child: child,
+      ),
     );
   }
 
@@ -255,6 +312,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             listenable: listenable,
             builder: (_, _) => _wrapLayoutScope(_pageBody()),
           );
+    if (_layoutRtl) {
+      result = Directionality(
+        textDirection: TextDirection.rtl,
+        child: result,
+      );
+    }
     final tab = widget.tabId?.trim() ?? '';
     if (tab.isNotEmpty && VerticalFiltersRegistry.hasFilters(tab)) {
       result = Stack(

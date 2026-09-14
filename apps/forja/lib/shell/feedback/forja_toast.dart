@@ -14,24 +14,16 @@ class ForjaToastEntry {
     required this.message,
     required this.kind,
     required this.duration,
-    this.count = 1,
     this.actionLabel,
     this.onAction,
   });
 
   final String id;
-  String message;
+  final String message;
   final ForjaToastKind kind;
-  Duration duration;
-  int count;
+  final Duration duration;
   final String? actionLabel;
   final VoidCallback? onAction;
-
-  /// Bumped when coalesced / duration reset so the card restarts progress.
-  int progressEpoch = 0;
-
-  /// Extra linger requested by a coalesce (card consumes and clears).
-  Duration? pendingExtend;
 
   bool get isTimed => duration > Duration.zero;
   bool get hasAction => actionLabel != null && onAction != null;
@@ -51,9 +43,6 @@ class _QueuedToast {
   final Duration duration;
   final String? actionLabel;
   final VoidCallback? onAction;
-
-  bool get isTimed => duration > Duration.zero;
-  bool get hasAction => actionLabel != null && onAction != null;
 }
 
 /// Top-right floating status toasts. Mount [ForjaToastHost] once at app root.
@@ -61,8 +50,8 @@ class _QueuedToast {
 /// Pass [duration] `Duration.zero` to keep the toast until the user closes it
 /// or taps its action (sticky — no auto-dismiss timer).
 ///
-/// Same-[ForjaToastKind] timed toasts without actions coalesce into one card
-/// with a count badge. Hover pauses the dismiss progress bar.
+/// Timed toasts stack in a column (max 4). Hover pauses the dismiss progress
+/// bar. Sticky (duration zero) stay put when trimming.
 abstract final class ForjaToast {
   static final ForjaToastController controller = ForjaToastController();
 
@@ -140,6 +129,8 @@ abstract final class ForjaToast {
 }
 
 class ForjaToastController extends ChangeNotifier {
+  static const int maxVisible = 4;
+
   final List<ForjaToastEntry> _entries = [];
   final List<_QueuedToast> _queued = [];
   int _seq = 0;
@@ -212,43 +203,24 @@ class ForjaToastController extends ChangeNotifier {
   }
 
   void _present(_QueuedToast item) {
-    // One timed toast card at a time — any kind. Stacking info+success looked
-    // like two superimposed toasts. Sticky (duration zero) stay separate.
-    if (item.isTimed) {
-      final idx = _entries.lastIndexWhere((e) => e.isTimed);
-      if (idx >= 0) {
-        final existing = _entries.removeAt(idx);
-        if (!item.hasAction && !existing.hasAction) {
-          // Keep first message/kind; only count (+ linger) updates.
-          existing.count += 1;
-          existing.pendingExtend = item.duration;
-          _entries.add(existing);
-          _trimEntries();
-          notifyListeners();
-          return;
-        }
-        // Action toast or kind switch: replace — don't stack two timed cards.
-      }
-    }
-
-    final id = 'toast_${++_seq}';
-    final entry = ForjaToastEntry(
-      id: id,
-      message: item.message,
-      kind: item.kind,
-      duration: item.duration,
-      actionLabel: item.actionLabel,
-      onAction: item.onAction,
+    _entries.add(
+      ForjaToastEntry(
+        id: 'toast_${++_seq}',
+        message: item.message,
+        kind: item.kind,
+        duration: item.duration,
+        actionLabel: item.actionLabel,
+        onAction: item.onAction,
+      ),
     );
-    _entries.add(entry);
     _trimEntries();
     notifyListeners();
   }
 
   void _trimEntries() {
-    while (_entries.length > 4) {
-      // Prefer dropping timed toasts so sticky (duration zero) stay put.
-      final timedIdx = _entries.indexWhere((e) => e.duration > Duration.zero);
+    while (_entries.length > maxVisible) {
+      // Prefer dropping oldest timed so sticky (duration zero) stay put.
+      final timedIdx = _entries.indexWhere((e) => e.isTimed);
       _entries.removeAt(timedIdx >= 0 ? timedIdx : 0);
     }
   }
@@ -347,7 +319,6 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                   ],
                 );
 
-                // Fixed width so coalesced messages don't resize the card.
                 return SizedBox(
                   width: 360,
                   child: tv
@@ -409,40 +380,6 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       node.requestFocus();
       _stoleFocus = true;
     });
-  }
-
-  @override
-  void didUpdateWidget(covariant _ForjaToastCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.entry.progressEpoch != widget.entry.progressEpoch ||
-        oldWidget.entry.duration != widget.entry.duration) {
-      _startProgress();
-      return;
-    }
-    final extra = widget.entry.pendingExtend;
-    if (extra != null && extra > Duration.zero) {
-      widget.entry.pendingExtend = null;
-      _extendProgress(extra);
-    }
-  }
-
-  /// Add linger without jumping the bar (same remaining fraction, longer clock).
-  void _extendProgress(Duration extra) {
-    final progress = _progress;
-    final duration = progress?.duration;
-    if (progress == null || duration == null || extra <= Duration.zero) return;
-    final remainingMs =
-        (1.0 - progress.value) * duration.inMilliseconds;
-    // Cap so bulk installs don't leave a toast up forever.
-    final addMs = extra.inMilliseconds.clamp(0, 3000);
-    final newTotalMs = (remainingMs + addMs).clamp(0, 6000);
-    if (newTotalMs <= 0) return;
-    final newValue = 1.0 - (remainingMs / newTotalMs);
-    progress.duration = Duration(milliseconds: newTotalMs.round());
-    progress.value = newValue.clamp(0.0, 1.0);
-    if (!_hovered && progress.status != AnimationStatus.forward) {
-      progress.forward();
-    }
   }
 
   void _startProgress() {
@@ -617,39 +554,6 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       );
     }
 
-    // Always reserve badge width so ×N appearing doesn't shift the row.
-    Widget countBadge() {
-      final show = entry.count > 1;
-      return SizedBox(
-        width: 40,
-        child: show
-            ? Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: style.accent.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border:
-                        Border.all(color: style.accent.withValues(alpha: 0.45)),
-                  ),
-                  child: Text(
-                    '×${entry.count}',
-                    style: TextStyle(
-                      color: style.accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-              )
-            : null,
-      );
-    }
-
     final card = ForjaToastChrome(
       kind: entry.kind,
       bottom: progress == null
@@ -686,7 +590,6 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
               ),
             ),
           ),
-          countBadge(),
           if (_hasAction) ...[
             const SizedBox(width: 8),
             actionButton(),

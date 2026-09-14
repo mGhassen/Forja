@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 14** verification · kit.list grid crash fix in progress |
+| **Progress** | **13 / 14** verification · A14 manual QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,11 +27,11 @@
 | 6 | I279-A06 | Hero: View details + list pin + bleed under spotlight + hideWhenBleed | ✅ |
 | 7 | I279-A07 | LayoutStack: no Expanded crash in CatalogBody scroll | ✅ |
 | 8 | I279-A08 | VerticalFiltersRegistry unregister on dispose | ✅ |
-| 9 | I279-A09 | Hero TV interactive (gallery overlay, ShellTvFocus, bleed focus-down) | ⬜ |
-| 10 | I279-A10 | Rails TV row registration + pagination (KitSection parity) | ⬜ |
-| 11 | I279-A11 | `kit.list` / `kit.topBar` / menu / tabs / categoryBar mount (IPTV / Live / My List) | 🔄 |
+| 9 | I279-A09 | Hero TV interactive (gallery overlay, ShellTvFocus, bleed focus-down) | ✅ |
+| 10 | I279-A10 | Rails TV row registration + pagination (KitSection parity) | ✅ |
+| 11 | I279-A11 | IPTV / Live / My List product chrome: topBar→feed params, dynamic categoryBar, portals/search/refresh/view, list panel open | ✅ |
 | 12 | I279-A12 | Full-page `expand` stack (bounded Column, not scroll-only) | ✅ |
-| 13 | I279-A13 | Continue / mood / because TV focus graph parity | ⬜ |
+| 13 | I279-A13 | Continue / mood / because TV focus graph parity | ✅ |
 | 14 | I279-A14 | Manual QA: Home · Anime · Asian Drama · IPTV · Live Sports · My List look like pre-`1d9ff09b4` | ⬜ |
 
 ---
@@ -44,9 +44,12 @@ Commit `1d9ff09b4` deleted `pack_layout_host_wire` (~5k) and left a stub `PackPa
 
 **Root:** thin painter mounts only posterCard/eventCard/row + partial slots; product chrome (`KitSection`, `ContinueWidget`, `kit.list`, topBar, TV focus graph, hideWhenTypeFilter) was deleted without replacement.
 
+**A11 note:** chrome widgets mount (RFC-112 A10–A14). Product chrome behavior restored via `PackChromeScope` + `packChromeFeedParams` (selection→feed, dynamic bars, topBar verbs, Live panel).
+
 **Must not mark fixed** until A14 QA passes on all in-scope hubs.
 
 ### Related
 
 - [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) A69–A72 (slot paint started)
+- [281](281-[open]-pack-hub-design-parity-all-hubs.md) — pack-side layout / RTL / empty parity
 - Baseline commit before wipe: `1d9ff09b4^` (`pack_layout_host.dart` + `pack_layout_host_wire.dart`)

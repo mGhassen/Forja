@@ -579,7 +579,8 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 | Still open | Detail |
 |------------|--------|
-| Chrome | `kit.topBar` / `kit.categoryBar` still pack-declared but host painter does not mount chrome widgets yet (top bar slot is empty) |
+| Chrome | `kit.topBar` / `kit.categoryBar` **mount** in `PackPaintTree`; product chrome **behavior** (selection→feed, dynamic cats, portals/search/refresh, list panel) still incomplete — [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) A11 · pack roots [281](../issues/281-[open]-pack-hub-design-parity-all-hubs.md) |
+
 
 | Done (pack parity) | Detail |
 |--------------------|--------|
