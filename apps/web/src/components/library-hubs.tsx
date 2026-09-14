@@ -128,14 +128,13 @@ export function LibraryHubs() {
   return (
     <section id="library" className="px-[5vw] py-[12vh]">
       <Reveal>
-        <h2 className="max-w-[16ch] font-disp text-[clamp(36px,6vw,72px)] uppercase leading-[0.92] tracking-[-0.03em]">
-          Hubs and worlds
-          <br />
-          <span className="text-flame">you can add</span>
+        <h2 className="max-w-[20ch] font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
+          Catalog worlds you can add with packs
         </h2>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-          Movies, series, anime, drama, live TV, and sport. Worlds you can add
-          with packs.
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
+          Movies, series, anime, drama, live TV, and sport are available through
+          the hubs and lists you install. Pick the packs that match what you
+          watch.
         </p>
       </Reveal>
 

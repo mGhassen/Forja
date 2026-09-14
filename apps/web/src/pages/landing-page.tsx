@@ -16,7 +16,7 @@ const MARQUEE = [
   'IPTV',
   'Community packs',
   'Open source',
-  'Desk to TV',
+  'Profile sync',
 ]
 
 export function LandingPage() {
@@ -69,7 +69,7 @@ export function LandingPage() {
               <div className="hover-zoom rounded-lg">
                 <img
                   src="/brand/forja-home-hero.jpg"
-                  alt="Forja home - cinematic hero and featured shelves"
+                  alt="Forja home screen with featured hero and shelves"
                   width={1024}
                   height={643}
                   className="h-auto w-full rounded-lg border border-white/10 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.85)]"
@@ -78,21 +78,25 @@ export function LandingPage() {
               </div>
             </Reveal>
             <Reveal delayMs={80} variant="right">
-              <h2 className="font-disp text-[clamp(32px,5vw,56px)] uppercase leading-[0.92] tracking-[-0.04em]">
-                A player that
-                <br />
-                <span className="text-flame">feels like yours</span>
+              <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                A clear home for what you want to watch next
               </h2>
-              <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-                Cinematic home, clear shelves, and controls built for long
-                sessions. Forja is not a locked catalog. You shape what lands in
-                the app.
+              <p className="mt-6 text-base leading-relaxed text-[rgba(237,230,218,0.6)] sm:text-lg">
+                Forja opens on a cinematic home with a featured title and shelves
+                you can browse quickly. The layout stays readable from a laptop
+                window to a living-room TV, so you spend time watching instead of
+                digging through menus.
               </p>
+              <ul className="mt-6 space-y-2 text-base leading-relaxed text-[rgba(237,230,218,0.7)] sm:text-lg">
+                <li>Featured titles and shelves from the hubs you installed</li>
+                <li>Player controls built for long movies and series sessions</li>
+                <li>No locked catalog: packs decide what appears in the app</li>
+              </ul>
               <Link
                 to="/platform"
                 className="link-draw font-mono-ui mt-10 inline-block text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
               >
-                See what makes Forja unique
+                Read how the platform works
               </Link>
             </Reveal>
           </div>
@@ -103,17 +107,14 @@ export function LandingPage() {
         <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
           <div className="mx-auto max-w-[1100px]">
             <Reveal>
-              <h2 className="font-disp text-[clamp(36px,6vw,72px)] uppercase leading-[0.92] tracking-[-0.03em]">
-                Built with the
-                <br />
-                <span className="font-serif-i normal-case text-flame">
-                  community
-                </span>
+              <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                Community packs that extend what Forja can play
               </h2>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-                Community packs extend hubs and sources. The host stays open so
-                authors can ship what the catalog is missing, and you only
-                install what you want.
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.6)] sm:text-lg">
+                Packs add hubs, stream sources, live feeds, and more. Browse the
+                catalog, add packs to your profile, open Forja on a device, and
+                they install ready to use. Prefer to contribute? Publish your own
+                pack and share the URL with the community.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
@@ -121,7 +122,7 @@ export function LandingPage() {
                   data-hover=""
                   className="btn-magnet inline-flex items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
                 >
-                  Browse packs
+                  Browse community packs
                 </Link>
                 <Link
                   to="/platform"
@@ -135,17 +136,18 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh] text-center">
+        <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
           <Reveal>
-            <h2 className="font-disp text-[clamp(36px,7vw,84px)] uppercase leading-[0.92] tracking-[-0.04em]">
-              Desk. Couch.
-              <br />
-              <span className="text-flame">TV.</span>
-            </h2>
-            <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-              Same Forja on every screen. Sign in to sync settings and packs
-              across devices.
-            </p>
+            <div className="mx-auto max-w-[1100px] text-center">
+              <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                The same player on every screen you use
+              </h2>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.6)] sm:text-lg">
+                Use Forja on your desk, on the couch, or on Android TV. Sign in
+                to sync settings and installed packs across devices so your setup
+                follows you.
+              </p>
+            </div>
           </Reveal>
         </section>
 
@@ -154,14 +156,13 @@ export function LandingPage() {
           className="grid grid-cols-1 items-center gap-10 border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[10vh] md:grid-cols-[0.95fr_1.15fr] md:gap-14 lg:gap-16"
         >
           <Reveal>
-            <h2 className="font-disp text-[clamp(36px,8vw,84px)] uppercase leading-[0.9] tracking-[-0.04em]">
-              Download Forja
-              <br />
-              <span className="text-brand">and start streaming</span>
+            <h2 className="font-disp text-[clamp(28px,5vw,52px)] uppercase leading-[0.95] tracking-[-0.03em]">
+              Download Forja and start streaming
             </h2>
-            <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:mt-8 sm:text-lg">
-              Get the player, add the packs you need, and press play. Forja does
-              not host media files. You bring the sources.
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.6)] sm:mt-8 sm:text-lg">
+              Install the player, add the community packs you need, and press
+              play. Forja does not host media files. You connect sources and
+              packs yourself.
             </p>
             <Link
               ref={magnetRef}

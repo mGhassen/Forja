@@ -701,6 +701,7 @@ void main() {
       final root = _packsRoot();
       expect(root, isNotNull);
       expect(File('$root/hubs/iptv/iptv.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/_details.js').existsSync(), isTrue);
       expect(File('$root/hubs/iptv/iptv_vod.js').existsSync(), isFalse);
       expect(File('$root/hubs/iptv/enrich_tmdb.js').existsSync(), isTrue);
     });
@@ -726,9 +727,13 @@ void main() {
     test('iptv hub details action is wired in entry', () {
       final root = _packsRoot();
       expect(root, isNotNull);
-      final src = File('$root/hubs/iptv/iptv.js').readAsStringSync();
-      expect(src, contains("action === 'details'"));
-      expect(src, contains('iptvVodDetails'));
+      final entry = File('$root/hubs/iptv/iptv.js').readAsStringSync();
+      final details = File('$root/hubs/iptv/_details.js').readAsStringSync();
+      expect(entry, contains("action === 'details'"));
+      expect(entry, contains('iptvVodDetails'));
+      expect(details, contains('async function iptvVodDetails'));
+      expect(File('$root/hubs/iptv/_prelude.js').readAsStringSync(),
+          contains('async function iptvVodDetails'));
     });
 
     test('nav specs map plugins onto hub tabs', () {

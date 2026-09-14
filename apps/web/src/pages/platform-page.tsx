@@ -8,80 +8,77 @@ import { cn } from '@/lib/utils'
 
 const UNIQUES = [
   {
-    title: 'Host, not a walled garden',
-    copy: 'Forja is the player host. Packs and addons decide what you browse and play. You are not locked into one catalog owned by the app.',
+    title: 'A host you control, not a locked catalog',
+    copy: 'Forja is the player host. Packs and addons decide what you browse and play. You are not stuck inside one catalog owned by the app vendor.',
     accent: 'brand' as const,
   },
   {
-    title: 'Community packs',
-    copy: 'Install hubs, providers, live feeds, torrent indexers, and more. Add only what you want. Ship your own pack and share the URL.',
+    title: 'Community packs for hubs and sources',
+    copy: 'Install hubs, providers, live feeds, torrent indexers, and more. Keep only what you need. Authors can publish a pack URL anyone can add.',
     accent: 'flame' as const,
   },
   {
-    title: 'Addon surfaces',
-    copy: 'Playback prefs, IPTV portals, Stremio, Nuvio, torrent, and more live as addons you turn on per profile. Same idea as the app Settings addons hub.',
+    title: 'Addons for the surfaces you turn on',
+    copy: 'Playback preferences, IPTV portals, Stremio, Nuvio, torrent, and related tools live as addons you enable per profile, the same way they appear in the app.',
     accent: 'brand' as const,
   },
   {
-    title: 'Open source',
-    copy: 'Inspect the project, fork it, and build on the SDK. The community grows the catalog while the host stays generic.',
+    title: 'Open source from the player to the SDK',
+    copy: 'Inspect the project, contribute packs with the SDK, and grow the catalog with the community while the host stays generic.',
     accent: 'flame' as const,
   },
 ]
 
 const CAPABILITIES = [
   {
-    k: 'Movies & series',
-    v: 'Full-screen playback with controls built for long sessions and episode flow.',
+    k: 'Movies and series',
+    v: 'Watch full screen with player controls built for long sessions, episode flow, audio tracks, and subtitles when the stream supports them.',
   },
   {
-    k: 'Anime & drama hubs',
-    v: 'Install hub packs for the worlds you watch. Shelves and details come from the pack.',
+    k: 'Anime and drama hubs',
+    v: 'Install hub packs for the catalogs you care about. Shelves, details, and open behavior come from the pack, not hard-coded into Forja.',
   },
   {
     k: 'Live sport',
-    v: 'Follow matches as they happen with sources and feeds you install.',
+    v: 'Follow matches as they happen using the live feeds and sources you install, inside the same player you use for everything else.',
   },
   {
-    k: 'Live TV & IPTV',
-    v: 'Connect your list, search channels, see what is on, and keep films in the same player.',
+    k: 'Live TV and IPTV',
+    v: 'Connect your channel list, search, see what is on now, and keep movies and series one step away without switching apps.',
   },
 ]
 
 const LAYERS = [
   {
-    n: '01',
     title: 'Player host',
-    copy: 'Shell, playback, sync, and install. Forja does not pretend to own every title on earth.',
+    copy: 'Forja provides the shell, native playback, profile sync, and pack install. It does not claim to own every title on the internet.',
   },
   {
-    n: '02',
     title: 'Packs',
-    copy: 'Community (and official) packs add hubs, sources, and live modules. Browse them on Community Packs.',
+    copy: 'Official and community packs add hubs, sources, and live modules. You browse them on Community Packs and install them to a profile.',
   },
   {
-    n: '03',
     title: 'Addons',
-    copy: 'Profile surfaces you enable: playback, IPTV portals, Stremio, Nuvio, torrent, and related prefs.',
+    copy: 'Addons are the product surfaces you enable: playback, IPTV portals, Stremio, Nuvio, torrent, and related preferences for that profile.',
   },
 ]
 
 const BETTER = [
   {
-    title: 'You choose the stack',
-    copy: 'Closed players ship one opinion. Forja lets you assemble hubs and sources as packs.',
+    title: 'You assemble the stack',
+    copy: 'Closed players ship one fixed opinion of what you can watch. Forja lets you assemble hubs and sources as packs, and leave out the rest.',
   },
   {
-    title: 'One app for live and VOD',
-    copy: 'Live channels, sport, movies, and series share the same player instead of bouncing between tools.',
+    title: 'Live and on-demand in one player',
+    copy: 'Live channels, sport, movies, and series share the same app and controls, so you do not bounce between separate tools for a match and a film.',
   },
   {
-    title: 'Sync across screens',
-    copy: 'Sign in to keep packs and settings with you from desk to couch to Android TV.',
+    title: 'Settings and packs sync across screens',
+    copy: 'Sign in to keep packs and preferences with you from a desk to the couch to Android TV.',
   },
   {
-    title: 'Built to be extended',
-    copy: 'Authors use the SDK, host a manifest URL, and land in the same catalog everyone browses.',
+    title: 'Built so the community can extend it',
+    copy: 'Authors start from the SDK, host a manifest URL, and land in the same catalog everyone else browses and installs.',
   },
 ]
 
@@ -96,20 +93,19 @@ export function PlatformPage() {
           <header className="relative px-[5vw] pb-12 pt-20 sm:pb-16 sm:pt-24 lg:pb-20 lg:pt-28">
             <div className="mx-auto max-w-[900px]">
               <div className="hero-enter">
-                <p className="mb-5 font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
-                  The Forja platform
-                </p>
-                <h1 className="font-disp text-[clamp(2.4rem,6.5vw,4.75rem)] uppercase leading-[0.9] tracking-[-0.04em]">
-                  What makes Forja
+                <h1 className="font-disp text-[clamp(2.2rem,5.5vw,4rem)] uppercase leading-[0.92] tracking-[-0.03em]">
+                  What Forja offers as a
                   <br />
                   <span className="font-serif-i normal-case text-forja-flame">
-                    different
+                    streaming platform
                   </span>
                 </h1>
-                <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)] sm:text-lg">
-                  Most streaming apps sell a fixed catalog. Forja is a modular
-                  open-source player: a host for packs and addons, shaped by the
-                  community, synced across your screens.
+                <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
+                  Most streaming apps sell a fixed catalog. Forja is an
+                  open-source modular player: a host for packs and addons,
+                  shaped by the community, with the same app across your
+                  screens. This page explains how the pieces fit and why that
+                  design is better than a closed player.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link
@@ -124,7 +120,7 @@ export function PlatformPage() {
                     data-hover=""
                     className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:text-xs"
                   >
-                    Browse packs
+                    Browse community packs
                   </Link>
                 </div>
               </div>
@@ -134,33 +130,29 @@ export function PlatformPage() {
           <section className="border-t border-[rgba(237,230,218,0.12)] px-[5vw] py-14 sm:py-20">
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
-                <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  Why people pick{' '}
-                  <span className="text-forja-green">Forja</span>
+                <h2 className="font-disp text-[clamp(1.6rem,3.5vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                  What makes Forja different
                 </h2>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Four traits that separate Forja from a normal media player or a
-                  closed streaming app.
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                  These are the product choices that separate Forja from a
+                  normal file player or a closed streaming service.
                 </p>
               </Reveal>
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
                 {UNIQUES.map((item, i) => (
                   <Reveal key={item.title} delayMs={(i % 2) * 80} variant="scale">
                     <LiquidGlass className="hover-lift h-full border-white/10 p-6 sm:p-7">
-                      <p
+                      <h3
                         className={cn(
-                          'font-mono-ui text-[10px] font-bold uppercase tracking-[0.2em]',
+                          'font-disp text-xl uppercase leading-snug tracking-tight',
                           item.accent === 'flame'
                             ? 'text-forja-flame'
                             : 'text-forja-green',
                         )}
                       >
-                        Unique
-                      </p>
-                      <h3 className="mt-3 font-disp text-xl uppercase tracking-tight text-[#EDE6DA]">
                         {item.title}
                       </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-[rgba(237,230,218,0.58)]">
+                      <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.6)] sm:text-base">
                         {item.copy}
                       </p>
                     </LiquidGlass>
@@ -173,22 +165,22 @@ export function PlatformPage() {
           <section className="border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20">
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
-                <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  How the platform{' '}
-                  <span className="text-forja-flame">fits together</span>
+                <h2 className="font-disp text-[clamp(1.6rem,3.5vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                  How the platform is organized
                 </h2>
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                  Three clear layers. The host stays stable. Packs and addons
+                  carry the product you actually use day to day.
+                </p>
               </Reveal>
               <div className="mt-10 grid gap-4 md:grid-cols-3">
                 {LAYERS.map((layer, i) => (
-                  <Reveal key={layer.n} delayMs={i * 80} variant="scale">
+                  <Reveal key={layer.title} delayMs={i * 80} variant="scale">
                     <LiquidGlass className="hover-lift h-full border-white/10 p-6 sm:p-7">
-                      <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.2em] text-forja-green">
-                        Layer {layer.n}
-                      </p>
-                      <h3 className="mt-3 font-disp text-xl uppercase tracking-tight text-[#EDE6DA]">
+                      <h3 className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA]">
                         {layer.title}
                       </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-[rgba(237,230,218,0.58)]">
+                      <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.6)] sm:text-base">
                         {layer.copy}
                       </p>
                     </LiquidGlass>
@@ -201,23 +193,23 @@ export function PlatformPage() {
           <section className="border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20">
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
-                <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  What you can{' '}
-                  <span className="text-forja-green">stream</span>
+                <h2 className="font-disp text-[clamp(1.6rem,3.5vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                  What you can stream in one player
                 </h2>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  One player for the surfaces packs and addons unlock. Live TV is
-                  part of the platform, not a separate product next to Forja.
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                  Packs and addons unlock these surfaces inside the same Forja
+                  app. Live TV is part of the platform, not a separate product
+                  sitting beside it.
                 </p>
               </Reveal>
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
                 {CAPABILITIES.map((cap, i) => (
                   <Reveal key={cap.k} delayMs={(i % 2) * 70}>
                     <div className="hover-lift h-full border border-[rgba(237,230,218,0.14)] bg-[#121110] px-6 py-7 sm:px-8 sm:py-8">
-                      <h3 className="font-disp text-[clamp(22px,2.5vw,30px)] uppercase leading-tight tracking-tight">
+                      <h3 className="font-disp text-[clamp(20px,2.2vw,28px)] uppercase leading-snug tracking-tight">
                         {cap.k}
                       </h3>
-                      <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                      <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.6)]">
                         {cap.v}
                       </p>
                     </div>
@@ -230,13 +222,13 @@ export function PlatformPage() {
                     to="/iptv"
                     className="link-draw font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
                   >
-                    Deep dive: live TV & IPTV
+                    More about live TV and IPTV
                   </Link>
                   <a
                     href="/plugins#build"
                     className="link-draw font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand transition-colors hover:text-flame"
                   >
-                    Build a community pack
+                    How to build a community pack
                   </a>
                 </div>
               </Reveal>
@@ -246,22 +238,21 @@ export function PlatformPage() {
           <section className="border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20">
             <div className="mx-auto max-w-[1100px]">
               <Reveal>
-                <h2 className="font-disp text-[clamp(1.75rem,4vw,2.75rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  Better than a{' '}
-                  <span className="text-forja-flame">closed player</span>
+                <h2 className="font-disp text-[clamp(1.6rem,3.5vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                  Why this is better than a closed player
                 </h2>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                  Not louder marketing. Clear architecture choices.
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                  The advantage is the architecture, not louder slogans.
                 </p>
               </Reveal>
-              <ul className="mt-10 space-y-8">
+              <ul className="mt-10 space-y-10">
                 {BETTER.map((row, i) => (
                   <Reveal key={row.title} delayMs={i * 60}>
                     <li>
-                      <p className="font-disp text-[clamp(24px,3vw,36px)] uppercase leading-none text-[#EDE6DA]">
+                      <h3 className="font-disp text-[clamp(22px,2.8vw,32px)] uppercase leading-snug tracking-tight text-[#EDE6DA]">
                         {row.title}
-                      </p>
-                      <p className="mt-3 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
+                      </h3>
+                      <p className="mt-3 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.6)]">
                         {row.copy}
                       </p>
                     </li>
@@ -280,15 +271,12 @@ export function PlatformPage() {
                 />
                 <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
                   <div className="max-w-lg">
-                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
-                      Ready when you are
-                    </p>
-                    <h2 className="mt-2 font-disp text-[clamp(1.75rem,4vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    <h2 className="font-disp text-[clamp(1.6rem,3.5vw,2.25rem)] uppercase leading-[0.95] tracking-[-0.03em]">
                       Download Forja and shape your setup
                     </h2>
-                    <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                      Install the player, add packs, turn on the addons you need,
-                      and stream on every screen.
+                    <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                      Install the player, add the packs you need, turn on the
+                      addons you use, and stream on every screen.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">

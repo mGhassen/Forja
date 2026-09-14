@@ -61,7 +61,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-12 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
           <div className="max-w-xl">
             <BrandLogo to="/" imgClassName="h-8 w-auto sm:h-10" />
-            <p className="mt-6 font-disp text-[clamp(28px,5vw,48px)] uppercase leading-[0.92] tracking-[-0.03em]">
+            <p className="mt-6 font-disp text-[clamp(26px,4.5vw,42px)] uppercase leading-[0.95] tracking-[-0.03em]">
               Open-source modular
               <br />
               <span className="font-serif-i normal-case text-flame">
@@ -69,8 +69,8 @@ export function SiteFooter() {
               </span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Built to be the best modular streaming player. Community packs for
-              hubs and sources. Open source. Forja does not host media files.
+              Modular streaming player with community packs for hubs and sources.
+              Open source. Forja does not host media files.
             </p>
             <Link
               to="/download"
