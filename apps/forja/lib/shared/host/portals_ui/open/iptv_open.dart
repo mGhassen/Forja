@@ -144,9 +144,12 @@ IptvStream iptvStreamFromMeta(MetaItem meta) {
   );
 }
 
-/// Installed IPTV VOD details pack plugin id, if any.
-Future<String?> iptvVodDetailsPluginId() =>
-    PluginNavRegistry.pluginIdForEngineType('iptv');
+/// IPTV hub plugin id (nav + details live on `iptv-hub`).
+Future<String?> iptvVodDetailsPluginId() async {
+  final fromTab = await PluginNavRegistry.pluginIdForTab('iptv');
+  if (fromTab != null && fromTab.isNotEmpty) return fromTab;
+  return PluginNavRegistry.pluginIdForEngineType('iptv');
+}
 
 /// Returns false when scripts are still downloading — caller should abort open.
 Future<bool> ensureIptvVodPluginReady(String pluginId) async {

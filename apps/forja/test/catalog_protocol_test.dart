@@ -64,7 +64,7 @@ Map<String, dynamic> loadHubPackManifest(String packDir) {
   );
 }
 
-/// `hubs/iptv/manifest.json` — full IPTV pack (hub + VOD details).
+/// `hubs/iptv/manifest.json` — IPTV hub (nav + details + enrich).
 Map<String, dynamic> loadIptvHubPackManifest() {
   return loadHubPackManifest('iptv');
 }
@@ -668,7 +668,7 @@ void main() {
       );
     });
 
-    test('iptv hub pack includes nav + vod details + enrich', () {
+    test('iptv hub pack includes nav + details + enrich', () {
       final iptv = EnginePack.fromJson(
         loadIptvHubPackManifest(),
         sourceUrl: 'file:///plugins/hubs/iptv/manifest.json',
@@ -676,7 +676,7 @@ void main() {
       expect(iptv.packId, 'forjahq-iptv');
       expect(
         iptv.plugins.map((p) => p.id),
-        ['iptv-hub', 'iptv-vod', 'iptv-enrich-tmdb'],
+        ['iptv-hub', 'iptv-enrich-tmdb'],
       );
       expect(
         PluginRegistry.forjaHqSlot(
@@ -690,18 +690,18 @@ void main() {
       );
       final hub = iptv.plugins.firstWhere((p) => p.id == 'iptv-hub');
       expect(hub.hasCapability('nav'), isTrue);
+      expect(hub.hasCapability('details'), isTrue);
+      expect(hub.enrich, 'iptv-enrich-tmdb');
       expect(hub.nav?['tabId'], 'iptv');
       expect(hub.settings?['addon'], 'iptv');
-      final vod = iptv.plugins.firstWhere((p) => p.id == 'iptv-vod');
-      expect(vod.hasCapability('details'), isTrue);
-      expect(vod.hasCapability('nav'), isFalse);
       for (final plugin in iptv.plugins) {
         expect(plugin.isKitPlugin, isTrue, reason: plugin.id);
         expect(plugin.types, contains('iptv'), reason: plugin.id);
       }
       final root = _packsRoot();
       expect(root, isNotNull);
-      expect(File('$root/hubs/iptv/iptv_vod.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/iptv.js').existsSync(), isTrue);
+      expect(File('$root/hubs/iptv/iptv_vod.js').existsSync(), isFalse);
       expect(File('$root/hubs/iptv/enrich_tmdb.js').existsSync(), isTrue);
     });
 
@@ -723,12 +723,12 @@ void main() {
       );
     });
 
-    test('iptv-vod details returns protocol envelope array', () {
+    test('iptv hub details action is wired in entry', () {
       final root = _packsRoot();
       expect(root, isNotNull);
-      final src = File('$root/hubs/iptv/iptv_vod.js').readAsStringSync();
-      expect(src, isNot(contains('iptvVodDetails(params)[0]')));
-      expect(src, contains('return Promise.resolve(iptvVodDetails(params));'));
+      final src = File('$root/hubs/iptv/iptv.js').readAsStringSync();
+      expect(src, contains("action === 'details'"));
+      expect(src, contains('iptvVodDetails'));
     });
 
     test('nav specs map plugins onto hub tabs', () {

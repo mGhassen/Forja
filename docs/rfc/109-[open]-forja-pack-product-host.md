@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **7 / 12** A41 pack migrate |
-| **Current slice** | A41: remounted exact `IptvPtScreen` catalog UX (shelf/search/sort/categories/channels/EPG); pack owns vault/engine/VOD; kit layout is not product chrome |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **7 / 12** A41 pack migrate |
+| **Current slice** | A41: remounted exact `IptvPtScreen` catalog UX; VOD details merged into `iptv-hub` (no `iptv-vod` plugin) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -106,6 +106,8 @@
 | 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ⬜ |
 | 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
 | 18 | R109-A52 | Remount exact `IptvPtScreen` catalog UX until pack/foundation catalog chrome parity (shelf/search/sort/cats/channels/EPG) | ✅ |
+| 19 | R109-A53 | Merge VOD `details` into `iptv-hub` — drop separate `iptv-vod` plugin; enrich stays companion | ✅ |
+| 20 | R109-A54 | Host opens IPTV movie/series details via hub plugin id (tab / engine type) | ✅ |
 
 ---
 
@@ -303,7 +305,7 @@ forja-packs/hubs/live_sports   # schedule aggregate (_feed.js)
 | Deleted | `apps/forja/lib/shared/engine/portals/` · `apps/forja/lib/shared/host/portals_ui/` |
 | Host bridges | `ctx.host.http.request` · `ctx.host.vault.get/set/remove` · `ctx.host.playback.open` |
 | Match helpers | Relocated to `engine/runtime/match/` (not IPTV product) |
-| IPTV pack | `forja-packs/hubs/iptv` v1.2.0 — hub nav + portal VOD details + enrich + settings; catalog id `iptv` |
+| IPTV pack | `forja-packs/hubs/iptv` — hub nav + `details` + enrich companion; catalog id `iptv` |
 | live_sports | Live TV → `plugin.run(iptv-hub, searchChannels)`; empty sources if no iptv pack |
 | Settings | IPTV Addons row only when pack installed (pack `settings.addon`); player prefs still under that page; no host Addons master toggle / `addonGatedNavIds` |
 | Sync | Host IptvStore push/pull stubbed — pack vault is local SoT |

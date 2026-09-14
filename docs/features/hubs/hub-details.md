@@ -6,7 +6,7 @@
 
 When you open **View details** on a hub catalog card (or pick a result from the hub **Search** overlay), Forja loads the pack’s `details` action and renders shared **catalog-kit** chrome: cinematic hero, play row, episode picker, pack-owned rails, and optional TMDB enrich layered on top.
 
-**IPTV VOD** (Movies / Series on the IPTV tab) uses the same kit via the **IPTV VOD** catalog pack (`types: iptv`) — portal-only meta first, optional `iptv-enrich-tmdb` companion for TMDB match. Play stays on the portal stream.
+**IPTV Movies / Series** on the IPTV tab use the same kit via the IPTV hub pack (`details` on the hub plugin) — portal-only meta first, optional `iptv-enrich-tmdb` companion for TMDB match. Play stays on the portal stream.
 
 Pack data (AniList, KissKH, …) stays primary; companion enrich plugins add backdrops, logos, and cast when a TMDB match exists. Anime **More Like This** comes from AniList. Asian Drama **More Like This** uses TMDB similarity resolved onto KissKH titles. The host does not fetch TMDB itself — enrich comes from the pack pipeline.
 
