@@ -32,7 +32,11 @@ void main() {
         LayoutMap.slotToArtifactName[LayoutTypes.stack],
         'LayoutStack',
       );
-      expect(LayoutMap.slotToArtifactName.containsKey(LayoutTypes.hero), isFalse);
+      expect(
+        LayoutMap.slotToArtifactName[LayoutTypes.hero],
+        'PackHeroSlot',
+      );
+      expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });
   });
 
@@ -92,18 +96,34 @@ void main() {
       expect(find.text('Nothing here'), findsOneWidget);
     });
 
-    testWidgets('MatchDetailsPage.fromProps', (tester) async {
+    testWidgets('MatchDetailsPage.fromProps builds DetailsHero', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          MatchDetailsPage.fromProps(
-            {'backgroundColor': '#112233'},
-            hero: const Text('Hero'),
-            overlay: const Text('Overlay'),
-          ),
+          MatchDetailsPage.fromProps({
+            'title': 'Home vs Away',
+            'subtitle': 'League',
+            'backdropUrl': '',
+            'backgroundColor': '#112233',
+          }),
         ),
       );
-      expect(find.text('Hero'), findsOneWidget);
-      expect(find.text('Overlay'), findsOneWidget);
+      expect(find.text('Home vs Away'), findsWidgets);
+      expect(find.text('League'), findsWidgets);
+    });
+
+    testWidgets('DetailsBlock.fromProps builds DetailsHero', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          DetailsBlock.fromProps({
+            'title': 'Show Title',
+            'overview': 'Synopsis here',
+            'backdropUrl': '',
+            'genres': ['Drama'],
+          }),
+        ),
+      );
+      expect(find.text('Show Title'), findsWidgets);
+      expect(find.text('Synopsis here'), findsWidgets);
     });
 
     testWidgets('EntryDetails.fromProps', (tester) async {
@@ -119,8 +139,59 @@ void main() {
       expect(find.text('Panel'), findsOneWidget);
     });
 
+    testWidgets('ColumnsHeaderBlock.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ColumnsHeaderBlock.fromProps(
+            {'sideWidth': 120},
+            header: const Text('Header'),
+            side: const Text('Side'),
+            body: const Text('Body'),
+          ),
+        ),
+      );
+      expect(find.text('Header'), findsOneWidget);
+      expect(find.text('Side'), findsOneWidget);
+      expect(find.text('Body'), findsOneWidget);
+    });
+
+    testWidgets('TopBodyBlock.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          TopBodyBlock.fromProps(
+            const {},
+            top: const Text('PageTop'),
+            bodyTop: const Text('Kinds'),
+            grid: const Text('Schedule'),
+          ),
+        ),
+      );
+      expect(find.text('PageTop'), findsOneWidget);
+      expect(find.text('Kinds'), findsOneWidget);
+      expect(find.text('Schedule'), findsOneWidget);
+    });
+
+    testWidgets('TabsCardsBlock.fromProps', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          TabsCardsBlock.fromProps(
+            const {},
+            menu: const Text('Kinds'),
+            tabs: const Text('Status'),
+            cards: const Text('Posters'),
+          ),
+        ),
+      );
+      expect(find.text('Kinds'), findsOneWidget);
+      expect(find.text('Status'), findsOneWidget);
+      expect(find.text('Posters'), findsOneWidget);
+    });
+
     test('layout_map lists mounted block types', () {
       expect(LayoutMap.slotToArtifactName['catalogBody'], contains('CatalogBody'));
+      expect(LayoutMap.slotToArtifactName['columnsHeader'], contains('ColumnsHeader'));
+      expect(LayoutMap.slotToArtifactName['topBody'], contains('TopBody'));
+      expect(LayoutMap.slotToArtifactName['tabsCards'], contains('TabsCards'));
       expect(LayoutMap.slotToArtifactName['matchDetails'], contains('MatchDetailsPage'));
       expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });

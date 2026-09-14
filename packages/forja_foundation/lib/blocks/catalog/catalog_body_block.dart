@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 
-/// Catalog hub scroll body — section list + bottom gap (RFC-106 G6 · RFC-112).
+/// Prebuilt hub catalog scroll body — section list + bottom gap.
 ///
-/// Pack JSON: `{ "type": "catalogBody", "props": { "bottomGap": 24 }, "children": […] }`.
+/// ```json
+/// { "type": "catalogBody", "props": { "bottomGap": 24 }, "children": [ …rails… ] }
+/// ```
 class CatalogBody extends StatelessWidget {
   const CatalogBody({
     super.key,
@@ -14,7 +16,6 @@ class CatalogBody extends StatelessWidget {
     this.emptyChild,
   });
 
-  /// Pack-callable factory — [sections] painted by host from `children`.
   factory CatalogBody.fromProps(
     Map<String, dynamic> props, {
     required List<Widget> sections,
@@ -36,8 +37,6 @@ class CatalogBody extends StatelessWidget {
   final ScrollController? controller;
   final double bottomGap;
 
-  /// Host maps each section to a sliver (e.g. row spacing). Default:
-  /// [SliverToBoxAdapter].
   final Widget Function(BuildContext context, Widget section, int index)?
       sectionSliver;
 

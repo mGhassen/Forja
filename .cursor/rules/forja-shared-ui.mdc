@@ -22,7 +22,7 @@ apps/forja/lib/shared/player/sources/
 apps/forja/lib/shared/playback/
 apps/forja/lib/shared/engine/details/  # title details host wire (not player)
 apps/forja/lib/shared/engine/{store,unlock,portals,packs}/
-apps/forja/lib/shared/engine/runtime/{kit,search,nav,open,details}/
+apps/forja/lib/shared/engine/runtime/{kit,search,nav,open}/
 apps/forja/lib/features/settings/packs/  # pack install UI
 forja-packs/hubs/**                     # product
 ```

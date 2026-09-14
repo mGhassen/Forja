@@ -1,6 +1,6 @@
 part of 'pt_player_screen.dart';
 
-mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
+mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   _PtPlayerScreenState get _s => this as _PtPlayerScreenState;
 
   void _closeGuideAndFocusPlayer() {
@@ -29,7 +29,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
           _s._selectedGroupId = playingGroup;
         }
       } else {
-        if (iptvUseTvFocus(context)) {
+        if (liveUseTvFocus(context)) {
           _s._hideControlsTimer?.cancel();
           _s._tvBackExitArmed = false;
           _focusPlayerChrome();
@@ -648,7 +648,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
     seasonCtrl.dispose();
     episodeCtrl.dispose();
     if (ok != true || !mounted || typed.isEmpty) return;
-    final cleaned = cleanStreamMediaTitle(typed);
+    final cleaned = cleanMediaTitle(typed);
     setState(() {
       _s._subQueryTitle = cleaned.title.isNotEmpty ? cleaned.title : typed;
       _s._subQueryYear = int.tryParse(yearRaw) ?? cleaned.year;
@@ -714,7 +714,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
     _s._hideControlsTimer?.cancel();
     if (_s._guideVisible || _s._searchVisible) return;
     // TV: match movie/Exo idle (10s). 4s was hiding mid D-pad walk.
-    final hideAfter = iptvUseTvFocus(context)
+    final hideAfter = liveUseTvFocus(context)
         ? const Duration(seconds: 10)
         : const Duration(seconds: 4);
     _s._hideControlsTimer = Timer(hideAfter, () {
@@ -725,7 +725,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
         return;
       }
       setState(() => _s._controlsVisible = false);
-      if (iptvUseTvFocus(context)) {
+      if (liveUseTvFocus(context)) {
         playerTvClaimVideoKeyFocusAfterHide(
           _s._playerTvKeyFocus,
           mounted: () => mounted,
@@ -736,7 +736,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
 
   void _onPlayerMouseMove() {
     // Desktop hybrid has D-pad focus chips + mouse — only leanback skips hover.
-    if (iptvLeanbackOnly(context)) return;
+    if (liveLeanbackOnly(context)) return;
     if (_s._guideVisible || _s._searchVisible) return;
     final suppressUntil = _s._suppressChromeRevealUntil;
     if (suppressUntil != null && DateTime.now().isBefore(suppressUntil)) {
@@ -897,7 +897,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   void _claimPlayFocus() {
-    if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    if (!liveUseTvFocus(context) || !_s._controlsVisible) return;
     _s._tvBackExitArmed = false;
     // Underlay WebView / Exo SurfaceView can re-take leanback focus after
     // hybrid composition remounts — re-block before claiming Play.
@@ -913,7 +913,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   void _claimBackFocus() {
-    if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    if (!liveUseTvFocus(context) || !_s._controlsVisible) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_s._controlsVisible) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
@@ -924,7 +924,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
 
   /// Progress bar → : first right-cluster control (Subs / Episodes / Search / Source).
   void _focusRightFromSeekbar() {
-    if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    if (!liveUseTvFocus(context) || !_s._controlsVisible) return;
     final nodes = <FocusNode>[
       if (_showTrackButtons) _s._subtitleFocus,
       if (_showEpisodesButton) _s._episodesFocus,
@@ -1080,7 +1080,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
           body: PlayerTvKeyScope(
           enabled:
               !mini &&
-              iptvUseTvFocus(context) &&
+              liveUseTvFocus(context) &&
               !_s._guideVisible &&
               !_s._searchVisible,
           focusNode: _s._playerTvKeyFocus,
@@ -1145,7 +1145,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
                 if (hideFullChrome ||
                     _s._guideVisible ||
                     _s._searchVisible ||
-                    iptvLeanbackOnly(context)) {
+                    liveLeanbackOnly(context)) {
                   return;
                 }
                 unawaited(_s._toggleFullscreen());
@@ -1229,7 +1229,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
                       opacity: _s._controlsVisible ? 1 : 0,
                       child: ExcludeFocus(
                         excluding:
-                            iptvUseTvFocus(context) &&
+                            liveUseTvFocus(context) &&
                             (!_s._controlsVisible ||
                                 _s._guideVisible ||
                                 _s._searchVisible),
@@ -1434,7 +1434,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
             color: Colors.black.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: LiveShellStyle.accent.withValues(alpha: 0.4),
+              color: GuideChromeStyle.accent.withValues(alpha: 0.4),
             ),
           ),
           child: Row(
@@ -1445,7 +1445,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: LiveShellStyle.accent,
+                  color: GuideChromeStyle.accent,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1496,7 +1496,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
         ),
       ),
     );
-    if (!iptvUseTvFocus(context)) return overlay;
+    if (!liveUseTvFocus(context)) return overlay;
     return FocusScope(
       debugLabel: 'player-chrome',
       child: FocusTraversalGroup(
@@ -1625,7 +1625,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
     int? tvFocusOrder,
   }) {
     assert(onPressed != null || onPressedWithContext != null);
-    final tv = iptvUseTvFocus(context);
+    final tv = liveUseTvFocus(context);
     final button = PlayerFlatIconButton(
       icon: icon,
       tooltip: tooltip,
@@ -1654,10 +1654,10 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   Widget _buildTopBarActions(bool compact) {
     // PiP is phone/desktop chrome - hide on leanback TV (matches VOD player).
     final showPip =
-        PipService.instance.isSupported && iptvShowPointerChrome(context);
+        PipService.instance.isSupported && liveShowPointerChrome(context);
     // Mini button always on desktop pointer chrome — setting only gates Escape.
-    final showInAppMini = iptvShowPointerChrome(context);
-    final tv = iptvUseTvFocus(context);
+    final showInAppMini = liveShowPointerChrome(context);
+    final tv = liveUseTvFocus(context);
     void downFromTop() {
       if (_showProgressChrome &&
           _isVodChrome &&
@@ -1725,7 +1725,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
           children: [
             wrapOrder(
               1,
-              iptvBackButton(
+              liveBackButton(
                 context,
                 onTap: () => unawaited(_s._exitIptvPlayer()),
                 color: Colors.white,
@@ -1763,7 +1763,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
                     _s._title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: LiveShellStyle.overlayTitle.copyWith(
+                    style: GuideChromeStyle.overlayTitle.copyWith(
                       fontSize: compact ? 16 : 18,
                       height: 1.15,
                     ),
@@ -2015,7 +2015,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   /// VOD chrome before duration is known — keeps the progress row visible.
   Widget _buildVodSeekbarWaiting(bool compact) {
     final pos = _s._position;
-    final tv = iptvUseTvFocus(context);
+    final tv = liveUseTvFocus(context);
     final bar = SizedBox(
       height: compact ? 28 : 32,
       child: Center(
@@ -2116,7 +2116,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
         ? _s._seekPreview
         : _s._position.inMilliseconds.toDouble().clamp(0.0, totalMs);
     final shownPos = Duration(milliseconds: currentMs.toInt());
-    final tv = iptvUseTvFocus(context);
+    final tv = liveUseTvFocus(context);
 
     Widget slider;
     if (tv) {
@@ -2158,7 +2158,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
       );
     } else {
       slider = SliderTheme(
-        data: LiveShellStyle.sliderTheme(context).copyWith(
+        data: GuideChromeStyle.sliderTheme(context).copyWith(
           activeTrackColor: ForjaShellColors.brandGreen,
           thumbColor: ForjaShellColors.brandGreen,
           overlayColor: ForjaShellColors.brandGreen.withValues(alpha: 0.2),
@@ -2231,8 +2231,8 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Widget _buildBottomBar(bool compact) {
-    final tvFocus = iptvUseTvFocus(context);
-    final showPointerChrome = iptvShowPointerChrome(context);
+    final tvFocus = liveUseTvFocus(context);
+    final showPointerChrome = liveShowPointerChrome(context);
 
     /// Left transport (Play / Replay) → seekbar when present, else Back.
     void upFromLeftControls() {
@@ -2376,7 +2376,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
       VoidCallback? onLeftEdge,
       VoidCallback? onRightEdge,
     }) {
-      final widget = IptvRoundIcon(
+      final widget = FocusRoundIcon(
         icon: icon,
         big: big,
         focusNode: focusNode,
@@ -2437,7 +2437,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IptvRoundIcon(
+                  FocusRoundIcon(
                     icon: _s._muted || _s._volume == 0
                         ? Icons.volume_off_rounded
                         : (_s._volume < 40
@@ -2467,7 +2467,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: SliderTheme(
-                            data: LiveShellStyle.sliderTheme(context).copyWith(
+                            data: GuideChromeStyle.sliderTheme(context).copyWith(
                               inactiveTrackColor: Colors.white24,
                               trackHeight: 3,
                               thumbShape: const RoundSliderThumbShape(
@@ -2590,7 +2590,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
             ),
           if (hasSources) const SizedBox(width: 14),
           if (showPointerChrome)
-            IptvRoundIcon(
+            FocusRoundIcon(
               icon: _s._isFullscreen
                   ? Icons.fullscreen_exit_rounded
                   : Icons.fullscreen_rounded,
@@ -2654,7 +2654,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
         ? 'Episode ${episode.episode}'
         : episode.title.trim();
     setState(() {
-      _s._sources = [IptvPlaySource(url: url, label: _s._sources.first.label)];
+      _s._sources = [LivePlaySource(url: url, label: _s._sources.first.label)];
       _s._sourceIdx = 0;
       _s._title = 'Ep ${episode.episode} · $epTitle';
       _s._subtitle = show.isEmpty
@@ -2702,7 +2702,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   PlayerPopupListTile _sourcePickerTile({
-    required IptvPlaySource src,
+    required LivePlaySource src,
     required bool selected,
     PlayerSourceStatus? status,
     ValueChanged<bool>? onInteractiveChange,
@@ -2720,7 +2720,7 @@ mixin _IptvPtPlayerUi on ConsumerState<PtPlayerScreen> {
     );
   }
 
-  Widget _sourceLogo(IptvPlaySource src) {
+  Widget _sourceLogo(LivePlaySource src) {
     const size = 40.0;
     final url = (src.logoUrl ?? '').trim();
     if (url.isEmpty) {
@@ -2818,7 +2818,7 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
     required this.onPick,
   });
 
-  final List<IptvPlaySource> sources;
+  final List<LivePlaySource> sources;
   final int selectedIndex;
   final ValueChanged<int> onPick;
 
@@ -2920,14 +2920,14 @@ bool iptvUseLiveSportsSourcePicker(PtPlayerScreen screen) {
 
 bool iptvLiveMatchSourcePicker(
   IptvLiveSourceKind? sessionKind,
-  IptvPlaySource src,
+  LivePlaySource src,
 ) {
   return sessionKind == IptvLiveSourceKind.liveEngine ||
       (src.liveProviderBadge ?? '').trim().isNotEmpty;
 }
 
 /// Provider chip label — same as Cards / kit Providers rows.
-String? iptvSportsSourceProviderLabel(IptvPlaySource source) {
+String? iptvSportsSourceProviderLabel(LivePlaySource source) {
   final badge = (source.liveProviderBadge ?? '').trim();
   if (badge.isNotEmpty) return badge;
   final sub = (source.pickerSubtitle ?? '').trim();
@@ -2935,7 +2935,7 @@ String? iptvSportsSourceProviderLabel(IptvPlaySource source) {
 }
 
 /// Embed / play host footer — same as Cards / kit Providers rows.
-String? iptvSportsSourceEmbedHost(IptvPlaySource source) {
+String? iptvSportsSourceEmbedHost(LivePlaySource source) {
   final embed = (source.liveEngineEmbedUrl ?? '').trim();
   final url = source.url.trim();
   final probe = embed.isNotEmpty
@@ -2947,7 +2947,7 @@ String? iptvSportsSourceEmbedHost(IptvPlaySource source) {
 }
 
 String? iptvSourcePickerSubtitle(
-  IptvPlaySource src, {
+  LivePlaySource src, {
   required IptvLiveSourceKind? liveSourceKind,
   required String Function(String url) hostFallback,
 }) {
@@ -2960,7 +2960,7 @@ String? iptvSourcePickerSubtitle(
   return host.isEmpty ? null : host;
 }
 
-Widget iptvLiveSourceLeading(IptvPlaySource src) {
+Widget iptvLiveSourceLeading(LivePlaySource src) {
   const size = 40.0;
   if (src.liveStreamHd) {
     return Container(
@@ -3000,7 +3000,7 @@ Color? iptvLiveProviderBadgeColor(String? badge) {
   };
 }
 
-Widget? iptvLiveSourceTrailing(IptvPlaySource src) {
+Widget? iptvLiveSourceTrailing(LivePlaySource src) {
   if (src.liveViewerCount <= 0) return null;
   return Row(
     mainAxisSize: MainAxisSize.min,
@@ -3016,9 +3016,9 @@ Widget? iptvLiveSourceTrailing(IptvPlaySource src) {
 }
 
 PlayerPopupListTile buildIptvSourcePickerTile({
-  required IptvPlaySource src,
+  required LivePlaySource src,
   required IptvLiveSourceKind? liveSourceKind,
-  required Widget Function(IptvPlaySource src) sourceLogo,
+  required Widget Function(LivePlaySource src) sourceLogo,
   required bool selected,
   PlayerSourceStatus? status,
   Widget? trailing,

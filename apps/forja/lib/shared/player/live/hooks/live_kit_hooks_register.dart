@@ -36,9 +36,9 @@ abstract final class LiveKitHooksRegister {
     bool vodPlayback = false,
     bool onlineSubtitles = false,
   }) async {
-    final typed = <IptvPlaySource>[
+    final typed = <LivePlaySource>[
       for (final s in sources)
-        if (s is IptvPlaySource) s,
+        if (s is LivePlaySource) s,
     ];
     await openForjaLiveNativePlayer(
       context,

@@ -3,10 +3,10 @@ part of 'pt_player_screen.dart';
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
+mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   Future<void> _openCurrent({bool hardRecreate = false});
   Future<bool> _engineOpenSource(
-    IptvPlaySource src, {
+    LivePlaySource src, {
     bool forceLiveRefresh = false,
   });
   int get _retriesBeforeSourceRotate;

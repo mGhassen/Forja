@@ -1,11 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/details/details_body.dart';
+import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';
 
-/// Details page template — hero + optional play row + body (RFC-106 G6).
+/// Prebuilt media-details page: [DetailsHero] + body sections from props.
+///
+/// Pack JSON example:
+/// ```json
+/// {
+///   "type": "details",
+///   "props": {
+///     "title": "…",
+///     "backdropUrl": "…",
+///     "overview": "…",
+///     "genres": ["Drama"],
+///     "metaParts": ["2024", "TV-14"],
+///     "rating": 8.1
+///   }
+/// }
+/// ```
+/// Host injects [actionRow] / [overlay] / [onRetry] only — never product widgets
+/// invented in the painter.
 class DetailsBlock extends StatelessWidget {
   const DetailsBlock({
     super.key,
@@ -18,20 +38,69 @@ class DetailsBlock extends StatelessWidget {
     this.backgroundColor,
   });
 
-  factory DetailsBlock.fromProps(
+  /// Builds the full details design from a props map (+ host action/overlay).
+  ///
+  /// Returns [DetailsScreen] wrapping a composed [DetailsHero] + body.
+  static Widget fromProps(
     Map<String, dynamic> props, {
-    required Widget hero,
-    required Widget body,
-    PlayRow? playRow,
+    Widget? actionRow,
+    Widget? overlay,
+    VoidCallback? onRetry,
+    List<Widget> sections = const [],
     ScrollController? scrollController,
+    Color? fallbackBackground,
   }) {
-    return DetailsBlock(
+    final bg = propsColor(props, 'backgroundColor') ??
+        fallbackBackground ??
+        const Color(0xFF141414);
+    final hero = DetailsHero(
+      backdropUrl: propsStringOr(props, 'backdropUrl', ''),
+      backdropUrls: propsStringList(props, 'backdropUrls'),
+      title: propsStringOr(props, 'title', ''),
+      subtitle: propsString(props, 'subtitle'),
+      genres: propsStringList(props, 'genres'),
+      metaParts: propsStringList(props, 'metaParts'),
+      rating: propsNum(props, 'rating'),
+      overview: propsStringOr(props, 'overview', ''),
+      logoUrl: propsString(props, 'logoUrl'),
+      actionRow: actionRow,
+      enableKenBurns: propsBool(props, 'enableKenBurns', true),
+      tvDensity: propsBool(props, 'tvDensity'),
+      plainTitle: propsBool(props, 'plainTitle'),
+      selectableTitle: propsBool(props, 'selectableTitle'),
+      chromeOnly: propsBool(props, 'chromeOnly'),
+      contentScrim: propsBool(props, 'contentScrim'),
+      height: propsNum(props, 'height'),
+    );
+
+    final scroll = DetailsBlock(
       hero: hero,
-      playRow: playRow,
-      body: body,
-      scrollable: propsBool(props, 'scrollable', true),
       scrollController: scrollController,
-      backgroundColor: propsColor(props, 'backgroundColor'),
+      backgroundColor: bg,
+      body: sections.isEmpty
+          ? const SizedBox.shrink()
+          : DetailsBody(
+              backgroundColor: bg,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < sections.length; i++) ...[
+                    if (i > 0)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    sections[i],
+                  ],
+                ],
+              ),
+            ),
+    );
+
+    return DetailsScreen(
+      backgroundColor: bg,
+      loading: propsBool(props, 'loading'),
+      errorMessage: propsString(props, 'errorMessage'),
+      onRetry: onRetry,
+      overlay: overlay,
+      body: scroll,
     );
   }
 
@@ -76,9 +145,7 @@ class DetailsBlock extends StatelessWidget {
   }
 }
 
-/// Catalog details page paint — loading / error / body slots (RFC-112).
-///
-/// Pack JSON: `{ "type": "details", "props": { "loading": false, "errorMessage": "" } }`.
+/// Loading / error / body scaffold used by [DetailsBlock.fromProps].
 class DetailsScreen extends StatelessWidget {
   const DetailsScreen({
     super.key,
@@ -105,7 +172,7 @@ class DetailsScreen extends StatelessWidget {
       backgroundColor:
           propsColor(props, 'backgroundColor') ??
           fallbackBackground ??
-          Colors.black,
+          const Color(0xFF141414),
       loading: propsBool(props, 'loading'),
       errorMessage: propsString(props, 'errorMessage'),
       onRetry: onRetry,
@@ -172,7 +239,7 @@ class DetailsScreen extends StatelessWidget {
   }
 }
 
-/// Convenience scaffold wrapping [DetailsScreen] + [DetailsBlock].
+/// Host helper: [DetailsScreen] + hero slot + section list.
 class DetailsPageBlock extends StatelessWidget {
   const DetailsPageBlock({
     super.key,
@@ -241,7 +308,7 @@ class DetailsPageBlock extends StatelessWidget {
   }
 }
 
-/// Entry details chrome — title bar + body slot (host fills panel).
+/// Entry details: title chrome + body (props-driven empty copy).
 class EntryDetailsChrome extends StatelessWidget {
   const EntryDetailsChrome({
     super.key,
@@ -302,9 +369,11 @@ class EntryDetailsChrome extends StatelessWidget {
   }
 }
 
-/// Generic kit entry details — props + body slot (RFC-112).
+/// Prebuilt entry-details page from props.
 ///
-/// Pack JSON: `{ "type": "entryDetails", "props": { "title": "…" } }`.
+/// ```json
+/// { "type": "entryDetails", "props": { "title": "…", "emptyMessage": "…" } }
+/// ```
 class EntryDetails extends StatelessWidget {
   const EntryDetails({
     super.key,
@@ -319,15 +388,16 @@ class EntryDetails extends StatelessWidget {
     Widget? body,
     VoidCallback? onBack,
   }) {
+    final empty = propsStringOr(
+      props,
+      'emptyMessage',
+      'No details panel for this list',
+    );
     return EntryDetails(
       title: propsStringOr(props, 'title', ''),
       body: body,
       onBack: onBack,
-      emptyMessage: propsStringOr(
-        props,
-        'emptyMessage',
-        'No details panel for this list',
-      ),
+      emptyMessage: empty,
     );
   }
 

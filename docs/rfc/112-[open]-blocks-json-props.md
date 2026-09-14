@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **5 / 6** acceptance · **1** ⏭️ deferred |
-| **Current slice** | fromProps + PackPaintTree block mounts shipped; kit.menu/tabs/list remount deferred |
+| **Progress** | **4 / 4** components · **11 / 12** acceptance · **1** ⏭️ deferred |
+| **Current slice** | Catalog page blocks: `columnsHeader` / `topBody` / `tabsCards` |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,12 +36,18 @@
 | 4 | R112-A04 | PackPaintTree paints synthetic `catalogBody` + card child | ✅ |
 | 5 | R112-A05 | Host deep imports updated; analyze clean on touched paths | ✅ |
 | 6 | R112-A06 | kit.menu/tabs/list chrome remount deferred | ⏭️ |
+| 7 | R112-A07 | `DetailsBlock.fromProps` / `MatchDetailsPage.fromProps` compose `DetailsHero` from props (not empty widget slots) | ✅ |
+| 8 | R112-A08 | PackPaintTree remounts block types after slots refactor; unmounted topBar/categoryBar are Offstage | ✅ |
+| 9 | R112-A09 | `columnsHeader` block — header + side rail + body (IPTV catalog geometry); PackPaintTree mounts it | ✅ |
+| 10 | R112-A10 | `kit.topBar` / `kit.categoryBar` paint via PackTopBarSlot / PackCategoryBarSlot (LogoMenuRail) | ✅ |
+| 11 | R112-A11 | `topBody` block — page top + bodyTop + grid (Live Sports geometry); PackPaintTree mounts it | ✅ |
+| 12 | R112-A12 | `tabsCards` block — menu? + tabs + cards (My List geometry); PackPaintTree mounts it | ✅ |
 
 ---
 
 ## Summary
 
-Page templates are G6 blocks. Packs call them via JSON `type` + `props` + `children`; host `PackPaintTree` mounts blocks and injects open/retry callbacks. Hub catalogs share one `catalogBody` block.
+Blocks are **prebuilt composed surfaces** with JSON props (`title`, `backdropUrl`, `overview`, …). Host injects callbacks / action rows only. Hub catalogs share `catalogBody`. Details/match blocks own `DetailsHero` paint — not empty Column shells.
 
 ## Out of scope
 

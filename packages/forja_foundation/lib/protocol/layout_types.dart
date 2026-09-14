@@ -61,6 +61,9 @@ abstract final class LayoutTypes {
     final type = normalize((spec['type'] ?? '').toString(), spec);
     if (type == stack && spec['expand'] == true) return true;
     if (type == list) return true;
+    if (type == 'columnsHeader') return true;
+    if (type == 'topBody') return true;
+    if (type == 'tabsCards') return true;
     return false;
   }
 

@@ -6,12 +6,12 @@ import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Forja platform service: open the shared native live player.
 ///
-/// Live Sports (and any sports hub that resolves to [IptvPlaySource]) uses this
+/// Live Sports (and any sports hub that resolves to [LivePlaySource]) uses this
 /// instead of embedding a feature-private player. Peer of portal play in
 /// [iptv_play.dart].
 Future<void> openForjaLiveNativePlayer(
   BuildContext context, {
-  required List<IptvPlaySource> sources,
+  required List<LivePlaySource> sources,
   required String title,
   String? subtitle,
   String? logoUrl,

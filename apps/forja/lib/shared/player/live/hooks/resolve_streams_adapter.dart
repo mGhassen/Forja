@@ -28,7 +28,7 @@ abstract final class ResolveStreamsAdapter {
 
   static List<KitSourcesRow> _rowsFor(
     String tabId,
-    List<IptvPlaySource> sources,
+    List<LivePlaySource> sources,
     KitUrlHealthProbe? healthProbe,
   ) {
     return [
@@ -55,8 +55,8 @@ abstract final class ResolveStreamsAdapter {
     return null;
   }
 
-  static List<IptvPlaySource> sourcesFromMaps(List<Map<String, dynamic>> maps) {
-    final out = <IptvPlaySource>[];
+  static List<LivePlaySource> sourcesFromMaps(List<Map<String, dynamic>> maps) {
+    final out = <LivePlaySource>[];
     for (final m in maps) {
       final url = (m['url'] ?? '').toString().trim();
       final streamId =
@@ -83,7 +83,7 @@ abstract final class ResolveStreamsAdapter {
       final epg =
           (m['epgChannelId'] ?? m['epg_channel_id'] ?? '').toString().trim();
       out.add(
-        IptvPlaySource(
+        LivePlaySource(
           url: url,
           label: label.isEmpty ? 'Stream' : label,
           detail: detail.isEmpty ? null : detail,
@@ -97,7 +97,7 @@ abstract final class ResolveStreamsAdapter {
     return out;
   }
 
-  static Future<List<IptvPlaySource>> _loadLiveTv(
+  static Future<List<LivePlaySource>> _loadLiveTv(
     Map<String, dynamic> legacyRow, {
     bool force = false,
   }) async {
@@ -138,8 +138,8 @@ abstract final class ResolveStreamsAdapter {
   static KitSourcesRow _rowForSource({
     required String tabId,
     required int index,
-    required IptvPlaySource source,
-    required List<IptvPlaySource> all,
+    required LivePlaySource source,
+    required List<LivePlaySource> all,
     KitUrlHealthProbe? healthProbe,
   }) {
     final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
@@ -167,7 +167,7 @@ abstract final class ResolveStreamsAdapter {
     );
   }
 
-  static String? _embedHost(IptvPlaySource source) {
+  static String? _embedHost(LivePlaySource source) {
     final embed = (source.liveEngineEmbedUrl ?? '').trim();
     final url = source.url.trim();
     final probe = embed.isNotEmpty
@@ -186,7 +186,7 @@ abstract final class ResolveStreamsAdapter {
     final payload = kitRow.payload;
     if (payload is! _PlayPayload) return;
     final picked = payload.picked;
-    final ordered = <IptvPlaySource>[
+    final ordered = <LivePlaySource>[
       picked,
       for (final s in payload.sources)
         if (!identical(s, picked) && s.url != picked.url) s,
@@ -202,6 +202,6 @@ abstract final class ResolveStreamsAdapter {
 
 class _PlayPayload {
   const _PlayPayload({required this.sources, required this.picked});
-  final List<IptvPlaySource> sources;
-  final IptvPlaySource picked;
+  final List<LivePlaySource> sources;
+  final LivePlaySource picked;
 }

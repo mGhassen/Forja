@@ -3,7 +3,7 @@ part of 'pt_player_screen.dart';
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
+mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
   Future<void> _triggerRecovery({
     required String reason,
     bool forceHard = false,

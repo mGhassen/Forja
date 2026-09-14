@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 
-/// Shell page template — topBar + body + optional side rail (RFC-106 G6 · RFC-112).
+/// Prebuilt page shell: optional top bar + body + optional side rail.
+///
+/// ```json
+/// { "type": "shell", "props": { "sideRailWidth": 220 } }
+/// ```
 class ShellBlock extends StatelessWidget {
   const ShellBlock({
     super.key,
@@ -48,12 +52,28 @@ class ShellBlock extends StatelessWidget {
             ],
           );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (topBar != null) topBar!,
-        Expanded(child: content),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounded = constraints.hasBoundedHeight &&
+            constraints.maxHeight.isFinite;
+        if (!bounded) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ?topBar,
+              content,
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ?topBar,
+            Expanded(child: content),
+          ],
+        );
+      },
     );
   }
 }

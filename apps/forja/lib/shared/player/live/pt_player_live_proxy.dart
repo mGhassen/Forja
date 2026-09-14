@@ -4,7 +4,7 @@ part of 'pt_player_screen.dart';
 // ignore_for_file: unused_element
 
 /// Lavf reconnect + live cache helpers (RFC-113 / ipdigi-style — no continuity proxy).
-mixin _IptvPtPlayerLiveProxy on _IptvPtPlayerEngineCore {
+mixin _PtPlayerLiveProxy on _PtPlayerEngineCore {
   void _armTransientHwDecodeIgnore();
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});

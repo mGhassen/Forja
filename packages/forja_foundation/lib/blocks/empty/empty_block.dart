@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/components/empty.dart';
 
-/// Empty-state block — wraps [Empty] (RFC-106 G6 · RFC-112).
+/// Prebuilt empty state from props.
+///
+/// ```json
+/// { "type": "empty", "props": { "title": "Nothing here", "description": "…" } }
+/// ```
 class EmptyBlock extends StatelessWidget {
   const EmptyBlock({
     super.key,

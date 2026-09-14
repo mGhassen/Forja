@@ -3,7 +3,7 @@ part of 'pt_player_screen.dart';
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
+mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
   void _engineSetVolume(double volume);
   Future<void> _applyStreamLavfReconnect(
     NativePlayer p, {

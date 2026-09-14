@@ -81,28 +81,33 @@ abstract final class LayoutMap {
   ]) =>
       layoutArtifactFor(rawType, spec);
 
-  /// Human map for docs / gallery — **mounted** paint only (RFC-109 A69+).
+  /// Human map for docs / gallery — **mounted** paint only.
   ///
-  /// Unmounted pack types omit here (`menu`, `tabs`, `list`, `topBar`,
-  /// `categoryBar`). They still normalize via [layoutArtifactFor].
+  /// Unmounted pack types omit here (`topBar`, `categoryBar`). They still
+  /// normalize via [layoutArtifactFor].
   ///
-  /// Hub catalogs (IPTV / Live Sports / My List) share `catalogBody` — never
-  /// product-named block ids.
+  /// Hub catalogs share `catalogBody` — never product-named block ids.
   static const Map<String, String> slotToArtifactName = {
     LayoutTypes.stack: 'LayoutStack',
     LayoutTypes.row: 'PackPaintTree row + ShellSectionTitle + cards',
-    LayoutTypes.hero: 'CinematicHero',
-    LayoutTypes.mood: 'MoodSection + MoodCircle',
-    LayoutTypes.continueWatching: 'ContinueSection',
-    LayoutTypes.because: 'BecauseSection',
+    LayoutTypes.hero: 'PackHeroSlot',
+    LayoutTypes.mood: 'PackMoodSlot',
+    LayoutTypes.continueWatching: 'PackContinueSlot',
+    LayoutTypes.because: 'PackBecauseSlot',
+    LayoutTypes.menu: 'PackMenuSlot',
+    LayoutTypes.tabs: 'PackTabsSlot',
+    LayoutTypes.list: 'PackListSlot',
     LayoutTypes.verticalFilters: 'LogoMenuRail (host VerticalFiltersRail)',
-    'catalogBody': 'CatalogBody (blocks)',
-    'search': 'CatalogSearchPage (blocks)',
-    'details': 'DetailsScreen (blocks)',
-    'matchDetails': 'MatchDetailsPage (blocks)',
+    'matchDetails': 'MatchDetailsPage + DetailsHero (blocks)',
+    'details': 'DetailsBlock + DetailsHero (blocks)',
     'entryDetails': 'EntryDetails (blocks)',
     'shell': 'ShellBlock (blocks)',
     'empty': 'EmptyBlock (blocks)',
+    'catalogBody': 'CatalogBody (blocks)',
+    'columnsHeader': 'ColumnsHeaderBlock (header + side + body)',
+    'topBody': 'TopBodyBlock (top + bodyTop + grid)',
+    'tabsCards': 'TabsCardsBlock (menu? + tabs + cards)',
+    'search': 'CatalogSearchPage (blocks)',
     'posterCard': 'InteractivePosterCard',
     'eventCard': 'EventCard',
   };

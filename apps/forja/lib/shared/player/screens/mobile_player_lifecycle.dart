@@ -207,7 +207,7 @@ mixin _MobilePlayerLifecycle
     // ATV: vo=gpu needs an EGL context - ATV emulators die with
     // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
     // MediaCodec straight into the Flutter Surface (no mpv GL). Same knobs
-    // as IPTV [_IptvPtPlayerEngine._initPlayerInstances].
+    // as IPTV [_PtPlayerEngine._initPlayerInstances].
     final tvMediaKit = _s._tvMediaKit;
     _s._controller = VideoController(
       _s._player,

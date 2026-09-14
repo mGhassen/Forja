@@ -15,6 +15,17 @@ String? propsString(Map<String, dynamic> props, String key) {
 String propsStringOr(Map<String, dynamic> props, String key, String fallback) =>
     propsString(props, key) ?? fallback;
 
+List<String> propsStringList(Map<String, dynamic> props, String key) {
+  final v = props[key];
+  if (v is! List) return const [];
+  final out = <String>[];
+  for (final e in v) {
+    final s = e?.toString().trim() ?? '';
+    if (s.isNotEmpty) out.add(s);
+  }
+  return out;
+}
+
 double? propsNum(Map<String, dynamic> props, String key) {
   final v = props[key];
   if (v is num) return v.toDouble();

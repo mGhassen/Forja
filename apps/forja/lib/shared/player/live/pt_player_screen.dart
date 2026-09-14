@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:forja/shared/player/live/shell_style.dart';
-import 'package:forja/shared/player/live/title_clean.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
+import 'package:forja_foundation/utils/title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -24,16 +24,16 @@ import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dar
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/engine/portals/channel_guide/iptv_guide_epg.dart';
-import 'package:forja/shared/engine/portals/channel_guide/guide_epg_ui.dart';
-import 'package:forja/shared/engine/portals/channel_guide/channel_guide.dart';
-import 'package:forja/shared/engine/portals/channel_guide/channel_guide_panel.dart';
-import 'package:forja/shared/engine/portals/channel_guide/channel_search_overlay.dart';
+import 'package:forja/shared/player/live/channel_guide/guide_epg_cache.dart';
+import 'package:forja/shared/player/live/channel_guide/guide_epg_ui.dart';
+import 'package:forja/shared/player/live/channel_guide/channel_guide_host.dart';
+import 'package:forja/shared/player/live/channel_guide/channel_guide_panel.dart';
+import 'package:forja/shared/player/live/channel_guide/channel_search_overlay.dart';
 import 'package:forja/shared/engine/portals/network/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
-import 'package:forja/shared/engine/portals/channel_guide/player_stats_panel.dart';
+import 'package:forja/shared/player/live/channel_guide/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
@@ -177,7 +177,7 @@ bool iptvIsDeadEndpointFail(String msg) {
 }
 
 /// Single source for the IPTV player.
-class IptvPlaySource {
+class LivePlaySource {
   final String url;
   final String label;
 
@@ -215,7 +215,7 @@ class IptvPlaySource {
   /// Opaque resolve context for [IptvLiveEngineResolveSource].
   final Map<String, dynamic>? liveEngineResolveParams;
 
-  const IptvPlaySource({
+  const LivePlaySource({
     required this.url,
     required this.label,
     this.detail,
@@ -231,7 +231,7 @@ class IptvPlaySource {
     this.liveEngineResolveParams,
   });
 
-  IptvPlaySource copyWith({
+  LivePlaySource copyWith({
     String? url,
     String? label,
     String? detail,
@@ -246,7 +246,7 @@ class IptvPlaySource {
     String? liveEngineEmbedUrl,
     Map<String, dynamic>? liveEngineResolveParams,
   }) {
-    return IptvPlaySource(
+    return LivePlaySource(
       url: url ?? this.url,
       label: label ?? this.label,
       detail: detail ?? this.detail,
@@ -323,7 +323,7 @@ bool iptvLiveEngineUrlVolatile(String url) {
       host.contains('foorja');
 }
 
-bool iptvLiveEngineCanForceRefresh(IptvPlaySource src) {
+bool iptvLiveEngineCanForceRefresh(LivePlaySource src) {
   if (src.liveSourceKind != IptvLiveSourceKind.liveEngine) return false;
   final params = src.liveEngineResolveParams;
   if (params == null || params.isEmpty) return false;
@@ -335,7 +335,7 @@ bool iptvLiveEngineCanForceRefresh(IptvPlaySource src) {
 /// re-unlocks (GOAT/GASM). Avoids "Preparing playback…" spam mid-watch.
 @visibleForTesting
 bool iptvLiveEngineShouldForceRefreshOnRecovery(
-  IptvPlaySource src, {
+  LivePlaySource src, {
   required String reason,
 }) {
   if (!iptvLiveEngineCanForceRefresh(src)) return false;
@@ -352,7 +352,7 @@ bool iptvIsLiveResolveStatusBanner(String? banner) {
 }
 
 /// Cache key for live-source hover / picker health probes.
-String iptvLiveSourceProbeKey(IptvPlaySource src) {
+String iptvLiveSourceProbeKey(LivePlaySource src) {
   final id = (src.streamId ?? '').trim();
   if (id.isNotEmpty) return id;
   final url = src.url.trim();
@@ -364,7 +364,7 @@ String iptvLiveSourceProbeKey(IptvPlaySource src) {
 
 /// Playable URL for [IptvAliveChecker], or null when HTTP cannot judge the row
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
-String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
+String? iptvLiveSourceProbeUrl(LivePlaySource src) {
   if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
       src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
       // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
@@ -394,15 +394,15 @@ String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
 /// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
 /// Covers embed pages, portal Live TV, Stremio Live TV (signed flixnest JWT),
 /// signed Streamed/WatchFooty HLS (Referer), and direct-playback rows that
-/// drop [IptvPlaySource.liveEngineEmbedUrl].
-bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
+/// drop [LivePlaySource.liveEngineEmbedUrl].
+bool iptvLiveSourceProbeSkipped(LivePlaySource src) {
   return iptvLiveSourceProbeUrl(src) == null;
 }
 
 /// Live Sports Providers hover — always wire the status strip (pre-9e66afdf).
 /// Real alive-check when a bare or header probe can run; embed / `pending:`
 /// rows still light green as selectable (not dead). Portals resolve then check.
-bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
+bool iptvLiveSourceCanHoverProbe(LivePlaySource src) {
   if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
       src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
       src.liveSourceKind == IptvLiveSourceKind.liveEngine ||
@@ -416,7 +416,7 @@ bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
 /// Skipped rows (signed HLS, portal Live TV, embeds) remember green without
 /// a bare HTTP check — same contract as [ResolveStreamsAdapter].
 Future<bool> iptvLiveSourceRunHoverProbe(
-  IptvPlaySource src, {
+  LivePlaySource src, {
   required KitUrlHealthProbe healthProbe,
 }) async {
   if (!iptvLiveSourceCanHoverProbe(src)) return true;
@@ -433,8 +433,8 @@ Future<bool> iptvLiveSourceRunHoverProbe(
 }
 
 typedef IptvLiveEngineResolveSource =
-    Future<IptvPlaySource?> Function(
-      IptvPlaySource catalogSource, {
+    Future<LivePlaySource?> Function(
+      LivePlaySource catalogSource, {
       void Function(String message)? onProgress,
       bool forceRefresh,
     });
@@ -448,7 +448,7 @@ typedef IptvLiveEngineResolveSource =
 ///   • Backoff retries with healthy-streak reset
 ///   • Pretty responsive overlay UI
 class PtPlayerScreen extends ConsumerStatefulWidget {
-  final List<IptvPlaySource> sources;
+  final List<LivePlaySource> sources;
   final String title;
   final String? subtitle;
   final String? logoUrl;
@@ -486,11 +486,11 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   /// Show name for chrome / episode switch titles.
   final String? seriesShowTitle;
 
-  /// When true, top chrome **subtitle** follows the active [IptvPlaySource]
+  /// When true, top chrome **subtitle** follows the active [LivePlaySource]
   /// (My IPTV sports — title stays the match; each source is a different channel).
   final bool titleTracksSource;
 
-  /// Default live profile when sources omit [IptvPlaySource.liveSourceKind].
+  /// Default live profile when sources omit [LivePlaySource.liveSourceKind].
   final IptvLiveSourceKind? liveSourceKind;
 
   /// Live Sports: unlock catalog embed rows on source switch.
@@ -541,7 +541,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     return PtPlayerScreen(
       key: key,
       sources: [
-        IptvPlaySource(
+        LivePlaySource(
           url: url,
           label: portalName ?? 'Source 1',
           logoUrl: stream.icon.isEmpty ? null : stream.icon,
@@ -589,7 +589,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
       liveSourceKind: kinds.isEmpty ? null : kinds.first,
       sources: [
         for (var i = 0; i < hits.length; i++)
-          IptvPlaySource(
+          LivePlaySource(
             url: hits[i].streamUrl,
             label: hits[i].portal.displayLabel,
             liveSourceKind: kinds[i],
@@ -645,13 +645,13 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
 class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     with
         WidgetsBindingObserver,
-        _IptvPtPlayerEngineCore,
-        _IptvPtPlayerMkTunables,
-        _IptvPtPlayerLiveProxy,
-        _IptvPtPlayerWatchdog,
-        _IptvPtPlayerRecovery,
-        _IptvPtPlayerEngine,
-        _IptvPtPlayerUi
+        _PtPlayerEngineCore,
+        _PtPlayerMkTunables,
+        _PtPlayerLiveProxy,
+        _PtPlayerWatchdog,
+        _PtPlayerRecovery,
+        _PtPlayerEngine,
+        _PtPlayerUi
     implements InAppMiniPlayerSession {
   static int _nextExoViewId = 1;
   static int _nextNativeViewId = 1;
@@ -741,7 +741,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   LivePlayerChromeProfile get _chrome =>
       LivePlayerChromeProfile.fromVodPlayback(widget.vodPlayback);
 
-  late List<IptvPlaySource> _sources;
+  late List<LivePlaySource> _sources;
   late String _title;
   String? _subtitle;
   String? _logoUrl;
@@ -1035,7 +1035,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// Effective recovery policy for this open (Auto → buffered, etc.).
   String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
 
-  void _applyLiveRecoveryModeForCurrentSource({IptvPlaySource? src}) {
+  void _applyLiveRecoveryModeForCurrentSource({LivePlaySource? src}) {
     final active = src ??
         (_sources.isEmpty
             ? null
@@ -1166,7 +1166,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
       _scheduleHideControls();
       return true;
     });
-    _sources = List<IptvPlaySource>.from(widget.sources);
+    _sources = List<LivePlaySource>.from(widget.sources);
     if (widget.titleTracksSource && widget.sources.isNotEmpty) {
       _title = widget.title;
       _subtitle = widget.sources.first.pickerTitle;
@@ -1266,7 +1266,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     // Desktop: Space toggles play/pause without revealing chrome.
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.space &&
-        !iptvUseTvFocus(context)) {
+        !liveUseTvFocus(context)) {
       if (_guideVisible || _searchVisible || _isPipMode) return false;
       if (playerChromeOverlayBlocksFocusClaim()) return false;
       unawaited(_togglePlayPauseFromKey());
@@ -1396,7 +1396,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   void _seedSubtitleQuery() {
     if (!widget.onlineSubtitles) return;
     final raw = (widget.subtitleSearchTitle ?? widget.title).trim();
-    final cleaned = cleanStreamMediaTitle(raw);
+    final cleaned = cleanMediaTitle(raw);
     _subQueryTitle = cleaned.title.isNotEmpty ? cleaned.title : raw;
     _subQueryYear = widget.subtitleYear ?? cleaned.year;
     _subQuerySeason = widget.subtitleSeason ?? cleaned.season;

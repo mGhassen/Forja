@@ -21,9 +21,7 @@ abstract final class PackStreamPlayHooks {
     if (_registered) return;
     _registered = true;
     KitStreamPlayHooks.hubDetailsParams = _hubDetailsParams;
-    KitStreamPlayHooks.resolvePortalFromMeta = _resolvePortal;
     KitStreamPlayHooks.playPortalFromContext = _playFromContext;
-    KitStreamPlayHooks.openVodStream = _openVodStream;
   }
 
   static Map<String, dynamic> _hubDetailsParams(MetaItem seed) {
@@ -179,28 +177,6 @@ abstract final class PackStreamPlayHooks {
       context: context,
       url: url,
       title: 'Ep ${selected.episode ?? epNum} · ${selected.title}',
-      headers: const {'User-Agent': 'Mozilla/5.0'},
-    );
-  }
-
-  static Future<void> _openVodStream(
-    BuildContext context, {
-    required Object stream,
-    required Object portal,
-  }) async {
-    if (stream is! Map || portal is! Map) return;
-    final s = Map<String, dynamic>.from(stream);
-    final p = Map<String, dynamic>.from(portal);
-    final kind = (s['kind'] ?? 'vod').toString();
-    final folder = kind == 'series' ? 'series' : 'movie';
-    final id = (s['streamId'] ?? s['id'] ?? '').toString();
-    final ext = (s['containerExt'] ?? 'mp4').toString();
-    final url = _streamUrl(portal: p, folder: folder, id: id, ext: ext);
-    if (url.isEmpty || !context.mounted) return;
-    await HostPlaybackOpen.openUrl(
-      context: context,
-      url: url,
-      title: (s['name'] ?? 'Stream').toString(),
       headers: const {'User-Agent': 'Mozilla/5.0'},
     );
   }

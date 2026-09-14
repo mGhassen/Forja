@@ -25,9 +25,9 @@ class CatalogSearchResult {
   final Object payload;
 }
 
-/// Catalog search page paint — wraps [SearchBlock] (RFC-112).
+/// Prebuilt catalog search page — [SearchBlock] + backdrop.
 ///
-/// Pack JSON: `{ "type": "search", "props": { "hintText": "…" } }` + results slot.
+/// `{ "type": "search", "props": { "hintText": "…" } }`
 class CatalogSearchPage extends StatelessWidget {
   const CatalogSearchPage({
     super.key,

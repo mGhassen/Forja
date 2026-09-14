@@ -411,6 +411,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | Moved to foundation | body / scroll / cast / trailers / recs / episode picker / range / air date / watch progress bars |
 | Thin host left | `pack_details_host` (was `kit_details_screen`), list status button/hero store wire, match/entry open, play-row TV, scroll TV scope, recs/trailers Movie+player wire, torrent action row, tracker handlers, `sources_panel_tv` |
 | Zone A | New `widgets/details/**` paint has **zero** `package:forja/` imports; TV via `ShellPaintScope` |
+| Relocate (later) | Host wire left `player/details/` → `shared/engine/details/` (not under player; does not revive deleted `engine/runtime/details/`) |
 
 | Still open | Detail |
 |------------|--------|

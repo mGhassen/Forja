@@ -3,7 +3,7 @@ part of 'pt_player_screen.dart';
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
+mixin _PtPlayerEngine on _PtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
@@ -469,7 +469,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   /// Opens [src] (or the next Providers row after an unlock miss).
   /// Returns false when every remaining source failed unlock / open setup.
   Future<bool> _engineOpenSource(
-    IptvPlaySource src, {
+    LivePlaySource src, {
     bool forceLiveRefresh = false,
   }) async {
     var candidate = src;
@@ -605,8 +605,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
 
   /// Stalker create_link URLs are one-shot / short-lived. Mint a fresh link
   /// before every open when we still have the portal + cmd (streamId).
-  Future<IptvPlaySource?> _maybeResolveLiveEngineSource(
-    IptvPlaySource src, {
+  Future<LivePlaySource?> _maybeResolveLiveEngineSource(
+    LivePlaySource src, {
     bool forceRefresh = false,
     bool announceFailure = true,
   }) async {
@@ -640,7 +640,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         return null;
       }
       if (idx >= 0 && idx < _s._sources.length) {
-        _s._sources = List<IptvPlaySource>.from(_s._sources)..[idx] = resolved;
+        _s._sources = List<LivePlaySource>.from(_s._sources)..[idx] = resolved;
       }
       return resolved;
     } finally {
@@ -651,7 +651,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-  Future<IptvPlaySource> _refreshStalkerPlayUrl(IptvPlaySource src) async {
+  Future<LivePlaySource> _refreshStalkerPlayUrl(LivePlaySource src) async {
     if (_liveSourceKindFor(src) != IptvLiveSourceKind.iptvStalker) {
       return src;
     }
@@ -680,7 +680,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       final updated = src.copyWith(url: fresh);
       final i = _s._sourceIdx;
       if (i >= 0 && i < _s._sources.length) {
-        _s._sources = List<IptvPlaySource>.from(_s._sources)..[i] = updated;
+        _s._sources = List<LivePlaySource>.from(_s._sources)..[i] = updated;
       }
       return updated;
     } catch (e) {
@@ -731,7 +731,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     return iptvExoUrlLooksLive(_s._sources[_s._sourceIdx].url);
   }
 
-  IptvLiveSourceKind _liveSourceKindFor(IptvPlaySource src) {
+  IptvLiveSourceKind _liveSourceKindFor(LivePlaySource src) {
     return src.liveSourceKind ??
         _s.widget.liveSourceKind ??
         (_s.widget.engineContext == BuiltInPlayerContext.iptv
@@ -1294,7 +1294,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       _s._currentChannelId = ch.id;
       _s._selectedGroupId = ch.groupId;
       _s._sources = [
-        IptvPlaySource(
+        LivePlaySource(
           url: url,
           label: label,
           logoUrl: ch.logoUrl,

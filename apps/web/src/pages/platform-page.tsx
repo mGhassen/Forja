@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LanFluxBus } from '@/components/lan-flux-bus'
 import { Reveal } from '@/components/reveal'
 import { SiteFooter } from '@/components/legal-shell'
 import { PageAtmosphere } from '@/components/page-atmosphere'
@@ -121,16 +122,20 @@ const MORE = [
 
 const FAQ = [
   {
-    q: 'Does Forja include movies or channels?',
-    a: 'No. Forja is a modular player platform. You connect your own sources and portals. Forja does not sell or host media files.',
+    q: 'What do I need before the first play?',
+    a: 'Download Forja, then add packs or sources. Provider plugins, torrents, Stremio, Nuvio, and IPTV portals are how titles and channels get into the app. Forja does not ship a built-in movie or channel catalog.',
   },
   {
-    q: 'Which platforms are supported?',
-    a: 'Windows, macOS, Linux, Android, Android TV, and iOS. Installers live on the Download page.',
+    q: 'What are community packs?',
+    a: 'Packs are installable modules: hubs for anime or live sport, stream providers, torrent search, and more. Pick a ready-made set on the Packs page or add a pack URL to your profile.',
   },
   {
-    q: 'Do I need an account?',
-    a: 'No. You can use Forja without signing in. An account is a settings store across devices: up to five profiles, sync, and device link for desktop and TV.',
+    q: 'Can the TV play magnets without downloading on the TV?',
+    a: 'Yes. Pair the TV or phone with a desktop on the same Wi-Fi. Magnets open on the PC; the living-room screen plays the stream. HTTP streams still play on the TV when the desktop is offline.',
+  },
+  {
+    q: 'What does an account actually do?',
+    a: 'Nothing required for playback. Sign in if you want up to five profiles, settings sync across devices, and device link for desktop and Android TV.',
   },
 ]
 
@@ -316,65 +321,65 @@ export function PlatformPage() {
             </Reveal>
           </section>
 
-          {/* Sports — text + 2×2 */}
+          {/* Sports — split type + numbered steps */}
           <section
             id="sports"
-            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)] bg-[#0f0e0d]"
+            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <div className="px-[5vw] py-16 sm:py-20">
-              <Reveal className="mx-auto max-w-[720px]">
-                <h2 className="font-disp text-[clamp(28px,4.5vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                  Today’s games. Watch them live.
+            <div className="mx-auto grid max-w-[1200px] gap-12 px-[5vw] py-16 sm:py-24 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20 lg:items-end">
+              <Reveal variant="left">
+                <ul className="space-y-1 font-serif-i text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.05] text-[rgba(237,230,218,0.22)]">
+                  <li className="text-[#EDE6DA]">Football</li>
+                  <li>Basketball</li>
+                  <li>Tennis</li>
+                  <li>Racing</li>
+                  <li className="text-flame/70">and more</li>
+                </ul>
+              </Reveal>
+              <Reveal delayMs={60} variant="right">
+                <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.92] tracking-[-0.03em]">
+                  Today’s games.
+                  <br />
+                  <span className="font-serif-i normal-case text-flame">
+                    Watch them live.
+                  </span>
                 </h2>
-                <p className="mt-5 text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
+                <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
                   Browse what is airing and what is coming up by sport. Open a
                   match, choose a stream, and play it in Forja. If the game is
                   on one of your IPTV channels, you can watch that too.
                 </p>
-                <p className="mt-4 font-mono-ui text-[11px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.4)]">
-                  Football · Basketball · Tennis · Racing · and more
-                </p>
               </Reveal>
             </div>
 
-            <div className="grid border-t border-[rgba(237,230,218,0.12)] sm:grid-cols-2">
-              {SPORT_FEATURES.map((item) => (
-                <article
+            <ol className="mx-auto grid max-w-[1200px] border-t border-[rgba(237,230,218,0.12)] sm:grid-cols-2 lg:grid-cols-4">
+              {SPORT_FEATURES.map((item, i) => (
+                <li
                   key={item.title}
-                  className="border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-r sm:px-10 sm:py-12"
+                  className="border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-r sm:px-8 sm:py-12 lg:border-b-0 lg:px-8"
                 >
-                  <h3 className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                  <span className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="font-disp mt-3 text-lg uppercase tracking-tight text-[#EDE6DA] sm:text-xl">
                     {item.title}
                   </h3>
-                  <p className="mt-3 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                  <p className="mt-2 text-sm leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-base">
                     {item.copy}
                   </p>
-                </article>
+                </li>
               ))}
-            </div>
+            </ol>
           </section>
 
-          {/* LAN — Desktop → TV + definition list */}
+          {/* LAN — flux bus + definition list */}
           <section
             id="lan"
             className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24"
           >
             <div className="mx-auto max-w-[1100px]">
               <Reveal>
-                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-10">
-                  <p className="font-disp text-[clamp(40px,8vw,88px)] uppercase leading-[0.9] tracking-[-0.04em] text-forja-green">
-                    Desktop
-                  </p>
-                  <p
-                    className="hidden font-mono-ui text-sm uppercase tracking-[0.3em] text-flame sm:block"
-                    aria-hidden
-                  >
-                    ──→
-                  </p>
-                  <p className="font-disp text-[clamp(40px,8vw,88px)] uppercase leading-[0.9] tracking-[-0.04em] text-[#EDE6DA]">
-                    TV
-                  </p>
-                </div>
+                <LanFluxBus />
                 <h2 className="mt-10 max-w-[22ch] font-serif-i text-[clamp(1.6rem,3.5vw,2.4rem)] leading-snug text-[rgba(237,230,218,0.92)]">
                   Magnets on the TV. Torrents on the desktop.
                 </h2>
@@ -481,23 +486,38 @@ export function PlatformPage() {
             </div>
           </section>
 
-          <section className="border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24">
-            <div className="mx-auto max-w-[640px]">
-              <h2 className="font-serif-i text-[clamp(1.75rem,3vw,2.25rem)] leading-snug text-[#EDE6DA]">
-                Quick answers
-              </h2>
-              <div className="mt-12 space-y-10">
-                {FAQ.map((item) => (
-                  <div key={item.q}>
-                    <h3 className="text-base font-medium text-[#EDE6DA] sm:text-lg">
-                      {item.q}
-                    </h3>
-                    <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                      {item.a}
-                    </p>
-                  </div>
-                ))}
+          <section className="border-b border-[rgba(237,230,218,0.14)] bg-[#0f0e0d] px-[5vw] py-16 sm:py-24">
+            <div className="mx-auto max-w-[1100px]">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-12">
+                <h2 className="max-w-[14ch] font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
+                  Before you install
+                </h2>
+                <p className="max-w-sm text-sm leading-relaxed text-[rgba(237,230,218,0.5)] sm:text-right">
+                  Windows, macOS, Linux, Android, Android TV, and iOS — installers
+                  on Download.
+                </p>
               </div>
+
+              <ol className="mt-12 divide-y divide-[rgba(237,230,218,0.12)] border-y border-[rgba(237,230,218,0.12)]">
+                {FAQ.map((item, i) => (
+                  <li
+                    key={item.q}
+                    className="grid gap-4 py-10 sm:grid-cols-[3.5rem_1fr] sm:gap-10"
+                  >
+                    <span className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-forja-green">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div>
+                      <h3 className="font-serif-i text-[clamp(1.25rem,2.5vw,1.65rem)] leading-snug text-[#EDE6DA]">
+                        {item.q}
+                      </h3>
+                      <p className="mt-3 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.58)]">
+                        {item.a}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           </section>
 

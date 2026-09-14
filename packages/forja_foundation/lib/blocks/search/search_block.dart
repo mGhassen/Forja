@@ -3,7 +3,11 @@ import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/components/input.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
-/// Search page template — field + optional filters + results (RFC-106 G6 · RFC-112).
+/// Prebuilt search chrome: field + optional filters + results area.
+///
+/// ```json
+/// { "type": "search", "props": { "hintText": "Search titles" } }
+/// ```
 class SearchBlock extends StatelessWidget {
   const SearchBlock({
     super.key,
@@ -20,7 +24,7 @@ class SearchBlock extends StatelessWidget {
 
   factory SearchBlock.fromProps(
     Map<String, dynamic> props, {
-    required Widget results,
+    Widget? results,
     TextEditingController? controller,
     FocusNode? focusNode,
     ValueChanged<String>? onChanged,
@@ -30,7 +34,7 @@ class SearchBlock extends StatelessWidget {
     Widget? field,
   }) {
     return SearchBlock(
-      results: results,
+      results: results ?? const SizedBox.shrink(),
       controller: controller,
       focusNode: focusNode,
       onChanged: onChanged,
@@ -50,8 +54,6 @@ class SearchBlock extends StatelessWidget {
   final String hintText;
   final Widget? header;
   final Widget? filters;
-
-  /// Host-owned search field (TV browse/edit, tune button). Replaces default [Input].
   final Widget? field;
 
   @override
@@ -60,28 +62,26 @@ class SearchBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (header != null) header!,
-        if (field != null)
-          field!
-        else
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              theme.spaceLg,
-              theme.spaceMd,
-              theme.spaceLg,
-              theme.spaceSm,
+        ?header,
+        field ??
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                theme.spaceLg,
+                theme.spaceMd,
+                theme.spaceLg,
+                theme.spaceSm,
+              ),
+              child: Input(
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                hintText: hintText,
+                variant: InputVariant.search,
+                prefixIcon: const Icon(Icons.search),
+              ),
             ),
-            child: Input(
-              controller: controller,
-              focusNode: focusNode,
-              onChanged: onChanged,
-              onSubmitted: onSubmitted,
-              hintText: hintText,
-              variant: InputVariant.search,
-              prefixIcon: const Icon(Icons.search),
-            ),
-          ),
-        if (filters != null) filters!,
+        ?filters,
         Expanded(child: results),
       ],
     );

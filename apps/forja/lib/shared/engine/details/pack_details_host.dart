@@ -131,8 +131,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   Set<String> _watchedEpisodes = {};
   bool _autoPlayConsumed = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
-  List<KitStreamRecHit> _iptvRecHits = const [];
-  Object? _iptvPortal;
 
   @override
   void initState() {
@@ -609,10 +607,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
     });
-    if (hubMetaIsIptv(meta)) {
-      final resolve = KitStreamPlayHooks.resolvePortalFromMeta;
-      _iptvPortal = resolve == null ? null : await resolve(meta);
-    }
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
     if (widget.autoPlay) {
@@ -928,9 +922,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         .where((r) => r.id != 'recommendations' && r.items.isNotEmpty)
         .toList();
     final hasPackRecs = packRecs.isNotEmpty;
-    final iptvRecs = isIptv && _iptvRecHits.isNotEmpty
-        ? _iptvRecHits.map((h) => h.movie).toList()
-        : null;
 
     final packMidSections = buildKitDetailRailSections(
       context: context,
@@ -952,41 +943,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                 packMidSections.isEmpty ? firstMetaFocusUp : null,
           )
         : const <Widget>[];
-    final iptvRecSections = !hasPackRecs &&
-            iptvRecs != null &&
-            iptvRecs.isNotEmpty
-        ? <Widget>[
-            MediaDetailsRecommendationsSection(
-              movies: iptvRecs,
-              onMovieTap: (movie) {
-                final open = KitStreamPlayHooks.openVodStream;
-                final portal = _iptvPortal;
-                if (open == null || portal == null) return;
-                for (final hit in _iptvRecHits) {
-                  if (hit.movie.id != movie.id) continue;
-                  unawaited(
-                    open(
-                      context,
-                      stream: hit.stream,
-                      portal: portal,
-                    ),
-                  );
-                  break;
-                }
-              },
-              tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-              tvRowId: 'recommendations',
-              tvRowOrder: recOrderBase,
-              tvFocusUp:
-                  packMidSections.isEmpty ? firstMetaFocusUp : null,
-            ),
-          ]
-        : const <Widget>[];
     final sections = [
       if (episodePicker != null) episodePicker,
       ...packMidSections,
       ...packRecSections,
-      ...iptvRecSections,
     ];
 
     return MediaDetailsScrollPage(
