@@ -1,4 +1,4 @@
-import 'package:forja/shared/engine/portals/catalog/iptv_catalog_disk_store.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';

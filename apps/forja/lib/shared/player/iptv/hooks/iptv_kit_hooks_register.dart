@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:forja/shared/engine/portals/catalog/iptv_catalog_disk_store.dart';
+import 'package:forja/shared/engine/portals/store/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/player/iptv/iptv_catalog_recs.dart';
 import 'package:forja/shared/player/iptv/iptv_lazy_url_health.dart';

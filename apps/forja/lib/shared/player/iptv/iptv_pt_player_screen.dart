@@ -32,7 +32,7 @@ import 'package:forja/shared/player/iptv/channel_guide/iptv_channel_guide_panel.
 import 'package:forja/shared/player/iptv/channel_guide/iptv_channel_search_overlay.dart';
 import 'package:forja/shared/engine/portals/network/iptv_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
-import 'package:forja/shared/engine/portals/storage.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/iptv/iptv_live_continuity_proxy.dart';
 import 'package:forja/shared/player/iptv/iptv_hls_play_url.dart';
 import 'package:forja/shared/player/iptv/iptv_proxy_reconnect_skip.dart';

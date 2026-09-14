@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/portals/vault/iptv_vault_inventory.dart';
+import 'package:forja/shared/engine/portals/store/iptv_vault_inventory.dart';
 import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'models.dart';
+import '../models.dart';
 
 /// Map key for portal passwords in [SecureSettings.iptvPortalPasswords].
 String iptvPortalPasswordMapKey(String url, String username) =>

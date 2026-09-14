@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/models.dart';
-import 'package:forja/shared/engine/portals/storage.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 
 /// Pack vault keys for IPTV portal inventory (SoT on device after migrate).
