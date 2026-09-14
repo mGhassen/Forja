@@ -138,16 +138,19 @@ export function PluginBundlesShowcase({
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {ordered.map((bundle, i) => (
-          <BundleCard
-            key={bundle.id}
-            bundle={bundle}
-            delayMs={i * 50}
-            busy={batchInstall.busy}
-            onGet={() => batchInstall.openDialog(bundle.packs)}
-          />
-        ))}
+      <div className="-mx-[5vw] overflow-x-auto px-[5vw] pb-2 [scrollbar-width:thin]">
+        <div className="flex w-max gap-3">
+          {ordered.map((bundle, i) => (
+            <div key={bundle.id} className="w-[min(78vw,280px)] shrink-0 sm:w-[260px]">
+              <BundleCard
+                bundle={bundle}
+                delayMs={i * 50}
+                busy={batchInstall.busy}
+                onGet={() => batchInstall.openDialog(bundle.packs)}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <PluginBatchInstallDialog

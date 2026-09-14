@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/kit/slots/slots.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 
@@ -26,6 +27,11 @@ class PackPaintTree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (spec['hideWhenTypeFilter'] == true &&
+        catalogChromeHidesTypeFilterRails(tabId)) {
+      return const SizedBox.shrink();
+    }
+
     final type = LayoutTypes.normalize(
       (spec['type'] ?? '').toString(),
       spec,
@@ -48,7 +54,11 @@ class PackPaintTree extends StatelessWidget {
           tabId: tabId,
         );
       case LayoutTypes.continueWatching:
-        return PackContinueSlot(pluginId: pluginId);
+        return PackContinueSlot(
+          pluginId: pluginId,
+          tabId: tabId,
+          mergeHomeWatchHistory: spec['mergeHomeWatchHistory'] == true,
+        );
       case LayoutTypes.mood:
         return PackMoodSlot(
           spec: spec,

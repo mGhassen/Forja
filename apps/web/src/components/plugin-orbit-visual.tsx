@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils'
 
-/** Outer ring only — keeps a clear hole for the center badge. */
+/** Outer ring only — clear hole for the center stack. */
 const NODES = [
-  { label: 'Providers', x: '50%', y: '10%', accent: 'brand' as const },
-  { label: 'Live', x: '86%', y: '30%', accent: 'flame' as const },
-  { label: 'Home', x: '86%', y: '70%', accent: 'brand' as const },
-  { label: 'IPTV', x: '50%', y: '90%', accent: 'flame' as const },
-  { label: 'Anime', x: '14%', y: '70%', accent: 'flame' as const },
-  { label: 'Torrent', x: '14%', y: '30%', accent: 'brand' as const },
+  { label: 'Providers', x: '50%', y: '8%', accent: 'brand' as const },
+  { label: 'Live', x: '88%', y: '28%', accent: 'flame' as const },
+  { label: 'Home', x: '88%', y: '72%', accent: 'brand' as const },
+  { label: 'IPTV', x: '50%', y: '92%', accent: 'flame' as const },
+  { label: 'Anime', x: '12%', y: '72%', accent: 'flame' as const },
+  { label: 'Torrent', x: '12%', y: '28%', accent: 'brand' as const },
 ] as const
 
 export function PluginOrbitVisual({ className }: { className?: string }) {
@@ -50,14 +50,18 @@ export function PluginOrbitVisual({ className }: { className?: string }) {
         </div>
       ))}
 
-      <div className="absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2">
-        <div className="flex h-20 w-20 flex-col items-center justify-center rounded-2xl border border-forja-green/30 bg-[#0c0b0a] px-2 shadow-[0_0_40px_rgba(28,231,131,0.2)]">
+      {/* Center stack: badge + Community with real gap (no overlap) */}
+      <div className="absolute left-1/2 top-1/2 z-[2] flex -translate-x-1/2 -translate-y-[58%] flex-col items-center">
+        <div className="flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center rounded-2xl border border-forja-green/30 bg-[#0c0b0a] px-2 shadow-[0_0_40px_rgba(28,231,131,0.22)]">
           <span className="font-mono-ui text-center text-[9px] font-bold uppercase leading-tight tracking-[0.12em] text-forja-green">
             Your
             <br />
             pack
           </span>
         </div>
+        <span className="mt-3 font-mono-ui text-[9px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.45)]">
+          Community
+        </span>
       </div>
     </div>
   )

@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
+import 'package:forja/shared/engine/runtime/kit/slots/hero_slot.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shell/filters/vertical_filters.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
+import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
@@ -74,6 +78,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         oldWidget.pageAction != widget.pageAction) {
       unawaited(_loadPage(force: true));
     }
+  }
+
+  @override
+  void dispose() {
+    final tab = widget.tabId?.trim();
+    if (tab != null && tab.isNotEmpty) {
+      VerticalFiltersRegistry.unregister(tab);
+    }
+    super.dispose();
   }
 
   @override
@@ -204,17 +217,106 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       );
     }
 
-    return CatalogBody(
-      sections: [
-        for (final w in _widgets)
-          PackPaintTree(
+    final listenable = catalogChromeFilterListenable(_pageKey);
+    if (listenable == null) return _pageBody();
+    return ListenableBuilder(
+      listenable: listenable,
+      builder: (_, _) => _pageBody(),
+    );
+  }
+
+  /// Expand stack / kit.list roots need a bounded Column — not SliverToBoxAdapter.
+  Widget _pageBody() {
+    final fullPage = _fullPageBody();
+    if (fullPage != null) return fullPage;
+    return CatalogBody(sections: _composeSections());
+  }
+
+  Widget? _fullPageBody() {
+    if (_widgets.length != 1) return null;
+    final root = _widgets.first;
+    if (!LayoutTypes.isCompositionRoot(root)) return null;
+    return PackPaintTree(
+      spec: root,
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      tabId: _pageKey,
+    );
+  }
+
+  bool _chromeHidesTypeFilterRail() =>
+      catalogChromeHidesTypeFilterRails(_pageKey);
+
+  /// Hero `bleed` → rail tucked under hero; `hideWhenBleed` drops the duplicate row.
+  List<Widget> _composeSections() {
+    Map<String, dynamic>? heroSpec;
+    String? bleedKey;
+    for (final w in _widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type != LayoutTypes.hero) continue;
+      heroSpec = w;
+      final bleed = (w['bleed'] ?? '').toString().trim();
+      if (bleed.isNotEmpty) bleedKey = bleed;
+      break;
+    }
+
+    Map<String, dynamic>? bleedSpec;
+    if (bleedKey != null) {
+      for (final w in _widgets) {
+        final id = (w['id'] ?? '').toString().trim();
+        final rail = (w['rail'] ?? '').toString().trim();
+        if (id == bleedKey || rail == bleedKey) {
+          if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
+            break;
+          }
+          bleedSpec = w;
+          break;
+        }
+      }
+    }
+
+    final out = <Widget>[];
+    for (final w in _widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (identical(w, bleedSpec) &&
+          bleedSpec != null &&
+          bleedSpec['hideWhenBleed'] == true) {
+        continue;
+      }
+      if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
+        continue;
+      }
+      if (type == LayoutTypes.hero && identical(w, heroSpec)) {
+        out.add(
+          PackHeroSlot(
             spec: w,
             pluginId: widget.pluginId,
             packSourceUrl: widget.packSourceUrl,
             tabId: _pageKey,
+            bleedRowId: bleedKey,
+            pageBottomChild: bleedSpec == null
+                ? null
+                : PackPaintTree(
+                    spec: Map<String, dynamic>.from(bleedSpec)
+                      ..remove('title'), // title lives in hero bleed chrome
+                    pluginId: widget.pluginId,
+                    packSourceUrl: widget.packSourceUrl,
+                    tabId: _pageKey,
+                  ),
           ),
-      ],
-    );
+        );
+        continue;
+      }
+      out.add(
+        PackPaintTree(
+          spec: w,
+          pluginId: widget.pluginId,
+          packSourceUrl: widget.packSourceUrl,
+          tabId: _pageKey,
+        ),
+      );
+    }
+    return out;
   }
 }
 

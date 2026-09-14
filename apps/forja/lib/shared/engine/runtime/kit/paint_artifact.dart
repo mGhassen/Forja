@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
 /// Shared pack-item → foundation card paint. Single path for rails + slots.
@@ -152,12 +153,15 @@ abstract final class PackPaintArtifact {
     final items = node['items'];
     if (items is! List || items.isEmpty) {
       if (title.isEmpty) return const SizedBox.shrink();
-      return Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: ShellTokens.homeSectionHorizontalPadding,
-          vertical: 8,
+      final pad = shellHomeSectionHorizontalPadding(context);
+      return ShellSectionTitle(
+        title: title,
+        padding: EdgeInsetsDirectional.only(
+          start: pad,
+          top: shellHomeSectionTitleTop(context),
+          end: pad,
+          bottom: shellHomeSectionBottomGap(context),
         ),
-        child: ShellSectionTitle(title: title),
       );
     }
 
@@ -201,30 +205,34 @@ abstract final class PackPaintArtifact {
     }
     if (cards.isEmpty) return const SizedBox.shrink();
 
+    final aspect = aspectFallback == 'landscape'
+        ? PosterAspect.landscape
+        : PosterAspect.portrait;
+    final pad = shellHomeSectionHorizontalPadding(context);
+    final titleTop = shellHomeSectionTitleTop(context);
+    final gap = shellPosterCardRowGap(context);
+    final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (title.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              ShellTokens.homeSectionHorizontalPadding,
-              12,
-              ShellTokens.homeSectionHorizontalPadding,
-              8,
+          ShellSectionTitle(
+            title: title,
+            padding: EdgeInsetsDirectional.only(
+              start: pad,
+              top: titleTop,
+              end: pad,
+              bottom: shellHomeSectionBottomGap(context),
             ),
-            child: ShellSectionTitle(title: title),
           ),
-        SizedBox(
-          height: InteractivePosterCard.cardHeight(context) + 28,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(
-              horizontal: ShellTokens.homeSectionHorizontalPadding,
-            ),
-            itemCount: cards.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, i) => cards[i],
-          ),
+        HorizontalScroller(
+          height: cardH,
+          padding: EdgeInsets.symmetric(horizontal: pad),
+          itemCount: cards.length,
+          separatorBuilder: (_, _) =>
+              SizedBox(width: ranked ? gap.clamp(3.0, 6.0) : gap),
+          itemBuilder: (_, i) => cards[i],
         ),
       ],
     );

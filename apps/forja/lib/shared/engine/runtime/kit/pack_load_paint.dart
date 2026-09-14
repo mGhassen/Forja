@@ -30,12 +30,34 @@ class PackLoadedPaint extends StatefulWidget {
 }
 
 class _PackLoadedPaintState extends State<PackLoadedPaint> {
-  late final Future<MetaEnvelope> _future = packOpaqueRun(
-    pluginId: widget.pluginId,
-    action: widget.action,
-    params: widget.params,
-    packSourceUrl: widget.packSourceUrl,
-  );
+  late Future<MetaEnvelope> _future = _run();
+
+  Future<MetaEnvelope> _run() => packOpaqueRun(
+        pluginId: widget.pluginId,
+        action: widget.action,
+        params: widget.params,
+        packSourceUrl: widget.packSourceUrl,
+      );
+
+  @override
+  void didUpdateWidget(covariant PackLoadedPaint oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pluginId != widget.pluginId ||
+        oldWidget.action != widget.action ||
+        oldWidget.packSourceUrl != widget.packSourceUrl ||
+        !_mapEquals(oldWidget.params, widget.params)) {
+      _future = _run();
+    }
+  }
+
+  bool _mapEquals(Map<String, dynamic> a, Map<String, dynamic> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      if (b[e.key] != e.value) return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +82,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (data['heading'] != null) merged['heading'] = data['heading'];
         if (data['seedPoster'] != null) {
           merged['seedPoster'] = data['seedPoster'];
+        }
+        if (data.containsKey('canShuffle')) {
+          merged['canShuffle'] = data['canShuffle'];
         }
         merged.remove('load');
         return widget.builder(context, merged);

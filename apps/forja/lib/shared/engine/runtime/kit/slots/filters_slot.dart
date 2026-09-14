@@ -52,5 +52,14 @@ class _PackVerticalFiltersSlotState extends State<PackVerticalFiltersSlot> {
   }
 
   @override
+  void dispose() {
+    final tabId = widget.tabId?.trim() ?? '';
+    if (tabId.isNotEmpty) {
+      VerticalFiltersRegistry.unregister(tabId);
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => const SizedBox.shrink();
 }

@@ -26,11 +26,7 @@ class LayoutStack extends StatelessWidget {
       final child = childBuilder(Map<String, dynamic>.from(entry), childIndex);
       childIndex++;
       if (child == null) continue;
-      if (!horizontal && expandLast && i == raw.length - 1) {
-        children.add(Expanded(child: child));
-      } else {
-        children.add(child);
-      }
+      children.add(child);
     }
     if (children.isEmpty) return const SizedBox.shrink();
     if (horizontal) {
@@ -39,9 +35,30 @@ class LayoutStack extends StatelessWidget {
         children: children,
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+
+    // CatalogBody mounts stacks inside unbounded scroll — never Expanded there.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canExpand =
+            expandLast && constraints.hasBoundedHeight && children.length > 1;
+        if (!canExpand) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < children.length; i++)
+              if (i == children.length - 1)
+                Expanded(child: children[i])
+              else
+                children[i],
+          ],
+        );
+      },
     );
   }
 }

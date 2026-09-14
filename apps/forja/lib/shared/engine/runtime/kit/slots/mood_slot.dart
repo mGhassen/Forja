@@ -1,9 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
 
@@ -16,6 +18,15 @@ Color? _parseAccent(Object? raw) {
   final v = int.tryParse(hex, radix: 16);
   if (v == null) return null;
   return Color(v);
+}
+
+String? _randomMoodOptionId(List options) {
+  final ids = <String>[
+    for (final o in options)
+      if (o is Map && o['id'] != null) o['id'].toString(),
+  ];
+  if (ids.isEmpty) return null;
+  return ids[Random().nextInt(ids.length)];
 }
 
 /// Hub `mood` slot — pack options chips + optional results via pack `load`.
@@ -39,12 +50,37 @@ class PackMoodSlot extends StatefulWidget {
 
 class _PackMoodSlotState extends State<PackMoodSlot> {
   String? _selectedId;
+  bool _pickedDefault = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureDefault();
+  }
+
+  @override
+  void didUpdateWidget(covariant PackMoodSlot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.spec != widget.spec) {
+      _pickedDefault = false;
+      _ensureDefault();
+    }
+  }
+
+  void _ensureDefault() {
+    if (_pickedDefault) return;
+    final options = widget.spec['options'];
+    if (options is! List || options.isEmpty) return;
+    _pickedDefault = true;
+    _selectedId = _randomMoodOptionId(options);
+  }
 
   @override
   Widget build(BuildContext context) {
     final options = widget.spec['options'];
     if (options is! List || options.isEmpty) return const SizedBox.shrink();
     final title = (widget.spec['title'] ?? '').toString();
+    final pad = shellHomeSectionHorizontalPadding(context);
 
     final chips = <Widget>[];
     for (final raw in options) {
@@ -64,7 +100,7 @@ class _PackMoodSlotState extends State<PackMoodSlot> {
           icon: token.icon,
           layout: MoodCircleLayout.desktop,
           onTap: () => setState(() {
-            _selectedId = selected ? null : id;
+            _selectedId = id;
           }),
         ),
       );
@@ -95,14 +131,12 @@ class _PackMoodSlotState extends State<PackMoodSlot> {
     return MoodSection(
       title: title.isEmpty ? null : title,
       titlePadding: EdgeInsets.fromLTRB(
-        ShellTokens.homeSectionHorizontalPadding,
-        12,
-        ShellTokens.homeSectionHorizontalPadding,
-        8,
+        pad,
+        shellHomeSectionTitleTop(context),
+        pad,
+        shellHomeSectionBottomGap(context),
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.homeSectionHorizontalPadding,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: pad),
       results: results,
       children: chips,
     );
