@@ -46,12 +46,6 @@ double shellPosterCardWidth(BuildContext context) {
 double shellPosterCardHeight(BuildContext context) =>
     (shellPosterCardWidth(context) * 1.5).roundToDouble();
 
-double shellContinueWatchingCardWidth(BuildContext context) =>
-    ShellScope.metricsOf(context).continueWatchingCardWidth;
-
-double shellContinueWatchingCardHeight(BuildContext context) =>
-    ShellScope.metricsOf(context).continueWatchingCardHeight;
-
 double shellHubCardTitleFontSize(BuildContext context) =>
     ShellScope.metricsOf(context).hubCardTitleFontSize;
 
@@ -63,16 +57,6 @@ double shellSectionTitleTopCompact(BuildContext context) {
       ? ShellTokens.homeSectionTitleTopCompactDesktop
       : ShellTokens.homeSectionTitleTopCompactMobile;
 }
-
-double shellHomeSectionHorizontalPadding(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvHomeSectionHorizontalPadding
-    : ShellTokens.homeSectionHorizontalPadding;
-
-double shellHomeRowSpacing(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvHomeRowSpacing
-    : ShellTokens.homeRowSpacing;
 
 double shellHeroHeightFraction(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
@@ -99,35 +83,6 @@ double shellCardFocusBleed(
   if (scaleOnFocus <= 1.0) return borderWidth + 1;
   final w = cardWidth ?? shellPosterCardWidth(context);
   return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
-}
-
-double shellHomeSectionTitleTop(BuildContext context, {bool compact = false}) {
-  if (compact) return shellSectionTitleTopCompact(context);
-  if (ShellScope.metricsOf(context).usesTvDensity) {
-    return ShellTokens.tvHomeSectionTitleTop;
-  }
-  return ShellTokens.homeSectionTitleTop;
-}
-
-double shellHomeSectionHeaderHeight(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvHomeSectionHeaderHeight
-    : 28.0;
-
-double shellHomeSectionBottomGap(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvHomeSectionBottomGap
-    : 16.0;
-
-double shellKitSectionHeight(
-  BuildContext context, {
-  bool compactTop = false,
-  required double cardHeight,
-}) {
-  return shellHomeSectionTitleTop(context, compact: compactTop) +
-      shellHomeSectionHeaderHeight(context) +
-      shellHomeSectionBottomGap(context) +
-      cardHeight;
 }
 
 double shellHeroNextRowPeekFraction(BuildContext context) =>
@@ -161,9 +116,6 @@ int shellGridCrossAxisCount(
   return w > 600 ? tablet : phone;
 }
 
-bool shellIptvUsesWideLayout(BuildContext context) =>
-    MediaQuery.sizeOf(context).width >= 1100;
-
 /// TV density vs desktop card baseline (190px). Typography uses [ShellTokens.tvLayoutScaleFloor].
 double shellLayoutScale(BuildContext context) {
   if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
@@ -184,30 +136,6 @@ double shellScaled(BuildContext context, double value) =>
 
 double shellCardBorderRadius(BuildContext context) =>
     shellScaled(context, 14).clamp(4.0, 14.0);
-
-EdgeInsetsDirectional shellSectionTitlePadding(BuildContext context) {
-  final h = shellHomeSectionHorizontalPadding(context);
-  return EdgeInsetsDirectional.only(
-    start: h,
-    top: shellHomeSectionTitleTop(context),
-    end: h,
-    bottom: shellHomeSectionBottomGap(context),
-  );
-}
-
-EdgeInsetsDirectional shellHomeSectionTitlePadding(
-  BuildContext context, {
-  double? top,
-  double? bottom,
-}) {
-  final h = shellHomeSectionHorizontalPadding(context);
-  return EdgeInsetsDirectional.only(
-    start: h,
-    top: top ?? shellHomeSectionTitleTop(context),
-    end: h,
-    bottom: bottom ?? shellHomeSectionBottomGap(context),
-  );
-}
 
 /// Preferred nav icon size (desktop). TV may pass a compressed size into items.
 double shellNavRailIconSize(BuildContext context) =>

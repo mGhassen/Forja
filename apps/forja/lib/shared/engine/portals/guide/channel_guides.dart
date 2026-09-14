@@ -1,20 +1,16 @@
 import 'package:forja/shared/engine/portals/m3u/m3u_models.dart';
 import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
 export 'package:forja_foundation/widgets/guide/channel_guide.dart';
 export 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
-/// Host-local aliases (player channel guide still uses these names).
-typedef IptvGuideGroup = GuideGroup;
-typedef IptvGuideChannel = GuideChannel;
-typedef IptvChannelGuide = ChannelGuide;
-
 /// Host accessors for portal payloads on foundation [GuideChannel].
 extension GuideChannelHost on GuideChannel {
-  IptvStream? get xtreamStream =>
-      payload is IptvStream ? payload as IptvStream : null;
+  PortalStream? get xtreamStream =>
+      payload is PortalStream ? payload as PortalStream : null;
 }
 
 extension ChannelGuideHost on ChannelGuide {
@@ -30,15 +26,43 @@ GuideEpgProgramme guideEpgProgrammeFromEntry(EpgEntry e) => GuideEpgProgramme(
       stop: e.stop,
     );
 
+/// Resolve / health callbacks for foundation [ChannelGuidePanel].
+abstract final class PortalGuideWire {
+  PortalGuideWire._();
+
+  static Future<String?> resolvePlayUrl(
+    ChannelGuide guide,
+    GuideChannel ch,
+  ) async {
+    final portal = guide.xtreamPortal;
+    if (ch.xtreamStream != null && portal != null) {
+      return PortalClient.resolvePlayUrl(
+        portal.portal,
+        ch.xtreamStream!,
+        section: 'live',
+      );
+    }
+    final url = ch.playUrl;
+    if (url == null || url.isEmpty) return null;
+    return url;
+  }
+
+  static Future<bool> probeHealth(ChannelGuide guide, GuideChannel ch) async {
+    final url = await resolvePlayUrl(guide, ch);
+    if (url == null || url.isEmpty) return false;
+    return PortalAliveChecker.checkOne(url);
+  }
+}
+
 /// Host factories for portal-backed [ChannelGuide] snapshots.
 abstract final class ChannelGuides {
   ChannelGuides._();
 
   static ChannelGuide fromXtreamLive({
     required VerifiedPortal portal,
-    required List<IptvCategory> categories,
-    required List<IptvStream> streams,
-    required IptvStream initialStream,
+    required List<PortalCategory> categories,
+    required List<PortalStream> streams,
+    required PortalStream initialStream,
     Map<String, bool> streamHealth = const {},
   }) {
     final liveStreams =

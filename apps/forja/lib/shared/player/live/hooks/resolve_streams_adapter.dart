@@ -64,15 +64,15 @@ abstract final class ResolveStreamsAdapter {
       final kindName =
           (m['liveSourceKind'] ?? m['live_source_kind'] ?? '').toString().trim();
       final kind = switch (kindName) {
-        'iptvStalker' => IptvLiveSourceKind.iptvStalker,
-        'iptvXtream' => IptvLiveSourceKind.iptvXtream,
-        'stremio' => IptvLiveSourceKind.stremio,
-        'liveEngine' => IptvLiveSourceKind.liveEngine,
+        'iptvStalker' => PortalLiveSourceKind.iptvStalker,
+        'iptvXtream' => PortalLiveSourceKind.iptvXtream,
+        'stremio' => PortalLiveSourceKind.stremio,
+        'liveEngine' => PortalLiveSourceKind.liveEngine,
         _ => streamId.isNotEmpty && url.isEmpty
-            ? IptvLiveSourceKind.iptvStalker
-            : IptvLiveSourceKind.iptvXtream,
+            ? PortalLiveSourceKind.iptvStalker
+            : PortalLiveSourceKind.iptvXtream,
       };
-      if (kind == IptvLiveSourceKind.iptvStalker) {
+      if (kind == PortalLiveSourceKind.iptvStalker) {
         if (streamId.isEmpty) continue;
       } else if (url.isEmpty) {
         continue;

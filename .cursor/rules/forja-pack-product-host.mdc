@@ -18,8 +18,8 @@ Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/
 | Layer | Path | Owns | Forbidden |
 |-------|------|------|-----------|
 | **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent,debrid}` | Product tabs, layout/paint JSON, load actions, prefs, chrome, open shaping, enrich, portals product, magnet→URL debrid | Native unlock internals |
-| **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin painter** at `shared/engine/runtime/kit/` (schema validate → foundation widgets), **opaque search wire** (`runPlugin(…, 'search')` only) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes (schedule/feed/panel/tabs chrome), **product search engines** (TMDB/AniList/addons) |
-| **Foundation** | `packages/forja_foundation` | Tokens (incl. ThemeExtension), components, widgets, blocks, protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
+| **Host** | `apps/forja` | **Empty chassis** — pack-nav wire + settings/account/OTA + platform glue; generic engines (`runPlugin`, cache, store, vault, http, unlock, playback); **thin painter** at `shared/engine/runtime/kit/` (schema validate → foundation widgets); **opaque search wire** (`runPlugin(…, 'search')` only). `lib/shell/` must not own brand paint, hub chrome, or product tab vocabulary | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes (schedule/feed/panel/tabs chrome), **product search engines** (TMDB/AniList/addons), fat shell UI that duplicates the DS |
+| **Foundation** | `packages/forja_foundation` | Tokens (incl. ThemeExtension), components, widgets, blocks, **brand**, empty-shell frame (nav/body), protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
 
 ```
 Pack JSON  →  schema validate  →  paint foundation widget (props as declared)
@@ -28,8 +28,8 @@ Pack load  →  opaque runPlugin(action, params)  →  re-validate → paint
 
 ```
 forja-packs/                ← product
-apps/forja/                 ← shell + engines + thin painter
-packages/forja_foundation/  ← design system (paint only)
+apps/forja/                 ← empty chassis + engines + thin painter
+packages/forja_foundation/  ← design system (paint + empty shell frame)
 packages/rust/              ← native engine
 ```
 

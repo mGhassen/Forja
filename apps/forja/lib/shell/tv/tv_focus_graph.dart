@@ -37,7 +37,7 @@ class TvFocusGraph extends InheritedWidget {
     return maybeOf(context)?.tabId ??
         fallback ??
         ShellTvFocus.currentNavTabId ??
-        'home';
+        '';
   }
 
   void registerRow({
@@ -159,8 +159,7 @@ class _TvKitRowState extends State<TvKitRow> {
   String? _registeredTabId;
   String? _registeredRowId;
 
-  String get _tabId =>
-      widget.tabId ?? TvFocusGraph.tabIdOf(context, fallback: 'home');
+  String get _tabId => widget.tabId ?? TvFocusGraph.tabIdOf(context);
 
   bool get _shouldRegister =>
       widget.itemCount > 0 && widget.registerWhen(context);
@@ -295,8 +294,7 @@ class _TvChipStripState extends State<TvChipStrip> {
   String? _registeredTabId;
   String? _registeredRowId;
 
-  String get _tabId =>
-      widget.tabId ?? TvFocusGraph.tabIdOf(context, fallback: 'home');
+  String get _tabId => widget.tabId ?? TvFocusGraph.tabIdOf(context);
 
   bool get _shouldRegister =>
       widget.itemCount > 0 && widget.registerWhen(context);
@@ -405,7 +403,7 @@ VoidCallback tvResultsUpToChips(
   BuildContext context, {
   String chipRowId = 'mood-chips',
 }) {
-  final tabId = TvFocusGraph.tabIdOf(context, fallback: 'home');
+  final tabId = TvFocusGraph.tabIdOf(context);
   return shellTvResultsUpToChips(tabId: tabId, chipRowId: chipRowId);
 }
 
@@ -498,8 +496,7 @@ class _TvGridState extends State<TvGrid> {
   String? _registeredTabId;
   String? _registeredRowId;
 
-  String get _tabId =>
-      widget.tabId ?? TvFocusGraph.tabIdOf(context, fallback: 'search');
+  String get _tabId => widget.tabId ?? TvFocusGraph.tabIdOf(context);
 
   bool get _shouldRegister =>
       widget.itemCount > 0 &&

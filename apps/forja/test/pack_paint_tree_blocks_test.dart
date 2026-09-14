@@ -1,94 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
+import 'package:forja_foundation/forja_foundation.dart';
 
-/// RFC-112 — PackPaintTree mounts catalogBody (+ child paint). Synthetic only.
+/// RFC-112 — PackPaintTree mounts catalog page blocks. Synthetic only.
 void main() {
-  testWidgets('catalogBody mounts child label paint', (tester) async {
+  testWidgets('columnsHeader paints top chrome + side rail + empty',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: forjaThemeData(),
         home: Scaffold(
           body: PackPaintTree(
             pluginId: 'test-hub-a',
             spec: {
-              'type': 'catalogBody',
-              'props': {'bottomGap': 0},
-              'children': [
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'Shared catalog body'},
-                  },
-                },
-              ],
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Shared catalog body'), findsOneWidget);
-  });
-
-  testWidgets('empty block from paint type', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: PackPaintTree(
-            pluginId: 'test-hub-a',
-            spec: {
-              'type': 'empty',
-              'props': {'title': 'No items'},
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('No items'), findsOneWidget);
-  });
-
-  testWidgets('catalogBody mounts posterCard child', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PackPaintTree(
-            pluginId: 'test-hub-a',
-            spec: {
-              'type': 'catalogBody',
-              'props': {'bottomGap': 0},
-              'children': [
-                {
-                  'paint': {
-                    'type': 'posterCard',
-                    'props': {
-                      'title': 'Poster A',
-                      'imageUrl': '',
-                    },
-                  },
-                },
-              ],
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Poster A'), findsWidgets);
-  });
-
-  testWidgets('details block mounts DetailsHero from props', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PackPaintTree(
-            pluginId: 'test-hub-a',
-            spec: {
-              'type': 'details',
+              'type': 'columnsHeader',
               'props': {
-                'title': 'Painted Details',
-                'overview': 'From pack props',
-                'backdropUrl': '',
+                'actions': [
+                  {'id': 'refresh', 'label': 'Refresh'},
+                ],
+                'sideItems': [
+                  {'id': 'all', 'label': 'All'},
+                  {'id': 'news', 'label': 'News'},
+                ],
+                'emptyTitle': 'No channels',
               },
             },
           ),
@@ -96,131 +31,59 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Painted Details'), findsWidgets);
-    expect(find.text('From pack props'), findsWidgets);
+    expect(find.text('Refresh'), findsWidgets);
+    expect(find.text('News'), findsWidgets);
+    expect(find.text('No channels'), findsOneWidget);
   });
 
-  testWidgets('columnsHeader mounts header/side/body', (tester) async {
+  testWidgets('topBody paints chrome + kinds + empty', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: PackPaintTree(
-            pluginId: 'test-hub-a',
-            spec: {
-              'type': 'columnsHeader',
-              'props': {'sideWidth': 100},
-              'children': [
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'Top chrome'},
-                  },
-                },
-                {
-                  'type': 'kit.categoryBar',
-                  'id': 'cats',
-                  'orientation': 'vertical',
-                  'default': 'all',
-                  'items': [
-                    {'id': 'all', 'label': 'All'},
-                    {'id': 'sports', 'label': 'Sports'},
-                  ],
-                },
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'Channels grid'},
-                  },
-                },
-              ],
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Top chrome'), findsOneWidget);
-    expect(find.text('All'), findsWidgets);
-    expect(find.text('Sports'), findsWidgets);
-    expect(find.text('Channels grid'), findsOneWidget);
-  });
-
-  testWidgets('topBody mounts top/bodyTop/grid', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
+        theme: forjaThemeData(),
         home: Scaffold(
           body: PackPaintTree(
             pluginId: 'test-hub-a',
             spec: {
               'type': 'topBody',
-              'children': [
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'Live chrome'},
-                  },
-                },
-                {
-                  'type': 'kit.categoryBar',
-                  'id': 'kind',
-                  'default': 'all',
-                  'items': [
-                    {'id': 'all', 'label': 'All'},
-                    {'id': 'football', 'label': 'Football'},
-                  ],
-                },
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'Match grid'},
-                  },
-                },
-              ],
+              'props': {
+                'actions': [
+                  {'id': 'horizon', 'label': 'Today'},
+                ],
+                'kindItems': [
+                  {'id': 'all', 'label': 'All'},
+                  {'id': 'football', 'label': 'Football'},
+                ],
+                'emptyTitle': 'No matches',
+              },
             },
           ),
         ),
       ),
     );
     await tester.pump();
-    expect(find.text('Live chrome'), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
     expect(find.text('Football'), findsWidgets);
-    expect(find.text('Match grid'), findsOneWidget);
+    expect(find.text('No matches'), findsOneWidget);
   });
 
-  testWidgets('tabsCards mounts menu/tabs/cards', (tester) async {
+  testWidgets('tabsCards paints menu + tabs + empty', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: forjaThemeData(),
         home: Scaffold(
           body: PackPaintTree(
             pluginId: 'test-hub-a',
             spec: {
               'type': 'tabsCards',
-              'children': [
-                {
-                  'type': 'kit.menu',
-                  'id': 'kind',
-                  'toggle': true,
-                  'items': [
-                    {'id': 'movie', 'label': 'Film'},
-                    {'id': 'tv', 'label': 'Series'},
-                  ],
-                },
-                {
-                  'type': 'kit.tabs',
-                  'id': 'status',
-                  'default': 'watching',
-                  'tabs': [
-                    {'id': 'watching', 'label': 'Watching'},
-                    {'id': 'completed', 'label': 'Completed'},
-                  ],
-                },
-                {
-                  'paint': {
-                    'type': 'label',
-                    'props': {'title': 'List posters'},
-                  },
-                },
-              ],
+              'props': {
+                'menuItems': [
+                  {'id': 'movie', 'label': 'Film'},
+                ],
+                'tabItems': [
+                  {'id': 'watching', 'label': 'Watching'},
+                ],
+                'emptyTitle': 'Your list is empty',
+              },
             },
           ),
         ),
@@ -229,6 +92,6 @@ void main() {
     await tester.pump();
     expect(find.text('Film'), findsWidgets);
     expect(find.text('Watching'), findsWidgets);
-    expect(find.text('List posters'), findsOneWidget);
+    expect(find.text('Your list is empty'), findsOneWidget);
   });
 }

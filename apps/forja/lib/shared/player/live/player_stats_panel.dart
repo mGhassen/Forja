@@ -7,7 +7,8 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja_foundation/widgets/guide/player_stats_panel.dart';
 
-typedef IptvPlayerStatsSnapshot = PlayerStatsSnapshot;
+export 'package:forja_foundation/widgets/guide/player_stats_panel.dart'
+    show PlayerStatsSnapshot;
 
 class PlayerStatsPanel {
   static void show(

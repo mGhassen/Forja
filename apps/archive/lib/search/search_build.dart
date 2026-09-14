@@ -75,16 +75,40 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
         Row(
           children: [
             Expanded(
-              child: ShellSearchBar(
+              child: TextField(
                 controller: _s._controller,
                 focusNode: _s._focusNode,
-                query: _s._query,
                 onChanged: _s._onSearchChanged,
                 onSubmitted: (_) => _s._submitSearchField(),
-                onClear: () {
-                  _s._controller.clear();
-                  _s._onSearchChanged('');
-                },
+                textInputAction: TextInputAction.search,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                cursorColor: ForjaShellColors.sectionAccent,
+                decoration: InputDecoration(
+                  hintText: 'Search movies, shows…',
+                  hintStyle: TextStyle(
+                    color: ForjaShellColors.cinematic.textSecondary.withValues(
+                      alpha: 0.7,
+                    ),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  border: InputBorder.none,
+                  suffixIcon: _s._controller.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white70,
+                          ),
+                          onPressed: () {
+                            _s._controller.clear();
+                            _s._onSearchChanged('');
+                          },
+                        ),
+                ),
               ),
             ),
             Button(

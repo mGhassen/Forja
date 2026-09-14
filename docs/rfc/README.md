@@ -130,10 +130,10 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [106-[fixed]-…](fixed/106-[fixed]-forja-foundation-design-system-package.md) | Forja foundation design system package | — | fixed | Complete · 9/9 · Part1/2 ✅ · 1 ⏭️ QA · [parity](106-evacuate-parity.md) · [QA](106-qa-matrix.md) | — |
 | [107-[open]-…](107-[open]-iptv-multi-engine-avplayer-vlc.md) | IPTV multi-engine (AVPlayer Mac · VLC Windows · Exo Android) | — | open | **8 / 8** · **14 / 15** | — |
 | [108-[fixed]-…](fixed/108-[fixed]-my-list-open-hub-binding.md) | My List open hub binding (picker + cache) | — | fixed | Complete · 7/7 · 20/20 | — |
-| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **25 / 29** code · 5 🔄 · **8 / 8** IPTV pack · **11 / 12** A41 · **3 / 3** wipe · **3 / 3** kit evacuate · **3 / 3** validate+paint · **3 / 3** pack search · **4 / 4** catalog slots · **4 / 4** live guide | — |
+| [109-[open]-…](109-[open]-forja-pack-product-host.md) | Forja pack-product host (root = generic engines + frame only) | — | open | **7 / 7** · **8 / 8** law · **26 / 29** code · 4 🔄 · **8 / 8** IPTV pack · **12 / 12** A41 · **3 / 3** wipe · **3 / 3** kit evacuate · **3 / 3** validate+paint · **3 / 3** pack search · **4 / 4** catalog slots · **4 / 4** live guide · **2 / 2** guide out of player · **4 / 5** empty-shell (A79 🔄) | — |
 | [110-[draft]-…](110-[draft]-pack-surface-contributions.md) | Pack surface contributions (layers / modules / slots) | — | draft | **0 / 8** C · **26 / 28** spec · **0 / 12** registry · **0 / 10** details+player · **0 / 6** conflict UX · **0 / 4** reference packs | — |
 | [111-[fixed]-…](fixed/111-[fixed]-foundation-widgets-delete-dead.md) | Foundation widgets — delete dead / honesty vs PackPaintTree | — | fixed | Complete · 4/4 · 6/6 | — |
-| [112-[open]-…](112-[open]-blocks-json-props.md) | Blocks with JSON props (pack-callable) | — | open | **4 / 4** · **11 / 12** · 1 ⏭️ | — |
+| [112-[open]-…](112-[open]-blocks-json-props.md) | Blocks with JSON props (pack-callable) | — | open | **4 / 4** · **13 / 14** · 1 ⏭️ | — |
 | [113-[open]-…](113-[open]-iptv-mediakit-ipdigi-direct-reconnect.md) | IPTV MediaKit — ipdigi direct CDN + lavf reconnect | — | open | **6 / 6** · **0 / 6** | — |
 | [114-[open]-…](114-[open]-debrid-magnet-resolve-packs.md) | Debrid magnet-resolve packs (kind: debrid; delete crates/debrid) | — | open | **6 / 6** · **12 / 12** | — |
 

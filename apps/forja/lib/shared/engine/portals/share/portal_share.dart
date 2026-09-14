@@ -14,8 +14,8 @@ import '../models.dart';
 /// Credentials are encrypted locally (Rust `F1.` token) and stored under the
 /// short code in Supabase — no pastebin. Tokens carry `platform` so Stalker /
 /// M3U share/import round-trips (Stalker serial / M3U password may be empty).
-class IptvPortalShare {
-  IptvPortalShare._();
+class PortalShare {
+  PortalShare._();
 
   static const shareCodeLength = 8;
   static const embeddedPrefix = 'F1.';
@@ -51,7 +51,7 @@ class IptvPortalShare {
   }
 
   /// Encrypt portal credentials and store under a new 8-char code.
-  static Future<String> createShare(IptvPortal portal) async {
+  static Future<String> createShare(Portal portal) async {
     final token = RustLib.instance.iptvPortalShareEncode(
       portal.url,
       portal.username,
@@ -77,7 +77,7 @@ class IptvPortalShare {
       } on PostgrestException catch (e) {
         if (e.code == '23505') continue;
         lastError = e;
-        debugPrint('[IptvPortalShare] create failed ($code): $e');
+        debugPrint('[PortalShare] create failed ($code): $e');
         rethrow;
       }
     }
@@ -85,7 +85,7 @@ class IptvPortalShare {
   }
 
   /// Resolve an 8-char code or a leftover `F1.` token.
-  static Future<IptvPortal?> resolveShare(String rawCode) async {
+  static Future<Portal?> resolveShare(String rawCode) async {
     final trimmed = rawCode.trim();
     if (isEmbeddedToken(trimmed)) {
       return _resolveEmbedded(trimmed);
@@ -109,7 +109,7 @@ class IptvPortalShare {
     return _resolveEmbedded(token);
   }
 
-  static IptvPortal? _resolveEmbedded(String token) {
+  static Portal? _resolveEmbedded(String token) {
     try {
       final jsonStr = RustLib.instance.iptvPortalShareDecode(token);
       if (jsonStr.isEmpty) return null;
@@ -119,24 +119,24 @@ class IptvPortalShare {
       final url = (map['url'] as String?)?.trim() ?? '';
       final username = (map['username'] as String?)?.trim() ?? '';
       final password = (map['password'] as String?)?.trim() ?? '';
-      final platform = IptvPortalPlatform.fromString(map['platform'] as String?);
+      final platform = PortalPlatform.fromString(map['platform'] as String?);
       final userAgent =
           (map['userAgent'] as String?)?.trim() ??
           (map['user_agent'] as String?)?.trim() ??
           '';
       if (url.isEmpty) return null;
       switch (platform) {
-        case IptvPortalPlatform.xtream:
+        case PortalPlatform.xtream:
           if (username.isEmpty || password.isEmpty) return null;
-        case IptvPortalPlatform.stalker:
+        case PortalPlatform.stalker:
           if (username.isEmpty) return null;
-        case IptvPortalPlatform.m3u:
+        case PortalPlatform.m3u:
           break;
       }
-      return IptvPortal(
+      return Portal(
         url: url,
-        username: platform == IptvPortalPlatform.m3u && username.isEmpty
-            ? IptvPortalPlatform.m3uUsernameSentinel
+        username: platform == PortalPlatform.m3u && username.isEmpty
+            ? PortalPlatform.m3uUsernameSentinel
             : username,
         password: password,
         source: 'Shared',
@@ -144,7 +144,7 @@ class IptvPortalShare {
         userAgent: userAgent,
       );
     } catch (e, st) {
-      debugPrint('[IptvPortalShare] decode failed: $e\n$st');
+      debugPrint('[PortalShare] decode failed: $e\n$st');
       return null;
     }
   }

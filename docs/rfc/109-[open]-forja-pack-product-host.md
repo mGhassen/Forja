@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **5** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) · **4 / 4** live guide paint (A73–A76) |
-| **Current slice** | Catalog slot paint mounted (hero/filters/mood/continue/because) + pack paint stamps. |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **26 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **12 / 12** A41 pack migrate · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) · **4 / 4** catalog slot paint (A69–A72) · **4 / 4** live guide paint (A73–A76) · **2 / 2** guide out of player (A82–A83) · **4 / 5** empty-shell chassis (A77–A81 · A79 🔄) |
+| **Current slice** | Empty-shell chassis — brand/bus peel landed; A79 remaining (toast / ForjaInteractive / scaffold → foundation). Guide adapters moved to `engine/portals/guide/`. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R109-C01 | Law + cursor rule `forja-pack-product-host.mdc` | ✅ |
-| 2 | R109-C02 | Widgets only in `forja_foundation`; `apps/forja/lib/shell` = app frame + shell UI | ✅ |
+| 2 | R109-C02 | Widgets + brand + empty-shell frame in `forja_foundation`; `apps/forja/lib/shell` = chassis wire only | 🔄 |
 | 3 | R109-C03 | Dissolve `shared/engine/{hub,lists,live}` → generic `runtime/cache/store/portals/unlock` | ✅ |
 | 4 | R109-C04 | `features/iptv` product → pack + `engine/portals` | ✅ |
 | 5 | R109-C05 | Generic `ctx.host` (`cache`/`store`/`http`/`vault`/`plugin`/`playback`) — no product `iptv`/`portals` | ✅ |
@@ -103,7 +103,7 @@
 | 13 | R109-A47 | Pack portals product chrome (replace Flutter portal panel) | ✅ |
 | 14 | R109-A48 | Pack EPG browse mode wired to foundation guide | ✅ |
 | 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | ✅ |
-| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | 🔄 |
+| 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ✅ |
 | 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
 | 18 | R109-A52 | Remount exact `IptvPtScreen` catalog UX until pack/foundation catalog chrome parity (shelf/search/sort/cats/channels/EPG) | ✅ |
 | 19 | R109-A53 | Merge VOD `details` into `iptv-hub` — drop separate `iptv-vod` plugin; enrich stays companion | ✅ |
@@ -372,13 +372,18 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | TV search browse | → `forja_foundation/widgets/tv/tv_search_browse_overlay.dart` |
 | `forja_player_overlay` | → `shared/player/forja_player_overlay.dart` |
 | `ShellPaintScope` | Host injects focus/TV via `installShellPaintHostAdapters()` (bootstrap); foundation never imports `package:forja` |
-| Toast | Remains `shell/feedback/forja_toast.dart` (host mount) |
+| Toast | Was host `shell/feedback/forja_toast.dart` — migrate paint to foundation (A79) |
 | `LoadingOverlay` | Host playback chrome → `shared/playback/loading_overlay.dart` (rust/playback deps — not foundation) |
 
-| Still open (C02) | Detail |
-|------------------|--------|
-| Shell frame leftovers | `core/` · `chrome/` · `focus/` · `tv/` · `desktop/` · `brand/` stay host |
+| Still open (C02 → empty-shell) | Detail |
+|--------------------------------|--------|
+| Paint leave host | Brand, toast paint, focus primitives, nav rail/scaffold → `forja_foundation` ([issue 280](../issues/280-[open]-empty-shell-chassis.md) · A77–A81) |
+| Chassis only | App keeps pack-nav wire, platform, OTA, thin paint-host adapters — **not** product chrome |
 | Pack mount glue | Fat adapters under `shared/host/layout/private/` (public surface = PackLayoutHost + hooks) |
+
+| Historical (superseded) | Detail |
+|-------------------------|--------|
+| Old Wave E leftover | Claimed `core/` · `chrome/` · `focus/` · `tv/` · `desktop/` · `brand/` stay host — **wrong**; empty-shell law moves paint to foundation |
 
 ---
 
@@ -551,6 +556,18 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 ---
 
+## Acceptance (empty-shell chassis)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A77 | Law: app = empty chassis; foundation owns brand/nav/body paint; packs own product chrome | ✅ |
+| 2 | R109-A78 | Delete host `KitChromeTopBar` / `ShellSearchBar`; strip `home*` / continue-watching / iptv product APIs from shell | ✅ |
+| 3 | R109-A79 | Brand + focus/layout paint live in `forja_foundation` | 🔄 |
+| 4 | R109-A80 | Opaque bus / VF registry under `shared/engine`; foundation empty-shell primitives usable without fat host scaffold | ✅ |
+| 5 | R109-A81 | `lib/shell/` collapsed to chassis; zero hardcoded product tab ids in shell bus/TV focus | ✅ |
+
+---
+
 ## Wave M notes (validate + paint law reset)
 
 | Done | Detail |
@@ -591,8 +608,30 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | A74 | Host: `player/live/channel_guide/*` wires portal client + shell TV into callbacks; portals barrel no longer exports guide UI |
 | A75 | `shared/player/iptv/` gone; `loadCatalogRecs` / `_iptvRecHits` deleted; `LivePlaySource` rename on player path |
 | A76 | `GuideChromeStyle` + `LiveTvScrollbar` in DS; host focus actions use `FocusIconAction` names |
+| A50 | `engine/portals` Dart types/files renamed off `Iptv*` → `Portal*` (opaque portal engine); vault string keys (`iptv.portals`, …) unchanged; guide typedefs dropped for foundation names |
 
 | Still open | Detail |
 |------------|--------|
-| A50 | Fat `IptvClient` / portal store models still product-named under `engine/portals` — not sync/FFI-only |
 | A13 / A17 / A30 / A32 | Prior 🔄 debt unchanged |
+
+---
+
+## Acceptance (guide out of live player)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A82 | Portal guide adapters under `engine/portals/guide/` (factories, `GuideEpgCache`, `PortalGuideWire`, floating EPG); player mounts foundation widgets directly | ✅ |
+| 2 | R109-A83 | Delete `player/live/channel_guide/`; MediaKit/Exo stats probe host at `player/live/player_stats_panel.dart` | ✅ |
+
+---
+
+## Wave N+1 notes (guide out of live player)
+
+| Done | Detail |
+|------|--------|
+| A82 | `engine/portals/guide/*` owns portal→paint mapping; `pt_player_ui` wires foundation `ChannelGuidePanel` / `ChannelSearchOverlay` with shell TV + portal callbacks |
+| A83 | `player/live/channel_guide/` removed; stats probe stays next to live decode |
+
+| Still open | Detail |
+|------------|--------|
+| Pack in-player guide open | Hub pack should declare guide open payload; host open path does not yet pass `channelGuide` into `PtPlayerScreen` |

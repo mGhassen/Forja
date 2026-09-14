@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **6 / 6** components · **0 / 6** acceptance (manual QA) |
-| **Current slice** | Code landed — A01–A06 desktop + ATV soak pending |
+| **Current slice** | Deltas closed vs ipdigi (cache-on-disk, grace/goLive, buffering chrome) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

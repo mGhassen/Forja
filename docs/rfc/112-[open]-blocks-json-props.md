@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **11 / 12** acceptance · **1** ⏭️ deferred |
-| **Current slice** | Catalog page blocks: `columnsHeader` / `topBody` / `tabsCards` |
+| **Progress** | **4 / 4** components · **13 / 14** acceptance · **1** ⏭️ deferred |
+| **Current slice** | Deleted host `kit/paint_*` section painters — packs must emit blocks |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,6 +42,8 @@
 | 10 | R112-A10 | `kit.topBar` / `kit.categoryBar` paint via PackTopBarSlot / PackCategoryBarSlot (LogoMenuRail) | ✅ |
 | 11 | R112-A11 | `topBody` block — page top + bodyTop + grid (Live Sports geometry); PackPaintTree mounts it | ✅ |
 | 12 | R112-A12 | `tabsCards` block — menu? + tabs + cards (My List geometry); PackPaintTree mounts it | ✅ |
+| 13 | R112-A13 | Delete `kit/slots/`; topBar/categoryBar/menu/tabs mount foundation Catalog* chrome; host glue lives in `kit/paint_*.dart` (no Pack*Slot) | ✅ |
+| 14 | R112-A14 | Delete host section painters (`paint_hero`/`mood`/`because`/`continue`/`list`/`vertical_filters`); PackPaintTree mounts blocks + chrome + CatalogCardsGrid + posterRow only | ✅ |
 
 ---
 

@@ -9,7 +9,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_layout_host.dart';
 import 'package:forja/shell/nav/nav_config.dart';
-import 'package:forja/shell/filters/vertical_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
@@ -127,7 +127,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       if (child is PackLayoutHost) {
         return _tabWithKey(key, child);
       }
-      if (key != null && id == 'iptv') {
+      if (key != null) {
         return KeyedSubtree(key: key, child: child);
       }
       return child;
@@ -160,9 +160,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _evictTab(String id) {
-    if (id == 'home') return;
     final current = _currentTabId;
     if (current != null && id == current) return;
+    if (_tabBlocksEviction(id)) return;
 
     if (!_mountedTabIds.contains(id)) return;
 
@@ -176,7 +176,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   /// Player-surface purge: keep only the shell tab under the player (the
   /// screen that opened it). Force-evict every other mounted tab — including
-  /// [home] and tabs that normally block LRU — so decode gets max RAM/GPU.
+  /// tabs that normally block LRU — so decode gets max RAM/GPU.
   void _forceEvictSiblingTab(String id) {
     final current = _currentTabId;
     if (current != null && id == current) return;
@@ -225,7 +225,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       final current = _currentTabId;
       String? victim;
       for (final id in _tabLru) {
-        if (id != 'home' && id != current && !_tabBlocksEviction(id)) {
+        if (id != current && !_tabBlocksEviction(id)) {
           victim = id;
           break;
         }
@@ -307,19 +307,20 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _applyTabShellChrome(String tabId) {
+    // Overlays / tabs set [ShellBus.hideGlobalNav] themselves; clear on switch.
+    // Music desktop sidebar still needs its own rail hide while that tab is active.
     if (tabId == 'music') {
       ShellBus.hideGlobalNav.value = _musicUsesOwnSidebar(context);
-    } else if (tabId != 'iptv') {
-      ShellBus.hideGlobalNav.value = false;
+      ShellBus.notifyShellChromeChanged();
+      return;
     }
+    ShellBus.clearHideGlobalNav();
     ShellBus.notifyShellChromeChanged();
   }
 
   @override
   void initState() {
     super.initState();
-    ShellBus.selectedWatchProviderId.value = null;
-    ShellBus.homeProviderMenuVisible.value = false;
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
@@ -746,10 +747,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
-        final showKitChromeTopBar = config.showHomeTopBar &&
+        final showKitTopBar = config.showKitTopBar &&
             !ShellBus.shellOverlayHasPage.value;
         final Widget? shellTopBar;
-        if (!showKitChromeTopBar) {
+        if (!showKitTopBar) {
           shellTopBar = null;
         } else {
           shellTopBar = switch (_currentTabId) {

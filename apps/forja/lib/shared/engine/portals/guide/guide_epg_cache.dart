@@ -1,8 +1,8 @@
-import 'package:forja/shared/engine/portals/network/iptv_network.dart';
+import 'package:forja/shared/engine/portals/guide/channel_guides.dart';
 import 'package:forja/shared/engine/portals/models.dart';
-import 'package:forja/shared/player/live/channel_guide/channel_guide_host.dart';
+import 'package:forja/shared/engine/portals/network/portal_network.dart';
 
-/// Memoized short-EPG fetches for the in-player channel guide.
+/// Memoized short-EPG fetches for portal-backed guide paint.
 class GuideEpgCache {
   GuideEpgCache(this.portal);
 
@@ -10,8 +10,8 @@ class GuideEpgCache {
   final Map<String, Future<List<EpgEntry>>> _cache = {};
 
   Future<List<EpgEntry>> load(
-    IptvStream stream, {
-    int limit = IptvClient.shortEpgLimit,
+    PortalStream stream, {
+    int limit = PortalClient.shortEpgLimit,
   }) {
     final streamId = stream.streamId;
     final epgId = stream.epgChannelId;
@@ -19,10 +19,10 @@ class GuideEpgCache {
       return Future.value(const []);
     }
     final key = '${streamId.isEmpty ? epgId : streamId}:$epgId:$limit';
-    return rememberIptvEpg(
+    return rememberPortalEpg(
       _cache,
       key,
-      () => IptvClient.shortEpgForStream(
+      () => PortalClient.shortEpgForStream(
         portal.portal,
         streamId: streamId,
         epgChannelId: epgId,
@@ -33,8 +33,8 @@ class GuideEpgCache {
 
   /// Foundation paint DTO — maps portal [EpgEntry] rows.
   Future<List<GuideEpgProgramme>> loadProgrammes(
-    IptvStream stream, {
-    int limit = IptvClient.shortEpgLimit,
+    PortalStream stream, {
+    int limit = PortalClient.shortEpgLimit,
   }) async {
     final entries = await load(stream, limit: limit);
     return [
@@ -44,6 +44,3 @@ class GuideEpgCache {
 
   void clear() => _cache.clear();
 }
-
-/// Temporary alias while call sites migrate.
-typedef IptvGuideEpgCache = GuideEpgCache;

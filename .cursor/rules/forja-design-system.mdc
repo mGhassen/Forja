@@ -10,7 +10,7 @@ alwaysApply: false
 
 Architecture (who owns kit runner / product): [pack-product host](./forja-pack-product-host.mdc). This rule is **paint only** — tokens, components, visual language.
 
-Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Composers: `widgets/` / `components/` / `blocks/`. Shell chrome: `apps/forja/lib/shell/`. Host-only APIs stay on host paths. Never add imports to `part of` files.
+Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Composers: `widgets/` / `components/` / `blocks/` / `brand/`. **Empty app shell** = compose foundation (`ShellBlock` + nav rail/body + brand). `apps/forja/lib/shell/` is chassis wire only (pack nav → body mount, platform, OTA) — **not** a second DS and **not** product chrome. Never add imports to `part of` files.
 
 Composers take **props + callbacks only** (RFC-095). No `features/**` imports, god controllers, or product Riverpod in the DS package.
 
@@ -19,7 +19,11 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 | Buttons | `Button`, `ButtonGroup` — `package:forja_foundation/components/button.dart` |
 | Vertical flyout | `VerticalMenu.item` — `package:forja_foundation/components/vertical_menu.dart` |
 | Logo filter menu | `LogoMenuRail` + `LogoMenuItem` — `package:forja_foundation/widgets/chrome/logo_menu_rail.dart` |
+| Empty shell | `ShellBlock` — `package:forja_foundation/blocks/shell/shell_block.dart` |
+| Brand | `ForjaLogo` / splash paint — `package:forja_foundation/brand/` |
 | Protocol / kit **types** | `protocol/` · `kit/` — types only |
+
+**Forbidden in app shell:** product tab ids (`home`, continue watching, search chrome), hub top bars, catalog section metrics APIs. Packs + kit painter own those.
 
 ## Visual language
 
@@ -30,12 +34,12 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 
 ## Tokens
 
-### `ShellTokens` — shell chrome, Home, catalog
+### `ShellTokens` — shell chrome + catalog density (generic; not a Home pack API)
 
 | Area | Use |
 |------|-----|
-| Nav / top bar | `navRailWidth`, `homeTopBarHeight`, `shellNavCompactMaxWidth` |
-| Home hero | `heroDesktopMinBodyWidth`, `heroTextColumnWidthDesktop`, `heroOverviewSlotHeightDesktop`, `homeSectionHorizontalPadding` |
+| Nav / top bar | `navRailWidth`, `homeTopBarHeight` (kit top-bar height token), `shellNavCompactMaxWidth` |
+| Hero | `heroDesktopMinBodyWidth`, `heroTextColumnWidthDesktop`, `heroOverviewSlotHeightDesktop`, `homeSectionHorizontalPadding` |
 | Catalog rows | `homeSectionTitleTop`, `bodyMaxWidthDesktop` |
 
 ### `DetailsTokens` — media details
@@ -64,7 +68,7 @@ When adding a reused constant: **shell/catalog → `ShellTokens`**, **details su
 | `Button(variant: ghost)` | Primary CTA on hero / details (Play, Watch Now) — text + optional icon, no fill |
 | `Button(variant: plainIcon, size: icon)` | Secondary icon actions (+, info, overflow, close) — no border box |
 | `Button(variant: outline, size: icon)` | Sparingly — bordered square; prefer `plainIcon` in hero chrome |
-| `ForjaInteractive` | Custom hit targets that need hover/press scale (host shell) |
+| `ForjaInteractive` | Custom hit targets that need hover/press scale (foundation / host glue) |
 
 ## Toggles
 
@@ -84,7 +88,7 @@ Prefer `ForjaSwitch(scale: ForjaSwitch.settingsScale)` in dense settings lists. 
 
 - Interactive list tiles and cards: wrap with `FocusableControl` from `app_theme.dart` (keyboard + focus ring).
 - Platform layout and input: read `ShellScope.metrics` / `ShellScope.inputPolicy` — not `ShellTokens.isTvLayout` in widgets.
-- Platform shell switches live only in `shell/adapters/` (`ShellHost`, `DesktopShell`, `TvShell`, `MobileShell`).
+- Platform shell profile switches belong in foundation empty-shell primitives; app only picks profile and wires pack destinations into the body slot.
 
 ### Text inputs (TV) — focus only until OK
 

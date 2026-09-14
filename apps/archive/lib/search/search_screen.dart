@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
-import 'package:forja/shell/chrome/shell_search_bar.dart';
 import 'package:forja/shell/kit/kit_search_filters.dart';
 
 import 'package:forja/shared/engine/runtime/search/search_recent_queries.dart';

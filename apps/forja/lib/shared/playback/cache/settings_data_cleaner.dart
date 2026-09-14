@@ -36,7 +36,7 @@ abstract final class SettingsDataCleaner {
   }
 
   /// Pack-owned portal caches (RFC-109 Wave C) — host no longer keeps IPTV disk stores.
-  static Future<void> clearIptvPortalCaches() async {}
+  static Future<void> clearPortalCaches() async {}
 
   static Future<void> clearImageAndWebViewCaches() async {
     imageCache.clear();

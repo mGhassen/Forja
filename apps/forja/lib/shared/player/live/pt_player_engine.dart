@@ -19,6 +19,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     bool userInitiated = false,
   });
   void _scheduleIptvLiveGraceRecovery({required String reason});
+  void _onIptvLivePlayingChanged(bool playing);
   void _armTransientHwDecodeIgnore();
   Future<void> _disposePlayer();
   Future<void> _forceSoftwareDecode();
@@ -610,7 +611,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     bool forceRefresh = false,
     bool announceFailure = true,
   }) async {
-    if (_liveSourceKindFor(src) != IptvLiveSourceKind.liveEngine) return src;
+    if (_liveSourceKindFor(src) != PortalLiveSourceKind.liveEngine) return src;
     final refresh =
         forceRefresh ||
         (iptvLiveEngineUrlVolatile(src.url) &&
@@ -652,7 +653,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   }
 
   Future<LivePlaySource> _refreshStalkerPlayUrl(LivePlaySource src) async {
-    if (_liveSourceKindFor(src) != IptvLiveSourceKind.iptvStalker) {
+    if (_liveSourceKindFor(src) != PortalLiveSourceKind.iptvStalker) {
       return src;
     }
     var portal = _s.widget.channelGuide?.xtreamPortal?.portal;
@@ -666,7 +667,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     }
     if (portal == null) return src;
     try {
-      final fresh = await IptvClient.createLink(
+      final fresh = await PortalClient.createLink(
         portal,
         cmd: cmd,
         section: 'live',
@@ -692,7 +693,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   void _noteStalkerHardOpenFail() {
     if (_s._sources.isEmpty) return;
     if (_liveSourceKindFor(_s._sources[_s._sourceIdx]) !=
-        IptvLiveSourceKind.iptvStalker) {
+        PortalLiveSourceKind.iptvStalker) {
       return;
     }
     _s._stalkerHardFailCount++;
@@ -703,7 +704,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     if (_s._sources.isEmpty) return false;
     if (_s._stalkerHardFailCount < 2) return false;
     if (_liveSourceKindFor(_s._sources[_s._sourceIdx]) !=
-        IptvLiveSourceKind.iptvStalker) {
+        PortalLiveSourceKind.iptvStalker) {
       return false;
     }
     final id = (_s._sources[_s._sourceIdx].streamId ?? _s._currentChannelId)
@@ -731,12 +732,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     return iptvExoUrlLooksLive(_s._sources[_s._sourceIdx].url);
   }
 
-  IptvLiveSourceKind _liveSourceKindFor(LivePlaySource src) {
+  PortalLiveSourceKind _liveSourceKindFor(LivePlaySource src) {
     return src.liveSourceKind ??
         _s.widget.liveSourceKind ??
         (_s.widget.engineContext == BuiltInPlayerContext.iptv
-            ? IptvLiveSourceKind.iptvXtream
-            : IptvLiveSourceKind.stremio);
+            ? PortalLiveSourceKind.iptvXtream
+            : PortalLiveSourceKind.stremio);
   }
 
   /// Live recovery / live-edge profile. Catalog `vodPlayback` wins over URL so
@@ -816,10 +817,12 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     });
     _s._playingSub = player.stream.playing.listen((p) {
       if (!mounted || _s._disposed) return;
+      final goLiveBanner = _s._statusBanner == 'Reconnecting…';
       setState(() {
         _s._playing = p;
         if (p &&
             _s._statusBanner != null &&
+            !goLiveBanner &&
             (_s._retryAttempt > 0 ||
                 _s._lastRecoveryAt != null ||
                 (_s._statusBanner?.startsWith('Switching to') ?? false) ||
@@ -827,6 +830,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           _s._statusBanner = null;
         }
       });
+      _onIptvLivePlayingChanged(p);
       if (p) {
         _s._clearDeadSurfaceCover();
         _s._readyNotPlayingSince = null;
@@ -1049,8 +1053,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       return _PtPlayerScreenState._maxRetries;
     }
     final kind = _liveSourceKindFor(_s._sources[_s._sourceIdx]);
-    if (kind == IptvLiveSourceKind.liveEngine ||
-        kind == IptvLiveSourceKind.stremio) {
+    if (kind == PortalLiveSourceKind.liveEngine ||
+        kind == PortalLiveSourceKind.stremio) {
       return _PtPlayerScreenState._maxRetriesLiveMultiSource;
     }
     return _PtPlayerScreenState._maxRetries;
@@ -1265,7 +1269,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }
 
-  Future<void> _switchChannel(IptvGuideChannel ch) async {
+  Future<void> _switchChannel(GuideChannel ch) async {
     if (ch.id == _s._currentChannelId) return;
     final guide = widget.channelGuide;
     if (guide == null) return;
@@ -1273,7 +1277,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     String url;
     String label;
     if (ch.xtreamStream != null && guide.xtreamPortal != null) {
-      final resolved = await IptvClient.resolvePlayUrl(
+      final resolved = await PortalClient.resolvePlayUrl(
         guide.xtreamPortal!.portal,
         ch.xtreamStream!,
         section: 'live',

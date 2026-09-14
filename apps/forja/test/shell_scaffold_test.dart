@@ -12,7 +12,7 @@ import 'package:forja/shell/frame/shell_scaffold.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
-import 'package:forja/shell/filters/vertical_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja_foundation/components/button.dart';
@@ -126,7 +126,6 @@ void main() {
     ShellBus.hubSelectedCategoryIdFor(hubA).value = null;
     ShellBus.hubHeroHeightFor(hubA).value = 0;
     ShellBus.hubScrollOffsetFor(hubA).value = 0;
-    ShellBus.selectedWatchProviderId.value = null;
     VerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;

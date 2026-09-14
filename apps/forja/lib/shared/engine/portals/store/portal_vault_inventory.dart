@@ -6,16 +6,16 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 
 /// Pack vault keys for IPTV portal inventory (SoT on device after migrate).
-abstract final class IptvVaultKeys {
+abstract final class PortalVaultKeys {
   static const portals = 'iptv.portals';
   static const active = 'iptv.active';
   static const favorites = 'iptv.portalFavorites';
   static const migrateFlag = 'iptv.migratedFromIptvStore';
 }
 
-/// One-shot [IptvStore] → vault migrate + helpers for pack/sync dual-write.
-abstract final class IptvVaultInventory {
-  IptvVaultInventory._();
+/// One-shot [PortalStore] → vault migrate + helpers for pack/sync dual-write.
+abstract final class PortalVaultInventory {
+  PortalVaultInventory._();
 
   static bool _migrateStarted = false;
 
@@ -24,43 +24,43 @@ abstract final class IptvVaultInventory {
     if (_migrateStarted) return;
     _migrateStarted = true;
     try {
-      final flag = await EngineVault.get(IptvVaultKeys.migrateFlag);
+      final flag = await EngineVault.get(PortalVaultKeys.migrateFlag);
       if (flag == '1') return;
 
-      final existing = await EngineVault.get(IptvVaultKeys.portals);
+      final existing = await EngineVault.get(PortalVaultKeys.portals);
       if (existing != null && existing.trim().isNotEmpty && existing != '[]') {
-        await EngineVault.set(IptvVaultKeys.migrateFlag, '1');
+        await EngineVault.set(PortalVaultKeys.migrateFlag, '1');
         return;
       }
 
-      final stored = await IptvStore.load();
+      final stored = await PortalStore.load();
       if (stored.isEmpty) {
-        await EngineVault.set(IptvVaultKeys.migrateFlag, '1');
+        await EngineVault.set(PortalVaultKeys.migrateFlag, '1');
         return;
       }
 
       final rows = <Map<String, dynamic>>[
         for (final p in stored) _portalToVaultMap(p),
       ];
-      await EngineVault.set(IptvVaultKeys.portals, jsonEncode(rows));
+      await EngineVault.set(PortalVaultKeys.portals, jsonEncode(rows));
 
-      final favs = await IptvStore.loadFavorites();
+      final favs = await PortalStore.loadFavorites();
       if (favs.isNotEmpty) {
         await EngineVault.set(
-          IptvVaultKeys.favorites,
+          PortalVaultKeys.favorites,
           jsonEncode(favs.toList()),
         );
       }
-      final last = await IptvStore.loadLastPortalKey();
+      final last = await PortalStore.loadLastPortalKey();
       if (last != null && last.isNotEmpty) {
-        await EngineVault.set(IptvVaultKeys.active, last);
+        await EngineVault.set(PortalVaultKeys.active, last);
       }
-      await EngineVault.set(IptvVaultKeys.migrateFlag, '1');
+      await EngineVault.set(PortalVaultKeys.migrateFlag, '1');
       debugPrint(
-        '[IptvVaultInventory] migrated ${rows.length} portals from IptvStore',
+        '[PortalVaultInventory] migrated ${rows.length} portals from PortalStore',
       );
     } catch (e, st) {
-      debugPrint('[IptvVaultInventory] migrate failed: $e\n$st');
+      debugPrint('[PortalVaultInventory] migrate failed: $e\n$st');
       _migrateStarted = false;
     }
   }
@@ -73,24 +73,24 @@ abstract final class IptvVaultInventory {
   }) async {
     try {
       await EngineVault.set(
-        IptvVaultKeys.portals,
+        PortalVaultKeys.portals,
         jsonEncode([for (final p in portals) _portalToVaultMap(p)]),
       );
       if (favoriteKeys != null) {
         await EngineVault.set(
-          IptvVaultKeys.favorites,
+          PortalVaultKeys.favorites,
           jsonEncode(favoriteKeys.toList()),
         );
       }
       if (activeKey != null) {
         if (activeKey.isEmpty) {
-          await EngineVault.remove(IptvVaultKeys.active);
+          await EngineVault.remove(PortalVaultKeys.active);
         } else {
-          await EngineVault.set(IptvVaultKeys.active, activeKey);
+          await EngineVault.set(PortalVaultKeys.active, activeKey);
         }
       }
     } catch (e) {
-      debugPrint('[IptvVaultInventory] mirror failed: $e');
+      debugPrint('[PortalVaultInventory] mirror failed: $e');
     }
   }
 

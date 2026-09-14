@@ -4,8 +4,6 @@ import 'package:forja/shell/nav/shell_bottom_nav.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/shell_nav_rail.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shell/filters/vertical_filters_rail.dart';
-import 'package:forja/shell/filters/vertical_filters.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -13,6 +11,12 @@ import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+
+/// Host chassis scaffold — composes nav + body + overlays.
+///
+/// Target shape for peel: [EmptyShellFrame] in `forja_foundation` (rail + body
+/// only). Product chrome stays in packs / kit painter; this file must not grow
+/// Home/Search vocabulary.
 class ShellScaffold extends StatefulWidget {
   const ShellScaffold({
     super.key,
@@ -134,7 +138,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           ),
         ),
         // Always reserve this slot so overlay open/close does not reshuffle
-        // later Stack children (provider rail / nav) onto the wrong Elements.
+        // later Stack children (nav) onto the wrong Elements.
         Positioned(
           key: const ValueKey('shell-home-top-bar'),
           top: 0,
@@ -179,30 +183,6 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                     onDestinationSelected: _onNavSelected,
                     hideLogo: emptyFeaturesGate,
                   ),
-                ),
-              ),
-            ),
-          ),
-        // Above the nav rail so the panel stays hittable; keyed so Home
-        // re-select / top-bar chrome toggles cannot steal this Element.
-        if (!emptyFeaturesGate &&
-            widget.visibleIds.isNotEmpty &&
-            widget.selectedIndex < widget.visibleIds.length &&
-            VerticalFiltersRegistry.hasFilters(
-              widget.visibleIds[widget.selectedIndex],
-            ))
-          Positioned(
-            key: ValueKey(
-              'shell-vf-rail-${widget.visibleIds[widget.selectedIndex]}',
-            ),
-            left: contentLeftInset + ShellTokens.shellProviderRailInset,
-            top: 0,
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: VerticalFiltersRail(
-                  tabId: widget.visibleIds[widget.selectedIndex],
                 ),
               ),
             ),

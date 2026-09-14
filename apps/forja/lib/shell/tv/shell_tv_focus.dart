@@ -10,16 +10,9 @@ export 'package:forja/shell/tv/shell_tv_hold_accel.dart' show ShellTvHoldAccel;
 bool shellTvIsNavigationKey(KeyEvent event) =>
     event is KeyDownEvent || event is KeyRepeatEvent;
 
-/// TV D-pad focus anchors shared across shell nav, home chrome, and catalog rows.
+/// TV D-pad focus anchors shared across shell nav, hub chrome, and catalog rows.
 abstract final class ShellTvFocus {
   static String? currentNavTabId;
-
-  static FocusNode? homeHeroPlay;
-  static FocusNode? homeHeroGallery;
-  static FocusNode? homeSearch;
-  static FocusNode? homeMenu;
-  static FocusNode? homeProviderRailFirst;
-  static final Map<int, FocusNode> homeProviderRailById = {};
 
   static String? verticalFilterRailTabId;
   static FocusNode? verticalFilterRailFirst;
@@ -86,63 +79,10 @@ abstract final class ShellTvFocus {
 
   static FocusNode? navNode(String id) => _navNodes[id];
 
-  static bool focusHomeHeroPlay() {
-    final node = homeHeroPlay;
-    if (node == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
-  }
-
-  static bool focusHomeHeroGallery() {
-    final node = homeHeroGallery;
-    if (node == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
-  }
-
-  static bool focusHomeSearch() {
-    final node = homeSearch;
-    if (node == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
-  }
-
-  static bool focusHomeMenu() {
-    final node = homeMenu;
-    if (node == null || !node.canRequestFocus) return false;
-    node.requestFocus();
-    return true;
-  }
-
-  static bool focusHomeProviderRail() => focusVerticalFilterRail();
-
   static bool focusVerticalFilterRail() {
-    final node = verticalFilterRailFirst ?? homeProviderRailFirst;
+    final node = verticalFilterRailFirst;
     if (node == null || !node.canRequestFocus) return false;
     node.requestFocus();
-    return true;
-  }
-
-  /// Focus the rail tile for [providerId], or the first tile if null / missing.
-  static bool focusHomeProviderById(int? providerId) {
-    final node = providerId == null
-        ? null
-        : homeProviderRailById[providerId];
-    final target = (node != null && node.canRequestFocus)
-        ? node
-        : homeProviderRailFirst;
-    if (target == null || !target.canRequestFocus) return false;
-    target.requestFocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = target.context;
-      if (ctx == null || !ctx.mounted) return;
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.4,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-      );
-    });
     return true;
   }
 
@@ -156,14 +96,6 @@ abstract final class ShellTvFocus {
 
   static void discardOverlayReturnFocus() =>
       ShellTvFocusCoordinator.discardCapturedOverlayReturnFocus();
-
-  /// After opening the rail (may need a rebuild), land on [providerId].
-  static void scheduleFocusHomeProviderById(int? providerId) {
-    scheduleFocusVerticalFilterById(
-      verticalFilterRailTabId ?? 'home',
-      providerId?.toString(),
-    );
-  }
 
   static bool focusVerticalFilterById(String tabId, String? optionId) {
     final node = optionId == null

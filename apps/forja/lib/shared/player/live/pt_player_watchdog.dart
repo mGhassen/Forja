@@ -252,22 +252,6 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
     );
   }
 
-  void _ensureBufferingChrome(DateTime now) {
-    if (_s._buffering) {
-      _s._bufferingSince ??= now;
-      _syncPlaybackBannerVisibility();
-      return;
-    }
-    if (!mounted) return;
-    _s._buffering = true;
-    _s._bufferingClearAt = null;
-    _s._bufferingSince ??= now;
-    if (_s._playbackBannerSnapshot != true) {
-      _s._playbackBannerSnapshot = null;
-      _syncPlaybackBannerVisibility();
-    }
-  }
-
   /// Clear sticky Buffering when demuxer is healthy (RFC-113 / ipdigi).
   void _clearBufferingChrome() {
     if (!_s._buffering && _s._bufferingSince == null) return;
@@ -460,7 +444,6 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
       // soft-reopens instead of forever `skip recovery … working` on fps pulse.
       // HLS cold open: hold — 5s TS grace aborts ABR probe (issue 273).
       if (_hlsColdOpenHold) {
-        _ensureBufferingChrome(now);
         _logHold('hls cold open grace (buffering)', healthy: false);
         return;
       }
@@ -504,8 +487,8 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         }
       } else if (_s._userPlayWhenReady && _s._playing) {
         // Detector 2b: MediaKit live paint stall while still "playing".
+        // Buffering chrome = engine stream only (ipdigi) — do not force latch.
         if (_hlsColdOpenHold) {
-          _ensureBufferingChrome(now);
           _logHold('hls cold open grace (paint)', healthy: false);
           return;
         }
@@ -515,7 +498,6 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
         }
         final frozenFor = now.difference(_s._lastPosChange);
         if (frozenFor > const Duration(milliseconds: 1500)) {
-          _ensureBufferingChrome(now);
           if (frozenFor >= _PtPlayerScreenState._liveEmptyPauseReopen) {
             if (_s._livePaintMissStreak < 2) return;
             final empty =
@@ -551,7 +533,7 @@ mixin _PtPlayerWatchdog on _PtPlayerEngineCore {
             _clearBufferingChrome();
             return;
           }
-          _ensureBufferingChrome(now);
+          // Do not force Buffering chrome — wait for engine buffering stream.
           if (pausedFor < _PtPlayerScreenState._liveEmptyPauseReopen) {
             if (pausedFor.inMilliseconds < 1200) {
               _logHold('self-pause refill', healthy: false);

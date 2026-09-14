@@ -1,7 +1,7 @@
 import 'package:forja/shared/engine/portals/models.dart';
 
 /// CSV columns - keep in sync with `apps/web/src/lib/iptv-portal-csv.ts`.
-const iptvPortalCsvHeaders = <String>[
+const portalCsvHeaders = <String>[
   'label',
   'name',
   'url',
@@ -197,8 +197,8 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
     dataStart = 1;
   } else if (headerCells.length >= 3) {
     columnIndex = {
-      for (var i = 0; i < iptvPortalCsvHeaders.length; i++)
-        iptvPortalCsvHeaders[i]: i,
+      for (var i = 0; i < portalCsvHeaders.length; i++)
+        portalCsvHeaders[i]: i,
     };
     dataStart = 0;
   } else {
@@ -225,11 +225,11 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
     final url = cell(cells, 'url');
     final username = cell(cells, 'username');
     final password = cell(cells, 'password');
-    final platform = IptvPortalPlatform.fromString(cell(cells, 'platform'));
-    final userOk = platform == IptvPortalPlatform.m3u
+    final platform = PortalPlatform.fromString(cell(cells, 'platform'));
+    final userOk = platform == PortalPlatform.m3u
         ? url.isNotEmpty
         : (url.isNotEmpty && username.isNotEmpty);
-    final passOk = platform == IptvPortalPlatform.xtream
+    final passOk = platform == PortalPlatform.xtream
         ? password.isNotEmpty
         : true;
     if (!userOk || !passOk) {
@@ -237,10 +237,10 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
       continue;
     }
     final portal = VerifiedPortal(
-      portal: IptvPortal(
+      portal: Portal(
         url: url,
-        username: platform == IptvPortalPlatform.m3u
-            ? IptvPortalPlatform.m3uUsernameSentinel
+        username: platform == PortalPlatform.m3u
+            ? PortalPlatform.m3uUsernameSentinel
             : username,
         password: password,
         source: cell(cells, 'source').isEmpty ? 'csv' : cell(cells, 'source'),
@@ -329,7 +329,7 @@ String portalsToCsv({
   required Set<String> favoriteKeys,
 }) {
   final lines = <String>[
-    iptvPortalCsvHeaders.join(','),
+    portalCsvHeaders.join(','),
     ...portals.map((portal) {
       final cells = <String>[
         portal.label.trim(),

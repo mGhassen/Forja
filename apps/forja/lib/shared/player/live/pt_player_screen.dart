@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show File, Platform;
+import 'dart:io' show Directory, File, Platform;
 import 'package:flutter/foundation.dart'
     show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
@@ -24,18 +24,16 @@ import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dar
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/player/live/channel_guide/guide_epg_cache.dart';
-import 'package:forja/shared/player/live/channel_guide/guide_epg_ui.dart';
-import 'package:forja/shared/player/live/channel_guide/channel_guide_host.dart';
-import 'package:forja/shared/player/live/channel_guide/channel_guide_panel.dart';
-import 'package:forja/shared/player/live/channel_guide/channel_search_overlay.dart';
-import 'package:forja/shared/engine/portals/network/iptv_network.dart';
+import 'package:forja/shared/engine/portals/guide/guide.dart';
+import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/player/live/hls_play_url.dart';
-import 'package:forja/shared/player/live/channel_guide/player_stats_panel.dart';
+import 'package:forja/shared/player/live/player_stats_panel.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
+import 'package:forja_foundation/widgets/guide/channel_guide_panel.dart';
+import 'package:forja_foundation/widgets/guide/channel_search_overlay.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 import 'package:forja/shared/player/live/player_chrome_profile.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
@@ -79,7 +77,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 part 'pt_player_engine_core.dart';
 part 'pt_player_mk_tunables.dart';
-part 'pt_player_live_proxy.dart';
+part 'pt_player_lavf.dart';
 part 'pt_player_watchdog.dart';
 part 'pt_player_recovery.dart';
 part 'pt_player_engine.dart';
@@ -95,7 +93,7 @@ bool iptvExoUrlLooksLive(String url) {
 
 /// Live native playback profile — one MediaKit/Exo config per surface type,
 /// not inferred from URL shape.
-enum IptvLiveSourceKind {
+enum PortalLiveSourceKind {
   /// IPTV Live tab + Forja Sports Xtream channels (MediaKit direct + lavf reconnect).
   iptvXtream,
 
@@ -133,10 +131,10 @@ bool iptvHlsColdOpenHold({
 
 /// IPTV catalog / Forja Sports: portal platform → live source kind.
 @visibleForTesting
-IptvLiveSourceKind iptvLiveSourceKindForPortal(IptvPortalPlatform platform) {
+PortalLiveSourceKind portalLiveSourceKindForPortal(PortalPlatform platform) {
   return switch (platform) {
-    IptvPortalPlatform.stalker => IptvLiveSourceKind.iptvStalker,
-    _ => IptvLiveSourceKind.iptvXtream,
+    PortalPlatform.stalker => PortalLiveSourceKind.iptvStalker,
+    _ => PortalLiveSourceKind.iptvXtream,
   };
 }
 
@@ -198,7 +196,7 @@ class LivePlaySource {
   final Map<String, String> headers;
 
   /// Live Sports: which playback profile applies when this row is active.
-  final IptvLiveSourceKind? liveSourceKind;
+  final PortalLiveSourceKind? liveSourceKind;
 
   /// Live Sports stream sheet: provider chip (PPV / Streamed / …).
   final String? liveProviderBadge;
@@ -212,7 +210,7 @@ class LivePlaySource {
   /// Catalog embed URL before engine unlock (lazy resolve on source switch).
   final String? liveEngineEmbedUrl;
 
-  /// Opaque resolve context for [IptvLiveEngineResolveSource].
+  /// Opaque resolve context for [PortalLiveEngineResolveSource].
   final Map<String, dynamic>? liveEngineResolveParams;
 
   const LivePlaySource({
@@ -239,7 +237,7 @@ class LivePlaySource {
     String? streamId,
     String? epgChannelId,
     Map<String, String>? headers,
-    IptvLiveSourceKind? liveSourceKind,
+    PortalLiveSourceKind? liveSourceKind,
     String? liveProviderBadge,
     int? liveViewerCount,
     bool? liveStreamHd,
@@ -324,7 +322,7 @@ bool iptvLiveEngineUrlVolatile(String url) {
 }
 
 bool iptvLiveEngineCanForceRefresh(LivePlaySource src) {
-  if (src.liveSourceKind != IptvLiveSourceKind.liveEngine) return false;
+  if (src.liveSourceKind != PortalLiveSourceKind.liveEngine) return false;
   final params = src.liveEngineResolveParams;
   if (params == null || params.isEmpty) return false;
   final matchId = (params['matchId'] ?? '').toString().trim();
@@ -343,7 +341,7 @@ bool iptvLiveEngineShouldForceRefreshOnRecovery(
   return iptvIsHardOpenFail(reason) || iptvIsDeadEndpointFail(reason);
 }
 
-/// Resolve-path banners set via [IptvLiveEngineResolveSource] onProgress.
+/// Resolve-path banners set via [PortalLiveEngineResolveSource] onProgress.
 @visibleForTesting
 bool iptvIsLiveResolveStatusBanner(String? banner) {
   return banner == 'Unlocking source…' ||
@@ -362,14 +360,14 @@ String iptvLiveSourceProbeKey(LivePlaySource src) {
   return url;
 }
 
-/// Playable URL for [IptvAliveChecker], or null when HTTP cannot judge the row
+/// Playable URL for [PortalAliveChecker], or null when HTTP cannot judge the row
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
 String? iptvLiveSourceProbeUrl(LivePlaySource src) {
-  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+  if (src.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == PortalLiveSourceKind.iptvStalker ||
       // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
       // retries (same cold-open flake as "Failed to open" → healthy streak).
-      src.liveSourceKind == IptvLiveSourceKind.stremio) {
+      src.liveSourceKind == PortalLiveSourceKind.stremio) {
     return null;
   }
   final url = src.url.trim();
@@ -383,7 +381,7 @@ String? iptvLiveSourceProbeUrl(LivePlaySource src) {
   final embed = (src.liveEngineEmbedUrl ?? '').trim();
   if (url.startsWith('pending:')) return null;
 
-  if (src.liveSourceKind == IptvLiveSourceKind.liveEngine || embed.isNotEmpty) {
+  if (src.liveSourceKind == PortalLiveSourceKind.liveEngine || embed.isNotEmpty) {
     return null;
   }
 
@@ -403,10 +401,10 @@ bool iptvLiveSourceProbeSkipped(LivePlaySource src) {
 /// Real alive-check when a bare or header probe can run; embed / `pending:`
 /// rows still light green as selectable (not dead). Portals resolve then check.
 bool iptvLiveSourceCanHoverProbe(LivePlaySource src) {
-  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
-      src.liveSourceKind == IptvLiveSourceKind.liveEngine ||
-      src.liveSourceKind == IptvLiveSourceKind.stremio) {
+  if (src.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == PortalLiveSourceKind.iptvStalker ||
+      src.liveSourceKind == PortalLiveSourceKind.liveEngine ||
+      src.liveSourceKind == PortalLiveSourceKind.stremio) {
     return true;
   }
   return iptvLiveEnginePlayUrlReady(src.url.trim());
@@ -432,7 +430,7 @@ Future<bool> iptvLiveSourceRunHoverProbe(
   return healthProbe.checkNow(key, probeUrl);
 }
 
-typedef IptvLiveEngineResolveSource =
+typedef PortalLiveEngineResolveSource =
     Future<LivePlaySource?> Function(
       LivePlaySource catalogSource, {
       void Function(String message)? onProgress,
@@ -455,7 +453,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   final ChannelGuide? channelGuide;
 
   /// Fired when the in-player guide tunes a different Xtream channel.
-  final ValueChanged<IptvStream>? onChannelChanged;
+  final ValueChanged<PortalStream>? onChannelChanged;
 
   /// Catalog stream marked dead (Stalker create_link / format fail) → red status.
   final ValueChanged<String>? onStreamDead;
@@ -480,8 +478,8 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   final int? subtitleYear;
 
   /// Series: in-player episode list (same panel as hub VOD players).
-  final List<IptvEpisode>? seriesEpisodes;
-  final IptvPortal? seriesPortal;
+  final List<PortalEpisode>? seriesEpisodes;
+  final Portal? seriesPortal;
 
   /// Show name for chrome / episode switch titles.
   final String? seriesShowTitle;
@@ -491,10 +489,10 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   final bool titleTracksSource;
 
   /// Default live profile when sources omit [LivePlaySource.liveSourceKind].
-  final IptvLiveSourceKind? liveSourceKind;
+  final PortalLiveSourceKind? liveSourceKind;
 
   /// Live Sports: unlock catalog embed rows on source switch.
-  final IptvLiveEngineResolveSource? liveEngineResolveSource;
+  final PortalLiveEngineResolveSource? liveEngineResolveSource;
 
   const PtPlayerScreen({
     super.key,
@@ -525,11 +523,11 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   factory PtPlayerScreen.singleStream({
     Key? key,
     required String url,
-    required IptvStream stream,
+    required PortalStream stream,
     String? portalName,
-    IptvPortalPlatform? portalPlatform,
+    PortalPlatform? portalPlatform,
     ChannelGuide? channelGuide,
-    ValueChanged<IptvStream>? onChannelChanged,
+    ValueChanged<PortalStream>? onChannelChanged,
     ValueChanged<String>? onStreamDead,
     BuiltInPlayerContext? engineContext,
     BuiltInPlayerEngine? forceBuiltInEngine,
@@ -537,7 +535,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     final vod = stream.kind == 'vod' || stream.kind == 'series';
     final kind = vod || portalPlatform == null
         ? null
-        : iptvLiveSourceKindForPortal(portalPlatform);
+        : portalLiveSourceKindForPortal(portalPlatform);
     return PtPlayerScreen(
       key: key,
       sources: [
@@ -579,7 +577,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
     BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
   }) {
     final kinds = hits
-        .map((h) => iptvLiveSourceKindForPortal(h.portal.portal.platform))
+        .map((h) => portalLiveSourceKindForPortal(h.portal.portal.platform))
         .toList();
     return PtPlayerScreen(
       key: key,
@@ -647,7 +645,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
         WidgetsBindingObserver,
         _PtPlayerEngineCore,
         _PtPlayerMkTunables,
-        _PtPlayerLiveProxy,
+        _PtPlayerLavf,
         _PtPlayerWatchdog,
         _PtPlayerRecovery,
         _PtPlayerEngine,
@@ -709,8 +707,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
         ? null
         : _sources[_sourceIdx.clamp(0, _sources.length - 1)];
     final kind = src?.liveSourceKind ?? widget.liveSourceKind;
-    if (kind == IptvLiveSourceKind.liveEngine ||
-        kind == IptvLiveSourceKind.stremio) {
+    if (kind == PortalLiveSourceKind.liveEngine ||
+        kind == PortalLiveSourceKind.stremio) {
       return false;
     }
     if (src != null && iptvUrlLooksLikeHls(src.url)) return false;
@@ -815,7 +813,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   bool _tvBackExitArmed = false;
   late String _selectedGroupId;
   late String _currentChannelId;
-  IptvGuideEpgCache? _epgCache;
+  GuideEpgCache? _epgCache;
 
   /// Armed Forja Sports portal — Stalker create_link without channelGuide.
   VerifiedPortal? _sportsPortal;
@@ -1183,10 +1181,10 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _currentChannelId = guide?.initialChannelId ?? '';
     final portal = guide?.xtreamPortal;
     if (portal != null) {
-      _epgCache = IptvGuideEpgCache(portal);
+      _epgCache = GuideEpgCache(portal);
     } else if (widget.titleTracksSource &&
-        (widget.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-            widget.liveSourceKind == IptvLiveSourceKind.iptvStalker)) {
+        (widget.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
+            widget.liveSourceKind == PortalLiveSourceKind.iptvStalker)) {
       unawaited(_initSportsEpgCache());
     }
     WidgetsBinding.instance.addObserver(this);
@@ -1308,7 +1306,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
       await PlatformChannel.releaseUnderlayPlatformViewFocus();
       if (_disposed || !mounted) return;
     }
-    final volume = await IptvStore.loadPlayerVolume();
+    final volume = await PortalStore.loadPlayerVolume();
     final recovery = await SettingsService().getIptvLiveRecoveryMode();
     if (_disposed || !mounted) return;
     _playerEngine = await _resolveBootEngine();
@@ -1327,7 +1325,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     if (PlatformInfo.isAndroidTv && _volume <= 0) {
       _volume = _volumeBeforeMute > 0 ? _volumeBeforeMute : 100.0;
       _muted = false;
-      unawaited(IptvStore.savePlayerVolume(_volume));
+      unawaited(PortalStore.savePlayerVolume(_volume));
     }
     _liveRecoveryModeSetting = recovery;
     _applyLiveRecoveryModeForCurrentSource();
@@ -1625,7 +1623,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _muted = v == 0;
     if (v > 0) _volumeBeforeMute = v;
     _engineSetVolume(v);
-    unawaited(IptvStore.savePlayerVolume(v));
+    unawaited(PortalStore.savePlayerVolume(v));
   }
 
   @override
@@ -1702,9 +1700,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
   /// Last sports-capable portal for in-player short EPG (opaque store pick).
   Future<void> _initSportsEpgCache() async {
-    final portals = await IptvStore.load();
+    final portals = await PortalStore.load();
     VerifiedPortal? portal;
-    final last = await IptvStore.loadLastPortalKey();
+    final last = await PortalStore.loadLastPortalKey();
     if (last != null && last.trim().isNotEmpty) {
       for (final p in portals) {
         if (p.key == last && p.portal.platform.supportsForjaSports) {
@@ -1723,7 +1721,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     final resolved = portal;
     _sportsPortal = resolved;
     if (!resolved.portal.platform.supportsEpg) return;
-    setState(() => _epgCache = IptvGuideEpgCache(resolved));
+    setState(() => _epgCache = GuideEpgCache(resolved));
   }
 
   /// Channel guide id or active sports source stream id — keys floating EPG.
@@ -1736,12 +1734,12 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     return id;
   }
 
-  IptvStream? _epgStreamForActiveSource() {
+  PortalStream? _epgStreamForActiveSource() {
     if (_sources.isEmpty) return null;
     final src = _sources[_sourceIdx.clamp(0, _sources.length - 1)];
     final streamId = (src.streamId ?? '').trim();
     if (streamId.isEmpty) return null;
-    return IptvStream(
+    return PortalStream(
       streamId: streamId,
       name: src.chromeTitle,
       icon: src.logoUrl ?? '',

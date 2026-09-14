@@ -14,7 +14,6 @@ void main() {
     const tv = ShellMetrics.tv;
 
     expect(tv.posterCardWidth, lessThan(desktop.posterCardWidth));
-    expect(tv.continueWatchingCardWidth, lessThan(desktop.continueWatchingCardWidth));
     expect(tv.navRailItemSpacing, lessThan(desktop.navRailItemSpacing));
     expect(desktop.usesTvDensity, isFalse);
     expect(tv.usesTvDensity, isTrue);

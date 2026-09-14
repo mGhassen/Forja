@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
@@ -9,7 +10,7 @@ import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
-/// Shared pack-item → foundation card paint. Single path for rails + slots.
+/// Shared pack-item → foundation card paint. Rails + kit.list tiles.
 abstract final class PackPaintArtifact {
   PackPaintArtifact._();
 
@@ -156,14 +157,14 @@ abstract final class PackPaintArtifact {
     final items = node['items'];
     if (items is! List || items.isEmpty) {
       if (title.isEmpty) return const SizedBox.shrink();
-      final pad = shellHomeSectionHorizontalPadding(context);
+      final pad = catalogSectionHorizontalPadding(context);
       return ShellSectionTitle(
         title: title,
         padding: EdgeInsetsDirectional.only(
           start: pad,
-          top: shellHomeSectionTitleTop(context),
+          top: catalogSectionTitleTop(context),
           end: pad,
-          bottom: shellHomeSectionBottomGap(context),
+          bottom: catalogSectionBottomGap(context),
         ),
       );
     }
@@ -211,8 +212,7 @@ abstract final class PackPaintArtifact {
     final aspect = aspectFallback == 'landscape'
         ? PosterAspect.landscape
         : PosterAspect.portrait;
-    final pad = shellHomeSectionHorizontalPadding(context);
-    final titleTop = shellHomeSectionTitleTop(context);
+    final pad = catalogSectionHorizontalPadding(context);
     final gap = shellPosterCardRowGap(context);
     final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
 
@@ -224,9 +224,9 @@ abstract final class PackPaintArtifact {
             title: title,
             padding: EdgeInsetsDirectional.only(
               start: pad,
-              top: titleTop,
+              top: catalogSectionTitleTop(context),
               end: pad,
-              bottom: shellHomeSectionBottomGap(context),
+              bottom: catalogSectionBottomGap(context),
             ),
           ),
         HorizontalScroller(

@@ -282,10 +282,24 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
         await p.setProperty('cache-pause-wait', '0');
-        // ipdigi: ATV disk cache locks frames — memory only on leanback.
+        // ipdigi: ATV memory-only; desktop/phone disk cache for track swaps.
         if (_s._atvMediaKit) {
           await p.setProperty('cache-on-disk', 'no');
+        } else if (!kIsWeb) {
+          try {
+            final support = await getApplicationSupportDirectory();
+            final dir = Directory('${support.path}/mpv_cache');
+            if (!await dir.exists()) await dir.create(recursive: true);
+            await p.setProperty('cache-on-disk', 'yes');
+            await p.setProperty('cache-dir', dir.path);
+          } catch (e) {
+            debugPrint('[IPTV Player] cache-on-disk setup failed: $e');
+          }
         }
+        // ipdigi seek/sync (scrub + keep-open EOF during seek).
+        await p.setProperty('force-seekable', 'yes');
+        await p.setProperty('initial-audio-sync', 'yes');
+        await p.setProperty('hr-seek', 'yes');
       }
 
       await p.setProperty('sub-auto', 'all');

@@ -16,7 +16,7 @@ Architecture: [pack-product host](./forja-pack-product-host.mdc). DS widgets: pr
 
 ```
 packages/forja_foundation/lib/{tokens,components,widgets,blocks,protocol}/
-apps/forja/lib/shell/          # one tree: frame (nav/frame/routing/bus/adapters/chrome) + UI (core/tv/focus/feedback/brand/desktop/update/filters)
+apps/forja/lib/shell/          # empty chassis only (pack-nav wire, platform, OTA) — paint in forja_foundation
 apps/forja/lib/shared/engine/runtime/kit/  # thin kit interpreter (layout JSON → DS)
 apps/forja/lib/shared/player/sources/
 apps/forja/lib/shared/playback/

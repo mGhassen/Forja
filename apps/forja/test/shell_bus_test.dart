@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shell/filters/vertical_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/frame/shell_body.dart';
@@ -18,8 +18,6 @@ void main() {
     ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.takeEnterSettingsDetail();
     ShellBus.selectDefaultTabOnNextNavLoad = false;
-    ShellBus.homeProviderMenuVisible.value = false;
-    ShellBus.selectedWatchProviderId.value = null;
     while (ShellBus.playerSurfaceActive.value) {
       ShellBus.leavePlayerSurface();
     }
@@ -80,7 +78,7 @@ void main() {
     ShellBus.settingsHubCategoryId.value = 'profile';
   });
 
-  test('ShellBus provider menu show + top logo clear filter', () {
+  test('VerticalFiltersRegistry menu show + top logo clear filter', () {
     VerticalFiltersRegistry.register(
       VerticalFiltersSpec(
         widgetId: 'watch_providers',
@@ -99,27 +97,27 @@ void main() {
         ],
       ),
     );
-    ShellBus.homeProviderMenuVisible.value = false;
+    VerticalFiltersRegistry.menuVisibleFor('home').value = false;
     VerticalFiltersRegistry.selectedIdFor('home').value = null;
 
-    ShellBus.showHomeProviderMenu();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.showMenu('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
 
     VerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
-    ShellBus.onTopProviderLogoTap();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.onTopLogoTap('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
     expect(VerticalFiltersRegistry.selectedIdFor('home').value, isNull);
 
-    ShellBus.homeProviderMenuVisible.value = false;
-    ShellBus.onTopProviderLogoTap();
-    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    VerticalFiltersRegistry.menuVisibleFor('home').value = false;
+    VerticalFiltersRegistry.onTopLogoTap('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isTrue);
 
-    ShellBus.onLeaveHomeTab();
-    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
+    VerticalFiltersRegistry.onLeaveTab('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
 
-    ShellBus.showHomeProviderMenu();
-    ShellBus.hideHomeProviderMenu();
-    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
+    VerticalFiltersRegistry.showMenu('home');
+    VerticalFiltersRegistry.hideMenu('home');
+    expect(VerticalFiltersRegistry.menuVisibleFor('home').value, isFalse);
   });
 
   test('ShellBus.selectDefaultTabOnNextNavLoad defaults false and is mutable', () {

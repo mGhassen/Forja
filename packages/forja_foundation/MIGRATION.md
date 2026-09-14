@@ -196,7 +196,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
 | `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shell/focus/hero_pill_buttons.dart` | ✅ |
 | `cinematic_hero.dart` | **kept** (RFC-109 A69) — hub catalog carousel; details stay on `widgets/details/details_hero.dart` | ✅ |
-| `because_section.dart` · `continue_section.dart` · `continue_watching_card.dart` · `mood_section.dart` | **kept** (RFC-109 A69) — hub catalog sections; host mounts via `kit/slots/*` | ✅ |
+| `because_section.dart` · `continue_section.dart` · `continue_watching_card.dart` · `mood_section.dart` | **kept** (RFC-109 A69) — hub catalog sections; host mounts via `kit/paint_*.dart` | ✅ |
 | `catalog_hero_section.dart` · `movie_poster*.dart` · `movie_atmosphere.dart` · `kit_event_dense_tile` | **deleted** composers (RFC-111). Keep: `poster_card` / `event_card` / `home_loading_skeleton` under `widgets/catalog/`. | ✅ |
 | `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,side_panel_overlay,portal_list_panel}.dart` | ✅ |
 | `kit_panel_tabs.dart` | `package:forja_foundation/widgets/sources/panel_tabs.dart` | ✅ |
@@ -219,7 +219,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `lib/kit/kit_types.dart` · `kit_layout_map.dart` | `package:forja_foundation/protocol/{layout_types,layout_map}.dart` (`LayoutTypes` / `LayoutMap`) — `lib/kit/` deleted | ✅ |
 | `forja_host_assets.dart` | `package:forja/shared/engine/packs/forja_host_assets.dart` | ✅ |
 
-Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/engine/details/`. Vertical filters registry stays `shell/filters/` (paint via `LogoMenuRail`).
+Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/engine/details/`. Vertical filters registry stays `shared/engine/runtime/nav/vertical_filters.dart` (rail paint via kit `paint_vertical_filters.dart` + `LogoMenuRail`).
 
 `apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 

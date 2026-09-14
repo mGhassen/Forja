@@ -4,8 +4,6 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 class ShellMetrics {
   const ShellMetrics({
     required this.posterCardWidth,
-    required this.continueWatchingCardWidth,
-    required this.continueWatchingCardHeight,
     required this.hubCardTitleFontSize,
     required this.heroCompactRightInset,
     required this.heroMinTitleHeight,
@@ -29,8 +27,6 @@ class ShellMetrics {
   });
 
   final double posterCardWidth;
-  final double continueWatchingCardWidth;
-  final double continueWatchingCardHeight;
   final double hubCardTitleFontSize;
   final double heroCompactRightInset;
   final double heroMinTitleHeight;
@@ -54,8 +50,6 @@ class ShellMetrics {
 
   static const mobile = ShellMetrics(
     posterCardWidth: 165,
-    continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthCompact,
-    continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightCompact,
     hubCardTitleFontSize: 13,
     heroCompactRightInset: 20,
     heroMinTitleHeight: 72,
@@ -80,8 +74,6 @@ class ShellMetrics {
 
   static const desktop = ShellMetrics(
     posterCardWidth: 190,
-    continueWatchingCardWidth: ShellTokens.shellContinueWatchingCardWidthDesktop,
-    continueWatchingCardHeight: ShellTokens.shellContinueWatchingCardHeightDesktop,
     hubCardTitleFontSize: 14,
     heroCompactRightInset: 20,
     heroMinTitleHeight: 72,
@@ -107,8 +99,6 @@ class ShellMetrics {
   /// Leanback density - ~90px cards; rows fill the body edge-to-edge after the nav rail.
   static const tv = ShellMetrics(
     posterCardWidth: 90,
-    continueWatchingCardWidth: 140,
-    continueWatchingCardHeight: 140 * 9 / 16,
     hubCardTitleFontSize: 12,
     heroCompactRightInset: 16,
     heroMinTitleHeight: 64,

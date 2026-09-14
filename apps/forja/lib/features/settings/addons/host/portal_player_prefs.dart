@@ -10,8 +10,8 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
 /// IPTV player prefs that used to live under Settings → Playback.
-class SettingsIptvPlayerPrefs extends ConsumerWidget {
-  const SettingsIptvPlayerPrefs({super.key});
+class SettingsPortalPlayerPrefs extends ConsumerWidget {
+  const SettingsPortalPlayerPrefs({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

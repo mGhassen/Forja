@@ -4,14 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
-import 'package:forja/shared/engine/runtime/kit/slots/hero_slot.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shell/filters/vertical_filters.dart';
+import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
@@ -48,11 +49,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   String? _error;
   bool _loading = true;
 
-  String get _pageKey {
-    final t = widget.tabId?.trim();
-    if (t != null && t.isNotEmpty) return t;
-    return 'home';
-  }
+  String get _pageKey => widget.tabId?.trim() ?? '';
 
   String get _pageAction {
     final fromWidget = widget.pageAction?.trim() ?? '';
@@ -198,6 +195,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _widgets = widgets;
       initLayoutTabSelections(_layoutSelections, widgets);
     });
+    final tab = widget.tabId?.trim();
+    if (tab != null && tab.isNotEmpty) {
+      VerticalFiltersRegistry.syncFromLayout(
+        tabId: tab,
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        widgets: widgets,
+      );
+    }
     markShellTabFresh();
   }
 
@@ -243,12 +249,32 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     }
 
     final listenable = catalogChromeFilterListenable(_pageKey);
-    final body = _wrapLayoutScope(_pageBody());
-    if (listenable == null) return body;
-    return ListenableBuilder(
-      listenable: listenable,
-      builder: (_, _) => _wrapLayoutScope(_pageBody()),
-    );
+    Widget result = listenable == null
+        ? _wrapLayoutScope(_pageBody())
+        : ListenableBuilder(
+            listenable: listenable,
+            builder: (_, _) => _wrapLayoutScope(_pageBody()),
+          );
+    final tab = widget.tabId?.trim() ?? '';
+    if (tab.isNotEmpty && VerticalFiltersRegistry.hasFilters(tab)) {
+      result = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          result,
+          Positioned(
+            key: ValueKey('kit-vf-rail-$tab'),
+            left: ShellTokens.shellProviderRailInset,
+            top: 0,
+            bottom: 0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: VerticalFiltersRail(tabId: tab)),
+            ),
+          ),
+        ],
+      );
+    }
+    return result;
   }
 
   /// Expand stack / kit.list roots need a bounded Column — not SliverToBoxAdapter.
@@ -277,7 +303,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   bool _chromeHidesTypeFilterRail() =>
       catalogChromeHidesTypeFilterRails(_pageKey);
 
-  /// Hero `bleed` → rail tucked under hero; `hideWhenBleed` drops the duplicate row.
+  /// Hero bleed rail (VF registered via [VerticalFiltersRegistry.syncFromLayout]).
   List<Widget> _composeSections() {
     Map<String, dynamic>? heroSpec;
     String? bleedKey;
@@ -308,6 +334,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final out = <Widget>[];
     for (final w in _widgets) {
       final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type == LayoutTypes.verticalFilters) continue;
       if (identical(w, bleedSpec) &&
           bleedSpec != null &&
           bleedSpec['hideWhenBleed'] == true) {
@@ -316,23 +343,24 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
         continue;
       }
-      if (type == LayoutTypes.hero && identical(w, heroSpec)) {
+      if (type == LayoutTypes.hero &&
+          identical(w, heroSpec) &&
+          bleedSpec != null) {
+        // Bleed child rides under the hero load as a following rail section.
         out.add(
-          PackHeroSlot(
+          PackPaintTree(
             spec: w,
             pluginId: widget.pluginId,
             packSourceUrl: widget.packSourceUrl,
             tabId: _pageKey,
-            bleedRowId: bleedKey,
-            pageBottomChild: bleedSpec == null
-                ? null
-                : PackPaintTree(
-                    spec: Map<String, dynamic>.from(bleedSpec)
-                      ..remove('title'), // title lives in hero bleed chrome
-                    pluginId: widget.pluginId,
-                    packSourceUrl: widget.packSourceUrl,
-                    tabId: _pageKey,
-                  ),
+          ),
+        );
+        out.add(
+          PackPaintTree(
+            spec: Map<String, dynamic>.from(bleedSpec)..remove('title'),
+            pluginId: widget.pluginId,
+            packSourceUrl: widget.packSourceUrl,
+            tabId: _pageKey,
           ),
         );
         continue;

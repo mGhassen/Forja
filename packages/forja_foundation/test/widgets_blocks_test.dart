@@ -34,7 +34,7 @@ void main() {
       );
       expect(
         LayoutMap.slotToArtifactName[LayoutTypes.hero],
-        'PackHeroSlot',
+        'pack block / posterRow (no host PackHeroPaint)',
       );
       expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });
@@ -139,52 +139,80 @@ void main() {
       expect(find.text('Panel'), findsOneWidget);
     });
 
-    testWidgets('ColumnsHeaderBlock.fromProps', (tester) async {
+    testWidgets('ColumnsHeaderBlock.fromProps builds chrome + rail + empty grid',
+        (tester) async {
       await tester.pumpWidget(
         _wrap(
-          ColumnsHeaderBlock.fromProps(
-            {'sideWidth': 120},
-            header: const Text('Header'),
-            side: const Text('Side'),
-            body: const Text('Body'),
-          ),
+          ColumnsHeaderBlock.fromProps({
+            'sideWidth': 120,
+            'actions': [
+              {
+                'id': 'catalog',
+                'label': 'Section',
+                'default': 'live',
+                'items': [
+                  {'id': 'live', 'label': 'Live'},
+                  {'id': 'movies', 'label': 'Movies'},
+                ],
+              },
+            ],
+            'sideItems': [
+              {'id': 'all', 'label': 'All'},
+              {'id': 'sports', 'label': 'Sports'},
+            ],
+            'selectedSideId': 'all',
+            'emptyTitle': 'No channels',
+          }),
         ),
       );
-      expect(find.text('Header'), findsOneWidget);
-      expect(find.text('Side'), findsOneWidget);
-      expect(find.text('Body'), findsOneWidget);
+      expect(find.text('Live'), findsWidgets);
+      expect(find.text('All'), findsWidgets);
+      expect(find.text('Sports'), findsWidgets);
+      expect(find.text('No channels'), findsOneWidget);
     });
 
-    testWidgets('TopBodyBlock.fromProps', (tester) async {
+    testWidgets('TopBodyBlock.fromProps builds chrome + kinds + empty',
+        (tester) async {
       await tester.pumpWidget(
         _wrap(
-          TopBodyBlock.fromProps(
-            const {},
-            top: const Text('PageTop'),
-            bodyTop: const Text('Kinds'),
-            grid: const Text('Schedule'),
-          ),
+          TopBodyBlock.fromProps({
+            'actions': [
+              {'id': 'refresh', 'label': 'Refresh'},
+            ],
+            'kindItems': [
+              {'id': 'all', 'label': 'All'},
+              {'id': 'football', 'label': 'Football'},
+            ],
+            'emptyTitle': 'No matches',
+          }),
         ),
       );
-      expect(find.text('PageTop'), findsOneWidget);
-      expect(find.text('Kinds'), findsOneWidget);
-      expect(find.text('Schedule'), findsOneWidget);
+      expect(find.text('Refresh'), findsWidgets);
+      expect(find.text('Football'), findsWidgets);
+      expect(find.text('No matches'), findsOneWidget);
     });
 
-    testWidgets('TabsCardsBlock.fromProps', (tester) async {
+    testWidgets('TabsCardsBlock.fromProps builds menu + tabs + empty',
+        (tester) async {
       await tester.pumpWidget(
         _wrap(
-          TabsCardsBlock.fromProps(
-            const {},
-            menu: const Text('Kinds'),
-            tabs: const Text('Status'),
-            cards: const Text('Posters'),
-          ),
+          TabsCardsBlock.fromProps({
+            'menuItems': [
+              {'id': 'movie', 'label': 'Film'},
+              {'id': 'tv', 'label': 'Series'},
+            ],
+            'tabItems': [
+              {'id': 'watching', 'label': 'Watching'},
+              {'id': 'completed', 'label': 'Completed'},
+            ],
+            'selectedTabId': 'watching',
+            'emptyTitle': 'Your list is empty',
+          }),
         ),
       );
-      expect(find.text('Kinds'), findsOneWidget);
-      expect(find.text('Status'), findsOneWidget);
-      expect(find.text('Posters'), findsOneWidget);
+      expect(find.text('Film'), findsWidgets);
+      expect(find.text('Watching'), findsWidgets);
+      expect(find.text('Your list is empty'), findsOneWidget);
     });
 
     test('layout_map lists mounted block types', () {

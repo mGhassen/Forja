@@ -1,75 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Prebuilt page: [top] chrome over a body that is itself [bodyTop] + [grid].
+/// Prebuilt Live Sports-style screen: top chrome + kind chips + event grid.
 ///
-/// Live Sports shape (catalog top → kind strip → schedule grid) — **not** a
-/// `liveSports*` product type.
-///
-/// ```
-/// ┌──────── top (topBar) ─────────┐
-/// ├────── bodyTop (kinds) ────────┤
-/// │                               │
-/// │         grid (schedule)       │
-/// │                               │
-/// └───────────────────────────────┘
-/// ```
+/// Composes [CatalogTopChrome], [CatalogChipBar], [CatalogCardsGrid].
 ///
 /// ```json
 /// {
 ///   "type": "topBody",
-///   "props": {},
-///   "children": [ /* top */, /* bodyTop */, /* grid */ ]
+///   "props": {
+///     "actions": […],
+///     "kindItems": [{ "id": "all", "label": "All" }],
+///     "selectedKindId": "all",
+///     "cardKind": "event",
+///     "items": [{ "paint": { "type": "eventCard", "props": { … } } }]
+///   }
 /// }
 /// ```
-///
-/// Named maps also work: `top` / `bodyTop` / `grid`.
 class TopBodyBlock extends StatelessWidget {
   const TopBodyBlock({
     super.key,
-    this.top,
-    this.bodyTop,
-    required this.grid,
+    this.actions = const [],
+    this.actionSelections = const {},
+    this.kindItems = const [],
+    this.selectedKindId,
+    this.items = const [],
+    this.grid,
+    this.cardKind = 'event',
     this.backgroundColor,
+    this.title,
+    this.emptyTitle = 'No matches',
+    this.emptyDescription,
+    this.onActionSelect,
+    this.onKindSelect,
+    this.onItemTap,
   });
 
   factory TopBodyBlock.fromProps(
     Map<String, dynamic> props, {
-    Widget? top,
-    Widget? bodyTop,
-    required Widget grid,
+    Widget? grid,
+    Map<String, String> actionSelections = const {},
+    void Function(String actionId, String value)? onActionSelect,
+    ValueChanged<String>? onKindSelect,
+    void Function(Map<String, dynamic> item)? onItemTap,
   }) {
     return TopBodyBlock(
-      top: top,
-      bodyTop: bodyTop,
+      actions: propsActionMaps(props),
+      actionSelections: actionSelections,
+      kindItems: propsIdLabelList(props, 'kindItems'),
+      selectedKindId: propsString(props, 'selectedKindId') ??
+          propsString(props, 'defaultKindId'),
+      items: CatalogCardsGrid.itemsFromProps(props),
       grid: grid,
+      cardKind: propsStringOr(props, 'cardKind', 'event'),
       backgroundColor: propsColor(props, 'backgroundColor'),
+      title: propsString(props, 'title'),
+      emptyTitle: propsStringOr(props, 'emptyTitle', 'No matches'),
+      emptyDescription: propsString(props, 'emptyDescription'),
+      onActionSelect: onActionSelect,
+      onKindSelect: onKindSelect,
+      onItemTap: onItemTap,
     );
   }
 
-  final Widget? top;
-  final Widget? bodyTop;
-  final Widget grid;
+  final List<Map<String, dynamic>> actions;
+  final Map<String, String> actionSelections;
+  final List<({String id, String label})> kindItems;
+  final String? selectedKindId;
+  final List<Map<String, dynamic>> items;
+  final Widget? grid;
+  final String cardKind;
   final Color? backgroundColor;
+  final String? title;
+  final String emptyTitle;
+  final String? emptyDescription;
+  final void Function(String actionId, String value)? onActionSelect;
+  final ValueChanged<String>? onKindSelect;
+  final void Function(Map<String, dynamic> item)? onItemTap;
 
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? ForjaShellColors.surfaceElevated;
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ?bodyTop,
-        Expanded(child: grid),
-      ],
+    final top = CatalogTopChrome(
+      actions: actions,
+      selections: actionSelections,
+      onSelect: onActionSelect,
+      title: title,
     );
+    final kinds = CatalogChipBar(
+      items: kindItems,
+      selectedId: selectedKindId ??
+          (kindItems.isEmpty ? null : kindItems.first.id),
+      onSelect: onKindSelect,
+    );
+    final body = grid ??
+        CatalogCardsGrid(
+          items: items,
+          onItemTap: onItemTap,
+          emptyTitle: emptyTitle,
+          emptyDescription: emptyDescription,
+          cardKind: cardKind,
+        );
 
     return ColoredBox(
       color: bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ?top,
+          top,
+          kinds,
           Expanded(child: body),
         ],
       ),

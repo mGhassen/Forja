@@ -1117,7 +1117,7 @@ class SyncService {
   }
 
   /// Deal portals from the catalog pool (burns 1 credit). Returns portal UUIDs.
-  Future<List<String>> dealIptvPortals({
+  Future<List<String>> dealPortals({
     required String profileId,
     String region = 'ANY',
     int count = 5,
@@ -1137,7 +1137,7 @@ class SyncService {
     ];
   }
 
-  Future<String?> upsertIptvPortal({
+  Future<String?> upsertPortal({
     required String url,
     required String username,
     required String password,
@@ -1163,12 +1163,12 @@ class SyncService {
       );
       return id as String?;
     } catch (e) {
-      debugPrint('[Sync] upsertIptvPortal error: $e');
+      debugPrint('[Sync] upsertPortal error: $e');
       return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getIptvPortals(List<String> ids) async {
+  Future<List<Map<String, dynamic>>> getPortals(List<String> ids) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null || ids.isEmpty) return const [];
     final rows = await client.rpc('get_iptv_portals', params: {'p_ids': ids});
@@ -1183,7 +1183,7 @@ class SyncService {
   ///
   /// Returns `-1` when auth/profile/count is unavailable — **never** `0` on
   /// "not ready" (that fail-open let a thin local cache replace hundreds).
-  Future<int> countUserIptvPortals() async {
+  Future<int> countUserPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return -1;
@@ -1197,7 +1197,7 @@ class SyncService {
           .eq('account_id', userId)
           .eq('profile_id', profile.id);
     } catch (e) {
-      debugPrint('[Sync] countUserIptvPortals error: $e');
+      debugPrint('[Sync] countUserPortals error: $e');
       // Fail closed for shrink checks - caller should not replace.
       return -1;
     }
@@ -1207,7 +1207,7 @@ class SyncService {
   ///
   /// Throws when assignments exist but credentials cannot be loaded - callers
   /// must not treat that as an empty inventory (would wipe local store).
-  Future<List<Map<String, dynamic>>> pullUserIptvPortals() async {
+  Future<List<Map<String, dynamic>>> pullUserPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return const [];
@@ -1229,7 +1229,7 @@ class SyncService {
         if ((a['portal_id'] as String?)?.isNotEmpty == true)
           a['portal_id'] as String,
     ];
-    final globals = await getIptvPortals(ids);
+    final globals = await getPortals(ids);
     if (ids.isNotEmpty && globals.isEmpty) {
       throw StateError(
         'Failed to load portal credentials for ${ids.length} assignment(s)',
@@ -1261,7 +1261,7 @@ class SyncService {
   /// Server refuses shrink when false (issue 118).
   ///
   /// Uses `replace_user_iptv_portals` RPC (grandfather over-limit + atomic).
-  Future<void> replaceUserIptvPortals(
+  Future<void> replaceUserPortals(
     List<({String portalId, String portalName, bool favorite})> assignments, {
     bool allowShrink = false,
   }) async {
@@ -1288,7 +1288,7 @@ class SyncService {
         },
       );
     } catch (e) {
-      debugPrint('[Sync] replaceUserIptvPortals error: $e');
+      debugPrint('[Sync] replaceUserPortals error: $e');
     }
   }
 }

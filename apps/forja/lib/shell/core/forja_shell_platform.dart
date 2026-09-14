@@ -19,7 +19,7 @@ class ShellPlatformConfig {
       chromeKind == ShellChromeKind.navRail ||
       chromeKind == ShellChromeKind.navRailTv;
 
-  bool get showHomeTopBar => useNavRail;
+  bool get showKitTopBar => useNavRail;
 }
 
 const shellPlatformConfigs = <ShellProfile, ShellPlatformConfig>{

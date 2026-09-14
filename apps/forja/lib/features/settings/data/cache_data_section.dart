@@ -11,10 +11,10 @@ import 'package:rust/rust.dart';
 class SettingsCacheDataSection extends StatefulWidget {
   const SettingsCacheDataSection({
     super.key,
-    this.showIptvPortalCache = true,
+    this.showPortalCache = true,
   });
 
-  final bool showIptvPortalCache;
+  final bool showPortalCache;
 
   @override
   State<SettingsCacheDataSection> createState() =>
@@ -83,7 +83,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 action: SettingsDataCleaner.clearImageAndWebViewCaches,
               ),
             ),
-            if (widget.showIptvPortalCache)
+            if (widget.showPortalCache)
               _ClearTile(
                 busy: _busy == _ClearBusy.iptvPortals,
                 icon: Icons.live_tv_outlined,
@@ -101,7 +101,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                     'Saved portals, favorites, and M3U playlists are not affected.',
                   confirmLabel: 'Clear',
                   success: 'IPTV portal cache cleared',
-                  action: SettingsDataCleaner.clearIptvPortalCaches,
+                  action: SettingsDataCleaner.clearPortalCaches,
                 ),
               ),
             if (Platform.isMacOS || Platform.isWindows || Platform.isLinux)

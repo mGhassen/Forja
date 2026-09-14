@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/portals/network/iptv_network.dart';
+import 'package:forja/shared/engine/portals/network/portal_network.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
@@ -56,7 +56,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
     if (trimmed.isEmpty) return false;
     cancel(key);
     try {
-      final ok = await IptvAliveChecker.checkOne(trimmed);
+      final ok = await PortalAliveChecker.checkOne(trimmed);
       if (_disposed) return ok;
       remember(key, ok);
       return ok;
@@ -118,7 +118,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
     if (_disposed) return;
     _inFlight.add(key);
     try {
-      final ok = await IptvAliveChecker.checkOne(url);
+      final ok = await PortalAliveChecker.checkOne(url);
       if (_disposed) return;
       if (ok) {
         if (_health[key] == true && _sessionHealth[key] == true) return;

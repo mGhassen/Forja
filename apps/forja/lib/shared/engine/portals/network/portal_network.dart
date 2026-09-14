@@ -54,16 +54,16 @@ Future<Map<String, dynamic>?> _xtreamRequestRaw(
 }
 
 /// Result of a shelf catalog fetch (Live / Movies / Series).
-class IptvCatalogFetch {
-  const IptvCatalogFetch({
+class PortalCatalogFetch {
+  const PortalCatalogFetch({
     required this.categories,
     required this.streams,
     this.error,
     this.epgUrl,
   });
 
-  final List<IptvCategory> categories;
-  final List<IptvStream> streams;
+  final List<PortalCategory> categories;
+  final List<PortalStream> streams;
   final String? error;
 
   /// XMLTV guide URL the portal embedded (M3U `url-tvg` / `x-tvg-url`).
@@ -72,21 +72,21 @@ class IptvCatalogFetch {
 
   bool get ok => error == null;
 
-  static const emptyOk = IptvCatalogFetch(
+  static const emptyOk = PortalCatalogFetch(
     categories: [],
     streams: [],
   );
 }
 
-class IptvEpgFetchException implements Exception {
-  const IptvEpgFetchException();
+class PortalEpgFetchException implements Exception {
+  const PortalEpgFetchException();
 }
 
 /// Memoize a successful short-EPG load (including empty listings).
 /// HTTP/parse failures complete as empty for this call, then drop from
 /// [cache] after [retryFailedAfter] so a later build can retry without
 /// refetching on every `notifyListeners`.
-Future<List<EpgEntry>> rememberIptvEpg(
+Future<List<EpgEntry>> rememberPortalEpg(
   Map<String, Future<List<EpgEntry>>> cache,
   String key,
   Future<List<EpgEntry>> Function() load, {
@@ -112,7 +112,7 @@ Future<List<EpgEntry>> rememberIptvEpg(
 }
 
 /// Xtream-Codes player_api client. Login + catalog + episodes via Rust.
-class IptvClient {
+class PortalClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
   /// Shared `get_short_epg` page size — catalog cards and the long-press
@@ -150,22 +150,22 @@ class IptvClient {
   }
 
   /// Large Live lineups (20k+ streams) need headroom for download + parse.
-  static int _catalogTimeoutSecs(IptvSection kind) => switch (kind) {
-        IptvSection.live => 90,
-        IptvSection.vod => 60,
-        IptvSection.series => 60,
+  static int _catalogTimeoutSecs(PortalSection kind) => switch (kind) {
+        PortalSection.live => 90,
+        PortalSection.vod => 60,
+        PortalSection.series => 60,
       };
 
   static String _enc(String s) => Uri.encodeComponent(s);
 
-  static String _sectionName(IptvSection kind) => switch (kind) {
-        IptvSection.live => 'live',
-        IptvSection.vod => 'vod',
-        IptvSection.series => 'series',
+  static String _sectionName(PortalSection kind) => switch (kind) {
+        PortalSection.live => 'live',
+        PortalSection.vod => 'vod',
+        PortalSection.series => 'series',
       };
 
   static Map<String, dynamic> _portalBody(
-    IptvPortal p, {
+    Portal p, {
     required String action,
     required int timeoutSecs,
     String? section,
@@ -203,11 +203,11 @@ class IptvClient {
         },
       );
 
-  static Future<Map<String, dynamic>?> login(IptvPortal p,
+  static Future<Map<String, dynamic>?> login(Portal p,
       {Duration? timeout}) async {
     // M3U login downloads + parses the whole playlist (iptv-org index ≈ 3MB).
     final effective = timeout ??
-        (p.platform == IptvPortalPlatform.m3u
+        (p.platform == PortalPlatform.m3u
             ? const Duration(seconds: 90)
             : const Duration(seconds: 15));
     final root = await _xtreamRequest(_portalBody(
@@ -221,7 +221,7 @@ class IptvClient {
     return info;
   }
 
-  static Future<VerifiedPortal?> verifyOrNull(IptvPortal p,
+  static Future<VerifiedPortal?> verifyOrNull(Portal p,
       {Duration? timeout}) async {
     final probe = await probePortal(p, timeout: timeout);
     if (!probe.alive) return null;
@@ -230,11 +230,11 @@ class IptvClient {
 
   /// Login probe that keeps structured auth failures (status / message / server).
   static Future<PortalProbeResult> probePortal(
-    IptvPortal p, {
+    Portal p, {
     Duration? timeout,
   }) async {
     final effective = timeout ??
-        (p.platform == IptvPortalPlatform.m3u
+        (p.platform == PortalPlatform.m3u
             ? const Duration(seconds: 90)
             : const Duration(seconds: 15));
     final root = await _xtreamRequestRaw(_portalBody(
@@ -272,7 +272,7 @@ class IptvClient {
         message: message,
         errorKind: isAuth ? 'auth' : 'transport',
         accountName: field(info, 'username'),
-        expiry: IptvPortalExpiry.format(field(info, 'exp_date')),
+        expiry: PortalExpiry.format(field(info, 'exp_date')),
         maxConnections: field(info, 'max_connections'),
         activeConnections: field(info, 'active_cons'),
         server: server,
@@ -296,7 +296,7 @@ class IptvClient {
       accountName: field(info, 'username').isNotEmpty
           ? field(info, 'username')
           : p.username,
-      expiry: IptvPortalExpiry.format(field(info, 'exp_date')),
+      expiry: PortalExpiry.format(field(info, 'exp_date')),
       maxConnections:
           field(info, 'max_connections').isNotEmpty
               ? field(info, 'max_connections')
@@ -310,9 +310,9 @@ class IptvClient {
   }
 
   /// Categories + streams for one shelf (orphans already merged in Rust).
-  static Future<IptvCatalogFetch> catalog(
-    IptvPortal p,
-    IptvSection kind,
+  static Future<PortalCatalogFetch> catalog(
+    Portal p,
+    PortalSection kind,
   ) async {
     final root = await _xtreamRequestRaw(_portalBody(
       p,
@@ -321,28 +321,28 @@ class IptvClient {
       timeoutSecs: _catalogTimeoutSecs(kind),
     ));
     if (root == null) {
-      return const IptvCatalogFetch(
+      return const PortalCatalogFetch(
         categories: [],
         streams: [],
         error: 'Catalog request failed',
       );
     }
     if (root['error'] != null) {
-      return IptvCatalogFetch(
+      return PortalCatalogFetch(
         categories: const [],
         streams: const [],
         error: formatEngineError(root['error']),
       );
     }
-    return IptvCatalogFetch(
+    return PortalCatalogFetch(
       categories: _mapCategories(root['categories']),
       streams: _mapStreams(root['streams'], _sectionName(kind)),
       epgUrl: root['epg_url']?.toString(),
     );
   }
 
-  static Future<List<IptvCategory>> categories(
-      IptvPortal p, IptvSection kind) async {
+  static Future<List<PortalCategory>> categories(
+      Portal p, PortalSection kind) async {
     final root = await _xtreamRequest(_portalBody(
       p,
       action: 'categories',
@@ -353,8 +353,8 @@ class IptvClient {
     return _mapCategories(root['categories']);
   }
 
-  static Future<List<IptvStream>> streams(
-      IptvPortal p, IptvSection kind, String categoryId) async {
+  static Future<List<PortalStream>> streams(
+      Portal p, PortalSection kind, String categoryId) async {
     final root = await _xtreamRequest(_portalBody(
       p,
       action: 'streams',
@@ -367,9 +367,9 @@ class IptvClient {
   }
 
   /// Merge portal categories with stream orphan ids (Rust normalize).
-  static Future<List<IptvCategory>> mergeOrphanCategories(
-    List<IptvCategory> categories,
-    List<IptvStream> streams,
+  static Future<List<PortalCategory>> mergeOrphanCategories(
+    List<PortalCategory> categories,
+    List<PortalStream> streams,
   ) async {
     final root = await _xtreamRequest({
       'action': 'merge',
@@ -393,24 +393,24 @@ class IptvClient {
     return _mapCategories(root['categories']);
   }
 
-  static List<IptvCategory> _mapCategories(dynamic raw) {
+  static List<PortalCategory> _mapCategories(dynamic raw) {
     if (raw is! List) return const [];
     return [
       for (final e in raw)
         if (e is Map<String, dynamic>)
-          IptvCategory(
+          PortalCategory(
             id: e['id']?.toString() ?? '',
             name: e['name']?.toString() ?? '',
           ),
     ];
   }
 
-  static List<IptvStream> _mapStreams(dynamic raw, String sectionName) {
+  static List<PortalStream> _mapStreams(dynamic raw, String sectionName) {
     if (raw is! List) return const [];
     return [
       for (final e in raw)
         if (e is Map<String, dynamic>)
-          IptvStream(
+          PortalStream(
             streamId: e['stream_id']?.toString() ?? '',
             name: e['name']?.toString() ?? '',
             icon: e['icon']?.toString() ?? '',
@@ -422,8 +422,8 @@ class IptvClient {
     ];
   }
 
-  static Future<List<IptvEpisode>> seriesEpisodes(
-      IptvPortal p, String seriesId) async {
+  static Future<List<PortalEpisode>> seriesEpisodes(
+      Portal p, String seriesId) async {
     final root = await _xtreamRequest(_portalBody(
       p,
       action: 'series_episodes',
@@ -436,7 +436,7 @@ class IptvClient {
     return [
       for (final e in raw)
         if (e is Map<String, dynamic>)
-          IptvEpisode(
+          PortalEpisode(
             id: e['id']?.toString() ?? '',
             title: e['title']?.toString() ?? '',
             containerExt: e['container_ext']?.toString() ?? '',
@@ -448,15 +448,15 @@ class IptvClient {
     ];
   }
 
-  /// Sync path URL for Xtream. For M3U returns [IptvStream.streamId] (the
+  /// Sync path URL for Xtream. For M3U returns [PortalStream.streamId] (the
   /// channel URL). For Stalker returns empty — use [resolvePlayUrl].
-  static String streamUrl(IptvPortal p, IptvStream s) {
+  static String streamUrl(Portal p, PortalStream s) {
     switch (p.platform) {
-      case IptvPortalPlatform.m3u:
+      case PortalPlatform.m3u:
         return s.streamId;
-      case IptvPortalPlatform.stalker:
+      case PortalPlatform.stalker:
         return '';
-      case IptvPortalPlatform.xtream:
+      case PortalPlatform.xtream:
         final user = _enc(p.username);
         final pass = _enc(p.password);
         switch (s.kind) {
@@ -470,30 +470,30 @@ class IptvClient {
     }
   }
 
-  static String episodeUrl(IptvPortal p, IptvEpisode e) {
+  static String episodeUrl(Portal p, PortalEpisode e) {
     switch (p.platform) {
-      case IptvPortalPlatform.m3u:
+      case PortalPlatform.m3u:
         return e.id;
-      case IptvPortalPlatform.stalker:
+      case PortalPlatform.stalker:
         return '';
-      case IptvPortalPlatform.xtream:
+      case PortalPlatform.xtream:
         return '${p.url}/series/${_enc(p.username)}/${_enc(p.password)}/${e.id}.${e.containerExt}';
     }
   }
 
   /// Resolve a playable URL for any platform (Stalker create_link when needed).
   static Future<String?> resolvePlayUrl(
-    IptvPortal p,
-    IptvStream s, {
+    Portal p,
+    PortalStream s, {
     String? section,
   }) async {
     switch (p.platform) {
-      case IptvPortalPlatform.m3u:
+      case PortalPlatform.m3u:
         return s.streamId.isEmpty ? null : s.streamId;
-      case IptvPortalPlatform.xtream:
+      case PortalPlatform.xtream:
         final u = streamUrl(p, s);
         return u.isEmpty ? null : u;
-      case IptvPortalPlatform.stalker:
+      case PortalPlatform.stalker:
         return createLink(
           p,
           cmd: s.streamId,
@@ -502,20 +502,20 @@ class IptvClient {
     }
   }
 
-  static Future<String?> resolveEpisodeUrl(IptvPortal p, IptvEpisode e) async {
+  static Future<String?> resolveEpisodeUrl(Portal p, PortalEpisode e) async {
     switch (p.platform) {
-      case IptvPortalPlatform.m3u:
+      case PortalPlatform.m3u:
         return e.id.isEmpty ? null : e.id;
-      case IptvPortalPlatform.xtream:
+      case PortalPlatform.xtream:
         final u = episodeUrl(p, e);
         return u.isEmpty ? null : u;
-      case IptvPortalPlatform.stalker:
+      case PortalPlatform.stalker:
         return createLink(p, cmd: e.id, section: 'series');
     }
   }
 
   static Future<String?> createLink(
-    IptvPortal p, {
+    Portal p, {
     required String cmd,
     String section = 'live',
   }) async {
@@ -627,13 +627,13 @@ class IptvClient {
   }
 
   static Future<List<EpgEntry>?> _shortEpgOnce(
-    IptvPortal p,
+    Portal p,
     String streamId, {
     required int limit,
     required Duration timeout,
   }) async {
     if (streamId.isEmpty) return const [];
-    if (p.platform == IptvPortalPlatform.stalker) {
+    if (p.platform == PortalPlatform.stalker) {
       return _stalkerEpgOnce(p, streamId, limit: limit, timeout: timeout);
     }
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
@@ -670,7 +670,7 @@ class IptvClient {
   }
 
   static Future<List<EpgEntry>?> _stalkerEpgOnce(
-    IptvPortal p,
+    Portal p,
     String channelId, {
     required int limit,
     required Duration timeout,
@@ -699,12 +699,12 @@ class IptvClient {
   /// caching a sticky miss. Xtream encodes `title` and `description` as
   /// base64 strings.
   static Future<List<EpgEntry>> shortEpg(
-    IptvPortal p,
+    Portal p,
     String streamId, {
     int limit = shortEpgLimit,
     Duration timeout = const Duration(seconds: 6),
   }) async {
-    if (p.platform == IptvPortalPlatform.m3u) return const [];
+    if (p.platform == PortalPlatform.m3u) return const [];
     final first = await _shortEpgOnce(
       p,
       streamId,
@@ -719,19 +719,19 @@ class IptvClient {
       timeout: timeout,
     );
     if (second != null) return second;
-    throw const IptvEpgFetchException();
+    throw const PortalEpgFetchException();
   }
 
   /// `get_short_epg` by stream id, then `epg_channel_id` if that is empty.
   /// Stalker prefers numeric `epg_channel_id` (ITV `ch_id`) over create_link cmd.
   static Future<List<EpgEntry>> shortEpgForStream(
-    IptvPortal p, {
+    Portal p, {
     required String streamId,
     required String epgChannelId,
     int limit = shortEpgLimit,
   }) async {
-    if (p.platform == IptvPortalPlatform.m3u) return const [];
-    if (p.platform == IptvPortalPlatform.stalker) {
+    if (p.platform == PortalPlatform.m3u) return const [];
+    if (p.platform == PortalPlatform.stalker) {
       final ch = stalkerChannelId(
         streamId: streamId,
         epgChannelId: epgChannelId,
@@ -771,22 +771,22 @@ class IptvClient {
     _stalkerBulkParsed.clear();
   }
 
-  static String _stalkerBulkKey(IptvPortal p) =>
+  static String _stalkerBulkKey(Portal p) =>
       '${p.platform.wire}|${p.url}|${p.username}';
 
   /// True once the Mag period dump finished (may be empty).
-  static bool stalkerBulkReady(IptvPortal p) =>
+  static bool stalkerBulkReady(Portal p) =>
       _stalkerBulkRawDone.containsKey(_stalkerBulkKey(p));
 
   /// Kick the Mag period dump without awaiting guide paint.
   static Future<void> primeStalkerGuideEpg(
-    IptvPortal p, {
+    Portal p, {
     Duration timeout = const Duration(seconds: 90),
   }) =>
       _stalkerBulkRawMap(p, timeout: timeout).then((_) {});
 
   static Future<Map<String, List>> _stalkerBulkRawMap(
-    IptvPortal p, {
+    Portal p, {
     Duration timeout = const Duration(seconds: 90),
   }) {
     final key = _stalkerBulkKey(p);
@@ -825,7 +825,7 @@ class IptvClient {
     });
   }
 
-  static List<EpgEntry> _stalkerBulkListings(IptvPortal p, String ch) {
+  static List<EpgEntry> _stalkerBulkListings(Portal p, String ch) {
     final key = _stalkerBulkKey(p);
     final parsed = _stalkerBulkParsed[key];
     final map = _stalkerBulkRawDone[key];
@@ -846,15 +846,15 @@ class IptvClient {
   /// Stalker: short Mag EPG immediately, Mag period dump when ready).
   /// Optionally keep only programmes overlapping `[windowStart, windowEnd]`.
   static Future<List<EpgEntry>> simpleDataTable(
-    IptvPortal p,
+    Portal p,
     String streamId, {
     DateTime? windowStart,
     DateTime? windowEnd,
     Duration timeout = const Duration(seconds: 18),
     String epgChannelId = '',
   }) async {
-    if (p.platform == IptvPortalPlatform.m3u) return const [];
-    if (p.platform == IptvPortalPlatform.stalker) {
+    if (p.platform == PortalPlatform.m3u) return const [];
+    if (p.platform == PortalPlatform.stalker) {
       final ch = stalkerChannelId(
         streamId: streamId,
         epgChannelId: epgChannelId,
@@ -904,15 +904,15 @@ class IptvClient {
 // ─────────────────────────────────────────────────────────────────────────────
 // Verifier - bounded concurrency, abort once `target` portals authenticated.
 // ─────────────────────────────────────────────────────────────────────────────
-class IptvVerifier {
+class PortalVerifier {
   static const _parallel = 4;
 
   static Future<List<VerifiedPortal>> verifyUntil({
-    required List<IptvPortal> portals,
+    required List<Portal> portals,
     int target = 5,
     void Function(int checked, int total, int alive)? onProgress,
     void Function(VerifiedPortal v)? onAlive,
-    void Function(IptvPortal p)? onAttempted,
+    void Function(Portal p)? onAttempted,
     bool Function()? isCancelled,
   }) async {
     if (portals.isEmpty) return const [];
@@ -945,7 +945,7 @@ class IptvVerifier {
         onAttempted?.call(portals[idx]);
         VerifiedPortal? v;
         try {
-          v = await IptvClient.verifyOrNull(portals[idx]);
+          v = await PortalClient.verifyOrNull(portals[idx]);
         } catch (_) {
           v = null;
         }
@@ -986,7 +986,7 @@ class AliveProgress {
   const AliveProgress(this.checked, this.total, this.alive);
 }
 
-class IptvAliveChecker {
+class PortalAliveChecker {
   static const Duration _timeout = Duration(seconds: 8);
   /// Keep low — Mag panels with 1–2 seats reject parallel GETs as dead HTML.
   static const int _concurrency = 3;
@@ -1045,7 +1045,7 @@ class IptvAliveChecker {
 
 /// Which backend the catalog scraper should pull from.
 ///
-/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] - Reddit
+/// Prefer calling [PortalScraper.scrapeCatalogPage] without [source] - Reddit
 /// catalog when [_xml2ScrapeEnabled] is false; otherwise Reddit → XML2 chain.
 /// Kept for callers that still pass an explicit backend.
 enum CatalogSource { best, works }
@@ -1082,7 +1082,7 @@ RedditCatalogCursor parseRedditCatalogCursor(String? after) {
   return RedditCatalogCursor(subIdx: 0, after: pageAfter);
 }
 
-class IptvScraper {
+class PortalScraper {
   /// GitHub XML2 dump scraping (`CatalogSource.works`). Off for now - Reddit
   /// only until adult-host filtering / source quality is addressed.
   static const _xml2ScrapeEnabled = false;
@@ -1298,7 +1298,7 @@ class IptvScraper {
     }
   }
 
-  static Future<List<IptvPortal>> _extractPortalsEngine(
+  static Future<List<Portal>> _extractPortalsEngine(
       String text, String source) async {
     try {
       final raw = await runIptvRedditCatalogJson(
@@ -1316,11 +1316,11 @@ class IptvScraper {
     }
   }
 
-  static List<IptvPortal> _portalsFromJson(dynamic raw) {
+  static List<Portal> _portalsFromJson(dynamic raw) {
     if (raw is! List) return const [];
     return raw
         .whereType<Map>()
-        .map((m) => IptvPortal.fromJson(Map<String, dynamic>.from(m)))
+        .map((m) => Portal.fromJson(Map<String, dynamic>.from(m)))
         .where((p) => p.url.isNotEmpty && p.username.isNotEmpty)
         .toList();
   }

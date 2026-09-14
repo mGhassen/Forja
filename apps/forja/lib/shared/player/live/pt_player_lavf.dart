@@ -3,8 +3,8 @@ part of 'pt_player_screen.dart';
 // Implementations satisfy abstracts on sibling player mixins.
 // ignore_for_file: unused_element
 
-/// Lavf reconnect + live cache helpers (RFC-113 / ipdigi-style — no continuity proxy).
-mixin _PtPlayerLiveProxy on _PtPlayerEngineCore {
+/// Lavf reconnect helpers (RFC-113 / ipdigi — no continuity proxy).
+mixin _PtPlayerLavf on _PtPlayerEngineCore {
   void _armTransientHwDecodeIgnore();
   Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});

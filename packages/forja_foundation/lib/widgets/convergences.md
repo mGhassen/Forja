@@ -9,4 +9,4 @@ Dual stacks that used to fork in host chrome map to one naming pair in this pack
 | Posters | `PosterFrame` + `PosterRail` + `InteractivePosterCard` |
 | Continue / Because / Mood | `ContinueSection` · `BecauseSection` · `MoodSection` (+ `MoodCircle`) |
 
-Do not add parallel hero/poster families. Host kit mounts these props-only widgets via `PackPaintTree` / `kit/slots/*`.
+Do not add parallel hero/poster families. Host kit mounts these props-only widgets via `PackPaintTree` / `kit/paint_*.dart`.

@@ -47,11 +47,11 @@ abstract final class LiveKitHooksRegister {
       subtitle: subtitle,
       logoUrl: logoUrl,
       engineContext: engineContext,
-      liveSourceKind: liveSourceKind is IptvLiveSourceKind
+      liveSourceKind: liveSourceKind is PortalLiveSourceKind
           ? liveSourceKind
           : null,
       liveEngineResolveSource:
-          liveEngineResolveSource is IptvLiveEngineResolveSource
+          liveEngineResolveSource is PortalLiveEngineResolveSource
               ? liveEngineResolveSource
               : null,
       titleTracksSource: titleTracksSource,

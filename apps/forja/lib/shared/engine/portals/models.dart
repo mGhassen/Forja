@@ -5,7 +5,7 @@ import 'package:flutter/painting.dart';
 import 'dart:math';
 
 /// Random display names for portals (add-dialog dice button).
-abstract final class IptvPortalName {
+abstract final class PortalName {
   static final _random = Random();
 
   static const _adjectives = [
@@ -43,7 +43,7 @@ abstract final class IptvPortalName {
 }
 
 /// Portal subscription end — matches admin `formatPortalExpiry` / UI tone.
-abstract final class IptvPortalExpiry {
+abstract final class PortalExpiry {
   static const _months = [
     'Jan',
     'Feb',
@@ -207,14 +207,14 @@ abstract final class StalkerMac {
 }
 
 /// Portal protocol — xtream player_api, M3U playlist, or Stalker/Ministra.
-enum IptvPortalPlatform {
+enum PortalPlatform {
   xtream,
   m3u,
   stalker;
 
   static const m3uUsernameSentinel = '__m3u__';
 
-  static IptvPortalPlatform fromString(String? raw) => switch (raw?.trim().toLowerCase()) {
+  static PortalPlatform fromString(String? raw) => switch (raw?.trim().toLowerCase()) {
         'm3u' => m3u,
         'stalker' => stalker,
         _ => xtream,
@@ -232,21 +232,21 @@ enum IptvPortalPlatform {
 }
 
 /// Raw scraped Xtream-Codes portal credentials (unverified).
-class IptvPortal {
+class Portal {
   final String url;
   final String username;
   final String password;
   final String source;
-  final IptvPortalPlatform platform;
+  final PortalPlatform platform;
   /// Optional User-Agent for M3U fetch / play.
   final String userAgent;
 
-  const IptvPortal({
+  const Portal({
     required this.url,
     required this.username,
     required this.password,
     this.source = '',
-    this.platform = IptvPortalPlatform.xtream,
+    this.platform = PortalPlatform.xtream,
     this.userAgent = '',
   });
 
@@ -259,7 +259,7 @@ class IptvPortal {
   /// username|password alone would collapse all playlists into one identity.
   String get credKey {
     final base = '${platform.wire}|$username|$password'.toLowerCase();
-    if (platform == IptvPortalPlatform.m3u) {
+    if (platform == PortalPlatform.m3u) {
       return '$base|${url.trim().toLowerCase()}';
     }
     return base;
@@ -274,19 +274,19 @@ class IptvPortal {
         if (userAgent.isNotEmpty) 'userAgent': userAgent,
       };
 
-  factory IptvPortal.fromJson(Map<String, dynamic> j) => IptvPortal(
+  factory Portal.fromJson(Map<String, dynamic> j) => Portal(
         url: j['url'] as String? ?? '',
         username: j['username'] as String? ?? '',
         password: j['password'] as String? ?? '',
         source: j['source'] as String? ?? '',
-        platform: IptvPortalPlatform.fromString(j['platform'] as String?),
+        platform: PortalPlatform.fromString(j['platform'] as String?),
         userAgent: j['userAgent'] as String? ?? j['user_agent'] as String? ?? '',
       );
 }
 
 /// Portal that successfully authenticated against /player_api.php.
 class VerifiedPortal {
-  final IptvPortal portal;
+  final Portal portal;
   /// User-chosen display name (optional). Empty falls back via [displayLabel].
   final String label;
   final String name;
@@ -316,7 +316,7 @@ class VerifiedPortal {
     return u.isEmpty ? 'Portal' : u;
   }
 
-  IptvPortalPlatform get platform => portal.platform;
+  PortalPlatform get platform => portal.platform;
 
   VerifiedPortal withLabel(String label) => VerifiedPortal(
         portal: portal,
@@ -333,7 +333,7 @@ class VerifiedPortal {
         portal: portal,
         label: label,
         name: fresh.name,
-        expiry: IptvPortalExpiry.mergeOnProbe(expiry, fresh.expiry),
+        expiry: PortalExpiry.mergeOnProbe(expiry, fresh.expiry),
         maxConnections: fresh.maxConnections,
         activeConnections: fresh.activeConnections,
       );
@@ -345,13 +345,13 @@ class VerifiedPortal {
       activeConnections == other.activeConnections;
 
   /// Build from a successful [PortalProbeResult].
-  factory VerifiedPortal.fromProbe(IptvPortal p, PortalProbeResult probe) =>
+  factory VerifiedPortal.fromProbe(Portal p, PortalProbeResult probe) =>
       VerifiedPortal(
         portal: p,
         name: probe.accountName.isNotEmpty ? probe.accountName : p.username,
         expiry: probe.expiry.isNotEmpty
             ? probe.expiry
-            : IptvPortalExpiry.format(null),
+            : PortalExpiry.format(null),
         maxConnections: probe.maxConnections.isNotEmpty
             ? probe.maxConnections
             : '1',
@@ -440,21 +440,21 @@ class PortalProbeResult {
   }
 }
 
-class IptvCategory {
+class PortalCategory {
   final String id;
   final String name;
-  const IptvCategory({required this.id, required this.name});
+  const PortalCategory({required this.id, required this.name});
 }
 
 /// Synthetic Live sidebar rows (not from the portal API).
-abstract final class IptvLiveCatalog {
+abstract final class PortalLiveCatalog {
   static const favoritesId = '__favorites__';
   static const watchedId = '__watched__';
   static const watchedLimit = 30;
 
-  static const favorites = IptvCategory(id: favoritesId, name: 'Favorites');
+  static const favorites = PortalCategory(id: favoritesId, name: 'Favorites');
   static const watched =
-      IptvCategory(id: watchedId, name: 'Already watched');
+      PortalCategory(id: watchedId, name: 'Already watched');
 
   static bool isSyntheticId(String id) =>
       id == favoritesId || id == watchedId;
@@ -462,7 +462,7 @@ abstract final class IptvLiveCatalog {
   /// Synthetic Favorites / Already watched (not user-pinned API groups).
   static bool isPinnedId(String id) => isSyntheticId(id);
 
-  static List<IptvCategory> withPins(List<IptvCategory> apiCategories) => [
+  static List<PortalCategory> withPins(List<PortalCategory> apiCategories) => [
         favorites,
         watched,
         ...apiCategories,
@@ -471,21 +471,21 @@ abstract final class IptvLiveCatalog {
 
 /// Portal group ids synthesized by the Rust Xtream client when categories
 /// are missing. Host keeps the id constant for sidebar filtering.
-abstract final class IptvCatalogOrphans {
+abstract final class PortalCatalogOrphans {
   static const uncategorizedId = '__uncategorized__';
 
   static bool isUncategorizedId(String id) => id == uncategorizedId;
 
-  static bool streamMatchesCategory(IptvStream stream, String categoryId) {
+  static bool streamMatchesCategory(PortalStream stream, String categoryId) {
     if (isUncategorizedId(categoryId)) return stream.categoryId.isEmpty;
     return stream.categoryId == categoryId;
   }
 }
 
-enum IptvSection { live, vod, series }
+enum PortalSection { live, vod, series }
 
 /// How the browser shows catalog fetch progress.
-enum IptvCatalogLoadStyle {
+enum PortalCatalogLoadStyle {
   /// Idle / cache hit applied instantly.
   none,
 
@@ -493,8 +493,8 @@ enum IptvCatalogLoadStyle {
   verbose,
 }
 
-/// Active step while [IptvCatalogLoadStyle.verbose] is showing.
-enum IptvCatalogLoadStep {
+/// Active step while [PortalCatalogLoadStyle.verbose] is showing.
+enum PortalCatalogLoadStep {
   /// Reading on-device shelf cache.
   cache,
 
@@ -508,8 +508,8 @@ enum IptvCatalogLoadStep {
 }
 
 /// Live counts shown on the catalog loading panel.
-class IptvCatalogLoadProgress {
-  const IptvCatalogLoadProgress({
+class PortalCatalogLoadProgress {
+  const PortalCatalogLoadProgress({
     this.categoryCount = 0,
     this.channelCount = 0,
     this.movieCount = 0,
@@ -527,7 +527,7 @@ class IptvCatalogLoadProgress {
   final double fraction;
   final bool finished;
 
-  static const empty = IptvCatalogLoadProgress();
+  static const empty = PortalCatalogLoadProgress();
 
   Map<String, dynamic> toStatsJson() => {
         'categories': categoryCount,
@@ -536,8 +536,8 @@ class IptvCatalogLoadProgress {
         'series': seriesCount,
       };
 
-  factory IptvCatalogLoadProgress.fromStatsJson(Map<String, dynamic> json) =>
-      IptvCatalogLoadProgress(
+  factory PortalCatalogLoadProgress.fromStatsJson(Map<String, dynamic> json) =>
+      PortalCatalogLoadProgress(
         categoryCount: (json['categories'] as num?)?.toInt() ?? 0,
         channelCount: (json['channels'] as num?)?.toInt() ?? 0,
         movieCount: (json['movies'] as num?)?.toInt() ?? 0,
@@ -552,7 +552,7 @@ class IptvCatalogLoadProgress {
       movieCount > 0 ||
       seriesCount > 0;
 
-  IptvCatalogLoadProgress copyWith({
+  PortalCatalogLoadProgress copyWith({
     int? categoryCount,
     int? channelCount,
     int? movieCount,
@@ -560,7 +560,7 @@ class IptvCatalogLoadProgress {
     double? fraction,
     bool? finished,
   }) =>
-      IptvCatalogLoadProgress(
+      PortalCatalogLoadProgress(
         categoryCount: categoryCount ?? this.categoryCount,
         channelCount: channelCount ?? this.channelCount,
         movieCount: movieCount ?? this.movieCount,
@@ -571,12 +571,12 @@ class IptvCatalogLoadProgress {
 }
 
 /// Live catalog sort - playlist = API order; nameAsc/nameDesc by display name.
-enum IptvCatalogSort {
+enum PortalCatalogSort {
   playlist,
   nameAsc,
   nameDesc;
 
-  static IptvCatalogSort fromPrefs(String? raw) => switch (raw) {
+  static PortalCatalogSort fromPrefs(String? raw) => switch (raw) {
         'nameAsc' => nameAsc,
         'nameDesc' => nameDesc,
         _ => playlist,
@@ -586,18 +586,18 @@ enum IptvCatalogSort {
 }
 
 /// Live catalog channel pane layout - cards (default) or EPG timeline guide.
-enum IptvLiveBrowseLayout {
+enum PortalLiveBrowseLayout {
   cards,
   guide;
 
-  static IptvLiveBrowseLayout fromPrefs(String? raw) =>
+  static PortalLiveBrowseLayout fromPrefs(String? raw) =>
       raw == 'guide' ? guide : cards;
 
   String get prefsValue => name;
 }
 
 /// Single playable stream entry. `kind` = "live" / "vod" / "series".
-class IptvStream {
+class PortalStream {
   final String streamId;
   final String name;
   final String icon;
@@ -608,7 +608,7 @@ class IptvStream {
   /// [streamId] may be the create_link `cmd`. Empty when the panel has no EPG.
   final String epgChannelId;
 
-  const IptvStream({
+  const PortalStream({
     required this.streamId,
     required this.name,
     required this.icon,
@@ -638,7 +638,7 @@ class EpgEntry {
   }
 }
 
-class IptvEpisode {
+class PortalEpisode {
   final String id;
   final String title;
   final String containerExt;
@@ -647,7 +647,7 @@ class IptvEpisode {
   final String plot;
   final String image;
 
-  const IptvEpisode({
+  const PortalEpisode({
     required this.id,
     required this.title,
     required this.containerExt,
@@ -661,7 +661,7 @@ class IptvEpisode {
 /// A single alive stream found while resolving a HardcodedChannel.
 class ChannelHit {
   final VerifiedPortal portal;
-  final IptvStream stream;
+  final PortalStream stream;
   final String streamUrl;
 
   const ChannelHit({
@@ -672,7 +672,7 @@ class ChannelHit {
 }
 
 class ScrapePage {
-  final List<IptvPortal> portals;
+  final List<Portal> portals;
   final String? nextAfter;
   const ScrapePage({required this.portals, this.nextAfter});
   bool get hasMore => nextAfter != null && nextAfter!.isNotEmpty;

@@ -50,12 +50,12 @@ class M3uStore {
       if (url.isEmpty) continue;
       out.add(
         VerifiedPortal(
-          portal: IptvPortal(
+          portal: Portal(
             url: url,
-            username: IptvPortalPlatform.m3uUsernameSentinel,
+            username: PortalPlatform.m3uUsernameSentinel,
             password: '',
             source: 'm3u-migrate',
-            platform: IptvPortalPlatform.m3u,
+            platform: PortalPlatform.m3u,
           ),
           label: p.name.trim(),
           name: p.name.trim().isEmpty ? 'M3U' : p.name.trim(),

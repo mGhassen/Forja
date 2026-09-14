@@ -5,10 +5,22 @@ import { SiteFooter } from '@/components/legal-shell'
 import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 
-const CATALOG_LINES = [
-  'Featured heroes and poster shelves you can skim in seconds',
-  'Title pages with episodes, related rows, and continue watching',
-  'My List statuses and a navigation rail you can reshape',
+const CATALOG_FEATURES = [
+  {
+    n: '01',
+    title: 'Heroes & shelves',
+    copy: 'Featured titles and poster shelves you can skim in seconds.',
+  },
+  {
+    n: '02',
+    title: 'Title pages',
+    copy: 'Episodes, related rows, and continue watching on every title.',
+  },
+  {
+    n: '03',
+    title: 'My List & nav',
+    copy: 'Statuses for what you care about, and a navigation rail you can reshape.',
+  },
 ]
 
 const SOURCE_WAYS = [
@@ -186,28 +198,57 @@ export function PlatformPage() {
             </div>
           </header>
 
-          {/* Catalogs — text only */}
+          {/* Catalogs — magazine split + three type columns */}
           <section
             id="catalogs"
-            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)] px-[5vw] py-16 sm:py-24"
+            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <Reveal className="mx-auto max-w-[720px]">
-              <h2 className="font-disp text-[clamp(28px,4vw,44px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                A cinematic home for what is on next
-              </h2>
-              <p className="mt-5 text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
-                Forja opens on a featured title, rich posters, and shelves that
-                stay readable from a laptop to a living-room TV.
-              </p>
-              <ul className="mt-8 space-y-3 text-base leading-relaxed text-[rgba(237,230,218,0.78)]">
-                {CATALOG_LINES.map((line) => (
-                  <li key={line} className="flex gap-3">
-                    <span className="mt-2 size-1.5 shrink-0 rounded-full bg-flame" />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
+            <div className="mx-auto max-w-[1200px] px-[5vw] pt-16 sm:pt-24">
+              <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
+                <Reveal variant="left">
+                  <p className="font-mono-ui text-[11px] uppercase tracking-[0.2em] text-forja-green">
+                    Catalogs
+                  </p>
+                  <h2 className="mt-4 font-disp text-[clamp(32px,6vw,56px)] uppercase leading-[0.9] tracking-[-0.04em]">
+                    A cinematic home
+                    <br />
+                    <span className="font-serif-i normal-case text-flame">
+                      for what is on next
+                    </span>
+                  </h2>
+                </Reveal>
+                <Reveal delayMs={60} variant="right">
+                  <p className="max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg lg:pb-2">
+                    Forja opens on a featured title, rich posters, and shelves
+                    that stay readable from a laptop to a living-room TV.
+                  </p>
+                </Reveal>
+              </div>
+            </div>
+
+            <div className="mx-auto mt-14 grid max-w-[1200px] border-t border-[rgba(237,230,218,0.14)] sm:grid-cols-3">
+              {CATALOG_FEATURES.map((item, i) => (
+                <Reveal key={item.title} delayMs={i * 50}>
+                  <div
+                    className={
+                      i === 0
+                        ? 'border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 lg:px-10'
+                        : 'border-b border-[rgba(237,230,218,0.1)] px-[5vw] py-10 sm:border-b-0 sm:border-r sm:px-8 sm:py-12 sm:last:border-r-0 lg:px-10'
+                    }
+                  >
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-flame">
+                      {item.n}
+                    </span>
+                    <h3 className="font-disp mt-4 text-xl uppercase leading-tight tracking-tight text-[#EDE6DA] sm:text-2xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-base">
+                      {item.copy}
+                    </p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </section>
 
           {/* Sources — sticky + stacked full copy */}

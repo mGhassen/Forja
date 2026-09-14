@@ -9,7 +9,7 @@ import 'package:forja/features/settings/addons/host/search_torrents_section.dart
 import 'package:forja/features/settings/addons/host/simkl_panel.dart';
 import 'package:forja/features/settings/addons/host/mdblist_panel.dart';
 import 'package:forja/features/settings/addons/host/playback_section.dart';
-import 'package:forja/features/settings/addons/host/iptv_addon_section.dart';
+import 'package:forja/features/settings/addons/host/portal_addon_section.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 
@@ -35,7 +35,7 @@ Widget _hostAddonDetailBody(String addonId, SettingsVisibility visibility) {
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsAddonId.iptv:
       // Pack-contributed Addons → IPTV: portal fields above; host player prefs.
-      return const SettingsIptvAddonSection();
+      return const SettingsPortalAddonSection();
     case SettingsAddonId.torrent:
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

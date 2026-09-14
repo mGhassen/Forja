@@ -55,13 +55,60 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     });
   }
 
-  void _onSearchChannelSelected(IptvGuideChannel ch) {
+  void _onSearchChannelSelected(GuideChannel ch) {
     setState(() => _s._searchVisible = false);
     _s._switchChannel(ch);
     _scheduleHideControls();
   }
 
-  IptvGuideChannel? _currentGuideChannel() {
+  Widget _buildChannelGuidePanel() {
+    final guide = widget.channelGuide!;
+    final epgEnabled = ref.watch(settingsPlaybackProvider).valueOrNull
+            ?.iptvEpgEnabled ??
+        SettingsService.iptvEpgEnabledNotifier.value;
+    final tv = liveUseTvFocus(context);
+    final leanback = liveLeanbackOnly(context);
+    final desktop = DesktopWindowChrome.isDesktop;
+    final epgCache = _s._epgCache;
+
+    return ChannelGuidePanel(
+      guide: guide,
+      selectedGroupId: _s._selectedGroupId,
+      currentChannelId: _s._currentChannelId,
+      onGroupSelected: (id) {
+        setState(() => _s._selectedGroupId = id);
+      },
+      onChannelSelected: _s._switchChannel,
+      onClose: _closeGuideAndFocusPlayer,
+      epgEnabled: epgEnabled,
+      isTv: tv,
+      leanbackOnly: leanback,
+      isDesktop: desktop,
+      panelInsets: (ctx) {
+        if (tv) return EdgeInsets.zero;
+        return EdgeInsets.only(
+          top: DesktopWindowChrome.topInset(ctx) +
+              ChannelGuidePanel.panelVerticalGap,
+          bottom: desktop
+              ? ChannelGuidePanel.panelEdgeGap
+              : ChannelGuidePanel.panelVerticalGap,
+        );
+      },
+      resolvePlayUrl: (ch) => PortalGuideWire.resolvePlayUrl(guide, ch),
+      probeHealth: (ch) => PortalGuideWire.probeHealth(guide, ch),
+      loadEpg: epgEnabled && epgCache != null
+          ? (ch) {
+              final stream = ch.xtreamStream;
+              if (stream == null) {
+                return Future<List<GuideEpgProgramme>>.value(const []);
+              }
+              return epgCache.loadProgrammes(stream);
+            }
+          : null,
+    );
+  }
+
+  GuideChannel? _currentGuideChannel() {
     final guide = widget.channelGuide;
     if (guide == null || _s._currentChannelId.isEmpty) return null;
     for (final ch in guide.channels) {
@@ -133,7 +180,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         top: MediaQuery.paddingOf(context).top + 56,
         right: 16,
       ),
-      snapshot: () => IptvPlayerStatsSnapshot(
+      snapshot: () => PlayerStatsSnapshot(
         playing: _s._playing,
         buffering: _s._buffering,
         sourceLabel: _s._sources[_s._sourceIdx].label,
@@ -762,7 +809,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   /// Overlay/guide/search → hide chrome → leave fullscreen → arm → leave / mini.
   void _handleEscapeKey() {
     debugPrint(
-      '[IptvPlayer] Escape down armed=${_s._escapeExitArmed} '
+      '[PortalPlayer] Escape down armed=${_s._escapeExitArmed} '
       'chrome=${_s._controlsVisible} fs=${_s._isFullscreen}',
     );
     if (InAppMiniPlayerController.instance.isActive) {
@@ -773,14 +820,14 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     if (handledAt != null &&
         DateTime.now().difference(handledAt) <
             const Duration(milliseconds: 80)) {
-      debugPrint('[IptvPlayer] Escape ignored (same pulse)');
+      debugPrint('[PortalPlayer] Escape ignored (same pulse)');
       return;
     }
     _s._escapeHandledAt = DateTime.now();
     PlayerBackExitGate.notePlayerEscapeHandled();
 
     if (dismissAnyPlayerChromeOverlay()) {
-      debugPrint('[IptvPlayer] Escape → dismiss overlay (stay)');
+      debugPrint('[PortalPlayer] Escape → dismiss overlay (stay)');
       return;
     }
     if (_s._searchVisible) {
@@ -790,7 +837,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       });
       _s._escapeExitArmed = false;
       _scheduleHideControls();
-      debugPrint('[IptvPlayer] Escape → close search (stay)');
+      debugPrint('[PortalPlayer] Escape → close search (stay)');
       return;
     }
     if (_s._guideVisible) {
@@ -800,7 +847,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       });
       _s._escapeExitArmed = false;
       _scheduleHideControls();
-      debugPrint('[IptvPlayer] Escape → close guide (stay)');
+      debugPrint('[PortalPlayer] Escape → close guide (stay)');
       return;
     }
     unawaited(_escapeLeaveFullscreenOrContinue());
@@ -810,16 +857,16 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final osFull = _s._isDesktop && await windowManager.isFullScreen();
     final inFullscreen = osFull || _s._isFullscreen;
     debugPrint(
-      '[IptvPlayer] Escape ladder armed=${_s._escapeExitArmed} '
+      '[PortalPlayer] Escape ladder armed=${_s._escapeExitArmed} '
       'chrome=${_s._controlsVisible} fs=${_s._isFullscreen} osFull=$osFull',
     );
     if (_s._controlsVisible) {
-      debugPrint('[IptvPlayer] Escape → hide chrome (no arm) fs=$inFullscreen');
+      debugPrint('[PortalPlayer] Escape → hide chrome (no arm) fs=$inFullscreen');
       _hideChromeIntentional();
       return;
     }
     if (inFullscreen) {
-      debugPrint('[IptvPlayer] Escape → exit fullscreen (stay)');
+      debugPrint('[PortalPlayer] Escape → exit fullscreen (stay)');
       await DesktopWindowGeometry.exitFullscreen();
       if (!mounted || _s._disposed) return;
       setState(() {
@@ -832,18 +879,18 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final miniOn = await InAppMiniPlayerController.readSettingEnabled();
     if (!mounted || _s._disposed) return;
     if (miniOn) {
-      debugPrint('[IptvPlayer] Escape → in-app mini (no arm)');
+      debugPrint('[PortalPlayer] Escape → in-app mini (no arm)');
       _s._escapeExitArmed = false;
       await InAppMiniPlayerController.instance.enter();
       if (mounted && !_s._disposed) setState(() {});
       return;
     }
     if (!_s._escapeExitArmed) {
-      debugPrint('[IptvPlayer] Escape → arm only');
+      debugPrint('[PortalPlayer] Escape → arm only');
       setState(() => _s._escapeExitArmed = true);
       return;
     }
-    debugPrint('[IptvPlayer] Escape → confirm');
+    debugPrint('[PortalPlayer] Escape → confirm');
     _s._escapeExitArmed = false;
     await _s._exitIptvPlayer();
   }
@@ -1060,7 +1107,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
           }
           // Desktop Escape must not leave through maybePop — ladder confirms exit.
           if (_s._isDesktop && !_s._isPipMode) {
-            debugPrint('[IptvPlayer] PopScope → Escape ladder');
+            debugPrint('[PortalPlayer] PopScope → Escape ladder');
             _handleEscapeKey();
             return;
           }
@@ -1259,6 +1306,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                             _s._searchVisible = false;
                             _scheduleHideControls();
                           }),
+                          isTv: liveUseTvFocus(context),
                         ),
                       ),
                     ),
@@ -1267,22 +1315,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                       widget.channelGuide != null)
                     Positioned.fill(
                       child: RepaintBoundary(
-                        child: ChannelGuidePanel(
-                          guide: widget.channelGuide!,
-                          selectedGroupId: _s._selectedGroupId,
-                          currentChannelId: _s._currentChannelId,
-                          epgCache: _s._epgCache,
-                          epgEnabled: ref
-                                  .watch(settingsPlaybackProvider)
-                                  .valueOrNull
-                                  ?.iptvEpgEnabled ??
-                              SettingsService.iptvEpgEnabledNotifier.value,
-                          onGroupSelected: (id) {
-                            setState(() => _s._selectedGroupId = id);
-                          },
-                          onChannelSelected: _s._switchChannel,
-                          onClose: _closeGuideAndFocusPlayer,
-                        ),
+                        child: _buildChannelGuidePanel(),
                       ),
                     ),
                   if (!hideFullChrome && epgFuture != null)
@@ -1294,7 +1327,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                         opacity: _s._controlsVisible ? 1 : 0,
                         child: IgnorePointer(
                           ignoring: !_s._controlsVisible,
-                          child: IptvFloatingEpg(
+                          child: PortalFloatingEpg(
                             key: ValueKey(_s._floatingEpgKey),
                             future: epgFuture,
                             maxWidth: compact ? 440 : 540,
@@ -2601,7 +2634,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     );
   }
 
-  static int _hubEpisodeKey(IptvEpisode e) => e.season * 10000 + e.episode;
+  static int _hubEpisodeKey(PortalEpisode e) => e.season * 10000 + e.episode;
 
   Future<void> _showEpisodesPanel(BuildContext anchorContext) async {
     final eps = _s.widget.seriesEpisodes;
@@ -2630,7 +2663,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       currentEpisode: current,
       onEpisodeSelected: (hubEp) async {
         final key = hubEp.number.toInt();
-        IptvEpisode? match;
+        PortalEpisode? match;
         for (final e in eps) {
           if (_hubEpisodeKey(e) == key) {
             match = e;
@@ -2644,10 +2677,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Future<void> _switchSeriesEpisode(
-    IptvEpisode episode,
-    IptvPortal portal,
+    PortalEpisode episode,
+    Portal portal,
   ) async {
-    final url = await IptvClient.resolveEpisodeUrl(portal, episode);
+    final url = await PortalClient.resolveEpisodeUrl(portal, episode);
     if (!mounted || url == null || url.isEmpty) return;
     final show = (_s.widget.seriesShowTitle ?? _s._subQueryTitle).trim();
     final epTitle = episode.title.trim().isEmpty
@@ -2919,10 +2952,10 @@ bool iptvUseLiveSportsSourcePicker(PtPlayerScreen screen) {
 }
 
 bool iptvLiveMatchSourcePicker(
-  IptvLiveSourceKind? sessionKind,
+  PortalLiveSourceKind? sessionKind,
   LivePlaySource src,
 ) {
-  return sessionKind == IptvLiveSourceKind.liveEngine ||
+  return sessionKind == PortalLiveSourceKind.liveEngine ||
       (src.liveProviderBadge ?? '').trim().isNotEmpty;
 }
 
@@ -2948,7 +2981,7 @@ String? iptvSportsSourceEmbedHost(LivePlaySource source) {
 
 String? iptvSourcePickerSubtitle(
   LivePlaySource src, {
-  required IptvLiveSourceKind? liveSourceKind,
+  required PortalLiveSourceKind? liveSourceKind,
   required String Function(String url) hostFallback,
 }) {
   final structured = src.pickerSubtitle;
@@ -3017,7 +3050,7 @@ Widget? iptvLiveSourceTrailing(LivePlaySource src) {
 
 PlayerPopupListTile buildIptvSourcePickerTile({
   required LivePlaySource src,
-  required IptvLiveSourceKind? liveSourceKind,
+  required PortalLiveSourceKind? liveSourceKind,
   required Widget Function(LivePlaySource src) sourceLogo,
   required bool selected,
   PlayerSourceStatus? status,

@@ -160,7 +160,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
         ),
         if (widget.visibility.showIptvSettings)
         SettingsCacheDataSection(
-          showIptvPortalCache: widget.visibility.showIptvSettings,
+          showPortalCache: widget.visibility.showIptvSettings,
         ),
       ],
     );

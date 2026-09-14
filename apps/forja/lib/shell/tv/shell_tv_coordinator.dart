@@ -719,10 +719,11 @@ abstract final class ShellTvFocusCoordinator {
         (_rowsByTab[MediaDetailsTv.tabId]?.isNotEmpty ?? false)) {
       return MediaDetailsTv.tabId;
     }
-    if (_navLeaveTabId == 'search' ||
-        _tabMemory.containsKey('search') ||
-        (_rowsByTab['search']?.isNotEmpty ?? false)) {
-      return 'search';
+    final leave = _navLeaveTabId;
+    if (leave.isNotEmpty &&
+        (_tabMemory.containsKey(leave) ||
+            (_rowsByTab[leave]?.isNotEmpty ?? false))) {
+      return leave;
     }
     return shellTabId;
   }
@@ -1070,12 +1071,8 @@ abstract final class ShellTvFocusCoordinator {
         }
         return _restoreDefault(tabId);
       case ShellTvZone.topBar:
-        // Prefer the remembered node (Search field/close). Never steal to Home
-        // chrome when restoring a non-home tab.
+        // Prefer the remembered node (Search field/close).
         if (_tryRestoreLiveNode(memory)) return true;
-        if (tabId == 'home') {
-          return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
-        }
         return ShellTvFocus.focusHubHeroSearch() || _restoreDefault(tabId);
       case ShellTvZone.chipStrip:
       case ShellTvZone.settings:
@@ -1107,7 +1104,7 @@ abstract final class ShellTvFocusCoordinator {
     if (node != null && node.canRequestFocus) {
       return _request(node);
     }
-    return ShellTvFocus.focusHomeHeroPlay();
+    return false;
   }
 
   // --- Row registry ---
