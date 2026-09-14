@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **5 / 6** IPTV unified pack |
-| **Current slice** | A38–A39: pack Live/Movies/Series Xtream browse + thin VOD play hooks; A40 portals/EPG/player chrome still open |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **0 / 1** A41 interim restore debt |
+| **Current slice** | A40: restored host `IptvPtScreen` for pack `nav.tabId` `iptv` (exact pre-kit UX); A41 tracks pack-owned chrome replacement |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -93,7 +93,8 @@
 | 3 | R109-A37 | Host Addons IPTV row pack-only (`settings.addon`); `addonGatedNavIds` empty; install activates tab | ✅ |
 | 4 | R109-A38 | Pack feed Live / Movies / Series (Xtream categories + streams); VOD details fetch series episodes | ✅ |
 | 5 | R109-A39 | Thin host `PackIptvPlayHooks` — vault portal → Xtream URL → `HostPlaybackOpen` (no portals_ui) | ✅ |
-| 6 | R109-A40 | Portals panel / Stalker / M3U / EPG guide / dedicated IPTV player chrome parity | ⬜ |
+| 6 | R109-A40 | Portals panel / Stalker / M3U / EPG guide / dedicated IPTV player chrome parity | ✅ |
+| 7 | R109-A41 | Replace interim host `IptvPtScreen` / `portals_ui` with pack-owned chrome (A19/A21 law) | ⬜ |
 
 ---
 

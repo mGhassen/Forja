@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/host/packs/pack_assets.dart';
 import 'package:forja/shared/host/packs/forja_host_assets.dart';
 import 'package:forja/shared/host/layout/pack_layout_host.dart';
+import 'package:forja/shared/host/portals_ui/screens/iptv_pt_screen.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
@@ -12,15 +13,40 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Hub tabs contributed by `kind: catalog` packs. Shell-core stays in app.
+  /// Hub tabs contributed by `kind: catalog` packs. Shell-core stays in app.
 ///
 /// Destinations / accents / builders come only from pack `nav` ([refresh]).
 /// Last [refresh] is cached so boot does not flash an empty rail.
 /// No hardcoded pack plugin ids — seed is empty until cache or packs load.
+///
+/// Exception (RFC-109 A40 interim): contributed rail id `iptv` mounts the
+/// restored host [IptvPtScreen] (exact pre–kit IPTV UX) instead of pack layout.
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'settings',
   };
+
+  /// Host product screen for the IPTV pack `nav.tabId` until A40 pack chrome
+  /// matches parity. Opaque rail id from author tab — not a plugin-id branch.
+  static const _iptvHostProductTabId = 'iptv';
+
+  static Widget _builderForHubTab({
+    required String tabId,
+    required String? pluginId,
+    String? packSourceUrl,
+  }) {
+    if (tabId == _iptvHostProductTabId) {
+      return const IptvPtScreen();
+    }
+    if (pluginId != null && pluginId.isNotEmpty) {
+      return PackLayoutHost(
+        pluginId: pluginId,
+        tabId: tabId,
+        packSourceUrl: packSourceUrl,
+      );
+    }
+    return PackLayoutHostLoader(tabId: tabId);
+  }
 
   static const _navCacheKey = 'shell_hub_nav_cache_v1';
 
@@ -326,17 +352,11 @@ abstract final class PluginNavRegistry {
     _tabPackUrls = Map<String, String>.from(snap.tabPackUrls);
     _builders = {
       for (final tabId in _destinations.keys)
-        tabId: () {
-          final pluginId = _tabPluginIds[tabId];
-          if (pluginId != null && pluginId.isNotEmpty) {
-            return PackLayoutHost(
-              pluginId: pluginId,
+        tabId: () => _builderForHubTab(
               tabId: tabId,
+              pluginId: _tabPluginIds[tabId],
               packSourceUrl: _tabPackUrls[tabId],
-            );
-          }
-          return PackLayoutHostLoader(tabId: tabId);
-        },
+            ),
     };
     _seeded = true;
   }
@@ -543,9 +563,9 @@ abstract final class PluginNavRegistry {
         label: nav.label,
         iconAsset: iconAsset,
       );
-      builders[railId] = () => PackLayoutHost(
-            pluginId: pl.id,
+      builders[railId] = () => _builderForHubTab(
             tabId: railId,
+            pluginId: pl.id,
             packSourceUrl: pack.sourceUrl,
           );
       tabPluginIds[railId] = pl.id;

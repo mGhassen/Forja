@@ -1,0 +1,1826 @@
+import 'dart:async';
+import 'dart:io' show File, Platform;
+import 'package:flutter/foundation.dart'
+    show kDebugMode, kIsWeb, visibleForTesting;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:forja/shared/host/portals_ui/iptv_shell_style.dart';
+import 'package:forja/shared/host/portals_ui/iptv_atv_live_cache.dart';
+import 'package:forja/shared/host/portals_ui/iptv_title_clean.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+
+import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
+import 'package:forja/shared/player/platform/external_player_service.dart';
+import 'package:forja/shared/player/platform/pip_service.dart';
+import 'package:forja/shared/player/screens/shared_widgets.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
+import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:rust/rust.dart';
+import 'package:forja/shared/engine/portals/channel_guide/iptv_guide_epg.dart';
+import 'package:forja/shared/host/portals_ui/channel_guide/iptv_guide_epg_ui.dart';
+import 'package:forja/shared/host/portals_ui/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/shared/host/portals_ui/channel_guide/iptv_channel_guide_panel.dart';
+import 'package:forja/shared/host/portals_ui/channel_guide/iptv_channel_search_overlay.dart';
+import 'package:forja/shared/engine/portals/iptv_network.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/storage.dart';
+import 'package:forja/shared/host/portals_ui/iptv_live_continuity_proxy.dart';
+import 'package:forja/shared/host/portals_ui/iptv_hls_play_url.dart';
+import 'package:forja/shared/host/portals_ui/iptv_proxy_reconnect_skip.dart';
+import 'package:forja/shared/host/portals_ui/channel_guide/iptv_player_stats_panel.dart';
+import 'package:forja/shared/host/portals_ui/iptv_lazy_url_health.dart';
+import 'package:forja/shared/host/portals_ui/iptv_tv_focus.dart';
+import 'package:forja/shared/host/portals_ui/providers/iptv_player_providers.dart';
+import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
+import 'package:forja/shared/host/portals_ui/screens/iptv_player_chrome_profile.dart';
+import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
+import 'package:forja/shared/engine/portals/channel_search/iptv_channel_search.dart';
+
+import 'package:forja/shared/player/sources/torrent_source_tiles.dart';
+import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
+import 'package:forja/shared/player/controls/menus/player_audio_menu.dart';
+import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/desktop_pip_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/menus/player_subtitle_menu.dart';
+import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
+import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
+import 'package:forja/shared/player/providers/player_prefs_providers.dart';
+import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
+import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_player_menus.dart';
+import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
+import 'package:forja/shared/player/avplayer/av_player_view.dart';
+import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
+import 'package:forja/shared/player/vlc/vlc_player_view.dart';
+import 'package:forja/shared/platform/platform_channel.dart';
+import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
+part 'iptv_pt_player_engine_core.dart';
+part 'iptv_pt_player_mk_tunables.dart';
+part 'iptv_pt_player_live_proxy.dart';
+part 'iptv_pt_player_watchdog.dart';
+part 'iptv_pt_player_recovery.dart';
+part 'iptv_pt_player_engine.dart';
+part 'iptv_pt_player_ui.dart';
+
+/// True for live IPTV URLs (Xtream `/live/…`, M3U, unknown). False for Xtream VOD.
+@visibleForTesting
+bool iptvExoUrlLooksLive(String url) {
+  final lower = url.toLowerCase();
+  if (lower.contains('/movie/') || lower.contains('/series/')) return false;
+  return true;
+}
+
+/// Live native playback profile — one MediaKit/Exo config per surface type,
+/// not inferred from URL shape.
+enum IptvLiveSourceKind {
+  /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy when not HLS).
+  iptvXtream,
+
+  /// IPTV Live / Forja Sports Stalker (create_link; no continuity proxy).
+  iptvStalker,
+
+  /// Live Sports Stremio addon streams (direct HLS / lavf reconnect).
+  stremio,
+
+  /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
+  liveEngine;
+
+  /// Kind allows the TS continuity proxy; still gated by [iptvShouldUseContinuityProxy].
+  bool get useContinuityProxy => this == IptvLiveSourceKind.iptvXtream;
+}
+
+/// HLS masters/media playlists — short HTTP bodies, not a progressive TS pipe.
+@visibleForTesting
+bool iptvUrlLooksLikeHls(String url) {
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8');
+}
+
+/// Continuity proxy is for progressive MPEG-TS. HLS `.m3u8` must open direct —
+/// proxying them EOF after ~2 KiB then overlap-skip death-spirals (issue 272).
+@visibleForTesting
+bool iptvShouldUseContinuityProxy({
+  required IptvLiveSourceKind kind,
+  required String url,
+}) {
+  if (!kind.useContinuityProxy) return false;
+  if (iptvUrlLooksLikeHls(url)) return false;
+  return true;
+}
+
+/// HLS ABR masters (DAI / CloudFront) probe every variant before first paint.
+/// Soft-reopen at the TS empty-cache grace (~5 s) aborts TLS mid-probe (issue 273).
+@visibleForTesting
+bool iptvHlsColdOpenHold({
+  required String url,
+  required bool playbackStarted,
+  required DateTime openedAt,
+  required DateTime now,
+  Duration grace = const Duration(seconds: 30),
+}) {
+  if (playbackStarted) return false;
+  if (!iptvUrlLooksLikeHls(url)) return false;
+  return now.difference(openedAt) < grace;
+}
+
+/// IPTV catalog / Forja Sports: Stalker stays direct; Xtream/M3U TS use the
+/// continuity proxy; HLS channel URLs open direct regardless of portal kind.
+@visibleForTesting
+IptvLiveSourceKind iptvLiveSourceKindForPortal(IptvPortalPlatform platform) {
+  return switch (platform) {
+    IptvPortalPlatform.stalker => IptvLiveSourceKind.iptvStalker,
+    _ => IptvLiveSourceKind.iptvXtream,
+  };
+}
+
+/// Hard open failure (MediaKit / Exo) — VOD can swap engines once.
+@visibleForTesting
+bool iptvIsHardOpenFail(String msg) {
+  final lower = msg.toLowerCase();
+  return lower.contains('failed to open') ||
+      lower.contains('unable to open') ||
+      lower.contains('error opening') ||
+      lower.contains('failed to recognize file format') ||
+      lower.contains('unrecognizedinputformat') ||
+      lower.contains('none of the available extractors') ||
+      lower.contains('invalidresponsecode') ||
+      lower.contains('response code: 403') ||
+      lower.contains('response code: 401') ||
+      lower.contains('response code: 407') ||
+      lower.contains('arrayindexoutofbounds') ||
+      lower.contains('unexpectedloaderexception') ||
+      // Exo progressive VOD: HTTP death or Media3 AAC/MP4 extractor crash.
+      lower.contains('source error');
+}
+
+/// Open/connect death where retrying the same URL is useless (multi-source
+/// should rotate immediately). Broader than [iptvIsHardOpenFail] — includes
+/// TCP timeouts that never become "Failed to open".
+@visibleForTesting
+bool iptvIsDeadEndpointFail(String msg) {
+  final lower = msg.toLowerCase();
+  if (iptvIsHardOpenFail(msg)) return true;
+  return lower.contains('timed out') ||
+      lower.contains('timeout') ||
+      lower.contains('connection refused') ||
+      lower.contains('could not connect') ||
+      lower.contains('network is unreachable') ||
+      lower.contains('no route to host') ||
+      (lower.contains('tcp:') && lower.contains('failed'));
+}
+
+/// Single source for the IPTV player.
+class IptvPlaySource {
+  final String url;
+  final String label;
+
+  /// Source-picker subtitle (e.g. category / group).
+  final String? detail;
+
+  /// Optional channel logo (Xtream `stream_icon`).
+  final String? logoUrl;
+
+  /// Xtream `stream_id` — used to pull logos from the IPTV catalog cache.
+  final String? streamId;
+
+  /// Xtream `epg_channel_id` — fallback when short EPG by stream id is empty.
+  final String? epgChannelId;
+
+  /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
+  /// Live Sports Streamed handoff uses these instead of `/hls-proxy`.
+  final Map<String, String> headers;
+
+  /// Live Sports: which playback profile applies when this row is active.
+  final IptvLiveSourceKind? liveSourceKind;
+
+  /// Live Sports stream sheet: provider chip (PPV / Streamed / …).
+  final String? liveProviderBadge;
+
+  /// Live Sports stream sheet: concurrent viewers when known.
+  final int liveViewerCount;
+
+  /// Live Sports stream sheet: HD quality row.
+  final bool liveStreamHd;
+
+  /// Catalog embed URL before engine unlock (lazy resolve on source switch).
+  final String? liveEngineEmbedUrl;
+
+  /// Opaque resolve context for [IptvLiveEngineResolveSource].
+  final Map<String, dynamic>? liveEngineResolveParams;
+
+  const IptvPlaySource({
+    required this.url,
+    required this.label,
+    this.detail,
+    this.logoUrl,
+    this.streamId,
+    this.epgChannelId,
+    this.headers = const {},
+    this.liveSourceKind,
+    this.liveProviderBadge,
+    this.liveViewerCount = 0,
+    this.liveStreamHd = false,
+    this.liveEngineEmbedUrl,
+    this.liveEngineResolveParams,
+  });
+
+  IptvPlaySource copyWith({
+    String? url,
+    String? label,
+    String? detail,
+    String? logoUrl,
+    String? streamId,
+    String? epgChannelId,
+    Map<String, String>? headers,
+    IptvLiveSourceKind? liveSourceKind,
+    String? liveProviderBadge,
+    int? liveViewerCount,
+    bool? liveStreamHd,
+    String? liveEngineEmbedUrl,
+    Map<String, dynamic>? liveEngineResolveParams,
+  }) {
+    return IptvPlaySource(
+      url: url ?? this.url,
+      label: label ?? this.label,
+      detail: detail ?? this.detail,
+      logoUrl: logoUrl ?? this.logoUrl,
+      streamId: streamId ?? this.streamId,
+      epgChannelId: epgChannelId ?? this.epgChannelId,
+      headers: headers ?? this.headers,
+      liveSourceKind: liveSourceKind ?? this.liveSourceKind,
+      liveProviderBadge: liveProviderBadge ?? this.liveProviderBadge,
+      liveViewerCount: liveViewerCount ?? this.liveViewerCount,
+      liveStreamHd: liveStreamHd ?? this.liveStreamHd,
+      liveEngineEmbedUrl: liveEngineEmbedUrl ?? this.liveEngineEmbedUrl,
+      liveEngineResolveParams:
+          liveEngineResolveParams ?? this.liveEngineResolveParams,
+    );
+  }
+
+  /// Channel name for chrome — strips leading `T3 · ` rank prefix.
+  String get chromeTitle {
+    final t = label.replaceFirst(RegExp(r'^T\d+\s*·\s*'), '').trim();
+    return t.isEmpty ? label : t;
+  }
+
+  /// Match-rank badge (`T1`…`T4`) when the label carries a Sportio tier prefix.
+  String? get tierBadge {
+    final m = RegExp(r'^T(\d+)\s*·\s*').firstMatch(label);
+    if (m == null) return null;
+    return 'T${m.group(1)}';
+  }
+
+  /// Solid fill for [tierBadge] — T1 strongest → T4 weakest.
+  Color? get tierBadgeColor {
+    return switch (tierBadge) {
+      'T1' => const Color(0xFF22C55E), // green
+      'T2' => const Color(0xFF84CC16), // lime
+      'T3' => const Color(0xFFEAB308), // amber
+      'T4' => const Color(0xFF64748B), // slate
+      _ => null,
+    };
+  }
+
+  /// Channel name for Source rows / chrome — portal name as-is (only strips `Tn ·`).
+  String get pickerTitle => chromeTitle;
+
+  /// Source-picker secondary line — category only.
+  String? get pickerSubtitle {
+    final cat = (detail ?? '').trim();
+    if (cat.isEmpty) return null;
+    return _normalizePipes(cat);
+  }
+
+  static String _normalizePipes(String s) =>
+      s.replaceAll(RegExp(r'\s*\|\s*'), ' · ');
+}
+
+/// True when [url] is already a playable handoff (HLS/proxy), not a catalog embed.
+bool iptvLiveEnginePlayUrlReady(String url) {
+  final u = url.trim().toLowerCase();
+  if (u.isEmpty) return false;
+  if (u.contains('127.0.0.1') || u.contains('/hls-proxy')) return true;
+  return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
+}
+
+/// Signed / flaky CDNs (OK.ru, Livepeer, Foorja S3) — re-resolve on recovery
+/// instead of reopening the same dead playlist.
+bool iptvLiveEngineUrlVolatile(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('okcdn.ru') ||
+      host.contains('vkuser.net') ||
+      host.contains('ok.ru') ||
+      host.contains('livepeer') ||
+      host.contains('amazonaws.com') ||
+      host.contains('foorja');
+}
+
+bool iptvLiveEngineCanForceRefresh(IptvPlaySource src) {
+  if (src.liveSourceKind != IptvLiveSourceKind.liveEngine) return false;
+  final params = src.liveEngineResolveParams;
+  if (params == null || params.isEmpty) return false;
+  final matchId = (params['matchId'] ?? '').toString().trim();
+  return matchId.isNotEmpty;
+}
+
+/// Soft buffering reopen reuses the URL. Hard/dead open or volatile CDN
+/// re-unlocks (GOAT/GASM). Avoids "Preparing playback…" spam mid-watch.
+@visibleForTesting
+bool iptvLiveEngineShouldForceRefreshOnRecovery(
+  IptvPlaySource src, {
+  required String reason,
+}) {
+  if (!iptvLiveEngineCanForceRefresh(src)) return false;
+  if (iptvLiveEngineUrlVolatile(src.url)) return true;
+  return iptvIsHardOpenFail(reason) || iptvIsDeadEndpointFail(reason);
+}
+
+/// Resolve-path banners set via [IptvLiveEngineResolveSource] onProgress.
+@visibleForTesting
+bool iptvIsLiveResolveStatusBanner(String? banner) {
+  return banner == 'Unlocking source…' ||
+      banner == 'Refreshing stream…' ||
+      banner == 'Preparing playback…';
+}
+
+/// Cache key for live-source hover / picker health probes.
+String iptvLiveSourceProbeKey(IptvPlaySource src) {
+  final id = (src.streamId ?? '').trim();
+  if (id.isNotEmpty) return id;
+  final url = src.url.trim();
+  if (url.isNotEmpty && !url.startsWith('pending:')) return url;
+  final embed = (src.liveEngineEmbedUrl ?? '').trim();
+  if (embed.isNotEmpty) return embed;
+  return url;
+}
+
+/// Playable URL for [IptvAliveChecker], or null when HTTP cannot judge the row
+/// (catalog embed page, unresolved `pending:` without a handoff URL).
+String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
+  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+      // Flixnest JWT etc.: bare probe paints red while MediaKit opens after
+      // retries (same cold-open flake as "Failed to open" → healthy streak).
+      src.liveSourceKind == IptvLiveSourceKind.stremio) {
+    return null;
+  }
+  final url = src.url.trim();
+  if (iptvLiveEnginePlayUrlReady(url)) {
+    // Signed / Referer playlists (and pack `directPlayback` rows that ship
+    // headers) false-negative on bare HTTP probe while Exo/MediaKit play fine.
+    if (src.headers.isNotEmpty) return null;
+    return url;
+  }
+
+  final embed = (src.liveEngineEmbedUrl ?? '').trim();
+  if (url.startsWith('pending:')) return null;
+
+  if (src.liveSourceKind == IptvLiveSourceKind.liveEngine || embed.isNotEmpty) {
+    return null;
+  }
+
+  if (url.isEmpty) return null;
+  return url;
+}
+
+/// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
+/// Covers embed pages, portal Live TV, Stremio Live TV (signed flixnest JWT),
+/// signed Streamed/WatchFooty HLS (Referer), and direct-playback rows that
+/// drop [IptvPlaySource.liveEngineEmbedUrl].
+bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
+  return iptvLiveSourceProbeUrl(src) == null;
+}
+
+/// Live Sports Providers hover — always wire the status strip (pre-9e66afdf).
+/// Real alive-check when a bare or header probe can run; embed / `pending:`
+/// rows still light green as selectable (not dead). Portals resolve then check.
+bool iptvLiveSourceCanHoverProbe(IptvPlaySource src) {
+  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+      src.liveSourceKind == IptvLiveSourceKind.liveEngine ||
+      src.liveSourceKind == IptvLiveSourceKind.stremio) {
+    return true;
+  }
+  return iptvLiveEnginePlayUrlReady(src.url.trim());
+}
+
+/// Shared hover / focus probe for Providers tiles and in-player Source menu.
+/// Skipped rows (signed HLS, portal Live TV, embeds) remember green without
+/// a bare HTTP check — same contract as [IptvResolveStreamsAdapter].
+Future<bool> iptvLiveSourceRunHoverProbe(
+  IptvPlaySource src, {
+  required KitUrlHealthProbe healthProbe,
+}) async {
+  if (!iptvLiveSourceCanHoverProbe(src)) return true;
+  final key = iptvLiveSourceProbeKey(src);
+  final cached = healthProbe.healthFor(key);
+  if (cached != null) return cached;
+  final probeUrl = iptvLiveSourceProbeUrl(src);
+  if (probeUrl == null) {
+    final ok = iptvLiveSourceProbeSkipped(src);
+    healthProbe.remember(key, ok);
+    return ok;
+  }
+  return healthProbe.checkNow(key, probeUrl);
+}
+
+typedef IptvLiveEngineResolveSource =
+    Future<IptvPlaySource?> Function(
+      IptvPlaySource catalogSource, {
+      void Function(String message)? onProgress,
+      bool forceRefresh,
+    });
+
+/// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
+/// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
+///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
+///   • Tiered recovery: reopen + live-edge → stop+open → recreate
+///   • Mid-stream underrun → no back-buffer (freeze, no replay); proxy + ffmpeg reconnect bridge CDN closes
+///   • Multi-source rotation
+///   • Backoff retries with healthy-streak reset
+///   • Pretty responsive overlay UI
+class IptvPtPlayerScreen extends ConsumerStatefulWidget {
+  final List<IptvPlaySource> sources;
+  final String title;
+  final String? subtitle;
+  final String? logoUrl;
+  final IptvChannelGuide? channelGuide;
+
+  /// Fired when the in-player guide tunes a different Xtream channel.
+  final ValueChanged<IptvStream>? onChannelChanged;
+
+  /// Catalog stream marked dead (Stalker create_link / format fail) → red status.
+  final ValueChanged<String>? onStreamDead;
+
+  /// Which surface preference to read/write (default IPTV).
+  final BuiltInPlayerContext engineContext;
+
+  /// When set on Android, boot with this engine for this session only.
+  final BuiltInPlayerEngine? forceBuiltInEngine;
+
+  /// Movies/series: no live-edge snap, finite recovery, online subs.
+  /// Live channels leave this false so existing live behavior is unchanged.
+  final bool vodPlayback;
+
+  /// Movies/series: fetch online subs + Search-by-name (not live).
+  final bool onlineSubtitles;
+
+  /// Prefer over [title] for subtitle APIs (e.g. series show name).
+  final String? subtitleSearchTitle;
+  final int? subtitleSeason;
+  final int? subtitleEpisode;
+  final int? subtitleYear;
+
+  /// Series: in-player episode list (same panel as hub VOD players).
+  final List<IptvEpisode>? seriesEpisodes;
+  final IptvPortal? seriesPortal;
+
+  /// Show name for chrome / episode switch titles.
+  final String? seriesShowTitle;
+
+  /// When true, top chrome **subtitle** follows the active [IptvPlaySource]
+  /// (My IPTV sports — title stays the match; each source is a different channel).
+  final bool titleTracksSource;
+
+  /// Default live profile when sources omit [IptvPlaySource.liveSourceKind].
+  final IptvLiveSourceKind? liveSourceKind;
+
+  /// Live Sports: unlock catalog embed rows on source switch.
+  final IptvLiveEngineResolveSource? liveEngineResolveSource;
+
+  const IptvPtPlayerScreen({
+    super.key,
+    required this.sources,
+    required this.title,
+    this.subtitle,
+    this.logoUrl,
+    this.channelGuide,
+    this.onChannelChanged,
+    this.onStreamDead,
+    this.engineContext = BuiltInPlayerContext.iptv,
+    this.forceBuiltInEngine,
+    this.vodPlayback = false,
+    this.onlineSubtitles = false,
+    this.subtitleSearchTitle,
+    this.subtitleSeason,
+    this.subtitleEpisode,
+    this.subtitleYear,
+    this.seriesEpisodes,
+    this.seriesPortal,
+    this.seriesShowTitle,
+    this.titleTracksSource = false,
+    this.liveSourceKind,
+    this.liveEngineResolveSource,
+  });
+
+  /// Convenience: build for a single catalog stream (Xtream / Stalker / M3U).
+  factory IptvPtPlayerScreen.singleStream({
+    Key? key,
+    required String url,
+    required IptvStream stream,
+    String? portalName,
+    IptvPortalPlatform? portalPlatform,
+    IptvChannelGuide? channelGuide,
+    ValueChanged<IptvStream>? onChannelChanged,
+    ValueChanged<String>? onStreamDead,
+    BuiltInPlayerContext? engineContext,
+    BuiltInPlayerEngine? forceBuiltInEngine,
+  }) {
+    final vod = stream.kind == 'vod' || stream.kind == 'series';
+    final kind = vod || portalPlatform == null
+        ? null
+        : iptvLiveSourceKindForPortal(portalPlatform);
+    return IptvPtPlayerScreen(
+      key: key,
+      sources: [
+        IptvPlaySource(
+          url: url,
+          label: portalName ?? 'Source 1',
+          logoUrl: stream.icon.isEmpty ? null : stream.icon,
+          streamId: stream.streamId,
+          epgChannelId: stream.epgChannelId.isEmpty
+              ? null
+              : stream.epgChannelId,
+          liveSourceKind: kind,
+        ),
+      ],
+      title: stream.name,
+      subtitle: portalName,
+      logoUrl: stream.icon.isEmpty ? null : stream.icon,
+      channelGuide: channelGuide,
+      onChannelChanged: onChannelChanged,
+      onStreamDead: onStreamDead,
+      // Movies/Series share Settings → Movies; Live keeps IPTV.
+      engineContext:
+          engineContext ??
+          (vod ? BuiltInPlayerContext.vod : BuiltInPlayerContext.iptv),
+      forceBuiltInEngine: forceBuiltInEngine,
+      vodPlayback: vod,
+      onlineSubtitles: vod,
+      subtitleSearchTitle: stream.name,
+      liveSourceKind: kind,
+    );
+  }
+
+  /// Convenience: build for a list of channel hits (multi-source).
+  factory IptvPtPlayerScreen.fromHits({
+    Key? key,
+    required List<ChannelHit> hits,
+    required String title,
+    String? logoUrl,
+    BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
+  }) {
+    final kinds = hits
+        .map((h) => iptvLiveSourceKindForPortal(h.portal.portal.platform))
+        .toList();
+    return IptvPtPlayerScreen(
+      key: key,
+      title: title,
+      logoUrl: logoUrl,
+      engineContext: engineContext,
+      liveSourceKind: kinds.isEmpty ? null : kinds.first,
+      sources: [
+        for (var i = 0; i < hits.length; i++)
+          IptvPlaySource(
+            url: hits[i].streamUrl,
+            label: hits[i].portal.displayLabel,
+            liveSourceKind: kinds[i],
+          ),
+      ],
+    );
+  }
+
+  /// Root-navigator push — same full-window cover + Back slide as movies.
+  /// Masks the shell underlay (no catalog peek during the slide) without
+  /// Offstage/reflow of the rail.
+  static Future<T?> open<T>(
+    BuildContext context,
+    IptvPtPlayerScreen player,
+  ) async {
+    await InAppMiniPlayerController.instance.stopForNewPlay();
+    if (!context.mounted) return null;
+    final hostContext = context;
+    ShellBus.maskShellUnderPlayer.value = true;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!hostContext.mounted) {
+      ShellBus.clearMaskShellUnderPlayer();
+      return null;
+    }
+    return Navigator.of(hostContext, rootNavigator: true).push<T>(
+      InAppMiniAwarePageRoute<T>(
+        settings: const RouteSettings(name: 'iptv_player'),
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          );
+        },
+        builder: (_) => ShellScope.rehost(hostContext, player),
+      ),
+    );
+  }
+
+  @override
+  ConsumerState<IptvPtPlayerScreen> createState() => _IptvPtPlayerScreenState();
+}
+
+class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
+    with
+        WidgetsBindingObserver,
+        _IptvPtPlayerEngineCore,
+        _IptvPtPlayerMkTunables,
+        _IptvPtPlayerLiveProxy,
+        _IptvPtPlayerWatchdog,
+        _IptvPtPlayerRecovery,
+        _IptvPtPlayerEngine,
+        _IptvPtPlayerUi
+    implements InAppMiniPlayerSession {
+  static int _nextExoViewId = 1;
+  static int _nextNativeViewId = 1;
+
+  /// Active built-in decoder for this player session.
+  BuiltInPlayerEngine _playerEngine = BuiltInPlayerEngine.mediaKit;
+
+  bool get _exoBackend => _playerEngine == BuiltInPlayerEngine.exoPlayer;
+  bool get _avPlayerBackend => _playerEngine == BuiltInPlayerEngine.avPlayer;
+  bool get _vlcBackend => _playerEngine == BuiltInPlayerEngine.vlc;
+  bool get _mediaKitBackend => _playerEngine == BuiltInPlayerEngine.mediaKit;
+
+  /// One automatic engine hop after hard open / no first frame (IPTV HLS).
+  bool _engineFailoverUsed = false;
+
+  int? _exoViewId;
+  StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
+  ExoAtvSurfaceFallback? _exoSurfaceFallback;
+
+  int? _avViewId;
+  StreamSubscription<Map<dynamic, dynamic>>? _avEventSub;
+
+  int? _vlcViewId;
+  int? _vlcTextureId;
+  StreamSubscription<Map<dynamic, dynamic>>? _vlcEventSub;
+
+  Player? _player;
+  VideoController? _controller;
+  bool _playerReady = false;
+  int _videoEpoch = 0;
+  /// MediaKit→Exo: remount Exo TextureView once after first paint (issue 129).
+  bool _exoFitRemountAfterMediaKit = false;
+  bool _exoFitRemountDone = false;
+  bool _softwareDecodeForced = false;
+
+  /// Phone MediaKit: software decode (some MediaCodec paths flake).
+  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller OpenGLES).
+  bool _androidMediaKitSafeMode = false;
+
+  bool get _atvMediaKit =>
+      !_exoBackend && !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
+
+  /// Windows D3D11 / ANGLE + live IPTV: HW decode plays ~15–20s then sticks
+  /// the last frame with no reconnect banner. Force software from boot.
+  bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
+
+  /// macOS / Linux live: VideoToolbox / VAAPI one-shots after every CDN socket
+  /// close on Xtream/Stalker **MPEG-TS** — software decode + continuity proxy.
+  /// HLS (Stremio, Forja Live, M3U `.m3u8`) starves under TextureSW (black +
+  /// silent, cache=0 forever) — keep VideoToolbox / VAAPI (issue 273).
+  bool get _desktopLiveSoftwareDecode {
+    if (widget.vodPlayback || kIsWeb) return false;
+    if (!Platform.isMacOS && !Platform.isLinux) return false;
+    final src = _sources.isEmpty
+        ? null
+        : _sources[_sourceIdx.clamp(0, _sources.length - 1)];
+    final kind = src?.liveSourceKind ?? widget.liveSourceKind;
+    if (kind == IptvLiveSourceKind.liveEngine ||
+        kind == IptvLiveSourceKind.stremio) {
+      return false;
+    }
+    if (src != null && iptvUrlLooksLikeHls(src.url)) return false;
+    return true;
+  }
+
+  /// Probed after each open - pure-live feeds must never be seek()'d.
+  bool _streamSeekable = false;
+
+  /// Live MediaKit: localhost TS relay so CDN socket closes never hit mpv.
+  IptvLiveContinuityProxy? _liveContinuityProxy;
+
+  StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
+  StreamSubscription? _durSub, _bufferSub;
+
+  // Seekbar: duration > 1s ⇒ VOD scrubber; live always shows EPG / live-edge bar.
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  Duration _buffered = Duration.zero;
+  bool _isSeeking = false;
+  double _seekPreview = 0.0;
+  /// Catalog VOD, or live with a real DVR window — not mpv's ~2–6s HLS artifact.
+  bool get _isVod {
+    if (widget.vodPlayback) return _duration.inSeconds > 1;
+    if (_duration.inSeconds <= 6) return false;
+    return _duration.inSeconds > 1;
+  }
+
+  /// Live vs Movies/Series chrome (tracks / episodes / engine persist).
+  IptvPlayerChromeProfile get _chrome =>
+      IptvPlayerChromeProfile.fromVodPlayback(widget.vodPlayback);
+
+  late List<IptvPlaySource> _sources;
+  late String _title;
+  String? _subtitle;
+  String? _logoUrl;
+
+  int _sourceIdx = 0;
+  bool _playing = false;
+  bool _buffering = false;
+  bool _userPlayWhenReady = true;
+  String? _statusBanner;
+
+  /// Debounce live position ticks — see [_syncPlaybackBannerVisibility].
+  bool? _playbackBannerSnapshot;
+
+  /// Reconnect / switch messages always; raw "Buffering…" only when stalled.
+  bool get _showPlaybackBanner {
+    if (_statusBanner != null) return true;
+    if (!_buffering) return false;
+    return !_videoAdvancing;
+  }
+
+  /// Playhead or real frame pulse moved recently — picture not frozen.
+  ///
+  /// MediaKit live must not treat demuxer feed / healthy cache as painting —
+  /// VO can freeze with ~30s cache while proxy keepalives still advance.
+  bool get _videoAdvancing {
+    if (!_playing) return false;
+    return DateTime.now().difference(_lastPosChange) <
+        const Duration(milliseconds: 1500);
+  }
+
+  bool _controlsVisible = true;
+  Timer? _hideControlsTimer;
+  final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
+  final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
+  final FocusNode _replayFocus = FocusNode(debugLabel: 'iptv-player-replay');
+  final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
+
+  /// Top-right Player menu (Exo ↔ MediaKit). Explicit FocusNode so D-pad →
+  /// from Back can claim it — [FocusScope.focusInDirection] often fails across
+  /// the wide title gap on Android TV (issue 110).
+  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'iptv-player-menu');
+  final FocusNode _statsFocus = FocusNode(debugLabel: 'iptv-player-stats');
+
+  /// Bottom-row TV FocusNodes — explicit ←/→ like the top bar (Spacer gap
+  /// breaks geometric [focusInDirection] on Android TV).
+  final FocusNode _subtitleFocus = FocusNode(
+    debugLabel: 'iptv-player-subtitles',
+  );
+  final FocusNode _audioFocus = FocusNode(debugLabel: 'iptv-player-audio');
+  final FocusNode _episodesFocus = FocusNode(
+    debugLabel: 'iptv-player-episodes',
+  );
+  final FocusNode _searchChromeFocus = FocusNode(
+    debugLabel: 'iptv-player-search',
+  );
+
+  /// Playing series episode (updated when switching from the in-player panel).
+  int? _playingSeason;
+  int? _playingEpisode;
+  final FocusNode _guideFocus = FocusNode(debugLabel: 'iptv-player-guide');
+  final FocusNode _bottomSourceFocus = FocusNode(
+    debugLabel: 'iptv-player-bottom-source',
+  );
+
+  bool _guideVisible = false;
+  bool _searchVisible = false;
+
+  /// First TV Back focused the Back control — next Back exits even before
+  /// the post-frame [requestFocus] lands.
+  bool _tvBackExitArmed = false;
+  late String _selectedGroupId;
+  late String _currentChannelId;
+  IptvGuideEpgCache? _epgCache;
+
+  /// Armed Forja Sports portal — Stalker create_link without channelGuide.
+  VerifiedPortal? _sportsPortal;
+
+  // Watchdog state
+  Timer? _watchdog;
+  Duration _lastPos = Duration.zero;
+  DateTime _lastPosChange = DateTime.now();
+  DateTime? _bufferingSince;
+
+  /// Stall-reopen mode: when buffering flickers false, wait this long before
+  /// clearing [_bufferingSince] so detector 1's grace is not reset by core-idle.
+  DateTime? _bufferingClearAt;
+  DateTime? _readyNotPlayingSince;
+  // When the current source was last opened. Used by detector 4 to find
+  // "playing=true but never produced a first frame" - the classic
+  // CDN-dropped-mid-handshake hang where mpv neither buffers nor errors.
+  DateTime _openedAt = DateTime.now();
+
+  // Audio state — desktop/phone chrome has mute + hover slider; TV uses
+  // hardware volume keys only (no volume button in the transport row).
+  double _volume = 100.0; // 0..100 (mpv scale)
+  double _volumeBeforeMute = 100.0;
+  bool _muted = false;
+  bool _showVolumeSlider = false;
+  bool _volumeHovering = false;
+  Timer? _hideVolumeTimer;
+
+  // Tracks — MediaKit only (same menus as the home movies player).
+  bool _isNativeSubtitle = false;
+  double _subtitleDelay = 0.0;
+  double _subtitleSize = 44.0;
+  double _subtitleBottomPadding = 24.0;
+  Color _subtitleColor = Colors.white;
+  double _subtitleBgOpacity = 0.67;
+  bool _subtitleBold = false;
+  String _subtitleFont = 'Default';
+  /// Exo Media3 cues → Flutter overlay (issue 230).
+  final ValueNotifier<List<String>> _exoCueTexts =
+      ValueNotifier<List<String>>(const []);
+
+  List<Map<String, dynamic>> _externalSubtitles = [];
+  String? _selectedExternalSubUrl;
+  bool _isFetchingSubs = false;
+  final Map<String, String> _externalSubFileCache = {};
+  StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+  String _subQueryTitle = '';
+  int? _subQueryYear;
+  int? _subQuerySeason;
+  int? _subQueryEpisode;
+
+  // Fullscreen state (desktop only - mobile is permanently immersive)
+  bool _isFullscreen = false;
+  bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
+  /// Desktop Escape ladder (parity with VOD [DesktopPlayerScreen]).
+  bool _escapeExitArmed = false;
+  DateTime? _escapeHandledAt;
+  DateTime? _suppressChromeRevealUntil;
+
+  // Picture-in-picture (same PipService as the movie player)
+  bool _isPipMode = false;
+  bool _pipHover = false;
+  StreamSubscription<bool>? _pipSub;
+
+  Completer<void>? _stopForNewPlayCompleter;
+  /// Keep MediaKit/Exo surface across full ↔ in-app mini (no remount).
+  final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'iptv-player-video');
+  late final FocusNode _miniRootFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-root');
+  late final FocusNode _miniPlayPauseFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-play');
+  late final FocusNode _miniExpandFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-expand');
+  late final FocusNode _miniCloseFocus =
+      FocusNode(debugLabel: 'iptv-in-app-mini-close');
+
+  @override
+  FocusNode get miniRootFocus => _miniRootFocus;
+
+  @override
+  bool get isPlaying => _playing;
+
+  /// Paused because app left foreground — resume only if set (issue 134).
+  bool _pausedByLifecycle = false;
+
+  /// ATV: hide dead MediaCodec texture after veille while still paused (issue 182).
+  bool _coverDeadSurface = false;
+
+  // Retry state
+  int _retryAttempt = 0;
+  DateTime? _lastRecoveryAt;
+
+  /// Bumped to cancel in-flight delayed live-edge snaps (recovery / reopen race).
+  int _liveEdgeSnapEpoch = 0;
+
+  /// Stalker: consecutive hard format/open fails after fresh create_link.
+  int _stalkerHardFailCount = 0;
+
+  /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
+  bool _formatEngineSwapped = false;
+  // When the user explicitly paused (play-after-pause rejoins live edge).
+  DateTime? _pausedAt;
+
+  /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
+  /// re-initing — ignore those so we don't thrash into software decode.
+  DateTime? _ignoreHwDecodeFailUntil;
+  final List<int> _backoffMs = const [
+    500,
+    1000,
+    2000,
+    3000,
+    4000,
+    6000,
+    8000,
+    8000,
+  ];
+  static const int _maxRetries = 8;
+
+  /// Providers / Stremio multi-mirror: hop sooner than portal single-channel
+  /// reconnect (issue 264).
+  static const int _maxRetriesLiveMultiSource = 2;
+  static const Duration _healthyStreakNeeded = Duration(seconds: 6);
+  // After exhausting per-source retries on a single-source stream, keep
+  // probing every N seconds forever - live IPTV channels routinely come
+  // back from short outages, so we don't want to give up.
+  static const Duration _coldRetryInterval = Duration(seconds: 15);
+
+  /// How long a manual reload's live-edge flush gets to restore frames before
+  /// escalating to a real reopen. Covers the flush's own 700ms delay.
+  static const Duration _reloadEscalateAfter = Duration(seconds: 3);
+
+  /// Seconds of demuxer/buffer ahead of the playhead. Updated every watchdog
+  /// tick (MediaKit) or from Exo progress. The recovery gate: if this is above
+  /// [_minHealthyCacheSecs], the stream is working — do not reopen.
+  double _cacheAheadSecs = 0;
+
+  /// Last observed buffered-end mark in ms (Exo / mpv buffer stream).
+  int? _feedMarkMs;
+
+  /// When [_feedMarkMs] last moved — socket still delivering.
+  DateTime? _feedAdvancedAt;
+
+  bool _cacheProbeInFlight = false;
+
+  /// Debug-only UHD telemetry timer (issue 150).
+  Timer? _uhdDiag;
+
+  /// One display-mode switch per MediaKit open (issue 150 — 50 fps on 60 Hz).
+  bool _displayFrameRateApplied = false;
+
+  /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
+  static const double _minHealthyCacheSecs = 2.0;
+
+  /// Continuous Buffering + frozen playhead + **empty** cache this long ⇒ dead.
+  /// Must not trip while demuxer still has a healthy ahead cushion.
+  static const Duration _bufferingHardWallDuration = Duration(seconds: 12);
+
+  /// Ignore one-shot VideoToolbox / hw fails after socket blip or live-edge snap.
+  static const Duration _transientHwDecodeIgnore = Duration(seconds: 8);
+
+  /// Soft reopen when live stays paused with empty cache this long.
+  static const Duration _liveEmptyPauseReopen = Duration(seconds: 5);
+
+  /// HLS cold open: allow ABR variant probe + first segments before soft-reopen.
+  static const Duration _hlsColdOpenGrace = Duration(seconds: 30);
+
+  /// After continuity-proxy CDN reopen: prefer Buffering + refill over
+  /// soft-reopen while the skip gap is absorbed (adaptive skip / ATV).
+  static const Duration _proxyReconnectRecoveryGrace = Duration(seconds: 8);
+
+  /// Last continuity-proxy upstream reopen (MediaKit + Exo Xtream).
+  DateTime? _lastProxyReconnectAt;
+
+  /// Demuxer/buffer ahead when [_lastProxyReconnectAt] was set — refill check.
+  double _cacheAheadAtProxyReconnect = 0;
+
+  /// Sustained Buffering + near-empty demuxer: fps paint pulse alone is not
+  /// "working" (Stalker / direct live SW underrun). Soft-reopen can fire.
+  static const Duration _liveEmptyBufferingUnderrun = Duration(seconds: 5);
+
+  /// Demuxer ahead below this during Buffering ⇒ empty underrun (not healthy).
+  static const double _liveEmptyUnderrunCacheSecs = 0.5;
+
+  /// Tunables ask for ~30 s readahead. Anything far above that is almost
+  /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not
+  /// real buffered media — reject for the Stable recovery gate.
+  static const double _maxSaneCacheAheadSecs = 90.0;
+
+  /// Feed mark moved within this window ⇒ still downloading.
+  static const Duration _networkAliveWindow = Duration(seconds: 3);
+
+  /// How long ffmpeg gets on VOD before app escalates (live uses cache gate).
+  static const Duration _ffmpegReconnectGrace = Duration(seconds: 8);
+
+  /// Stall-reopen: require continuous non-buffering this long before resetting
+  /// [_bufferingSince] (media_kit `core-idle` flicker).
+  static const Duration _bufferingClearHold = Duration(milliseconds: 1500);
+
+  bool _socketTroublePending = false;
+
+  /// Settings raw mode ([SettingsService.iptvLiveRecoveryAuto] default).
+  /// Watchdog uses [_liveRecoveryMode] after Auto resolve.
+  String _liveRecoveryModeSetting = SettingsService.iptvLiveRecoveryAuto;
+
+  /// Effective recovery policy for this open (Auto → buffered, etc.).
+  String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
+
+  void _applyLiveRecoveryModeForCurrentSource({IptvPlaySource? src}) {
+    final active = src ??
+        (_sources.isEmpty
+            ? null
+            : _sources[_sourceIdx.clamp(0, _sources.length - 1)]);
+    final kind = active?.liveSourceKind ?? widget.liveSourceKind;
+    _liveRecoveryMode = SettingsService.resolveIptvLiveRecoveryMode(
+      _liveRecoveryModeSetting,
+      liveSourceKind: kind?.name,
+    );
+    debugPrint(
+      '[IPTV Player] live recovery kind=${kind?.name ?? "null"} '
+      'setting=$_liveRecoveryModeSetting effective=$_liveRecoveryMode',
+    );
+  }
+
+  /// Last decoded height / bitrate — cache tiers and proxy queue (ATV live).
+  int _lastVideoHeight = 0;
+  int _lastVideoBitrate = 0;
+  bool _liveCacheTierApplied = false;
+
+  /// Paint stall detection (MediaKit live — I199 / perf plan).
+  int _livePaintMissStreak = 0;
+  bool _voFreezeSnapAttempted = false;
+  DateTime? _lastDemuxerSampleAt;
+  int _stallFrameDropBaseline = -1;
+  DateTime? _stallPaintWatchSince;
+
+  static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
+
+  /// ATV MediaKit: lean Player buffer for live and Movies/Series — demuxer
+  /// owns readahead. VOD used to inherit 64 MiB and OOM on 4K MediaCodec.
+  PlayerConfiguration get _mediaKitPlayerConfiguration {
+    if (_atvMediaKit) {
+      return const PlayerConfiguration(
+        bufferSize: 32 * 1024 * 1024,
+        logLevel: MPVLogLevel.warn,
+        libass: true,
+      );
+    }
+    return _playerConfiguration;
+  }
+
+  static bool _isBenignMpvError(String msg) {
+    final lower = msg.toLowerCase();
+    return lower.contains('cannot seek') ||
+        lower.contains('force-seekable') ||
+        lower.contains("expected '=' and a value");
+  }
+
+  bool _disposed = false;
+  bool _playerAlive = false;
+
+  /// Instant mute/pause before route pop (mirrors VOD [_stopPlaybackForExit]).
+  bool _playbackStopped = false;
+
+  /// Prevents double pop from Back button + remote Back gate.
+  bool _exitInProgress = false;
+
+  static const _playerConfiguration = PlayerConfiguration(
+    bufferSize: 64 * 1024 * 1024,
+    logLevel: MPVLogLevel.warn,
+    libass: true,
+  );
+
+  static String _fmtDur(Duration d) {
+    final s = d.inSeconds.abs();
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    String two(int n) => n.toString().padLeft(2, '0');
+    return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    InAppMiniPlayerController.instance.attach(this);
+    unawaited(InAppMiniPlayerController.readSettingEnabled());
+    // Cover catalog/rail under the opaque route (set again from [open] before
+    // push so the first slide frame is already masked).
+    ShellBus.maskShellUnderPlayer.value = true;
+    ShellBus.enterPlayerSurface();
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (_disposed || !mounted) return false;
+      if (_isPipMode) return false;
+      // Menus (Stream stats, Player, …) own Back before the exit ladder.
+      if (dismissAnyPlayerChromeOverlay()) {
+        _tvBackExitArmed = false;
+        return true;
+      }
+      // Guide owns Back first (HardwareKeyboard steals Focus onKey).
+      // Search is handled by [setTryConsumePlayerOverlay] (results → field →
+      // close) before this ladder runs.
+      if (_guideVisible) {
+        setState(() {
+          _guideVisible = false;
+          _controlsVisible = true;
+        });
+        _tvBackExitArmed = false;
+        _hideControlsTimer?.cancel();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_disposed || !mounted) return;
+          _claimPlayFocus();
+        });
+        return true;
+      }
+      final stay = PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _controlsVisible,
+        armed: _tvBackExitArmed,
+        hideChrome: () {
+          _hideControlsTimer?.cancel();
+          setState(() => _controlsVisible = false);
+        },
+        setArmed: (v) {
+          if (_disposed || !mounted) return;
+          if (_tvBackExitArmed == v) return;
+          setState(() => _tvBackExitArmed = v);
+        },
+      );
+      return stay;
+    });
+    PlayerBackExitGate.setTryConsumePlayerOverlay(() {
+      if (_disposed || !mounted || _isPipMode) return false;
+      if (!_searchVisible) return false;
+      // Results list → search field (HardwareKeyboard steals Focus onKey).
+      if (IptvChannelSearchOverlay.tryConsumeBackToField()) {
+        _tvBackExitArmed = false;
+        return true;
+      }
+      // Field (or empty results) → close overlay; stay in player.
+      setState(() {
+        _searchVisible = false;
+        _controlsVisible = true;
+      });
+      _tvBackExitArmed = false;
+      _hideControlsTimer?.cancel();
+      _scheduleHideControls();
+      return true;
+    });
+    _sources = List<IptvPlaySource>.from(widget.sources);
+    if (widget.titleTracksSource && widget.sources.isNotEmpty) {
+      _title = widget.title;
+      _subtitle = widget.sources.first.pickerTitle;
+    } else {
+      _title = widget.title;
+      _subtitle = widget.subtitle;
+    }
+    _logoUrl = widget.logoUrl;
+    _playingSeason = widget.subtitleSeason;
+    _playingEpisode = widget.subtitleEpisode;
+    _seedSubtitleQuery();
+    final guide = widget.channelGuide;
+    _selectedGroupId = guide?.initialGroupId ?? '';
+    _currentChannelId = guide?.initialChannelId ?? '';
+    final portal = guide?.xtreamPortal;
+    if (portal != null) {
+      _epgCache = IptvGuideEpgCache(portal);
+    } else if (widget.titleTracksSource &&
+        (widget.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+            widget.liveSourceKind == IptvLiveSourceKind.iptvStalker)) {
+      unawaited(_initSportsEpgCache());
+    }
+    WidgetsBinding.instance.addObserver(this);
+    HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
+    if (_windowsSoftwareDecode || _desktopLiveSoftwareDecode) {
+      _softwareDecodeForced = true;
+    }
+    _initOrientationAndChrome();
+    WakelockPlus.enable();
+    void onPipChanged(bool inPip) {
+      if (_disposed || !mounted) return;
+      setState(() {
+        _isPipMode = inPip;
+        if (inPip) {
+          _controlsVisible = false;
+          _guideVisible = false;
+          _searchVisible = false;
+          _hideControlsTimer?.cancel();
+          _pausedByLifecycle = false;
+        }
+      });
+      if (inPip && !_playing) {
+        _userPlayWhenReady = true;
+        unawaited(_enginePlay());
+      }
+    }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      _pipSub = PipService.instance.androidPipChanges.listen(onPipChanged);
+    } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
+      _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
+      PipService.instance.bindAutoEnterOnDesktopSwitch(
+        token: this,
+        shouldEnter: () =>
+            !_disposed && mounted && (_playing || _pausedByLifecycle),
+      );
+    }
+    // Same as VOD: [waitForRouteTransition] uses ModalRoute.of — illegal in
+    // initState. Defer until after the first frame so the modal scope exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || !mounted) return;
+      unawaited(_bootWithCachedVolume());
+    });
+  }
+
+  /// Space / remote play-pause. Clears [_userPlayWhenReady] so the live
+  /// watchdog does not microtask-resume after pause.
+  Future<void> _togglePlayPauseFromKey() async {
+    if (_playing) {
+      _userPlayWhenReady = false;
+      _pausedAt = DateTime.now();
+      await _enginePause();
+    } else {
+      _userPlayWhenReady = true;
+      final pausedAt = _pausedAt;
+      _pausedAt = null;
+      await _enginePlay();
+      if (pausedAt != null &&
+          _chrome == IptvPlayerChromeProfile.live &&
+          iptvExoUrlLooksLive(
+            _sources.isEmpty ? '' : _sources[_sourceIdx].url,
+          ) &&
+          DateTime.now().difference(pausedAt) >= const Duration(seconds: 2)) {
+        _scheduleJumpToLive(force: true);
+      }
+    }
+  }
+
+  /// D-pad / remote keys while chrome is up count as activity. Row focus
+  /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
+  /// alone never sees them - without this, controls hide mid-navigation.
+  ///
+  /// Desktop also handles Space / Escape here — [PlayerTvKeyScope] is TV-only.
+  bool _onRemoteControlsActivity(KeyEvent event) {
+    if (_disposed || !mounted) return false;
+
+    // Desktop: Space toggles play/pause without revealing chrome.
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.space &&
+        !iptvUseTvFocus(context)) {
+      if (_guideVisible || _searchVisible || _isPipMode) return false;
+      if (playerChromeOverlayBlocksFocusClaim()) return false;
+      unawaited(_togglePlayPauseFromKey());
+      return true;
+    }
+
+    // Desktop Escape: same hide → leave-fullscreen → arm → leave ladder as VOD.
+    // Live sports also uses this player.
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape &&
+        _isDesktop) {
+      if (_isPipMode) return false;
+      if (InAppMiniPlayerController.instance.isActive) {
+        unawaited(InAppMiniPlayerController.instance.close());
+        return true;
+      }
+      _handleEscapeKey();
+      return true;
+    }
+
+    if (!shellTvIsNavigationKey(event)) return false;
+    if (!_controlsVisible || _guideVisible || _searchVisible || _isPipMode) {
+      return false;
+    }
+    _scheduleHideControls();
+    return false;
+  }
+
+  /// Boot prefs: engine from [widget.engineContext] KV; volume/EPG from
+  /// [iptvPlayerBootPrefsProvider].
+  Future<void> _bootWithCachedVolume() async {
+    // Same contract as VOD [waitForRouteTransition]: do not open Exo/MediaKit
+    // while a shell slide is still compositing (jank on weak Android 7 TVs).
+    // On ATV slides are Duration.zero — this returns immediately.
+    await waitForRouteTransition(context);
+    if (_disposed || !mounted) return;
+    // Live Sports Streamed keeps an embed WebView under this route for CDN
+    // proxy fetches — that platform view steals leanback keys unless blocked.
+    if (PlatformInfo.isAndroidTv) {
+      await PlatformChannel.releaseUnderlayPlatformViewFocus();
+      if (_disposed || !mounted) return;
+    }
+    final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
+    if (_disposed || !mounted) return;
+    _playerEngine = await _resolveBootEngine();
+    if (_disposed || !mounted) return;
+    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
+    _androidMediaKitSafeMode =
+        _mediaKitBackend &&
+        !kIsWeb &&
+        Platform.isAndroid &&
+        !PlatformInfo.isAndroidTv;
+    _volume = prefs.volume;
+    _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
+    _muted = prefs.volume == 0;
+    // Leanback has no chrome volume — remote drives system volume. Softvol must
+    // stay audible; a prior softvol mute (old HW remap) would look like "dead remote".
+    if (PlatformInfo.isAndroidTv && _volume <= 0) {
+      _volume = _volumeBeforeMute > 0 ? _volumeBeforeMute : 100.0;
+      _muted = false;
+      unawaited(IptvStore.savePlayerVolume(_volume));
+    }
+    _liveRecoveryModeSetting = prefs.liveRecoveryMode;
+    _applyLiveRecoveryModeForCurrentSource();
+    try {
+      final subPrefs = await ref.read(playerSubtitlePrefsProvider(true).future);
+      if (!_disposed && mounted) {
+        _subtitleSize = subPrefs.size;
+        _subtitleColor = Color(subPrefs.colorArgb);
+        _subtitleBgOpacity = subPrefs.bgOpacity;
+        _subtitleBold = subPrefs.bold;
+        _subtitleBottomPadding = subPrefs.bottomPadding;
+        _subtitleFont = subPrefs.font;
+      }
+    } catch (_) {}
+    if (_exoBackend) {
+      await _bootExoPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
+    } else if (_avPlayerBackend) {
+      await _bootAvPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
+    } else if (_vlcBackend) {
+      await _bootVlcPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
+    } else {
+      await _bootPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
+    }
+  }
+
+  /// Pick engine for this open: prefs + TS→MediaKit + VLC availability.
+  Future<BuiltInPlayerEngine> _resolveBootEngine() async {
+    final forced = widget.forceBuiltInEngine;
+    var engine = forced ??
+        await SettingsService().getBuiltInPlayerEngine(
+          context: widget.engineContext,
+        );
+    if (!engine.isAvailableOnCurrentPlatform) {
+      engine = BuiltInPlayerEngine.mediaKit;
+    }
+    final url = _sources.isNotEmpty ? _sources.first.url : '';
+    final isHls = iptvUrlLooksLikeHls(url);
+    // Progressive MPEG-TS / non-HLS live → MediaKit + continuity proxy only.
+    if (!widget.vodPlayback && !isHls) {
+      debugPrint(
+        '[IPTV Player] engine=mediakit (progressive TS / non-HLS)',
+      );
+      return BuiltInPlayerEngine.mediaKit;
+    }
+    if (engine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      debugPrint('[IPTV Player] VLC unavailable → MediaKit');
+      engine = BuiltInPlayerEngine.mediaKit;
+    }
+    debugPrint('[IPTV Player] engine=${engine.storageKey}');
+    return engine;
+  }
+
+  void _seedSubtitleQuery() {
+    if (!widget.onlineSubtitles) return;
+    final raw = (widget.subtitleSearchTitle ?? widget.title).trim();
+    final cleaned = cleanIptvMediaTitle(raw);
+    _subQueryTitle = cleaned.title.isNotEmpty ? cleaned.title : raw;
+    _subQueryYear = widget.subtitleYear ?? cleaned.year;
+    _subQuerySeason = widget.subtitleSeason ?? cleaned.season;
+    _subQueryEpisode = widget.subtitleEpisode ?? cleaned.episode;
+  }
+
+  /// Hot-swap built-in engines from the in-player Player menu.
+  /// Set [persist] false for one-shot recovery so IPTV Settings stay unchanged.
+  Future<void> _switchBuiltInEngine(
+    BuiltInPlayerEngine engine, {
+    bool persist = true,
+  }) async {
+    if (kIsWeb) return;
+    if (!engine.isAvailableOnCurrentPlatform) return;
+    final url = _sources.isNotEmpty ? _sources[_sourceIdx].url : '';
+    final unfit = builtInPlayerEngineUnsuitableReason(
+      engine,
+      surface: widget.vodPlayback
+          ? BuiltInPlayerMenuSurface.iptvVod
+          : BuiltInPlayerMenuSurface.iptvLive,
+      streamUrl: url,
+    );
+    if (unfit != null) {
+      if (mounted) ForjaToast.info(unfit);
+      return;
+    }
+    if (engine == BuiltInPlayerEngine.vlc &&
+        !await VlcPlayerBridge.isAvailable()) {
+      if (mounted) {
+        ForjaToast.warning('VLC not found. Install VLC or use MediaKit.');
+      }
+      return;
+    }
+    if (persist) {
+      await SettingsService().setBuiltInPlayerEngine(
+        engine,
+        context: widget.engineContext,
+      );
+    }
+    if (_disposed || !mounted) return;
+    if (engine == _playerEngine) return;
+
+    if (mounted) {
+      setState(() {
+        _playerReady = false;
+        _statusBanner = 'Switching player…';
+      });
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (_disposed || !mounted) return;
+
+    await _releaseEngineForHotSwap();
+    if (_disposed || !mounted) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (_disposed || !mounted) return;
+
+    if (engine == BuiltInPlayerEngine.exoPlayer ||
+        engine == BuiltInPlayerEngine.mediaKit) {
+      try {
+        await MpvExclusiveSession.instance
+            .prepareForVideoPlayer(
+              timeout: const Duration(milliseconds: 1200),
+            )
+            .timeout(const Duration(milliseconds: 1500));
+      } catch (_) {}
+      if (_disposed || !mounted) return;
+      if (engine == BuiltInPlayerEngine.exoPlayer) {
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (_disposed || !mounted) return;
+      }
+    }
+
+    _playerEngine = engine;
+    _androidMediaKitSafeMode = _mediaKitBackend && !PlatformInfo.isAndroidTv;
+    _softwareDecodeForced =
+        _windowsSoftwareDecode || _desktopLiveSoftwareDecode;
+    _player = null;
+    _controller = null;
+    _exoViewId = null;
+    _avViewId = null;
+    _vlcViewId = null;
+    _vlcTextureId = null;
+    _retryAttempt = 0;
+    _playbackStopped = false;
+
+    debugPrint('[IPTV Player] engine=${engine.storageKey} (switch)');
+    if (_exoBackend) {
+      await _bootExoPlayer();
+    } else if (_avPlayerBackend) {
+      await _bootAvPlayer();
+    } else if (_vlcBackend) {
+      await _bootVlcPlayer();
+    } else {
+      await _bootPlayer();
+    }
+    if (mounted) setState(() => _statusBanner = null);
+  }
+
+  /// Instant mute/pause (native mpv props) — do not await hung stop before pop.
+  Future<void> _stopPlaybackForExit() async {
+    if (_playbackStopped) return;
+    _playbackStopped = true;
+    if (_exoBackend) {
+      final id = _exoViewId;
+      if (id != null) {
+        try {
+          await ExoPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    if (_avPlayerBackend) {
+      final id = _avViewId;
+      if (id != null) {
+        try {
+          await AvPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    if (_vlcBackend) {
+      final id = _vlcViewId;
+      if (id != null) {
+        try {
+          await VlcPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    final player = _player;
+    if (player == null) return;
+    await silenceMediaKitPlayer(player);
+  }
+
+  /// Silence + unmount the video surface, then pop. Matches VOD exit so
+  /// MediaKit/MediaCodec teardown is not on the Navigator.pop critical path.
+  Future<void> _exitIptvPlayer() async {
+    if (_disposed || _exitInProgress) return;
+    if (ShellTvFocusCoordinator.consumeOverlayBack()) {
+      _tvBackExitArmed = false;
+      PlayerBackExitGate.exitReady = false;
+      return;
+    }
+    _exitInProgress = true;
+    final nav = Navigator.of(context, rootNavigator: true);
+    await _stopPlaybackForExit();
+    if (!mounted || _disposed) return;
+    // Android: unmount MediaCodec before pop (ANR). Desktop keeps the
+    // surface so the slide does not flash the underlay mid-transition.
+    if (!kIsWeb && Platform.isAndroid && _playerReady) {
+      setState(() => _playerReady = false);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || _disposed) return;
+    if (nav.canPop()) {
+      nav.pop();
+    }
+  }
+
+  static bool _isUnrecognizedFormatError(String msg) {
+    final lower = msg.toLowerCase();
+    return lower.contains('failed to recognize file format') ||
+        lower.contains('unrecognizedinputformat') ||
+        lower.contains('none of the available extractors') ||
+        (lower.contains('source error') && lower.contains('m3u8'));
+  }
+
+  /// After format / hard-open errors, try the other engine once.
+  /// Live: one failover hop (platform HLS → MediaKit). VOD may still swap Exo↔MK.
+  Future<void> _autoSwapEngineForFormatError(String reason) async {
+    if (_disposed || _formatEngineSwapped || kIsWeb) return;
+    if (!widget.vodPlayback) {
+      await _failoverIptvEngineOnce(reason);
+      return;
+    }
+    if (!Platform.isAndroid) return;
+    _formatEngineSwapped = true;
+    final next = _exoBackend
+        ? BuiltInPlayerEngine.mediaKit
+        : BuiltInPlayerEngine.exoPlayer;
+    debugPrint('[IPTV] format error → auto-swap to $next ($reason)');
+    if (mounted) {
+      setState(() => _statusBanner = 'Trying ${next.displayName}…');
+    }
+    await _switchBuiltInEngine(next, persist: false);
+  }
+
+  /// One-hop live HLS failover then stop (plan R107-A07).
+  Future<void> _failoverIptvEngineOnce(String reason) async {
+    if (_disposed || _engineFailoverUsed || widget.vodPlayback) return;
+    final url = _sources.isNotEmpty ? _sources[_sourceIdx].url : '';
+    if (!iptvUrlLooksLikeHls(url)) return;
+
+    BuiltInPlayerEngine? next;
+    if (_avPlayerBackend || _vlcBackend || _exoBackend) {
+      next = BuiltInPlayerEngine.mediaKit;
+    } else if (_mediaKitBackend) {
+      if (!kIsWeb && Platform.isMacOS && AvPlayerBridge.isSupported) {
+        next = BuiltInPlayerEngine.avPlayer;
+      } else if (!kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux) &&
+          await VlcPlayerBridge.isAvailable()) {
+        next = BuiltInPlayerEngine.vlc;
+      } else if (!kIsWeb && Platform.isAndroid) {
+        next = BuiltInPlayerEngine.exoPlayer;
+      }
+    }
+    if (next == null || next == _playerEngine) return;
+    _engineFailoverUsed = true;
+    _formatEngineSwapped = true;
+    debugPrint(
+      '[IPTV Player] failover ${_playerEngine.storageKey}→${next.storageKey} '
+      '($reason)',
+    );
+    if (mounted) {
+      setState(() => _statusBanner = 'Trying ${next!.displayName}…');
+    }
+    await _switchBuiltInEngine(next, persist: false);
+  }
+
+  /// Apply volume to the engine and persist for the next IPTV player open.
+  void _setCachedVolume(double volume) {
+    final v = volume.clamp(0.0, 100.0);
+    _volume = v;
+    _muted = v == 0;
+    if (v > 0) _volumeBeforeMute = v;
+    _engineSetVolume(v);
+    unawaited(IptvStore.savePlayerVolume(v));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _pauseForAppBackground();
+    } else if (state == AppLifecycleState.inactive) {
+      if (!_disposed &&
+          !_isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          !PipService.instance.autoPipArmed &&
+          !InAppMiniPlayerController.instance.isActive &&
+          !SettingsService.keepsPlayingInBackground &&
+          _playing) {
+        _pausedByLifecycle = true;
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      _armDeadSurfaceCoverIfNeeded();
+      _resumeAfterAppBackground();
+    }
+  }
+
+  void _pauseForAppBackground() {
+    if (_disposed ||
+        _isPipMode ||
+        PipService.instance.isDesktopActive ||
+        InAppMiniPlayerController.instance.isActive) {
+      return;
+    }
+    if (PipService.instance.autoPipArmed && (_playing || _pausedByLifecycle)) {
+      unawaited(PipService.instance.enterInsteadOfPause());
+      return;
+    }
+    if (SettingsService.keepsPlayingInBackground) return;
+    // Live may report !_playing while buffering — still stop decode/audio.
+    if (_playing || _userPlayWhenReady) {
+      _pausedByLifecycle = true;
+      _userPlayWhenReady = false;
+      unawaited(_enginePause());
+    }
+  }
+
+  void _resumeAfterAppBackground() {
+    if (_disposed || !_pausedByLifecycle) return;
+    _pausedByLifecycle = false;
+    if (_isPipMode || PipService.instance.isDesktopActive) return;
+    _userPlayWhenReady = true;
+    unawaited(_enginePlay());
+  }
+
+  /// Veille kills TextureView / mediacodec_embed; paused decode leaves green YUV.
+  void _armDeadSurfaceCoverIfNeeded() {
+    if (_disposed ||
+        !PlatformInfo.isAndroidTv ||
+        _pausedByLifecycle ||
+        _playing) {
+      return;
+    }
+    if (_coverDeadSurface) return;
+    setState(() => _coverDeadSurface = true);
+  }
+
+  void _clearDeadSurfaceCover() {
+    if (!_coverDeadSurface) return;
+    if (mounted) {
+      setState(() => _coverDeadSurface = false);
+    } else {
+      _coverDeadSurface = false;
+    }
+  }
+
+  /// Forja Sports: last Xtream/Stalker portal for in-player short EPG.
+  Future<void> _initSportsEpgCache() async {
+    final portal = await IptvChannelSearch.resolvePortal();
+    if (portal == null || _disposed || !mounted) return;
+    _sportsPortal = portal;
+    if (!portal.portal.platform.supportsEpg) return;
+    setState(() => _epgCache = IptvGuideEpgCache(portal));
+  }
+
+  /// Channel guide id or active sports source stream id — keys floating EPG.
+  String get _floatingEpgKey {
+    if (_currentChannelId.isNotEmpty) return _currentChannelId;
+    if (_sources.isEmpty) return '';
+    final id =
+        (_sources[_sourceIdx.clamp(0, _sources.length - 1)].streamId ?? '')
+            .trim();
+    return id;
+  }
+
+  IptvStream? _epgStreamForActiveSource() {
+    if (_sources.isEmpty) return null;
+    final src = _sources[_sourceIdx.clamp(0, _sources.length - 1)];
+    final streamId = (src.streamId ?? '').trim();
+    if (streamId.isEmpty) return null;
+    return IptvStream(
+      streamId: streamId,
+      name: src.chromeTitle,
+      icon: src.logoUrl ?? '',
+      categoryId: '',
+      containerExt: 'ts',
+      kind: 'live',
+      epgChannelId: (src.epgChannelId ?? '').trim(),
+    );
+  }
+
+  /// My IPTV sports: chrome subtitle = active channel; title stays the match.
+  void _syncTitleToActiveSource() {
+    if (!widget.titleTracksSource || _sources.isEmpty) return;
+    final i = _sourceIdx.clamp(0, _sources.length - 1);
+    _subtitle = _sources[i].pickerTitle;
+  }
+
+  @override
+  void dispose() {
+    PlayerBackExitGate.setTryFocusBack(null);
+    PlayerBackExitGate.setTryConsumePlayerOverlay(null);
+    ShellBus.leavePlayerSurface();
+    ShellBus.clearMaskShellUnderPlayer();
+    _disposed = true;
+    InAppMiniPlayerController.instance.detach(this);
+    _miniRootFocus.dispose();
+    _miniPlayPauseFocus.dispose();
+    _miniExpandFocus.dispose();
+    _miniCloseFocus.dispose();
+    final stopWait = _stopForNewPlayCompleter;
+    if (stopWait != null && !stopWait.isCompleted) {
+      stopWait.complete();
+    }
+    WidgetsBinding.instance.removeObserver(this);
+    HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
+    _backFocus.dispose();
+    _playFocus.dispose();
+    _replayFocus.dispose();
+    _playerMenuFocus.dispose();
+    _statsFocus.dispose();
+    _subtitleFocus.dispose();
+    _audioFocus.dispose();
+    _episodesFocus.dispose();
+    _searchChromeFocus.dispose();
+    _guideFocus.dispose();
+    _bottomSourceFocus.dispose();
+    _pipSub?.cancel();
+    PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
+    _watchdog?.cancel();
+    _uhdDiag?.cancel();
+    unawaited(PlatformChannel.clearDisplayFrameRate());
+    _displayFrameRateApplied = false;
+    _hideControlsTimer?.cancel();
+    _hideVolumeTimer?.cancel();
+    _subtitleFetchSub?.cancel();
+    _exoCueTexts.dispose();
+    _playerTvKeyFocus.dispose();
+    _seekFocus.dispose();
+    unawaited(_finalizeExit());
+    WakelockPlus.disable();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    if (_isDesktop) {
+      // Exit host fullscreen only when this session has a windowed snapshot
+      // (issue 196 / already-fullscreen keep). PiP leave still restores its
+      // own saved bounds.
+      Future.microtask(() async {
+        try {
+          if (PipService.instance.isDesktopActive) {
+            await PipService.instance.leave();
+          }
+          await DesktopWindowGeometry.leavePlayerChrome();
+        } catch (_) {}
+      });
+    }
+    super.dispose();
+  }
+}

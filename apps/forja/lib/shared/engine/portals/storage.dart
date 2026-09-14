@@ -1,0 +1,624 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:forja/shared/sync/bridge/sync_domain_bridge.dart';
+import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'models.dart';
+
+/// Map key for portal passwords in [SecureSettings.iptvPortalPasswords].
+String iptvPortalPasswordMapKey(String url, String username) =>
+    '${url.trim()}|${username.trim()}'.toLowerCase();
+
+/// Prefs JSON for one portal - never includes the password.
+Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
+      'url': v.portal.url,
+      'username': v.portal.username,
+      'source': v.portal.source,
+      'platform': v.portal.platform.wire,
+      if (v.portal.userAgent.isNotEmpty) 'userAgent': v.portal.userAgent,
+      'label': v.label,
+      'name': v.name,
+      'expiry': v.expiry,
+      'max': v.maxConnections,
+      'active': v.activeConnections,
+    };
+
+/// Verified portal store (port of IptvStore.kt).
+///
+/// Non-secret portal metadata lives in SharedPreferences. Passwords live in
+/// Keychain/Keystore via [SecureSettings.iptvPortalPasswords]. CSV export still
+/// writes plaintext passwords on purpose (user-owned backup file).
+class IptvStore {
+  static const _key = 'pt_iptv_verified_portals';
+  static const _favKey = 'pt_iptv_favorite_portal_keys';
+  static const _lastPortalKey = 'pt_iptv_last_portal_key';
+  static const _lastSectionKey = 'pt_iptv_last_section';
+  static const _liveCategorySortKey = 'pt_iptv_live_category_sort';
+  static const _liveContentSortKey = 'pt_iptv_live_content_sort';
+  static const _liveBrowseLayoutKey = 'pt_iptv_live_browse_layout';
+  static const _playerVolumeKey = 'pt_iptv_player_volume';
+  static const _catalogStatsKey = 'pt_iptv_catalog_stats_v1';
+
+  /// Bumped when portals change outside the IPTV tab (CSV import, etc.).
+  static final ValueNotifier<int> listRevision = ValueNotifier(0);
+
+  static void notifyListChanged() {
+    listRevision.value++;
+  }
+
+  static Future<Map<String, String>> _loadPasswordMap() async {
+    final raw = await SecureSettings.read(SecureSettings.iptvPortalPasswords);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final e in decoded.entries)
+          e.key.toString(): e.value?.toString() ?? '',
+      }..removeWhere((_, v) => v.isEmpty);
+    } catch (e) {
+      debugPrint('IptvStore password map decode failed: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> _writePasswordMap(Map<String, String> map) async {
+    final cleaned = {
+      for (final e in map.entries)
+        if (e.value.isNotEmpty) e.key: e.value,
+    };
+    try {
+      if (cleaned.isEmpty) {
+        await SecureSettings.delete(SecureSettings.iptvPortalPasswords);
+      } else {
+        await SecureSettings.write(
+          SecureSettings.iptvPortalPasswords,
+          json.encode(cleaned),
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('IptvStore secure password write failed: $e');
+      return false;
+    }
+  }
+
+  static Future<List<VerifiedPortal>> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null) return [];
+    try {
+      final arr = json.decode(raw) as List;
+      final passwords = await _loadPasswordMap();
+      var needsStrip = false;
+      final list = <VerifiedPortal>[];
+
+      for (final e in arr) {
+        final o = e as Map<String, dynamic>;
+        final url = o['url'] as String? ?? '';
+        final username = o['username'] as String? ?? '';
+        final legacyPassword = o['password'] as String? ?? '';
+        final mapKey = iptvPortalPasswordMapKey(url, username);
+        var password = passwords[mapKey] ?? '';
+
+        if (legacyPassword.isNotEmpty) {
+          if (password != legacyPassword) {
+            passwords[mapKey] = legacyPassword;
+            password = legacyPassword;
+          }
+          needsStrip = true;
+        }
+
+        list.add(
+          VerifiedPortal(
+            portal: IptvPortal(
+              url: url,
+              username: username,
+              password: password,
+              source: o['source'] as String? ?? '',
+              platform: IptvPortalPlatform.fromString(o['platform'] as String?),
+              userAgent: o['userAgent'] as String? ?? '',
+            ),
+            label: o['label'] as String? ?? '',
+            name: o['name'] as String? ?? '',
+            expiry: o['expiry'] as String? ?? '',
+            maxConnections: o['max'] as String? ?? '1',
+            activeConnections: o['active'] as String? ?? '0',
+          ),
+        );
+      }
+
+      if (needsStrip) {
+        final secured = await _writePasswordMap(passwords);
+        if (secured) {
+          await prefs.setString(
+            _key,
+            json.encode(list.map(iptvPortalMetadataJson).toList()),
+          );
+        }
+      }
+
+      return list;
+    } catch (e) {
+      debugPrint('IptvStore.load failed: $e');
+      return [];
+    }
+  }
+
+  /// Persist local IPTV cache. Cloud is master - [scheduleSync] only for real
+  /// user edits (add/edit/delete). Profile wipe / pull apply pass false.
+  static Future<void> save(
+    List<VerifiedPortal> list, {
+    bool scheduleSync = true,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final passwords = <String, String>{
+      for (final v in list)
+        if (v.portal.password.isNotEmpty)
+          iptvPortalPasswordMapKey(v.portal.url, v.portal.username):
+              v.portal.password,
+    };
+
+    final secured = await _writePasswordMap(passwords);
+    if (secured) {
+      await prefs.setString(
+        _key,
+        json.encode(list.map(iptvPortalMetadataJson).toList()),
+      );
+    } else {
+      // Keychain unavailable - keep portals usable; passwords stay in prefs.
+      final arr = list
+          .map(
+            (v) => {
+              ...iptvPortalMetadataJson(v),
+              'password': v.portal.password,
+            },
+          )
+          .toList();
+      await prefs.setString(_key, json.encode(arr));
+    }
+    if (scheduleSync) scheduleIptvSyncPush();
+  }
+
+  static Future<Set<String>> loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_favKey) ?? const <String>[];
+    return list.toSet();
+  }
+
+  static Future<void> saveFavorites(
+    Set<String> keys, {
+    bool scheduleSync = true,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favKey, keys.toList());
+    if (scheduleSync) scheduleIptvSyncPush();
+  }
+
+  static Future<String?> loadLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastPortalKey);
+  }
+
+  static Future<void> saveLastPortalKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastPortalKey, key);
+  }
+
+  static Future<void> clearLastPortalKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastPortalKey);
+  }
+
+  static Future<IptvSection> loadLastSection() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_lastSectionKey);
+    return switch (raw) {
+      'vod' => IptvSection.vod,
+      'series' => IptvSection.series,
+      _ => IptvSection.live,
+    };
+  }
+
+  static Future<void> saveLastSection(IptvSection section) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = switch (section) {
+      IptvSection.vod => 'vod',
+      IptvSection.series => 'series',
+      IptvSection.live => 'live',
+    };
+    await prefs.setString(_lastSectionKey, raw);
+  }
+
+  static Future<IptvCatalogSort> loadLiveCategorySort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvCatalogSort.fromPrefs(prefs.getString(_liveCategorySortKey));
+  }
+
+  static Future<void> saveLiveCategorySort(IptvCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveCategorySortKey, sort.prefsValue);
+  }
+
+  static Future<IptvCatalogSort> loadLiveContentSort() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvCatalogSort.fromPrefs(prefs.getString(_liveContentSortKey));
+  }
+
+  static Future<void> saveLiveContentSort(IptvCatalogSort sort) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveContentSortKey, sort.prefsValue);
+  }
+
+  static Future<IptvLiveBrowseLayout> loadLiveBrowseLayout() async {
+    final prefs = await SharedPreferences.getInstance();
+    return IptvLiveBrowseLayout.fromPrefs(prefs.getString(_liveBrowseLayoutKey));
+  }
+
+  static Future<void> saveLiveBrowseLayout(IptvLiveBrowseLayout layout) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_liveBrowseLayoutKey, layout.prefsValue);
+  }
+
+  /// IPTV player volume 0–100 (mpv scale). Default 100 when unset.
+  static Future<double> loadPlayerVolume() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getDouble(_playerVolumeKey);
+    if (v == null) return 100.0;
+    return v.clamp(0.0, 100.0);
+  }
+
+  static Future<void> savePlayerVolume(double volume) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_playerVolumeKey, volume.clamp(0.0, 100.0));
+  }
+
+  /// Cached catalog counts from the last successful Live/Movies/Series load.
+  static Future<Map<String, IptvCatalogLoadProgress>> loadCatalogStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      final out = <String, IptvCatalogLoadProgress>{};
+      for (final e in decoded.entries) {
+        final v = e.value;
+        if (v is! Map) continue;
+        out[e.key.toString()] = IptvCatalogLoadProgress.fromStatsJson(
+          Map<String, dynamic>.from(v),
+        );
+      }
+      return out;
+    } catch (e) {
+      debugPrint('IptvStore.loadCatalogStats failed: $e');
+      return {};
+    }
+  }
+
+  static Future<void> saveCatalogStats(
+    String portalKey,
+    IptvCatalogLoadProgress stats,
+  ) async {
+    if (portalKey.isEmpty || !stats.hasAnyCount) return;
+    final prefs = await SharedPreferences.getInstance();
+    Map<String, dynamic> root = {};
+    final raw = prefs.getString(_catalogStatsKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = json.decode(raw);
+        if (decoded is Map) {
+          root = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    root[portalKey] = stats.toStatsJson();
+    await prefs.setString(_catalogStatsKey, json.encode(root));
+  }
+}
+
+/// Per-portal cache of "alive" live channel IDs + per-portal Live-only pref.
+class IptvAliveStore {
+  static String portalKey(IptvPortal p) =>
+      '${p.url}|${p.username}|${p.password}'.toLowerCase();
+
+  static String _aliveKey(String k) =>
+      LocalDataScope.storageKey('pt_iptv_alive_$k');
+  static String _liveOnlyKey(String k) =>
+      LocalDataScope.storageKey('pt_iptv_liveonly_$k');
+
+  static Future<AliveSnapshot?> load(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_aliveKey(key));
+    if (raw == null) return null;
+    try {
+      final o = json.decode(raw) as Map<String, dynamic>;
+      final ids = (o['ids'] as List).map((e) => e as String).toSet();
+      return AliveSnapshot(
+        checkedAt: (o['at'] as num?)?.toInt() ?? 0,
+        aliveIds: ids,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> save(String key, AliveSnapshot snap) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _aliveKey(key),
+      json.encode({'at': snap.checkedAt, 'ids': snap.aliveIds.toList()}),
+    );
+  }
+
+  static Future<void> clear(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_aliveKey(key));
+    await prefs.remove(_liveOnlyKey(key));
+  }
+
+  /// Clears alive-ID / Live-only prefs for the **active** account/profile/guest.
+  /// Does not touch verified portals or favorites.
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where(
+      (k) =>
+          LocalDataScope.ownsKey(k) &&
+          (k.startsWith('pt_iptv_alive_') || k.startsWith('pt_iptv_liveonly_')),
+    );
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+
+  static Future<bool> loadLiveOnly(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_liveOnlyKey(key)) ?? false;
+  }
+
+  static Future<void> saveLiveOnly(String key, bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_liveOnlyKey(key), enabled);
+  }
+}
+
+class AliveSnapshot {
+  final int checkedAt;
+  final Set<String> aliveIds;
+  const AliveSnapshot({required this.checkedAt, required this.aliveIds});
+}
+
+/// Per-HardcodedChannel persisted alive stream hits.
+class IptvChannelResultsStore {
+  static String _key(String channelId) =>
+      LocalDataScope.storageKey('pt_iptv_ch_$channelId');
+
+  static Future<List<StoredHit>> load(String channelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key(channelId));
+    if (raw == null) return [];
+    try {
+      final arr = json.decode(raw) as List;
+      return arr.map((e) {
+        final o = e as Map<String, dynamic>;
+        return StoredHit(
+          portalUrl: o['pu'] as String? ?? '',
+          portalUser: o['uu'] as String? ?? '',
+          portalPass: o['pp'] as String? ?? '',
+          portalName: o['pn'] as String? ?? '',
+          streamId: o['sid'] as String? ?? '',
+          streamName: o['sn'] as String? ?? '',
+          streamIcon: o['si'] as String? ?? '',
+          streamCategoryId: o['scid'] as String? ?? '',
+          streamContainerExt: o['sce'] as String? ?? '',
+          streamKind: o['sk'] as String? ?? 'live',
+          streamUrl: o['url'] as String? ?? '',
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> save(String channelId, List<StoredHit> hits) async {
+    final prefs = await SharedPreferences.getInstance();
+    final arr = hits
+        .map((h) => {
+              'pu': h.portalUrl,
+              'uu': h.portalUser,
+              'pp': h.portalPass,
+              'pn': h.portalName,
+              'sid': h.streamId,
+              'sn': h.streamName,
+              'si': h.streamIcon,
+              'scid': h.streamCategoryId,
+              'sce': h.streamContainerExt,
+              'sk': h.streamKind,
+              'url': h.streamUrl,
+            })
+        .toList();
+    await prefs.setString(_key(channelId), json.encode(arr));
+  }
+
+  static Future<void> clear(String channelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key(channelId));
+  }
+
+  /// Clears channel-scan hits for the **active** account/profile/guest.
+  /// Does not touch per-channel favorite stream URLs (`pt_iptv_chfav_*`).
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where(
+      (k) => LocalDataScope.ownsKey(k) && k.startsWith('pt_iptv_ch_'),
+    );
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+}
+
+class StoredHit {
+  final String portalUrl;
+  final String portalUser;
+  final String portalPass;
+  final String portalName;
+  final String streamId;
+  final String streamName;
+  final String streamIcon;
+  final String streamCategoryId;
+  final String streamContainerExt;
+  final String streamKind;
+  final String streamUrl;
+
+  const StoredHit({
+    required this.portalUrl,
+    required this.portalUser,
+    required this.portalPass,
+    required this.portalName,
+    required this.streamId,
+    required this.streamName,
+    required this.streamIcon,
+    required this.streamCategoryId,
+    required this.streamContainerExt,
+    required this.streamKind,
+    required this.streamUrl,
+  });
+}
+
+/// Per-HardcodedChannel set of favorited stream URLs (pinned to top).
+class IptvChannelFavoritesStore {
+  static String _key(String channelId) => 'pt_iptv_chfav_$channelId';
+
+  static Future<Set<String>> load(String channelId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_key(channelId)) ?? const <String>[]).toSet();
+  }
+
+  static Future<void> save(String channelId, Set<String> urls) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_key(channelId), urls.toList());
+  }
+}
+
+/// Device-local Live catalog favorites, watched channels, pinned groups,
+/// full category order, and last browse selection (category click / channel play).
+/// Keyed by portal `url|username|password` (same as [IptvAliveStore]).
+class IptvLiveChannelListsStore {
+  static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
+  static String _watchedKey(String portalKey) =>
+      'pt_iptv_live_watched_$portalKey';
+  static String _pinnedCatsKey(String portalKey) =>
+      'pt_iptv_live_pinned_cats_$portalKey';
+  static String _categoryOrderKey(String portalKey) =>
+      'pt_iptv_live_cat_order_$portalKey';
+  static String _lastCategoryKey(String portalKey) =>
+      'pt_iptv_live_last_cat_$portalKey';
+  static String _lastChannelKey(String portalKey) =>
+      'pt_iptv_live_last_ch_$portalKey';
+
+  static Future<Set<String>> loadFavorites(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_favKey(portalKey)) ?? const <String>[])
+        .toSet();
+  }
+
+  static Future<void> saveFavorites(
+    String portalKey,
+    Set<String> streamIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favKey(portalKey), streamIds.toList());
+  }
+
+  /// Most-recently opened first.
+  static Future<List<String>> loadWatched(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_watchedKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  /// Moves [streamId] to front; keeps at most [IptvLiveCatalog.watchedLimit].
+  static Future<List<String>> recordWatched(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return loadWatched(portalKey);
+    final prefs = await SharedPreferences.getInstance();
+    final next = <String>[streamId];
+    for (final id in prefs.getStringList(_watchedKey(portalKey)) ??
+        const <String>[]) {
+      if (id != streamId) next.add(id);
+      if (next.length >= IptvLiveCatalog.watchedLimit) break;
+    }
+    await prefs.setStringList(_watchedKey(portalKey), next);
+    return next;
+  }
+
+  /// User-pinned Live category ids - first = top under Already watched.
+  static Future<List<String>> loadPinnedCategories(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_pinnedCatsKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> savePinnedCategories(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_pinnedCatsKey(portalKey), categoryIds);
+  }
+
+  /// Full manual Live category order (non-synthetic ids, top → bottom).
+  static Future<List<String>> loadCategoryOrder(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return List<String>.from(
+      prefs.getStringList(_categoryOrderKey(portalKey)) ?? const <String>[],
+    );
+  }
+
+  static Future<void> saveCategoryOrder(
+    String portalKey,
+    List<String> categoryIds,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_categoryOrderKey(portalKey), categoryIds);
+  }
+
+  /// Last Live category the user committed (sidebar click / OK).
+  static Future<String?> loadLastCategory(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastCategoryKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastCategory(
+    String portalKey,
+    String categoryId,
+  ) async {
+    if (categoryId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCategoryKey(portalKey), categoryId);
+  }
+
+  /// Last Live channel the user actually played (not mere tap/focus).
+  static Future<String?> loadLastChannel(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastChannelKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastChannel(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastChannelKey(portalKey), streamId);
+  }
+}
