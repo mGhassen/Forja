@@ -43,7 +43,7 @@
 | 6 | I271-A06 | Player art paths use absolute/pack URLs (no TmdbApi CDN rewrite) | ✅ |
 | 7 | I271-A07 | Zone check + analyze clean on touched paths | ✅ |
 | 8 | I271-A08 | User Q1–Q12 after slices 1–5 — agent does not flip R106-A18 | ⬜ |
-| 9 | I271-A09 | Remaining host `kit_*` painters leave `shared/shell` per [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) (foundation only) | ⬜ |
+| 9 | I271-A09 | Remaining host `kit_*` painters leave `shell` per [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) (foundation only) | ⬜ |
 
 ---
 

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/core/forja_shell_metrics.dart';
-import 'package:forja/shared/shell/core/forja_shell_platform.dart';
-import 'package:forja/shared/shell/core/forja_shell_profile.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_metrics.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 
 void main() {

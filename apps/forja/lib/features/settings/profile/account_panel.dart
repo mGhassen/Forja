@@ -10,13 +10,13 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 // Passkey type is @experimental.

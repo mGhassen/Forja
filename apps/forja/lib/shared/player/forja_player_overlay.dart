@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/catalog/server_grid.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
 
 class ForjaPlayerOverlayPanel extends StatelessWidget {

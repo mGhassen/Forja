@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
-import 'package:forja/shared/shell/core/forja_shell_profile.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/shell/tv/shell_tv_app_exit.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shell/tv/shell_tv_app_exit.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 
 import 'package:rust/rust.dart';
 

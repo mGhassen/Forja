@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/shell/focus/forja_interactive.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/focus/forja_interactive.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart';
 
 export 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart'

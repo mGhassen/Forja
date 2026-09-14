@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/hero_pill_buttons.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent_source_filters.dart';
 import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Compact top chrome for the Sources panel:
 /// kind tabs · provider chips · search/filters.

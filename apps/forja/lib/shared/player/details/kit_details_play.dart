@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit_sources.dart';
 
 PlaySession _sessionFromContext(PlayContext ctx) {

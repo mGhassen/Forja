@@ -9,10 +9,10 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/packs/plugin_install_progress.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).
 ({Map<String, List<EnginePlugin>> byGroup, List<String> orderedGroups})

@@ -9,7 +9,7 @@ import 'package:forja/features/settings/profile/page.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 
 Widget buildSettingsCategoryBody(
   String categoryId,

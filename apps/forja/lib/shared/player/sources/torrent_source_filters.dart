@@ -6,21 +6,21 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:forja/shared/player/sources/torrent_sources_panel.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
-import 'package:forja/shared/shell/tv/tv_browse_text_field.dart';
+import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// How many Nuvio provider chips count as an active Filters badge.
 ///

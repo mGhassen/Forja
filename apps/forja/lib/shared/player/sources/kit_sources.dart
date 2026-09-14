@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';

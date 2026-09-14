@@ -62,7 +62,7 @@ class EnginePlugin {
   /// Catalog hub `ctx` kit version the plugin needs ([hostKitVersion]).
   final int? kit;
 
-  /// Declared hub features (`nav`, `search`, `host_search`, `structured_search`, `details`, `filters`, `auth`, `settings`, …).
+  /// Declared hub features (`nav`, `search`, `structured_search`, `details`, `filters`, `auth`, `settings`, …).
   final List<String> capabilities;
 
   /// Nav contribution — parsed by `MetaNavSpec.fromPluginNav`.

@@ -7,9 +7,9 @@ import 'package:forja/shared/player/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class TorrentSourceTile extends StatelessWidget {
   const TorrentSourceTile({

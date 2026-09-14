@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja_foundation/components/switch.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/theme/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';

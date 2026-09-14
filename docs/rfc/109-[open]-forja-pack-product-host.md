@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **22 / 26** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) |
-| **Current slice** | Host = validate+paint only (`PackLayoutPainter`). Product kit gods deleted. Packs emit paint + opaque loads. |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **25 / 29** acceptance (code) · **4** 🔄 · **8 / 8** IPTV unified pack (A35–A40 · A53–A54) · **11 / 12** A41 pack migrate (1 🔄 · 0 ⬜) · **3 / 3** host/layout wipe (A57–A59) · **3 / 3** foundation layout evacuate (A60–A62) · **3 / 3** validate+paint (A63–A65) · **3 / 3** pack-owned search (A66–A68) |
+| **Current slice** | Host = validate+paint + opaque search wire. Product search lives in packs (`_search.js`). |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R109-C01 | Law + cursor rule `forja-pack-product-host.mdc` | ✅ |
-| 2 | R109-C02 | Widgets only in `forja_foundation`; `apps/forja/shared/shell` = frame | ✅ |
+| 2 | R109-C02 | Widgets only in `forja_foundation`; `apps/forja/lib/shell` = app frame + shell UI | ✅ |
 | 3 | R109-C03 | Dissolve `shared/engine/{hub,lists,live}` → generic `runtime/cache/store/portals/unlock` | ✅ |
 | 4 | R109-C04 | `features/iptv` product → pack + `engine/portals` | ✅ |
 | 5 | R109-C05 | Generic `ctx.host` (`cache`/`store`/`http`/`vault`/`plugin`/`playback`) — no product `iptv`/`portals` | ✅ |
@@ -49,7 +49,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R109-A09 | `PackLayoutHost` mounts foundation layout; no product branches | ✅ |
-| 2 | R109-A10 | Zero `kit_` under `shared/shell` | ✅ |
+| 2 | R109-A10 | Zero `kit_` under `shell` | ✅ |
 | 3 | R109-A11 | No dirs `engine/hub`, `engine/lists`, `engine/live`, `features/iptv` | ✅ |
 | 4 | R109-A12 | Generic `engine/cache` replaces `MetaCache` | ✅ |
 | 5 | R109-A13 | Generic `engine/store` replaces list_follow product API | 🔄 |
@@ -145,7 +145,7 @@
 |-------|------|-----------|
 | **Pack** (`forja-packs`) | Product tabs, layout JSON, feed, prefs, chrome, `open` shaping | Native unlock internals |
 | **Host** (`apps/forja`) | App frame, generic engines, **thin kit interpreter** at `shared/engine/runtime/kit/` | Product screens, product-named folders, pack-id business logic, **`shared/host/layout/`** |
-| **Foundation** (`forja_foundation`) | Tokens, theme, primitives, components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration |
+| **Foundation** (`forja_foundation`) | Tokens, theme, components, widgets, blocks, protocol **types** | `PackLayoutHost`, hooks, Riverpod kit session, registries, feed orchestration |
 
 **Wipe law (A57 historical):** Deleted `apps/forja/lib/shared/host/layout/`. **Evacuate (A60):** runner left foundation — lives in `engine/runtime/kit/`. Product stays in pack JS. Foundation paints only.
 
@@ -156,7 +156,7 @@ apps/forja/lib/shared/engine/
   runtime/kit/   # thin kit interpreter (PackLayoutHost + wire + list/feed hooks)
   runtime/  packs/  cache/  store/  vault/  unlock/
   # NO portals/  NO feeds/  NO hub/  NO lists/  NO live/
-apps/forja/lib/shared/shell/   # core desktop tv focus brand feedback(toast) chrome(filters)
+apps/forja/lib/shell/   # frame (nav/frame/routing/bus/chrome) + core desktop tv focus brand feedback filters update
 apps/forja/lib/shared/host/    # NO layout/ (parking forbidden)
 apps/forja/lib/features/       # account + settings only
 packages/forja_foundation/     # paint only — NO lib/layout/
@@ -366,13 +366,13 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 | Done | Detail |
 |------|--------|
-| `shared/shell/chrome/` | **Deleted** — chips / tabs / scroller / section title / tab header → `forja_foundation/widgets/chrome/` |
-| `shared/shell/catalog/` | **Deleted** — mood circle + server grid → `forja_foundation/widgets/catalog/` |
+| `shell/chrome/` | **Deleted** — chips / tabs / scroller / section title / tab header → `forja_foundation/widgets/chrome/` |
+| `shell/catalog/` | **Deleted** — mood circle + server grid → `forja_foundation/widgets/catalog/` |
 | Feedback paint | frosted / fractal / loading dots / card play / error retry → `forja_foundation/widgets/feedback/` |
 | TV search browse | → `forja_foundation/widgets/tv/tv_search_browse_overlay.dart` |
 | `forja_player_overlay` | → `shared/player/forja_player_overlay.dart` |
 | `ShellPaintScope` | Host injects focus/TV via `installShellPaintHostAdapters()` (bootstrap); foundation never imports `package:forja` |
-| Toast | Remains `shared/shell/feedback/forja_toast.dart` (host mount) |
+| Toast | Remains `shell/feedback/forja_toast.dart` (host mount) |
 | `LoadingOverlay` | Host playback chrome → `shared/playback/loading_overlay.dart` (rust/playback deps — not foundation) |
 
 | Still open (C02) | Detail |
@@ -390,7 +390,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 | `KitShell` name gone | Body lives in `PackLayoutHost` (same StatefulWidget) |
 | Engine glue out | `list_source` / `feed_chrome` / `details_meta*` / `schedule_window` / `open_catalog_search` / … → `engine/runtime/` |
 | Player glue out | resolve panel / streams hooks / details play / hero pills / grouped play filter → `player/` |
-| `shell/layout/` deleted | Pack adapters → `shared/host/layout/`; frame filters → `shared/shell/chrome/` |
+| `shell/layout/` deleted | Pack adapters → `shared/host/layout/`; frame filters → `shell/chrome/` |
 | `PackLayoutHost` | Composes foundation (`CatalogBody` / `CatalogShell` / …) via host/layout MetaItem+TV glue |
 | Public `host/layout/` | Only `pack_layout_host.dart` (+ exports `PluginKitTopBar`), `top_bar_host_hooks`, `panel_source_flags_hooks`, `live_surface_open` |
 | Fat adapters | Moved under `host/layout/private/` (catalog/search/list/top-bar glue) — not product API |
@@ -529,6 +529,16 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 ---
 
+## Acceptance (pack-owned search)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R109-A66 | Delete `HostSearchEngine` / `host_search` capability — host never knows TMDB/addons | ✅ |
+| 2 | R109-A67 | Home pack `_search.js` + opaque `action: search`; prelude may be comma-separated | ✅ |
+| 3 | R109-A68 | `KitSearchScreen` / `openCatalogSearch` only `runPlugin(…, 'search')` + paint/open | ✅ |
+
+---
+
 ## Wave M notes (validate + paint law reset)
 
 | Done | Detail |
@@ -545,3 +555,4 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 |--------------------|--------|
 | IPTV | `hubWithLoad(…, 'feed')` on list; `hubPaintPoster` on live/VOD/setup rows; paint helpers in `_prelude.js` (v1.5.5) |
 | Live Sports | `hubWithLoad(…, 'feed')` on schedule list; `hubPaintEvent` on shaped rows; paint helpers in `_prelude.js` (v1.0.29) |
+| Search | Home `_search.js` owns TMDB search; host `host_search` / `HostSearchEngine` deleted (A66–A68) |

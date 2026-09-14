@@ -5,14 +5,14 @@ import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
-import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 

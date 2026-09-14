@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 const _kP2pBullets = [

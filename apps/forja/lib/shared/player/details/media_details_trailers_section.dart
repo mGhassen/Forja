@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja_foundation/widgets/details/trailers_section.dart';
 import 'package:rust/rust.dart';

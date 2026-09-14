@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/core/forja_shell_layout.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/player/details/poster_cards.dart' show MoviePosterCard;
 import 'package:forja_foundation/widgets/details/recommendations_section.dart';
 import 'package:rust/rust.dart';

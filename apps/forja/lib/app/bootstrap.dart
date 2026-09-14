@@ -35,14 +35,15 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/engine/packs/install/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/shell/update/app_update_progress_banner.dart';
+import 'package:forja/shell/update/app_update_progress_banner.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt_host.dart';
 import 'package:forja/shared/engine/packs/install/plugin_pack_update_prompt_host.dart';
 import 'package:forja/features/settings/packs/plugin_install_progress_banner.dart';
 
-import 'package:forja/shared/shell/tv/shell_tv_back_handler.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/tv_remote_debug.dart';
+import 'package:forja/shell/tv/shell_tv_back_handler.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/tv_remote_debug.dart';
+import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -57,13 +58,13 @@ import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:forja/app/desktop_startup_gate.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
-import 'package:forja/shared/shell/brand/animated_logo.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/core/forja_shell_keyboard_focus.dart';
-import 'package:forja/shared/shell/core/shell_paint_host_install.dart';
-import 'package:forja/shared/shell/desktop/desktop_window_geometry.dart';
+import 'package:forja/shell/brand/animated_logo.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_keyboard_focus.dart';
+import 'package:forja/shell/core/shell_paint_host_install.dart';
+import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 bool _appShutdownStarted = false;
 
@@ -167,6 +168,12 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   await PlatformChannel.initialize();
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
+  ShellTvFocusCoordinator.bindFrame(
+    playerSurfaceActive: ShellBus.playerSurfaceActive,
+    activeShellTabId: () => ShellBus.activeShellTabId,
+    overlayCanPop: shellOverlayCanPop,
+    overlayMaybePop: maybePopShellOverlay,
+  );
 
   // Phone: WebView debug. TV Chromium warm-up waits for first real WebView
   // (ForjaInAppWebView / ForjaHeadlessInAppWebView → TvWebViewWarm).
@@ -423,9 +430,11 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                   // (also avoids mouse_tracker assert when toast buttons mount).
                   allowDisplay: ShellBus.splashDismissed,
                   // One column: progress banners + toasts (not overlapping).
-                  stackAbove: const [
-                    AppUpdateProgressBanner(),
-                    PluginInstallProgressBanner(),
+                  stackAbove: [
+                    AppUpdateProgressBanner(
+                      hideWhenPlayerActive: ShellBus.playerSurfaceActive,
+                    ),
+                    const PluginInstallProgressBanner(),
                   ],
                   child: PluginPackUpdatePromptHost(
                     child: PluginInstallPromptHost(

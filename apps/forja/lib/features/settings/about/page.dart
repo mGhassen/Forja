@@ -9,7 +9,7 @@ import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 class SettingsAboutPageBody extends ConsumerWidget {

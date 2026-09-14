@@ -11,11 +11,11 @@ import 'package:forja/shared/engine/portals/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/shared/player/live/channel_guide/guide_epg_ui.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/focus/letter_jump_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/focus/letter_jump_scope.dart';
 import 'package:forja_foundation/components/network_image.dart';
-import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 enum _GuideStep { groups, channels }
 enum _FocusColumn { groups, channels, epg }

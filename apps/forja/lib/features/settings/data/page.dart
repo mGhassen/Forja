@@ -8,7 +8,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/data/cache_data_section.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 class SettingsDataPageBody extends StatefulWidget {

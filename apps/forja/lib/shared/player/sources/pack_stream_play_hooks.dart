@@ -5,7 +5,7 @@ import 'package:forja/shared/engine/runtime/open/host_playback_open.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/stream_play_hooks.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 /// Thin pack-driven portal VOD play — vault portals + stream URL shape.

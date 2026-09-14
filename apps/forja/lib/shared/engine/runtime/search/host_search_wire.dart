@@ -1,7 +1,6 @@
-/// Host search MetaItem / TV wire — residual composers after RFC-109 A28.
+/// Hub search chrome wire — MetaRuntime `search` + openMetaItem.
 ///
-/// Foundation owns CatalogSearch* paint. This file wires MetaRuntime / host
-/// search engine / openMetaItem (capability, not a product catalog folder).
+/// Foundation owns CatalogSearch* paint. Packs own what/how to search.
 library;
 
 import 'dart:async';
@@ -9,19 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
-import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/engine/runtime/search/host_search_engine.dart';
-import 'package:forja/shared/engine/runtime/search/host_search_kit.dart';
 import 'package:forja/shared/engine/runtime/search/search_recent_queries.dart';
-import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/core/forja_shell_layout.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/player_surface_chrome_stub.dart';
@@ -38,7 +34,6 @@ import 'package:forja_foundation/widgets/catalog/catalog_search_screen.dart';
 import 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart' as foundation;
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 import 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
-import 'package:rust/rust.dart';
 
 export 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart' show CatalogSearchFilters, CatalogSearchFilterLens, CatalogScoreArcPainter, CatalogYearTimelinePainter, SearchFilters, SearchMediaFilter, composeSearchQuery, kSearchFilterCountries, kSearchFilterGenres, kSearchFilterLanguages;
 export 'package:forja_foundation/widgets/catalog/catalog_search_page.dart' show CatalogSearchResult;
@@ -1857,7 +1852,6 @@ class KitSearchScreen extends StatefulWidget {
     this.hintText = 'Search…',
     this.structuredSearch = false,
     this.applyChromeFilters = false,
-    this.hostSearch = false,
   });
 
   final String pluginId;
@@ -1865,42 +1859,14 @@ class KitSearchScreen extends StatefulWidget {
   final String hintText;
   final bool structuredSearch;
   final bool applyChromeFilters;
-  final bool hostSearch;
 
   @override
   State<KitSearchScreen> createState() => _KitSearchScreenState();
 }
 
 class _KitSearchScreenState extends State<KitSearchScreen> {
-  HostSearchEngine? _hostEngine;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.hostSearch) {
-      _hostEngine = HostSearchEngine();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant KitSearchScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.hostSearch && _hostEngine == null) {
-      _hostEngine = HostSearchEngine();
-    } else if (!widget.hostSearch && _hostEngine != null) {
-      _hostEngine!.cancel();
-      _hostEngine = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _hostEngine?.cancel();
-    super.dispose();
-  }
-
   Future<List<KitSearchResult>> _packSearch(String query) async {
-    final base = <String, dynamic>{'query': query, 'limit': 40};
+    final base = <String, dynamic>{'query': query, 'limit': 40, 'page': 1};
     final params = widget.applyChromeFilters
         ? catalogParamsWithFilters(
             base,
@@ -1955,14 +1921,6 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
       );
       return;
     }
-    if (payload is Movie) {
-      openMetaItem(
-        context,
-        pluginId: widget.pluginId,
-        item: metaItemFromMovie(payload),
-      );
-      return;
-    }
     if (payload is Map) {
       unawaited(
         AppRouter.openStremioSearchResult(
@@ -1975,20 +1933,13 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final host = widget.hostSearch;
-    final engine = _hostEngine;
     return PlayerSurfaceChromeStub(
       builder: (context) => CatalogSearchScreen(
         hintText: widget.hintText,
         tvTabId: widget.tabId,
         structuredSearch: widget.structuredSearch,
-        onSearch: host
-            ? (q) async {
-                return const [];
-              }
-            : _packSearch,
-        loadRecommendations:
-            host ? hostKitRecommendations : _packRecommendations,
+        onSearch: _packSearch,
+        loadRecommendations: _packRecommendations,
         onOpen: (result) => _openResult(context, result),
         pageBuilder: ({
           required onSearch,
@@ -2002,21 +1953,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
             tvTabId: widget.tabId,
             structuredSearch: structuredSearch,
             onSearch: onSearch,
-            onSearchProgressive: engine == null
-                ? null
-                : (query, emit) => runHostKitSearch(
-                      query,
-                      emit,
-                      engine: engine,
-                    ),
-            onSearchLoadMore: engine == null
-                ? null
-                : (emit) => runHostKitSearchLoadMore(
-                      emit,
-                      engine: engine,
-                    ),
-            loadRecommendations: loadRecommendations ??
-                (host ? hostKitRecommendations : _packRecommendations),
+            loadRecommendations: loadRecommendations ?? _packRecommendations,
             onOpen: onOpen,
           );
         },

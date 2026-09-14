@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/components/button.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Pair / desktop-offline prompt. [OverlayEntry] so it stacks above player

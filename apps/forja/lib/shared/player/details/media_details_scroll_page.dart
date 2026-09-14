@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/shell/tv/media_details_tv_scope.dart';
+import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja_foundation/widgets/details/details_scroll_page.dart';
 
 /// Host scroll page — wires TV hero/back focus into foundation paint.

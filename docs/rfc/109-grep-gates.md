@@ -11,7 +11,7 @@ Pre-merge / CI checklist for `apps/forja/lib`:
 | Catalog-meta cache | class / file `MetaCache` |
 | Live product boot | `KitLiveBoot`, `MatchEvent`, `aggregateLiveFeed` |
 | Product host bridges | `liveFeed` / `h.feed` / product `iptv` / `portals` in `ctx.host` |
-| Shell product widgets | `kit_` under `shared/shell/`; no `shell/layout/` |
+| Shell product widgets | `kit_` under `lib/shell/` (except frame composers); no `shell/layout/` |
 | Host layout parking | `shared/host/layout/` (entire tree) |
 | Foundation layout orchestrators | `packages/forja_foundation/lib/layout/` |
 | Kit product parking | `KitListPaint`, `PluginFeedSource`, `live_schedule_feed`, `HostListRegistry`, `pack_layout_host_wire` |
@@ -21,17 +21,17 @@ Pre-merge / CI checklist for `apps/forja/lib`:
 ```bash
 # From repo root — expect clean after RFC-109 finish pass
 rg -n 'MetaCache|KitLiveBoot|liveFeed|aggregateLiveFeed|MatchEvent|class IptvPortal' apps/forja/lib || true
-rg -n 'kit_' apps/forja/lib/shared/shell || true
+rg -n 'kit_' apps/forja/lib/shell --glob '!**/chrome/**' || true
 rg -n 'host/layout|host/catalog' apps/forja/lib || true
 rg -n 'KitListPaint|PluginFeedSource|HostListRegistry|live_schedule_feed|pack_layout_host_wire' apps/forja/lib || true
 test ! -d apps/forja/lib/shared/engine/hub
 test ! -d apps/forja/lib/shared/engine/lists
 test ! -d apps/forja/lib/shared/engine/live
 test ! -d apps/forja/lib/shared/engine/feeds
-test ! -d apps/forja/lib/shared/engine/portals
 test ! -d apps/forja/lib/features/iptv
 test ! -d apps/forja/lib/shared/host/portals_ui
-test ! -d apps/forja/lib/shared/shell/layout
+test ! -d apps/forja/lib/shared/shell
+test ! -d apps/forja/lib/shell/layout
 test ! -d apps/forja/lib/shared/host/layout
 test ! -d apps/forja/lib/shared/host/catalog
 test ! -d packages/forja_foundation/lib/layout

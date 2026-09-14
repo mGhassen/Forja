@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/focus/focus_edge.dart';
+import 'package:forja/shell/focus/focus_edge.dart';
 
 void main() {
   group('kitFocusEdge', () {

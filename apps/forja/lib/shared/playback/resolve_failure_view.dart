@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/playback/loading_overlay.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
-import 'package:forja/shared/shell/desktop/desktop_window_chrome.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Tone for resolve / loading-page failures.

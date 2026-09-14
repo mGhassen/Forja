@@ -14,9 +14,9 @@ import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/shell/brand/animated_logo.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/brand/animated_logo.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Profile-switch splash: avatar flies from its Who's watching tile to center
 /// while scaling up. Boot work matches [SplashScreen] intro: warm under the

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/details/kit_list_status_button.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_card.dart';

@@ -16,7 +16,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 
 | Old foundation surface | Must still work via | Current path | Status |
 |------------------------|---------------------|--------------|--------|
-| Live match details | Kit + pack feed | `shared/shell/kit/` + engine live + hub packs | ✅ |
+| Live match details | Kit + pack feed | `shell/kit/` + engine live + hub packs | ✅ |
 | Live schedule list/cards | `kit.list` + pack chrome | Generic kit list; Live Sports pack | ✅ |
 | Vertical filters / platforms menu | LogoMenuRail + shell `showMenu` | DS `LogoMenuRail` + `VerticalMenu` | ✅ |
 | Sources / resolve panel | Kit hooks + SourcesPanel | `shared/player/sources/**` | ✅ |
@@ -38,7 +38,7 @@ QA Q1–Q12 remains unsigned — see G14-E. This file tracks **evacuate wiring o
 | Live schedule | Hub pack `feed` + opaque `live_schedule` registry |
 | Follow / list | My List hub + engine list follow |
 | Pack install | Settings Forja Packs + install banner |
-| App update / Keychain | `shared/shell/update` · `shared/services/update` · Settings About (`features/settings/about/macos_keychain_consent_screen.dart`) |
+| App update / Keychain | `shell/update` · `shared/services/update` · Settings About (`features/settings/about/macos_keychain_consent_screen.dart`) |
 | Vertical filters | Home platforms → LogoMenuRail |
 | Sources panel | `shared/player/sources/**` |
 | Torrent | Media details torrent panels under player sources |
@@ -67,7 +67,7 @@ G11 briefly listed product under `shared/host/{live_sports,lists,sources,…}`. 
 | `host/live_sports/` | Packs + `shared/engine/live/**` + kit |
 | `host/lists/` | Packs + `shared/engine/lists/**` |
 | `host/sources/**` | `shared/player/sources/**` |
-| Catalog kit / MetaRuntime / `kit_shell` | `shared/shell/kit/**` + `shared/engine/hub/**` |
+| Catalog kit / MetaRuntime / `kit_shell` | `shell/kit/**` + `shared/engine/hub/**` |
 
 ---
 
@@ -81,7 +81,7 @@ These remain under `apps/forja/lib/shared/host/` **only** because they are app c
 | `update/` | App update dialog + progress banner |
 | `account/` | macOS Keychain consent |
 | `watch/` | Continue / watched prefs store |
-| `search/` | Host search engine behind kit (`host_search`) — now `engine/runtime/search/` |
+| `search/` | Search chrome wire only — pack owns `action: search` (`_search.js`); no host TMDB engine |
 | `details/` | README only — packs own enrich |
 
 ---

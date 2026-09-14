@@ -6,7 +6,7 @@ import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart
 import 'package:forja/features/archive/audio/music_player_service.dart';
 import 'audiobook_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 
 class AudiobookDownloadsScreen extends StatefulWidget {
   const AudiobookDownloadsScreen({super.key});

@@ -29,6 +29,12 @@ class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
 
+  /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
+  static Iterable<String> expandPreludePaths(String spec) => spec
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty);
+
   static const _packsKeyV1 = 'engine_js_packs_v1';
   static const _packsKeyV2 = 'engine_js_packs_v2';
   static const _scriptPrefixV1 = 'engine_js_script_';
@@ -370,12 +376,15 @@ class PluginRegistry {
       )) {
         return false;
       }
-      if (p.prelude.isNotEmpty &&
-          !await PluginScriptDiskStore.hasEnginePrelude(
+      if (p.prelude.isNotEmpty) {
+        for (final part in expandPreludePaths(p.prelude)) {
+          if (!await PluginScriptDiskStore.hasEnginePrelude(
             sourceUrl: pack.sourceUrl,
-            preludeEntry: p.prelude,
+            preludeEntry: part,
           )) {
-        return false;
+            return false;
+          }
+        }
       }
     }
     return true;
@@ -1025,9 +1034,9 @@ class PluginRegistry {
     final localCheckout = isLocalManifestUrl(manifestUrl);
 
     final preludesNeeded = <String>{
-      if (pack.prelude.isNotEmpty) pack.prelude,
+      if (pack.prelude.isNotEmpty) ...expandPreludePaths(pack.prelude),
       for (final p in pack.plugins)
-        if (p.prelude.isNotEmpty) p.prelude,
+        if (p.prelude.isNotEmpty) ...expandPreludePaths(p.prelude),
     };
     final scriptsNeeded = [
       for (final p in pack.plugins)
@@ -1271,22 +1280,29 @@ class PluginRegistry {
     // Drop legacy prefs keys for scripts removed from this pack on refresh.
     if (previous != null) {
       final nextIds = {for (final p in pack.plugins) p.id};
-      final nextPreludes = {
-        if (pack.prelude.isNotEmpty) pack.prelude,
+      final nextPreludes = <String>{
+        if (pack.prelude.isNotEmpty) ...expandPreludePaths(pack.prelude),
         for (final p in pack.plugins)
-          if (p.prelude.isNotEmpty) p.prelude,
+          if (p.prelude.isNotEmpty) ...expandPreludePaths(p.prelude),
       };
       final prefs = await _prefs;
-      if (previous.prelude.isNotEmpty &&
-          !nextPreludes.contains(previous.prelude)) {
-        await prefs.remove(preludePrefsKey(manifestUrl, previous.prelude));
+      if (previous.prelude.isNotEmpty) {
+        for (final part in expandPreludePaths(previous.prelude)) {
+          if (!nextPreludes.contains(part)) {
+            await prefs.remove(preludePrefsKey(manifestUrl, part));
+          }
+        }
       }
       for (final p in previous.plugins) {
         if (!nextIds.contains(p.id)) {
           await prefs.remove(scriptPrefsKey(manifestUrl, p.id));
         }
-        if (p.prelude.isNotEmpty && !nextPreludes.contains(p.prelude)) {
-          await prefs.remove(preludePrefsKey(manifestUrl, p.prelude));
+        if (p.prelude.isNotEmpty) {
+          for (final part in expandPreludePaths(p.prelude)) {
+            if (!nextPreludes.contains(part)) {
+              await prefs.remove(preludePrefsKey(manifestUrl, part));
+            }
+          }
         }
       }
     }
@@ -1674,28 +1690,51 @@ class PluginRegistry {
     }
 
     if (preludeEntry.isNotEmpty) {
-      var shared = await PluginScriptDiskStore.loadEnginePrelude(
+      final shared = await _loadCommaPreludesCached(
         sourceUrl: sourceUrl,
-        preludeEntry: preludeEntry,
+        preludeSpec: preludeEntry,
       );
-      if (shared == null || shared.isEmpty) {
-        final prefs = await _prefs;
-        final pre = prefs.getString(preludePrefsKey(sourceUrl, preludeEntry));
-        if (pre != null && pre.isNotEmpty) {
-          await PluginScriptDiskStore.saveEnginePrelude(
-            sourceUrl: sourceUrl,
-            preludeEntry: preludeEntry,
-            body: pre,
-          );
-          await prefs.remove(preludePrefsKey(sourceUrl, preludeEntry));
-          shared = pre;
-        }
-      }
-      if (shared != null && shared.isNotEmpty) {
+      if (shared.isNotEmpty) {
         code = '$shared\n$code';
       }
     }
     return code;
+  }
+
+  Future<String> _loadCommaPreludesCached({
+    required String sourceUrl,
+    required String preludeSpec,
+  }) async {
+    final parts = preludeSpec
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '';
+    final buf = StringBuffer();
+    final prefs = await _prefs;
+    for (final part in parts) {
+      var shared = await PluginScriptDiskStore.loadEnginePrelude(
+        sourceUrl: sourceUrl,
+        preludeEntry: part,
+      );
+      if (shared == null || shared.isEmpty) {
+        final pre = prefs.getString(preludePrefsKey(sourceUrl, part));
+        if (pre != null && pre.isNotEmpty) {
+          await PluginScriptDiskStore.saveEnginePrelude(
+            sourceUrl: sourceUrl,
+            preludeEntry: part,
+            body: pre,
+          );
+          await prefs.remove(preludePrefsKey(sourceUrl, part));
+          shared = pre;
+        }
+      }
+      if (shared == null || shared.isEmpty) continue;
+      if (buf.isNotEmpty) buf.writeln();
+      buf.write(shared);
+    }
+    return buf.toString();
   }
 
   Future<String?> _loadScriptFromLocalManifest({
@@ -1723,14 +1762,35 @@ class PluginRegistry {
     if (!scriptFile.existsSync()) return null;
     var code = await scriptFile.readAsString();
     if (prelude.isNotEmpty) {
-      final preludePath = resolveScriptUrl(manifestUrl, prelude);
-      final preludeFile = File(preludePath);
-      if (preludeFile.existsSync()) {
-        final shared = await preludeFile.readAsString();
-        if (shared.isNotEmpty) code = '$shared\n$code';
-      }
+      final shared = await _readCommaPreludesFromDisk(
+        manifestUrl: manifestUrl,
+        preludeSpec: prelude,
+      );
+      if (shared.isNotEmpty) code = '$shared\n$code';
     }
     return code;
+  }
+
+  /// Pack `prelude` may be a single path or comma-separated (`_kit.js,_search.js`).
+  Future<String> _readCommaPreludesFromDisk({
+    required String manifestUrl,
+    required String preludeSpec,
+  }) async {
+    final parts = preludeSpec
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty);
+    final buf = StringBuffer();
+    for (final part in parts) {
+      final preludePath = resolveScriptUrl(manifestUrl, part);
+      final preludeFile = File(preludePath);
+      if (!preludeFile.existsSync()) continue;
+      final shared = await preludeFile.readAsString();
+      if (shared.isEmpty) continue;
+      if (buf.isNotEmpty) buf.writeln();
+      buf.write(shared);
+    }
+    return buf.toString();
   }
 
   void _maybeNotifyLocalScriptChanged(String pluginId, String body) {

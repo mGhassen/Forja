@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class _PhaseIcon extends StatelessWidget {

@@ -1,7 +1,7 @@
-import 'package:forja/shared/engine/runtime/search/host_search_wire.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_wire.dart';
 
 void main() {
   group('PackCapabilities + EnginePlugin.hasCapability', () {
@@ -29,17 +29,6 @@ void main() {
       ]);
       expect(p.hasCapability(PackCapabilities.structuredSearch), isTrue);
       expect(p.hasCapability('STRUCTURED_SEARCH'), isTrue);
-    });
-
-    test('host_search is separate from structured_search', () {
-      final p = plugin(const [
-        'search',
-        'host_search',
-        'structured_search',
-      ]);
-      expect(p.hasCapability(PackCapabilities.hostSearch), isTrue);
-      expect(p.hasCapability(PackCapabilities.structuredSearch), isTrue);
-      expect(p.hasCapability(PackCapabilities.search), isTrue);
     });
 
     test('missing search capability is false', () {

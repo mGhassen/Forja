@@ -10,13 +10,13 @@ import 'package:forja/shared/player/entry/player_screen.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/trailer/trailer_player_screen.dart';
 
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_aware_page_route.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
-import 'package:forja/shared/shell/core/forja_shell_platform.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 

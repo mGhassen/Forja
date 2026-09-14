@@ -6,7 +6,7 @@ const NODES = [
   { label: 'Home', x: '78%', y: '72%', accent: 'brand' as const, delay: '0.8s' },
   { label: 'Anime', x: '22%', y: '78%', accent: 'flame' as const, delay: '1.2s' },
   { label: 'Torrent', x: '8%', y: '38%', accent: 'brand' as const, delay: '1.6s' },
-  { label: 'IPTV', x: '50%', y: '50%', accent: 'flame' as const, delay: '2s' },
+  { label: 'IPTV', x: '50%', y: '92%', accent: 'flame' as const, delay: '2s' },
 ]
 
 export function PluginOrbitVisual({ className }: { className?: string }) {
@@ -67,17 +67,14 @@ export function PluginOrbitVisual({ className }: { className?: string }) {
         </div>
       ))}
 
-      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
-        <div className="flex size-16 items-center justify-center rounded-2xl border border-forja-green/25 bg-[#121110]/90 shadow-[0_20px_60px_-20px_rgba(28,231,131,0.25)] backdrop-blur-xl">
-          <span className="font-mono-ui text-[9px] font-bold uppercase leading-tight tracking-[0.14em] text-forja-green">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="flex size-[4.75rem] flex-col items-center justify-center rounded-2xl border border-forja-green/25 bg-[#121110]/95 px-2 shadow-[0_20px_60px_-20px_rgba(28,231,131,0.25)] backdrop-blur-xl">
+          <span className="font-mono-ui text-center text-[9px] font-bold uppercase leading-tight tracking-[0.14em] text-forja-green">
             Your
             <br />
             pack
           </span>
         </div>
-        <span className="font-mono-ui text-[9px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.45)]">
-          Community
-        </span>
       </div>
     </div>
   )

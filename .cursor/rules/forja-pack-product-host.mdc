@@ -18,8 +18,8 @@ Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/
 | Layer | Path | Owns | Forbidden |
 |-------|------|------|-----------|
 | **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent}` | Product tabs, layout/paint JSON, load actions, prefs, chrome, open shaping, enrich, portals product | Native unlock internals |
-| **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin painter** at `shared/engine/runtime/kit/` (schema validate → foundation widgets) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes (schedule/feed/panel/tabs chrome) |
-| **Foundation** | `packages/forja_foundation` | Tokens, theme, primitives, components, widgets, blocks, protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
+| **Host** | `apps/forja` | App frame (nav/settings/account/TV), generic engines (`runPlugin`, cache, store, vault, http, unlock, playback), **thin painter** at `shared/engine/runtime/kit/` (schema validate → foundation widgets), **opaque search wire** (`runPlugin(…, 'search')` only) | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes (schedule/feed/panel/tabs chrome), **product search engines** (TMDB/AniList/addons) |
+| **Foundation** | `packages/forja_foundation` | Tokens, theme, components, widgets, blocks, protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
 
 ```
 Pack JSON  →  schema validate  →  paint foundation widget (props as declared)
@@ -61,7 +61,7 @@ Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich) lives **onl
 
 | Allowed | Forbidden |
 |---------|-----------|
-| `tokens/`, `theme/`, `primitives/`, `components/`, `widgets/`, `blocks/` | `lib/layout/` orchestrators |
+| `tokens/`, `theme/`, `components/`, `widgets/`, `blocks/` | `lib/layout/` orchestrators |
 | Protocol / layout / **paint prop** schemas | `*Hooks`, `*Registry`, Riverpod catalog session |
 | Props + callbacks only (RFC-095 / RFC-106) | Host bridges, fake `MetaRuntime`, product chrome verbs |
 
@@ -73,7 +73,7 @@ Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich) lives **onl
 |--------|-----|
 | Product folders `engine/hub`, `engine/lists`, `engine/live`, `features/iptv` | Root would know those products |
 | `MetaCache` / catalog-meta-specific cache | Use generic `engine/cache` |
-| Product `kit_*` under `shared/shell` | Paint in foundation; product in packs |
+| Product `kit_*` under `shell/` (host frame) | Paint in foundation; product in packs |
 | `ctx.host.liveFeed` / product `myList` / `iptv` / `portals` namespaces | Use `cache`, `store`, `http`, `vault`, `plugin.run`, `playback.open` |
 | Product boots (`KitLiveBoot`, IPTV core nav builder) | Pack `nav` only |
 | Hardcode hub slots / tab inventories / Features maps | Community inventory |

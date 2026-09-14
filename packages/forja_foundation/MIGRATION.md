@@ -10,7 +10,7 @@ package or host gap — close it in the same slice. Do not skip. Do not treat
 2. Never `hide Switch, Chip, …` against Material.
 3. Never add `import` lines to `part of` files — put them on the library parent.
 4. Never import `package:forja/shared/foundation/**`. That tree is **deleted**. Do not recreate it.
-5. If the package is missing an API: **extend the package** (`widgets/` / `components/` / `blocks/` / `protocol/`) or **move glue** to `shared/shell/`, `shared/engine/`, `shared/player/`, or `shared/host/{packs,update,account,watch,search}`. Do **not** put catalog UI in `shared/kit`, `shared/host/kit`, or `shared/foundation`. Those dumps are forbidden.
+5. If the package is missing an API: **extend the package** (`widgets/` / `components/` / `blocks/` / `protocol/`) or **move glue** to `shell/`, `shared/engine/`, `shared/player/`, or `shared/host/watch/`. Do **not** put catalog UI in `shared/kit`, `shared/host/kit`, or `shared/foundation`. Those dumps are forbidden.
 
 `forja_foundation.dart` is a gallery/test barrel.
 
@@ -25,7 +25,7 @@ Every old symbol has **exactly one** New import.
 | Bucket | Import prefix | What |
 |--------|---------------|------|
 | Package DS | `package:forja_foundation/<file>.dart` | tokens, Button, Switch, Chip, layout types (`LayoutTypes` / `LayoutMap`), protocol, NetworkImage, props-only composers |
-| Host shell | `package:forja/shared/shell/{core,chrome,kit,catalog,focus,feedback,desktop,brand,tv}/…` | ShellScope, TV, desktop chrome, toast, ForjaInteractive |
+| Host shell | `package:forja/shell/{core,filters,focus,feedback,desktop,brand,tv,update}/…` | ShellScope, TV, desktop chrome, toast, ForjaInteractive |
 | Engine | `package:forja/shared/engine/**` | rust-adjacent live models/schedule state, list-follow, torrent parse |
 | Player | `package:forja/shared/player/**` | torrent source panels + media-details chrome (orchestration) |
 | Host services | `package:forja/shared/host/{packs,update,account,watch}/**` | pack install + app update + account + watch history |
@@ -64,9 +64,9 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | `ForjaPlainIcon(icon:, onTap:, tooltip:, color:, size:, focusNode:, onKeyEvent:)` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, focusNode:, onKeyEvent:)` |
 | `ForjaIconButton(icon:, onTap:, tooltip:)` | `Button(variant: ButtonVariant.outline, size: ButtonSize.icon, icon:, onPressed: onTap, tooltip:)` |
 | `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, compact: true, onKeyEvent:)` |
-| `ForjaInteractive` | **not** Button — `package:forja/shared/shell/focus/forja_interactive.dart` |
+| `ForjaInteractive` | **not** Button — `package:forja/shell/focus/forja_interactive.dart` |
 
-`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` / `compat/legacy_buttons.dart` are **deleted**. Do not reintroduce them. `ForjaInteractive` is `package:forja/shared/shell/focus/forja_interactive.dart` — import that file, not a buttons barrel.
+`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` / `compat/legacy_buttons.dart` are **deleted**. Do not reintroduce them. `ForjaInteractive` is `package:forja/shell/focus/forja_interactive.dart` — import that file, not a buttons barrel.
 
 `ForjaButton.activateOnKeyUp` — drop; TV activate is host `ShellInputPolicy` + `Button` focus. If a call site still needs key-up activate, keep that logic next to the call site, not a second button type.
 
@@ -77,24 +77,24 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | Old | New import | Recipe |
 |-----|------------|--------|
 | `ForjaSwitch` / `forjaSwitchThemeData` | `package:forja_foundation/components/switch.dart` | `Switch(value:, onChanged:, scale:, emphasized:)` — hide Material `Switch` on that file only (`import 'package:flutter/material.dart' hide Switch;`) |
-| `ForjaShellChip` | host shell until Chip covers TV | `package:forja/shared/shell/chrome/forja_shell_chip.dart` (moved) **or** `package:forja_foundation/components/chip.dart` when the row is a simple filter chip |
-| `ForjaChipRow` | `package:forja/shared/shell/chrome/forja_chip_row.dart` (moved) | |
-| `ForjaActionChip` | `package:forja/shared/shell/chrome/forja_action_chip.dart` (moved) | |
-| `ForjaStatusTabs` / `ForjaUnderlineTab` | `package:forja/shared/shell/chrome/forja_status_tabs.dart` · `…/forja_underline_tab.dart` | package `Tabs` only if the row is the new family |
+| `ForjaShellChip` | host shell until Chip covers TV | `package:forja/shell/chrome/forja_shell_chip.dart` (moved) **or** `package:forja_foundation/components/chip.dart` when the row is a simple filter chip |
+| `ForjaChipRow` | `package:forja/shell/chrome/forja_chip_row.dart` (moved) | |
+| `ForjaActionChip` | `package:forja/shell/chrome/forja_action_chip.dart` (moved) | |
+| `ForjaStatusTabs` / `ForjaUnderlineTab` | `package:forja/shell/chrome/forja_status_tabs.dart` · `…/forja_underline_tab.dart` | package `Tabs` only if the row is the new family |
 
 ---
 
 ## Feedback
 
-Winner: **move the real host implementations** to `shared/shell/`. Package `showForjaToast` is a SnackBar stub — do not point live call sites at it.
+Winner: **move the real host implementations** to `shell/`. Package `showForjaToast` is a SnackBar stub — do not point live call sites at it.
 
 | Old | New import |
 |-----|------------|
-| `ForjaToast` / `ForjaToastHost` / `ForjaToastKind` | `package:forja/shared/shell/feedback/forja_toast.dart` |
-| `ForjaLoadingDots` / `ForjaBusyCancelGlyph` | `package:forja/shared/shell/feedback/forja_loading_dots.dart` |
-| `ForjaPlayerOverlayPanel` | `package:forja/shared/shell/feedback/forja_player_overlay.dart` |
-| `ForjaFrostedPanel` | `package:forja/shared/shell/feedback/forja_frosted_panel.dart` |
-| `FractalGlassGradient` / splash logo | `package:forja/shared/shell/brand/…` (moved from primitives/brand + feedback) |
+| `ForjaToast` / `ForjaToastHost` / `ForjaToastKind` | `package:forja/shell/feedback/forja_toast.dart` |
+| `ForjaLoadingDots` / `ForjaBusyCancelGlyph` | `package:forja/shell/feedback/forja_loading_dots.dart` |
+| `ForjaPlayerOverlayPanel` | `package:forja/shell/feedback/forja_player_overlay.dart` |
+| `ForjaFrostedPanel` | `package:forja/shell/feedback/forja_frosted_panel.dart` |
+| `FractalGlassGradient` / splash logo | `package:forja/shell/brand/…` (moved from primitives/brand + feedback) |
 
 ---
 
@@ -103,15 +103,15 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | Old | New |
 |-----|-----|
 | `ForjaNetworkImage` | `package:forja_foundation/components/network_image.dart` after package gains `alignment`, `useOldImageOnUrlChange`, `memCacheWidth`, `filterQuality` |
-| `shellFocusableTap` / `shellGridColumnCount` / `shellTvRegisterRow` | `package:forja/shared/shell/focus/shell_focusable_tap.dart` |
+| `shellFocusableTap` / `shellGridColumnCount` / `shellTvRegisterRow` | `package:forja/shell/focus/shell_focusable_tap.dart` |
 | Package `FocusableTap` | kit-only stand-in — **not** a replacement for `shellFocusableTap` |
-| `HoverScale` | `package:forja/shared/shell/focus/hover_scale.dart` |
-| `HorizontalScroller` | `package:forja/shared/shell/chrome/horizontal_scroller.dart` |
-| `LoadingOverlay` / `dismissActiveLoadingOverlayRoute` | `package:forja/shared/shell/feedback/loading_overlay.dart` |
-| `ShellCardPlayOverlay` | `package:forja/shared/shell/feedback/shell_card_play_overlay.dart` |
-| `ShellErrorRetryPanel` | `package:forja/shared/shell/feedback/shell_error_retry_panel.dart` |
-| `ShellMoodCircleLayout` / `ShellMoodCircleItem` | `package:forja/shared/shell/catalog/shell_mood_circle.dart` |
-| `ForjaPosterCard` / `ForjaServerGrid` | `package:forja/shared/shell/…` (moved) |
+| `HoverScale` | `package:forja/shell/focus/hover_scale.dart` |
+| `HorizontalScroller` | `package:forja/shell/chrome/horizontal_scroller.dart` |
+| `LoadingOverlay` / `dismissActiveLoadingOverlayRoute` | `package:forja/shell/feedback/loading_overlay.dart` |
+| `ShellCardPlayOverlay` | `package:forja/shell/feedback/shell_card_play_overlay.dart` |
+| `ShellErrorRetryPanel` | `package:forja/shell/feedback/shell_error_retry_panel.dart` |
+| `ShellMoodCircleLayout` / `ShellMoodCircleItem` | `package:forja/shell/catalog/shell_mood_circle.dart` |
+| `ForjaPosterCard` / `ForjaServerGrid` | `package:forja/shell/…` (moved) |
 
 ---
 
@@ -119,29 +119,29 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 
 | Old path | New path |
 |----------|----------|
-| `foundation/primitives/shell/forja_shell_scope.dart` | `package:forja/shared/shell/core/forja_shell_scope.dart` |
-| `…/forja_shell_layout.dart` (`shellScaled`, `shellUsesWideLayout`, …) | `package:forja/shared/shell/core/forja_shell_layout.dart` |
-| `…/forja_shell_profile.dart` (`ShellProfile`, `resolveShellProfile`) | `package:forja/shared/shell/core/forja_shell_profile.dart` |
-| `…/forja_shell_platform.dart` (`shellPlatformConfigFor`) | `package:forja/shared/shell/core/forja_shell_platform.dart` |
-| `…/forja_shell_metrics.dart` | `package:forja/shared/shell/core/forja_shell_metrics.dart` |
-| `…/forja_shell_input_policy.dart` | `package:forja/shared/shell/core/forja_shell_input_policy.dart` |
-| `…/forja_shell_keyboard_focus.dart` | `package:forja/shared/shell/core/forja_shell_keyboard_focus.dart` |
-| `…/forja_shell_keyboard_focus_scope.dart` | `package:forja/shared/shell/core/forja_shell_keyboard_focus_scope.dart` |
-| `…/forja_shell_section_title.dart` | `package:forja/shared/shell/chrome/forja_shell_section_title.dart` |
-| `…/forja_shell_tab_header.dart` | `package:forja/shared/shell/chrome/forja_shell_tab_header.dart` |
-| `foundation/primitives/tv/tv_browse_text_field.dart` | `package:forja/shared/shell/tv/tv_browse_text_field.dart` |
-| `…/tv_search_browse_overlay.dart` | `package:forja/shared/shell/tv/tv_search_browse_overlay.dart` |
-| `foundation/primitives/desktop/desktop_window_chrome.dart` | `package:forja/shared/shell/desktop/desktop_window_chrome.dart` |
-| `…/desktop_window_geometry.dart` | `package:forja/shared/shell/desktop/desktop_window_geometry.dart` |
-| `…/desktop_window_focus.dart` | `package:forja/shared/shell/desktop/desktop_window_focus.dart` |
-| `foundation/tv/shell_tv_coordinator.dart` | `package:forja/shared/shell/tv/shell_tv_coordinator.dart` |
-| `foundation/tv/shell_tv_focus.dart` | `package:forja/shared/shell/tv/shell_tv_focus.dart` |
-| `foundation/tv/tv_focus_graph.dart` | `package:forja/shared/shell/tv/tv_focus_graph.dart` |
-| `foundation/tv/shell_tv_back_handler.dart` | `package:forja/shared/shell/tv/shell_tv_back_handler.dart` |
-| `foundation/tv/shell_tv_app_exit.dart` | `package:forja/shared/shell/tv/shell_tv_app_exit.dart` |
-| `foundation/tv/shell_tv_hold_accel.dart` | `package:forja/shared/shell/tv/shell_tv_hold_accel.dart` |
-| `foundation/tv/tv_remote_debug.dart` | `package:forja/shared/shell/tv/tv_remote_debug.dart` |
-| `foundation/tv/media_details_tv_scope.dart` | `package:forja/shared/shell/tv/media_details_tv_scope.dart` |
+| `foundation/primitives/shell/forja_shell_scope.dart` | `package:forja/shell/core/forja_shell_scope.dart` |
+| `…/forja_shell_layout.dart` (`shellScaled`, `shellUsesWideLayout`, …) | `package:forja/shell/core/forja_shell_layout.dart` |
+| `…/forja_shell_profile.dart` (`ShellProfile`, `resolveShellProfile`) | `package:forja/shell/core/forja_shell_profile.dart` |
+| `…/forja_shell_platform.dart` (`shellPlatformConfigFor`) | `package:forja/shell/core/forja_shell_platform.dart` |
+| `…/forja_shell_metrics.dart` | `package:forja/shell/core/forja_shell_metrics.dart` |
+| `…/forja_shell_input_policy.dart` | `package:forja/shell/core/forja_shell_input_policy.dart` |
+| `…/forja_shell_keyboard_focus.dart` | `package:forja/shell/core/forja_shell_keyboard_focus.dart` |
+| `…/forja_shell_keyboard_focus_scope.dart` | `package:forja/shell/core/forja_shell_keyboard_focus_scope.dart` |
+| `…/forja_shell_section_title.dart` | `package:forja/shell/chrome/forja_shell_section_title.dart` |
+| `…/forja_shell_tab_header.dart` | `package:forja/shell/chrome/forja_shell_tab_header.dart` |
+| `foundation/primitives/tv/tv_browse_text_field.dart` | `package:forja/shell/tv/tv_browse_text_field.dart` |
+| `…/tv_search_browse_overlay.dart` | `package:forja/shell/tv/tv_search_browse_overlay.dart` |
+| `foundation/primitives/desktop/desktop_window_chrome.dart` | `package:forja/shell/desktop/desktop_window_chrome.dart` |
+| `…/desktop_window_geometry.dart` | `package:forja/shell/desktop/desktop_window_geometry.dart` |
+| `…/desktop_window_focus.dart` | `package:forja/shell/desktop/desktop_window_focus.dart` |
+| `foundation/tv/shell_tv_coordinator.dart` | `package:forja/shell/tv/shell_tv_coordinator.dart` |
+| `foundation/tv/shell_tv_focus.dart` | `package:forja/shell/tv/shell_tv_focus.dart` |
+| `foundation/tv/tv_focus_graph.dart` | `package:forja/shell/tv/tv_focus_graph.dart` |
+| `foundation/tv/shell_tv_back_handler.dart` | `package:forja/shell/tv/shell_tv_back_handler.dart` |
+| `foundation/tv/shell_tv_app_exit.dart` | `package:forja/shell/tv/shell_tv_app_exit.dart` |
+| `foundation/tv/shell_tv_hold_accel.dart` | `package:forja/shell/tv/shell_tv_hold_accel.dart` |
+| `foundation/tv/tv_remote_debug.dart` | `package:forja/shell/tv/tv_remote_debug.dart` |
+| `foundation/tv/media_details_tv_scope.dart` | `package:forja/shell/tv/media_details_tv_scope.dart` |
 
 ---
 
@@ -157,7 +157,7 @@ Winner: **move the real host implementations** to `shared/shell/`. Package `show
 | Generic catalog kit UI | `package:forja_foundation/widgets/**` · `blocks/**` · `kit/**` — see evacuate table. Glue: `shared/engine/hub/` |
 | Packs / PackAssets | `package:forja/shared/engine/packs/**` · UI: `package:forja/features/settings/packs/**` |
 | Watch history | `package:forja/shared/host/watch/watch_history.dart` |
-| Update dialog / banner | `package:forja/shared/shell/update/**` |
+| Update dialog / banner | `package:forja/shell/update/**` |
 | Keychain consent | `package:forja/features/settings/about/macos_keychain_consent_screen.dart` |
 
 **Forbidden destinations:** `shared/kit/**`, `shared/host/kit/**`, `shared/host/lists/**`, `shared/host/live_sports/**`, `shared/host/sources/**`.
@@ -196,13 +196,13 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `hero_watch_providers_row.dart` | `package:forja_foundation/widgets/details/watch_providers_row.dart` | ✅ |
 | `rotating_hero_backdrop.dart` | `package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart` | ✅ |
 | `settled_network_image.dart` | `package:forja_foundation/components/settled_network_image.dart` | ✅ |
-| `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shared/shell/focus/hero_pill_buttons.dart` | ✅ |
-| `cinematic_hero.dart` | paint: `package:forja_foundation/widgets/catalog/cinematic_hero.dart` (absolute URL slides). Host TV/Interactive: `package:forja/shared/shell/catalog/cinematic_hero_interactive.dart`. Host mapper: `package:forja/shared/shell/catalog/cinematic_hero.dart` | ✅ |
-| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` · `movie_atmosphere.dart` | package: `widgets/catalog/*` (props). Host TV/focus mappers: `shared/shell/kit_*` · `continue_widget` · `movie_poster_card` · `shell_mood_circle` · `home_loading_skeleton` | ✅ |
+| `hero_pill_buttons.dart` | paint: `package:forja_foundation/widgets/details/hero_pill_surfaces.dart`; Interactive/TV: `package:forja/shell/focus/hero_pill_buttons.dart` | ✅ |
+| `cinematic_hero.dart` | paint: `package:forja_foundation/widgets/catalog/cinematic_hero.dart` (absolute URL slides). Host TV/Interactive: `package:forja/shell/catalog/cinematic_hero_interactive.dart`. Host mapper: `package:forja/shell/catalog/cinematic_hero.dart` | ✅ |
+| `because_section.dart` · `continue_*.dart` · `movie_poster*.dart` · `movie_section.dart` · `home_movie_row.dart` · `kit_poster_card.dart` · `kit_event_card.dart` · `kit_event_dense_tile.dart` · `home_loading_skeleton.dart` · `movie_atmosphere.dart` | package: `widgets/catalog/*` (props). Host TV/focus mappers: `shell/kit_*` · `continue_widget` · `movie_poster_card` · `shell_mood_circle` · `home_loading_skeleton` | ✅ |
 | `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_panel_tabs.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,side_panel_overlay,portal_list_panel}.dart` · `widgets/sources/panel_tabs.dart` | ✅ |
 | `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/category_circle_meta.dart` | ✅ |
 | `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
-| `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` · `kit_chrome_top_bar.dart` | paint: catalog browse/search → `package:forja_foundation/widgets/catalog/<catalog_*,category_bar,filter_sheet_option,…>.dart`; shell chrome → `widgets/chrome/{top_bar,hub_top_bar,portals_chip,logo_menu_rail,…}.dart`; host mappers: `package:forja/shared/shell/<file>.dart` + `engine/hub/open_catalog_search.dart`. **Body evacuate:** `CatalogBody` + `MoodSection` in KitShell; `CatalogList` sideSplit; canonical `SearchFilters`; `CatalogSearchPage`; details via `DetailsBlock`; vertical filters = `LogoMenuRail` only. **Deeper paint (277):** `CatalogSearchResultCard` + filter lens painters; `KitSection` → `CatalogSection` builders; `CatalogPosterGrid` / `CatalogDenseList` / empty+skeleton composers. | ✅ |
+| `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` · `kit_chrome_top_bar.dart` | paint: catalog browse/search → `package:forja_foundation/widgets/catalog/<catalog_*,category_bar,filter_sheet_option,…>.dart`; shell chrome → `widgets/chrome/{top_bar,hub_top_bar,portals_chip,logo_menu_rail,…}.dart`; host mappers: `package:forja/shell/<file>.dart` + `engine/hub/open_catalog_search.dart`. **Body evacuate:** `CatalogBody` + `MoodSection` in KitShell; `CatalogList` sideSplit; canonical `SearchFilters`; `CatalogSearchPage`; details via `DetailsBlock`; vertical filters = `LogoMenuRail` only. **Deeper paint (277):** `CatalogSearchResultCard` + filter lens painters; `KitSection` → `CatalogSection` builders; `CatalogPosterGrid` / `CatalogDenseList` / empty+skeleton composers. | ✅ |
 | `kit_panel_host.dart` · `kit_feed_chrome.dart` · `kit_top_bar_host_hooks.dart` · `kit_top_menu_registry.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
 | `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `package:forja_foundation/widgets/details/{details_screen,details_hero,play_row,entry_details,match_details_page,list_status_*}.dart` + `blocks/details/details_block.dart`. Host MetaRuntime/TV/ListFollow mappers: `package:forja/shared/player/details/<file>.dart` | ✅ |
 | `kit_details_sections.dart` UI | `package:forja_foundation/widgets/details/details_rails.dart`; parse/fetch leftover: `package:forja/shared/engine/hub/kit_details_sections.dart` | ✅ |
@@ -213,12 +213,12 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `cover_urls.dart` (host) | **deleted** — use `package:forja_foundation/utils/cover_urls.dart` | ✅ |
 | `search_recent_queries.dart` | `package:forja/shared/engine/runtime/search/search_recent_queries.dart` | ✅ |
 | `my_list_catalog_open.dart` · `my_list_catalog_source.dart` · `my_list_host.dart` | `package:forja/shared/engine/lists/<file>.dart` | ✅ |
-| `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop/desktop_selectable_title.dart` | ✅ |
-| `kit_focus.dart` | `package:forja/shared/shell/focus/focus_edge.dart` | ✅ |
+| `desktop_selectable_title.dart` | `package:forja/shell/desktop/desktop_selectable_title.dart` | ✅ |
+| `kit_focus.dart` | `package:forja/shell/focus/focus_edge.dart` | ✅ |
 | `lib/kit/kit_types.dart` · `kit_layout_map.dart` | `package:forja_foundation/protocol/{layout_types,layout_map}.dart` (`LayoutTypes` / `LayoutMap`) — `lib/kit/` deleted | ✅ |
 | `forja_host_assets.dart` | `package:forja/shared/engine/packs/forja_host_assets.dart` | ✅ |
 
-Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters registry stays `shared/shell/` (paint via `LogoMenuRail`).
+Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters registry stays `shell/filters/` (paint via `LogoMenuRail`).
 
 `apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 

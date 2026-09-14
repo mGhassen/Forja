@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/core/forja_shell_input_policy.dart';
-import 'package:forja/shared/shell/core/forja_shell_platform.dart';
-import 'package:forja/shared/shell/core/forja_shell_profile.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/shell/tv/shell_tv_focus.dart';
-import 'package:forja/shared/shell/tv/tv_focus_graph.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(

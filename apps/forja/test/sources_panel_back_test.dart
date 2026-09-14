@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/shell/core/forja_shell_profile.dart';
-import 'package:forja/shared/shell/core/forja_shell_platform.dart';
-import 'package:forja/shared/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/core/forja_shell_platform.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/details/sources_panel_tv.dart';
 
 Widget _wrapTv(Widget child) {

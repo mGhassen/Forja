@@ -13,9 +13,4 @@ class PackCapabilities {
   /// Pack parses RFC-058 structured query tokens in `search` (person/year/score/…).
   /// Host mounts the tune / filter lens when this is present (kit [KitSearchScreen]).
   static const String structuredSearch = 'structured_search';
-
-  /// Hub kit search uses the host TMDB + Stremio addon engine (progressive)
-  /// instead of pack-only MetaRuntime `search`. Screen stays kit chrome;
-  /// top-bar Search and Cmd+F must match.
-  static const String hostSearch = 'host_search';
 }

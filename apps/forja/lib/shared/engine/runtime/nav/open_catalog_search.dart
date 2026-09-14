@@ -7,9 +7,7 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
 ///
-/// Screen is always [KitSearchScreen] (hub pack chrome). Pack `host_search`
-/// turns on the host TMDB + Stremio addon engine behind that screen; otherwise
-/// MetaRuntime pack `search` runs.
+/// Screen is [KitSearchScreen]. Pack owns search via opaque `action: 'search'`.
 Future<void> openCatalogSearch(
   BuildContext context, {
   required String pluginId,
@@ -30,7 +28,6 @@ Future<void> openCatalogSearch(
         pluginId: pluginId,
         tabId: tabId,
         hintText: hintText,
-        hostSearch: plugin.hasCapability(PackCapabilities.hostSearch),
         structuredSearch: plugin.hasCapability(
           PackCapabilities.structuredSearch,
         ),

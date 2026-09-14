@@ -8,7 +8,6 @@ void main() {
   final root = Directory('lib');
   final zones = [
     Directory('lib/components'),
-    Directory('lib/primitives'),
     Directory('lib/widgets'),
     Directory('lib/tokens'),
     Directory('lib/theme'),
