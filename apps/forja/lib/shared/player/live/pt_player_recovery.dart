@@ -201,6 +201,8 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
     if (!_livePlaybackProfile) return;
+    // ipdigi MediaKit live: never seek/drop-buffers — goLive is stop+open.
+    if (_s._mediaKitBackend) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
@@ -567,6 +569,17 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
     if (_streamWorking) {
       _logHealthyHold('hw→sw');
+      return;
+    }
+    // ipdigi: MediaKit live never falls back to TextureSW.
+    if (_livePlaybackProfile &&
+        _s._mediaKitBackend &&
+        !_s.widget.vodPlayback) {
+      debugPrint(
+        '[IPTV Player] MediaKit live: ignore hw→sw — grace/goLive only',
+      );
+      if (_recoveryInFlight) return;
+      await _triggerRecovery(reason: 'hardware decode failed (live keep HW)');
       return;
     }
     // ATV MediaKit must stay on MediaCodec. Software decode of FHD/UHD on

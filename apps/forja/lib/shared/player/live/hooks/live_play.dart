@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Forja platform service: open the shared native live player.
@@ -15,6 +16,7 @@ Future<void> openForjaLiveNativePlayer(
   required String title,
   String? subtitle,
   String? logoUrl,
+  ChannelGuide? channelGuide,
   BuiltInPlayerContext engineContext = BuiltInPlayerContext.live,
   PortalLiveSourceKind? liveSourceKind,
   PortalLiveEngineResolveSource? liveEngineResolveSource,
@@ -37,6 +39,7 @@ Future<void> openForjaLiveNativePlayer(
         title: title,
         subtitle: subtitle,
         logoUrl: logoUrl,
+        channelGuide: channelGuide,
         titleTracksSource: titleTracksSource,
         engineContext: engineContext,
         liveSourceKind: liveSourceKind ?? sources.first.liveSourceKind,

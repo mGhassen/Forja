@@ -696,24 +696,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// the last frame with no reconnect banner. Force software from boot.
   bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
-  /// macOS / Linux live: VideoToolbox / VAAPI one-shots after every CDN socket
-  /// close on Xtream/Stalker **MPEG-TS** — software decode + continuity proxy.
-  /// HLS (Stremio, Forja Live, M3U `.m3u8`) starves under TextureSW (black +
-  /// silent, cache=0 forever) — keep VideoToolbox / VAAPI (issue 273).
-  bool get _desktopLiveSoftwareDecode {
-    if (widget.vodPlayback || kIsWeb) return false;
-    if (!Platform.isMacOS && !Platform.isLinux) return false;
-    final src = _sources.isEmpty
-        ? null
-        : _sources[_sourceIdx.clamp(0, _sources.length - 1)];
-    final kind = src?.liveSourceKind ?? widget.liveSourceKind;
-    if (kind == PortalLiveSourceKind.liveEngine ||
-        kind == PortalLiveSourceKind.stremio) {
-      return false;
-    }
-    if (src != null && iptvUrlLooksLikeHls(src.url)) return false;
-    return true;
-  }
+  /// Retired (RFC-113 / ipdigi): macOS/Linux Xtream no longer forces TextureSW.
+  /// Was: software decode after CDN socket close + continuity proxy era.
+  bool get _desktopLiveSoftwareDecode => false;
 
   /// Probed after each open - pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
@@ -1189,9 +1174,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     }
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
-    if (_windowsSoftwareDecode || _desktopLiveSoftwareDecode) {
-      _softwareDecodeForced = true;
-    }
+    // MediaKit live never boots into TextureSW (ipdigi).
     _initOrientationAndChrome();
     WakelockPlus.enable();
     void onPipChanged(bool inPip) {
@@ -1470,8 +1453,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
     _playerEngine = engine;
     _androidMediaKitSafeMode = _mediaKitBackend && !PlatformInfo.isAndroidTv;
+    // MediaKit live: never force SW. VOD / non-MK may still use Windows SW.
     _softwareDecodeForced =
-        _windowsSoftwareDecode || _desktopLiveSoftwareDecode;
+        _windowsSoftwareDecode && (!_mediaKitBackend || widget.vodPlayback);
     _player = null;
     _controller = null;
     _exoViewId = null;

@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
+import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/widgets/guide/channel_guide.dart';
 import 'package:rust/rust.dart' show BuiltInPlayerContext;
 
 /// Generic `ctx.host.playback.open` + `open.surface: stream` (RFC-109 Wave C).
@@ -40,6 +42,8 @@ abstract final class HostPlaybackOpen {
         : item.poster.trim();
     final streamId = (open?.extraString('streamId') ?? '').trim();
     final epg = (open?.extraString('epgChannelId') ?? '').trim();
+    final portalKey = (open?.extraString('portalKey') ?? '').trim();
+    final categoryId = (open?.extraString('categoryId') ?? '').trim();
     final vod = _vodFromOpen(open);
     final subtitleRaw =
         (open?.extraString('subtitle') ?? item.description).trim();
@@ -52,6 +56,8 @@ abstract final class HostPlaybackOpen {
         logoUrl: logo,
         streamId: streamId.isEmpty ? null : streamId,
         epgChannelId: epg.isEmpty ? null : epg,
+        portalKey: portalKey.isEmpty ? null : portalKey,
+        categoryId: categoryId.isEmpty ? null : categoryId,
         liveSourceKind: _liveSourceKindFromOpen(open, vod: vod),
         engineContext: _engineContext(open: open, vod: vod),
         vodPlayback: vod,
@@ -70,11 +76,14 @@ abstract final class HostPlaybackOpen {
     String? logoUrl,
     String? streamId,
     String? epgChannelId,
+    String? portalKey,
+    String? categoryId,
     Map<String, String>? headers,
     PortalLiveSourceKind? liveSourceKind,
     BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
     bool vodPlayback = false,
     bool onlineSubtitles = false,
+    ChannelGuide? channelGuide,
   }) async {
     final u = url.trim();
     if (u.isEmpty) return false;
@@ -82,6 +91,22 @@ abstract final class HostPlaybackOpen {
     if (ctx == null || !ctx.mounted) return false;
     final t = title.trim().isEmpty ? 'Stream' : title.trim();
     try {
+      var guide = channelGuide;
+      if (guide == null &&
+          !vodPlayback &&
+          portalKey != null &&
+          portalKey.trim().isNotEmpty) {
+        guide = await PortalChannelGuideOpen.build(
+          portalKey: portalKey,
+          streamId: streamId ?? '',
+          title: t,
+          logoUrl: logoUrl,
+          categoryId: categoryId,
+          epgChannelId: epgChannelId,
+          playUrl: u,
+        );
+        if (ctx.mounted == false) return false;
+      }
       await openForjaLiveNativePlayer(
         ctx,
         sources: [
@@ -98,6 +123,7 @@ abstract final class HostPlaybackOpen {
         title: t,
         subtitle: subtitle,
         logoUrl: logoUrl,
+        channelGuide: guide,
         engineContext: engineContext,
         liveSourceKind: liveSourceKind,
         titleTracksSource: false,

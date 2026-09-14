@@ -224,30 +224,30 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
       // a broken VideoToolbox session on macOS (black texture, audio OK).
       // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
       if (_s._atvMediaKit) {
+        // Forja ATV vo=mediacodec_embed needs mediacodec (ipdigi leaves default).
         await p.setProperty('hwdec', 'mediacodec');
-        // Default audio device — silenceMediaKitPlayer sets ao=null on exit;
-        // a soft reopen must not stay muted/null. audiotrack is Android's ao.
         await p.setProperty('ao', 'audiotrack');
         await p.setProperty('mute', 'no');
-        // Headroom for [kAtvMediaKitVolumeGain] — UI 100 asks mpv for 130.
         await p.setProperty('volume-max', '150');
-        // Match display refresh — same for HD and UHD (known-good ≤v1.3.80).
-        // Do not override to audio-clock on 4K (issue 155 / I138 regression).
         await p.setProperty('video-sync', 'display-resample');
         await p.setProperty('framedrop', 'vo');
-      } else {
+        await p.setProperty('vd-lavc-dr', 'no');
+      } else if (_s.widget.vodPlayback || !_livePlaybackProfile) {
         await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
         await restoreMediaKitAudioOutput(p);
+        await p.setProperty(
+          'vd-lavc-dr',
+          _useSoftwareDecode ? 'no' : 'yes',
+        );
+      } else {
+        // ipdigi live desktop/phone/Windows: no hwdec / vd-lavc-dr pins.
+        await restoreMediaKitAudioOutput(p);
       }
-      // Direct rendering + D3D11 on Windows live feeds can stick the last
-      // frame after the readahead window (~20s) with A/V frozen.
-      // mediacodec_embed already owns the surface. lavc DR extra copies on
-      // 4K MediaCodec are a physical-ATV OOM vector (issue 155).
-      await p.setProperty(
-        'vd-lavc-dr',
-        (_s._atvMediaKit || _useSoftwareDecode) ? 'no' : 'yes',
-      );
-      await p.setProperty('vd-lavc-threads', '0');
+
+      final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
+      if (!liveMk) {
+        await p.setProperty('vd-lavc-threads', '0');
+      }
 
       // Network: ipdigi uses 30s so lavf reconnect can finish.
       await p.setProperty('network-timeout', '30');
@@ -275,7 +275,6 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
         await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
         await p.setProperty('demuxer-max-bytes', '$coldBytes');
         await p.setProperty('demuxer-max-back-bytes', '$coldBackBytes');
-        await p.setProperty('audio-buffer', '1.0');
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
         await p.setProperty('cache-pause-wait', '0');
@@ -304,48 +303,31 @@ mixin _PtPlayerMkTunables on _PtPlayerEngineCore {
 
       // ipdigi: keep-open=always so brief EOF does not tear down the player.
       await p.setProperty('keep-open', 'always');
-      await p.setProperty('keep-open-pause', 'no');
+      if (!liveMk) {
+        await p.setProperty('keep-open-pause', 'no');
+        await p.setProperty('hls-bitrate', 'max');
+        await p.setProperty('rtsp-transport', 'tcp');
+      }
 
-      // HLS: pick best variant. Desktop live forces software decode (TextureSW);
-      // `max` grabs Brightcove / fat demuxed 1080p50 masters and underruns into
-      // the watchdog reopen loop. Soft-cap ~720p when decoding in software.
-      await p.setProperty(
-        'hls-bitrate',
-        (_useSoftwareDecode && !_s.widget.vodPlayback) ? '3500000' : 'max',
-      );
-
-      // RTSP over TCP - way more reliable on flaky networks
-      await p.setProperty('rtsp-transport', 'tcp');
-
-      // Many Xtream panels gate streams on a VLC user-agent
-      await p.setProperty('user-agent', _PtPlayerScreenState._ua);
+      // Panel UA — VOD / non-live only. ipdigi live opens with no UA.
+      if (_s.widget.vodPlayback || !_livePlaybackProfile) {
+        await p.setProperty('user-agent', _PtPlayerScreenState._ua);
+      }
 
       // FFmpeg reconnect — applied after open for VOD; live sets before open.
       if (_s.widget.vodPlayback) {
         await _applyStreamLavfReconnect(p);
       }
 
-      // MPEG-TS / HLS demux tuning.
-      //   probesize=5MB, analyzeduration=5s - big enough for ffmpeg to
-      //                                       detect real codec params.
-      //   discardcorrupt                    - drop junk packets silently.
-      // We deliberately DO NOT set fflags=+nobuffer here. +nobuffer tells
-      // ffmpeg to push frames the instant they arrive, which is great for
-      // sub-second-latency live but means any upstream jitter ⇒ visible
-      // buffer underrun. For IPTV we'd rather have ~1–2 s of demuxer
-      // smoothing than a spinner every 30 s.
-      // HLS-only options (live_start_index, m3u8_hold_counters, etc.) are
-      // intentionally not set - when the stream isn't HLS, libavformat
-      // rejects them and mpv prints noisy errors the watchdog mistakes
-      // for stream failures.
-      // +igndts: DAI / SCTE ad-splice HLS often emits pts < dts (CBS News etc.)
-      // — without it demuxer stalls with cache=0 while segments still download.
-      await p.setProperty(
-        'demuxer-lavf-o',
-        'fflags=+discardcorrupt+genpts+igndts,'
-            'probesize=5000000,'
-            'analyzeduration=5000000',
-      );
+      // VOD / non-live only — ipdigi does not set demuxer-lavf-o.
+      if (!liveMk) {
+        await p.setProperty(
+          'demuxer-lavf-o',
+          'fflags=+discardcorrupt+genpts+igndts,'
+              'probesize=5000000,'
+              'analyzeduration=5000000',
+        );
+      }
     } catch (e) {
       debugPrint('[IPTV Player] tunables failed: $e');
     }

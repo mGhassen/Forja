@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **0 / 9** acceptance (manual QA) |
-| **Current slice** | Full ipdigi parity: lavf HLS + ATV Skia + no MK live soft-reopen |
+| **Progress** | **11 / 11** components · **0 / 9** acceptance (manual QA) |
+| **Current slice** | Full ipdigi MediaKit live: decode/controller + lavf + grace/goLive |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -29,6 +29,7 @@
 | 8 | R113-C08 | HLS MediaKit uses same lavf reconnect string as progressive (ipdigi) | ✅ |
 | 9 | R113-C09 | MediaKit live: no watchdog soft-reopen underrun (grace → goLive only) | ✅ |
 | 10 | R113-C10 | Android Impeller off globally (`EnableImpeller=false` manifest, ipdigi) | ✅ |
+| 11 | R113-C11 | MediaKit live: default `VideoController` (non-ATV); never TextureSW (incl. Windows); no non-ipdigi live mpv pins | ✅ |
 
 ---
 

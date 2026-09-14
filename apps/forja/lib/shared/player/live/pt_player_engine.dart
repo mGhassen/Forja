@@ -25,35 +25,55 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
   void _logHold(String reason, {required bool healthy});
   void _resetDemuxerProbe();
   void _scheduleJumpToLive({bool force = false});
+  Future<void> _goLiveReopen();
   void _invalidatePendingLiveEdgeSnaps();
   void _clearBufferingChrome();
   bool get _streamWorking;
   bool get _bufferedRecovery;
 
-  bool get _useSoftwareDecode =>
-      _s._softwareDecodeForced ||
-      _s._androidMediaKitSafeMode ||
-      _s._windowsSoftwareDecode ||
-      _s._desktopLiveSoftwareDecode;
+  bool get _useSoftwareDecode {
+    // MediaKit live = ipdigi: never force TextureSW / hwdec=no.
+    if (_livePlaybackProfile &&
+        _s._mediaKitBackend &&
+        !_s.widget.vodPlayback) {
+      return false;
+    }
+    return _s._softwareDecodeForced ||
+        _s._androidMediaKitSafeMode ||
+        _s._windowsSoftwareDecode ||
+        _s._desktopLiveSoftwareDecode;
+  }
 
   void _initPlayerInstances() {
     _s._videoEpoch++;
     final player = Player(configuration: _s._mediaKitPlayerConfiguration);
     _s._player = MpvExclusiveSession.instance.trackPlayer(player);
-    // ATV: vo=gpu needs EGL (black / audio-only on leanback). mediacodec_embed
-    // paints MediaCodec into the Flutter Surface — same as VOD TvPlayerScreen.
     final atv = _s._atvMediaKit;
-    _s._controller = VideoController(
-      _s._player!,
-      configuration: VideoControllerConfiguration(
-        vo: atv ? 'mediacodec_embed' : null,
-        enableHardwareAcceleration: atv || !_useSoftwareDecode,
-        hwdec: atv ? 'mediacodec' : (_useSoftwareDecode ? 'no' : 'auto-safe'),
-        // Avoid blank video when the surface attaches before mpv negotiates
-        // dimensions (common on Android / ATV emulators).
-        androidAttachSurfaceAfterVideoParameters: false,
-      ),
-    );
+    final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
+    if (atv) {
+      // Forja leanback: mediacodec_embed (ipdigi uses default vo=gpu).
+      _s._controller = VideoController(
+        _s._player!,
+        configuration: const VideoControllerConfiguration(
+          vo: 'mediacodec_embed',
+          enableHardwareAcceleration: true,
+          hwdec: 'mediacodec',
+          androidAttachSurfaceAfterVideoParameters: false,
+        ),
+      );
+    } else if (liveMk) {
+      // ipdigi: default VideoController — no TextureSW / hwdec pin.
+      _s._controller = VideoController(_s._player!);
+    } else {
+      _s._controller = VideoController(
+        _s._player!,
+        configuration: VideoControllerConfiguration(
+          enableHardwareAcceleration: !_useSoftwareDecode,
+          hwdec: _useSoftwareDecode ? 'no' : 'auto-safe',
+          androidAttachSurfaceAfterVideoParameters: false,
+        ),
+      );
+    }
     _s._playerAlive = true;
     _bind();
   }
@@ -570,17 +590,22 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         // RFC-113 / ipdigi: CDN direct + lavf reconnect (no continuity proxy).
         debugPrint('[IPTV Player] direct open ($kind)');
         final np = player.platform;
-        if (np is NativePlayer) {
+        final liveMk = _livePlaybackProfile && !_s.widget.vodPlayback;
+        if (np is NativePlayer && liveMk) {
+          await _applyStreamLavfReconnect(np);
+        } else if (np is NativePlayer) {
           await applyMediaHttpHeaders(
             player,
             headers,
             streamUrl: playUrl,
           );
-          if (_livePlaybackProfile) {
-            await _applyStreamLavfReconnect(np);
-          }
         }
-        await player.open(Media(playUrl, httpHeaders: headers));
+        // ipdigi live: Media(url) only — no httpHeaders / panel UA.
+        if (liveMk) {
+          await player.open(Media(playUrl));
+        } else {
+          await player.open(Media(playUrl, httpHeaders: headers));
+        }
         await player.play();
         if (_s._atvMediaKit) {
           unawaited(_tuneAtvMediaKitAfterOpen());
@@ -944,10 +969,10 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
           );
           return;
         }
-        // Live Stable: CDN chunk close → corrupt TS → VT one-shot is normal.
-        // Never hard-fallback to software. Soft reopen still runs if cache
-        // stays empty (do not pretend that is "working").
-        if (_livePlaybackProfile && _bufferedRecovery) {
+        // MediaKit live (ipdigi): never TextureSW. Hold or grace/goLive only.
+        if (_livePlaybackProfile &&
+            _s._mediaKitBackend &&
+            !_s.widget.vodPlayback) {
           _armTransientHwDecodeIgnore();
           if (_streamWorking) {
             _logHealthyHold('hw decode fail (live hold)');
@@ -1093,9 +1118,14 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
         _s._openedAt = DateTime.now();
         _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
+        // Probe DVR window for UI. MediaKit live: never post-open live-edge
+        // snap — force-seekable + seek 99999 on thin cache freezes progressive
+        // TS (ipdigi: open+play only; reconnect = goLive stop+open).
         unawaited(
           _probeStreamCapabilities().then((_) {
-            if (mounted && _livePlaybackProfile) _scheduleJumpToLive();
+            if (!mounted || !_livePlaybackProfile) return;
+            if (_s._mediaKitBackend) return;
+            _scheduleJumpToLive();
           }),
         );
         // Clear banner after a short successful run (do not require !_buffering —
@@ -1182,17 +1212,16 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     if (mounted) setState(() => _s._playerReady = true);
   }
 
-  /// Manual reload control: live MediaKit rejoins the edge first, then falls
-  /// back to a real reopen only if that did not restore frames.
-  ///
-  /// An unconditional [Player.open] here ANRs ATV (issue 128 T08) and a
-  /// pre-open `stop()` hangs a virgin player (T08 follow-up), so the reopen is
-  /// deferred behind [_reloadEscalateAfter] and routed through the recovery
-  /// ladder — the same path the watchdog would take on a stalled feed.
+  /// Manual reload: MediaKit live → ipdigi goLive (stop+open). Else Stable
+  /// live-edge flush then escalate; Classic soft reopen.
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
     _resetStalkerHardFails();
     _s._userPlayWhenReady = true;
+    if (_s._mediaKitBackend && _livePlaybackProfile) {
+      await _goLiveReopen();
+      return;
+    }
     // Classic (1.3.114): soft reopen only — no mid-stream drop-buffers.
     if (!_bufferedRecovery) {
       await _openCurrent();

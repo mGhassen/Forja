@@ -80,54 +80,60 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
             schedulePreferencesSyncPush();
           },
         ),
-        settingsFocusableDropdown(
-          context,
-          'IPTV live recovery',
-          'How live channels reconnect after a stall. Auto picks per source (Xtream, Stalker, Forja Live, Stremio). Stable forces one policy. Classic uses freeze timers. Applies the next time you open the player.',
-          snap.iptvLiveRecoveryModeLabel,
-          SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
-          (val) async {
-            if (val == null) return;
-            final String mode;
-            if (val == SettingsService.iptvLiveRecoveryAutoLabel) {
-              mode = SettingsService.iptvLiveRecoveryAuto;
-            } else if (val == SettingsService.iptvLiveRecoveryClassicLabel) {
-              mode = SettingsService.iptvLiveRecoveryClassic;
-            } else {
-              mode = SettingsService.composeIptvLiveRecoveryMode(
-                classic: false,
-                stallReopen: snap.iptvLiveRecoveryStallReopen,
-              );
-            }
-            await settings.setIptvLiveRecoveryMode(mode);
-            await playback.patch(
-              (s) => s.copyWith(
-                iptvLiveRecoveryModeLabel: val,
-                iptvLiveRecoveryStallReopen:
-                    SettingsService.iptvLiveRecoveryStallReopen(mode),
-              ),
-            );
-          },
-        ),
-        if (snap.iptvLiveRecoveryModeLabel ==
-            SettingsService.iptvLiveRecoveryStableLabel)
-          settingsFocusableToggle(
+        // MediaKit live uses ffmpeg reconnect + grace/goLive (RFC-113) — these
+        // modes only drive Exo soft-reopen. Hide when IPTV engine is not Exo.
+        if (!kIsWeb &&
+            Platform.isAndroid &&
+            snap.builtInEngineIptv == BuiltInPlayerEngine.exoPlayer) ...[
+          settingsFocusableDropdown(
             context,
-            'Reopen on buffer stall',
-            'Stable mode only. Reconnect when the picture freezes even if cache still reports data. Can drop a healthy Stalker buffer. Leave off unless you need it. Applies the next time you open the player.',
-            snap.iptvLiveRecoveryStallReopen,
+            'IPTV live recovery',
+            'ExoPlayer only. How live channels reconnect after a stall. Auto picks per source. Stable forces one policy. Classic uses freeze timers. MediaKit ignores this (ffmpeg reconnect). Applies the next time you open the player.',
+            snap.iptvLiveRecoveryModeLabel,
+            SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
             (val) async {
-              await settings.setIptvLiveRecoveryMode(
-                SettingsService.composeIptvLiveRecoveryMode(
+              if (val == null) return;
+              final String mode;
+              if (val == SettingsService.iptvLiveRecoveryAutoLabel) {
+                mode = SettingsService.iptvLiveRecoveryAuto;
+              } else if (val == SettingsService.iptvLiveRecoveryClassicLabel) {
+                mode = SettingsService.iptvLiveRecoveryClassic;
+              } else {
+                mode = SettingsService.composeIptvLiveRecoveryMode(
                   classic: false,
-                  stallReopen: val,
-                ),
-              );
+                  stallReopen: snap.iptvLiveRecoveryStallReopen,
+                );
+              }
+              await settings.setIptvLiveRecoveryMode(mode);
               await playback.patch(
-                (s) => s.copyWith(iptvLiveRecoveryStallReopen: val),
+                (s) => s.copyWith(
+                  iptvLiveRecoveryModeLabel: val,
+                  iptvLiveRecoveryStallReopen:
+                      SettingsService.iptvLiveRecoveryStallReopen(mode),
+                ),
               );
             },
           ),
+          if (snap.iptvLiveRecoveryModeLabel ==
+              SettingsService.iptvLiveRecoveryStableLabel)
+            settingsFocusableToggle(
+              context,
+              'Reopen on buffer stall',
+              'ExoPlayer Stable mode only. Reconnect when the picture freezes even if cache still reports data. Leave off unless you need it. Applies the next time you open the player.',
+              snap.iptvLiveRecoveryStallReopen,
+              (val) async {
+                await settings.setIptvLiveRecoveryMode(
+                  SettingsService.composeIptvLiveRecoveryMode(
+                    classic: false,
+                    stallReopen: val,
+                  ),
+                );
+                await playback.patch(
+                  (s) => s.copyWith(iptvLiveRecoveryStallReopen: val),
+                );
+              },
+            ),
+        ],
         if (AccountFeatures.instance.isAdmin &&
             SettingsService.platformProfile == PlatformProfile.androidTv) ...[
           settingsFocusableToggle(
@@ -147,7 +153,7 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
           settingsFocusableDropdown(
             context,
             'IPTV live buffer',
-            'MediaKit only. Live buffer ahead of playback. Auto: HD 15s, FHD/UHD 20s. Manual 15–30s also raises demuxer RAM. 30s (~150 MB) can crash 4K on weak boxes. Helps underruns, not frame judder. Applies the next time you open the player.',
+            'MediaKit only. Live buffer ahead of playback. Auto uses 30s (same as desktop). Manual 15–30s. Helps underruns, not frame judder. Applies the next time you open the player.',
             snap.iptvLiveBufferSecsLabel,
             SettingsService.iptvLiveBufferSecsOptions.keys.toList(),
             (val) async {
