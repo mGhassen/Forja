@@ -969,68 +969,19 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final row = Material(
-      color: selected ? PlayerPopupTokens.accentFill : Colors.transparent,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        // Nested inside FocusableControl on TV — must not be a second
-        // traversal target (double ↑/↓ per visual row).
-        canRequestFocus: false,
-        onTap: tvFocus ? null : onTap,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        hoverColor: ForjaShellColors.inkHover,
-        splashColor: ForjaShellColors.inkSplash,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected
-                    ? PlayerPopupTokens.accent
-                    : Colors.white.withValues(alpha: 0.75),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (selected)
-                Icon(
-                  Icons.check_rounded,
-                  size: 18,
-                  color: PlayerPopupTokens.accent,
-                ),
-            ],
-          ),
-        ),
+    // Same select-card hover/focus chrome as player popup tiles
+    // (accentFill + green border) — not near-invisible inkHover.
+    return PlayerPopupListTile(
+      label: label,
+      leading: Icon(
+        icon,
+        size: 18,
+        color: selected
+            ? PlayerPopupTokens.accent
+            : Colors.white.withValues(alpha: 0.75),
       ),
-    );
-    if (!tvFocus) {
-      return Padding(padding: const EdgeInsets.only(bottom: 4), child: row);
-    }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: FocusableControl(
-        autoFocus:
-            selected && PlayerPopupListFocusScope.claimAutofocus(context),
-        onTap: onTap,
-        borderRadius: PlayerPopupTokens.cardRadius,
-        scaleOnFocus: 1.0,
-        showFocusBorder: false,
-        showFocusFill: false,
-        ensureVisibleMode: ShellPaintEnsureVisible.item,
-        child: row,
-      ),
+      selected: selected,
+      onTap: onTap,
     );
   }
 }
