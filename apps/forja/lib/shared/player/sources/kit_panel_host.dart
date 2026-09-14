@@ -1,7 +1,7 @@
-export 'package:forja/shared/engine/runtime/details/kit_list_entry.dart';
+export 'package:forja/shared/engine/details/kit_list_entry.dart';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/runtime/details/kit_list_entry.dart';
+import 'package:forja/shared/engine/details/kit_list_entry.dart';
 
 /// Opaque list page contract for resolve/details hosts (no product feed runtime).
 abstract class KitListPage {

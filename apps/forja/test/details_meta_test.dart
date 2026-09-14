@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine/runtime/details/details_meta.dart';
+import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 void main() {

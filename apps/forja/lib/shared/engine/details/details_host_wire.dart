@@ -1,4 +1,4 @@
-import 'package:forja/shared/engine/runtime/details/poster_cards.dart';
+import 'package:forja/shared/engine/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -12,7 +12,7 @@ import 'package:forja_foundation/widgets/details/facts_panel.dart';
 import 'package:forja_foundation/widgets/details/pack_detail_meta.dart';
 import 'package:rust/rust.dart';
 
-export 'package:forja/shared/engine/runtime/details/details_meta.dart';
+export 'package:forja/shared/engine/details/details_meta.dart';
 export 'package:forja_foundation/widgets/details/pack_detail_meta.dart';
 
 String? hubShellTabIdForPlugin(String pluginId) =>

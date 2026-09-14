@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve_streams_hooks.dart';
-import 'package:forja/shared/engine/runtime/details/kit_match_details_page.dart';
+import 'package:forja/shared/engine/details/kit_match_details_page.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart';

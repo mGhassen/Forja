@@ -1,4 +1,4 @@
-import 'package:forja/shared/engine/runtime/details/poster_cards.dart';
+import 'package:forja/shared/engine/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';

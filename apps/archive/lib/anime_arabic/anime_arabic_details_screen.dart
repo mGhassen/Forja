@@ -12,7 +12,7 @@ import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/focus/hero_pill_buttons.dart';
 import 'package:forja/shell/kit/kit_section.dart';
 import 'package:forja/shell/kit/kit_poster_card.dart';
-import 'package:forja/shared/engine/runtime/details/kit_details_play_row.dart';
+import 'package:forja/shared/engine/details/kit_details_play_row.dart';
 import 'package:forja_foundation/widgets/details/details_body.dart';
 import 'package:forja_foundation/widgets/details/tv_season_episode_picker.dart';
 import 'anime_arabic_player_screen.dart';

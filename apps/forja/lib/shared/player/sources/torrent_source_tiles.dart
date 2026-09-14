@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:forja/shared/engine/runtime/details/sources_panel_tv.dart';
+import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';

@@ -6,7 +6,7 @@ import 'package:forja/shared/engine/store/continue_entries.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/open/history_playback_resume.dart';
 import 'package:forja/shared/playback/play_resolve.dart';
-import 'package:forja/shared/engine/runtime/details/kit_details_play.dart';
+import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
