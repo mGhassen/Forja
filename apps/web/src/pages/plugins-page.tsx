@@ -14,12 +14,19 @@ import { useForjaPluginCatalog } from '@/hooks/use-forja-plugin-catalog'
 import { cn } from '@/lib/utils'
 import { Route } from '@/routes/plugins'
 
+const BUILD_GUIDE_URL =
+  'https://github.com/mGhassen/forja-sdk/blob/main/DEVELOPING.md'
+const STARTERS_URL =
+  'https://github.com/mGhassen/forja-sdk/tree/main/starters'
+const FORJA_SOURCE_URL = 'https://github.com/forjahq/forja'
+
 const MARQUEE = [
   'Hubs',
   'Providers',
   'Live',
   'Torrent',
   'IPTV',
+  'Open source',
   'Fork & ship',
   'Profile sync',
 ] as const
@@ -42,6 +49,34 @@ const STEPS = [
     title: 'Share your own',
     copy: 'Host a pack URL on GitHub or your CDN. Anyone can add it from Community Packs.',
     accent: 'brand' as const,
+  },
+]
+
+const BUILD_STEPS = [
+  {
+    n: '01',
+    title: 'Start from a starter',
+    copy: 'Clone a starter from the SDK. Use a provider starter for Sources, or a hub starter for a shell tab with layout and details.',
+    href: STARTERS_URL,
+    cta: 'Open starters',
+    accent: 'brand' as const,
+  },
+  {
+    n: '02',
+    title: 'Follow the developer guide',
+    copy: 'Read DEVELOPING.md for pack layout, manifests, and how the host loads your code.',
+    href: BUILD_GUIDE_URL,
+    cta: 'Read the guide',
+    accent: 'flame' as const,
+  },
+  {
+    n: '03',
+    title: 'Host and share',
+    copy: 'Publish your manifest URL. Users add it from Community Packs or their profile; Forja installs it on their devices.',
+    href: '#catalog',
+    cta: 'Browse the catalog',
+    accent: 'brand' as const,
+    internal: true,
   },
 ]
 
@@ -117,13 +152,13 @@ export function PluginsPage() {
                   >
                     Browse packs
                   </a>
-                  <Link
-                    to="/build"
+                  <a
+                    href="#build"
                     data-hover=""
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
                   >
                     Build a pack
-                  </Link>
+                  </a>
                   <Link
                     to="/download"
                     data-hover=""
@@ -293,37 +328,91 @@ export function PluginsPage() {
             </div>
           </section>
 
-          <section className="border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20">
+          <section
+            id="build"
+            className="scroll-mt-28 border-t border-[rgba(237,230,218,0.1)] px-[5vw] py-14 sm:py-20"
+          >
             <div className="mx-auto max-w-[1400px]">
               <Reveal>
-                <LiquidGlass className="relative overflow-hidden border-white/12 p-8 sm:p-12">
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(28,231,131,0.12),transparent_55%)]"
-                  />
-                  <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="max-w-lg">
-                      <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-green">
-                        For pack authors
-                      </p>
-                      <h2 className="mt-2 font-disp text-[clamp(1.75rem,4vw,2.5rem)] uppercase leading-[0.95] tracking-[-0.03em]">
-                        Ready to build a pack?
-                      </h2>
-                      <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                        Start from the SDK, follow the developer guide, host your
-                        manifest URL, and share it with the community.
-                      </p>
-                    </div>
-                    <Link
-                      to="/build"
+                <div className="mb-8 max-w-2xl">
+                  <p className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-forja-flame">
+                    Open source · pack authors
+                  </p>
+                  <h2 className="mt-2 font-disp text-[clamp(1.75rem,4vw,3rem)] uppercase leading-[0.95] tracking-[-0.03em]">
+                    Build packs for the{' '}
+                    <span className="text-forja-green">community</span>
+                  </h2>
+                  <p className="mt-4 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
+                    Forja is open source. The host stays generic; you ship hubs,
+                    providers, and live modules anyone can install. Start from
+                    the SDK, follow the guide, host your manifest URL, and share
+                    it here.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <a
+                      href={BUILD_GUIDE_URL}
                       data-hover=""
-                      className="btn-magnet inline-flex shrink-0 items-center justify-center rounded-full px-9 py-4 font-mono-ui text-xs font-bold uppercase tracking-[0.1em] shadow-[0_0_32px_rgba(28,231,131,0.35)] will-change-transform sm:text-sm"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      className="btn-magnet inline-flex items-center justify-center rounded-full px-7 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
                     >
-                      Build a pack
-                    </Link>
+                      Read the guide
+                    </a>
+                    <a
+                      href={FORJA_SOURCE_URL}
+                      data-hover=""
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
+                    >
+                      View source
+                    </a>
                   </div>
-                </LiquidGlass>
+                </div>
               </Reveal>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                {BUILD_STEPS.map((step, i) => (
+                  <Reveal key={step.n} delayMs={i * 80} variant="scale">
+                    <LiquidGlass className="hover-lift flex h-full flex-col border-white/10 p-6 sm:p-7">
+                      <p
+                        className={cn(
+                          'font-mono-ui text-[10px] font-bold uppercase tracking-[0.2em]',
+                          step.accent === 'flame'
+                            ? 'text-forja-flame'
+                            : 'text-forja-green',
+                        )}
+                      >
+                        Step {step.n}
+                      </p>
+                      <h3 className="mt-3 font-disp text-xl uppercase tracking-tight text-[#EDE6DA]">
+                        {step.title}
+                      </h3>
+                      <p className="mt-2 flex-1 text-sm leading-relaxed text-[rgba(237,230,218,0.58)]">
+                        {step.copy}
+                      </p>
+                      {step.internal ? (
+                        <a
+                          href={step.href}
+                          data-hover=""
+                          className="mt-5 inline-flex font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-forja-green transition hover:text-[#EDE6DA]"
+                        >
+                          {step.cta} →
+                        </a>
+                      ) : (
+                        <a
+                          href={step.href}
+                          data-hover=""
+                          rel="noopener noreferrer"
+                          target="_blank"
+                          className="mt-5 inline-flex font-mono-ui text-[10px] font-bold uppercase tracking-[0.14em] text-forja-green transition hover:text-[#EDE6DA]"
+                        >
+                          {step.cta} →
+                        </a>
+                      )}
+                    </LiquidGlass>
+                  </Reveal>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -343,7 +432,7 @@ export function PluginsPage() {
                       Don&apos;t have Forja yet?
                     </h2>
                     <p className="mt-3 text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-                      Download free for desktop and Android TV, then install
+                      Download Forja for desktop and Android TV, then install
                       community packs from your profile or paste any pack URL in
                       Settings.
                     </p>

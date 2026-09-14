@@ -10,10 +10,9 @@ import { useProfiles } from '@/hooks/use-profiles'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { to: '/' as const, label: 'Player', exact: true },
-  { to: '/iptv' as const, label: 'Live' },
+  { to: '/' as const, label: 'Home', exact: true },
+  { to: '/platform' as const, label: 'Platform' },
   { to: '/plugins' as const, label: 'Packs' },
-  { to: '/build' as const, label: 'Build' },
 ]
 
 function NavLink({
@@ -26,9 +25,9 @@ function NavLink({
 }: {
   to:
     | '/'
-    | '/iptv'
+    | '/platform'
     | '/plugins'
-    | '/build'
+    | '/iptv'
     | '/download'
     | '/account'
     | '/login'
@@ -573,7 +572,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         </nav>
 
         <p className="px-[6vw] pb-8 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.35)]">
-          Free download
+          Open-source player
         </p>
       </div>
     </header>

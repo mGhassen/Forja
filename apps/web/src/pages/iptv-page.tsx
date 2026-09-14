@@ -18,7 +18,7 @@ const PLAYER_POWERS = [
   },
   {
     title: 'What’s on now',
-    copy: 'See what’s playing and what’s next — with progress — when your list has a guide.',
+    copy: 'See what’s playing and what’s next, with progress, when your list has a guide.',
     accent: 'flame' as const,
   },
   {
@@ -180,7 +180,7 @@ export function IptvPage() {
               <span className="text-flame">works better</span>
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-              Built for live guides and channel search — then ready for films and
+              Built for live guides and channel search, then ready for films and
               series in the same app.
             </p>
           </Reveal>
@@ -218,7 +218,7 @@ export function IptvPage() {
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
               Progress, pause, volume, subtitles, and audio sit in a bottom desk
-              you can open when you need them — then get back to the picture.
+              you can open when you need them, then get back to the picture.
             </p>
           </Reveal>
           <Reveal delayMs={80}>
@@ -356,7 +356,7 @@ export function IptvPage() {
               <span className="text-flame">and go live</span>
             </h2>
             <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-              Get the free player, connect your IPTV list, and start watching live
+              Download Forja, connect your IPTV list, and start watching live
               alongside movies and series.
             </p>
             <div className="mt-10 flex flex-col items-center gap-5">

@@ -129,7 +129,7 @@ export function ChangelogPage() {
           Changelog
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)]">
-          What changed in each Forja release — same notes the app update dialog
+          What changed in each Forja release. Same notes the app update dialog
           reads from the release CDN.
           {isFetching ? (
             <span className="ml-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.28)]">
@@ -173,7 +173,7 @@ export function ChangelogPage() {
                 ))}
               </nav>
 
-              {/* Desktop: left menu — latest 20 only */}
+              {/* Desktop: left menu. Latest 20 only */}
               <nav
                 aria-label="Release versions"
                 className="hidden max-h-[min(70vh,36rem)] overflow-y-auto lg:block"

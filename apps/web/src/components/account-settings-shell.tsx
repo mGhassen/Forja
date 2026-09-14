@@ -190,7 +190,7 @@ export function AccountSettingsShell({
             <aside className="border-b border-forja-border py-3 lg:border-b-0 lg:border-r lg:pr-5">
               <NavGroup
                 label="Profile"
-                hint="Addons, packs on the profile, Features — the app downloads packs"
+                hint="Addons, packs on the profile, Features. The app downloads packs"
               >
                 {profileCategories.map((category) => (
                   <NavLink

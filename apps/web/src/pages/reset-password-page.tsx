@@ -148,8 +148,8 @@ function ResetPasswordForm() {
             </CardTitle>
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
               Your account is on hold until you set a new password (at least{' '}
-              {MIN_PASSWORD_LENGTH} characters). This is not a normal sign-in —
-              after saving, you&apos;ll sign in with email + password.
+              {MIN_PASSWORD_LENGTH} characters). This is not a normal sign-in.
+              After saving, you&apos;ll sign in with email + password.
             </CardDescription>
           </CardHeader>
 

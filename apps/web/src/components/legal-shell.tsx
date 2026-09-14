@@ -62,15 +62,15 @@ export function SiteFooter() {
           <div className="max-w-xl">
             <BrandLogo to="/" imgClassName="h-8 w-auto sm:h-10" />
             <p className="mt-6 font-disp text-[clamp(28px,5vw,48px)] uppercase leading-[0.92] tracking-[-0.03em]">
-              Free modular
+              Open-source modular
               <br />
               <span className="font-serif-i normal-case text-flame">
                 streaming player
               </span>
             </p>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-              Free modular streaming player. Community packs for hubs and sources.
-              Forja does not host media files.
+              Built to be the best modular streaming player. Community packs for
+              hubs and sources. Open source. Forja does not host media files.
             </p>
             <Link
               to="/download"
@@ -89,12 +89,15 @@ export function SiteFooter() {
               <ul className="mt-4 space-y-3 font-mono-ui text-[12px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.55)]">
                 <li>
                   <Link to="/" className="transition-colors hover:text-[#EDE6DA]">
-                    Player
+                    Home
                   </Link>
                 </li>
                 <li>
-                  <Link to="/iptv" className="transition-colors hover:text-[#EDE6DA]">
-                    Live
+                  <Link
+                    to="/platform"
+                    className="transition-colors hover:text-[#EDE6DA]"
+                  >
+                    Platform
                   </Link>
                 </li>
                 <li>
@@ -106,9 +109,14 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/build" className="transition-colors hover:text-[#EDE6DA]">
-                    Build
-                  </Link>
+                  <a
+                    href="https://github.com/forjahq/forja"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    className="transition-colors hover:text-[#EDE6DA]"
+                  >
+                    Source
+                  </a>
                 </li>
                 <li>
                   <Link
@@ -173,7 +181,7 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.35)]">
-              © {year} Forja · Modular streaming player
+              © {year} Forja · Open-source modular player
             </p>
             <p className="font-mono-ui text-[10px] uppercase tracking-[0.16em] text-[rgba(237,230,218,0.28)]">
               Desk · Couch · TV

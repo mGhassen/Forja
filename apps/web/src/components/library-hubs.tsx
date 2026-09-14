@@ -134,8 +134,8 @@ export function LibraryHubs() {
           <span className="text-flame">you can add</span>
         </h2>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.55)] sm:text-lg">
-          Movies, series, anime, drama, live TV, and sport — install the packs
-          that match what you watch.
+          Movies, series, anime, drama, live TV, and sport. Worlds you can add
+          with packs.
         </p>
       </Reveal>
 

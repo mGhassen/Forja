@@ -99,7 +99,7 @@ function PlatformGlyph({
   }
 }
 
-/** First-open help for Windows / macOS detail panes — always flame (alert), never brand green. */
+/** First-open help for Windows / macOS detail panes. Always flame (alert), never brand green. */
 function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
   const isWindows = platformId === 'windows'
   const isMac = platformId === 'macos'
@@ -119,8 +119,8 @@ function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
       </div>
       <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
         {isWindows
-          ? 'Windows often blocks the first open. Photo steps — one click.'
-          : 'Mac often blocks the first open. Photo steps — one click.'}
+          ? 'Windows often blocks the first open. Photo steps, one click.'
+          : 'Mac often blocks the first open. Photo steps, one click.'}
       </p>
       <a
         href={isWindows ? '#windows-smartscreen' : '#macos-gatekeeper'}
@@ -248,7 +248,7 @@ function orderPlatformAssets(
   return [primary, ...rest]
 }
 
-/** First `# …` heading from a release notes body (e.g. `1.2.365 — Dabaghin`). */
+/** First `# …` heading from a release notes body (e.g. `1.2.365 - Dabaghin`). */
 function releaseTitleFromNotes(
   notes: string | null | undefined,
   version: string | null | undefined,
@@ -759,9 +759,9 @@ export function DownloadPage() {
           </h1>
           <div className="mt-6 max-w-2xl space-y-4 text-lg leading-relaxed text-[rgba(237,230,218,0.5)]">
             <p>
-              Get the free modular streaming player for Windows, macOS, Linux, or
+              Get the modular streaming player for Windows, macOS, Linux, or
               Android TV. Add community packs for hubs and sources, then stream
-              with the same controls on every screen.
+              with the same controls on every screen. Forja is open source.
             </p>
           </div>
         </Reveal>

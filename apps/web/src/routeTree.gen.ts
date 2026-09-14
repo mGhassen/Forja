@@ -11,11 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PluginsRouteImport } from './routes/plugins'
+import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as IptvRouteImport } from './routes/iptv'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DmcaRouteImport } from './routes/dmca'
 import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as BuildRouteImport } from './routes/build'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -53,6 +53,11 @@ const PluginsRoute = PluginsRouteImport.update({
   path: '/plugins',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlatformRoute = PlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IptvRoute = IptvRouteImport.update({
   id: '/iptv',
   path: '/iptv',
@@ -71,11 +76,6 @@ const DmcaRoute = DmcaRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuildRoute = BuildRouteImport.update({
-  id: '/build',
-  path: '/build',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -214,11 +214,11 @@ const AuthLoginMfaRoute = AuthLoginMfaRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
-  '/build': typeof BuildRoute
   '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/platform': typeof PlatformRoute
   '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/connect': typeof AuthConnectRoute
@@ -248,11 +248,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRouteWithChildren
-  '/build': typeof BuildRoute
   '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/platform': typeof PlatformRoute
   '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/connect': typeof AuthConnectRoute
@@ -284,11 +284,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/account': typeof AccountRouteWithChildren
-  '/build': typeof BuildRoute
   '/changelog': typeof ChangelogRoute
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/platform': typeof PlatformRoute
   '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/_auth/connect': typeof AuthConnectRoute
@@ -320,11 +320,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
-    | '/build'
     | '/changelog'
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/platform'
     | '/plugins'
     | '/terms'
     | '/connect'
@@ -354,11 +354,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
-    | '/build'
     | '/changelog'
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/platform'
     | '/plugins'
     | '/terms'
     | '/connect'
@@ -389,11 +389,11 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/account'
-    | '/build'
     | '/changelog'
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/platform'
     | '/plugins'
     | '/terms'
     | '/_auth/connect'
@@ -425,11 +425,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AccountRoute: typeof AccountRouteWithChildren
-  BuildRoute: typeof BuildRoute
   ChangelogRoute: typeof ChangelogRoute
   DmcaRoute: typeof DmcaRoute
   DownloadRoute: typeof DownloadRoute
   IptvRoute: typeof IptvRoute
+  PlatformRoute: typeof PlatformRoute
   PluginsRoute: typeof PluginsRoute
   TermsRoute: typeof TermsRoute
   ApiChangelogRoute: typeof ApiChangelogRoute
@@ -452,6 +452,13 @@ declare module '@tanstack/react-router' {
       path: '/plugins'
       fullPath: '/plugins'
       preLoaderRoute: typeof PluginsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform': {
+      id: '/platform'
+      path: '/platform'
+      fullPath: '/platform'
+      preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iptv': {
@@ -480,13 +487,6 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/build': {
-      id: '/build'
-      path: '/build'
-      fullPath: '/build'
-      preLoaderRoute: typeof BuildRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -753,11 +753,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AccountRoute: AccountRouteWithChildren,
-  BuildRoute: BuildRoute,
   ChangelogRoute: ChangelogRoute,
   DmcaRoute: DmcaRoute,
   DownloadRoute: DownloadRoute,
   IptvRoute: IptvRoute,
+  PlatformRoute: PlatformRoute,
   PluginsRoute: PluginsRoute,
   TermsRoute: TermsRoute,
   ApiChangelogRoute: ApiChangelogRoute,

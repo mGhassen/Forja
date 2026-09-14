@@ -15,7 +15,7 @@ function emphasisForPath(pathname: string): string | undefined {
     return 'Reset your password to get back to synced settings.'
   }
   if (pathname.startsWith('/reset-password')) {
-    return 'Almost there — set a new password and you’re back in.'
+    return 'Almost there. Set a new password and you’re back in.'
   }
   if (pathname.startsWith('/connect')) {
     return 'Enter the code from your TV to sync your Forja account.'
@@ -28,7 +28,7 @@ function emphasisForPath(pathname: string): string | undefined {
   return undefined
 }
 
-/** Shared chrome for auth routes — left story panel stays mounted across navigations. */
+/** Shared chrome for auth routes. Left story panel stays mounted across navigations. */
 export function AuthShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const emphasis = emphasisForPath(pathname)

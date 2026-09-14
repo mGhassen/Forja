@@ -217,7 +217,7 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
                     <div>
                       <p className="font-medium">Device signed in</p>
                       <p className="mt-1 text-forja-muted">
-                        Return to Forja — it should continue in a moment.
+                        Return to Forja. It should continue in a moment.
                       </p>
                     </div>
                   </div>

@@ -10,12 +10,12 @@ const CLOSE_AFTER_SECONDS = 10
 
 /**
  * In-card confirmation after desktop Web login / signup handoff.
- * Renders inside the existing login/signup LiquidGlass card — not a new page.
+ * Renders inside the existing login/signup LiquidGlass card, not a new page.
  */
 export function DesktopAuthDone({
   phase = 'done',
   title = 'Signed in to Forja',
-  body = 'The desktop app has its own session. This browser stays signed in — you can return to Forja now.',
+  body = 'The desktop app has its own session. This browser stays signed in. You can return to Forja now.',
   loadingLabel = 'Connecting to Forja…',
 }: {
   phase?: 'loading' | 'done'
@@ -39,7 +39,7 @@ export function DesktopAuthDone({
     if (phase !== 'done') return
     if (secondsLeft <= 0) {
       closeDesktopHandoffWindow()
-      // Auto path has no user gesture — close usually fails; confirm after a tick.
+      // Auto path has no user gesture. Close usually fails; confirm after a tick.
       const id = window.setTimeout(() => {
         if (!window.closed) setCloseBlocked(true)
       }, 50)

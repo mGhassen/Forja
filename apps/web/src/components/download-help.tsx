@@ -10,7 +10,7 @@ const FAQ: {
 }[] = [
   {
     q: 'What is Forja?',
-    a: 'Forja is a free app for movies, series, anime, live sport, and live TV - everything in one place so you can relax and watch. Download it for your computer or living-room TV. This site is for getting the app and your account.',
+    a: 'Forja is an open-source modular player for movies, series, anime, live sport, and live TV, everything in one place. Download it for your computer or living-room TV. This site is for getting the app and your account.',
   },
   {
     q: 'Which download should I pick?',

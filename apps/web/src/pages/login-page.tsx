@@ -81,7 +81,7 @@ function LoginForm() {
   const [submitting, setSubmitting] = useState(false)
   const [passkeySubmitting, setPasskeySubmitting] = useState(false)
   const [oauthBusy, setOauthBusy] = useState(false)
-  // First paint must match SSR — no window/sessionStorage in useState.
+  // First paint must match SSR. No window/sessionStorage in useState.
   const [desktopReady, setDesktopReady] = useState(false)
   const [desktopHandoff, setDesktopHandoff] = useState(false)
   const [handoffBusy, setHandoffBusy] = useState(false)
@@ -313,7 +313,7 @@ function LoginForm() {
   const showCredentialsForm =
     !isDesktopLogin || (!loading && !user && !desktopHandoff)
 
-  // SSR + first client paint match (no window yet) — neutral, no credentials.
+  // SSR + first client paint match (no window yet). Neutral, no credentials.
   if (!desktopReady) {
     return (
       <section className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
@@ -328,7 +328,7 @@ function LoginForm() {
     )
   }
 
-  // Same login card chrome for loading / done / return — never a separate page.
+  // Same login card chrome for loading / done / return. Never a separate page.
   if (
     desktopHandoff ||
     desktopPendingAuth ||
@@ -365,8 +365,8 @@ function LoginForm() {
                       Return to Forja
                     </CardTitle>
                     <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
-                      You are already signed in here. Forja gets its own session
-                      — this browser stays signed in.
+                      You are already signed in here. Forja gets its own session.
+                      This browser stays signed in.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
@@ -411,7 +411,7 @@ function LoginForm() {
             <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
               {isDesktopLogin
                 ? 'After you sign in here, Forja on your desktop finishes automatically.'
-                : 'Your player settings, synced. Download stays free - account is optional.'}
+                : 'Your player settings, synced. Account is optional. Download the open-source player anytime.'}
             </CardDescription>
           </CardHeader>
 
