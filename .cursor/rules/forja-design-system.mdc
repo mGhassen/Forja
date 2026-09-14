@@ -10,7 +10,7 @@ alwaysApply: false
 
 Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Catalog composers are this package (`widgets/` / `components/` / `blocks/`). Shell chrome is `shared/shell/`.
 
-Host-only APIs stay on host paths (`ForjaInteractive`, `ForjaCloseButton.compact`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
+Host-only APIs stay on host paths (`ForjaInteractive`, `ShellScope`, `shellFocusableTap`, `TvBrowseTextField`, splash). Never add imports to `part of` files.
 
 | New work | Package API |
 |----------|-------------|
@@ -72,10 +72,10 @@ When adding a reused constant: **shell/catalog → `ShellTokens`**, **details su
 
 | Widget | When |
 |--------|------|
-| `ForjaGhostButton` | Primary CTA on hero / details (Play, Watch Now) — text + optional icon, no fill |
-| `ForjaPlainIcon` | Secondary icon actions (+, info, overflow) — no border box |
-| `ForjaIconButton` | Sparingly — bordered square; prefer `ForjaPlainIcon` in hero chrome |
-| `ForjaInteractive` | Custom hit targets that need hover/press scale |
+| `Button(variant: ghost)` | Primary CTA on hero / details (Play, Watch Now) — text + optional icon, no fill |
+| `Button(variant: plainIcon, size: icon)` | Secondary icon actions (+, info, overflow, close) — no border box |
+| `Button(variant: outline, size: icon)` | Sparingly — bordered square; prefer `plainIcon` in hero chrome |
+| `ForjaInteractive` | Custom hit targets that need hover/press scale (host shell) |
 
 ## Toggles
 

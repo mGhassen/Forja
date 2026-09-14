@@ -1,63 +1,96 @@
 ---
-description: Forja pack-product host — root is generic engines + frame only; packs own all product; widgets in foundation
+description: Forja pack-product host — empty shell + engines; packs own product; foundation is design system only
 alwaysApply: true
 ---
 
 # Forja pack-product host (non-negotiable)
 
-Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [external plugins vs host](./forja-external-plugins-host.mdc) · [RFC-109](../../docs/rfc/109-[open]-forja-pack-product-host.md)
+Index: [community-owned plugins](./forja-plugins-community-owned.mdc) · [external plugins vs host](./forja-external-plugins-host.mdc) · [design system](./forja-design-system.mdc) · [RFC-109](../../docs/rfc/109-[open]-forja-pack-product-host.md)
 
-**One-liner:** Host is capability-only. Packs are product-only. Packs call generic `ctx.host`. The host never owns hub / IPTV / Live Sports / My List screens.
+**One-liner:** The app is an empty shell + engines. Packs are product. Foundation is a design system (paint only). Packs call `ctx.host` / `runPlugin` — they do not live in Dart.
 
 **Community-owned plugins** = host does not know pack ids.  
-**Pack-product host** = host does not own product UI either. Both required.
+**Pack-product host** = host does not own product UI.  
+**Foundation** = tokens / primitives / components / widgets / protocol types — **not** an app kit orchestrator.
 
-## Sniff test
+---
 
-> If this pack is uninstalled, does this Dart file still make sense as a **generic capability**?  
-> - Yes → host  
-> - No → pack product wrongly in root — migrate or delete
+## Layers (locked)
 
-## Layers
+| Layer | Path | Owns | Forbidden |
+|-------|------|------|-----------|
+| **Pack** | [forja-packs](https://github.com/mGhassen/forja-packs) `{hubs,providers,livesports,iptv,torrent}` | Product tabs, **layout JSON**, feed, prefs, chrome verbs, open shaping, portals product | Native unlock internals |
+| **Host** | `apps/forja` | App frame (nav/settings/account/TV), **generic engines** (`runPlugin`, cache, store, vault, http, unlock, playback), **thin kit interpreter** that maps pack layout JSON → foundation widgets | Product screens, pack-id branches, hub/IPTV/Live/My List product folders |
+| **Foundation** | `packages/forja_foundation` | Design system: tokens, theme, primitives, components, widgets, blocks, **protocol types** (layout JSON schema helpers) | `PackLayoutHost`, hooks, Riverpod session, registries, feed orchestration, product verbs |
 
-| Layer | Path | Owns |
-|-------|------|------|
-| **Pack** | [forja-packs](https://github.com/mGhassen/forja-packs) `{hubs,providers,livesports,iptv,torrent}` | Product tabs, layout, feed shaping, product chrome, open shaping |
-| **Host** | `apps/forja` | App frame (nav/settings/account), generic engines only |
-| **Foundation** | `packages/forja_foundation` | Widgets + layout protocol/runner — packs use via layout JSON |
+```
+Pack JS  →  layout / feed / actions  →  host engines + thin interpreter  →  foundation widgets (props only)
+```
+
+### Sniff tests
+
+**Host file:** If this pack is uninstalled, does this Dart still make sense as a **generic capability**?  
+- Yes → host  
+- No → pack product in root — migrate or delete  
+
+**Foundation file:** Would this belong in a shadcn-style design system (props in → UI out)?  
+- Yes → foundation  
+- No (hooks, registries, `runPlugin`, Riverpod kit session, PackLayoutHost) → **not foundation** — host engine or pack  
+
+---
+
+## Foundation is a design system — not a layout app
+
+| Allowed in `forja_foundation` | Forbidden in `forja_foundation` |
+|-------------------------------|----------------------------------|
+| `tokens/`, `theme/`, `primitives/`, `components/`, `widgets/`, `blocks/` | `lib/layout/` orchestrators (`PackLayoutHost`, wire, feed chrome) |
+| Protocol / layout **type** helpers (parse opaque JSON maps) | `*Hooks`, `*Registry`, Riverpod providers for catalog session |
+| Props + callbacks only (RFC-095 / RFC-106) | Host bridges, fake `MetaRuntime`, product chrome verbs |
+
+**Wrong:** parking kit runner / top-bar hooks / list registries inside the DS package.  
+**Right:** DS paints `Button`, `PosterCard`, `TopBar`, `EpgGuide`, …; **host** interprets pack `layout` JSON and fills props from `runPlugin` results.
+
+---
 
 ## Forbidden in `apps/forja`
 
 | Do not | Why |
 |--------|-----|
 | Product folders `engine/hub`, `engine/lists`, `engine/live`, `features/iptv` | Root would know those products exist |
-| `MetaCache` / catalog-meta-specific cache | Use generic `engine/cache` with namespace/key/ttl |
-| Any `kit_*` / top bar / event card / match details / list pin in `shared/shell` | Widgets live in foundation |
-| Catalog layout runner in host shell | Foundation owns layout composition; root only mounts |
-| `ctx.host.liveFeed` / `myList` / product `iptv` / `portals` namespaces | Use `cache`, `store`, `http`, `vault`, `plugin.run`, `playback.open` |
+| `MetaCache` / catalog-meta-specific cache | Use generic `engine/cache` |
+| Product `kit_*` screens under `shared/shell` | Paint in foundation; product in packs |
+| `ctx.host.liveFeed` / product `myList` / product `iptv` / product `portals` namespaces | Use `cache`, `store`, `http`, `vault`, `plugin.run`, `playback.open` |
 | Product boots (`KitLiveBoot`, IPTV core nav builder) | Pack `nav` only |
+| Hardcoding pack ids / hub slots in host or foundation | Community-owned packs |
 
 ```
 ❌ shared/engine/hub/meta_cache.dart
-❌ shared/shell/kit_top_bar.dart
+❌ shared/shell/kit_top_bar.dart as product
 ❌ coreNavDestinations['iptv'] = IptvPtScreen
 ❌ ctx.host.liveFeed.load
 ❌ ctx.host.portals.searchChannels
+❌ packages/forja_foundation/lib/layout/pack_layout_host.dart  (DS is not an app)
 ✅ shared/engine/cache/ + ctx.host.cache.*
 ✅ shared/engine/vault/ + ctx.host.vault.*
-✅ ctx.host.http.request / playback.open
-✅ forja_foundation widgets + PackLayoutHost mount
-✅ pack nav → foundation layout runner
+✅ ctx.host.http.request / playback.open / plugin.run
+✅ pack layout JSON → host thin interpreter → foundation widgets
 ✅ live_sports → plugin.run(iptv hub, searchChannels)
 ```
+
+---
 
 ## Allowed in `apps/forja`
 
 - App frame: `shell/nav`, `shell/frame`, window, TV focus, account, settings shell
 - Generic plugin runtime: install packs, `runPlugin(pluginId, action, params)`
 - Generic cache / store / http / vault / unlock / playback open
-- One mount: run foundation layout for `pluginId` — zero product branches
+- **Thin kit interpreter** (host engine): load pack `layout` / `feed`, map opaque widget types to foundation composers, zero pack-id product branches
+- Boot hooks that register **opaque** verbs/sources from pack-declared ids — not product folders
+
+---
 
 ## Packs tree (source of truth)
 
 `forja-packs/{hubs,providers,livesports,iptv,torrent}` — not `plugins/live/**` or in-repo `plugins/hubs/**`.
+
+Product development happens in **pack JS**. The app only offers engines; packs call them.

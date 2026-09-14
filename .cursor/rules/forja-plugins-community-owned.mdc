@@ -11,9 +11,9 @@ Index: [pack-product host](./forja-pack-product-host.mdc) · [external plugins v
 
 | Tree | Role |
 |------|------|
-| `apps/forja/`, `packages/rust/` | **Host** — app frame + generic engines only ([pack-product host](./forja-pack-product-host.mdc)) |
-| `packages/forja_foundation` | **Foundation** — widgets + layout runner (packs use via layout JSON) |
-| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community packs** — all product; separate repo; not part of the host binary |
+| `apps/forja/`, `packages/rust/` | **Host** — empty shell + generic engines + thin kit interpreter ([pack-product host](./forja-pack-product-host.mdc)) |
+| `packages/forja_foundation` | **Foundation** — design system only (tokens / components / widgets / protocol types) |
+| [forja-packs](https://github.com/mGhassen/forja-packs) | **Community packs** — all product (layout, feed, chrome); separate repo; not part of the host binary |
 
 The root app ships **infrastructure to install and run plugins**. It does **not** ship knowledge of which packs exist, and does **not** own product UI (hub / IPTV / Live / My List screens).
 
@@ -21,7 +21,7 @@ Treat every pack as **replaceable, renameable, and absent**. A user may install 
 
 ---
 
-## Forbidden in host (including `shared/engine`, `shared/foundation`, shell, settings)
+## Forbidden in host (including `shared/engine`, shell, settings)
 
 | Do not | Why |
 |--------|-----|
@@ -43,11 +43,11 @@ Treat every pack as **replaceable, renameable, and absent**. A user may install 
 
 ## Allowed in host (generic only)
 
-- Parse **opaque** manifest fields, `nav`, `open.surface`, kit layout
+- Parse **opaque** manifest fields, `nav`, `open.surface`, kit layout JSON
 - Path mechanics: `forjaHqSlot(url)` → last path segment (any string)
 - Pack **kind** buckets from URL tree shape (`providers`, `hubs`, `livesports`, `iptv`, `torrent`, …) as install UI grouping — not a hub name allowlist
 - Host **route surfaces** (`open.surface`) as opaque destinations — not permission to list which packs exist
-- Product UI and layout widgets live in packs + `forja_foundation` — see [pack-product host](./forja-pack-product-host.mdc)
+- Thin interpreter: pack layout/feed → foundation paint (no pack-id branches)
 
 ---
 
@@ -55,7 +55,7 @@ Treat every pack as **replaceable, renameable, and absent**. A user may install 
 
 | May know scrapers / pack ids / hub folders | Must not |
 |-------------------------------------------|----------|
-| forja-packs only | `apps/forja/**`, `packages/rust/**` (except opaque passthrough) |
+| forja-packs only | `apps/forja/**`, `packages/rust/**`, `packages/forja_foundation/**` (except opaque passthrough) |
 
 When adding a hub or provider: change the pack. Do not teach the host a new name.
 
@@ -63,4 +63,4 @@ When adding a hub or provider: change the pack. Do not teach the host a new name
 
 ## Foundation / design system
 
-Do not “fix” product gaps by hardcoding pack lists into foundation or engine registries. That messes with foundation: shared code stays **generic kits**, not a ForjaHQ catalog index.
+Foundation stays a **design system** — props-only composers. Do not “fix” product gaps by stuffing kit runners, hooks, or pack lists into `forja_foundation`. That messes with the DS: see [pack-product host](./forja-pack-product-host.mdc) · [forja-design-system.mdc](./forja-design-system.mdc).

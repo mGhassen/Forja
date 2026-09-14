@@ -5,12 +5,17 @@ alwaysApply: true
 
 # Catalog hubs — host is generic
 
-**Full model:** [pack-product host](./forja-pack-product-host.mdc) · [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
+**Full model:** [pack-product host](./forja-pack-product-host.mdc) · [community-owned plugins](./forja-plugins-community-owned.mdc) · [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc) · **DS:** [forja-design-system.mdc](./forja-design-system.mdc)
 
-Hub packs live in **forja-packs** `hubs/**` (not in the Flutter binary). Layout widgets and the
-layout runner live in **`packages/forja_foundation`**. The Flutter host (`apps/forja`) only
-mounts the foundation layout runner and runs generic plugin actions — it must stay
-**pack-agnostic** and must **not** keep catalog widgets under `shared/shell`.
+Hub packs live in **forja-packs** `hubs/**` (not in the Flutter binary).
+
+| Layer | Catalog role |
+|-------|----------------|
+| **Pack JS** | Owns layout JSON, feed, enrich, open shaping, product chrome |
+| **Host** | Thin interpreter: `runPlugin(layout|feed|…)` → map opaque kit types → foundation widgets; generic engines only |
+| **Foundation** | Paint only (poster, top bar chrome, list tiles, …) — **not** the kit runner |
+
+The Flutter host must stay **pack-agnostic** and must **not** keep catalog product widgets under `shared/shell`.
 
 A hub pack may use **any** upstream catalog system (TMDB today, something else
 tomorrow). The host must not assume which one.
@@ -29,19 +34,21 @@ Hardcoding or branching on:
 **Wrong:** `openAnimeDetails` only if `numericId('anilist')`  
 **Wrong:** `KitDetailsScreen` calling `TmdbApi().getRichDetails` / season stills / backdrop fetch  
 **Wrong:** host `loadTmdbSeasonExtras` to patch `meta.videos` after details  
-**Wrong:** seeding Feature docs / shell with scraper hostnames as Dart constants for open
+**Wrong:** seeding Feature docs / shell with scraper hostnames as Dart constants for open  
+**Wrong:** putting PackLayoutHost / kit hooks / feed Riverpod inside `forja_foundation` (that is not a DS)
 
 ### Allowed in host (opaque passthrough only)
 
 - Read **opaque fields** plugins already put on meta (`poster`, `background`, `videos`,
   `tmdbMediaType`, `ids` map) — do not interpret them to call upstream APIs
-- Mount foundation layout runner for pack `nav` — **no** `kit_*` product widgets in `shared/shell`
+- Mount **thin host kit interpreter** for pack `nav` / `layout` — maps JSON → foundation widgets
 - Generic plugin action runner + enrich pipe — host merges returned `meta` / `items`;
   host does not implement enrich itself
 - Cover URL helpers that only normalize absolute/relative URLs — no match/search/enrich
 
-**Wrong:** keeping `KitShell` / `kit_top_bar` / catalog paint in `apps/forja/lib/shared/shell/`  
-**Right:** foundation widgets + `PackLayoutHost` mount ([RFC-109](../../docs/rfc/109-[open]-forja-pack-product-host.md))
+**Wrong:** keeping `KitShell` / product catalog paint in `apps/forja/lib/shared/shell/`  
+**Wrong:** `packages/forja_foundation/lib/layout/` as app orchestrator  
+**Right:** pack layout/feed JS → host interpreter → foundation widgets ([pack-product host](./forja-pack-product-host.mdc))
 
 ## Enrich companions (plugin-owned)
 
@@ -84,9 +91,9 @@ absent and `type` is `movie`/`tv` (Home TMDB rows — not hub enrich).
 
 | Layer | May know scrapers / pack ids / upstream APIs |
 |-------|---------------------------------------------|
-| `plugins/hubs/**` JS | Yes — emit `open`, layout, enrich |
-| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work uses package widgets/blocks** |
-| `packages/forja_foundation` widgets/blocks, KitShell open path | **No** |
+| `forja-packs/hubs/**` JS | Yes — emit `open`, layout, enrich |
+| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Legacy only — **new hub work is pack layout + host interpreter** |
+| `packages/forja_foundation` widgets/blocks | **No** — paint only |
 
 ## Seed / nav
 
@@ -102,10 +109,5 @@ Do **not** hardcode hub tab ids (`anime`, `asian_drama`, …) into
 2. Put all upstream enrich (images, episode stills, extra rows) in the pack or its
    **enrich companion** — not in Dart host.
 3. If a new **host surface** is needed, add one route handler — not scraper names.
-4. Do **not** teach `kit_open.dart` about the pack’s upstream sites.
-
-## Legacy debt (do not extend)
-
-`kit_details_sections.dart` still has `kitLoadTmdbRich` / `kitTmdbHeroBackdropUrls`
-(host `TmdbApi`). **Do not add more.** New enrich belongs in plugins; migrate these
-to pack-returned `rails` / meta when touched.
+4. Do **not** teach host open helpers about the pack’s upstream sites.
+5. Product chrome/layout/feed → pack JS. Paint → foundation. Glue → host engines only.

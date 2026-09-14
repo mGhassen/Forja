@@ -66,9 +66,7 @@ Package `Button` extras required before rewrite: `color`, `iconSize`, `compact`,
 | `ForjaCloseButton(…)` / `.compact` | `Button(variant: ButtonVariant.plainIcon, size: ButtonSize.icon, icon: Icons.close_rounded, onPressed: onTap, tooltip:, color:, iconSize: size, height: hitSize, compact: true, onKeyEvent:)` |
 | `ForjaInteractive` | **not** Button — `package:forja/shared/shell/focus/forja_interactive.dart` |
 
-`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` are **deleted**. Do not reintroduce them. `ForjaInteractive` is `package:forja/shared/shell/focus/forja_interactive.dart` — import that file, not a buttons barrel.
-
-Do **not** import `compat/legacy_buttons.dart` from app code. Rewrite constructors.
+`ForjaGhostButton` / `ForjaPlainIcon` / `ForjaCloseButton` / `ForjaIconButton` / `ForjaTopBarIcon` / `compat/legacy_buttons.dart` are **deleted**. Do not reintroduce them. `ForjaInteractive` is `package:forja/shared/shell/focus/forja_interactive.dart` — import that file, not a buttons barrel.
 
 `ForjaButton.activateOnKeyUp` — drop; TV activate is host `ShellInputPolicy` + `Button` focus. If a call site still needs key-up activate, keep that logic next to the call site, not a second button type.
 

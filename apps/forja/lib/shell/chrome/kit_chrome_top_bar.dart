@@ -14,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/shared/shell/core/forja_shell_layout.dart';
 import 'package:forja/shared/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/shell/focus/shell_focusable_tap.dart';
+import 'package:forja_foundation/layout/chrome_menu_item.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
