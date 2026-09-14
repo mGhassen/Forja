@@ -3,7 +3,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Status:** fixed  
-**Area:** `apps/forja/lib/shared/host/search`, `kit_search_*`, Home `host_search`  
+**Area:** `apps/forja/lib/shared/engine/runtime/search`, `kit_search_*`, Home `host_search`  
 **Reported:** 2026-09-12  
 **Related:** [RFC-070](../rfc/070-[partial]-catalog-hub-protocol.md) R70-A84–A86 · [RFC-058](../rfc/058-[partial]-structured-search.md)
 
@@ -47,4 +47,4 @@ Archive commit dropped the Search tab and left `host_search` wired to pack-only 
 
 ## Fix approach
 
-`shared/host/search/HostSearchEngine` + kit progressive emit; capability `host_search` selects that engine behind the same kit page.
+`shared/engine/runtime/search/HostSearchEngine` + kit progressive emit; capability `host_search` selects that engine behind the same kit page.

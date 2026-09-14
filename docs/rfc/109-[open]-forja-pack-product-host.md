@@ -539,4 +539,9 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 
 | Still open | Detail |
 |------------|--------|
-| Pack parity | IPTV / Live Sports list/timeline nodes need full paint-ready migration beyond rail wrap |
+| Chrome | `kit.topBar` / `kit.categoryBar` still pack-declared but host painter does not mount chrome widgets yet (top bar slot is empty) |
+
+| Done (pack parity) | Detail |
+|--------------------|--------|
+| IPTV | `hubWithLoad(…, 'feed')` on list; `hubPaintPoster` on live/VOD/setup rows; paint helpers in `_prelude.js` (v1.5.5) |
+| Live Sports | `hubWithLoad(…, 'feed')` on schedule list; `hubPaintEvent` on shaped rows; paint helpers in `_prelude.js` (v1.0.29) |

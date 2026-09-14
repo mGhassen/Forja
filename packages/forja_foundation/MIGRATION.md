@@ -211,7 +211,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `kit_sources*.dart` · `kit_resolve_panel_host.dart` | paint: `package:forja_foundation/widgets/sources/{sources_panel_chrome,live_tv_browse,resolve_panel}.dart`. Host TV/hooks: `package:forja/shared/player/sources/<file>.dart` | ✅ |
 | `meta_runtime.dart` · `meta_cache.dart` · `meta_movie.dart` · `meta_feed_list_source.dart` · `meta_surface_open.dart` · `plugin_nav.dart` · `catalog_open.dart` (was `kit_open`) · `kit_live_boot.dart` · `live_surface_open.dart` · `kit_list_source.dart` · `kit_list_event_query.dart` · `kit_list_open_mode.dart` · `kit_event_paint.dart` · `kit_row_prefetch.dart` · `details_fetch.dart` · `host_list_registry.dart` · `kit_*_hooks.dart` · `play_filters.dart` · `chrome_filters.dart` · `pack_filters.dart` · `legacy_*.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
 | `cover_urls.dart` (host) | **deleted** — use `package:forja_foundation/utils/cover_urls.dart` | ✅ |
-| `search_recent_queries.dart` | `package:forja/shared/host/search/search_recent_queries.dart` | ✅ |
+| `search_recent_queries.dart` | `package:forja/shared/engine/runtime/search/search_recent_queries.dart` | ✅ |
 | `my_list_catalog_open.dart` · `my_list_catalog_source.dart` · `my_list_host.dart` | `package:forja/shared/engine/lists/<file>.dart` | ✅ |
 | `desktop_selectable_title.dart` | `package:forja/shared/shell/desktop/desktop_selectable_title.dart` | ✅ |
 | `kit_focus.dart` | `package:forja/shared/shell/focus/focus_edge.dart` | ✅ |

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/host/search/host_search_models.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_models.dart';
 import 'package:rust/rust.dart';
 
 /// Progressive TMDB + VOD Stremio addon search (host engine for hub `host_search`).

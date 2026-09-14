@@ -81,7 +81,7 @@ These remain under `apps/forja/lib/shared/host/` **only** because they are app c
 | `update/` | App update dialog + progress banner |
 | `account/` | macOS Keychain consent |
 | `watch/` | Continue / watched prefs store |
-| `search/` | App search engine glue behind kit (`host_search`) |
+| `search/` | Host search engine behind kit (`host_search`) — now `engine/runtime/search/` |
 | `details/` | README only — packs own enrich |
 
 ---

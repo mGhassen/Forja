@@ -216,7 +216,7 @@ Archive Search tab deleted; engine lives on host; screen stays hub kit chrome.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A84 | `HostSearchEngine` in `shared/host/search/` — progressive TMDB structured + VOD Stremio addons (ex-archive providers) | ✅ |
+| 1 | R70-A84 | `HostSearchEngine` in `shared/engine/runtime/search/` — progressive TMDB structured + VOD Stremio addons (ex-archive providers) | ✅ |
 | 2 | R70-A85 | Capability `host_search` → [KitSearchScreen] + host engine (not archived `SearchScreen`); pack-only hubs keep MetaRuntime `search` | ✅ |
 | 3 | R70-A86 | Kit search progressive emit paints TMDB first then addon rows; Cmd+F / top-bar same `openCatalogSearch` entry | ✅ |
 

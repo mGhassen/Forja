@@ -1,4 +1,4 @@
-import 'package:forja/shared/host/search/host_search_wire.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_wire.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/protocol/pack_capabilities.dart';
 import 'package:forja/shared/engine/models/models.dart';

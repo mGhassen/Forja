@@ -1,7 +1,7 @@
-import 'package:forja/shared/host/search/host_search_wire.dart';
-import 'package:forja/shared/host/search/host_search_engine.dart';
-import 'package:forja/shared/host/search/host_search_helpers.dart';
-import 'package:forja/shared/host/search/host_search_models.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_wire.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_engine.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_helpers.dart';
+import 'package:forja/shared/engine/runtime/search/host_search_models.dart';
 import 'package:rust/rust.dart';
 
 /// Map host engine sections → flat kit search cards (TMDB first, then addons).
