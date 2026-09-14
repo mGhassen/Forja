@@ -21,7 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | I278-T01 | Host progressive catalog fan-out (`LiveScheduleFeedSource`) | ✅ |
 | 2 | I278-T02 | Pack `feed` reduce path when `params.rows` present | ✅ |
-| 3 | I278-T03 | Wire `readFeedBusy` scrape chip (`Loading … i/n`) | ✅ |
+| 3 | I278-T03 | Wire `readFeedBusy` scrape chip + restore Catalog chip options hooks | ✅ |
 | 4 | I278-T04 | Manual QA: first catalog paints before last finishes | ⬜ |
 
 ---

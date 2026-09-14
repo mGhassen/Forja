@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/host/layout/list/list_source.dart';
+import 'package:forja/shared/host/layout/list/live_schedule_progressive.dart';
 import 'package:forja/shared/host/layout/list/panel_host.dart';
+import 'package:forja/shared/host/layout/list/plugin_feed_source.dart';
 
 /// Host-side registration for `kit.list` backends + optional side panels.
 ///
@@ -9,6 +11,10 @@ import 'package:forja/shared/host/layout/list/panel_host.dart';
 /// `source` — do not pass shipped hub pack ids from foundation hosts.
 abstract final class HostListRegistry {
   HostListRegistry._();
+
+  /// Pack `kit.list` / categoryBar source id for Live Sports schedule.
+  /// Keep in sync with [LiveSurfaceOpen.listSourceId].
+  static const liveScheduleSourceId = 'live_schedule';
 
   static final Map<String, KitListSource> _bySourceId = {};
   static final Map<String, KitListSource> _byPluginId = {};
@@ -64,6 +70,24 @@ abstract final class HostListRegistry {
     final hub = pluginId?.trim() ?? '';
     if (hub.isNotEmpty) return _byPluginId[hub];
     return null;
+  }
+
+  /// Same fallback as [KitListWidget]: registered → live_schedule progressive →
+  /// generic [PluginFeedSource]. Category bar must use this or sport chips stay
+  /// empty (registry never holds pack feed sources).
+  static KitListSource? resolveOrPackFeed({
+    String? sourceId,
+    String? pluginId,
+  }) {
+    final registered = resolve(sourceId: sourceId, pluginId: pluginId);
+    if (registered != null) return registered;
+    final hub = pluginId?.trim() ?? '';
+    if (hub.isEmpty) return null;
+    final src = sourceId?.trim() ?? '';
+    if (src == liveScheduleSourceId) {
+      return LiveScheduleFeedSource(hub);
+    }
+    return PluginFeedSource(hub);
   }
 
   /// Test helper — clears registrations between cases.

@@ -124,8 +124,10 @@ class _SettingsForjaPacksSectionState
     final liveUpdates = ref.watch(enginePackUpdatesProvider);
     final packUpdates = _frozenUpdatesDuringBulk ?? liveUpdates;
 
-    // Bulk Reload/Update/Download: freeze the list — progress + changeNotifier
-    // would remount every FutureBuilder / ExpansionTile and stutter.
+    // Bulk Reload/Update/Download: freeze the list — progress would remount
+    // every FutureBuilder / ExpansionTile and stutter.
+    // Do not listen to EngineService.changeNotifier here — that remounts rows
+    // on every toggle; enginePacksProvider already reloads with previous kept.
     final packSection = _bulkPackBusy
         ? _buildEnginePackSection(
             enginePacks,
@@ -135,7 +137,7 @@ class _SettingsForjaPacksSectionState
         : ListenableBuilder(
             listenable: Listenable.merge([
               PluginInstallCoordinator.instance.progress,
-              EngineService.changeNotifier,
+              EngineService.officialInstallError,
               RemotePackIntentStore.changeNotifier,
             ]),
             builder: (context, _) => _buildEnginePackSection(
@@ -529,7 +531,7 @@ class _SettingsForjaPacksSectionState
       await PluginNavRegistry.refresh();
       if (!mounted) return;
       ref.read(enginePackUpdatesProvider.notifier).clearFor(sourceUrl);
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
         update != null
             ? 'Updated ${pack.name} to v${pack.version}'
@@ -564,7 +566,7 @@ class _SettingsForjaPacksSectionState
         }
       }
       if (!mounted) return;
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
         ForjaToast.success(ok == 1 ? '1 pack reloaded' : '$ok packs reloaded');
@@ -606,7 +608,7 @@ class _SettingsForjaPacksSectionState
       }
       if (!mounted) return;
       scheduleForjaSyncPush();
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
       if (ok > 0) {
         ForjaToast.success(
@@ -648,7 +650,7 @@ class _SettingsForjaPacksSectionState
         }
       }
       if (!mounted) return;
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
         ForjaToast.success(ok == 1 ? '1 pack updated' : '$ok packs updated');
@@ -697,7 +699,7 @@ class _SettingsForjaPacksSectionState
     }
     if (!mounted) return;
     scheduleForjaSyncPush();
-    ref.invalidate(enginePacksProvider);
+    await ref.read(enginePacksProvider.notifier).reload();
   }
 
   Future<void> _installNamedPack(String sourceUrl) async {
@@ -710,7 +712,7 @@ class _SettingsForjaPacksSectionState
       await PackHubFeatures.refreshAndActivateInstalled([pack]);
       if (!mounted) return;
       scheduleForjaSyncPush();
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
         'Installed ${pack.name} (${pack.plugins.length} plugins)',
       );
@@ -756,7 +758,7 @@ class _SettingsForjaPacksSectionState
       if (!mounted) return;
       _engineController.clear();
       scheduleForjaSyncPush();
-      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
         'Installed ${pack.name} (${pack.plugins.length} plugins)',
       );

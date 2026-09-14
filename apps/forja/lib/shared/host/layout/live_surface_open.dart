@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/host/layout/list/host_list_registry.dart';
 import 'package:forja/shared/host/layout/list/live_schedule_progressive.dart';
-import 'package:forja/shared/host/layout/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -14,7 +13,7 @@ abstract final class LiveSurfaceOpen {
   static const surface = 'live';
 
   /// Pack `kit.list` source id for Live Sports schedule / portals hoist.
-  static const listSourceId = 'live_schedule';
+  static const listSourceId = HostListRegistry.liveScheduleSourceId;
 
   static String? pendingOpenEntryId;
   static bool _registered = false;
@@ -24,7 +23,7 @@ abstract final class LiveSurfaceOpen {
     _registered = true;
     HostListRegistry.registerPanel(KitResolvePanelHost.instance);
     MetaSurfaceOpen.register(surface, openFromMeta);
-    registerLiveScheduleFeedBusyHook();
+    registerLiveScheduleChromeHooks();
   }
 
   static void openFromMeta(BuildContext context, MetaItem item) {
@@ -47,6 +46,6 @@ abstract final class LiveSurfaceOpen {
     _registered = false;
     pendingOpenEntryId = null;
     MetaSurfaceOpen.unregister(surface);
-    KitTopBarHostHooks.readFeedBusy = null;
+    clearLiveScheduleChromeHooks();
   }
 }

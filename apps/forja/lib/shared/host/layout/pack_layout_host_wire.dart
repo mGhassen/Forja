@@ -23,9 +23,6 @@ import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/nav/pack_filters.dart';
 import 'package:forja/shared/host/layout/list/panel_host.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/host/layout/list/plugin_feed_source.dart';
-import 'package:forja/shared/host/layout/list/live_schedule_progressive.dart';
-import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja_foundation/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/nav/top_menu_registry.dart';
@@ -2084,6 +2081,7 @@ class KitTopBarActions extends ConsumerWidget {
 
     if (isView) {
       final key = kitChromeKeyForTab(tabId);
+      ensureKitListStyleHydrated(ref, key);
       final override = key.isEmpty
           ? ''
           : ref.watch(kitListStyleOverrideProvider(key)).trim().toLowerCase();
@@ -2101,8 +2099,7 @@ class KitTopBarActions extends ConsumerWidget {
         onRightEdge: focusRight,
         onTap: () {
           if (key.isEmpty) return;
-          ref.read(kitListStyleOverrideProvider(key).notifier).state =
-              isCards ? 'list' : 'cards';
+          setKitListStyle(ref, key, isCards ? 'list' : 'cards');
         },
       );
     }
@@ -2273,6 +2270,14 @@ class KitTopBarActions extends ConsumerWidget {
     final writer = KitTopBarHostHooks.writeCatalogFilter;
     if (writer != null) {
       await writer(context, picked, tabId: tabId);
+    } else {
+      // Fallback when chrome hooks not registered (tests / non-live hubs).
+      final key = kitChromeKeyForTab(tabId);
+      if (key.isNotEmpty) {
+        ProviderScope.containerOf(context)
+            .read(kitFeedCatalogFilterProvider(key).notifier)
+            .state = picked;
+      }
     }
   }
 
@@ -2354,7 +2359,7 @@ class KitTopBarActions extends ConsumerWidget {
     if (id == 'view' || verb == 'view') {
       final key = kitChromeKeyForTab(tabId);
       if (key.isNotEmpty) {
-        ref.read(kitListStyleOverrideProvider(key).notifier).state = picked;
+        setKitListStyle(ref, key, picked);
       }
     }
   }
@@ -2708,7 +2713,7 @@ class _KitCategoryBarState extends ConsumerState<KitCategoryBar> {
     ];
 
     if (dynamic) {
-      final source = HostListRegistry.resolve(
+      final source = HostListRegistry.resolveOrPackFeed(
         sourceId: sourceId.isEmpty ? null : sourceId,
         pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
       );
@@ -3000,6 +3005,7 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
 
   void _resolveEffectiveLayout(WidgetRef ref) {
     final key = kitChromeKey(pluginId: widget.pluginId);
+    ensureKitListStyleHydrated(ref, key);
     final override = key.isEmpty
         ? ''
         : ref.watch(kitListStyleOverrideProvider(key)).trim().toLowerCase();
@@ -3030,19 +3036,10 @@ class _KitListWidgetState extends ConsumerState<KitListWidget> {
   }
 
   KitListSource? _resolveSource() {
-    final registered = HostListRegistry.resolve(
+    return HostListRegistry.resolveOrPackFeed(
       sourceId: widget.listSource.isEmpty ? null : widget.listSource,
       pluginId: widget.pluginId.isEmpty ? null : widget.pluginId,
     );
-    if (registered != null) return registered;
-    final pluginId = widget.pluginId.trim();
-    if (pluginId.isEmpty) return null;
-    // Live Sports schedule — host progressive catalog fan-out + pack reduce.
-    if (widget.listSource == LiveSurfaceOpen.listSourceId) {
-      return LiveScheduleFeedSource(pluginId);
-    }
-    // Pack-owned list feed — no host product registration required.
-    return PluginFeedSource(pluginId);
   }
 
   KitPanelHost? get _panelHost {

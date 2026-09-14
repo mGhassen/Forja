@@ -7,11 +7,13 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/engine/unlock/live_plugin_engine.dart';
+import 'package:forja/shared/engine/unlock/live_stremio_catalog.dart';
 import 'package:forja/shared/host/layout/list/list_event_query.dart';
 import 'package:forja/shared/host/layout/list/list_source.dart';
 import 'package:forja/shared/host/layout/list/plugin_feed_source.dart';
 import 'package:forja/shared/host/layout/live_surface_open.dart';
 import 'package:forja/shared/host/layout/top_bar_host_hooks.dart';
+import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
 /// Top-bar scrape chip for [LiveSurfaceOpen.listSourceId] schedule loads.
 final liveScheduleFeedBusyProvider =
@@ -19,13 +21,77 @@ final liveScheduleFeedBusyProvider =
   (ref, pluginId) => (busy: false, label: null),
 );
 
-void registerLiveScheduleFeedBusyHook() {
+/// Catalog chip options + prefs + scrape busy for Live Sports top bar.
+void registerLiveScheduleChromeHooks() {
+  KitTopBarHostHooks.loadCatalogOptions = () async {
+    final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();
+    final out = <({String id, String label})>[
+      for (final p in plugins)
+        (
+          id: EngineService.normalizeLiveSportPluginId(p.id),
+          label: p.name.trim().isEmpty ? p.id : p.name.trim(),
+        ),
+    ];
+    out.addAll(await liveStremioCatalogOptions());
+    return out;
+  };
+  KitTopBarHostHooks.openCatalogSheet = (
+    context, {
+    required current,
+    required options,
+  }) =>
+      showCatalogFilterSheet(
+        context,
+        current: current,
+        options: options,
+      );
+  KitTopBarHostHooks.readCatalogPref = (ref, {required tabId}) {
+    final key = kitChromeKeyForTab(tabId);
+    if (key.isEmpty) return 'all';
+    return ref.watch(kitFeedCatalogFilterProvider(key));
+  };
+  KitTopBarHostHooks.catalogChipLabel = (filter, options) {
+    final id = (filter ?? 'all').trim();
+    if (id.isEmpty || id == 'all') return 'All';
+    for (final o in options) {
+      if (o.id == id) return o.label;
+    }
+    if (isLiveStremioCatalogFilter(id)) {
+      return liveStremioCatalogChipFallbackLabel(id);
+    }
+    return id;
+  };
+  KitTopBarHostHooks.catalogChipSelected = (filter) {
+    final id = (filter ?? 'all').trim();
+    return id.isNotEmpty && id != 'all';
+  };
+  KitTopBarHostHooks.writeCatalogFilter =
+      (context, filter, {required tabId}) async {
+    final key = kitChromeKeyForTab(tabId);
+    if (key.isEmpty) return;
+    final container = ProviderScope.containerOf(context);
+    container.read(kitFeedCatalogFilterProvider(key).notifier).state = filter;
+  };
   KitTopBarHostHooks.readFeedBusy = (ref, {required tabId}) {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(tabId)?.trim() ?? '';
     if (pluginId.isEmpty) return (busy: false, label: null);
     return ref.watch(liveScheduleFeedBusyProvider(pluginId));
   };
 }
+
+void clearLiveScheduleChromeHooks() {
+  KitTopBarHostHooks.loadCatalogOptions = null;
+  KitTopBarHostHooks.openCatalogSheet = null;
+  KitTopBarHostHooks.readCatalogPref = null;
+  KitTopBarHostHooks.catalogChipLabel = null;
+  KitTopBarHostHooks.catalogChipSelected = null;
+  KitTopBarHostHooks.writeCatalogFilter = null;
+  KitTopBarHostHooks.readFeedBusy = null;
+}
+
+/// @Deprecated('Use registerLiveScheduleChromeHooks')
+void registerLiveScheduleFeedBusyHook() => registerLiveScheduleChromeHooks();
+
 
 bool _catalogIdMatches(String pluginId, String want) {
   final id = pluginId.trim();
