@@ -235,6 +235,7 @@ Long-lived localhost axum servers run **inside** the `libffi` process — not se
 | `/health` | Liveness |
 | `/proxy?url=&headers=` | Generic upstream fetch — CORS bypass, Range, headers |
 | `/hls-proxy` | HLS playlist rewrite + PNG-wrapper TS strip |
+| `/ext/{id}/…` | Path session for external players (cookie DASH/HLS relative URIs) |
 | `/proxy/{token}` | Pre-registered upstream by token |
 
 Additional proxy modules (mega, jellyfin, comic, seek111477, …) live under `crates/proxy`.

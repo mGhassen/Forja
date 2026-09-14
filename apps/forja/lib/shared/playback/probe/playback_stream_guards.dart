@@ -169,6 +169,7 @@ bool isLocalLoopbackPlayUrl(String url) {
   if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
   final p = uri.path;
   if (p.contains('/hls-proxy')) return true;
+  if (p.contains('/ext/')) return true;
   if (p.contains('/jellyfin-stream')) return true;
   if (p.contains('/toky-proxy')) return true;
   if (p.contains('/comic-proxy')) return true;

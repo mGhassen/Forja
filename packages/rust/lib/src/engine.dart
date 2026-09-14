@@ -495,6 +495,14 @@ class RustLib {
     return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
   });
 
+  /// Path-style external handoff URL (`/ext/{id}/{entry}`) with headers held in
+  /// the proxy session — required for cookie DASH relative SegmentTemplate.
+  String proxyCreateExtSession(String url, String headersJson) => using((arena) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final hdrPtr = headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_proxy_create_ext_session(urlPtr, hdrPtr));
+  });
+
   int lanServerStart({int bindMode = 1, int preferredPort = 0}) =>
       _native.ffi_lan_server_start(bindMode, preferredPort);
 
@@ -940,6 +948,11 @@ final class _FfiNative {
             'ffi_proxy_register_route',
           )
           .asFunction(),
+      ffi_proxy_create_ext_session = lib
+          .lookup<ffi.NativeFunction<_ProxyCreateExtSessionNative>>(
+            'ffi_proxy_create_ext_session',
+          )
+          .asFunction(),
       ffi_lan_server_start = lib
           .lookup<ffi.NativeFunction<_LanServerStartNative>>(
             'ffi_lan_server_start',
@@ -1194,6 +1207,11 @@ final class _FfiNative {
   final int Function() ffi_proxy_port;
   final bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)
   ffi_proxy_register_route;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  )
+  ffi_proxy_create_ext_session;
   final int Function(int, int) ffi_lan_server_start;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_server_last_error;
   final void Function() ffi_lan_server_stop;
@@ -1306,6 +1324,11 @@ typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
 typedef _ProxyRegisterNative =
     ffi.Bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>);
+typedef _ProxyCreateExtSessionNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
 typedef _LanServerStartNative = ffi.Int32 Function(ffi.Uint8, ffi.Uint16);
 typedef _LanBrowseNative = ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _Seek111477JsonNative =

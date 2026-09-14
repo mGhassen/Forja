@@ -569,6 +569,18 @@ fn proxy_register_route(token: String, upstream_url: String) -> bool {
     }
 }
 
+fn proxy_create_ext_session(url: String, headers_json: String) -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        engine_proxy::proxy_create_ext_session(&RUNTIME, url, headers_json)
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        let _ = (url, headers_json);
+        String::new()
+    }
+}
+
 fn lan_server_start(bind_mode: u8, preferred_port: u32) -> i32 {
     #[cfg(feature = "lan-server")]
     {

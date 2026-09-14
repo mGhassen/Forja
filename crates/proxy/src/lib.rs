@@ -14,6 +14,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 mod hls;
+pub mod ext;
 pub mod index111477;
 pub mod mega;
 pub mod seek111477;
@@ -27,6 +28,7 @@ pub struct ProxyState {
     pub client: reqwest::Client,
     pub routes: Arc<RwLock<HashMap<String, String>>>,
     pub listen_port: Arc<RwLock<u16>>,
+    pub sessions: Arc<RwLock<HashMap<String, ext::ExtSession>>>,
 }
 
 impl Default for ProxyState {
@@ -38,6 +40,7 @@ impl Default for ProxyState {
                 .unwrap_or_else(|_| reqwest::Client::new()),
             routes: Arc::new(RwLock::new(HashMap::new())),
             listen_port: Arc::new(RwLock::new(0)),
+            sessions: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -122,6 +125,10 @@ fn proxy_media_routes() -> Router<ProxyState> {
         .route(
             "/hls-proxy",
             get(hls::hls_proxy_handler).head(hls::hls_proxy_handler),
+        )
+        .route(
+            "/ext/{id}/{*path}",
+            get(ext::ext_proxy_handler).head(ext::ext_proxy_handler),
         )
         .route("/proxy/{token}", get(token_proxy_handler))
         .route("/toky-proxy", get(toky::toky_proxy_handler))

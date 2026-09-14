@@ -22,9 +22,10 @@ While already handed off: **Change player** on the handoff screen → **Choose p
 
 ## Tips
 
-- On macOS **VLC** / standalone **mpv**: direct stream URL + CLI header flags (`--http-referrer`, etc.)
-- On macOS **IINA**: Forja runs header-protected streams through the local **hls-proxy**, then opens the proxy URL with IINA's `iina://weblink` URL scheme via **NSWorkspace** (App Sandbox blocks direct `iina-cli` / `/usr/bin/open` process handoff)
-- **Android** may still use Forja's local hls-proxy when the player cannot accept headers
+- On macOS **IINA**: Forja runs header-protected streams through a local **path session** (`/ext/{id}/…`) so relative DASH/HLS keep cookies, then opens that URL with IINA's `iina://weblink` scheme via **NSWorkspace** (App Sandbox blocks direct `iina-cli` / `/usr/bin/open` process handoff)
+- On macOS **VLC** / standalone **mpv**: same path session when the stream needs Cookie/Referer (VLC CLI cannot take Cookie); otherwise direct URL + CLI header flags
+- **Android** may still use Forja's local proxy when the player cannot accept headers
+- Cookie-gated **DASH** (`.mpd`) and HLS both work in external players via the path session — plain `/hls-proxy?url=…` cannot be a DASH BaseURL
 - **111477 CDN** — Prefer `st.111477.xyz` stream URLs (direct). Raw `a.111477.xyz` file links still go through Forja's seek cache proxy (math captcha unlock); they often hit Cloudflare on `p.111477/bulk`
 - External players receive the same mpv network settings as the built-in player (`tls-verify`, HLS cache, timeouts)
 - External players bypass Forja's subtitle UI — use players with their own sub support if needed

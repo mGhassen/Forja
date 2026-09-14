@@ -16,6 +16,7 @@ class ForjaToastEntry {
     required this.duration,
     this.actionLabel,
     this.onAction,
+    this.tag,
   });
 
   final String id;
@@ -24,6 +25,9 @@ class ForjaToastEntry {
   final Duration duration;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// Optional stable key — [ForjaToast.dismissTag] / replace on re-show.
+  final String? tag;
 
   bool get isTimed => duration > Duration.zero;
   bool get hasAction => actionLabel != null && onAction != null;
@@ -36,6 +40,7 @@ class _QueuedToast {
     required this.duration,
     this.actionLabel,
     this.onAction,
+    this.tag,
   });
 
   final String message;
@@ -43,6 +48,12 @@ class _QueuedToast {
   final Duration duration;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final String? tag;
+}
+
+/// Well-known toast tags (dismiss / replace).
+abstract final class ForjaToastTags {
+  static const packUpdates = 'pack-updates';
 }
 
 /// Top-right floating status toasts. Mount [ForjaToastHost] once at app root.
@@ -61,6 +72,7 @@ abstract final class ForjaToast {
     Duration duration = const Duration(seconds: 3),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) {
     controller.show(
       message,
@@ -68,6 +80,7 @@ abstract final class ForjaToast {
       duration: duration,
       actionLabel: actionLabel,
       onAction: onAction,
+      tag: tag,
     );
   }
 
@@ -76,6 +89,7 @@ abstract final class ForjaToast {
     Duration duration = const Duration(seconds: 3),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) =>
       show(
         message,
@@ -83,6 +97,7 @@ abstract final class ForjaToast {
         duration: duration,
         actionLabel: actionLabel,
         onAction: onAction,
+        tag: tag,
       );
 
   static void error(
@@ -90,6 +105,7 @@ abstract final class ForjaToast {
     Duration duration = const Duration(seconds: 4),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) =>
       show(
         message,
@@ -97,6 +113,7 @@ abstract final class ForjaToast {
         duration: duration,
         actionLabel: actionLabel,
         onAction: onAction,
+        tag: tag,
       );
 
   static void warning(
@@ -104,6 +121,7 @@ abstract final class ForjaToast {
     Duration duration = const Duration(seconds: 3),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) =>
       show(
         message,
@@ -111,6 +129,7 @@ abstract final class ForjaToast {
         duration: duration,
         actionLabel: actionLabel,
         onAction: onAction,
+        tag: tag,
       );
 
   static void info(
@@ -118,6 +137,7 @@ abstract final class ForjaToast {
     Duration duration = const Duration(seconds: 3),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) =>
       show(
         message,
@@ -125,7 +145,11 @@ abstract final class ForjaToast {
         duration: duration,
         actionLabel: actionLabel,
         onAction: onAction,
+        tag: tag,
       );
+
+  /// Drop visible + queued toasts with [tag].
+  static void dismissTag(String tag) => controller.dismissTag(tag);
 }
 
 class ForjaToastController extends ChangeNotifier {
@@ -158,6 +182,7 @@ class ForjaToastController extends ChangeNotifier {
     Duration duration = const Duration(seconds: 3),
     String? actionLabel,
     VoidCallback? onAction,
+    String? tag,
   }) {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return;
@@ -169,6 +194,7 @@ class ForjaToastController extends ChangeNotifier {
         duration: duration,
         actionLabel: actionLabel,
         onAction: onAction,
+        tag: tag,
       ),
     );
     if (!_suppress) _scheduleFlush();
@@ -177,6 +203,14 @@ class ForjaToastController extends ChangeNotifier {
   void dismiss(String id) {
     final before = _entries.length;
     _entries.removeWhere((e) => e.id == id);
+    if (_entries.length != before) notifyListeners();
+  }
+
+  void dismissTag(String tag) {
+    if (tag.isEmpty) return;
+    final before = _entries.length;
+    _entries.removeWhere((e) => e.tag == tag);
+    _queued.removeWhere((e) => e.tag == tag);
     if (_entries.length != before) notifyListeners();
   }
 
@@ -203,6 +237,9 @@ class ForjaToastController extends ChangeNotifier {
   }
 
   void _present(_QueuedToast item) {
+    if (item.tag != null) {
+      _entries.removeWhere((e) => e.tag == item.tag);
+    }
     _entries.add(
       ForjaToastEntry(
         id: 'toast_${++_seq}',
@@ -211,6 +248,7 @@ class ForjaToastController extends ChangeNotifier {
         duration: item.duration,
         actionLabel: item.actionLabel,
         onAction: item.onAction,
+        tag: item.tag,
       ),
     );
     _trimEntries();

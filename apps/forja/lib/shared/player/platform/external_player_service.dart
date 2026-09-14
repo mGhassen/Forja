@@ -401,7 +401,7 @@ class ExternalPlayerService {
       await proxy.start();
     }
     if (proxy.port > 0) {
-      final proxied = proxy.getHlsProxyUrl(url, headers);
+      final proxied = proxy.getExtProxyUrl(url, headers);
       debugPrint(
         '[ExternalPlayer] Proxying stream for external player '
         '(127.0.0.1:${proxy.port})',
@@ -428,6 +428,7 @@ class ExternalPlayerService {
     if (uri == null) return false;
     if (uri.host != '127.0.0.1' && uri.host != 'localhost') return false;
     return uri.path.contains('/hls-proxy') ||
+        uri.path.contains('/ext/') ||
         uri.path.contains('/jellyfin-stream') ||
         uri.path.contains('/toky-proxy') ||
         uri.path.contains('/comic-proxy');

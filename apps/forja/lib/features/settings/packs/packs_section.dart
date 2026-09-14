@@ -537,6 +537,9 @@ class _SettingsForjaPacksSectionState
             ? 'Updated ${pack.name} to v${pack.version}'
             : 'Refreshed ${pack.name} v${pack.version}',
       );
+      if (update != null) {
+        PluginInstallCoordinator.instance.clearPackUpdateToast();
+      }
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Refresh failed: $e');
@@ -570,6 +573,7 @@ class _SettingsForjaPacksSectionState
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
         ForjaToast.success(ok == 1 ? '1 pack reloaded' : '$ok packs reloaded');
+        PluginInstallCoordinator.instance.clearPackUpdateToast();
       }
     } finally {
       if (mounted) {
@@ -654,6 +658,7 @@ class _SettingsForjaPacksSectionState
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
         ForjaToast.success(ok == 1 ? '1 pack updated' : '$ok packs updated');
+        PluginInstallCoordinator.instance.clearPackUpdateToast();
       }
     } finally {
       if (mounted) {

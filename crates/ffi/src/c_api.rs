@@ -522,6 +522,17 @@ pub unsafe extern "C" fn ffi_proxy_register_route(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_proxy_create_ext_session(
+    url: *const c_char,
+    headers_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::proxy_create_ext_session(
+        from_c_str(url),
+        from_c_str(headers_json),
+    ))
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_lan_server_start(bind_mode: u8, preferred_port: u16) -> i32 {
     crate::lan_server_start(bind_mode, preferred_port as u32)
 }

@@ -137,6 +137,67 @@ pub fn build_hls_proxy_url(
     out
 }
 
+/// Rewrite playlist URIs to paths relative to [session_base] so `/ext/{id}/…`
+/// relative resolution keeps cookies on nested playlists and segments.
+pub fn rewrite_hls_playlist_relative(
+    body: &str,
+    decoded_url: &str,
+    session_base: &str,
+) -> String {
+    let slash = decoded_url.rfind('/').unwrap_or(0);
+    let base_path = &decoded_url[..=slash];
+    let server_base = if let Some(scheme_end) = decoded_url.find("://") {
+        let rest = &decoded_url[scheme_end + 3..];
+        if let Some(path_start) = rest.find('/') {
+            &decoded_url[..scheme_end + 3 + path_start]
+        } else {
+            decoded_url
+        }
+    } else {
+        decoded_url
+    };
+
+    let to_rel = |full: &str| -> String {
+        if let Some(rest) = full.strip_prefix(session_base) {
+            return rest.to_string();
+        }
+        full.to_string()
+    };
+
+    body.lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if is_hls_subtitle_media(trimmed) {
+                return None;
+            }
+            let line = strip_stream_inf_subtitles_attr(line);
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                if trimmed.contains("URI=\"") {
+                    let mut out = line.to_string();
+                    let mut search_from = 0;
+                    while let Some(rel) = out[search_from..].find("URI=\"") {
+                        let start = search_from + rel;
+                        let rest = &out[start + 5..];
+                        let Some(end) = rest.find('"') else { break };
+                        let uri = &rest[..end];
+                        let full = resolve_url(uri, base_path, server_base);
+                        let replacement = to_rel(&full);
+                        let new_token = format!("URI=\"{replacement}\"");
+                        out.replace_range(start..start + 5 + end + 1, &new_token);
+                        search_from = start + new_token.len();
+                    }
+                    return Some(out);
+                }
+                return Some(line.to_string());
+            }
+            let full = resolve_url(trimmed, base_path, server_base);
+            Some(to_rel(&full))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub fn rewrite_hls_playlist(
     body: &str,
     decoded_url: &str,
@@ -274,7 +335,7 @@ fn header_ci<'a>(
         .map(|(_, v)| v.as_str())
 }
 
-fn build_hls_upstream_request(
+pub(crate) fn build_hls_upstream_request(
     state: &ProxyState,
     method: Method,
     target_url: &str,
@@ -324,6 +385,20 @@ pub async fn hls_proxy_handler(
     let custom = parse_custom_headers(query.headers.as_deref());
     let headers_json = query.headers.as_deref().unwrap_or("{}");
     let strip = query.strip.as_deref();
+
+    // DASH via query-proxy cannot resolve relative SegmentTemplate (query is
+    // dropped). Redirect into a path session so IINA/VLC/etc. keep cookies.
+    if target_url.to_ascii_lowercase().contains(".mpd") {
+        if let Some(play) = crate::ext::create_ext_session(&state, &target_url, headers_json).await
+        {
+            return Response::builder()
+                .status(StatusCode::FOUND)
+                .header(header::LOCATION, play)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
 
     let req = build_hls_upstream_request(&state, method.clone(), &target_url, &custom, &headers)?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
@@ -412,6 +487,18 @@ mod tests {
         map.insert("cookie".into(), "a=1".into());
         assert_eq!(header_ci(&map, "Cookie"), Some("a=1"));
         assert_eq!(header_ci(&map, "COOKIE"), Some("a=1"));
+    }
+
+    #[test]
+    fn relative_hls_rewrite_keeps_nested_paths() {
+        const MASTER: &str = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\n720p/index.m3u8\n";
+        let out = rewrite_hls_playlist_relative(
+            MASTER,
+            "https://cdn.example/path/master.m3u8",
+            "https://cdn.example/path/",
+        );
+        assert!(out.contains("720p/index.m3u8"), "{out}");
+        assert!(!out.contains("http://"), "{out}");
     }
 
     #[test]

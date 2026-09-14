@@ -43,6 +43,31 @@ void main() {
     );
   });
 
+  test('proxy creates ext session for DASH handoff', () async {
+    final port = RustLib.instance.proxyStart(0);
+    expect(port, greaterThan(0));
+
+    final play = RustLib.instance.proxyCreateExtSession(
+      'https://cdn.example/dash/abc/index_web.mpd',
+      json.encode({
+        'Cookie': 'CloudFront-Policy=x',
+        'User-Agent': 'ForjaTest/1',
+      }),
+    );
+    expect(play, contains('http://127.0.0.1:$port/ext/'));
+    expect(play, endsWith('/index_web.mpd'));
+
+    final client = HttpClient();
+    try {
+      final req = await client.getUrl(Uri.parse(play));
+      final res = await req.close();
+      // Upstream is fake — expect gateway/error, not 404 on the route itself.
+      expect(res.statusCode, isNot(404));
+    } finally {
+      client.close(force: true);
+    }
+  });
+
   test('proxy specialized routes are registered', () async {
     final port = RustLib.instance.proxyStart(0);
     expect(port, greaterThan(0));

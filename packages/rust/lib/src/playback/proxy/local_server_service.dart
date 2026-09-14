@@ -53,6 +53,26 @@ class LocalServerService {
     return stripMode == null ? base : '$base&strip=$stripMode';
   }
 
+  /// Path-style proxy for external players (`/ext/{id}/{entry}`).
+  ///
+  /// Holds Cookie/Referer in the session so relative DASH SegmentTemplate and
+  /// HLS playlists resolve under the proxy. Falls back to [getHlsProxyUrl] if
+  /// the engine cannot create a session.
+  String getExtProxyUrl(String targetUrl, Map<String, String> headers) {
+    if (_port <= 0 || !Engine.isReady) {
+      return getHlsProxyUrl(targetUrl, headers);
+    }
+    final play = RustLib.instance.proxyCreateExtSession(
+      targetUrl,
+      json.encode(headers),
+    );
+    if (play.isEmpty) {
+      debugPrint('[LocalServer] ext session failed — falling back to hls-proxy');
+      return getHlsProxyUrl(targetUrl, headers);
+    }
+    return play;
+  }
+
   Future<void> stop() async {
     if (_port > 0 && Engine.isReady) {
       RustLib.instance.proxyStop();

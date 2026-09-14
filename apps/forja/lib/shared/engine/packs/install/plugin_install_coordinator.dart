@@ -311,13 +311,16 @@ class PluginInstallCoordinator {
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
-  /// Sticky until Update / close (TV: D-pad leave / Back also dismisses).
+  /// Timed card — dismissed early when packs are updated (or user closes).
   /// Waits for intro splash so it is not over the logo.
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
       final check = await EngineService.instance.checkPackUpdates(packs);
-      if (check.updates.isEmpty) return;
+      if (check.updates.isEmpty) {
+        clearPackUpdateToast();
+        return;
+      }
       if (_updateToastShownThisSession) return;
       await _waitForSplashDismissed();
       if (_updateToastShownThisSession) return;
@@ -329,8 +332,8 @@ class PluginInstallCoordinator {
         count == 1
             ? '$sample update available'
             : '$count plugin updates available',
-        // Sticky until Update or close — once-per-session toast.
-        duration: Duration.zero,
+        duration: const Duration(seconds: 10),
+        tag: ForjaToastTags.packUpdates,
         actionLabel: 'Update',
         onAction: () {
           pendingUpdatePrompt.value = list;
@@ -339,6 +342,11 @@ class PluginInstallCoordinator {
     } catch (e) {
       debugPrint('[PluginInstall] update notify failed: $e');
     }
+  }
+
+  /// Drop the "update available" toast (updates applied or none left).
+  void clearPackUpdateToast() {
+    ForjaToast.dismissTag(ForjaToastTags.packUpdates);
   }
 
   Future<void> _waitForSplashDismissed() async {
@@ -379,6 +387,7 @@ class PluginInstallCoordinator {
         ForjaToast.error('${entry.packName} update failed: $e');
       }
     }
+    if (ok > 0) clearPackUpdateToast();
     return ok;
   }
 
