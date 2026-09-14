@@ -73,6 +73,29 @@ class PackPaintTree extends StatelessWidget {
           packSourceUrl: packSourceUrl,
           tabId: tabId,
         );
+      case LayoutTypes.list:
+        final listLoad = packLoadSpec(spec['load']) ??
+            (action: 'feed', params: <String, dynamic>{});
+        return PackLoadedPaint(
+          pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
+          tabId: tabId,
+          action: listLoad.action,
+          params: listLoad.params,
+          fallbackSpec: spec,
+          builder: (ctx, merged) => PackListSlot(
+            spec: merged,
+            pluginId: pluginId,
+          ),
+        );
+      case LayoutTypes.topBar:
+      case LayoutTypes.categoryBar:
+        // Top bar / category chrome still WIP — do not Column-dump actions.
+        return const SizedBox.shrink();
+      case LayoutTypes.menu:
+        return PackMenuSlot(spec: spec);
+      case LayoutTypes.tabs:
+        return PackTabsSlot(spec: spec);
     }
 
     final load = packLoadSpec(spec['load']);
@@ -84,12 +107,22 @@ class PackPaintTree extends StatelessWidget {
         action: load.action,
         params: load.params,
         fallbackSpec: spec,
-        builder: (ctx, merged) => PackPaintTree(
-          spec: merged,
-          pluginId: pluginId,
-          packSourceUrl: packSourceUrl,
-          tabId: tabId,
-        ),
+        builder: (ctx, merged) {
+          final mergedType = LayoutTypes.normalize(
+            (merged['type'] ?? '').toString(),
+            merged,
+          );
+          // Always list-slot feed payloads — never recurse into Column-of-items.
+          if (mergedType == LayoutTypes.list || merged['items'] is List) {
+            return PackListSlot(spec: merged, pluginId: pluginId);
+          }
+          return PackPaintTree(
+            spec: merged,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          );
+        },
       );
     }
     return _paintNode(context, spec);
@@ -100,6 +133,10 @@ class PackPaintTree extends StatelessWidget {
       (node['type'] ?? '').toString(),
       node,
     );
+
+    if (type == LayoutTypes.list) {
+      return PackListSlot(spec: node, pluginId: pluginId);
+    }
 
     if (LayoutTypes.isStack(type) || type == LayoutTypes.stack) {
       return LayoutStack(
@@ -132,20 +169,37 @@ class PackPaintTree extends StatelessWidget {
       );
     }
 
-    final children = node['children'] ?? node['widgets'] ?? node['items'];
+    // Feed / kit.list payload lives in `items` — never Column (expand overflow).
+    if (node['items'] is List) {
+      return PackListSlot(spec: node, pluginId: pluginId);
+    }
+
+    final children = node['children'] ?? node['widgets'];
     if (children is List && children.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final c in children)
-            if (c is Map)
-              PackPaintTree(
-                spec: Map<String, dynamic>.from(c),
-                pluginId: pluginId,
-                packSourceUrl: packSourceUrl,
-                tabId: tabId,
-              ),
-        ],
+      final kids = <Widget>[
+        for (final c in children)
+          if (c is Map)
+            PackPaintTree(
+              spec: Map<String, dynamic>.from(c),
+              pluginId: pluginId,
+              packSourceUrl: packSourceUrl,
+              tabId: tabId,
+            ),
+      ];
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedHeight) {
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: kids,
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: kids,
+          );
+        },
       );
     }
 

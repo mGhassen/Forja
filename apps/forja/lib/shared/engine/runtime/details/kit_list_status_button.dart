@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/player/details/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/details/hero_pill_buttons.dart';
 import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 
 import 'package:forja/shared/engine/store/list_follow.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/shared/player/live/channel_guide/channel_guide.dart';
+import 'package:forja/shared/engine/portals/channel_guide/channel_guide.dart';
 import 'package:forja/shared/player/live/shell_style.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';

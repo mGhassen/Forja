@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 14** verification |
+| **Progress** | **9 / 14** verification · kit.list grid crash fix in progress |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,7 +29,7 @@
 | 8 | I279-A08 | VerticalFiltersRegistry unregister on dispose | ✅ |
 | 9 | I279-A09 | Hero TV interactive (gallery overlay, ShellTvFocus, bleed focus-down) | ⬜ |
 | 10 | I279-A10 | Rails TV row registration + pagination (KitSection parity) | ⬜ |
-| 11 | I279-A11 | `kit.list` / `kit.topBar` / menu / tabs / categoryBar mount (IPTV / Live / My List) | ⬜ |
+| 11 | I279-A11 | `kit.list` / `kit.topBar` / menu / tabs / categoryBar mount (IPTV / Live / My List) | 🔄 |
 | 12 | I279-A12 | Full-page `expand` stack (bounded Column, not scroll-only) | ✅ |
 | 13 | I279-A13 | Continue / mood / because TV focus graph parity | ⬜ |
 | 14 | I279-A14 | Manual QA: Home · Anime · Asian Drama · IPTV · Live Sports · My List look like pre-`1d9ff09b4` | ⬜ |

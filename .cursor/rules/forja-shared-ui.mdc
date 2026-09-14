@@ -18,16 +18,16 @@ Architecture: [pack-product host](./forja-pack-product-host.mdc). DS widgets: pr
 packages/forja_foundation/lib/{tokens,components,widgets,blocks,protocol}/
 apps/forja/lib/shell/          # one tree: frame (nav/frame/routing/bus/adapters/chrome) + UI (core/tv/focus/feedback/brand/desktop/update/filters)
 apps/forja/lib/shared/engine/runtime/kit/  # thin kit interpreter (layout JSON → DS)
-apps/forja/lib/shared/player/details/
 apps/forja/lib/shared/player/sources/
 apps/forja/lib/shared/playback/
+apps/forja/lib/shared/engine/details/  # title details host wire (not player)
 apps/forja/lib/shared/engine/{store,unlock,portals,packs}/
-apps/forja/lib/shared/engine/runtime/{kit,search,nav,open}/
+apps/forja/lib/shared/engine/runtime/{kit,search,nav,open,details}/
 apps/forja/lib/features/settings/packs/  # pack install UI
 forja-packs/hubs/**                     # product
 ```
 
-Barrel: `package:forja/shared/player/details/media_details.dart` for details widgets.
+Barrel: `package:forja/shared/engine/details/media_details.dart` for details widgets.
 
 ## When to extract
 

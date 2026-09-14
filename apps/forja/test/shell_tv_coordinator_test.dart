@@ -1,4 +1,4 @@
-import 'package:forja/shared/player/details/poster_cards.dart';
+import 'package:forja/shared/engine/runtime/details/poster_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

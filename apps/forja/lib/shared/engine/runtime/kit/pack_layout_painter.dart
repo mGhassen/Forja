@@ -13,6 +13,7 @@ import 'package:forja_foundation/protocol/layout_types.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 
 /// Hub tab mount — validate pack page JSON and paint. No product field mappers.
@@ -43,6 +44,7 @@ class PackLayoutPainter extends StatefulWidget {
 class _PackLayoutPainterState extends State<PackLayoutPainter>
     with AutomaticKeepAliveClientMixin, ShellTabRefresh<PackLayoutPainter> {
   List<Map<String, dynamic>> _widgets = const [];
+  final Map<String, String> _layoutSelections = {};
   String? _error;
   bool _loading = true;
 
@@ -194,8 +196,31 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _loading = false;
       _error = null;
       _widgets = widgets;
+      initLayoutTabSelections(_layoutSelections, widgets);
     });
     markShellTabFresh();
+  }
+
+  void _onLayoutSelect(String widgetId, String value, {required bool toggle}) {
+    setState(() {
+      if (toggle && _layoutSelections[widgetId] == value) {
+        _layoutSelections.remove(widgetId);
+      } else {
+        _layoutSelections[widgetId] = value;
+      }
+    });
+  }
+
+  Widget _wrapLayoutScope(Widget child) {
+    return LayoutScope(
+      selections: Map<String, String>.unmodifiable(
+        Map<String, String>.from(_layoutSelections),
+      ),
+      widgetSpecs: layoutWidgetSpecIndex(_widgets),
+      tabId: _pageKey,
+      onSelect: _onLayoutSelect,
+      child: child,
+    );
   }
 
   @override
@@ -218,10 +243,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     }
 
     final listenable = catalogChromeFilterListenable(_pageKey);
-    if (listenable == null) return _pageBody();
+    final body = _wrapLayoutScope(_pageBody());
+    if (listenable == null) return body;
     return ListenableBuilder(
       listenable: listenable,
-      builder: (_, _) => _pageBody(),
+      builder: (_, _) => _wrapLayoutScope(_pageBody()),
     );
   }
 
@@ -236,11 +262,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (_widgets.length != 1) return null;
     final root = _widgets.first;
     if (!LayoutTypes.isCompositionRoot(root)) return null;
-    return PackPaintTree(
-      spec: root,
-      pluginId: widget.pluginId,
-      packSourceUrl: widget.packSourceUrl,
-      tabId: _pageKey,
+    // Bound the expand stack — without this, kit.list SizedBox.expand is 0×0
+    // and pointer hit tests spam "render box with no size".
+    return SizedBox.expand(
+      child: PackPaintTree(
+        spec: root,
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        tabId: _pageKey,
+      ),
     );
   }
 

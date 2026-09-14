@@ -8,7 +8,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/player/details/sources_panel_tv.dart';
+import 'package:forja/shared/engine/runtime/details/sources_panel_tv.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(

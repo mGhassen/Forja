@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/player/details/pack_details_host.dart';
+import 'package:forja/shared/engine/runtime/details/pack_details_host.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';

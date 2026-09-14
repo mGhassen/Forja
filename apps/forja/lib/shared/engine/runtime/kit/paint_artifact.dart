@@ -99,6 +99,9 @@ abstract final class PackPaintArtifact {
           aspect: aspectRaw == 'landscape'
               ? PosterAspect.landscape
               : PosterAspect.portrait,
+          width: props['width'] is num ? (props['width'] as num).toDouble() : null,
+          height:
+              props['height'] is num ? (props['height'] as num).toDouble() : null,
         );
       case 'eventCard':
       case 'event':

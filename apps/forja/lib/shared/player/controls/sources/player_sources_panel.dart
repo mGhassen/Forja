@@ -23,7 +23,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
-import 'package:forja/shared/player/details/sources_panel_tv.dart';
+import 'package:forja/shared/engine/runtime/details/sources_panel_tv.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:forja/shared/player/sources/torrent_source_filters.dart';
 import 'package:forja/shared/player/sources/torrent_source_tiles.dart';

@@ -76,7 +76,7 @@
 | 7 | R109-A27 | IPTV hub pack browse+play via http/vault/playback (Xtream live MVP) | ✅ |
 | 8 | R109-A28 | Host catalog/search MetaItem adapters absorbed into foundation (no `host/catalog` rename residue) | ✅ |
 | 9 | R109-A29 | No `engine/runtime/details/` — meta protocol helpers in foundation; host wire beside PackDetailsHost only | ✅ |
-| 10 | R109-A30 | Stremio details load + rail open/TV wire stay host debt (`player/details/details_stremio` · `details_host_wire`) until pack owns surface | 🔄 |
+| 10 | R109-A30 | Stremio details load + rail open/TV wire stay host debt (`engine/details/details_stremio` · `details_host_wire`) until pack owns surface | 🔄 |
 | 11 | R109-A31 | No `engine/runtime/list/` — kit.list host wire in `host/layout/list`; Live Sports paint/search/schedule in pack | ✅ |
 | 12 | R109-A32 | `plugin_feed_source` / Riverpod list open mode stay host layout debt until pack owns feed | 🔄 |
 | 13 | R109-A33 | Foundation has no Live Sports product (`list_event_paint` / `match` / `schedule_window` / `kit_list_entry`) — pack emits flat paint + `searchText` | ✅ |
@@ -425,7 +425,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 |------|--------|
 | Deleted | `apps/forja/lib/shared/engine/runtime/details/` |
 | Foundation | `protocol/meta_details.dart` (upcoming / params / episode maps / surface flags) · `widgets/details/pack_detail_meta.dart` (rails parse / backdrops / facts) |
-| Host debt left | `player/details/details_fetch.dart` (MetaRuntime run) · `details_stremio.dart` · `details_host_wire.dart` (nav tab resolve / rail open+TV / rust trailers) |
+| Host debt left | `engine/details/details_fetch.dart` (MetaRuntime run) · `details_stremio.dart` · `details_host_wire.dart` (nav tab resolve / rail open+TV / rust trailers) |
 
 | Still open | Detail |
 |------------|--------|
@@ -469,7 +469,7 @@ forja-packs/hubs/live_sports   # schedule aggregate + progressive fan-out (_feed
 |------|--------|
 | Pack | VOD hub `_kit.js`: `hubStampDetailsPaint` on `hubOk('details')` + `hubItems` → `upcoming`, `premiereLabel` (not live_sports / my_list) |
 | Protocol | `MetaItem.upcoming` · `MetaItem.premiereLabel` |
-| Host | `player/details/details_meta.dart` reads pack fields only |
+| Host | `engine/details/details_meta.dart` reads pack fields only |
 | Deleted | `forja_foundation/protocol/meta_details.dart` |
 
 | Still open | Detail |

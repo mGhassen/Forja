@@ -204,7 +204,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
 | `kit_shell.dart` · `kit_list_widget.dart` · `kit_tabs_widget.dart` · `kit_section.dart` · `kit_menu_widget.dart` · `kit_search_*.dart` · `kit_list_event_search.dart` · `kit_top_bar*.dart` · `kit_category_bar.dart` · `kit_catalog_filter_sheet.dart` · `kit_filter_sheet_option.dart` · `kit_portals_chip.dart` · `recent_search_helper_tile.dart` · `kit_chrome_top_bar.dart` | **RFC-111:** dead catalog layout composers deleted. Live: search stack + `CatalogBody` + `PortalsChip`; hub chrome = host `KitChromeTopBar`. | ✅ |
 | `kit_panel_host.dart` · `kit_feed_chrome.dart` · `kit_top_bar_host_hooks.dart` · `kit_top_menu_registry.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
-| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `blocks/details/{details_block,match_details_block}.dart` (`DetailsScreen` / `EntryDetails` / `MatchDetailsPage`) + `widgets/details/{details_hero,play_row,list_status_*}.dart`. Host MetaRuntime/TV/ListFollow: `package:forja/shared/player/details/<file>.dart` | ✅ |
+| `kit_details_screen.dart` · `kit_details_hero.dart` · `kit_details_play_row.dart` · `kit_entry_details.dart` · `kit_match_details_page.dart` · `kit_list_status_*` | paint: `blocks/details/{details_block,match_details_block}.dart` (`DetailsScreen` / `EntryDetails` / `MatchDetailsPage`) + `widgets/details/{details_hero,play_row,list_status_*}.dart`. Host MetaRuntime/TV/ListFollow: `package:forja/shared/engine/details/<file>.dart` | ✅ |
 | Catalog / search page shells | `blocks/catalog/catalog_body_block.dart` · `blocks/search/catalog_search_page.dart` — PackPaintTree types `catalogBody` / `search` (RFC-112). Hubs share `catalogBody`; no `iptv*` / `liveSports*` / `myList*` block ids. | ✅ |
 | `kit_details_sections.dart` UI | `package:forja_foundation/widgets/details/details_rails.dart`; parse/fetch leftover: `package:forja/shared/engine/hub/kit_details_sections.dart` | ✅ |
 | `kit_details_stremio.dart` · `kit_details_meta.dart` · `kit_details_play.dart` | `package:forja/shared/engine/hub/<file>.dart` | ✅ |
@@ -219,7 +219,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `lib/kit/kit_types.dart` · `kit_layout_map.dart` | `package:forja_foundation/protocol/{layout_types,layout_map}.dart` (`LayoutTypes` / `LayoutMap`) — `lib/kit/` deleted | ✅ |
 | `forja_host_assets.dart` | `package:forja/shared/engine/packs/forja_host_assets.dart` | ✅ |
 
-Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/player/details/`. Vertical filters registry stays `shell/filters/` (paint via `LogoMenuRail`).
+Play / probe / stream loading stays `shared/playback/`. Episode picker / sources TV stays `shared/engine/details/`. Vertical filters registry stays `shell/filters/` (paint via `LogoMenuRail`).
 
 `apps/forja/lib/shared/foundation/` is **deleted**. Do not restore it. Q1–Q12 visual sign-off is still unsigned (`docs/rfc/106-qa-matrix.md`).
 

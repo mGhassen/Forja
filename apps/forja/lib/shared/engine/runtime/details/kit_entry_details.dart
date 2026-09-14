@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/player/details/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/details/kit_list_entry.dart';
 import 'package:forja/shared/player/sources/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/routing/app_router.dart';

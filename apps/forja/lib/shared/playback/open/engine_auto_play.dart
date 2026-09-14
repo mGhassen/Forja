@@ -19,7 +19,7 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
-import 'package:forja/shared/player/details/sources_panel_tv.dart';
+import 'package:forja/shared/engine/runtime/details/sources_panel_tv.dart';
 import 'package:forja/shared/playback/resolve_failure_view.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shell/routing/app_router.dart';
