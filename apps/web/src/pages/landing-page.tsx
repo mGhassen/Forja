@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { LandingHero } from '@/components/landing-hero'
 import { LibraryHubs } from '@/components/library-hubs'
 import { NowPlayingPanel } from '@/components/now-playing-panel'
+import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
 import { Reveal } from '@/components/reveal'
 import { SiteFooter } from '@/components/legal-shell'
 import { SiteHeader } from '@/components/site-header'
@@ -100,33 +101,35 @@ export function LandingPage() {
 
         <LibraryHubs />
 
-        <section className="border-t border-[rgba(237,230,218,0.14)] px-[5vw] py-[12vh]">
-          <div className="mx-auto max-w-[1100px]">
-            <Reveal>
-              <h2 className="font-disp text-[clamp(28px,4.5vw,48px)] uppercase leading-[0.95] tracking-[-0.03em]">
-                Community packs for hubs and sources
-              </h2>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[rgba(237,230,218,0.68)] sm:text-lg">
-                Packs bring anime hubs, live sport, IPTV, torrent search, and
-                more into Forja. They live on your profile and install when you
-                open the app.
+        <section className="relative overflow-hidden border-t border-[rgba(237,230,218,0.14)]">
+          <div className="absolute inset-0 bg-[#0f0e0d]" aria-hidden />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-24 top-1/2 h-[420px] w-[420px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(28,231,131,0.12),transparent_65%)]"
+          />
+          <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-[5vw] py-[12vh] lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+            <Reveal variant="left">
+              <p className="font-serif-i text-2xl text-flame sm:text-3xl">
+                Packs
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/plugins"
-                  data-hover=""
-                  className="btn-magnet inline-flex items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
-                >
-                  Packs
-                </Link>
-                <Link
-                  to="/platform"
-                  data-hover=""
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
-                >
-                  Platform
-                </Link>
-              </div>
+              <h2 className="mt-3 font-disp text-[clamp(28px,5vw,52px)] uppercase leading-[0.92] tracking-[-0.03em]">
+                Add anime, sport, IPTV, and more
+              </h2>
+              <p className="mt-6 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.65)] sm:text-lg">
+                Community packs drop hubs and stream sources into Forja. Pick a
+                set or browse the catalog — they land on your profile and open
+                with the app.
+              </p>
+              <Link
+                to="/plugins"
+                data-hover=""
+                className="btn-magnet mt-8 inline-flex items-center justify-center rounded-full px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.3)] sm:text-xs"
+              >
+                Packs
+              </Link>
+            </Reveal>
+            <Reveal delayMs={80} variant="right" className="flex justify-center lg:justify-end">
+              <PluginOrbitVisual />
             </Reveal>
           </div>
         </section>
