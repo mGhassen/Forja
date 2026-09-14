@@ -153,7 +153,7 @@ export function AccountSettingsShell({
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const navigate = useNavigate()
   const { signOut } = useAuth()
-  const { activeProfile } = useProfiles()
+  const { activeProfile, loading: profilesLoading } = useProfiles()
 
   async function onSignOut() {
     // Local only — keep the desktop app session alive.

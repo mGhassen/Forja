@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **6 / 11** A41 pack migrate |
-| **Current slice** | A41: IPTV tab = pack layout; host engine.request/probe/disk cache + vault migrate; player under `shared/player/iptv`; Portals panel still Flutter interim |
+| **Progress** | **7 / 7** components · **8 / 8** acceptance (law/docs) · **21 / 26** acceptance (code) · **5** 🔄 · **6 / 6** IPTV unified pack · **7 / 12** A41 pack migrate |
+| **Current slice** | A41: remounted exact `IptvPtScreen` catalog UX (shelf/search/sort/categories/channels/EPG); pack owns vault/engine/VOD; kit layout is not product chrome |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -105,6 +105,7 @@
 | 15 | R109-A49 | Player generic live path; delete remaining product `portals_ui` | 🔄 |
 | 16 | R109-A50 | Delete product Dart orchestration; sync/FFI adapters only | ⬜ |
 | 17 | R109-A51 | Feature docs + changelog match pack-mounted IPTV | ✅ |
+| 18 | R109-A52 | Remount exact `IptvPtScreen` catalog UX until pack/foundation catalog chrome parity (shelf/search/sort/cats/channels/EPG) | ✅ |
 
 ---
 

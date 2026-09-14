@@ -4,7 +4,7 @@
 
 ## What it is
 
-The IPTV tab comes from the **IPTV hub pack** (pack-product host) — install it under **Settings → Forja Packs**. It supports **Xtream Codes**, **M3U/M3U8** playlist portals, and **Stalker / Ministra**. The tab opens on pack layout browse (**Live / Movies / Series**). Pick a portal from the **Portals** side panel, and play in the IPTV player.
+The IPTV tab comes from the **IPTV hub pack** (pack-product host) — install it under **Settings → Forja Packs**. It supports **Xtream Codes**, **M3U/M3U8** playlist portals, and **Stalker / Ministra**. The tab opens the **full IPTV catalog** (Live / Movies / Series shelf, Search, Sort, categories, channels, Portals panel, EPG). Play uses the dedicated IPTV player.
 
 ## How to open it
 

@@ -30,6 +30,9 @@ class ForjaToastEntry {
   /// Bumped when coalesced / duration reset so the card restarts progress.
   int progressEpoch = 0;
 
+  /// Extra linger requested by a coalesce (card consumes and clears).
+  Duration? pendingExtend;
+
   bool get isTimed => duration > Duration.zero;
   bool get hasAction => actionLabel != null && onAction != null;
 }
@@ -216,10 +219,9 @@ class ForjaToastController extends ChangeNotifier {
       );
       if (idx >= 0) {
         final existing = _entries.removeAt(idx);
-        existing.message = item.message;
+        // Keep first message + bar position. Only count (+ linger) updates.
         existing.count += 1;
-        existing.duration = item.duration;
-        existing.progressEpoch++;
+        existing.pendingExtend = item.duration;
         _entries.add(existing);
         while (_entries.length > 4) {
           final timedIdx =
@@ -343,8 +345,9 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
                   ],
                 );
 
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 360),
+                // Fixed width so coalesced messages don't resize the card.
+                return SizedBox(
+                  width: 360,
                   child: tv
                       ? FocusTraversalGroup(
                           policy: ReadingOrderTraversalPolicy(),
@@ -412,6 +415,31 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
     if (oldWidget.entry.progressEpoch != widget.entry.progressEpoch ||
         oldWidget.entry.duration != widget.entry.duration) {
       _startProgress();
+      return;
+    }
+    final extra = widget.entry.pendingExtend;
+    if (extra != null && extra > Duration.zero) {
+      widget.entry.pendingExtend = null;
+      _extendProgress(extra);
+    }
+  }
+
+  /// Add linger without jumping the bar (same remaining fraction, longer clock).
+  void _extendProgress(Duration extra) {
+    final progress = _progress;
+    final duration = progress?.duration;
+    if (progress == null || duration == null || extra <= Duration.zero) return;
+    final remainingMs =
+        (1.0 - progress.value) * duration.inMilliseconds;
+    // Cap so bulk installs don't leave a toast up forever.
+    final addMs = extra.inMilliseconds.clamp(0, 3000);
+    final newTotalMs = (remainingMs + addMs).clamp(0, 6000);
+    if (newTotalMs <= 0) return;
+    final newValue = 1.0 - (remainingMs / newTotalMs);
+    progress.duration = Duration(milliseconds: newTotalMs.round());
+    progress.value = newValue.clamp(0.0, 1.0);
+    if (!_hovered && progress.status != AnimationStatus.forward) {
+      progress.forward();
     }
   }
 
@@ -587,24 +615,36 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
       );
     }
 
+    // Always reserve badge width so ×N appearing doesn't shift the row.
     Widget countBadge() {
-      return Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: style.accent.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: style.accent.withValues(alpha: 0.45)),
-        ),
-        child: Text(
-          '×${entry.count}',
-          style: TextStyle(
-            color: style.accent,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            height: 1.1,
-          ),
-        ),
+      final show = entry.count > 1;
+      return SizedBox(
+        width: 40,
+        child: show
+            ? Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: style.accent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                    border:
+                        Border.all(color: style.accent.withValues(alpha: 0.45)),
+                  ),
+                  child: Text(
+                    '×${entry.count}',
+                    style: TextStyle(
+                      color: style.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              )
+            : null,
       );
     }
 
@@ -634,6 +674,8 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
           Expanded(
             child: Text(
               entry.message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: ForjaShellColors.textPrimary,
                 fontSize: 13,
@@ -642,7 +684,7 @@ class _ForjaToastCardState extends State<_ForjaToastCard>
               ),
             ),
           ),
-          if (entry.count > 1) countBadge(),
+          countBadge(),
           if (_hasAction) ...[
             const SizedBox(width: 8),
             actionButton(),
