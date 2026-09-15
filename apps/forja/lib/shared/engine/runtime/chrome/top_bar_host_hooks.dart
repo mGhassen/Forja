@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Optional host hooks for [`kit.topBar`] **dynamic** catalog / schedule.
 ///
-/// Only packs that set `dynamicCatalogs: true` (Live Sports) may use
-/// [loadCatalogOptions] / [catalogChipLabel] / [writeCatalogFilter]. A bare
-/// action `id: 'catalog'` with static `items` (IPTV Section) must stay
-/// pack-owned — never hijack it via these globals.
+/// Packs must opt in:
+/// - `dynamicCatalogs: true` → [loadCatalogOptions] / [catalogChipLabel] /
+///   [writeCatalogFilter]
+/// - `dynamicSchedule: true` → [openScheduleSheet] / [scheduleChipLabel]
+///
+/// Bare action ids (`catalog`, `horizon`, …) with static `items` stay
+/// pack-owned — never hijack them via these globals.
 ///
 /// Packs may list opaque `deps` (e.g. `['stremio']`) so the host reloads
 /// dynamic options when those revision tokens bump.

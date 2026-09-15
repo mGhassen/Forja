@@ -727,9 +727,8 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  /// Live-schedule host prefs only — never key off bare `id: catalog`
-  /// (IPTV Section and Live Catalog share that id; only Live sets
-  /// `dynamicCatalogs`).
+  /// Live host prefs only — gate on pack flags, never bare action ids
+  /// (`catalog` / `horizon` are reused by other hubs with static menus).
   void _persistTopBarChromePref(
     BuildContext context, {
     required String actionId,
@@ -753,9 +752,7 @@ class PackPaintTree extends StatelessWidget {
               ) ??
               Future.value(),
         );
-      } else if (actionId == 'horizon' ||
-          actionId == 'schedule' ||
-          actionId == 'time') {
+      } else if (action?['dynamicSchedule'] == true) {
         container.read(kitFeedHorizonPrefProvider(key).notifier).state = value;
       }
     } catch (_) {}
@@ -770,14 +767,12 @@ class PackPaintTree extends StatelessWidget {
     final current = (scope?.selectedId(actionId) ??
             (action['default'] ?? '').toString())
         .trim();
-    // Live Sports only — never treat every `id: catalog` as dynamic
-    // (IPTV Section reuses that id with static items).
+    // Live Sports only — never treat every `id: catalog` / schedule id as
+    // host product (other hubs may reuse those ids with static items).
     final dynamicCatalog = action['dynamicCatalogs'] == true;
-    final isSchedule = actionId == 'horizon' ||
-        actionId == 'schedule' ||
-        actionId == 'time';
+    final dynamicSchedule = action['dynamicSchedule'] == true;
 
-    if (isSchedule) {
+    if (dynamicSchedule) {
       final opener = KitTopBarHostHooks.openScheduleSheet;
       if (opener != null) {
         await opener(
@@ -1465,11 +1460,10 @@ class PackPaintTree extends StatelessWidget {
       if (id.isEmpty) continue;
       var selected =
           (scope?.selectedId(id) ?? (a['default'] ?? '').toString()).trim();
-      // Live dynamic catalogs default to All; static menus (IPTV Section) keep
-      // pack `default` / first item — do not force `all` on every `catalog` id.
+      // Live dynamic menus — defaults only when pack opts in. Static menus keep
+      // pack `default` / first item (do not force by action id).
       if (a['dynamicCatalogs'] == true && selected.isEmpty) selected = 'all';
-      if ((id == 'horizon' || id == 'schedule' || id == 'time') &&
-          selected.isEmpty) {
+      if (a['dynamicSchedule'] == true && selected.isEmpty) {
         selected = kKitScheduleDefaultPref;
       }
       out[id] = selected;
@@ -1486,15 +1480,14 @@ class PackPaintTree extends StatelessWidget {
       final id = (a['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
       final selected = (selections[id] ?? '').trim();
-      // Host catalogChipLabel is Live Sports only (`dynamicCatalogs`).
-      // Static `catalog` menus (IPTV Section) use pack item labels.
+      // Host chip labels are Live Sports only — static menus use pack items.
       if (a['dynamicCatalogs'] == true) {
         final label = KitTopBarHostHooks.catalogChipLabel?.call(
           selected.isEmpty ? 'all' : selected,
           const [],
         );
         if (label != null && label.isNotEmpty) out[id] = label;
-      } else if (id == 'horizon' || id == 'schedule' || id == 'time') {
+      } else if (a['dynamicSchedule'] == true) {
         final label = KitTopBarHostHooks.scheduleChipLabel?.call(
           selected.isEmpty ? kKitScheduleDefaultPref : selected,
         );

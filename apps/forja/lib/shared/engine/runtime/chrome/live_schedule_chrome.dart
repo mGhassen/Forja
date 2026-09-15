@@ -9,9 +9,9 @@ import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
 
 /// Catalog + Status×Horizon schedule sheets for Live Sports top bar.
 ///
-/// Hooks are process-global; paint tree must gate on `dynamicCatalogs: true`
-/// so other hubs that reuse action id `catalog` (e.g. IPTV Section) stay
-/// independent.
+/// Hooks are process-global; paint tree must gate on pack flags
+/// (`dynamicCatalogs` / `dynamicSchedule`) so other hubs that reuse action
+/// ids like `catalog` stay independent.
 void registerLiveScheduleChromeHooks() {
   KitTopBarHostHooks.loadCatalogOptions = () async {
     final plugins = await EngineService.instance.listEnabledLiveFeedPlugins();

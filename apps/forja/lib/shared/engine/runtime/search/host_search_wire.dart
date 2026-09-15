@@ -327,7 +327,6 @@ class KitSearchPage extends StatefulWidget {
     this.onSearchProgressive,
     this.onSearchLoadMore,
     this.structuredSearch = false,
-    this.debounceMs = 500,
   });
 
   final String hintText;
@@ -341,7 +340,6 @@ class KitSearchPage extends StatefulWidget {
   final KitRecommendationsLoader loadRecommendations;
 
   final bool structuredSearch;
-  final int debounceMs;
 
   @override
   State<KitSearchPage> createState() => _KitSearchPageState();
@@ -358,7 +356,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
   final ScrollController _helpersScrollController = ScrollController();
   final ScrollController _resultsScrollController = ScrollController();
 
-  Timer? _debounce;
   String _query = '';
   String _activeSearchQuery = '';
   int _searchGeneration = 0;
@@ -600,7 +597,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
     ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
     _detachRouteAnimationListener();
     _focusNode.removeListener(_onSearchFieldFocusChange);
-    _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
     _closeFocusNode.dispose();
@@ -640,7 +636,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
     setState(() => _filtersOpen = false);
     final effective = _effectiveSearchQuery(_controller.text);
     if (effective.isEmpty) return;
-    _debounce?.cancel();
     _performSearch(effective, recordRecent: _controller.text.trim().isNotEmpty);
   }
 
@@ -663,9 +658,11 @@ class _KitSearchPageState extends State<KitSearchPage> {
       _gridFocusedIndex = 0;
       _error = null;
     });
-    _debounce?.cancel();
     final effective = _effectiveSearchQuery(query);
-    if (effective.isEmpty) {
+    // Submit-only: typing never hits the pack. Clear when empty or when the
+    // field no longer matches the last submitted query (drop stale cards).
+    if (effective.isEmpty || effective != _activeSearchQuery) {
+      final wasEmpty = _activeSearchQuery.isEmpty && _results.isEmpty;
       setState(() {
         _results = [];
         _isSearching = false;
@@ -674,22 +671,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
         _activeSearchQuery = '';
         _pendingGridFocusIndex = null;
       });
-      _loadRecommendations();
-      if (_leanbackTextInput(context) && _focusNode.hasFocus) {
+      if (effective.isEmpty && !wasEmpty) {
+        _loadRecommendations();
+      }
+      if (effective.isEmpty &&
+          _leanbackTextInput(context) &&
+          _focusNode.hasFocus) {
         _focusSearchFieldBrowse();
       }
-      return;
     }
-    _debounce = Timer(Duration(milliseconds: widget.debounceMs), () {
-      final next = _effectiveSearchQuery(_controller.text);
-      if (next.isEmpty) return;
-      // TV: only persist on OK/submit — debounce would save every IME partial.
-      _performSearch(
-        next,
-        recordRecent: (!_leanbackTextInput(context) || !_searchFieldEditing) &&
-            _controller.text.trim().isNotEmpty,
-      );
-    });
   }
 
   void _onResultsScroll() {
@@ -791,8 +781,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
     final effective = _effectiveSearchQuery(query);
     if (effective.isEmpty) return;
 
-    _debounce?.cancel();
-
     if (_searchFieldEditing && mounted) {
       setState(() => _searchFieldEditing = false);
     }
@@ -805,7 +793,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
   void _applyHelperQuery(String title) {
     _pendingGridFocusIndex = 0;
     _controller.text = title;
-    _onSearchChanged(title);
+    setState(() {
+      _query = title;
+      _helperFocusedIndex = null;
+      _gridFocusedIndex = 0;
+      _error = null;
+    });
+    final effective = _effectiveSearchQuery(title);
+    if (effective.isEmpty) return;
+    _performSearch(effective, recordRecent: title.trim().isNotEmpty);
   }
 
   KitSearchResult? get _focusedResult {
@@ -1338,7 +1334,6 @@ class _KitSearchPageState extends State<KitSearchPage> {
             } else {
               final effective = _effectiveSearchQuery(v);
               if (effective.isEmpty) return;
-              _debounce?.cancel();
               _performSearch(
                 effective,
                 recordRecent: v.trim().isNotEmpty,
