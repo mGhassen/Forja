@@ -74,6 +74,7 @@ abstract final class ShellTokens {
   static const double focusActiveScale = 1.08;
   static const double navRailIconRevealedScale = 0.78;
   static const double navRailIconSlideUp = 10;
+
   /// Gap between selection underline and label (TV focus / desktop hover).
   static const double navRailIconLabelGap = 6;
 
@@ -118,6 +119,7 @@ abstract final class ShellTokens {
       shellProviderTileWidth + shellProviderRailPadH * 2;
   static const double shellProviderRailInset = 10;
   static const double shellProviderRailRadius = 18;
+
   /// Selected-provider mark before Films — rectangle (wordmark-friendly).
   static const double shellProviderTopBarIconWidth = 88;
   static const double shellProviderTopBarIconHeight = 40;
@@ -181,6 +183,7 @@ abstract final class ShellTokens {
   static const double heroMinHeightCompact = 280;
   static const double heroLogoMaxHeightCompact = 72;
   static const double heroTitleSlotHeightCompact = 80;
+
   /// Browse / details TMDB logo cap on Android TV (landscape 720p).
   static const double heroLogoMaxHeightTv = 56;
   static const double heroTitleSlotHeightTv = 64;
@@ -282,8 +285,12 @@ abstract final class ShellTokens {
 
   /// Right-side sliding panels over the player (Episodes, torrent files).
   /// Media-details Sources uses `DetailsTokens.sourcesPanelPadding`.
-  static const EdgeInsets playerSidePanelPadding =
-      EdgeInsets.fromLTRB(12, 16, 12, 8);
+  static const EdgeInsets playerSidePanelPadding = EdgeInsets.fromLTRB(
+    12,
+    16,
+    12,
+    8,
+  );
 
   static const double tabHeaderTopPadding = 16;
   static const double tabHeaderBottomPadding = 12;
@@ -319,7 +326,7 @@ abstract final class ShellTokens {
   static const double tvPosterCardRowGap = 12;
 
   /// Gap between poster cards in hub rails (desktop / non-TV).
-  static const double posterCardRowGap = 20;
+  static const double posterCardRowGap = 16;
 
   /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;
@@ -420,10 +427,9 @@ class CompactNavDrawerPolicy extends InheritedWidget {
 
   final bool allow;
 
-  static bool? maybeAllow(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<CompactNavDrawerPolicy>()
-          ?.allow;
+  static bool? maybeAllow(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<CompactNavDrawerPolicy>()
+      ?.allow;
 
   @override
   bool updateShouldNotify(CompactNavDrawerPolicy oldWidget) =>
