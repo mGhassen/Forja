@@ -25,6 +25,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     super.key,
     this.actions = const [],
     this.actionSelections = const {},
+    this.actionSlots = const {},
     this.sideItems = const [],
     this.selectedSideId,
     this.items = const [],
@@ -45,6 +46,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     Map<String, dynamic> props, {
     Widget? body,
     Map<String, String> actionSelections = const {},
+    Map<String, Widget> actionSlots = const {},
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onSideSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
@@ -52,6 +54,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     return ColumnsHeaderBlock(
       actions: propsActionMaps(props),
       actionSelections: actionSelections,
+      actionSlots: actionSlots,
       sideItems: propsIdLabelList(props, 'sideItems'),
       selectedSideId: propsString(props, 'selectedSideId') ??
           propsString(props, 'defaultSideId'),
@@ -72,6 +75,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
 
   final List<Map<String, dynamic>> actions;
   final Map<String, String> actionSelections;
+  final Map<String, Widget> actionSlots;
   final List<({String id, String label})> sideItems;
   final String? selectedSideId;
   final List<Map<String, dynamic>> items;
@@ -94,6 +98,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     final header = CatalogTopChrome(
       actions: actions,
       selections: actionSelections,
+      actionSlots: actionSlots,
       onSelect: onActionSelect,
       title: title,
     );

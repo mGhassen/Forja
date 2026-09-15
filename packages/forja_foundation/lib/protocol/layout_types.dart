@@ -109,8 +109,13 @@ void walkLayoutWidgets(
 ) {
   void walk(Map<String, dynamic> spec) {
     visit(spec);
-    if (!LayoutTypes.isStack((spec['type'] ?? '').toString())) return;
-    final children = spec['children'];
+    final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
+    final descend = LayoutTypes.isStack(type) ||
+        type == 'columnsHeader' ||
+        type == 'topBody' ||
+        type == 'tabsCards';
+    if (!descend) return;
+    final children = spec['children'] ?? spec['widgets'];
     if (children is! List) return;
     for (final child in children) {
       if (child is Map) walk(Map<String, dynamic>.from(child));

@@ -24,6 +24,7 @@ class TopBodyBlock extends StatelessWidget {
     super.key,
     this.actions = const [],
     this.actionSelections = const {},
+    this.actionSlots = const {},
     this.kindItems = const [],
     this.selectedKindId,
     this.items = const [],
@@ -44,6 +45,7 @@ class TopBodyBlock extends StatelessWidget {
     Widget? grid,
     Widget? kindsBar,
     Map<String, String> actionSelections = const {},
+    Map<String, Widget> actionSlots = const {},
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onKindSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
@@ -51,6 +53,7 @@ class TopBodyBlock extends StatelessWidget {
     return TopBodyBlock(
       actions: propsActionMaps(props),
       actionSelections: actionSelections,
+      actionSlots: actionSlots,
       kindItems: propsIdLabelList(props, 'kindItems'),
       selectedKindId: propsString(props, 'selectedKindId') ??
           propsString(props, 'defaultKindId'),
@@ -70,6 +73,7 @@ class TopBodyBlock extends StatelessWidget {
 
   final List<Map<String, dynamic>> actions;
   final Map<String, String> actionSelections;
+  final Map<String, Widget> actionSlots;
   final List<({String id, String label})> kindItems;
   final String? selectedKindId;
   final List<Map<String, dynamic>> items;
@@ -92,6 +96,7 @@ class TopBodyBlock extends StatelessWidget {
     final top = CatalogTopChrome(
       actions: actions,
       selections: actionSelections,
+      actionSlots: actionSlots,
       onSelect: onActionSelect,
       title: title,
     );

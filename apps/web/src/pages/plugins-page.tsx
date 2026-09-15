@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Download, Puzzle } from 'lucide-react'
+import { Puzzle } from 'lucide-react'
 import { PluginBundlesShowcase } from '@/components/plugin-bundles-showcase'
 import { PluginCatalogBrowser } from '@/components/plugin-catalog-browser'
 import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
@@ -99,7 +99,7 @@ export function PluginsPage() {
                   onto your profile.
                 </p>
 
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-8 flex flex-col items-start gap-5">
                   <a
                     href="#bundles"
                     data-hover=""
@@ -107,28 +107,35 @@ export function PluginsPage() {
                   >
                     Start with a set
                   </a>
-                  <a
-                    href="#catalog"
-                    data-hover=""
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-flame/40 hover:text-forja-flame sm:text-xs"
-                  >
-                    Browse packs
-                  </a>
-                  <a
-                    href="#build"
-                    data-hover=""
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
-                  >
-                    Build a pack
-                  </a>
-                  <Link
-                    to="/download"
-                    data-hover=""
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-8 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[rgba(237,230,218,0.7)] transition hover:border-forja-green/40 hover:text-forja-green sm:text-xs"
-                  >
-                    <Download className="size-3.5" aria-hidden />
-                    Download Forja
-                  </Link>
+                  <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono-ui text-[11px] uppercase tracking-[0.14em]">
+                    <a
+                      href="#catalog"
+                      data-hover=""
+                      className="text-[rgba(237,230,218,0.55)] transition hover:text-forja-flame"
+                    >
+                      Browse packs
+                    </a>
+                    <span className="text-[rgba(237,230,218,0.2)]" aria-hidden>
+                      ·
+                    </span>
+                    <a
+                      href="#build"
+                      data-hover=""
+                      className="text-[rgba(237,230,218,0.55)] transition hover:text-forja-green"
+                    >
+                      Build a pack
+                    </a>
+                    <span className="text-[rgba(237,230,218,0.2)]" aria-hidden>
+                      ·
+                    </span>
+                    <Link
+                      to="/download"
+                      data-hover=""
+                      className="text-[rgba(237,230,218,0.55)] transition hover:text-[#EDE6DA]"
+                    >
+                      Download
+                    </Link>
+                  </nav>
                 </div>
               </div>
 

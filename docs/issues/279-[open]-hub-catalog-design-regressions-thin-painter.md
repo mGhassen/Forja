@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 17** verification · A14 manual QA remaining |
+| **Progress** | **20 / 21** verification · A14 manual QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -36,6 +36,10 @@
 | 15 | I279-A15 | Composition roots (`columnsHeader` / `topBody` / `tabsCards`): live `LayoutScope` selection + `PackChromeScope.dynamicBarItems` + topBar verbs (not fold-only `onSelect`) | ✅ |
 | 16 | I279-A16 | Pack chrome props honored: action icons, Live `kindIcons` mood circles, list `openSetting` (`matchOpen`), focusDown from sport circles | ✅ |
 | 17 | I279-A17 | `PackLoadedPaint` loaders use finite height in CatalogBody slivers (no infinite-height crash on Home/Anime/Asian) | ✅ |
+| 18 | I279-A18 | Shell `PluginKitTopBar` / `KitChromeTopBar` remounted (Search / Films / Series / Categories); scroll + hero height publish to ShellBus | ✅ |
+| 19 | I279-A19 | Hero Play + bottom stadium pins; rail gaps; mood hover; anime bleed not stolen by mood; viewport-lazy rails + soft memo | ✅ |
+| 20 | I279-A20 | CatalogTopChrome: segment menus + view icon group + PortalsChip slots; `walkLayoutWidgets` descends composition roots | ✅ |
+| 21 | I279-A21 | Continue card play overlay + hover; home layout genre TTL shortened for rotating genre rows | ✅ |
 
 ---
 
@@ -50,6 +54,8 @@ Commit `1d9ff09b4` deleted `pack_layout_host_wire` (~5k) and left a stub `PackPa
 **A11 note:** chrome widgets mount (RFC-112 A10–A14). Product chrome behavior restored via `PackChromeScope` + `packChromeFeedParams` (selection→feed, dynamic bars, topBar verbs, Live panel).
 
 **A15–A17:** composition mounts were still folding children and bypassing wired chrome; loaders still risked unbounded height. Host now wires PackChromeScope into composition blocks and keeps CatalogBody section loaders finite-height.
+
+**A18–A21:** restored wiped shell `PluginKitTopBar`, hero Play + bottom pins, rail spacing + viewport lazy gate, IPTV/Live segment+view+PortalsChip chrome, anime bleed/mood pack fix, home genre layout TTL.
 
 **Must not mark fixed** until A14 QA passes on all in-scope hubs.
 

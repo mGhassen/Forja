@@ -7,16 +7,16 @@ import { SiteHeader } from '@/components/site-header'
 
 const CATALOG_FEATURES = [
   {
-    title: 'Heroes & shelves',
-    copy: 'Featured titles and poster shelves you can skim in seconds.',
+    title: 'Tonight’s pick',
+    copy: 'Land on a big featured title, then skim poster shelves that still read clean on a living-room TV.',
   },
   {
-    title: 'Title pages',
-    copy: 'Episodes, related rows, and continue watching on every title.',
+    title: 'Inside a title',
+    copy: 'Seasons and episodes in one place, related picks underneath, resume from where you stopped.',
   },
   {
-    title: 'My List & nav',
-    copy: 'Statuses for what you care about, and a navigation rail you can reshape.',
+    title: 'Your night',
+    copy: 'Save what you want for later and reshape the tabs so Home feels like yours.',
   },
 ]
 
@@ -195,26 +195,19 @@ export function PlatformPage() {
             </div>
           </header>
 
-          {/* Catalogs — watermark + shelf rows (not a numbered grid) */}
+          {/* Catalogs — shelf rows */}
           <section
             id="catalogs"
-            className="relative scroll-mt-28 overflow-hidden border-b border-[rgba(237,230,218,0.14)]"
+            className="scroll-mt-28 border-b border-[rgba(237,230,218,0.14)]"
           >
-            <p
-              aria-hidden
-              className="pointer-events-none absolute -right-[4%] top-1/2 hidden -translate-y-1/2 select-none font-disp text-[clamp(120px,22vw,280px)] uppercase leading-none tracking-[-0.06em] text-[rgba(237,230,218,0.04)] lg:block"
-            >
-              Home
-            </p>
-
-            <div className="relative mx-auto max-w-[900px] px-[5vw] py-16 sm:py-24">
+            <div className="mx-auto max-w-[900px] px-[5vw] py-16 sm:py-24">
               <Reveal>
                 <h2 className="font-serif-i text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] text-[#EDE6DA]">
-                  A cinematic home for what is on next
+                  Browse what you’re watching next
                 </h2>
                 <p className="mt-6 max-w-xl text-base leading-relaxed text-[rgba(237,230,218,0.62)] sm:text-lg">
-                  Forja opens on a featured title, rich posters, and shelves that
-                  stay readable from a laptop to a living-room TV.
+                  Browse movies, series, anime, and more the way you actually
+                  watch — from a laptop or across the room.
                 </p>
               </Reveal>
 

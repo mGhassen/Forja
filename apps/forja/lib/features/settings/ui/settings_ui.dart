@@ -299,6 +299,9 @@ Widget settingsExpansionSideActions({
 ///
 /// When [onHeaderActivate] is set (Forja Packs), OK on the row toggles enable
 /// and a details chevron expands — same pattern as Addons.
+///
+/// Pass [storageId] (e.g. pack sourceUrl) so expand state survives list rebuilds
+/// from enable toggles / pack reloads.
 Widget settingsExpandableWithSideActions({
   required BuildContext context,
   required Widget leading,
@@ -307,13 +310,18 @@ Widget settingsExpandableWithSideActions({
   required List<Widget> children,
   Widget? trailing,
   VoidCallback? onHeaderActivate,
+  String? storageId,
   EdgeInsetsGeometry tilePadding = const EdgeInsets.symmetric(horizontal: 2),
   EdgeInsetsGeometry childrenPadding = const EdgeInsets.fromLTRB(8, 0, 2, 8),
 }) {
+  final storageKey = storageId == null
+      ? null
+      : PageStorageKey<String>('settings-expand-$storageId');
   if (!ShellScope.inputPolicyOf(context).leanbackOnly) {
     return Theme(
       data: settingsExpansionTheme(context),
       child: ExpansionTile(
+        key: storageKey,
         shape: settingsExpansionShape,
         collapsedShape: settingsExpansionShape,
         tilePadding: tilePadding,
@@ -331,6 +339,7 @@ Widget settingsExpandableWithSideActions({
     );
   }
   return _SettingsTvExpandableSideRow(
+    key: storageKey,
     leading: leading,
     title: title,
     subtitle: subtitle,
@@ -345,6 +354,7 @@ Widget settingsExpandableWithSideActions({
 /// Leanback pack/addon expand row — header owns D-pad; → moves to [trailing].
 class _SettingsTvExpandableSideRow extends StatefulWidget {
   const _SettingsTvExpandableSideRow({
+    super.key,
     required this.leading,
     required this.title,
     this.subtitle,

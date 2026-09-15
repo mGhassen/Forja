@@ -6,19 +6,21 @@ import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
 import 'package:forja/shared/player/avplayer/av_player_view.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
-import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_view.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/tokens/forja_theme.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -101,6 +103,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   bool _playbackStartedNotified = false;
   bool _escapeArmed = false;
   bool _failoverToMediaKitUsed = false;
+  double _volume = 100;
 
   bool get _av => widget.builtInEngine == BuiltInPlayerEngine.avPlayer;
   bool get _vlc => widget.builtInEngine == BuiltInPlayerEngine.vlc;
@@ -473,168 +476,289 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     super.dispose();
   }
 
+  Future<void> _setVolume(double uiVolume) async {
+    final v = uiVolume.clamp(0.0, 100.0);
+    setState(() => _volume = v);
+    final norm = v / 100.0;
+    if (_av) {
+      await AvPlayerBridge.setVolume(_viewId, norm);
+    } else {
+      await VlcPlayerBridge.setVolume(_viewId, norm);
+    }
+    _bumpControls();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 700;
     return Focus(
       autofocus: true,
       onKeyEvent: _onKey,
       child: MouseRegion(
         onHover: (_) => _bumpControls(),
-        child: GestureDetector(
-          onTap: () {
-            setState(() => _controlsVisible = !_controlsVisible);
-            if (_controlsVisible) _scheduleHideControls();
-          },
-          onDoubleTap: () => unawaited(_playPause()),
-          child: Scaffold(
-            backgroundColor: DesignTokens.bgDark,
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: Colors.black,
-                  child: !_ready
-                      ? const SizedBox.shrink()
-                      : _av
-                          ? AvPlayerView(viewId: _viewId)
-                          : VlcPlayerView(
-                              viewId: _viewId,
-                              textureId: _vlcTextureId,
-                            ),
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Colors.black),
+              if (_ready)
+                Positioned.fill(
+                  child: _av
+                      ? AvPlayerView(viewId: _viewId)
+                      : VlcPlayerView(
+                          viewId: _viewId,
+                          textureId: _vlcTextureId,
+                        ),
                 ),
-                if (_buffering)
-                  const Center(
-                    child: CircularProgressIndicator(
-                      color: ForjaShellColors.brandGreen,
-                    ),
+              if (!_ready || _buffering)
+                const Center(
+                  child: CircularProgressIndicator(
+                    color: ForjaShellColors.brandGreen,
                   ),
-                if (_controlsVisible) _buildChrome(),
+                ),
+              if (_controlsVisible) ...[
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => unawaited(_playPause()),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                DesktopWindowChrome.overlayDragStrip(),
+                _buildChrome(compact: compact),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildChrome() {
-    final totalMs = _duration.inMilliseconds;
+  /// Same shared chrome widgets as MediaKit [DesktopPlayerScreen] / Exo desktop.
+  Widget _buildChrome({required bool compact}) {
+    final topBarHeight = PlayerTopBar.totalHeight(context);
+    final showCenter = !_buffering;
+    final showPausedHero = widget.movie != null && (!_playing || _buffering);
+
     return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.55),
-              Colors.transparent,
-              Colors.transparent,
-              Colors.black.withValues(alpha: 0.75),
-            ],
-            stops: const [0, 0.2, 0.65, 1],
+      child: Stack(
+        children: [
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: PlayerOverlayGradient(isTop: true),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: PlayerOverlayGradient(isTop: false),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: PlayerTopBar(
+              title: widget.title,
+              season: widget.episodes != null ? null : widget.selectedSeason,
+              episode: widget.episodes != null ? null : widget.selectedEpisode,
+              onBack: () => unawaited(_exit()),
+              trailing: PlayerTopBarActions(
+                showPlayer: widget.onSwitchPlayer != null,
+                onPlayer: widget.onSwitchPlayer != null
+                    ? (anchor) => unawaited(_showPlayerMenu(anchor))
+                    : null,
+              ),
+            ),
+          ),
+          if (showPausedHero)
+            Positioned(
+              left: 0,
+              top: topBarHeight,
+              bottom: 110,
+              child: AnimatedOpacity(
+                opacity: showPausedHero ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: PlayerPausedHero(
+                    movie: widget.movie!,
+                    season:
+                        widget.episodes != null ? null : widget.selectedSeason,
+                    episode:
+                        widget.episodes != null ? null : widget.selectedEpisode,
+                    episodeOverview: widget.episodeOverview,
+                  ),
+                ),
+              ),
+            ),
+          if (showCenter)
+            Positioned.fill(
+              child: Center(
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    PlayerFlatIconButton(
-                      icon: Icons.arrow_back,
-                      tooltip: 'Back',
-                      onPressed: () => unawaited(_exit()),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    PlayerCenterActionButton(
+                      icon: Icons.replay_10_rounded,
+                      onPressed: () => unawaited(
+                        _seek(_position - const Duration(seconds: 10)),
                       ),
                     ),
-                    Builder(
-                      builder: (anchorCtx) => PlayerFlatIconButton(
-                        icon: Icons.smart_display_outlined,
-                        tooltip: 'Player',
-                        onPressed: () => unawaited(_showPlayerMenu(anchorCtx)),
+                    const SizedBox(width: 28),
+                    PlayerCenterActionButton(
+                      icon: _playing
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 80,
+                      iconSize: 44,
+                      onPressed: () => unawaited(_playPause()),
+                    ),
+                    const SizedBox(width: 28),
+                    PlayerCenterActionButton(
+                      icon: Icons.forward_10_rounded,
+                      onPressed: () => unawaited(
+                        _seek(_position + const Duration(seconds: 10)),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Column(
-                  children: [
-                    if (totalMs > 0)
-                      SeekBarWithPreview(
+            ),
+          if (widget.hasNextEpisode || widget.onNextEpisode != null)
+            Positioned(
+              bottom: 100,
+              right: 24,
+              child: PlayerFloatingChip(
+                label: 'Next Episode',
+                trailingIcon: Icons.arrow_forward_rounded,
+                onPressed: () async {
+                  await _saveProgress();
+                  await widget.onNextEpisode?.call();
+                },
+              ),
+            ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SeekBarWithPreview(
+                          duration: _duration,
+                          position: _position,
+                          bufferedPosition: _buffered,
+                          zones: buildSeekBarZones(
+                            duration: _duration,
+                            hasNextEpisode: widget.hasNextEpisode,
+                          ),
+                          onSeek: (t) => unawaited(_seek(t)),
+                          onDragStart: () => _hideControlsTimer?.cancel(),
+                          onDragEnd: _scheduleHideControls,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      PlayerTimeRange(
                         position: _position,
                         duration: _duration,
-                        bufferedPosition: _buffered,
-                        onSeek: (d) => unawaited(_seek(d)),
-                      )
-                    else
-                      LinearProgressIndicator(
-                        backgroundColor: Colors.white24,
-                        color: ForjaShellColors.brandGreen.withValues(alpha: 0.5),
                       ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        PlayerFlatIconButton(
-                          icon: _playing ? Icons.pause : Icons.play_arrow,
-                          tooltip: _playing ? 'Pause' : 'Play',
-                          onPressed: () => unawaited(_playPause()),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Material(
+                    type: MaterialType.transparency,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: MouseRegion(
+                        onEnter: (_) => playerChromeCancelSeekScrubs(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                PlayerFlatIconButton(
+                                  icon: _playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  tooltip: _playing ? 'Pause' : 'Play',
+                                  onPressed: () => unawaited(_playPause()),
+                                ),
+                                const SizedBox(width: 2),
+                                PlayerFlatIconButton(
+                                  icon: Icons.replay_10_rounded,
+                                  tooltip: '-10s',
+                                  onPressed: () => unawaited(
+                                    _seek(
+                                      _position - const Duration(seconds: 10),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                PlayerFlatIconButton(
+                                  icon: Icons.forward_10_rounded,
+                                  tooltip: '+10s',
+                                  onPressed: () => unawaited(
+                                    _seek(
+                                      _position + const Duration(seconds: 10),
+                                    ),
+                                  ),
+                                ),
+                                if (widget.hasNextEpisode ||
+                                    widget.onNextEpisode != null) ...[
+                                  const SizedBox(width: 2),
+                                  PlayerFlatIconButton(
+                                    icon: Icons.skip_next_rounded,
+                                    tooltip: 'Next episode',
+                                    onPressed: () async {
+                                      await _saveProgress();
+                                      await widget.onNextEpisode?.call();
+                                    },
+                                  ),
+                                ],
+                                const SizedBox(width: 6),
+                                PlayerVolumeControl(
+                                  volume: _volume,
+                                  maxVolume: 100,
+                                  compact: compact,
+                                  onVolumeChanged: (v) =>
+                                      unawaited(_setVolume(v)),
+                                  onInteraction: _bumpControls,
+                                  onDragStart: () =>
+                                      _hideControlsTimer?.cancel(),
+                                  onDragEnd: _scheduleHideControls,
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (widget.onSwitchPlayer != null)
+                                  Builder(
+                                    builder: (anchor) => PlayerFlatIconButton(
+                                      icon: Icons.smart_display_outlined,
+                                      tooltip: 'Player',
+                                      onPressed: () =>
+                                          unawaited(_showPlayerMenu(anchor)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
-                        PlayerFlatIconButton(
-                          icon: Icons.replay_10,
-                          tooltip: '-10s',
-                          onPressed: () => unawaited(
-                            _seek(_position - const Duration(seconds: 10)),
-                          ),
-                        ),
-                        PlayerFlatIconButton(
-                          icon: Icons.forward_10,
-                          tooltip: '+10s',
-                          onPressed: () => unawaited(
-                            _seek(_position + const Duration(seconds: 10)),
-                          ),
-                        ),
-                        if (widget.hasNextEpisode ||
-                            widget.onNextEpisode != null)
-                          PlayerFlatIconButton(
-                            icon: Icons.skip_next,
-                            tooltip: 'Next episode',
-                            onPressed: () async {
-                              await _saveProgress();
-                              await widget.onNextEpisode?.call();
-                            },
-                          ),
-                        const Spacer(),
-                        Text(
-                          '${formatDuration(_position)} / '
-                          '${totalMs > 0 ? formatDuration(_duration) : '--:--'}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

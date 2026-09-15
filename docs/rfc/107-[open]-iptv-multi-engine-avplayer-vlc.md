@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog · **1 / 1** always-list |
-| **Current slice** | Player menu always lists platform engines — hard unfit toast only |
+| **Progress** | **12 / 12** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog · **1 / 1** always-list · **1 / 1** chrome |
+| **Current slice** | Catalog AV/VLC chrome matches MediaKit desktop overlay |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -30,6 +30,7 @@
 | 9 | R107-C09 | Native seek + `progress` events on AVPlayer / VLC bridges | ✅ |
 | 10 | R107-C10 | Catalog VOD `DesktopNativePlayerScreen` (PlayerScreen route) | ✅ |
 | 11 | R107-C11 | Player menu always lists platform engines (fit = hard-block only) | ✅ |
+| 12 | R107-C12 | Catalog native screen uses shared MediaKit chrome widgets | ✅ |
 
 ---
 
@@ -75,11 +76,19 @@
 
 ---
 
+## Acceptance (catalog chrome parity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R107-A22 | Catalog AVPlayer / VLC use shared desktop chrome (top bar, seek, transport, volume, Player menu) | ✅ |
+
+---
+
 ## Summary
 
 IPTV live HLS needs native stack engines: **AVPlayer on macOS** (majority users), **libVLC on Windows** (system VLC install), **Exo on Android**. MediaKit + continuity proxy remains the progressive MPEG-TS path and the universal fallback. User can always pick MediaKit; engines are additive ([no-hide-as-fix](../../.cursor/rules/no-hide-as-fix.mdc)).
 
-**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still hard-block. R107-A13 / A15 are historical omit rows; **R107-A21** supersedes menu omit — always list, try + failover for soft cases (DASH / MPEG-TS).
+**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still hard-block. R107-A13 / A15 are historical omit rows; **R107-A21** supersedes menu omit — always list, try + failover for soft cases (DASH / MPEG-TS). **R107-A22** — catalog native chrome reuses MediaKit overlay widgets (not a bespoke mini bar).
 
 ### Related
 

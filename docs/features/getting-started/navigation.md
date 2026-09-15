@@ -15,6 +15,7 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 - Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted under root fullscreen players (movies, trailers, Live Sports, IPTV) the same way as the underlay tab. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home / Anime / Asian Drama / Arabic / Aflem / كرتون / Kids (desktop)**, a text top menu — **Search**, **Films**, **Series** (TV Shows on Home), **Categories** — overlays the hero and slides away as you scroll
+- Hero actions: **Play**, **View details**, and list pin; carousel pins sit centered under the backdrop
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
 - Open **Settings → Features** to toggle tabs on/off, reorder (drag on desktop; **↑/↓** on Android TV), and star the tab that opens on app start and after you switch profiles (only the tabs listed below are available right now)
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)

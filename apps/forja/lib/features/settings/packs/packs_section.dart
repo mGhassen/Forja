@@ -696,15 +696,16 @@ class _SettingsForjaPacksSectionState
       sourceUrl: pack.sourceUrl,
       enabled: enabled,
     );
-    await PluginNavRegistry.refresh();
+    // changeNotifier already reloads enginePacksProvider + MainScreen nav.
+    // activate refreshes hub destinations; deactivate only drops Features ids.
     if (enabled) {
       await PackHubFeatures.activate(working);
     } else {
+      await PluginNavRegistry.refresh();
       await PackHubFeatures.deactivate(working);
     }
     if (!mounted) return;
     scheduleForjaSyncPush();
-    await ref.read(enginePacksProvider.notifier).reload();
   }
 
   Future<void> _installNamedPack(String sourceUrl) async {

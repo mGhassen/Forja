@@ -10,6 +10,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 import 'package:forja_foundation/protocol/layout_types.dart';
@@ -57,6 +58,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   bool _layoutRtl = false;
   String? _error;
   bool _loading = true;
+  final ScrollController _scroll = ScrollController();
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -74,6 +76,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_publishScroll);
     unawaited(_loadPage());
   }
 
@@ -90,11 +93,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   @override
   void dispose() {
+    _scroll.removeListener(_publishScroll);
+    _scroll.dispose();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
+      ShellBus.hubScrollOffsetFor(tab).value = 0;
     }
     super.dispose();
+  }
+
+  void _publishScroll() {
+    if (_pageKey.isEmpty) return;
+    ShellBus.hubScrollOffsetFor(_pageKey).value =
+        _scroll.hasClients ? _scroll.offset : 0;
   }
 
   @override
@@ -344,7 +356,25 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Widget _pageBody() {
     final fullPage = _fullPageBody();
     if (fullPage != null) return fullPage;
-    return CatalogBody(sections: _composeSections());
+    final sections = _composeSections();
+    return CatalogBody(
+      controller: _scroll,
+      bottomGap: ShellTokens.homeRowSpacing,
+      sections: sections,
+      sectionSliver: (context, section, index) {
+        final gap = index == 0
+            ? 0.0
+            : ShellTokens.homeRowSpacing;
+        return SliverToBoxAdapter(
+          child: gap <= 0
+              ? section
+              : Padding(
+                  padding: EdgeInsets.only(top: gap),
+                  child: section,
+                ),
+        );
+      },
+    );
   }
 
   Widget? _fullPageBody() {
@@ -381,16 +411,35 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
     Map<String, dynamic>? bleedSpec;
     if (bleedKey != null) {
-      for (final w in _widgets) {
-        final id = (w['id'] ?? '').toString().trim();
-        final rail = (w['rail'] ?? '').toString().trim();
-        if (id == bleedKey || rail == bleedKey) {
-          if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
+      // Prefer real rails — mood nodes also carry `rail:` for their load
+      // params and must not steal the hero bleed (anime double vibe).
+      for (final preferRail in [true, false]) {
+        for (final w in _widgets) {
+          final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+          if (preferRail) {
+            final isRail = type == LayoutTypes.row ||
+                type == 'rail' ||
+                type == 'ranked' ||
+                type == LayoutTypes.list;
+            if (!isRail) continue;
+          } else if (type == LayoutTypes.mood ||
+              type == LayoutTypes.continueWatching ||
+              type == LayoutTypes.because ||
+              type == LayoutTypes.hero ||
+              type == LayoutTypes.verticalFilters) {
+            continue;
+          }
+          final id = (w['id'] ?? '').toString().trim();
+          final rail = (w['rail'] ?? '').toString().trim();
+          if (id != bleedKey && rail != bleedKey) continue;
+          if (w['hideWhenTypeFilter'] == true &&
+              _chromeHidesTypeFilterRail()) {
             break;
           }
           bleedSpec = w;
           break;
         }
+        if (bleedSpec != null) break;
       }
     }
 

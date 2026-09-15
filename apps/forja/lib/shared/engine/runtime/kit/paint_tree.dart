@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/details/kit_list_entry.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
+import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
@@ -16,6 +17,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shared/engine/store/continue_entries.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
@@ -93,18 +95,27 @@ class PackPaintTree extends StatelessWidget {
         type != LayoutTypes.continueWatching &&
         type != LayoutTypes.mood &&
         type != LayoutTypes.because) {
-      return PackLoadedPaint(
-        pluginId: pluginId,
-        packSourceUrl: packSourceUrl,
-        tabId: tabId,
-        action: load.action,
-        params: load.params,
-        fallbackSpec: spec,
-        builder: (ctx, merged) => PackPaintTree(
-          spec: merged,
+      final id = (spec['id'] ?? spec['rail'] ?? type).toString();
+      final eager = type == LayoutTypes.hero ||
+          (spec['bleed'] != null &&
+              (spec['bleed'] as Object).toString().trim().isNotEmpty);
+      return LazyViewportGate(
+        detectorKey: Key('lazy-$pluginId-$id'),
+        placeholderHeight: type == LayoutTypes.hero ? 420 : 220,
+        eager: eager,
+        builder: (ctx) => PackLoadedPaint(
           pluginId: pluginId,
           packSourceUrl: packSourceUrl,
           tabId: tabId,
+          action: load.action,
+          params: load.params,
+          fallbackSpec: spec,
+          builder: (ctx2, merged) => PackPaintTree(
+            spec: merged,
+            pluginId: pluginId,
+            packSourceUrl: packSourceUrl,
+            tabId: tabId,
+          ),
         ),
       );
     }
@@ -361,6 +372,7 @@ class PackPaintTree extends StatelessWidget {
                 scope?.selectedId((a['id'] as Object).toString()) ??
                     (a['default'] ?? '').toString(),
       },
+      actionSlots: _portalsActionSlots(context, actions: actions),
       onActionSelect: (actionId, value) {
         _dispatchTopBarAction(
           context,
@@ -464,6 +476,7 @@ class PackPaintTree extends StatelessWidget {
                 scope?.selectedId((a['id'] as Object).toString()) ??
                     (a['default'] ?? '').toString(),
       },
+      actionSlots: _portalsActionSlots(context, actions: actions),
       onActionSelect: (actionId, value) {
         _dispatchTopBarAction(
           context,
@@ -652,6 +665,42 @@ class PackPaintTree extends StatelessWidget {
     scope?.onSelect(actionId, value, toggle: false);
   }
 
+  Map<String, Widget> _portalsActionSlots(
+    BuildContext context, {
+    required List<Map<String, dynamic>> actions,
+  }) {
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty) return const {};
+    Map<String, dynamic>? portalsAction;
+    for (final a in actions) {
+      final id = (a['id'] ?? '').toString();
+      final verb = (a['action'] ?? id).toString().toLowerCase();
+      if (id == 'portals' || verb == 'portals') {
+        portalsAction = a;
+        break;
+      }
+    }
+    if (portalsAction == null) return const {};
+    final hoist = (portalsAction['hoistSource'] ??
+            portalsAction['source'] ??
+            '')
+        .toString();
+    return {
+      'portals': Consumer(
+        builder: (ctx, ref, _) => PortalsActionHost.buildPortalsChip(
+          ctx,
+          ref,
+          tabId: tab,
+          rowId: 'portals',
+          itemIndex: 0,
+          action: {
+            if (hoist.isNotEmpty) 'hoistSource': hoist,
+          },
+        ),
+      ),
+    };
+  }
+
   String? _childIdOfType(Map<String, dynamic> node, String type) {
     final raw = node['children'] ?? node['widgets'];
     if (raw is! List) return null;
@@ -763,6 +812,11 @@ class PackPaintTree extends StatelessWidget {
         heroCompactRightInset: metrics.heroCompactRightInset,
         sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
       ),
+      onHeight: tab.isEmpty
+          ? null
+          : (h) {
+              ShellBus.hubHeroHeightFor(tab).value = h;
+            },
       actionRowBuilder: (ctx, slide, {required isActive}) {
         final idx = slides.indexWhere((s) => s.id == slide.id);
         final meta = idx >= 0 && idx < slideMetas.length ? slideMetas[idx] : null;
@@ -788,6 +842,7 @@ class PackPaintTree extends StatelessWidget {
             : ListFollowTarget.fromMeta(meta: meta, pluginId: pluginId);
         final playBtn = HeroPillPlayButton(
           label: 'Play',
+          alwaysShowLabel: true,
           onTap: isActive ? play : null,
           autoFocus: tv && isActive && policy.heroPlayAutoFocus,
           tvTabId: tab.isEmpty ? null : tab,
@@ -798,6 +853,7 @@ class PackPaintTree extends StatelessWidget {
             : HeroPillPlayButton(
                 label: 'View details',
                 tone: HeroPillPlayTone.secondary,
+                alwaysShowLabel: true,
                 onTap: isActive ? details : null,
                 tvTabId: tab.isEmpty ? null : tab,
                 tvRowId: 'hero-details',
@@ -1184,6 +1240,7 @@ class PackPaintTree extends StatelessWidget {
     return CatalogTopChrome(
       actions: actions,
       title: (spec['title'] ?? spec['label'] ?? '').toString(),
+      actionSlots: _portalsActionSlots(context, actions: actions),
       selections: {
         for (final a in actions)
           if ((a['id'] ?? '').toString().isNotEmpty)
@@ -1351,6 +1408,7 @@ class _MoodMount extends StatefulWidget {
 
 class _MoodMountState extends State<_MoodMount> {
   String? _selectedId;
+  String? _hoveredId;
 
   @override
   void initState() {
@@ -1381,15 +1439,22 @@ class _MoodMountState extends State<_MoodMount> {
       if (id.isEmpty) continue;
       final token = kitMoodIconToken(opt['icon']?.toString() ?? id);
       final accent = _parseMoodAccent(opt['accent']) ?? token.accent;
+      final selected = _selectedId == id;
       chips.add(
-        MoodCircle(
-          label: (opt['label'] ?? id).toString(),
-          selected: _selectedId == id,
-          active: _selectedId == id,
-          accent: accent,
-          icon: token.icon,
-          layout: MoodCircleLayout.desktop,
-          onTap: () => setState(() => _selectedId = id),
+        MouseRegion(
+          onEnter: (_) => setState(() => _hoveredId = id),
+          onExit: (_) {
+            if (_hoveredId == id) setState(() => _hoveredId = null);
+          },
+          child: MoodCircle(
+            label: (opt['label'] ?? id).toString(),
+            selected: selected,
+            active: selected || _hoveredId == id,
+            accent: accent,
+            icon: token.icon,
+            layout: MoodCircleLayout.desktop,
+            onTap: () => setState(() => _selectedId = id),
+          ),
         ),
       );
     }
@@ -1414,6 +1479,7 @@ class _MoodMountState extends State<_MoodMount> {
         ),
       );
     }
+    final layout = MoodCircleLayout.desktop;
     return MoodSection(
       title: title.isEmpty ? null : title,
       titlePadding: EdgeInsets.fromLTRB(
@@ -1422,9 +1488,27 @@ class _MoodMountState extends State<_MoodMount> {
         pad,
         catalogSectionBottomGap(context),
       ),
-      padding: EdgeInsets.symmetric(horizontal: pad),
+      rowHeight: layout.rowHeight,
+      chipStrip: SizedBox(
+        height: layout.rowHeight,
+        width: double.infinity,
+        child: Center(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < chips.length; i++) ...[
+                  if (i > 0) SizedBox(width: layout.horizontalGap),
+                  chips[i],
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
       results: results,
-      children: chips,
     );
   }
 }

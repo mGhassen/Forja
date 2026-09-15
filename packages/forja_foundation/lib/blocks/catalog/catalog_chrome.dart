@@ -98,12 +98,16 @@ class CatalogTopChrome extends StatelessWidget {
     this.selections = const {},
     this.onSelect,
     this.title,
+    this.actionSlots = const {},
   });
 
   final List<Map<String, dynamic>> actions;
   final Map<String, String> selections;
   final void Function(String actionId, String value)? onSelect;
   final String? title;
+
+  /// Host-painted overrides keyed by action id (e.g. portals → [PortalsChip]).
+  final Map<String, Widget> actionSlots;
 
   @override
   Widget build(BuildContext context) {
@@ -134,41 +138,73 @@ class CatalogTopChrome extends StatelessWidget {
     for (final action in actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
+      final slot = actionSlots[actionId];
+      if (slot != null) {
+        (action['trailing'] == true ? trailing : leading).add(slot);
+        continue;
+      }
       final label = (action['label'] ?? actionId).toString();
       final isTrailing = action['trailing'] == true;
       final nested = propsIdLabelList(action, 'items');
       final icon = catalogChromeActionIcon(action);
+      final verb =
+          (action['action'] ?? actionId).toString().trim().toLowerCase();
       late final Widget chip;
       if (nested.isEmpty) {
+        final iconOnly = icon != null &&
+            (actionId == 'search' ||
+                actionId == 'refresh' ||
+                actionId == 'portals' ||
+                verb == 'eventsearch' ||
+                verb == 'portals' ||
+                verb == 'refresh' ||
+                verb == 'search');
         chip = ForjaShellChip(
-          label: label,
+          label: iconOnly ? '' : label,
           icon: icon,
           selected: false,
           onTap: onSelect == null
               ? null
               : () => onSelect!(actionId, actionId),
         );
-      } else {
+      } else if (actionId == 'view' || verb == 'view') {
+        // Shelf view: every option as its own icon (grid / list / …).
         final selected = selections[actionId] ??
             (action['default'] ?? nested.first.id).toString();
-        var chipLabel = label;
-        for (final e in nested) {
-          if (e.id == selected) {
-            chipLabel = e.label;
-            break;
-          }
-        }
-        chip = ForjaShellChip(
-          label: chipLabel,
-          icon: icon,
-          selected: true,
-          onTap: onSelect == null
-              ? null
-              : () {
-                  final idx = nested.indexWhere((e) => e.id == selected);
-                  final next = nested[(idx < 0 ? 0 : idx + 1) % nested.length];
-                  onSelect!(actionId, next.id);
-                },
+        chip = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < nested.length; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              ForjaShellChip(
+                label: '',
+                icon: _viewItemIcon(nested[i].id),
+                selected: selected == nested[i].id,
+                onTap: onSelect == null
+                    ? null
+                    : () => onSelect!(actionId, nested[i].id),
+              ),
+            ],
+          ],
+        );
+      } else {
+        // Segment menus (Live / Movies / Series): paint every option.
+        final selected = selections[actionId] ??
+            (action['default'] ?? nested.first.id).toString();
+        chip = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < nested.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              ForjaShellChip(
+                label: nested[i].label,
+                selected: selected == nested[i].id,
+                onTap: onSelect == null
+                    ? null
+                    : () => onSelect!(actionId, nested[i].id),
+              ),
+            ],
+          ],
         );
       }
       (isTrailing ? trailing : leading).add(chip);
@@ -197,6 +233,15 @@ class CatalogTopChrome extends StatelessWidget {
       ),
     );
   }
+}
+
+IconData _viewItemIcon(String id) {
+  return switch (id.trim().toLowerCase()) {
+    'cards' || 'grid' => Icons.grid_view_rounded,
+    'list' => Icons.view_list_rounded,
+    'timeline' || 'schedule' => Icons.view_timeline_outlined,
+    _ => Icons.view_module_rounded,
+  };
 }
 
 /// Poster / event card grid from pack `items[]` paint props.

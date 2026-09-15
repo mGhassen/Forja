@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_layout_host.dart';
+import 'package:forja/shell/chrome/plugin_kit_top_bar.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -757,7 +758,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             null => null,
             // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
             final id when PluginNavRegistry.isKitTab(id) =>
-              SizedBox.shrink(key: ValueKey(id)),
+              PluginKitTopBar(key: ValueKey(id), tabId: id),
             _ => null,
           };
         }

@@ -5,6 +5,7 @@
 /// `convergences.md`.
 library;
 
+export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart';
 export 'package:forja_foundation/widgets/chrome/logo_menu_rail.dart';
 export 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 export 'package:forja_foundation/widgets/catalog/ken_burns_backdrop.dart';

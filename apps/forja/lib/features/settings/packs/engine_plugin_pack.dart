@@ -128,6 +128,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
         ],
         settingsExpandableWithSideActions(
           context: context,
+          storageId: pack.sourceUrl,
           trailing: trailing,
           onHeaderActivate: onHeaderActivate,
           leading: Icon(
@@ -288,6 +289,8 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
                 pluginId: p.id,
                 enabled: val,
               );
+              // MainScreen already refreshes hub nav on changeNotifier — do not
+              // stack another refresh (that stormed Settings → Forja Packs).
               if (val && p.isKitPlugin) {
                 final spec = MetaNavSpec.fromPluginNav(
                   p.nav,
@@ -309,7 +312,6 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
                   await scheduleNavigationSyncPush();
                 }
               }
-              await PluginNavRegistry.refresh();
             },
           ),
       ],
@@ -342,6 +344,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
 
     return settingsExpandableWithSideActions(
       context: context,
+      storageId: pack.sourceUrl,
       trailing: trailing,
       onHeaderActivate: onHeaderActivate,
       leading: Icon(

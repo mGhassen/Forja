@@ -624,14 +624,29 @@ final enginePackUpdatesProvider =
 
 class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   Object? _checkToken;
+  String? _lastInventoryKey;
+
+  /// Urls + versions + plugin counts — not enable flags (toggles must not recheck).
+  static String inventoryKey(List<EnginePack> packs) {
+    final parts = [
+      for (final p in packs)
+        '${p.sourceUrl}\u0000${p.version}\u0000${p.plugins.length}',
+    ]..sort();
+    return parts.join('\n');
+  }
 
   @override
   EnginePackUpdatesState build() {
+    // Install / remove / version change only. Enable toggles reuse the same
+    // inventory key — re-checking flashed "Checking for plugin updates…" and
+    // rebuilt the whole Forja Packs pane on every switch flip.
     ref.listen(enginePacksProvider, (_, next) {
       final packs = next.valueOrNull;
-      if (packs != null && packs.isNotEmpty) {
-        Future.microtask(() => check(packs));
-      }
+      if (packs == null || packs.isEmpty) return;
+      final key = inventoryKey(packs);
+      if (key == _lastInventoryKey) return;
+      _lastInventoryKey = key;
+      Future.microtask(() => check(packs));
     });
     return stateOrNull ?? const EnginePackUpdatesState();
   }
@@ -669,6 +684,9 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
 
   Future<void> refresh() async {
     final packs = ref.read(enginePacksProvider).valueOrNull ?? const [];
+    if (packs.isNotEmpty) {
+      _lastInventoryKey = inventoryKey(packs);
+    }
     await check(packs);
   }
 
@@ -708,11 +726,16 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   }
 
   Future<void> reload() async {
-    final previous = state;
-    state = const AsyncLoading<List<EnginePack>>().copyWithPrevious(previous);
-    state = await AsyncValue.guard(
+    // Do not paint AsyncLoading — even with previous data, watchers rebuild and
+    // ExpansionTiles / scroll jump. Swap in the fresh list when ready.
+    final next = await AsyncValue.guard(
       () => EngineService.instance.listUserPacks(),
     );
+    if (next.hasError && state.hasValue) {
+      // Keep prior packs on transient list failures.
+      return;
+    }
+    state = next;
   }
 }
 

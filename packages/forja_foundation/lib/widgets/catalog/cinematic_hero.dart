@@ -123,6 +123,7 @@ class CinematicHero extends StatefulWidget {
     this.galleryOverlayBuilder,
     this.shimmer,
     this.onIndexChanged,
+    this.onHeight,
     this.pageController,
   });
 
@@ -140,6 +141,8 @@ class CinematicHero extends StatefulWidget {
   final Widget Function(BuildContext context)? galleryOverlayBuilder;
   final Widget? shimmer;
   final ValueChanged<int>? onIndexChanged;
+  /// Reports computed backdrop height for shell chrome fade.
+  final ValueChanged<double>? onHeight;
   /// Host interactive may own the controller; otherwise one is created.
   final PageController? pageController;
 
@@ -300,6 +303,13 @@ class CinematicHeroState extends State<CinematicHero> {
     final compact = layout.compact;
     final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _backdropHeight(context);
+    final onHeight = widget.onHeight;
+    if (onHeight != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        onHeight(imageHeight + layout.topBarBleed);
+      });
+    }
     final textTop = layout.topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop;
     final compactRightInset = compact ? layout.heroCompactRightInset : 48.0;
     final textRight = compact
@@ -367,16 +377,12 @@ class CinematicHeroState extends State<CinematicHero> {
             ),
           ),
           Positioned(
-            right: layout.scaled(20).clamp(10.0, 20.0),
-            bottom: compact ? layout.scaled(16).clamp(8.0, 16.0) : null,
-            top: compact ? null : 0,
-            height: compact ? null : imageHeight,
-            child: compact
-                ? _buildStepIndicators(axis: Axis.horizontal)
-                : Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildStepIndicators(),
-                  ),
+            left: 0,
+            right: 0,
+            bottom: layout.scaled(16).clamp(8.0, 20.0),
+            child: Center(
+              child: _buildStepIndicators(axis: Axis.horizontal),
+            ),
           ),
           if (widget.galleryOverlayBuilder != null)
             Positioned(
@@ -1017,10 +1023,10 @@ class CinematicHeroState extends State<CinematicHero> {
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          width: active ? 10 : 6,
-          height: active ? 10 : 6,
+          width: active ? 18 : 6,
+          height: 6,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(3),
             color: Colors.white.withValues(alpha: active ? 0.95 : 0.35),
           ),
         ),

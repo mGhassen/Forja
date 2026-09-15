@@ -38,6 +38,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Future<MetaEnvelope>? _future;
   String _scopeEpoch = '';
 
+  /// Soft memo so rails don't re-hit the pack when chrome epoch is unchanged.
+  static final Map<String, Future<MetaEnvelope>> _memo = {};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -83,12 +86,37 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       tabId: widget.tabId,
       pluginId: widget.pluginId,
     );
-    return packOpaqueRun(
+    final force = params['force'] == true || params['refresh'] != null;
+    final key = [
+      widget.pluginId,
+      widget.action,
+      widget.packSourceUrl ?? '',
+      _scopeEpoch,
+      _stableParamsKey(params),
+    ].join('|');
+    if (!force) {
+      final hit = _memo[key];
+      if (hit != null) return hit;
+    }
+    final future = packOpaqueRun(
       pluginId: widget.pluginId,
       action: widget.action,
       params: params,
       packSourceUrl: widget.packSourceUrl,
     );
+    _memo[key] = future;
+    if (_memo.length > 48) {
+      _memo.remove(_memo.keys.first);
+    }
+    return future;
+  }
+
+  String _stableParamsKey(Map<String, dynamic> params) {
+    final keys = params.keys.toList()..sort();
+    return [
+      for (final k in keys)
+        if (k != 'force' && k != 'refresh') '$k=${params[k]}',
+    ].join('&');
   }
 
   bool _mapEquals(Map<String, dynamic> a, Map<String, dynamic> b) {

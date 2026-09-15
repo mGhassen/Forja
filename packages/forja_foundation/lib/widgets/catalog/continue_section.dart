@@ -3,6 +3,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 
 /// Continue-watching row — props only (RFC-106 Zone A).
 ///
@@ -87,19 +88,15 @@ class ContinueSection extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 14),
               itemBuilder: (_, i) {
                 final entry = entryList[i];
-                return ContinueWatchingCard(
-                  title: entry.title,
-                  coverUrl: entry.coverUrl,
-                  subtitle: entry.subtitle,
-                  progress: entry.progress,
-                  remainingText: entry.remainingText,
+                return _ContinueHoverCard(
+                  entry: entry,
                   width: cardWidth,
                   height: cardHeight,
                   isLoading: resumingMetaId != null &&
                       entry.metaId == resumingMetaId,
-                  onTap: onResume == null ? null : () => onResume!(entry),
-                  onRemove: onRemove == null ? null : () => onRemove!(entry),
-                  onInfo: onInfo == null ? null : () => onInfo!(entry),
+                  onResume: onResume,
+                  onRemove: onRemove,
+                  onInfo: onInfo,
                 );
               },
             ),
@@ -159,6 +156,66 @@ class ContinueSection extends StatelessWidget {
         controller: scrollController!,
       ),
     ];
+  }
+}
+
+class _ContinueHoverCard extends StatefulWidget {
+  const _ContinueHoverCard({
+    required this.entry,
+    required this.width,
+    required this.height,
+    required this.isLoading,
+    this.onResume,
+    this.onRemove,
+    this.onInfo,
+  });
+
+  final ContinueEntry entry;
+  final double width;
+  final double height;
+  final bool isLoading;
+  final void Function(ContinueEntry entry)? onResume;
+  final void Function(ContinueEntry entry)? onRemove;
+  final void Function(ContinueEntry entry)? onInfo;
+
+  @override
+  State<_ContinueHoverCard> createState() => _ContinueHoverCardState();
+}
+
+class _ContinueHoverCardState extends State<_ContinueHoverCard> {
+  bool _active = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = widget.entry;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _active = true),
+      onExit: (_) => setState(() => _active = false),
+      child: Focus(
+        onFocusChange: (f) => setState(() => _active = f),
+        child: ContinueWatchingCard(
+          title: entry.title,
+          coverUrl: entry.coverUrl,
+          subtitle: entry.subtitle,
+          progress: entry.progress,
+          remainingText: entry.remainingText,
+          width: widget.width,
+          height: widget.height,
+          isLoading: widget.isLoading,
+          active: _active,
+          onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
+          onRemove:
+              widget.onRemove == null ? null : () => widget.onRemove!(entry),
+          onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
+          playOverlay: ShellCardPlayOverlay(
+            active: false,
+            visible: _active && !widget.isLoading,
+            onTap:
+                widget.onResume == null ? null : () => widget.onResume!(entry),
+          ),
+        ),
+      ),
+    );
   }
 }
 
