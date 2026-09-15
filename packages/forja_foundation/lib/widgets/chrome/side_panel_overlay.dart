@@ -59,7 +59,11 @@ class SidePanelOverlay extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: () {},
-                    child: panel,
+                    child: SizedBox(
+                      width: panelWidth,
+                      height: MediaQuery.sizeOf(context).height,
+                      child: panel,
+                    ),
                   ),
                 ),
               ),

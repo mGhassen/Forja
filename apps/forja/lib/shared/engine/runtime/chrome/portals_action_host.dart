@@ -32,12 +32,6 @@ abstract final class PortalsActionHost {
     _hoistSources.add(id);
   }
 
-  static bool _hoistSource(String sourceId) {
-    final id = sourceId.trim();
-    if (id.isEmpty) return false;
-    return _hoistSources.contains(id);
-  }
-
   static void ensureRegistered() {
     registerHoistSource(LiveSurfaceOpen.listSourceId);
   }
@@ -59,8 +53,10 @@ abstract final class PortalsActionHost {
         .trim();
     if (hoist.isNotEmpty) registerHoistSource(hoist);
 
-    final open = ref.watch(portalsPanelOpenProvider);
-    final inv = ref.watch(portalsInventoryProvider);
+    final key = tabId.trim();
+    final open = ref.watch(portalsPanelOpenProvider(key));
+    // Label only — do not force-refresh inventory on every chip rebuild.
+    final inv = ref.watch(portalsInventoryProvider(key));
     final active = inv.asData?.value.activeLabel ?? 'Portals';
 
     final policy = ShellScope.inputPolicyOf(context);
@@ -70,9 +66,9 @@ abstract final class PortalsActionHost {
       selected: open,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
-        ref.read(portalsPanelOpenProvider.notifier).state = !open;
+        ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
         if (!open) {
-          ref.invalidate(portalsInventoryProvider);
+          ref.invalidate(portalsInventoryProvider(key));
         }
       },
       interactiveBuilder: ({
@@ -107,15 +103,19 @@ abstract final class PortalsActionHost {
     required String sourceId,
     required bool shellTabVisible,
   }) {
-    if (!_hoistSource(sourceId)) return child;
+    // Pack declared this hoist — always host the panel (do not wait for chip).
+    registerHoistSource(sourceId);
     return _PortalsPanelHost(
+      tabId: tabId,
       shellTabVisible: shellTabVisible,
       child: child,
     );
   }
 }
 
-final portalsPanelOpenProvider = StateProvider<bool>((ref) => false);
+/// Per-hub open state — IPTV and Live Sports must not share one bool.
+final portalsPanelOpenProvider =
+    StateProvider.family<bool, String>((ref, tabId) => false);
 
 class PortalsInventory {
   const PortalsInventory({
@@ -163,9 +163,12 @@ Future<String?> resolvePortalsPluginId({String? preferTabId}) async {
   return null;
 }
 
-final portalsInventoryProvider =
-    FutureProvider.autoDispose<PortalsInventory>((ref) async {
-  final pluginId = await resolvePortalsPluginId();
+/// Inventory keyed by shell tab — Live Sports still resolves IPTV `listPortals`
+/// when the live hub itself has no portals capability.
+final portalsInventoryProvider = FutureProvider.autoDispose
+    .family<PortalsInventory, String>((ref, tabId) async {
+  ref.keepAlive();
+  final pluginId = await resolvePortalsPluginId(preferTabId: tabId);
   if (pluginId == null || pluginId.isEmpty) {
     return const PortalsInventory(
       portals: [],
@@ -177,7 +180,7 @@ final portalsInventoryProvider =
     pluginId: pluginId,
     action: 'listPortals',
     params: const {},
-    forceRefresh: true,
+    forceRefresh: false,
   );
   if (!env.ok) {
     return PortalsInventory(
@@ -219,10 +222,12 @@ final portalsInventoryProvider =
 class _PortalsPanelHost extends ConsumerWidget {
   const _PortalsPanelHost({
     required this.child,
+    required this.tabId,
     required this.shellTabVisible,
   });
 
   final Widget child;
+  final String tabId;
   final bool shellTabVisible;
 
   static const _panelWidth = 380.0;
@@ -230,18 +235,20 @@ class _PortalsPanelHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!shellTabVisible) return child;
-    final open = ref.watch(portalsPanelOpenProvider);
+    final key = tabId.trim();
+    final open = ref.watch(portalsPanelOpenProvider(key));
     return SidePanelOverlay(
       open: open,
       panelWidth: _panelWidth,
       onDismiss: () {
-        ref.read(portalsPanelOpenProvider.notifier).state = false;
+        ref.read(portalsPanelOpenProvider(key).notifier).state = false;
       },
       panel: open
           ? _PackPortalsPanel(
+              tabId: key,
               width: _panelWidth,
               onClose: () {
-                ref.read(portalsPanelOpenProvider.notifier).state = false;
+                ref.read(portalsPanelOpenProvider(key).notifier).state = false;
               },
             )
           : const SizedBox.shrink(),
@@ -252,10 +259,12 @@ class _PortalsPanelHost extends ConsumerWidget {
 
 class _PackPortalsPanel extends ConsumerStatefulWidget {
   const _PackPortalsPanel({
+    required this.tabId,
     required this.width,
     required this.onClose,
   });
 
+  final String tabId;
   final double width;
   final VoidCallback onClose;
 
@@ -279,8 +288,10 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
     Map<String, dynamic> params = const {},
     String? toastOk,
   }) async {
-    final inv = ref.read(portalsInventoryProvider).asData?.value;
-    final pluginId = inv?.pluginId ?? await resolvePortalsPluginId();
+    final key = widget.tabId;
+    final inv = ref.read(portalsInventoryProvider(key)).asData?.value;
+    final pluginId =
+        inv?.pluginId ?? await resolvePortalsPluginId(preferTabId: key);
     if (pluginId == null || pluginId.isEmpty) {
       ForjaToast.error('No portals pack installed');
       return;
@@ -301,7 +312,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
         return;
       }
       if (toastOk != null) ForjaToast.success(toastOk);
-      ref.invalidate(portalsInventoryProvider);
+      ref.invalidate(portalsInventoryProvider(key));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -388,7 +399,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
           'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',
         );
       }
-      ref.invalidate(portalsInventoryProvider);
+      ref.invalidate(portalsInventoryProvider(widget.tabId));
     } catch (e) {
       ForjaToast.error(e.toString());
     } finally {
@@ -398,7 +409,8 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncInv = ref.watch(portalsInventoryProvider);
+    final key = widget.tabId;
+    final asyncInv = ref.watch(portalsInventoryProvider(key));
     final q = _query.trim().toLowerCase();
     final items = asyncInv.asData?.value.portals ?? const <PortalListItem>[];
     final filtered = q.isEmpty
@@ -439,7 +451,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
             tooltip: 'Refresh',
             onPressed: _busy
                 ? null
-                : () => ref.invalidate(portalsInventoryProvider),
+                : () => ref.invalidate(portalsInventoryProvider(key)),
             icon: const Icon(Icons.refresh, color: Colors.white70),
           ),
           IconButton(

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,10 +10,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract final class PackSettingsStore {
   PackSettingsStore._();
 
-  /// Bumped on every write so Riverpod / UI can rebuild (RFC-104 open mode).
+  /// Bumped on every write so open-mode gates / UI can rebuild (RFC-104).
   static final ValueNotifier<int> revision = ValueNotifier(0);
 
-  static void _bump() => revision.value++;
+  /// Bump prefs revision and optionally invalidate that plugin’s hub mount.
+  /// Settings UI must not remount — hubs listen via [PluginRegistry.hubFeedEpoch].
+  static void _bump(String pluginId, {bool reloadHub = true}) {
+    revision.value++;
+    if (!reloadHub) return;
+    final id = pluginId.trim();
+    if (id.isEmpty) return;
+    PluginRegistry.bumpHubFeedEpoch(pluginIds: [id]);
+  }
 
   static const _prefix = 'pack_setting_v1_';
   static const _secretPrefix = 'pack_secret_v1_';
@@ -43,11 +52,12 @@ abstract final class PackSettingsStore {
   static Future<void> setBool(
     String pluginId,
     String fieldId,
-    bool value,
-  ) async {
+    bool value, {
+    bool reloadHub = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key(pluginId, fieldId), value);
-    _bump();
+    _bump(pluginId, reloadHub: reloadHub);
   }
 
   static Future<String> getString(
@@ -64,11 +74,12 @@ abstract final class PackSettingsStore {
   static Future<void> setString(
     String pluginId,
     String fieldId,
-    String value,
-  ) async {
+    String value, {
+    bool reloadHub = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key(pluginId, fieldId), value);
-    _bump();
+    _bump(pluginId, reloadHub: reloadHub);
   }
 
   static Future<String> getSecret(
@@ -84,17 +95,18 @@ abstract final class PackSettingsStore {
   static Future<void> setSecret(
     String pluginId,
     String fieldId,
-    String value,
-  ) async {
+    String value, {
+    bool reloadHub = true,
+  }) async {
     final k = secretKey(pluginId, fieldId);
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       await SecureSettings.delete(k);
-      _bump();
+      _bump(pluginId, reloadHub: reloadHub);
       return;
     }
     await SecureSettings.write(k, trimmed);
-    _bump();
+    _bump(pluginId, reloadHub: reloadHub);
   }
 
   static Future<List<String>> getStringList(
@@ -117,9 +129,15 @@ abstract final class PackSettingsStore {
   static Future<void> setStringList(
     String pluginId,
     String fieldId,
-    List<String> value,
-  ) async {
-    await setString(pluginId, fieldId, value.join(','));
+    List<String> value, {
+    bool reloadHub = true,
+  }) async {
+    await setString(
+      pluginId,
+      fieldId,
+      value.join(','),
+      reloadHub: reloadHub,
+    );
   }
 
   /// True when the pack setting key already exists (no default fallback needed).
@@ -135,7 +153,7 @@ abstract final class PackSettingsStore {
     bool legacyValue,
   ) async {
     if (await has(pluginId, fieldId)) return false;
-    await setBool(pluginId, fieldId, legacyValue);
+    await setBool(pluginId, fieldId, legacyValue, reloadHub: false);
     return true;
   }
 
@@ -145,7 +163,7 @@ abstract final class PackSettingsStore {
     List<String> legacyValue,
   ) async {
     if (await has(pluginId, fieldId)) return false;
-    await setStringList(pluginId, fieldId, legacyValue);
+    await setStringList(pluginId, fieldId, legacyValue, reloadHub: false);
     return true;
   }
 

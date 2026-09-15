@@ -13,6 +13,10 @@ class PackChromeScope extends InheritedWidget {
     required this.viewStyle,
     required this.dynamicBarItems,
     required this.selectedListItem,
+    required this.shellTabVisible,
+    required this.eagerLoadKeys,
+    required this.pageFeedRailIds,
+    required this.pageFeedFuture,
     required this.onEventQuery,
     required this.onBumpRefresh,
     required this.onViewStyle,
@@ -25,7 +29,22 @@ class PackChromeScope extends InheritedWidget {
   final int refreshEpoch;
   final String viewStyle;
   final Map<String, List<Map<String, dynamic>>> dynamicBarItems;
-  final Map<String, dynamic>? selectedListItem;
+
+  /// List/panel selection — [ValueNotifier] so taps do not InheritedWidget-notify
+  /// the whole hub (grids, rails, PackLoadedPaint).
+  final ValueNotifier<Map<String, dynamic>?> selectedListItem;
+
+  /// Whether this hub tab is the selected shell tab (KeepAlive may stay mounted).
+  final bool shellTabVisible;
+
+  /// Section ids / rail ids that should load immediately (above Continue + bleed).
+  final Set<String> eagerLoadKeys;
+
+  /// Rail ids claimed by page `feed` — [PackLoadedPaint] shares [pageFeedFuture].
+  final Set<String> pageFeedRailIds;
+
+  /// One page-level `feed` future → `rails` map. Null when page is not feed-batched.
+  final Future<Map<String, List<dynamic>>>? pageFeedFuture;
 
   final void Function(String query) onEventQuery;
   final VoidCallback onBumpRefresh;
@@ -50,12 +69,30 @@ class PackChromeScope extends InheritedWidget {
     return dynamicBarItems[id];
   }
 
+  bool isEagerLoad(String? id, {String? rail}) {
+    final a = (id ?? '').trim();
+    final b = (rail ?? '').trim();
+    if (a.isNotEmpty && eagerLoadKeys.contains(a)) return true;
+    if (b.isNotEmpty && eagerLoadKeys.contains(b)) return true;
+    return false;
+  }
+
+  bool isPageFeedRail(String? rail) {
+    final id = (rail ?? '').trim();
+    return id.isNotEmpty && pageFeedRailIds.contains(id);
+  }
+
   @override
   bool updateShouldNotify(PackChromeScope oldWidget) {
+    // Do not compare selectedListItem.value — list taps update the notifier only.
     return eventQuery != oldWidget.eventQuery ||
         refreshEpoch != oldWidget.refreshEpoch ||
         viewStyle != oldWidget.viewStyle ||
-        selectedListItem != oldWidget.selectedListItem ||
+        !identical(selectedListItem, oldWidget.selectedListItem) ||
+        shellTabVisible != oldWidget.shellTabVisible ||
+        !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
+        !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||
+        !identical(pageFeedFuture, oldWidget.pageFeedFuture) ||
         !mapEquals(dynamicBarItems, oldWidget.dynamicBarItems);
   }
 }

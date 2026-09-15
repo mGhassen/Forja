@@ -146,7 +146,8 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       _headers = prepared.headers;
       debugPrint(
         '[DesktopNative] open ${_av ? 'AVPlayer' : 'VLC'} '
-        'url=${_shortUrl(_url)} headers=${_headers?.length ?? 0}',
+        'url=${_shortUrl(_url)} headers=${_headers?.length ?? 0}'
+        '${_headers == null || _headers!.isEmpty ? '' : ' keys=${_headers!.keys.join(',')}'}',
       );
       if (_av) {
         await AvPlayerBridge.open(

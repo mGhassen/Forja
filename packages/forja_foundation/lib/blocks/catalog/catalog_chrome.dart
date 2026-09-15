@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/catalog/event_card.dart';
-import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
-import 'package:forja_foundation/widgets/chrome/logo_menu_rail.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/action_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
+
+export 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 
 /// `{ id, label }` rows from pack JSON lists.
 List<({String id, String label})> propsIdLabelList(
@@ -90,24 +91,79 @@ IconData? catalogChromeActionIcon(Map<String, dynamic> action) {
   };
 }
 
-/// Top action chrome — leading + trailing chip groups from pack `actions[]`.
+/// Top action chrome — pack `actions[]` as themed [ForjaActionChip]s
+/// (one control per action: menu opens a sheet; view cycles; not expanded pills).
 class CatalogTopChrome extends StatelessWidget {
   const CatalogTopChrome({
     super.key,
     required this.actions,
     this.selections = const {},
+    this.selectionLabels = const {},
     this.onSelect,
     this.title,
     this.actionSlots = const {},
+    this.center,
   });
 
   final List<Map<String, dynamic>> actions;
   final Map<String, String> selections;
+
+  /// Optional display labels keyed by action id (dynamic catalog / schedule).
+  final Map<String, String> selectionLabels;
   final void Function(String actionId, String value)? onSelect;
   final String? title;
 
   /// Host-painted overrides keyed by action id (e.g. portals → [PortalsChip]).
   final Map<String, Widget> actionSlots;
+
+  /// Optional center overlay (feed scrape progress / updated label).
+  final Widget? center;
+
+  static bool _isTrailing(Map<String, dynamic> action) {
+    if (action['trailing'] == true) return true;
+    final slot = (action['slot'] ?? '').toString().trim().toLowerCase();
+    return slot == 'trailing' || slot == 'end' || slot == 'right';
+  }
+
+  static String _verb(Map<String, dynamic> action) {
+    final a = (action['action'] ?? '').toString().trim().toLowerCase();
+    if (a.isNotEmpty) return a;
+    return (action['id'] ?? '').toString().trim().toLowerCase();
+  }
+
+  static String _selectedLabel(
+    Map<String, dynamic> action,
+    Map<String, String> selections,
+    Map<String, String> selectionLabels,
+  ) {
+    final actionId = (action['id'] ?? '').toString();
+    final override = (selectionLabels[actionId] ?? '').trim();
+    if (override.isNotEmpty) return override;
+    final nested = propsIdLabelList(action, 'items');
+    final selected = (selections[actionId] ??
+            (action['default'] ?? (nested.isEmpty ? '' : nested.first.id))
+                .toString())
+        .trim();
+    if (nested.isEmpty) {
+      return (action['label'] ?? actionId).toString();
+    }
+    for (final e in nested) {
+      if (e.id == selected) return e.label;
+    }
+    return nested.first.label;
+  }
+
+  static bool _isSelectedMenu(
+    Map<String, dynamic> action,
+    Map<String, String> selections,
+  ) {
+    final actionId = (action['id'] ?? '').toString();
+    final def = (action['default'] ?? '').toString().trim();
+    final selected = (selections[actionId] ?? def).trim();
+    if (selected.isEmpty) return false;
+    if (def.isNotEmpty) return selected != def;
+    return selected != 'all';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +175,9 @@ class CatalogTopChrome extends StatelessWidget {
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: ShellTokens.compactChromeLeadingInset(context),
+            ),
             child: Text(
               t,
               style: const TextStyle(
@@ -138,257 +196,107 @@ class CatalogTopChrome extends StatelessWidget {
     for (final action in actions) {
       final actionId = (action['id'] ?? '').toString().trim();
       if (actionId.isEmpty) continue;
+      final bucket = _isTrailing(action) ? trailing : leading;
       final slot = actionSlots[actionId];
       if (slot != null) {
-        (action['trailing'] == true ? trailing : leading).add(slot);
+        bucket.add(slot);
         continue;
       }
-      final label = (action['label'] ?? actionId).toString();
-      final isTrailing = action['trailing'] == true;
-      final nested = propsIdLabelList(action, 'items');
+      final verb = _verb(action);
       final icon = catalogChromeActionIcon(action);
-      final verb =
-          (action['action'] ?? actionId).toString().trim().toLowerCase();
-      late final Widget chip;
-      if (nested.isEmpty) {
-        final iconOnly = icon != null &&
-            (actionId == 'search' ||
-                actionId == 'refresh' ||
-                actionId == 'portals' ||
-                verb == 'eventsearch' ||
-                verb == 'portals' ||
-                verb == 'refresh' ||
-                verb == 'search');
-        chip = ForjaShellChip(
-          label: iconOnly ? '' : label,
+      final nested = propsIdLabelList(action, 'items');
+      final isView = actionId == 'view' || verb == 'view';
+      final isIconOnly = nested.isEmpty &&
+          (actionId == 'search' ||
+              actionId == 'refresh' ||
+              verb == 'eventsearch' ||
+              verb == 'refresh' ||
+              verb == 'search');
+
+      if (isView && nested.isNotEmpty) {
+        final cur = (selections[actionId] ??
+                (action['default'] ?? nested.first.id).toString())
+            .trim()
+            .toLowerCase();
+        final cycle = [for (final e in nested) e.id.toLowerCase()];
+        final idx = cycle.indexOf(cur);
+        final current = idx < 0 ? cycle.first : cycle[idx];
+        final next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+        final (viewIcon, viewLabel) = switch (current) {
+          'timeline' || 'schedule' => (
+              Icons.view_timeline_rounded,
+              'Timeline view',
+            ),
+          'list' => (Icons.view_list_rounded, 'List view'),
+          'grid' => (Icons.grid_on_rounded, 'Grid view'),
+          _ => (Icons.grid_view_rounded, 'Cards view'),
+        };
+        bucket.add(
+          ForjaActionChip(
+            label: viewLabel,
+            icon: viewIcon,
+            iconOnly: true,
+            selected: false,
+            onTap: onSelect == null ? () {} : () => onSelect!(actionId, next),
+          ),
+        );
+        continue;
+      }
+
+      if (isIconOnly) {
+        bucket.add(
+          ForjaActionChip(
+            label: (action['label'] ?? actionId).toString(),
+            icon: icon ??
+                (verb == 'search' || verb == 'eventsearch'
+                    ? Icons.search_rounded
+                    : Icons.refresh_rounded),
+            iconOnly: true,
+            selected: false,
+            onTap: onSelect == null
+                ? () {}
+                : () => onSelect!(actionId, actionId),
+          ),
+        );
+        continue;
+      }
+
+      if (nested.isNotEmpty) {
+        bucket.add(
+          ForjaActionChip(
+            label: _selectedLabel(action, selections, selectionLabels),
+            icon: icon,
+            selected: _isSelectedMenu(action, selections),
+            onTap: onSelect == null
+                ? () {}
+                // Host opens the real Catalog / Schedule sheet (not a flat fallback).
+                : () => onSelect!(actionId, '__open__'),
+          ),
+        );
+        continue;
+      }
+
+      bucket.add(
+        ForjaActionChip(
+          label: (action['label'] ?? actionId).toString(),
           icon: icon,
           selected: false,
           onTap: onSelect == null
-              ? null
+              ? () {}
               : () => onSelect!(actionId, actionId),
-        );
-      } else if (actionId == 'view' || verb == 'view') {
-        // Shelf view: every option as its own icon (grid / list / …).
-        final selected = selections[actionId] ??
-            (action['default'] ?? nested.first.id).toString();
-        chip = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < nested.length; i++) ...[
-              if (i > 0) const SizedBox(width: 4),
-              ForjaShellChip(
-                label: '',
-                icon: _viewItemIcon(nested[i].id),
-                selected: selected == nested[i].id,
-                onTap: onSelect == null
-                    ? null
-                    : () => onSelect!(actionId, nested[i].id),
-              ),
-            ],
-          ],
-        );
-      } else {
-        // Segment menus (Live / Movies / Series): paint every option.
-        final selected = selections[actionId] ??
-            (action['default'] ?? nested.first.id).toString();
-        chip = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < nested.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              ForjaShellChip(
-                label: nested[i].label,
-                selected: selected == nested[i].id,
-                onTap: onSelect == null
-                    ? null
-                    : () => onSelect!(actionId, nested[i].id),
-              ),
-            ],
-          ],
-        );
-      }
-      (isTrailing ? trailing : leading).add(chip);
-    }
-
-    return Material(
-      color: ForjaShellColors.surfaceElevated,
-      child: SizedBox(
-        height: 52,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              for (var i = 0; i < leading.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                leading[i],
-              ],
-              const Spacer(),
-              for (var i = 0; i < trailing.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                trailing[i],
-              ],
-            ],
-          ),
         ),
-      ),
-    );
-  }
-}
-
-IconData _viewItemIcon(String id) {
-  return switch (id.trim().toLowerCase()) {
-    'cards' || 'grid' => Icons.grid_view_rounded,
-    'list' => Icons.view_list_rounded,
-    'timeline' || 'schedule' => Icons.view_timeline_outlined,
-    _ => Icons.view_module_rounded,
-  };
-}
-
-/// Poster / event card grid from pack `items[]` paint props.
-class CatalogCardsGrid extends StatelessWidget {
-  const CatalogCardsGrid({
-    super.key,
-    required this.items,
-    this.onItemTap,
-    this.emptyTitle = 'Nothing here',
-    this.emptyDescription,
-    this.cardKind = 'poster',
-  });
-
-  final List<Map<String, dynamic>> items;
-  final void Function(Map<String, dynamic> item)? onItemTap;
-  final String emptyTitle;
-  final String? emptyDescription;
-  final String cardKind;
-
-  static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
-    final v = props['items'];
-    if (v is! List) return const [];
-    return [
-      for (final raw in v)
-        if (raw is Map) Map<String, dynamic>.from(raw),
-    ];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return Empty(
-        title: emptyTitle,
-        description: emptyDescription,
-        icon: Icons.inbox_outlined,
       );
     }
 
-    final event = cardKind == 'event' || cardKind == 'eventCard';
-    if (event) {
-      return ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final item = items[i];
-          final paint = item['paint'];
-          final props = paint is Map && paint['props'] is Map
-              ? Map<String, dynamic>.from(paint['props'] as Map)
-              : (item['props'] is Map
-                  ? Map<String, dynamic>.from(item['props'] as Map)
-                  : item);
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: EventCard(
-              title: (props['title'] ?? '').toString(),
-              posterUrl:
-                  (props['posterUrl'] ?? props['imageUrl'] ?? '').toString(),
-              homeTeam: props['homeTeam']?.toString(),
-              awayTeam: props['awayTeam']?.toString(),
-              homeBadgeUrl: (props['homeBadgeUrl'] ?? '').toString(),
-              awayBadgeUrl: (props['awayBadgeUrl'] ?? '').toString(),
-              categoryLabel: (props['categoryLabel'] ?? '').toString(),
-              scheduleLabel: (props['scheduleLabel'] ?? '').toString(),
-              timeLabel: (props['timeLabel'] ?? '').toString(),
-              viewers:
-                  props['viewers'] is num ? (props['viewers'] as num).toInt() : 0,
-              live: props['live'] == true,
-              width: props['width'] is num
-                  ? (props['width'] as num).toDouble()
-                  : 220,
-              height: props['height'] is num
-                  ? (props['height'] as num).toDouble()
-                  : 124,
-              onTap: onItemTap == null ? null : () => onItemTap!(item),
-            ),
-          );
-        },
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 160,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.62,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final item = items[i];
-        final paint = item['paint'];
-        final props = paint is Map && paint['props'] is Map
-            ? Map<String, dynamic>.from(paint['props'] as Map)
-            : (item['props'] is Map
-                ? Map<String, dynamic>.from(item['props'] as Map)
-                : item);
-        return InteractivePosterCard(
-          imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
-          title: (props['title'] ?? '').toString(),
-          subtitle: props['subtitle']?.toString(),
-          rating: props['rating'] is num
-              ? (props['rating'] as num).toDouble()
-              : null,
-          onTap: () => onItemTap?.call(item),
-          aspect: PosterAspect.portrait,
-          width: 140,
-        );
-      },
-    );
-  }
-}
-
-/// Side category rail built from id/label items.
-class CatalogSideRail extends StatelessWidget {
-  const CatalogSideRail({
-    super.key,
-    required this.items,
-    required this.selectedId,
-    this.onSelect,
-    this.width = 220,
-  });
-
-  final List<({String id, String label})> items;
-  final String? selectedId;
-  final ValueChanged<String>? onSelect;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return SizedBox(
-        width: width,
-        child: const Empty(title: 'No categories', size: EmptySize.sm),
-      );
-    }
-    return ColoredBox(
-      color: ForjaShellColors.surfaceElevated,
-      child: LogoMenuRail(
-        width: width,
-        selectedId: selectedId,
-        onSelect: onSelect ?? (_) {},
-        items: [
-          for (final item in items)
-            LogoMenuItem(id: item.id, label: item.label),
-        ],
+    return TopBarActions(
+      leading: leading,
+      trailing: trailing,
+      center: center,
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        ShellTokens.tabHeaderTopPadding,
+        ShellTokens.bodyHorizontalPadding,
+        4,
       ),
     );
   }

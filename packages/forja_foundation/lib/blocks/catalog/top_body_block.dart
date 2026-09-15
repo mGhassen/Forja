@@ -24,6 +24,7 @@ class TopBodyBlock extends StatelessWidget {
     super.key,
     this.actions = const [],
     this.actionSelections = const {},
+    this.actionSelectionLabels = const {},
     this.actionSlots = const {},
     this.kindItems = const [],
     this.selectedKindId,
@@ -38,6 +39,7 @@ class TopBodyBlock extends StatelessWidget {
     this.onActionSelect,
     this.onKindSelect,
     this.onItemTap,
+    this.wrapBody,
   });
 
   factory TopBodyBlock.fromProps(
@@ -45,14 +47,17 @@ class TopBodyBlock extends StatelessWidget {
     Widget? grid,
     Widget? kindsBar,
     Map<String, String> actionSelections = const {},
+    Map<String, String> actionSelectionLabels = const {},
     Map<String, Widget> actionSlots = const {},
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onKindSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
+    Widget Function(Widget body)? wrapBody,
   }) {
     return TopBodyBlock(
       actions: propsActionMaps(props),
       actionSelections: actionSelections,
+      actionSelectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
       kindItems: propsIdLabelList(props, 'kindItems'),
       selectedKindId: propsString(props, 'selectedKindId') ??
@@ -68,11 +73,13 @@ class TopBodyBlock extends StatelessWidget {
       onActionSelect: onActionSelect,
       onKindSelect: onKindSelect,
       onItemTap: onItemTap,
+      wrapBody: wrapBody,
     );
   }
 
   final List<Map<String, dynamic>> actions;
   final Map<String, String> actionSelections;
+  final Map<String, String> actionSelectionLabels;
   final Map<String, Widget> actionSlots;
   final List<({String id, String label})> kindItems;
   final String? selectedKindId;
@@ -90,12 +97,16 @@ class TopBodyBlock extends StatelessWidget {
   final ValueChanged<String>? onKindSelect;
   final void Function(Map<String, dynamic> item)? onItemTap;
 
+  /// Host wrap below the top bar (e.g. Portals panel over kinds + schedule).
+  final Widget Function(Widget body)? wrapBody;
+
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? ForjaShellColors.surfaceElevated;
+    final bg = backgroundColor ?? ForjaShellColors.bgDark;
     final top = CatalogTopChrome(
       actions: actions,
       selections: actionSelections,
+      selectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
       onSelect: onActionSelect,
       title: title,
@@ -107,7 +118,7 @@ class TopBodyBlock extends StatelessWidget {
               (kindItems.isEmpty ? null : kindItems.first.id),
           onSelect: onKindSelect,
         );
-    final body = grid ??
+    final gridBody = grid ??
         CatalogCardsGrid(
           items: items,
           onItemTap: onItemTap,
@@ -116,14 +127,23 @@ class TopBodyBlock extends StatelessWidget {
           cardKind: cardKind,
         );
 
+    Widget below = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        kinds,
+        Expanded(child: gridBody),
+      ],
+    );
+    final wrap = wrapBody;
+    if (wrap != null) below = wrap(below);
+
     return ColoredBox(
       color: bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           top,
-          kinds,
-          Expanded(child: body),
+          Expanded(child: below),
         ],
       ),
     );

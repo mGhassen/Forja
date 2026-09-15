@@ -6,19 +6,16 @@ import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Sticky progress card while Engine/Nuvio packs download or update.
-/// Place in [ForjaToastHost.stackAbove] — not a separate overlay.
-/// Hidden while a toast is visible (same chrome — looked like stacked toasts).
+/// Place in [ForjaToastHost.stackAbove] — stacks above timed toast cards.
 class PluginInstallProgressBanner extends StatelessWidget {
   const PluginInstallProgressBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
     final coordinator = PluginInstallCoordinator.instance;
-    final toasts = ForjaToast.controller;
     final listenable = Listenable.merge([
       coordinator.progress,
       coordinator.suppressBanner,
-      toasts,
       ShellBus.playerSurfaceActive,
       ShellBus.splashDismissed,
     ]);
@@ -29,8 +26,7 @@ class PluginInstallProgressBanner extends StatelessWidget {
         // Intro splash + profile warm use the splash status line.
         if (coordinator.suppressBanner.value ||
             !ShellBus.splashDismissed.value ||
-            ShellBus.playerSurfaceActive.value ||
-            toasts.entries.isNotEmpty) {
+            ShellBus.playerSurfaceActive.value) {
           return const SizedBox.shrink();
         }
         final current = coordinator.progress.value;
@@ -53,20 +49,18 @@ class _PluginInstallBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ready = progress.phase == PluginInstallPhase.ready;
-    final kind = ready ? ForjaToastKind.success : ForjaToastKind.info;
+    // Always info chrome — green success belongs to stacked [ForjaToast] cards.
+    // Flipping this card green on fraction==1 then blue on the next pack looked
+    // like one toast thrashing colors during Reload all.
+    const kind = ForjaToastKind.info;
     final style = forjaToastStyle(kind);
     final percent = (progress.fraction * 100).clamp(0, 100).round();
-    final title = ready
-        ? 'Plugins ready'
-        : progress.isUpdate
-            ? 'Updating plugins…'
-            : 'Downloading plugins…';
-    final icon = ready
-        ? Icons.check_circle_rounded
-        : progress.isUpdate
-            ? Icons.system_update_alt_rounded
-            : Icons.download_rounded;
+    final title = progress.isUpdate
+        ? 'Updating plugins…'
+        : 'Downloading plugins…';
+    final icon = progress.isUpdate
+        ? Icons.system_update_alt_rounded
+        : Icons.download_rounded;
 
     return ForjaToastChrome(
       kind: kind,
@@ -141,17 +135,6 @@ class _PluginInstallBanner extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(style.accent),
             ),
           ),
-          if (ready) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Plugin is ready to use.',
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                fontSize: 10,
-                height: 1.35,
-              ),
-            ),
-          ],
         ],
       ),
     );

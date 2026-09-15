@@ -14,6 +14,9 @@ abstract final class ForjaShellColors {
   static const Color textPrimary = Color(0xFFE5E7EB);
   static const Color textSecondary = Color(0xFF9CA3AF);
   static const Color borderSubtle = Color(0xFF2A2A2A);
+  /// Hub / IPTV / Live page body (pre-wipe [AppTheme.bgDark]).
+  static const Color bgDark = Color(0xFF141414);
+  /// Cards / elevated chrome on [bgDark] — not the page fill.
   static const Color surfaceElevated = Color(0xFF1C1C1C);
   static const Color ghostBorder = Color(0xFF4B5563);
   static const Color navUnderline = Color(0xFFE5E7EB);
@@ -36,5 +39,5 @@ final class _CinematicShellPalette {
   Color get textSecondary => ForjaShellColors.textSecondary;
   Color get navUnderline => ForjaShellColors.navUnderline;
   Color get borderSubtle => ForjaShellColors.borderSubtle;
-  Color get menuSurface => const Color(0xFF141414);
+  Color get menuSurface => ForjaShellColors.bgDark;
 }

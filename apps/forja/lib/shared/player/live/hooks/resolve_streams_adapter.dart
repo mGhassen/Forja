@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/unlock/live_resolve_streams.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
@@ -23,7 +24,17 @@ abstract final class ResolveStreamsAdapter {
       final sources = await _loadLiveTv(legacyRow, force: force);
       return _rowsFor(tabId, sources, healthProbe);
     }
-    return const [];
+
+    final sources = await LiveResolveStreams.loadProviders(
+      legacyRow,
+      force: force,
+      onPartial: onPartial == null
+          ? null
+          : (partial) {
+              onPartial(_rowsFor(tabId, partial, healthProbe));
+            },
+    );
+    return _rowsFor(tabId, sources, healthProbe);
   }
 
   static List<KitSourcesRow> _rowsFor(
@@ -78,7 +89,10 @@ abstract final class ResolveStreamsAdapter {
         continue;
       }
       final label = (m['label'] ?? m['name'] ?? 'Stream').toString().trim();
-      final detail = (m['detail'] ?? m['title'] ?? '').toString().trim();
+      final provider = (m['provider'] ?? m['liveProviderBadge'] ?? '')
+          .toString()
+          .trim();
+      final detail = (m['detail'] ?? m['title'] ?? provider).toString().trim();
       final logo = (m['logoUrl'] ?? m['logo'] ?? '').toString().trim();
       final epg =
           (m['epgChannelId'] ?? m['epg_channel_id'] ?? '').toString().trim();
@@ -91,6 +105,7 @@ abstract final class ResolveStreamsAdapter {
           streamId: streamId.isEmpty ? null : streamId,
           epgChannelId: epg.isEmpty ? null : epg,
           liveSourceKind: kind,
+          liveProviderBadge: provider.isEmpty ? null : provider,
         ),
       );
     }
@@ -196,6 +211,12 @@ abstract final class ResolveStreamsAdapter {
       sources: ordered,
       title: title.isEmpty ? picked.pickerTitle : title,
       subtitle: picked.pickerSubtitle,
+      liveSourceKind: picked.liveSourceKind,
+      liveEngineResolveSource:
+          picked.liveSourceKind == PortalLiveSourceKind.liveEngine ||
+                  picked.liveSourceKind == null
+              ? LiveResolveStreams.resolveLiveEngineSource
+              : null,
     );
   }
 }

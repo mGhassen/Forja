@@ -40,6 +40,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   List<PackAddonSettingsSpec> _specs = const [];
   final Map<String, dynamic> _values = {};
   final Map<String, TextEditingController> _textControllers = {};
+  final Map<String, Timer> _hubDebounce = {};
   bool _loading = true;
 
   @override
@@ -64,6 +65,9 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   void dispose() {
     if (widget.plugins == null) {
       EngineService.changeNotifier.removeListener(_onEngineChanged);
+    }
+    for (final t in _hubDebounce.values) {
+      t.cancel();
     }
     for (final c in _textControllers.values) {
       c.dispose();
@@ -151,11 +155,30 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         if (existing == null) {
           final c = TextEditingController(text: text);
           final isSecret = field.type == PackAddonSettingsFieldType.password;
+          final pluginId = spec.pluginId;
+          final fieldId = field.id;
           c.addListener(() {
+            // Persist every keystroke; debounce hub reload (not Settings remount).
             unawaited(
               isSecret
-                  ? PackSettingsStore.setSecret(spec.pluginId, field.id, c.text)
-                  : PackSettingsStore.setString(spec.pluginId, field.id, c.text),
+                  ? PackSettingsStore.setSecret(
+                      pluginId,
+                      fieldId,
+                      c.text,
+                      reloadHub: false,
+                    )
+                  : PackSettingsStore.setString(
+                      pluginId,
+                      fieldId,
+                      c.text,
+                      reloadHub: false,
+                    ),
+            );
+            final debounceKey = _valueKey(pluginId, fieldId);
+            _hubDebounce[debounceKey]?.cancel();
+            _hubDebounce[debounceKey] = Timer(
+              const Duration(milliseconds: 400),
+              () => PluginRegistry.bumpHubFeedEpoch(pluginIds: [pluginId]),
             );
           });
           _textControllers[k] = c;

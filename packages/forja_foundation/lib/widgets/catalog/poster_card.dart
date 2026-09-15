@@ -119,13 +119,17 @@ class PosterCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: ForjaShellColors.iconMuted,
+                    color: badge!.toUpperCase() == 'NOW'
+                        ? const Color(0xFFEF4444)
+                        : ForjaShellColors.iconMuted,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     badge!,
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: badge!.toUpperCase() == 'NOW'
+                          ? Colors.white
+                          : Colors.black,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.4,

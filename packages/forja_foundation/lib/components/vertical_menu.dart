@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Vertical selectable flyout menu (Home platforms, etc.).
 ///
@@ -29,6 +30,7 @@ class VerticalMenu extends StatelessWidget {
     required VoidCallback? onTap,
     Widget? leading,
     bool selected = false,
+    bool accentHover = false,
     FocusNode? focusNode,
   }) {
     return _VerticalMenuItem(
@@ -37,6 +39,7 @@ class VerticalMenu extends StatelessWidget {
       onTap: onTap,
       leading: leading,
       selected: selected,
+      accentHover: accentHover,
       focusNode: focusNode,
     );
   }
@@ -45,7 +48,7 @@ class VerticalMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
     return Material(
-      color: backgroundColor ?? const Color(0xFF141414),
+      color: backgroundColor ?? ForjaShellColors.bgDark,
       borderRadius: BorderRadius.circular(theme.radiusMd),
       clipBehavior: clipBehavior,
       child: SizedBox(
@@ -63,13 +66,14 @@ class VerticalMenu extends StatelessWidget {
   }
 }
 
-class _VerticalMenuItem extends StatelessWidget {
+class _VerticalMenuItem extends StatefulWidget {
   const _VerticalMenuItem({
     super.key,
     required this.label,
     required this.onTap,
     this.leading,
     this.selected = false,
+    this.accentHover = false,
     this.focusNode,
   });
 
@@ -77,42 +81,78 @@ class _VerticalMenuItem extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? leading;
   final bool selected;
+  final bool accentHover;
   final FocusNode? focusNode;
+
+  @override
+  State<_VerticalMenuItem> createState() => _VerticalMenuItemState();
+}
+
+class _VerticalMenuItemState extends State<_VerticalMenuItem> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    final fg = selected ? theme.textPrimary : theme.textSecondary;
-    return InkWell(
-      onTap: onTap,
-      focusNode: focusNode,
+    final lit = widget.selected || (widget.accentHover && _hovered);
+    final fg = lit ? theme.textPrimary : theme.textSecondary;
+    final fill = widget.selected
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+        : (_hovered && widget.accentHover)
+            ? ForjaShellColors.inkHover
+            : Colors.transparent;
+
+    final row = DecoratedBox(
+      decoration: BoxDecoration(
+        color: fill,
+        border: Border(
+          left: BorderSide(
+            color: widget.selected
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
+            width: 3,
+          ),
+        ),
+      ),
       child: Container(
         constraints: const BoxConstraints(minHeight: 40),
         padding: EdgeInsets.symmetric(
           horizontal: theme.spaceMd,
           vertical: theme.spaceSm,
         ),
-        color: selected ? Colors.white.withValues(alpha: 0.08) : null,
         child: Row(
           children: [
-            if (leading != null) ...[
-              SizedBox(width: 28, height: 28, child: leading),
+            if (widget.leading != null) ...[
+              SizedBox(width: 28, height: 28, child: widget.leading),
               SizedBox(width: theme.spaceSm),
             ],
             Expanded(
               child: Text(
-                label,
+                widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
                   fontSize: 14,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: lit ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: widget.onTap != null
+          ? SystemMouseCursors.click
+          : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Focus(focusNode: widget.focusNode, child: row),
       ),
     );
   }

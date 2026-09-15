@@ -75,7 +75,7 @@ class TabsCardsBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? ForjaShellColors.surfaceElevated;
+    final bg = backgroundColor ?? ForjaShellColors.bgDark;
     final menu = CatalogChipBar(
       items: menuItems,
       selectedId: selectedMenuId,

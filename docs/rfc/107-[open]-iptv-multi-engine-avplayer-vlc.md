@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog · **1 / 1** always-list · **1 / 1** chrome |
-| **Current slice** | Catalog AV/VLC chrome matches MediaKit desktop overlay |
+| **Progress** | **12 / 12** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog · **1 / 1** always-list · **1 / 1** chrome · **2 / 2** VLC headers |
+| **Current slice** | libVLC full HTTP headers + real error → MediaKit failover |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -84,11 +84,20 @@
 
 ---
 
+## Acceptance (libVLC catalog HLS)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R107-A23 | libVLC open forwards all HTTP headers (UA/Referer + Origin/Cookie via http-header) | ✅ |
+| 2 | R107-A24 | libVLC emits ready/playing only on Playing; Error/timeout → host MediaKit failover | ✅ |
+
+---
+
 ## Summary
 
 IPTV live HLS needs native stack engines: **AVPlayer on macOS** (majority users), **libVLC on Windows** (system VLC install), **Exo on Android**. MediaKit + continuity proxy remains the progressive MPEG-TS path and the universal fallback. User can always pick MediaKit; engines are additive ([no-hide-as-fix](../../.cursor/rules/no-hide-as-fix.mdc)).
 
-**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still hard-block. R107-A13 / A15 are historical omit rows; **R107-A21** supersedes menu omit — always list, try + failover for soft cases (DASH / MPEG-TS). **R107-A22** — catalog native chrome reuses MediaKit overlay widgets (not a bespoke mini bar).
+**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still hard-block. R107-A13 / A15 are historical omit rows; **R107-A21** supersedes menu omit — always list, try + failover for soft cases (DASH / MPEG-TS). **R107-A22** — catalog native chrome reuses MediaKit overlay widgets (not a bespoke mini bar). **R107-A23/A24** — libVLC gets full playback headers and real error/timeout events (Megaplay HLS adaptive demux).
 
 ### Related
 

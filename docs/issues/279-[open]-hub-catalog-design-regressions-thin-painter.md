@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 21** verification · A14 manual QA remaining |
+| **Progress** | **28 / 29** verification · A14 manual QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,14 @@
 | 19 | I279-A19 | Hero Play + bottom stadium pins; rail gaps; mood hover; anime bleed not stolen by mood; viewport-lazy rails + soft memo | ✅ |
 | 20 | I279-A20 | CatalogTopChrome: segment menus + view icon group + PortalsChip slots; `walkLayoutWidgets` descends composition roots | ✅ |
 | 21 | I279-A21 | Continue card play overlay + hover; home layout genre TTL shortened for rotating genre rows | ✅ |
+| 22 | I279-A22 | Portals open/inventory scoped per shell tab; IPTV kind filter no longer injects Live Sports `sportFilter` | ✅ |
+| 23 | I279-A23 | IPTV / Live `kit.topBar` uses restored `ForjaActionChip` + `TopBarActions` (not expanded `ForjaShellChip` strip) | ✅ |
+| 24 | I279-A24 | Hub open shows light full-page skeleton (`homeHubLoadingSlivers`) instead of spinner | ✅ |
+| 25 | I279-A25 | Hub open paints structure + section skeletons; page `feed` shared (no per-rail spinner cascade) | ✅ |
+| 26 | I279-A26 | Live Sports Catalog + Schedule sheets open again (dynamic catalogs + Status×Horizon) | ✅ |
+| 27 | I279-A27 | IPTV / Live catalog paint: dense list + event grid + landscape poster grid + side-rail hover (pre-wipe chrome restored in foundation) | ✅ |
+| 28 | I279-A28 | Live Sports Providers fan-out restored (`LiveResolveStreams`); Live TV search maps portal hits + paint.props teams | ✅ |
+| 29 | I279-A29 | IPTV / Live / hub page body fill is `bgDark` (`#141414`) like pre-wipe `CatalogShell` — not `surfaceElevated` | ✅ |
 
 ---
 
@@ -56,6 +64,22 @@ Commit `1d9ff09b4` deleted `pack_layout_host_wire` (~5k) and left a stub `PackPa
 **A15–A17:** composition mounts were still folding children and bypassing wired chrome; loaders still risked unbounded height. Host now wires PackChromeScope into composition blocks and keeps CatalogBody section loaders finite-height.
 
 **A18–A21:** restored wiped shell `PluginKitTopBar`, hero Play + bottom pins, rail spacing + viewport lazy gate, IPTV/Live segment+view+PortalsChip chrome, anime bleed/mood pack fix, home genre layout TTL.
+
+**A22:** portals panel open + inventory were global Riverpod — IPTV Portals toggled Live Sports too; feed also sprayed `sportFilter` on every kindMenu. Scoped per `tabId`; sport params only when list has `horizonMenu`.
+
+**A23:** `CatalogTopChrome` was painting every menu option as plain `ForjaShellChip`s on an elevated bar. Restored pre-wipe `ForjaActionChip` + `TopBarActions` (one themed chip per action; menus open a sheet; view cycles).
+
+**A24:** page open showed a center spinner; restored `homeHubLoadingSlivers` (+ section row shimmer in `PackLoadedPaint`).
+
+**A25:** lazy gates showed empty boxes then N rail spinners; now section skeletons in place, first-paint/eager + shared page `feed` for claimed rails.
+
+**A26:** Catalog/Schedule chips reopened generic flat sheets (or nothing) after wipe — restored `registerLiveScheduleChromeHooks` + Status×Horizon schedule sheet; Catalog loads live packs / Stremio options.
+
+**A27:** IPTV/Live list paint after foundation move used stub grids — restored `CatalogCardsGrid` / `CatalogPosterGrid` / `CatalogDenseList` / `EventDenseTile` / `CatalogSideRail` (accent hover) + painter `cardKind` routing (`list`→dense, `cards`→event, `grid`+poster props→landscape posters). Packs already emit `posterCard` / `eventCard` / vertical `categoryBar`.
+
+**A28:** Providers tab returned `[]` after `LiveResolveStreams` was deleted — restored RFC-105 fan-out under `engine/unlock/` and wired `ResolveStreamsAdapter`. Live TV game identity also reads `paint.props` teams; IPTV search hits carry `liveSourceKind` + provider label.
+
+**A29:** composition roots (`columnsHeader` / `topBody` / side rail / hub skeleton) painted `surfaceElevated` (`#1C1C1C`) as the page fill — pre-wipe `CatalogShell` used `AppTheme.bgDark` (`#141414`). Restored `ForjaShellColors.bgDark`.
 
 **Must not mark fixed** until A14 QA passes on all in-scope hubs.
 

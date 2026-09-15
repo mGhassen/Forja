@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/chrome/live_schedule_chrome.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -17,10 +18,13 @@ abstract final class LiveSurfaceOpen {
   static bool _registered = false;
 
   static void ensureRegistered() {
-    if (_registered) return;
-    _registered = true;
-    MetaSurfaceOpen.register(surface, openFromMeta);
-    PortalsActionHost.registerHoistSource(listSourceId);
+    if (!_registered) {
+      _registered = true;
+      MetaSurfaceOpen.register(surface, openFromMeta);
+      PortalsActionHost.registerHoistSource(listSourceId);
+    }
+    // Idempotent — re-bind after hot restart / wipe recovery.
+    registerLiveScheduleChromeHooks();
   }
 
   static void openFromMeta(BuildContext context, MetaItem item) {
@@ -43,5 +47,6 @@ abstract final class LiveSurfaceOpen {
     _registered = false;
     pendingOpenEntryId = null;
     MetaSurfaceOpen.unregister(surface);
+    clearLiveScheduleChromeHooks();
   }
 }

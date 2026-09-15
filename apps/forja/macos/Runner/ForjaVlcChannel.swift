@@ -27,6 +27,8 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   fileprivate typealias PlayerSetTime = @convention(c) (OpaquePointer?, Int64) -> Int32
   fileprivate typealias PlayerGetTime = @convention(c) (OpaquePointer?) -> Int64
   fileprivate typealias PlayerGetLength = @convention(c) (OpaquePointer?) -> Int64
+  /// libvlc_state_t: NothingSpecial=0 … Error=7
+  fileprivate typealias PlayerGetState = @convention(c) (OpaquePointer?) -> Int32
 
   private var libvlc_new: LibVlcNew?
   private var libvlc_release: LibVlcRelease?
@@ -44,6 +46,7 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
   private var player_set_time: PlayerSetTime?
   private var player_get_time: PlayerGetTime?
   private var player_get_length: PlayerGetLength?
+  private var player_get_state: PlayerGetState?
 
   private var instance: OpaquePointer?
 
@@ -101,6 +104,7 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       player_set_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_set_time"), to: PlayerSetTime?.self)
       player_get_time = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_time"), to: PlayerGetTime?.self)
       player_get_length = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_length"), to: PlayerGetLength?.self)
+      player_get_state = unsafeBitCast(dlsym(handle, "libvlc_media_player_get_state"), to: PlayerGetState?.self)
 
       guard libvlc_new != nil, player_new != nil, media_new != nil else { continue }
 
@@ -216,7 +220,8 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
     player_set_nsobject: PlayerSetNsobject?,
     player_set_time: PlayerSetTime?,
     player_get_time: PlayerGetTime?,
-    player_get_length: PlayerGetLength?
+    player_get_length: PlayerGetLength?,
+    player_get_state: PlayerGetState?
   ) {
     (
       media_release,
@@ -230,7 +235,8 @@ final class ForjaVlcPlugin: NSObject, FlutterPlugin {
       player_set_nsobject,
       player_set_time,
       player_get_time,
-      player_get_length
+      player_get_length,
+      player_get_state
     )
   }
 }
@@ -290,6 +296,10 @@ final class VlcSession {
   private weak var view: VlcContainerView?
   private var progressTimer: Timer?
   private var pendingSeekMs: Int64?
+  private var emittedReady = false
+  private var lastState: Int32 = -1
+  private var errorEmitted = false
+  private var openStartedAt: Date?
 
   init(viewId: Int64, plugin: ForjaVlcPlugin) {
     self.viewId = viewId
@@ -305,6 +315,10 @@ final class VlcSession {
 
   func open(url: String, headers: [String: String]) {
     disposePlayerOnly()
+    emittedReady = false
+    lastState = -1
+    errorEmitted = false
+    openStartedAt = Date()
     guard let plugin,
           let media = plugin.makeMedia(url: url),
           let player = plugin.makePlayer()
@@ -320,9 +334,11 @@ final class VlcSession {
       plugin.api.player_set_nsobject?(player, Unmanaged.passUnretained(view).toOpaque())
     }
     plugin.emit(viewId: viewId, type: "buffering", value: true)
-    _ = plugin.api.player_play?(player)
-    plugin.emit(viewId: viewId, type: "ready")
-    plugin.emit(viewId: viewId, type: "playing", value: true)
+    let rc = plugin.api.player_play?(player) ?? -1
+    if rc != 0 {
+      plugin.emit(viewId: viewId, type: "error", value: "libVLC play failed")
+      return
+    }
     if let pending = pendingSeekMs {
       pendingSeekMs = nil
       seek(positionMs: pending)
@@ -349,6 +365,7 @@ final class VlcSession {
     add(":drop-late-frames")
     add(":skip-frames")
     add(":no-audio-time-stretch")
+    add(":http-forward-cookies")
 
     let lower = url.lowercased()
     let progressiveTs = lower.contains(".ts") && !lower.contains(".m3u8")
@@ -357,11 +374,19 @@ final class VlcSession {
       add(":avcodec-hw=none")
     }
 
-    if let ua = headers["User-Agent"] ?? headers["user-agent"] {
-      add(":http-user-agent=\(ua)")
-    }
-    if let ref = headers["Referer"] ?? headers["referer"] {
-      add(":http-referrer=\(ref)")
+    // Adaptive HLS needs Origin/Cookie on every segment — not just UA/Referer.
+    for (key, value) in headers {
+      guard !value.isEmpty else { continue }
+      switch key.lowercased() {
+      case "user-agent":
+        add(":http-user-agent=\(value)")
+      case "referer", "referrer":
+        add(":http-referrer=\(value)")
+      case "cookie":
+        add(":http-header=Cookie: \(value)")
+      default:
+        add(":http-header=\(key): \(value)")
+      }
     }
   }
 
@@ -393,9 +418,52 @@ final class VlcSession {
 
   private func startProgressTimer() {
     progressTimer?.invalidate()
-    progressTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
-      self?.emitProgressNow()
+    progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+      self?.pollStateAndProgress()
     }
+    // First tick soon — adaptive demux can fail before the first 250ms.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.pollStateAndProgress()
+    }
+  }
+
+  private func pollStateAndProgress() {
+    guard let plugin, let player else { return }
+    if let getState = plugin.api.player_get_state {
+      let state = getState(player)
+      if state != lastState {
+        lastState = state
+        switch state {
+        case 1, 2: // Opening, Buffering
+          plugin.emit(viewId: viewId, type: "buffering", value: true)
+        case 3: // Playing
+          if !emittedReady {
+            emittedReady = true
+            plugin.emit(viewId: viewId, type: "ready")
+          }
+          plugin.emit(viewId: viewId, type: "buffering", value: false)
+          plugin.emit(viewId: viewId, type: "playing", value: true)
+        case 4: // Paused
+          plugin.emit(viewId: viewId, type: "playing", value: false)
+        case 7: // Error
+          if !errorEmitted {
+            errorEmitted = true
+            plugin.emit(viewId: viewId, type: "error", value: "libVLC playback error")
+          }
+        default:
+          break
+        }
+      }
+      // Stuck opening/buffering with no progress → surface after ~8s.
+      if (state == 1 || state == 2) && !emittedReady && !errorEmitted {
+        let pos = plugin.api.player_get_time?(player) ?? -1
+        if pos < 0, let started = openStartedAt, Date().timeIntervalSince(started) > 8 {
+          errorEmitted = true
+          plugin.emit(viewId: viewId, type: "error", value: "libVLC demux timeout")
+        }
+      }
+    }
+    emitProgressNow()
   }
 
   private func emitProgressNow() {
@@ -414,6 +482,7 @@ final class VlcSession {
     progressTimer?.invalidate()
     progressTimer = nil
     pendingSeekMs = nil
+    openStartedAt = nil
     if let player {
       plugin?.api.player_stop?(player)
       plugin?.api.player_release?(player)

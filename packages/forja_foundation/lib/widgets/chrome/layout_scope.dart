@@ -59,10 +59,11 @@ class LayoutScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(LayoutScope oldWidget) {
+    // Do not compare [focusEdge] — parent rebuilds pass a new closure every
+    // time; that forced every LayoutScope dependent to rebuild on any setState.
     return !mapEquals(selections, oldWidget.selections) ||
         !mapEquals(widgetSpecs, oldWidget.widgetSpecs) ||
-        tabId != oldWidget.tabId ||
-        focusEdge != oldWidget.focusEdge;
+        tabId != oldWidget.tabId;
   }
 }
 

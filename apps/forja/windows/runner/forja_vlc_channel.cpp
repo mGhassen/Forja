@@ -38,6 +38,7 @@ using FnAudioSetVolume = int (*)(libvlc_media_player_t*, int);
 using FnPlayerSetTime = int (*)(libvlc_media_player_t*, int64_t);
 using FnPlayerGetTime = int64_t (*)(libvlc_media_player_t*);
 using FnPlayerGetLength = int64_t (*)(libvlc_media_player_t*);
+using FnPlayerGetState = int (*)(libvlc_media_player_t*);
 using FnVideoSetFormat = void (*)(libvlc_media_player_t*, const char*, unsigned,
                                   unsigned, unsigned);
 using FnVideoSetCallbacks = void (*)(
@@ -62,6 +63,7 @@ struct VlcApi {
   FnPlayerSetTime player_set_time = nullptr;
   FnPlayerGetTime player_get_time = nullptr;
   FnPlayerGetLength player_get_length = nullptr;
+  FnPlayerGetState player_get_state = nullptr;
   FnVideoSetFormat video_set_format = nullptr;
   FnVideoSetCallbacks video_set_callbacks = nullptr;
 
@@ -106,6 +108,8 @@ struct VlcApi {
         GetProcAddress(module, "libvlc_media_player_get_time"));
     player_get_length = reinterpret_cast<FnPlayerGetLength>(
         GetProcAddress(module, "libvlc_media_player_get_length"));
+    player_get_state = reinterpret_cast<FnPlayerGetState>(
+        GetProcAddress(module, "libvlc_media_player_get_state"));
     video_set_format = reinterpret_cast<FnVideoSetFormat>(
         GetProcAddress(module, "libvlc_video_set_format"));
     video_set_callbacks = reinterpret_cast<FnVideoSetCallbacks>(
@@ -133,6 +137,10 @@ struct VlcSession {
   std::atomic<bool> progress_running{false};
   std::thread progress_thread;
   int64_t pending_seek_ms = -1;
+  bool emitted_ready = false;
+  bool error_emitted = false;
+  int last_state = -1;
+  ULONGLONG open_started_ms = 0;
 
   std::mutex mu;
   std::vector<uint8_t> front;
@@ -203,6 +211,10 @@ struct VlcSession {
     }
     player = nullptr;
     pending_seek_ms = -1;
+    emitted_ready = false;
+    error_emitted = false;
+    last_state = -1;
+    open_started_ms = 0;
   }
 };
 
@@ -251,6 +263,48 @@ void VlcSession::EmitProgress() {
       !api->player_get_length) {
     return;
   }
+  if (api->player_get_state) {
+    const int state = api->player_get_state(player);
+    if (state != last_state) {
+      last_state = state;
+      switch (state) {
+        case 1:  // Opening
+        case 2:  // Buffering
+          channel->Emit(view_id, "buffering", flutter::EncodableValue(true));
+          break;
+        case 3:  // Playing
+          if (!emitted_ready) {
+            emitted_ready = true;
+            channel->Emit(view_id, "ready");
+          }
+          channel->Emit(view_id, "buffering", flutter::EncodableValue(false));
+          channel->Emit(view_id, "playing", flutter::EncodableValue(true));
+          break;
+        case 4:  // Paused
+          channel->Emit(view_id, "playing", flutter::EncodableValue(false));
+          break;
+        case 7:  // Error
+          if (!error_emitted) {
+            error_emitted = true;
+            channel->Emit(view_id, "error",
+                          flutter::EncodableValue("libVLC playback error"));
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    if ((state == 1 || state == 2) && !emitted_ready && !error_emitted &&
+        open_started_ms != 0) {
+      const int64_t pos = api->player_get_time(player);
+      if (pos < 0 &&
+          (GetTickCount64() - open_started_ms) > 8000) {
+        error_emitted = true;
+        channel->Emit(view_id, "error",
+                      flutter::EncodableValue("libVLC demux timeout"));
+      }
+    }
+  }
   const int64_t pos = api->player_get_time(player);
   const int64_t len = api->player_get_length(player);
   if (pos < 0 && len < 0) return;
@@ -263,7 +317,7 @@ void VlcSession::StartProgress() {
   progress_thread = std::thread([this]() {
     while (progress_running.load()) {
       EmitProgress();
-      Sleep(400);
+      Sleep(250);
     }
   });
 }
@@ -367,15 +421,24 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
             if (hit != args->end()) {
               if (const auto* map =
                       std::get_if<flutter::EncodableMap>(&hit->second)) {
-                auto ua = map->find(flutter::EncodableValue("User-Agent"));
-                if (ua == map->end()) {
-                  ua = map->find(flutter::EncodableValue("user-agent"));
-                }
-                if (ua != map->end()) {
-                  if (const auto* s = std::get_if<std::string>(&ua->second)) {
-                    std::string opt = ":http-user-agent=" + *s;
-                    impl_->api.media_add_option(media, opt.c_str());
+                impl_->api.media_add_option(media, ":http-forward-cookies");
+                for (const auto& entry : *map) {
+                  const auto* key = std::get_if<std::string>(&entry.first);
+                  const auto* val = std::get_if<std::string>(&entry.second);
+                  if (!key || !val || val->empty()) continue;
+                  std::string lower = *key;
+                  for (auto& c : lower) c = static_cast<char>(::tolower(c));
+                  std::string opt;
+                  if (lower == "user-agent") {
+                    opt = ":http-user-agent=" + *val;
+                  } else if (lower == "referer" || lower == "referrer") {
+                    opt = ":http-referrer=" + *val;
+                  } else if (lower == "cookie") {
+                    opt = ":http-header=Cookie: " + *val;
+                  } else {
+                    opt = ":http-header=" + *key + ": " + *val;
                   }
+                  impl_->api.media_add_option(media, opt.c_str());
                 }
               }
             }
@@ -389,14 +452,22 @@ ForjaVlcChannel::ForjaVlcChannel(flutter::BinaryMessenger* messenger,
           impl_->api.player_set_media(session->player, media);
           impl_->api.media_release(media);
           impl_->Emit(view_id, "buffering", flutter::EncodableValue(true));
-          impl_->api.player_play(session->player);
+          session->emitted_ready = false;
+          session->error_emitted = false;
+          session->last_state = -1;
+          session->open_started_ms = GetTickCount64();
+          const int play_rc = impl_->api.player_play(session->player);
+          if (play_rc != 0) {
+            impl_->Emit(view_id, "error",
+                        flutter::EncodableValue("libVLC play failed"));
+            result->Success();
+            return;
+          }
           if (session->pending_seek_ms >= 0 && impl_->api.player_set_time) {
             impl_->api.player_set_time(session->player, session->pending_seek_ms);
             session->pending_seek_ms = -1;
           }
           session->StartProgress();
-          impl_->Emit(view_id, "ready");
-          impl_->Emit(view_id, "playing", flutter::EncodableValue(true));
           result->Success();
           return;
         }

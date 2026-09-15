@@ -38,15 +38,18 @@ Map<String, dynamic> packChromeFeedParams(
   }
 
   injectMenu('kindMenu', 'kind');
-  // Client-side kind filter for IPTV cats / Live sports — also pass categoryId.
+  // Kind selection → categoryId for any kindMenu list (IPTV cats, etc.).
+  // sport / sportFilter only when this list is Live Sports (has horizonMenu).
   final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
   if (kindMenu.isNotEmpty) {
     final kind = scope?.selectedId(kindMenu);
     if (kind != null && kind.isNotEmpty && kind != 'all') {
       params['categoryId'] = kind;
-      params['sport'] = kind;
-      // Live Sports pack reads sportFilter (not sport).
-      params['sportFilter'] = kind;
+      final horizonMenu = (listSpec['horizonMenu'] ?? '').toString().trim();
+      if (horizonMenu.isNotEmpty) {
+        params['sport'] = kind;
+        params['sportFilter'] = kind;
+      }
     }
   }
 
@@ -62,11 +65,9 @@ Map<String, dynamic> packChromeFeedParams(
   final q = (chrome?.eventQuery ?? '').trim();
   if (q.isNotEmpty) params['q'] = q;
 
-  final refresh = chrome?.refreshEpoch ?? 0;
-  if (refresh > 0) {
-    params['refresh'] = refresh;
-    params['force'] = true;
-  }
+  // Do NOT put force/refresh here. refreshEpoch already busts PackLoadedPaint's
+  // selection epoch; a permanent force:true wiped live_sports.feed on every
+  // sport/horizon change after the user tapped Refresh once.
 
   final filters = catalogChromeFilters(tabId: tabId, pluginId: pluginId);
   return catalogParamsWithFilters(params, filters: filters);

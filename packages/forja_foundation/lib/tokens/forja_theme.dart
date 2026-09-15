@@ -6,8 +6,8 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 /// Prefer [ForjaShellColors] / [ForjaThemeExtension] for new UI.
 /// [ThemeData] entry is [forjaThemeData] only — do not add a second factory here.
 abstract final class DesignTokens {
-  static const bgDark = Color(0xFF141414);
-  static const bgCard = Color(0xFF1C1C1C);
+  static const bgDark = ForjaShellColors.bgDark;
+  static const bgCard = ForjaShellColors.surfaceElevated;
   static const primary = ForjaShellColors.brandGreen;
   static const primaryDim = Color(0xFF17C972);
   static const accent = Color(0xFF9CA3AF);

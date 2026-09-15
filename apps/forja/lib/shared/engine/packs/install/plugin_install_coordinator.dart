@@ -46,6 +46,8 @@ class PluginInstallProgress {
 
   PluginInstallPhase get phase {
     final lower = label.toLowerCase();
+    // Explicit terminal labels only — do not treat fraction==1 as "ready"
+    // (that flashed green between packs during Reload all).
     if (lower.startsWith('ready') || lower.contains('plugins ready')) {
       return PluginInstallPhase.ready;
     }
@@ -55,7 +57,6 @@ class PluginInstallProgress {
         (completedSteps == 0 && fraction <= 0)) {
       return PluginInstallPhase.loading;
     }
-    if (fraction >= 1.0) return PluginInstallPhase.ready;
     return PluginInstallPhase.installing;
   }
 
@@ -498,7 +499,7 @@ class PluginInstallCoordinator {
       completed++;
       _setProgress(
         PluginInstallProgress(
-          label: job.isUpdate ? 'Ready: ${pack.name}' : 'Installed ${pack.name}',
+          label: job.isUpdate ? 'Updated ${pack.name}' : 'Installed ${pack.name}',
           manifestUrl: url,
           sourceUrl: url,
           completedSteps: completed,
@@ -509,10 +510,10 @@ class PluginInstallCoordinator {
     }
 
     if (installedNames.isNotEmpty) {
-      // Drop the progress card before the result toast — same chrome/column
-      // made them look like two stacked toasts.
-      progress.value = null;
+      // Keep the progress card while the result toast stacks under it
+      // (same column — do not clear first or they fight over one slot).
       await notifyCloudPacksInstalled(installedNames);
+      progress.value = null;
     }
 
     await syncTorrentSearchCatalog();

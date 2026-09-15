@@ -27,7 +27,7 @@ class ForjaThemeExtension extends ThemeExtension<ForjaThemeExtension> {
         textSecondary: ForjaShellColors.textSecondary,
         borderSubtle: ForjaShellColors.borderSubtle,
         surfaceElevated: ForjaShellColors.surfaceElevated,
-        bgDark: Color(0xFF141414),
+        bgDark: ForjaShellColors.bgDark,
         spaceSm: 8,
         spaceMd: 16,
         spaceLg: 24,

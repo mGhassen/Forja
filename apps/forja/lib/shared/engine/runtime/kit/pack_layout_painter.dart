@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
+import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -18,6 +20,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
 
@@ -54,11 +57,17 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   int _refreshEpoch = 0;
   String _viewStyle = '';
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
-  Map<String, dynamic>? _selectedListItem;
+  final ValueNotifier<Map<String, dynamic>?> _selectedListItem =
+      ValueNotifier<Map<String, dynamic>?>(null);
   bool _layoutRtl = false;
   String? _error;
   bool _loading = true;
   final ScrollController _scroll = ScrollController();
+
+  Set<String> _eagerLoadKeys = const {};
+  Set<String> _pageFeedRailIds = const {};
+  Future<Map<String, List<dynamic>>>? _pageFeedFuture;
+  Listenable? _filterListenable;
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -77,6 +86,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   void initState() {
     super.initState();
     _scroll.addListener(_publishScroll);
+    PluginRegistry.hubFeedEpoch.addListener(_onHubFeedEpoch);
     unawaited(_loadPage());
   }
 
@@ -93,14 +103,37 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   @override
   void dispose() {
+    _filterListenable?.removeListener(_onChromeFiltersChanged);
+    PluginRegistry.hubFeedEpoch.removeListener(_onHubFeedEpoch);
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
+    _selectedListItem.dispose();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
       ShellBus.hubScrollOffsetFor(tab).value = 0;
     }
     super.dispose();
+  }
+
+  void _rebindChromeFilters() {
+    _filterListenable?.removeListener(_onChromeFiltersChanged);
+    _filterListenable = catalogChromeFilterListenable(_pageKey);
+    _filterListenable?.addListener(_onChromeFiltersChanged);
+  }
+
+  void _onChromeFiltersChanged() {
+    if (!mounted || _pageFeedRailIds.isEmpty) return;
+    setState(() {
+      _pageFeedFuture = _fetchPageFeed(forceRefresh: false);
+    });
+  }
+
+  void _onHubFeedEpoch() {
+    if (!mounted) return;
+    if (!PluginRegistry.hubFeedEpochTouches(widget.pluginId)) return;
+    // Soft reload — keep painted rails while pack settings / scripts refresh.
+    unawaited(_loadPage(force: true, keepPainted: true));
   }
 
   void _publishScroll() {
@@ -113,7 +146,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Future<void> onShellTabRefresh({required bool force}) =>
       _loadPage(force: force);
 
-  Future<void> _loadPage({bool force = false}) async {
+  Future<void> _loadPage({bool force = false, bool keepPainted = false}) async {
     final action = _pageAction;
     if (action.isEmpty) {
       if (!mounted) return;
@@ -126,7 +159,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
 
-    final soft = _widgets.isNotEmpty && !force;
+    final soft = keepPainted || (_widgets.isNotEmpty && !force);
     if (!soft) {
       setState(() {
         _loading = true;
@@ -189,10 +222,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final data = envelope.data!;
     final pages = data['pages'];
     var widgets = <Map<String, dynamic>>[];
+    Map<String, dynamic>? pageMap;
     if (pages is Map && pages.isNotEmpty) {
       final page = pages[_pageKey] ?? pages.values.first;
       if (page is Map) {
-        final raw = page['widgets'];
+        pageMap = Map<String, dynamic>.from(page);
+        final raw = pageMap['widgets'];
         if (raw is List) {
           widgets = [
             for (final w in raw)
@@ -210,13 +245,24 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
     }
 
+    final eager = _firstPaintEagerKeys(widgets);
+    final feedIds = _feedRailIdsForPage(pageMap, widgets);
+    Future<Map<String, List<dynamic>>>? feedFuture;
+    if (feedIds.isNotEmpty) {
+      feedFuture = _fetchPageFeed(forceRefresh: force);
+    }
+
     setState(() {
       _loading = false;
       _error = null;
       _widgets = widgets;
       _layoutRtl = catalogLayoutIsRtl(data);
+      _eagerLoadKeys = eager;
+      _pageFeedRailIds = feedIds;
+      _pageFeedFuture = feedFuture;
       initLayoutTabSelections(_layoutSelections, widgets);
     });
+    _rebindChromeFilters();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.syncFromLayout(
@@ -227,6 +273,82 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       );
     }
     markShellTabFresh();
+  }
+
+  Set<String> _firstPaintEagerKeys(List<Map<String, dynamic>> widgets) {
+    final out = <String>{};
+    String? bleed;
+    for (final w in widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type == LayoutTypes.continueWatching) break;
+      if (type == LayoutTypes.verticalFilters || type == LayoutTypes.mood) {
+        continue;
+      }
+      final id = (w['id'] ?? '').toString().trim();
+      final rail = (w['rail'] ?? '').toString().trim();
+      if (id.isNotEmpty) out.add(id);
+      if (rail.isNotEmpty) out.add(rail);
+      if (type == LayoutTypes.hero) {
+        final b = (w['bleed'] ?? '').toString().trim();
+        if (b.isNotEmpty) bleed = b;
+      }
+    }
+    if (bleed != null) out.add(bleed);
+    return out;
+  }
+
+  Set<String> _feedRailIdsForPage(
+    Map<String, dynamic>? pageMap,
+    List<Map<String, dynamic>> widgets,
+  ) {
+    if (pageMap == null || pageMap['feed'] != true) return const {};
+    final declared = catalogLayoutFeedRailIds(pageMap);
+    if (declared.isNotEmpty) return declared;
+    // Legacy feed pages: every non-mood/because rail with a load is batched.
+    final out = <String>{};
+    for (final w in widgets) {
+      final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
+      if (type == LayoutTypes.mood ||
+          type == LayoutTypes.because ||
+          type == LayoutTypes.continueWatching ||
+          type == LayoutTypes.verticalFilters) {
+        continue;
+      }
+      final load = packLoadSpec(w['load']);
+      if (load == null || load.action != 'rail') continue;
+      final rail = (load.params['rail'] ?? w['rail'] ?? '').toString().trim();
+      if (rail.isNotEmpty) out.add(rail);
+    }
+    return out;
+  }
+
+  Future<Map<String, List<dynamic>>> _fetchPageFeed({
+    required bool forceRefresh,
+  }) async {
+    final envelope = await packOpaqueRun(
+      pluginId: widget.pluginId,
+      packSourceUrl: widget.packSourceUrl,
+      action: 'feed',
+      params: catalogParamsWithFilters(
+        const {},
+        filters: catalogChromeFilters(
+          tabId: widget.tabId,
+          pluginId: widget.pluginId,
+        ),
+      ),
+      forceRefresh: forceRefresh,
+    );
+    if (!envelope.ok) return const {};
+    final rails = envelope.data?['rails'];
+    if (rails is! Map) return const {};
+    final out = <String, List<dynamic>>{};
+    for (final e in rails.entries) {
+      final key = e.key.toString();
+      final items = e.value;
+      if (items is! List) continue;
+      out[key] = List<dynamic>.from(items);
+    }
+    return out;
   }
 
   void _onLayoutSelect(String widgetId, String value, {required bool toggle}) {
@@ -251,14 +373,21 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),
       ),
       selectedListItem: _selectedListItem,
+      shellTabVisible: shellTabVisible,
+      eagerLoadKeys: _eagerLoadKeys,
+      pageFeedRailIds: _pageFeedRailIds,
+      pageFeedFuture: _pageFeedFuture,
       onEventQuery: (q) {
         if (_eventQuery == q) return;
         setState(() => _eventQuery = q);
       },
       onBumpRefresh: () {
+        _selectedListItem.value = null;
         setState(() {
           _refreshEpoch++;
-          _selectedListItem = null;
+          if (_pageFeedRailIds.isNotEmpty) {
+            _pageFeedFuture = _fetchPageFeed(forceRefresh: true);
+          }
         });
         unawaited(onShellTabRefresh(force: true));
       },
@@ -282,7 +411,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         setState(() => _dynamicBarItems[barId] = items);
       },
       onSelectListItem: (item) {
-        setState(() => _selectedListItem = item);
+        _selectedListItem.value = item;
       },
       child: LayoutScope(
         selections: Map<String, String>.unmodifiable(
@@ -302,14 +431,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading && _widgets.isEmpty) {
-      return const ColoredBox(
-        color: ForjaShellColors.surfaceElevated,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
+      return _hubPageLoadingSkeleton(context);
     }
     if (_error != null && _widgets.isEmpty) {
       return ColoredBox(
-        color: ForjaShellColors.surfaceElevated,
+        color: ForjaShellColors.bgDark,
         child: ShellErrorRetryPanel(
           message: _error!,
           onRetry: () => unawaited(onShellTabRefresh(force: true)),
@@ -533,7 +659,7 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return _hubPageLoadingSkeleton(context);
     }
     final id = _pluginId?.trim() ?? '';
     if (id.isEmpty) {
@@ -545,6 +671,26 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
       packSourceUrl: _packSourceUrl,
     );
   }
+}
+
+/// Pre-wipe light full-page skeleton (hero + continue + poster rows).
+Widget _hubPageLoadingSkeleton(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final compact = size.width < ShellTokens.heroDesktopMinBodyWidth;
+  final heroH = homeCinematicHeroBodyHeight(
+    screenHeight: size.height,
+    compact: compact,
+    pageBottomBleed: true,
+  );
+  return ColoredBox(
+    color: ForjaShellColors.bgDark,
+    child: CustomScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: homeHubLoadingSlivers(
+        heroShimmer: homeCinematicHeroShimmer(height: heroH),
+      ),
+    ),
+  );
 }
 
 /// Backward-compatible aliases while call sites migrate.

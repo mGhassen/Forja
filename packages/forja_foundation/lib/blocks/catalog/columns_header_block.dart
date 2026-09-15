@@ -40,6 +40,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     this.onActionSelect,
     this.onSideSelect,
     this.onItemTap,
+    this.wrapBody,
   });
 
   factory ColumnsHeaderBlock.fromProps(
@@ -50,6 +51,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onSideSelect,
     void Function(Map<String, dynamic> item)? onItemTap,
+    Widget Function(Widget body)? wrapBody,
   }) {
     return ColumnsHeaderBlock(
       actions: propsActionMaps(props),
@@ -70,6 +72,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
       onActionSelect: onActionSelect,
       onSideSelect: onSideSelect,
       onItemTap: onItemTap,
+      wrapBody: wrapBody,
     );
   }
 
@@ -92,9 +95,12 @@ class ColumnsHeaderBlock extends StatelessWidget {
   final ValueChanged<String>? onSideSelect;
   final void Function(Map<String, dynamic> item)? onItemTap;
 
+  /// Host wrap below the top bar (e.g. Portals side panel over cats + grid).
+  final Widget Function(Widget body)? wrapBody;
+
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? ForjaShellColors.surfaceElevated;
+    final bg = backgroundColor ?? ForjaShellColors.bgDark;
     final header = CatalogTopChrome(
       actions: actions,
       selections: actionSelections,
@@ -118,7 +124,7 @@ class ColumnsHeaderBlock extends StatelessWidget {
           cardKind: 'poster',
         );
 
-    final row = Row(
+    Widget row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (sideOnLeading) ...[
@@ -132,6 +138,8 @@ class ColumnsHeaderBlock extends StatelessWidget {
         ],
       ],
     );
+    final wrap = wrapBody;
+    if (wrap != null) row = wrap(row);
 
     return ColoredBox(
       color: bg,

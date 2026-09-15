@@ -79,6 +79,18 @@ class PortalListPanel extends StatelessWidget {
     if (body != null) return body!;
     final list = items!;
     final build = itemBuilder!;
+    if (list.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No portals yet.\nTap + to add one.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.4),
+          ),
+        ),
+      );
+    }
     return ListView.builder(
       itemCount: list.length,
       itemBuilder: (context, i) => build(context, list[i], i),

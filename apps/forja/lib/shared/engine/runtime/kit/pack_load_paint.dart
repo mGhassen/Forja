@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 
 
 /// Runs an opaque pack [action], merges envelope fields into [fallbackSpec],
@@ -37,6 +38,7 @@ class PackLoadedPaint extends StatefulWidget {
 class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Future<MetaEnvelope>? _future;
   String _scopeEpoch = '';
+  int _appliedRefreshEpoch = 0;
 
   /// Soft memo so rails don't re-hit the pack when chrome epoch is unchanged.
   static final Map<String, Future<MetaEnvelope>> _memo = {};
@@ -72,13 +74,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
   }
 
-  String _selectionEpoch() => packChromeSelectionEpoch(
+  String _selectionEpoch() {
+    final chrome = PackChromeScope.maybeOf(context);
+    return [
+      packChromeSelectionEpoch(
         context,
         listSpec: widget.fallbackSpec,
         tabId: widget.tabId,
-      );
+      ),
+      '${chrome?.refreshEpoch ?? 0}',
+      '${identityHashCode(chrome?.pageFeedFuture)}',
+    ].join('|');
+  }
 
   Future<MetaEnvelope> _run() {
+    final chrome = PackChromeScope.maybeOf(context);
     final params = packChromeFeedParams(
       context,
       baseParams: widget.params,
@@ -86,13 +96,50 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       tabId: widget.tabId,
       pluginId: widget.pluginId,
     );
-    final force = params['force'] == true || params['refresh'] != null;
+    // One-shot force on Refresh only — never sticky across filter changes.
+    final refreshEpoch = chrome?.refreshEpoch ?? 0;
+    final force = refreshEpoch > _appliedRefreshEpoch ||
+        params['force'] == true ||
+        widget.params['force'] == true;
+    if (refreshEpoch > _appliedRefreshEpoch) {
+      _appliedRefreshEpoch = refreshEpoch;
+    }
+    final runParams = force
+        ? <String, dynamic>{...params, 'force': true}
+        : params;
+    final rail =
+        (runParams['rail'] ?? widget.params['rail'] ?? '').toString().trim();
+    final feedFuture = chrome?.pageFeedFuture;
+    if (!force &&
+        feedFuture != null &&
+        widget.action == 'rail' &&
+        chrome!.isPageFeedRail(rail)) {
+      final key = [
+        widget.pluginId,
+        'pageFeed',
+        rail,
+        widget.packSourceUrl ?? '',
+        _scopeEpoch,
+      ].join('|');
+      final hit = _memo[key];
+      if (hit != null) return hit;
+      final future = feedFuture.then((rails) {
+        final items = rails[rail] ?? const <dynamic>[];
+        return MetaEnvelope(
+          ok: true,
+          action: 'rail',
+          data: {'items': items},
+        );
+      });
+      _memo[key] = future;
+      return future;
+    }
     final key = [
       widget.pluginId,
       widget.action,
       widget.packSourceUrl ?? '',
       _scopeEpoch,
-      _stableParamsKey(params),
+      _stableParamsKey(runParams),
     ].join('|');
     if (!force) {
       final hit = _memo[key];
@@ -101,8 +148,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final future = packOpaqueRun(
       pluginId: widget.pluginId,
       action: widget.action,
-      params: params,
+      params: runParams,
       packSourceUrl: widget.packSourceUrl,
+      forceRefresh: force,
     );
     _memo[key] = future;
     if (_memo.length > 48) {
@@ -132,21 +180,13 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Widget build(BuildContext context) {
     final future = _future;
     if (future == null) {
-      // Finite height — CatalogBody mounts this in SliverToBoxAdapter
-      // (unbounded max height). SizedBox.expand → infinite constraints crash.
-      return const SizedBox(
-        height: 120,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
+      return _sectionLoadingSkeleton();
     }
     return FutureBuilder<MetaEnvelope>(
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 120,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          );
+          return _sectionLoadingSkeleton();
         }
         final env = snap.data;
         if (env == null || !env.ok) {
@@ -168,6 +208,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (data['widgets'] is List) merged['widgets'] = data['widgets'];
         if (data['paint'] is Map) merged['paint'] = data['paint'];
         if (data['heading'] != null) merged['heading'] = data['heading'];
+        if (data['kinds'] is List) merged['kinds'] = data['kinds'];
+        if (data['categories'] is List) {
+          merged['categories'] = data['categories'];
+        }
         if (data['seedPoster'] != null) {
           merged['seedPoster'] = data['seedPoster'];
         }
@@ -186,6 +230,36 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (chrome == null) return;
     final barId = (merged['kindMenu'] ?? '').toString().trim();
     if (barId.isEmpty) return;
+
+    // Prefer pack-declared kinds (IPTV catalog categories) over deriving
+    // from visible page items — otherwise the side rail stays on "All".
+    final declared = merged['kinds'] ?? merged['categories'];
+    if (declared is List && declared.isNotEmpty) {
+      final items = <Map<String, dynamic>>[
+        {'id': 'all', 'label': 'All', 'icon': 'grid'},
+      ];
+      final seen = <String>{'all'};
+      for (final raw in declared) {
+        if (raw is! Map) continue;
+        final id = (raw['id'] ?? raw['category_id'] ?? '').toString().trim();
+        if (id.isEmpty || !seen.add(id)) continue;
+        final label = (raw['label'] ?? raw['name'] ?? raw['category_name'] ?? id)
+            .toString()
+            .trim();
+        items.add({
+          'id': id,
+          'label': catalogKitCategoryLabel(id, label: label),
+        });
+      }
+      if (items.length > 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          chrome.onDynamicBarItems(barId, items);
+        });
+        return;
+      }
+    }
+
     final raw = merged['items'];
     if (raw is! List) return;
     final kinds = <String>[];
@@ -226,18 +300,55 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         ? Map<String, dynamic>.from((item['paint'] as Map)['props'] as Map)
         : const <String, dynamic>{};
     for (final key in [
+      item['categoryId'],
       item['kind'],
       item['category'],
       item['sport'],
       props['kind'],
-      props['categoryLabel'],
-      props['category'],
+      props['categoryId'],
       if (item['meta'] is Map) (item['meta'] as Map)['kind'],
-      if (item['meta'] is Map) (item['meta'] as Map)['type'],
+      if (item['meta'] is Map) (item['meta'] as Map)['categoryId'],
     ]) {
       final v = (key ?? '').toString().trim();
-      if (v.isNotEmpty) return v;
+      if (v.isNotEmpty && v != 'iptv' && v != 'movie' && v != 'tv') return v;
     }
     return '';
+  }
+
+  /// Finite-height light skeleton — CatalogBody mounts this in a sliver.
+  Widget _sectionLoadingSkeleton() {
+    final type = (widget.fallbackSpec['type'] ?? '').toString().toLowerCase();
+    if (type.contains('hero')) {
+      return homeCinematicHeroShimmer(height: 420);
+    }
+    if (type.contains('list') || type == 'kit.list') {
+      return homeLoadingShimmer(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            children: [
+              for (var r = 0; r < 3; r++) ...[
+                if (r > 0) const SizedBox(height: 12),
+                Row(
+                  children: [
+                    for (var c = 0; c < 4; c++) ...[
+                      if (c > 0) const SizedBox(width: 12),
+                      homeCardSkeleton(width: 160, height: 100),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return homeLoadingShimmer(
+      homePosterRowSkeleton(
+        topPadding: 12,
+        titleWidth: 140,
+        itemCount: 5,
+      ),
+    );
   }
 }
