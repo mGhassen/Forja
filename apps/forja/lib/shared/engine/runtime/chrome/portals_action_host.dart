@@ -115,11 +115,29 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
   bool _focused = false;
   String _probeKey = '';
 
+  /// Hub open often mounts the chip under the cursor — [MouseRegion] fires
+  /// `onEnter` without a real hover. Wait for pointer exit (or first paint
+  /// with no hover) before treating enter as intent to probe.
+  bool _armHoverProbe = false;
+
   @override
   void initState() {
     super.initState();
     _health = PortalHealthTracker(onChanged: () {
       if (mounted) setState(() {});
+    });
+    // Two frames: MouseTracker often delivers mount-under-cursor enter after
+    // the first paint. Stay disarmed until we're sure the pointer is not on us.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_hovered) {
+        _armHoverProbe = false;
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _armHoverProbe = !_hovered;
+      });
     });
   }
 
@@ -133,8 +151,8 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final key = _probeKey;
     if (key.isEmpty) return;
     final leanback = liveLeanbackOnly(context);
-    // Desktop: hover only — click/focus must not re-probe. TV: focus.
-    final want = leanback ? focused : hovered;
+    // Desktop: intentional hover only — click/focus must not re-probe. TV: focus.
+    final want = leanback ? focused : (hovered && _armHoverProbe);
     if (want) {
       _health.schedule(key, leanback: leanback);
     } else {
@@ -159,9 +177,23 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       if (data != null) {
         label = data.activeLabel;
         hasPortal = data.portals.isNotEmpty;
-        portalKey = data.activeKey;
+        // Never blank the probe key when active is empty — that paints gray
+        // while activeLabel still shows the first portal name.
+        final active = data.activeKey.trim();
+        if (active.isNotEmpty) {
+          portalKey = active;
+        } else {
+          for (final p in data.portals) {
+            if (!p.selected) continue;
+            portalKey = p.id;
+            break;
+          }
+          if (portalKey.isEmpty && data.portals.isNotEmpty) {
+            portalKey = data.portals.first.id;
+          }
+        }
         for (final p in data.portals) {
-          if (p.id != data.activeKey) continue;
+          if (p.id != portalKey) continue;
           seatsUsed = p.activeConnections;
           seatsMax = p.maxConnections;
           break;
@@ -169,15 +201,11 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       }
     }
 
+    // Track key for hover handlers only — do not re-arm probe when vault
+    // summary hydrates under an existing pointer (hub open).
     if (portalKey != _probeKey) {
       if (_probeKey.isNotEmpty) _health.cancel(_probeKey);
       _probeKey = portalKey;
-      if ((_hovered || _focused) && portalKey.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _onActiveChange(hovered: _hovered, focused: _focused);
-        });
-      }
     }
 
     final painted = portalKey.isEmpty
@@ -199,6 +227,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final max = (painted?.maxConnections ?? seatsMax ?? '').trim();
 
     final policy = ShellScope.inputPolicyOf(context);
+    final leanback = liveLeanbackOnly(context);
     return PortalsChip(
       label: label,
       hasPortal: hasPortal,
@@ -209,16 +238,26 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       seatsMax: max.isEmpty ? null : max,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
-        // Toggle only — inventory keepAlive; mutate/Refresh invalidate.
-        ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
+        final opening = !open;
+        ref.read(portalsPanelOpenProvider(key).notifier).state = opening;
+        // Soft refresh — keep painted green/red; update when probe lands.
+        if (opening && _probeKey.isNotEmpty) {
+          _health.schedule(_probeKey, leanback: leanback, force: true);
+        }
       },
       onFocusChange: (focused) {
         _focused = focused;
         _onActiveChange(hovered: _hovered, focused: focused);
       },
       onHoverChange: (hovered) {
-        _hovered = hovered;
-        _onActiveChange(hovered: hovered, focused: _focused);
+        if (!hovered) {
+          _hovered = false;
+          _armHoverProbe = true;
+          _onActiveChange(hovered: false, focused: _focused);
+          return;
+        }
+        _hovered = true;
+        _onActiveChange(hovered: true, focused: _focused);
       },
       interactiveBuilder: ({
         required child,

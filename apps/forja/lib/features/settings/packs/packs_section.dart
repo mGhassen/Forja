@@ -20,7 +20,6 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/shared/engine/packs/install/pack_install_refs.dart';
-import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/features/settings/packs/forja_pack_choice_cards.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -86,12 +85,12 @@ class _SettingsForjaPacksSectionState
     EnginePackUpdateInfo? update,
   }) {
     final key =
-        '${pack.sourceUrl}\0${pack.plugins.length}\0${pack.version}\0'
+        '${pack.sourceUrl}0${pack.plugins.length}0${pack.version}0'
         '${update?.remoteVersion ?? ''}';
     final hit = _deviceStateFutures[key];
     if (hit != null) return hit;
     _deviceStateFutures.removeWhere(
-      (k, _) => k.startsWith('${pack.sourceUrl}\0'),
+      (k, _) => k.startsWith('${pack.sourceUrl}0'),
     );
     final future = resolvePackDeviceState(
       manifestUrl: pack.sourceUrl,

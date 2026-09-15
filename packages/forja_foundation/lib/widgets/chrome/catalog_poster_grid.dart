@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
 /// Computed poster / event-card grid metrics for catalog list chrome.
@@ -104,10 +105,8 @@ class CatalogPosterGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = CustomScrollView(
-      controller: controller,
+      scrollCacheExtent: ScrollCacheExtent.pixels(720), controller: controller,
       physics: physics,
-      // Enough to keep ~2–3 channel-card rows warm for EPG footers.
-      cacheExtent: 720,
       slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(

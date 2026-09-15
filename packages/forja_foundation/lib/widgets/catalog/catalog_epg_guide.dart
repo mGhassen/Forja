@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
@@ -473,12 +474,9 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                     child: Stack(
                       children: [
                         ListView.builder(
-                          controller: _vGrid,
+                          scrollCacheExtent: ScrollCacheExtent.pixels(_kEpgRowH * 12), controller: _vGrid,
                           physics: const ClampingScrollPhysics(),
                           itemExtent: _kEpgRowH,
-                          // Prefetch ~12 rows so scrolling does not drip-load
-                          // one channel at a time.
-                          cacheExtent: _kEpgRowH * 12,
                           itemCount: channels.length,
                           itemBuilder: (_, i) {
                             final ch = channels[i];

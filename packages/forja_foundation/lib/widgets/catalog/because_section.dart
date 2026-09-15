@@ -18,6 +18,9 @@ class BecauseSection extends StatelessWidget {
     this.rail,
     this.trailing,
     this.titlePadding,
+    this.cardWidth,
+    this.cardHeight,
+    this.gap,
     this.onSeeAll,
   }) : assert(items != null || children != null || rail != null);
 
@@ -38,6 +41,11 @@ class BecauseSection extends StatelessWidget {
 
   final Widget? trailing;
   final EdgeInsetsGeometry? titlePadding;
+
+  /// Poster rail card size / gap — omit → [PosterRail] defaults.
+  final double? cardWidth;
+  final double? cardHeight;
+  final double? gap;
   final VoidCallback? onSeeAll;
 
   String get _seedTitle {
@@ -97,7 +105,7 @@ class BecauseSection extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
               if (onSeeAll != null)
                 GestureDetector(
                   onTap: onSeeAll,
@@ -118,6 +126,9 @@ class BecauseSection extends StatelessWidget {
         else
           PosterRail(
             items: children == null ? items : null,
+            itemWidth: cardWidth ?? 120,
+            itemHeight: cardHeight ?? 180,
+            gap: gap,
             children: children,
           ),
       ],

@@ -247,7 +247,7 @@ class BookmarkStore {
       mediaType: aliasMt ?? mediaType,
     );
     final row = <String, dynamic>{
-      if (existing != null) ...existing,
+      ...?existing,
       'uniqueId': uniqueId,
       'pluginId': pluginId,
       'metaOpen': open,
@@ -349,7 +349,7 @@ class BookmarkStore {
     final uid = movieId(tmdbId, mt);
     final existing = resolve(uniqueId: uid, tmdbId: tmdbId, mediaType: mt);
     final row = <String, dynamic>{
-      if (existing != null) ...existing,
+      ...?existing,
       'uniqueId': uid,
       'tmdbId': tmdbId,
       'imdbId': imdbId ?? existing?['imdbId'],

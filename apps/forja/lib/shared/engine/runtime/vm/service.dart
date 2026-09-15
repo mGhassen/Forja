@@ -763,9 +763,9 @@ class EngineService {
 
     final params = <String, dynamic>{
       'magnet': magnet,
-      if (season != null) 'season': season,
-      if (episode != null) 'episode': episode,
-      if (fileIdx != null) 'fileIdx': fileIdx,
+      'season': ?season,
+      'episode': ?episode,
+      'fileIdx': ?fileIdx,
     };
 
     final runtime = EngineRuntime.fork();

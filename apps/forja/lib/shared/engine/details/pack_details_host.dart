@@ -944,7 +944,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           )
         : const <Widget>[];
     final sections = [
-      if (episodePicker != null) episodePicker,
+      ?episodePicker,
       ...packMidSections,
       ...packRecSections,
     ];

@@ -58,7 +58,7 @@ void main() {
     expect(ShellTokens.maxMountedTabsTv, 3);
     expect(ShellTokens.maxMountedTabs, greaterThanOrEqualTo(3));
     expect(ShellTokens.tabStaleDefault.inMinutes, 15);
-    expect(ShellTokens.tabStaleIptv.inMinutes, 10);
+    expect(ShellTokens.tabStaleLive.inMinutes, 10);
   });
 
   testWidgets('ShellTabRefresh shellBlocksEviction defaults false', (tester) async {

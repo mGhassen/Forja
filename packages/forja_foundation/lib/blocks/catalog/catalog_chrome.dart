@@ -143,6 +143,8 @@ class CatalogTopChrome extends StatelessWidget {
     this.title,
     this.actionSlots = const {},
     this.center,
+    this.height,
+    this.padding,
   });
 
   final List<Map<String, dynamic>> actions;
@@ -158,6 +160,10 @@ class CatalogTopChrome extends StatelessWidget {
 
   /// Optional center overlay (feed scrape progress / updated label).
   final Widget? center;
+
+  /// Pack `height` / `pad` — omit → [TopBarActions] ShellTokens defaults.
+  final double? height;
+  final EdgeInsetsGeometry? padding;
 
   static bool _isTrailing(Map<String, dynamic> action) {
     if (action['trailing'] == true) return true;
@@ -404,12 +410,14 @@ class CatalogTopChrome extends StatelessWidget {
       leading: leading,
       trailing: trailing,
       center: center,
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.compactChromeLeadingInset(context),
-        ShellTokens.tabHeaderTopPadding,
-        ShellTokens.bodyHorizontalPadding,
-        4,
-      ),
+      height: height,
+      padding: padding ??
+          EdgeInsets.fromLTRB(
+            ShellTokens.compactChromeLeadingInset(context),
+            ShellTokens.tabHeaderTopPadding,
+            ShellTokens.bodyHorizontalPadding,
+            4,
+          ),
     );
   }
 }

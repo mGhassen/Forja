@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
@@ -697,11 +698,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
         child: ListView.separated(
-          controller: _providerListScroll,
+          scrollCacheExtent: ScrollCacheExtent.pixels(4000), controller: _providerListScroll,
           shrinkWrap: true,
-          // Keep off-screen rows attached so D-pad Up/Down does not skip
-          // unbuilt FocusNodes and jump straight to Cancel / servers.
-          cacheExtent: 4000,
           padding: const EdgeInsets.symmetric(vertical: 6),
           itemCount: _probes.length,
           separatorBuilder: (_, _) => Divider(

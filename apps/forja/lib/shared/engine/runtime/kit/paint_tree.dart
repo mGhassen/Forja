@@ -24,6 +24,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
+import 'package:forja/shared/engine/runtime/kit/paint_foundation_mount.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -298,22 +299,43 @@ class PackPaintTree extends StatelessWidget {
       case 'entryDetails':
         return EntryDetails.fromProps(props, body: kids.isEmpty ? null : body);
       case 'shell':
+        Widget? sideRail;
+        Widget shellBody = body;
+        if (kids.length >= 3) {
+          sideRail = kids[1];
+          shellBody = kids.length == 3
+              ? kids[2]
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: kids.sublist(2),
+                );
+        } else if (kids.length > 1) {
+          shellBody = kids.length == 2
+              ? kids[1]
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: kids.sublist(1),
+                );
+        }
         return ShellBlock.fromProps(
           props,
           topBar: kids.isNotEmpty ? kids.first : null,
-          body: kids.length > 1
-              ? (kids.length == 2
-                  ? kids[1]
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: kids.sublist(1),
-                    ))
-              : body,
+          sideRail: sideRail,
+          body: shellBody,
         );
       case 'empty':
         return EmptyBlock.fromProps(props);
     }
+
+    final foundation = paintFoundationType(
+      context,
+      type: type,
+      props: props,
+      children: kids,
+    );
+    if (foundation != null) return foundation;
 
     final paint = node['paint'];
     if (paint is Map) {
@@ -1066,9 +1088,10 @@ class PackPaintTree extends StatelessWidget {
         heroActionUseFittedBox: metrics.heroActionUseFittedBox,
         heroCompactRightInset: metrics.heroCompactRightInset,
         sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
-        heroHeightFraction: compact
-            ? ShellTokens.heroHeightFractionCompact
-            : ShellTokens.heroHeightFractionDesktop,
+        heroHeightFraction: PackPaintArtifact.packDouble(node['heightFraction']) ??
+            (compact
+                ? ShellTokens.heroHeightFractionCompact
+                : ShellTokens.heroHeightFractionDesktop),
         firstCatalogRowHeight: pageBottomChild == null
             ? 0
             : ShellTokens.homeSectionTitleTop + 180 + 40,
@@ -1740,11 +1763,16 @@ class PackPaintTree extends StatelessWidget {
     final id = (spec['id'] ?? '').toString();
     final selected = scope?.selectedId(id);
     final toggle = spec['toggle'] == true;
+    final pad = PackPaintArtifact.packPad(
+      spec['pad'] ?? spec['padding'],
+      fallback: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+    );
+    final gap = PackPaintArtifact.packDouble(spec['gap']) ?? 8.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: pad,
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: gap,
+        runSpacing: gap,
         children: [
           for (final item in items)
             ForjaShellChip(
@@ -1767,7 +1795,10 @@ class PackPaintTree extends StatelessWidget {
     return CatalogChipBar(
       items: items,
       selectedId: selected,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: PackPaintArtifact.packPad(
+        spec['pad'] ?? spec['padding'],
+        fallback: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      ),
       onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
     );
   }
@@ -1846,6 +1877,10 @@ class PackPaintTree extends StatelessWidget {
     return CatalogChipBar(
       items: [for (final e in items) (id: e.id, label: e.label)],
       selectedId: selected,
+      padding: PackPaintArtifact.packPad(
+        spec['pad'] ?? spec['padding'],
+        fallback: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      ),
       onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
     );
   }
@@ -1901,12 +1936,27 @@ class PackPaintTree extends StatelessWidget {
     final scope = LayoutScope.maybeOf(context);
     final actions = propsActionMaps(spec);
     final selections = _topBarSelections(scope, actions);
+    final height = PackPaintArtifact.packDouble(spec['height']);
+    final padRaw = spec['pad'] ?? spec['padding'];
+    final padding = padRaw == null
+        ? null
+        : PackPaintArtifact.packPad(
+            padRaw,
+            fallback: EdgeInsets.fromLTRB(
+              ShellTokens.compactChromeLeadingInset(context),
+              ShellTokens.tabHeaderTopPadding,
+              ShellTokens.bodyHorizontalPadding,
+              4,
+            ),
+          );
     return CatalogTopChrome(
       actions: actions,
       title: (spec['title'] ?? spec['label'] ?? '').toString(),
       actionSlots: _portalsActionSlots(context, actions: actions),
       selections: selections,
       selectionLabels: _topBarSelectionLabels(selections, actions),
+      height: height,
+      padding: padding,
       onSelect: (actionId, value) {
         _dispatchTopBarAction(
           context,
@@ -2133,6 +2183,8 @@ class _MoodMountState extends State<_MoodMount> {
     final rowHeight =
         PackPaintArtifact.packDouble(widget.spec['rowHeight']) ??
             layout.rowHeight;
+    final chipGap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
+        layout.horizontalGap;
     Widget? results;
     final load = packLoadSpec(widget.spec['load']);
     if (_selectedId != null && load != null) {
@@ -2173,7 +2225,7 @@ class _MoodMountState extends State<_MoodMount> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < chips.length; i++) ...[
-                  if (i > 0) SizedBox(width: layout.horizontalGap),
+                  if (i > 0) SizedBox(width: chipGap),
                   chips[i],
                 ],
               ],
@@ -2271,6 +2323,15 @@ class _BecauseMountState extends State<_BecauseMount> {
                   ctx,
                 );
                 final canShuffle = node['canShuffle'] == true;
+                final cardW = PackPaintArtifact.packDouble(
+                  widget.spec['cardWidth'] ?? node['cardWidth'],
+                );
+                final cardH = PackPaintArtifact.packDouble(
+                  widget.spec['cardHeight'] ?? node['cardHeight'],
+                );
+                final gap = PackPaintArtifact.packDouble(
+                  widget.spec['gap'] ?? node['gap'],
+                );
                 return BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
                       ? null
@@ -2279,6 +2340,9 @@ class _BecauseMountState extends State<_BecauseMount> {
                       ? null
                       : (node['seedPoster'] ?? '').toString(),
                   items: posterItems,
+                  cardWidth: cardW,
+                  cardHeight: cardH,
+                  gap: gap,
                   trailing: canShuffle
                       ? IconButton(
                           onPressed: () => setState(() => _shuffleKey++),

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **21 / 23** acceptance · **2** ⏭️ deferred |
-| **Current slice** | Pack visual props complete · atom mounts deferred |
+| **Progress** | **4 / 4** components · **29 / 30** acceptance · **1** ⏭️ deferred |
+| **Current slice** | Full foundation visual-props inventory mounted · A06 remount note obsolete |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -61,7 +61,23 @@ Pack-overridable look on mounted catalog types. ShellTokens = Forja default when
 | 20 | R112-A20 | mood/continue/because: `rowHeight`, `cardWidth`/`cardHeight`, `gap`, `pad`, `titlePad` — omit → defaults | ✅ |
 | 21 | R112-A21 | kit.list: `gap`, `pad`, `cardKind` — omit → ShellTokens / style-derived kind | ✅ |
 | 22 | R112-A22 | details / matchDetails schema + docs: `enableKenBurns`, `contentScrim`, `height`, (+ match layout keys) — Dart `fromProps` already reads | ✅ |
-| 23 | R112-A23 | Mount more atoms (`Button`/`Badge`/…) as pack `type` — only when a pack needs them | ⏭️ |
+| 23 | R112-A23 | Mount more atoms (`Button`/`Badge`/…) as pack `type` — only when a pack needs them | ✅ |
+
+---
+
+## Acceptance (full inventory slice)
+
+Every foundation inventory class ends `mounted` (props wired) or `shell_forbidden`. Host: `paint_foundation_mount.dart` + PackPaintTree. Schema `statusValues` includes `shell_forbidden`.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 24 | R112-A24 | Mounted layout types: kit chrome height/pad; mood/because gap+card sizes; poster/event size keys; blocks schema catch-up; hero heightFraction; shell railOnLeading | ✅ |
+| 25 | R112-A25 | Component atoms: schema type + PackPaintTree mount via `paintFoundationType` (Button…MoodCircle); Toast forbidden | ✅ |
+| 26 | R112-A26 | Catalog widgets: posterRail, kenBurns, continueCard, eventDenseTile, search helpers, skeletons, … | ✅ |
+| 27 | R112-A27 | Details pieces: detailsHero, playRow, pills, cast/trailers, facts, metaLine, progress, … | ✅ |
+| 28 | R112-A28 | Pack-facing chrome: shellSectionTitle, shellChip, horizontalScroller, sidePanel, portals*, grids; HubTopBar/LogoMenuRail forbidden | ✅ |
+| 29 | R112-A29 | Sources / guide / feedback look props: sourcesPanel, guide panels, frostedPanel, loadingDots, errorRetry, … | ✅ |
+| 30 | R112-A30 | shell_forbidden audit (nav/brand/Toast/TV focus/SettingsPlayer/LayoutScope/EmptyShellFrame) + components.md + checklist | ✅ |
 
 ---
 
@@ -71,8 +87,19 @@ Blocks are **prebuilt composed surfaces** with JSON props (`title`, `backdropUrl
 
 `kit.menu` / `kit.tabs` / `kit.list` / `kit.topBar` / `kit.categoryBar` **mount** in `PackPaintTree`. Remaining IPTV/Live/My List chrome fidelity (selection→feed, dynamic bars, verbs) is [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md), not a blocks remount.
 
-**Visual props:** hero/rail/mood/continue/because/kit.list/details/search may override look via pack JSON. Defaults remain Forja ShellTokens. Atom mounts (`Button`/`Badge`/…) stay deferred (A23) until a pack needs a new `type`.
+**Visual props:** every pack-paintable foundation surface accepts optional JSON look props (omit → ShellTokens / Dart default). Atoms and catalog/details/chrome/sources/guide/feedback widgets mount via `paintFoundationType`. Chassis (nav rail, empty-shell frame, Toast stacking, TV focus policy, playback engines) stays `shell_forbidden`.
+
+**Packs updated:** none (schema + host only).
+
+### Inventory checklist (A30)
+
+| Outcome | Count / notes |
+|---------|----------------|
+| **mounted + wired** | 163 schema rows with pack `type` (layout/blocks/paint + atoms/widgets via `paintFoundationType`) |
+| **shell_forbidden** | 35 — Toast, FocusableTap, TmdbPaintGate, LogoMenuRail, HubTopBar, SettingsPlayerChrome, LayoutScope, ShellPaintScope, TvSearchBrowseOverlay, ListLetterJumpScope, EmptyShellFrame, ForjaLogo, AnimatedLogo, ForjaProfileAvatar, splash/TV/settings/details-pill internals, EntryDetailsChrome/DetailsScreen/DetailsPageBlock |
+| **N/A** | `vertical_filters` product behavior → issue 279; playback engines / unlock internals (not DS paint) |
+| **not_mounted** | **0** |
 
 ## Out of scope
 
-Product-named catalog blocks; `SourcesPanelChrome`. Chrome **behavior** parity is issue 279 (not this RFC). Navbar / empty-shell frame / TV focus policy — never pack-styled.
+Product-named catalog blocks. Chrome **behavior** parity is issue 279 (not this RFC). Navbar / empty-shell frame / TV focus policy / playback engines — never pack-styled. Sources/guide **look** props are in scope (A29); host still owns panel orchestration.

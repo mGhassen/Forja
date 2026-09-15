@@ -27,6 +27,8 @@ linter:
 analyzer:
   exclude:
     - tool/**
+    # Dead vault — not a package; README says do not analyze/ship.
+    - apps/archive/**
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

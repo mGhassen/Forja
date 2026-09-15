@@ -281,6 +281,28 @@ abstract final class PackPaintArtifact {
     return double.tryParse(raw.toString());
   }
 
+  /// Pack `pad` / `padding`: number → horizontal (keeps [fallback] vertical);
+  /// `{ l|left, t|top, r|right, b|bottom }` map; null → [fallback].
+  static EdgeInsets packPad(
+    Object? raw, {
+    required EdgeInsets fallback,
+  }) {
+    if (raw == null) return fallback;
+    if (raw is num) {
+      final h = raw.toDouble();
+      return EdgeInsets.fromLTRB(h, fallback.top, h, fallback.bottom);
+    }
+    if (raw is Map) {
+      return EdgeInsets.fromLTRB(
+        packDouble(raw['l'] ?? raw['left']) ?? fallback.left,
+        packDouble(raw['t'] ?? raw['top']) ?? fallback.top,
+        packDouble(raw['r'] ?? raw['right']) ?? fallback.right,
+        packDouble(raw['b'] ?? raw['bottom']) ?? fallback.bottom,
+      );
+    }
+    return fallback;
+  }
+
   /// Pack `titlePad`: number → both edges; `{ top, bottom }` map; null → density defaults.
   static ({double top, double bottom}) titlePadInsets(
     Object? raw,

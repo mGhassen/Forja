@@ -118,11 +118,11 @@ class ContinueSection extends StatelessWidget {
         ),
         PosterRail(
           items: children == null ? items : null,
-          children: children,
           itemWidth: cardWidth,
           itemHeight: cardHeight,
           height: cardHeight,
           padding: listPadding,
+          children: children,
         ),
       ],
     );

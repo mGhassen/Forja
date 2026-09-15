@@ -21,8 +21,6 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart'
-    show ShellPaintEnsureVisible;
 const _kEpisodeTvTabId = 'player';
 const _kEpisodeTvListRowId = 'episode-list';
 

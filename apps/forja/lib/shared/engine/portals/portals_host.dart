@@ -521,7 +521,10 @@ class PortalHealthTracker {
       _inFlight.contains(portalKey) || _debounce.containsKey(portalKey);
 
   /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
-  /// [force] (Refresh).
+  /// [force] (panel open soft-refresh / Refresh).
+  ///
+  /// [force] starts immediately and does **not** clear last painted health —
+  /// UI keeps green/red until the new result lands.
   void schedule(
     String portalKey, {
     required bool leanback,
@@ -531,6 +534,10 @@ class PortalHealthTracker {
     if (_inFlight.contains(portalKey)) return;
     if (!force && _isFresh(portalKey)) return;
     cancel(portalKey);
+    if (force) {
+      unawaited(_run(portalKey));
+      return;
+    }
     _notify();
     _debounce[portalKey] = Timer(
       leanback ? tvDelay : hoverDelay,

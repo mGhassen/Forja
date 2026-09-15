@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/details/kit_list_entry.dart';
 import 'package:forja/shared/player/sources/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -70,9 +69,7 @@ class KitEntryDetailsPage extends StatelessWidget {
     return EntryDetails(
       title: title,
       onBack: () => maybePopShellOverlay(),
-      body: host == null
-          ? null
-          : host.buildSidePanel(
+      body: host?.buildSidePanel(
               context: context,
               entry: entry,
               layoutWidgets: layoutWidgets,

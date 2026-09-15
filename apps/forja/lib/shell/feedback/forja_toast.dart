@@ -743,7 +743,7 @@ class ForjaToastChrome extends StatelessWidget {
                   ],
                 ),
               ),
-              if (bottom != null) bottom!,
+              ?bottom,
             ],
           ),
         ),

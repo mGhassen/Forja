@@ -26,6 +26,7 @@ class PosterRail extends StatelessWidget {
     this.itemHeight = 180,
     this.height,
     this.padding,
+    this.gap,
   }) : assert(items != null || children != null);
 
   final List<PosterItem>? items;
@@ -34,6 +35,9 @@ class PosterRail extends StatelessWidget {
   final double itemHeight;
   final double? height;
   final EdgeInsetsGeometry? padding;
+
+  /// Inter-item gap — omit → theme `spaceMd`.
+  final double? gap;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,8 @@ class PosterRail extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: padding ?? EdgeInsets.symmetric(horizontal: theme.spaceLg),
         itemCount: listChildren.length,
-        separatorBuilder: (_, _) => SizedBox(width: theme.spaceMd),
+        separatorBuilder: (_, _) =>
+            SizedBox(width: gap ?? theme.spaceMd),
         itemBuilder: (_, i) => listChildren[i],
       ),
     );

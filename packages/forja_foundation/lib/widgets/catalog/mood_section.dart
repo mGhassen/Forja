@@ -17,6 +17,7 @@ class MoodSection extends StatelessWidget {
     this.results,
     this.padding,
     this.rowHeight = 120,
+    this.gap,
   });
 
   final String? title;
@@ -34,6 +35,9 @@ class MoodSection extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double rowHeight;
 
+  /// Chip separator gap — omit → theme `spaceMd`.
+  final double? gap;
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
@@ -45,7 +49,8 @@ class MoodSection extends StatelessWidget {
             padding:
                 padding ?? EdgeInsets.symmetric(horizontal: theme.spaceLg),
             itemCount: children.length,
-            separatorBuilder: (_, _) => SizedBox(width: theme.spaceMd),
+            separatorBuilder: (_, _) =>
+                SizedBox(width: gap ?? theme.spaceMd),
             itemBuilder: (_, i) => children[i],
           ),
         );

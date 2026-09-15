@@ -3,10 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
-import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
-import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
