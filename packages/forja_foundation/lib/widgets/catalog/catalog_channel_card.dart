@@ -114,12 +114,15 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   @override
-  void didUpdateWidget(covariant CatalogChannelCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.programmes != widget.programmes ||
-        oldWidget.loadProgrammes != widget.loadProgrammes ||
-        oldWidget.imageUrl != widget.imageUrl ||
-        oldWidget.title != widget.title) {
+  void didUpdateWidget(covariant CatalogChannelCard previous) {
+    super.didUpdateWidget(previous);
+    // Ignore loadProgrammes identity — grid rebuilds pass a new closure every
+    // frame and would restart every card's FutureBuilder (blank → fill waves).
+    if (previous.imageUrl != widget.imageUrl ||
+        previous.title != widget.title ||
+        (previous.loadProgrammes == null) != (widget.loadProgrammes == null) ||
+        (!identical(previous.programmes, widget.programmes) &&
+            widget.programmes.isNotEmpty)) {
       _epgFuture = _resolveEpg();
     }
   }
@@ -419,28 +422,40 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 }
 
-class _EpgNowFooter extends StatelessWidget {
+class _EpgNowFooter extends StatefulWidget {
   const _EpgNowFooter({required this.future});
 
   final Future<List<GuideEpgProgramme>>? future;
 
+  @override
+  State<_EpgNowFooter> createState() => _EpgNowFooterState();
+}
+
+class _EpgNowFooterState extends State<_EpgNowFooter> {
   static const _slotHeight = 22.0;
+  List<GuideEpgProgramme> _last = const [];
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: _slotHeight,
-      child: future == null
+      child: widget.future == null
           ? const SizedBox.shrink()
           : FutureBuilder<List<GuideEpgProgramme>>(
-              future: future,
+              future: widget.future,
               builder: (context, snap) {
                 final programmes = snap.data;
-                if (programmes == null || programmes.isEmpty) {
+                if (programmes != null && programmes.isNotEmpty) {
+                  _last = programmes;
+                }
+                final show = (programmes != null && programmes.isNotEmpty)
+                    ? programmes
+                    : _last;
+                if (show.isEmpty) {
                   return const SizedBox.shrink();
                 }
-                var now = programmes.first;
-                for (final e in programmes) {
+                var now = show.first;
+                for (final e in show) {
                   if (e.isNow) {
                     now = e;
                     break;

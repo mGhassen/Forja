@@ -26,10 +26,26 @@ class CatalogEpgGuideHost extends StatefulWidget {
 
 class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
   final Map<String, GuideEpgCache> _caches = {};
+  final Map<String, Future<List<GuideEpgProgramme>>> _shortFutures = {};
+  final Map<String, Future<List<GuideEpgProgramme>>> _guideFutures = {};
   Future<List<VerifiedPortal>>? _portalsFuture;
 
   Future<List<VerifiedPortal>> _portals() {
     return _portalsFuture ??= PortalStore.load();
+  }
+
+  String _itemCacheKey(Map<String, dynamic> item) {
+    final open = item['open'];
+    final openMap = open is Map ? Map<String, dynamic>.from(open) : const {};
+    final portalKey = (item['portalKey'] ?? openMap['portalKey'] ?? '')
+        .toString()
+        .trim();
+    final streamId =
+        (item['streamId'] ?? openMap['streamId'] ?? '').toString().trim();
+    final epgId = (item['epgChannelId'] ?? openMap['epgChannelId'] ?? '')
+        .toString()
+        .trim();
+    return '$portalKey|$streamId|$epgId';
   }
 
   /// Pack keys are `url|username`; [Portal.key] is `platform|url|user|pass`.
@@ -80,7 +96,15 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     return cache;
   }
 
-  Future<List<GuideEpgProgramme>> _load(Map<String, dynamic> item) async {
+  Future<List<GuideEpgProgramme>> _load(Map<String, dynamic> item) {
+    final key = _itemCacheKey(item);
+    if (key == '||') return Future.value(const []);
+    return _guideFutures.putIfAbsent(key, () => _loadGuideUncached(item));
+  }
+
+  Future<List<GuideEpgProgramme>> _loadGuideUncached(
+    Map<String, dynamic> item,
+  ) async {
     final open = item['open'];
     final openMap = open is Map ? Map<String, dynamic>.from(open) : const {};
     final portalKey = (item['portalKey'] ?? openMap['portalKey'] ?? '')
@@ -100,7 +124,15 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     );
   }
 
-  Future<List<GuideEpgProgramme>> _loadShort(Map<String, dynamic> item) async {
+  Future<List<GuideEpgProgramme>> _loadShort(Map<String, dynamic> item) {
+    final key = _itemCacheKey(item);
+    if (key == '||') return Future.value(const []);
+    return _shortFutures.putIfAbsent(key, () => _loadShortUncached(item));
+  }
+
+  Future<List<GuideEpgProgramme>> _loadShortUncached(
+    Map<String, dynamic> item,
+  ) async {
     final open = item['open'];
     final openMap = open is Map ? Map<String, dynamic>.from(open) : const {};
     final portalKey = (item['portalKey'] ?? openMap['portalKey'] ?? '')

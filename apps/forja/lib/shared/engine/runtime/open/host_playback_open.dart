@@ -92,12 +92,14 @@ abstract final class HostPlaybackOpen {
     if (ctx == null || !ctx.mounted) return false;
     final t = title.trim().isEmpty ? 'Stream' : title.trim();
     try {
-      var guide = channelGuide;
-      if (guide == null &&
+      // Open player immediately — guide catalog is a network fetch and must not
+      // block the first paint / stream start.
+      Future<ChannelGuide?>? guideFuture;
+      if (channelGuide == null &&
           !vodPlayback &&
           portalKey != null &&
           portalKey.trim().isNotEmpty) {
-        guide = await PortalChannelGuideOpen.build(
+        guideFuture = PortalChannelGuideOpen.build(
           portalKey: portalKey,
           streamId: streamId ?? '',
           title: t,
@@ -106,7 +108,6 @@ abstract final class HostPlaybackOpen {
           epgChannelId: epgChannelId,
           playUrl: u,
         );
-        if (ctx.mounted == false) return false;
       }
       final sid = (streamId ?? '').trim();
       final pk = (portalKey ?? '').trim();
@@ -134,7 +135,8 @@ abstract final class HostPlaybackOpen {
         title: t,
         subtitle: subtitle,
         logoUrl: logoUrl,
-        channelGuide: guide,
+        channelGuide: channelGuide,
+        channelGuideFuture: guideFuture,
         engineContext: engineContext,
         liveSourceKind: liveSourceKind,
         titleTracksSource: false,

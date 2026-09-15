@@ -151,7 +151,20 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
       if (!mounted) return;
       setState(() => _now = DateTime.now());
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToNow());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToNow();
+      _prefetchVisible();
+    });
+  }
+
+  /// Kick EPG for the first screenful so rows do not wait on scroll build.
+  void _prefetchVisible() {
+    final channels = widget.channels;
+    if (channels.isEmpty || widget.loadProgrammes == null) return;
+    final n = channels.length < 16 ? channels.length : 16;
+    for (var i = 0; i < n; i++) {
+      _futureFor(channels[i]);
+    }
   }
 
   @override
@@ -164,6 +177,10 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
       // Drop futures for removed ids; keep cache for reused channels.
       final ids = {for (final c in widget.channels) c.id};
       _futures.removeWhere((k, _) => !ids.contains(k));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _prefetchVisible();
+      });
     }
   }
 
@@ -459,8 +476,9 @@ class _CatalogEpgGuideState extends State<CatalogEpgGuide> {
                           controller: _vGrid,
                           physics: const ClampingScrollPhysics(),
                           itemExtent: _kEpgRowH,
-                          // ignore: deprecated_member_use
-                          cacheExtent: _kEpgRowH * 2,
+                          // Prefetch ~12 rows so scrolling does not drip-load
+                          // one channel at a time.
+                          cacheExtent: _kEpgRowH * 12,
                           itemCount: channels.length,
                           itemBuilder: (_, i) {
                             final ch = channels[i];

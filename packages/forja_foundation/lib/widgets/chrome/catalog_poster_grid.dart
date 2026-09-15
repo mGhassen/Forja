@@ -106,6 +106,8 @@ class CatalogPosterGrid extends StatelessWidget {
     final grid = CustomScrollView(
       controller: controller,
       physics: physics,
+      // Enough to keep ~2–3 channel-card rows warm for EPG footers.
+      cacheExtent: 720,
       slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(

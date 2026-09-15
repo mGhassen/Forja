@@ -599,9 +599,12 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   /// Root-navigator push — same full-window cover + Back slide as movies.
   /// Masks the shell underlay (no catalog peek during the slide) without
   /// Offstage/reflow of the rail.
+  ///
+  /// [player] is usually [PtPlayerScreen]; wrappers (deferred channel guide)
+  /// are allowed so playback can start before the guide catalog is ready.
   static Future<T?> open<T>(
     BuildContext context,
-    PtPlayerScreen player,
+    Widget player,
   ) async {
     await InAppMiniPlayerController.instance.stopForNewPlay();
     if (!context.mounted) return null;
@@ -1083,6 +1086,29 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
   }
 
+  /// Late [channelGuide] (open-first, catalog in background).
+  void _applyChannelGuide(ChannelGuide guide) {
+    _selectedGroupId = guide.initialGroupId;
+    _currentChannelId = guide.initialChannelId;
+    final portal = guide.xtreamPortal;
+    if (portal != null) {
+      _epgCache ??= GuideEpgCache(portal);
+    } else if (widget.titleTracksSource &&
+        (widget.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
+            widget.liveSourceKind == PortalLiveSourceKind.iptvStalker)) {
+      unawaited(_initSportsEpgCache());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PtPlayerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = widget.channelGuide;
+    if (oldWidget.channelGuide == null && next != null) {
+      setState(() => _applyChannelGuide(next));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1162,15 +1188,16 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _playingEpisode = widget.subtitleEpisode;
     _seedSubtitleQuery();
     final guide = widget.channelGuide;
-    _selectedGroupId = guide?.initialGroupId ?? '';
-    _currentChannelId = guide?.initialChannelId ?? '';
-    final portal = guide?.xtreamPortal;
-    if (portal != null) {
-      _epgCache = GuideEpgCache(portal);
-    } else if (widget.titleTracksSource &&
-        (widget.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
-            widget.liveSourceKind == PortalLiveSourceKind.iptvStalker)) {
-      unawaited(_initSportsEpgCache());
+    if (guide != null) {
+      _applyChannelGuide(guide);
+    } else {
+      _selectedGroupId = '';
+      _currentChannelId = '';
+      if (widget.titleTracksSource &&
+          (widget.liveSourceKind == PortalLiveSourceKind.iptvXtream ||
+              widget.liveSourceKind == PortalLiveSourceKind.iptvStalker)) {
+        unawaited(_initSportsEpgCache());
+      }
     }
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);

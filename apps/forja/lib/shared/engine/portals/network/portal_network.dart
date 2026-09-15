@@ -111,6 +111,33 @@ Future<List<EpgEntry>> rememberPortalEpg(
   return future;
 }
 
+/// Cap parallel portal EPG HTTP so the catalog fills in steady waves instead
+/// of stampeding the host (~6 sockets) and stalling mid-viewport.
+abstract final class PortalEpgFetchGate {
+  PortalEpgFetchGate._();
+
+  static const maxConcurrent = 4;
+  static int _active = 0;
+  static final List<Completer<void>> _waiters = [];
+
+  static Future<T> run<T>(Future<T> Function() body) async {
+    while (_active >= maxConcurrent) {
+      final c = Completer<void>();
+      _waiters.add(c);
+      await c.future;
+    }
+    _active++;
+    try {
+      return await body();
+    } finally {
+      _active--;
+      if (_waiters.isNotEmpty) {
+        _waiters.removeAt(0).complete();
+      }
+    }
+  }
+}
+
 /// Xtream-Codes player_api client. Login + catalog + episodes via Rust.
 class PortalClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
@@ -631,21 +658,23 @@ class PortalClient {
     String streamId, {
     required int limit,
     required Duration timeout,
-  }) async {
-    if (streamId.isEmpty) return const [];
-    if (p.platform == PortalPlatform.stalker) {
-      return _stalkerEpgOnce(p, streamId, limit: limit, timeout: timeout);
-    }
-    final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
-        '&password=${_enc(p.password)}'
-        '&action=get_short_epg&stream_id=${_enc(streamId)}&limit=$limit';
-    final text = await _httpGet(url, timeout: timeout);
-    if (text == null) return null;
-    try {
-      return _parseEpgListings(text);
-    } catch (_) {
-      return null;
-    }
+  }) {
+    return PortalEpgFetchGate.run(() async {
+      if (streamId.isEmpty) return const [];
+      if (p.platform == PortalPlatform.stalker) {
+        return _stalkerEpgOnce(p, streamId, limit: limit, timeout: timeout);
+      }
+      final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
+          '&password=${_enc(p.password)}'
+          '&action=get_short_epg&stream_id=${_enc(streamId)}&limit=$limit';
+      final text = await _httpGet(url, timeout: timeout);
+      if (text == null) return null;
+      try {
+        return _parseEpgListings(text);
+      } catch (_) {
+        return null;
+      }
+    });
   }
 
   /// Stalker ITV channel id for EPG — never the bare create_link `cmd` URL.
@@ -887,7 +916,9 @@ class PortalClient {
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
         '&password=${_enc(p.password)}'
         '&action=get_simple_data_table&stream_id=${_enc(streamId)}';
-    final text = await _httpGet(url, timeout: timeout);
+    final text = await PortalEpgFetchGate.run(
+      () => _httpGet(url, timeout: timeout),
+    );
     if (text == null) return const [];
     try {
       final all = _parseEpgListings(text);
