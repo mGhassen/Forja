@@ -4,6 +4,8 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/action_chip.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/widgets/chrome/top_bar_actions.dart';
+import 'package:forja_foundation/widgets/chrome/view_button_group.dart';
+import 'package:forja_foundation/widgets/chrome/widget_shelf.dart';
 
 export 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 
@@ -74,25 +76,63 @@ class CatalogChipBar extends StatelessWidget {
   }
 }
 
-/// Pack action `icon` token → Material icon (refresh / search / view / …).
+/// Pack action / item `icon` token → Material icon.
 IconData? catalogChromeActionIcon(Map<String, dynamic> action) {
   final name = (action['icon'] ?? '').toString().trim().toLowerCase();
-  return switch (name) {
+  return catalogChromeIconToken(name);
+}
+
+IconData? catalogChromeIconToken(String name) {
+  return switch (name.trim().toLowerCase()) {
     'refresh' => Icons.refresh_rounded,
     'search' => Icons.search_rounded,
-    'filter' || 'catalog' => Icons.filter_list_rounded,
+    'filter' || 'catalog' || 'sort' => Icons.filter_list_rounded,
     'schedule' || 'time' || 'horizon' => Icons.schedule_rounded,
     'view' || 'list' => Icons.view_list_rounded,
     'cards' || 'grid' => Icons.grid_view_rounded,
+    'timeline' => Icons.view_timeline_rounded,
+    'guide' || 'epg' || 'table' => Icons.table_chart_outlined,
     'live_tv' || 'tv' => Icons.live_tv_rounded,
+    'movie' || 'movies' || 'film' => Icons.movie_rounded,
+    'video_library' || 'series' || 'library' => Icons.video_library_rounded,
     'portals' || 'inbox' => Icons.inbox_outlined,
     'dns' => Icons.dns_outlined,
     _ => null,
   };
 }
 
-/// Top action chrome — pack `actions[]` as themed [ForjaActionChip]s
-/// (one control per action: menu opens a sheet; view cycles; not expanded pills).
+Color? _parseHexColor(Object? raw) {
+  final s = (raw ?? '').toString().trim();
+  if (s.isEmpty) return null;
+  var hex = s.startsWith('#') ? s.substring(1) : s;
+  if (hex.length == 6) hex = 'FF$hex';
+  if (hex.length != 8) return null;
+  final value = int.tryParse(hex, radix: 16);
+  if (value == null) return null;
+  return Color(value);
+}
+
+List<Color> _itemGradientColors(Map<String, dynamic> item) {
+  final raw = item['colors'] ?? item['gradient'] ?? item['accent'];
+  if (raw is! List) return const [];
+  final out = <Color>[];
+  for (final e in raw) {
+    final c = _parseHexColor(e);
+    if (c != null) out.add(c);
+  }
+  return out;
+}
+
+List<Map<String, dynamic>> _actionItemMaps(Map<String, dynamic> action) {
+  final v = action['items'];
+  if (v is! List) return const [];
+  return [
+    for (final raw in v)
+      if (raw is Map) Map<String, dynamic>.from(raw),
+  ];
+}
+
+/// Top action chrome — pack `actions[]` as shelf / view group / chips.
 class CatalogTopChrome extends StatelessWidget {
   const CatalogTopChrome({
     super.key,
@@ -131,6 +171,9 @@ class CatalogTopChrome extends StatelessWidget {
     return (action['id'] ?? '').toString().trim().toLowerCase();
   }
 
+  static String _style(Map<String, dynamic> action) =>
+      (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+
   static String _selectedLabel(
     Map<String, dynamic> action,
     Map<String, String> selections,
@@ -163,6 +206,70 @@ class CatalogTopChrome extends StatelessWidget {
     if (selected.isEmpty) return false;
     if (def.isNotEmpty) return selected != def;
     return selected != 'all';
+  }
+
+  static IconData _viewItemIcon(String id, String? token) {
+    final fromToken = catalogChromeIconToken(token ?? '');
+    if (fromToken != null) return fromToken;
+    return switch (id.trim().toLowerCase()) {
+      'timeline' || 'schedule' => Icons.view_timeline_rounded,
+      'list' => Icons.view_list_rounded,
+      'guide' || 'epg' => Icons.table_chart_outlined,
+      'grid' => Icons.grid_on_rounded,
+      _ => Icons.grid_view_rounded,
+    };
+  }
+
+  Widget? _buildShelf(Map<String, dynamic> action, String actionId) {
+    final maps = _actionItemMaps(action);
+    if (maps.isEmpty) return null;
+    final selected = (selections[actionId] ??
+            (action['default'] ?? maps.first['id'] ?? '').toString())
+        .trim();
+    final allowReload = action['reload'] == true;
+    return WidgetShelf(
+      selectedId: selected.isEmpty ? null : selected,
+      onSelect: onSelect == null
+          ? (_) {}
+          : (id) => onSelect!(actionId, id),
+      onReload: !allowReload || onSelect == null
+          ? null
+          : (id) => onSelect!(actionId, '__reload__:$id'),
+      items: [
+        for (final m in maps)
+          WidgetShelfItem(
+            id: (m['id'] ?? '').toString(),
+            label: (m['label'] ?? m['title'] ?? m['id'] ?? '').toString(),
+            icon: catalogChromeIconToken((m['icon'] ?? '').toString()),
+            gradientColors: _itemGradientColors(m),
+          ),
+      ],
+    );
+  }
+
+  Widget? _buildViewGroup(Map<String, dynamic> action, String actionId) {
+    final maps = _actionItemMaps(action);
+    if (maps.isEmpty) return null;
+    final selected = (selections[actionId] ??
+            (action['default'] ?? maps.first['id'] ?? '').toString())
+        .trim();
+    return ViewButtonGroup(
+      selectedId: selected.isEmpty ? null : selected,
+      onSelect: onSelect == null
+          ? (_) {}
+          : (id) => onSelect!(actionId, id),
+      items: [
+        for (final m in maps)
+          ViewButtonItem(
+            id: (m['id'] ?? '').toString(),
+            label: (m['label'] ?? m['title'] ?? '').toString(),
+            icon: _viewItemIcon(
+              (m['id'] ?? '').toString(),
+              (m['icon'] ?? '').toString(),
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -203,59 +310,64 @@ class CatalogTopChrome extends StatelessWidget {
         continue;
       }
       final verb = _verb(action);
+      final style = _style(action);
       final icon = catalogChromeActionIcon(action);
       final nested = propsIdLabelList(action, 'items');
       final isView = actionId == 'view' || verb == 'view';
+      final isShelf = style == 'shelf' || style == 'segment';
+      final isViewGroup = isView &&
+          nested.isNotEmpty &&
+          (style == 'group' ||
+              style == 'toggle' ||
+              style == 'buttons' ||
+              style.isEmpty);
       final isIconOnly = nested.isEmpty &&
           (actionId == 'search' ||
               actionId == 'refresh' ||
               verb == 'eventsearch' ||
               verb == 'refresh' ||
               verb == 'search');
+      // Sort / filter menus stay icon-only (old IPTV: filter next to search).
+      final isSortIcon = nested.isNotEmpty &&
+          (actionId == 'sort' ||
+              verb == 'sort' ||
+              style == 'icon' ||
+              style == 'iconOnly');
 
-      if (isView && nested.isNotEmpty) {
-        final cur = (selections[actionId] ??
-                (action['default'] ?? nested.first.id).toString())
-            .trim()
-            .toLowerCase();
-        final cycle = [for (final e in nested) e.id.toLowerCase()];
-        final idx = cycle.indexOf(cur);
-        final current = idx < 0 ? cycle.first : cycle[idx];
-        final next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-        final (viewIcon, viewLabel) = switch (current) {
-          'timeline' || 'schedule' => (
-              Icons.view_timeline_rounded,
-              'Timeline view',
-            ),
-          'list' => (Icons.view_list_rounded, 'List view'),
-          'grid' => (Icons.grid_on_rounded, 'Grid view'),
-          _ => (Icons.grid_view_rounded, 'Cards view'),
-        };
-        bucket.add(
-          ForjaActionChip(
-            label: viewLabel,
-            icon: viewIcon,
-            iconOnly: true,
-            selected: false,
-            onTap: onSelect == null ? () {} : () => onSelect!(actionId, next),
-          ),
-        );
-        continue;
+      if (isShelf && nested.isNotEmpty) {
+        final shelf = _buildShelf(action, actionId);
+        if (shelf != null) {
+          bucket.add(shelf);
+          continue;
+        }
       }
 
-      if (isIconOnly) {
+      if (isViewGroup) {
+        final group = _buildViewGroup(action, actionId);
+        if (group != null) {
+          bucket.add(group);
+          continue;
+        }
+      }
+
+      if (isIconOnly || isSortIcon) {
         bucket.add(
           ForjaActionChip(
             label: (action['label'] ?? actionId).toString(),
             icon: icon ??
                 (verb == 'search' || verb == 'eventsearch'
                     ? Icons.search_rounded
-                    : Icons.refresh_rounded),
+                    : isSortIcon
+                        ? Icons.filter_list_rounded
+                        : Icons.refresh_rounded),
             iconOnly: true,
-            selected: false,
+            selected: isSortIcon && _isSelectedMenu(action, selections),
             onTap: onSelect == null
                 ? () {}
-                : () => onSelect!(actionId, actionId),
+                : () => onSelect!(
+                      actionId,
+                      nested.isEmpty ? actionId : '__open__',
+                    ),
           ),
         );
         continue;

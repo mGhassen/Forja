@@ -716,6 +716,23 @@ class PackPaintTree extends StatelessWidget {
       );
       return;
     }
+    // WidgetShelf per-tab reload — select section (if encoded) then bump feed.
+    if (value == '__reload__' || value.startsWith('__reload__:')) {
+      final section = value.startsWith('__reload__:')
+          ? value.substring('__reload__:'.length).trim()
+          : '';
+      if (section.isNotEmpty) {
+        scope?.onSelect(actionId, section, toggle: false);
+        _persistTopBarChromePref(
+          context,
+          actionId: actionId,
+          value: section,
+          action: action,
+        );
+      }
+      chrome?.onBumpRefresh();
+      return;
+    }
     if (actionId == 'view' || verb == 'view') {
       chrome?.onViewStyle(value);
     }

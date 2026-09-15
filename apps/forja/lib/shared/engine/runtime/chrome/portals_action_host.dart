@@ -1,15 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/portals/models.dart';
-import 'package:forja/shared/engine/portals/network/portal_network.dart';
-import 'package:forja/shared/engine/portals/share/portal_share.dart';
-import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
-import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
-import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -17,6 +10,8 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/components/form_fields_dialog.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
@@ -24,16 +19,15 @@ import 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Generic portals inventory — pack owns when/how to paint the chip.
-///
-/// Host runs pack actions + paints foundation [PortalsChip]. No pack-id allowlist.
+export 'package:forja/shared/engine/portals/portals_host.dart'
+    show PortalsHost, PortalsInventory, PortalHealthTracker, PortalsPanelAction;
+
+/// Chrome wire — pack hoist + foundation paint. Services live in [PortalsHost].
 abstract final class PortalsActionHost {
   PortalsActionHost._();
 
-  /// Opaque source ids that hoist the inventory overlay.
   static final Set<String> _hoistSources = {};
 
-  /// Register an opaque list source that should hoist the inventory panel.
   static void registerHoistSource(String sourceId) {
     final id = sourceId.trim();
     if (id.isEmpty) return;
@@ -44,7 +38,6 @@ abstract final class PortalsActionHost {
     registerHoistSource(LiveSurfaceOpen.listSourceId);
   }
 
-  /// Paint portals chip when a pack paint node asks the host (opaque action).
   static Widget buildPortalsChip(
     BuildContext context,
     WidgetRef ref, {
@@ -63,7 +56,6 @@ abstract final class PortalsActionHost {
 
     final key = tabId.trim();
     final open = ref.watch(portalsPanelOpenProvider(key));
-    // Label only — do not force-refresh inventory on every chip rebuild.
     final inv = ref.watch(portalsInventoryProvider(key));
     final active = inv.asData?.value.activeLabel ?? 'Portals';
 
@@ -111,7 +103,6 @@ abstract final class PortalsActionHost {
     required String sourceId,
     required bool shellTabVisible,
   }) {
-    // Pack declared this hoist — always host the panel (do not wait for chip).
     registerHoistSource(sourceId);
     return _PortalsPanelHost(
       tabId: tabId,
@@ -125,163 +116,16 @@ abstract final class PortalsActionHost {
 final portalsPanelOpenProvider =
     StateProvider.family<bool, String>((ref, tabId) => false);
 
-class PortalsInventory {
-  const PortalsInventory({
-    required this.portals,
-    required this.activeKey,
-    required this.pluginId,
-    this.usernames = const {},
-  });
-
-  final List<PortalListItem> portals;
-  final String activeKey;
-  final String pluginId;
-
-  /// Opaque username by portal key — edit dialog only (not painted).
-  final Map<String, String> usernames;
-
-  String get activeLabel {
-    for (final p in portals) {
-      if (p.id == activeKey) return p.label;
-    }
-    return portals.isEmpty ? 'Portals' : portals.first.label;
-  }
-}
-
-Future<Set<String>> _loadPortalFavoriteKeys() async {
-  try {
-    final raw = await EngineVault.get(PortalVaultKeys.favorites);
-    if (raw == null || raw.trim().isEmpty) return {};
-    final parsed = jsonDecode(raw);
-    if (parsed is! List) return {};
-    return {
-      for (final e in parsed)
-        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
-    };
-  } catch (_) {
-    return {};
-  }
-}
-
-Future<void> _savePortalFavoriteKeys(Set<String> keys) async {
-  await EngineVault.set(
-    PortalVaultKeys.favorites,
-    jsonEncode(keys.toList()),
-  );
-}
-
-String? _platformLabel(String raw) {
-  final p = raw.trim().toLowerCase();
-  if (p.isEmpty) return null;
-  return switch (p) {
-    'xtream' => 'Xtream',
-    'm3u' || 'm3u8' => 'M3U',
-    'stalker' || 'mag' => 'Stalker',
-    _ => raw.trim(),
-  };
-}
-
-/// Resolve a hub pack that declares `listPortals` (opaque — no pack-id allowlist).
-Future<String?> resolvePortalsPluginId({String? preferTabId}) async {
-  final tab = (preferTabId ?? '').trim();
-  if (tab.isNotEmpty) {
-    final fromTab = PluginNavRegistry.pluginIdForTabSync(tab);
-    if (fromTab != null && fromTab.isNotEmpty) {
-      final packs = await EngineService.instance.listPacks();
-      for (final pack in packs) {
-        for (final p in pack.plugins) {
-          if (p.id == fromTab && p.hasCapability('listPortals')) {
-            return p.id;
-          }
-        }
-      }
-    }
-  }
-  final packs = await EngineService.instance.listPacks();
-  for (final pack in packs) {
-    if (!pack.enabled) continue;
-    for (final p in pack.plugins) {
-      if (!p.enabled) continue;
-      if (p.hasCapability('listPortals')) return p.id;
-    }
-  }
-  return null;
-}
-
-/// Inventory keyed by shell tab — Live Sports still resolves IPTV `listPortals`
-/// when the live hub itself has no portals capability.
+/// Inventory keyed by shell tab (Live Sports may resolve IPTV `listPortals`).
 final portalsInventoryProvider = FutureProvider.autoDispose
     .family<PortalsInventory, String>((ref, tabId) async {
   ref.keepAlive();
-  final pluginId = await resolvePortalsPluginId(preferTabId: tabId);
-  if (pluginId == null || pluginId.isEmpty) {
-    return const PortalsInventory(
-      portals: [],
-      activeKey: '',
-      pluginId: '',
-    );
-  }
-  // Always bypass MetaRuntime cache — an early empty vault read must not
-  // stick for EngineCache maxAge (~5m). Refresh only invalidates Riverpod.
-  final env = await MetaRuntime.instance.run(
-    pluginId: pluginId,
-    action: 'listPortals',
-    params: const {},
-    forceRefresh: true,
-  );
-  if (!env.ok) {
-    return PortalsInventory(
-      portals: const [],
-      activeKey: '',
-      pluginId: pluginId,
-    );
-  }
-  final active = (env.data?['active'] ?? '').toString();
-  final raw = env.data?['portals'];
-  final favs = await _loadPortalFavoriteKeys();
-  final items = <PortalListItem>[];
-  final usernames = <String, String>{};
-  if (raw is List) {
-    for (final e in raw) {
-      if (e is! Map) continue;
-      final m = Map<String, dynamic>.from(e);
-      final key = (m['key'] ?? '').toString().trim();
-      if (key.isEmpty) continue;
-      final label = (m['label'] ?? m['username'] ?? key).toString().trim();
-      final url = (m['url'] ?? '').toString().trim();
-      final platform = (m['platform'] ?? '').toString().trim();
-      final user = (m['username'] ?? '').toString().trim();
-      if (user.isNotEmpty) usernames[key] = user;
-      final activeConn = m['activeConnections']?.toString();
-      final maxConn = m['maxConnections']?.toString();
-      final expiry = m['expiry']?.toString();
-      items.add(
-        PortalListItem(
-          id: key,
-          label: label.isEmpty ? key : label,
-          subtitle: url.isEmpty ? null : url,
-          selected: key == active,
-          platformLabel: _platformLabel(platform),
-          expiry: (expiry ?? '').trim().isEmpty ? null : expiry!.trim(),
-          activeConnections: activeConn,
-          maxConnections: maxConn,
-          favorite: favs.contains(key),
-        ),
-      );
-    }
-  }
-  // Favorites first (same order as old panel).
-  items.sort((a, b) {
-    if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
-    return 0;
-  });
-  return PortalsInventory(
-    portals: items,
-    activeKey: active,
-    pluginId: pluginId,
-    usernames: usernames,
-  );
+  return PortalsHost.list(preferTabId: tabId);
 });
+
+/// Back-compat alias — prefer [PortalsHost.resolvePluginId].
+Future<String?> resolvePortalsPluginId({String? preferTabId}) =>
+    PortalsHost.resolvePluginId(preferTabId: preferTabId);
 
 class _PortalsPanelHost extends ConsumerWidget {
   const _PortalsPanelHost({
@@ -342,233 +186,131 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
   bool _busy = false;
   bool _searchOpen = false;
   final Set<String> _deletingKeys = {};
+  late final PortalHealthTracker _health;
 
-  /// Hover/focus probe cache — green/red + optional account fields from probe.
-  final Map<String, bool?> _health = {};
-  final Map<String, String> _probeExpiry = {};
-  final Map<String, String> _probeActive = {};
-  final Map<String, String> _probeMax = {};
-  final Set<String> _healthInFlight = {};
-  final Map<String, Timer> _healthDebounce = {};
-  static const _healthHoverDelay = Duration(milliseconds: 350);
-  static const _healthTvDelay = Duration(seconds: 2);
+  @override
+  void initState() {
+    super.initState();
+    _health = PortalHealthTracker(onChanged: () {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
-    for (final t in _healthDebounce.values) {
-      t.cancel();
-    }
-    _healthDebounce.clear();
+    _health.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  bool _isHealthChecking(String portalKey) =>
-      _healthInFlight.contains(portalKey) ||
-      _healthDebounce.containsKey(portalKey);
-
-  void _cancelHealthCheck(String portalKey) {
-    _healthDebounce[portalKey]?.cancel();
-    _healthDebounce.remove(portalKey);
+  Future<String?> _pluginId() async {
+    final inv =
+        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    return inv?.pluginId.isNotEmpty == true
+        ? inv!.pluginId
+        : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
   }
 
-  void _scheduleHealthCheck(String portalKey, {required bool leanback}) {
-    if (portalKey.isEmpty) return;
-    if (_healthInFlight.contains(portalKey)) return;
-    _cancelHealthCheck(portalKey);
-    // Spinner while dwell timer armed (old panel behavior).
-    setState(() {});
-    _healthDebounce[portalKey] = Timer(
-      leanback ? _healthTvDelay : _healthHoverDelay,
-      () {
-        _healthDebounce.remove(portalKey);
-        unawaited(_runHealthCheck(portalKey));
-      },
-    );
-  }
-
-  String _vaultPortalKey(Map<String, dynamic> m) {
-    final explicit = (m['key'] ?? '').toString().trim();
-    if (explicit.isNotEmpty) return explicit;
-    final url = (m['url'] ?? '').toString().trim().toLowerCase();
-    final user = (m['username'] ?? '').toString().trim().toLowerCase();
-    return '$url|$user';
-  }
-
-  Future<Portal?> _loadVaultPortal(String portalKey) async {
-    try {
-      final raw = await EngineVault.get(PortalVaultKeys.portals);
-      if (raw == null || raw.trim().isEmpty) return null;
-      final parsed = jsonDecode(raw);
-      if (parsed is! List) return null;
-      for (final e in parsed) {
-        if (e is! Map) continue;
-        final m = Map<String, dynamic>.from(e);
-        if (_vaultPortalKey(m) != portalKey) continue;
-        return Portal.fromJson(m);
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  Future<void> _runHealthCheck(String portalKey) async {
-    if (!_healthInFlight.add(portalKey)) return;
-    if (mounted) setState(() {});
-    try {
-      final portal = await _loadVaultPortal(portalKey);
-      if (portal == null) {
-        _health[portalKey] = false;
-        return;
-      }
-      final probe = await PortalClient.probePortal(
-        portal,
-        timeout: portal.platform == PortalPlatform.m3u
-            ? const Duration(seconds: 90)
-            : const Duration(seconds: 15),
-      );
-      _health[portalKey] = probe.alive;
-      if (probe.expiry.trim().isNotEmpty &&
-          probe.expiry.toLowerCase() != 'unknown') {
-        _probeExpiry[portalKey] = probe.expiry;
-      }
-      if (probe.activeConnections.trim().isNotEmpty) {
-        _probeActive[portalKey] = probe.activeConnections;
-      }
-      if (probe.maxConnections.trim().isNotEmpty) {
-        _probeMax[portalKey] = probe.maxConnections;
-      }
-    } catch (_) {
-      _health[portalKey] = false;
-    } finally {
-      _healthInFlight.remove(portalKey);
-      if (mounted) setState(() {});
-    }
-  }
-
-  PortalListItem _paintItem(PortalListItem p) {
-    final checking = _isHealthChecking(p.id);
-    final healthy = _health.containsKey(p.id) ? _health[p.id] : p.healthy;
-    return PortalListItem(
-      id: p.id,
-      label: p.label,
-      subtitle: p.subtitle,
-      selected: p.selected,
-      healthy: healthy,
-      checking: checking,
-      platformLabel: p.platformLabel,
-      expiry: _probeExpiry[p.id] ?? p.expiry,
-      activeConnections: _probeActive[p.id] ?? p.activeConnections,
-      maxConnections: _probeMax[p.id] ?? p.maxConnections,
-      favorite: p.favorite,
-      isNew: p.isNew,
-      deleting: _deletingKeys.contains(p.id),
-    );
-  }
-
-  Future<MetaEnvelope?> _run(
-    String action, {
-    Map<String, dynamic> params = const {},
+  Future<bool> _runAction(
+    Future<MetaEnvelope> Function(String pluginId) action, {
     String? toastOk,
     bool refresh = true,
   }) async {
-    final key = widget.tabId;
-    final inv = ref.read(portalsInventoryProvider(key)).asData?.value;
-    final pluginId =
-        inv?.pluginId ?? await resolvePortalsPluginId(preferTabId: key);
+    final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
       ForjaToast.error('No portals pack installed');
-      return null;
+      return false;
     }
     setState(() => _busy = true);
     try {
-      final env = await MetaRuntime.instance.run(
-        pluginId: pluginId,
-        action: action,
-        params: params,
-        forceRefresh: true,
-      );
-      if (!mounted) return env;
+      final env = await action(pluginId);
+      if (!mounted) return false;
       if (!env.ok) {
-        ForjaToast.error(
-          env.error?.message ?? '$action failed',
-        );
-        return env;
+        ForjaToast.error(env.error?.message ?? 'Action failed');
+        return false;
       }
       if (toastOk != null) ForjaToast.success(toastOk);
-      if (refresh) ref.invalidate(portalsInventoryProvider(key));
-      return env;
+      if (refresh) ref.invalidate(portalsInventoryProvider(widget.tabId));
+      return true;
+    } catch (e) {
+      ForjaToast.error(e.toString());
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _portalFormDialog({PortalListItem? existing}) async {
-    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
-    final urlCtrl = TextEditingController(text: existing?.subtitle ?? '');
-    final userCtrl = TextEditingController(
-      text: existing == null ? '' : (inv?.usernames[existing.id] ?? ''),
-    );
-    final passCtrl = TextEditingController();
-    final labelCtrl = TextEditingController(text: existing?.label ?? '');
-    final editing = existing != null;
-    final ok = await showDialog<bool>(
+  Future<void> _runPackForm(
+    FormFieldsSpec form, {
+    Map<String, String>? values,
+    String? portalKey,
+  }) async {
+    final filled = values == null ? form : form.withValues(values);
+    final result = await showFormFieldsDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(editing ? 'Edit portal' : 'Add portal'),
-        content: SizedBox(
-          width: 360,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: urlCtrl,
-                decoration: const InputDecoration(labelText: 'URL'),
-              ),
-              TextField(
-                controller: userCtrl,
-                decoration: const InputDecoration(labelText: 'Username / MAC'),
-              ),
-              TextField(
-                controller: passCtrl,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: editing ? 'Password (blank = keep)' : 'Password',
-                ),
-              ),
-              TextField(
-                controller: labelCtrl,
-                decoration: const InputDecoration(labelText: 'Label'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(editing ? 'Save' : 'Add'),
-          ),
-        ],
-      ),
+      spec: filled,
     );
-    if (ok != true || !mounted) return;
-    final params = <String, dynamic>{
-      'url': urlCtrl.text.trim(),
-      'username': userCtrl.text.trim(),
-      'label': labelCtrl.text.trim(),
-    };
-    if (editing) {
-      params['key'] = existing.id;
-      final pass = passCtrl.text;
-      if (pass.isNotEmpty) params['password'] = pass;
-      await _run('editPortal', params: params, toastOk: 'Portal updated');
-    } else {
-      params['password'] = passCtrl.text;
-      await _run('addPortal', params: params, toastOk: 'Portal added');
+    if (result == null || !mounted) return;
+    final action = filled.action.trim();
+    if (action.isEmpty) {
+      ForjaToast.error('Form has no action');
+      return;
     }
+    final params = <String, dynamic>{
+      for (final e in result.entries) e.key: e.value,
+    };
+    if (portalKey != null && portalKey.isNotEmpty) {
+      params['key'] = portalKey;
+    }
+    for (final f in filled.fields) {
+      final t = f.type.toLowerCase();
+      if ((t == 'password' || t == 'secret') &&
+          (params[f.id] ?? '').toString().isEmpty) {
+        params.remove(f.id);
+      }
+    }
+    final toast = filled.toastOk.trim();
+    await _runAction(
+      (id) => PortalsHost.run(
+        pluginId: id,
+        action: action,
+        params: params,
+      ),
+      toastOk: toast.isEmpty ? null : toast,
+    );
+  }
+
+  Future<void> _dispatchPanelAction(PortalsPanelAction a) async {
+    final verb = a.action.trim().toLowerCase();
+    if (verb == 'listportals' || verb == 'refresh') {
+      ref.invalidate(portalsInventoryProvider(widget.tabId));
+      return;
+    }
+    if (verb == 'dealportals' || a.id == 'deal') {
+      await _dealPortals();
+      return;
+    }
+    final form = a.form;
+    if (form != null) {
+      await _runPackForm(form);
+      return;
+    }
+    await _runAction(
+      (id) => PortalsHost.run(pluginId: id, action: a.action),
+      toastOk: a.label,
+    );
+  }
+
+  IconData _actionIcon(PortalsPanelAction a) {
+    final raw = a.icon.trim().isNotEmpty ? a.icon : a.id;
+    final id = raw.trim().toLowerCase();
+    return switch (id) {
+      'add' => Icons.add_rounded,
+      'import' || 'content_paste' || 'paste' => Icons.content_paste_rounded,
+      'casino' || 'deal' => Icons.casino_rounded,
+      'refresh' => Icons.refresh_rounded,
+      _ => Icons.circle_outlined,
+    };
   }
 
   Future<void> _dealPortals() async {
@@ -584,7 +326,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
         ForjaToast.error('Sign in and pick a profile to Deal');
         return;
       }
-      final ids = await SyncService.instance.dealPortals(profileId: profileId);
+      final ids = await PortalsHost.deal(profileId: profileId);
       if (!mounted) return;
       if (ids.isEmpty) {
         ForjaToast.show('No portals dealt — pool may be empty');
@@ -602,44 +344,29 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
   }
 
   Future<void> _toggleFavorite(String portalKey) async {
-    final favs = await _loadPortalFavoriteKeys();
-    if (favs.contains(portalKey)) {
-      favs.remove(portalKey);
-    } else {
-      favs.add(portalKey);
-    }
-    await _savePortalFavoriteKeys(favs);
+    await PortalsHost.toggleFavorite(portalKey);
     if (!mounted) return;
     ref.invalidate(portalsInventoryProvider(widget.tabId));
   }
 
   Future<String?> _shareCodeFor(String portalKey) async {
-    try {
-      final portal = await _loadVaultPortal(portalKey);
-      if (portal == null) {
-        ForjaToast.error('Could not create share code');
-        return null;
-      }
-      final code = await PortalShare.createShare(portal);
-      final formatted = PortalShare.formatCode(code);
-      ForjaToast.success(
-        'Share code copied',
-        duration: const Duration(seconds: 2),
-      );
-      return formatted;
-    } catch (e) {
-      debugPrint('[Portals] share code failed: $e');
+    final code = await PortalsHost.createShareCode(portalKey);
+    if (code == null) {
       ForjaToast.error('Could not create share code');
       return null;
     }
+    ForjaToast.success(
+      'Share code copied',
+      duration: const Duration(seconds: 2),
+    );
+    return code;
   }
 
   Future<void> _deletePortal(String portalKey) async {
     setState(() => _deletingKeys.add(portalKey));
     try {
-      await _run(
-        'removePortal',
-        params: {'key': portalKey},
+      await _runAction(
+        (id) => PortalsHost.remove(pluginId: id, key: portalKey),
         toastOk: 'Removed',
       );
     } finally {
@@ -664,12 +391,26 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
                   (p.platformLabel?.toLowerCase().contains(q) ?? false))
                 p,
           ];
-    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+    final inv = asyncInv.asData?.value;
+    final panelTitle =
+        (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals';
     final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
     final credits = AccountFeatures.instance.iptvCredits;
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
 
-    final painted = [for (final p in filtered) _paintItem(p)];
+    final painted = [
+      for (final p in filtered)
+        _health.paint(p, deleting: _deletingKeys.contains(p.id)),
+    ];
+
+    final visibleActions = <PortalsPanelAction>[
+      for (final a in inv?.actions ?? const <PortalsPanelAction>[])
+        if (a.id != 'deal' && a.action.toLowerCase() != 'dealportals')
+          a
+        else if (canDeal)
+          a,
+    ];
 
     return PortalListPanel(
       width: widget.width,
@@ -684,7 +425,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
         child: Row(
           children: [
             Text(
-              'Portals',
+              panelTitle,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 18,
@@ -723,31 +464,29 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
                     : Colors.white70,
               ),
             ),
-            if (canDeal)
+            for (final a in visibleActions)
               IconButton(
-                tooltip: credits > 0
-                    ? 'Deal portals from pool ($credits credits)'
-                    : 'Deal portals (no credits)',
-                onPressed: _busy || credits < 1
+                tooltip: a.id == 'deal' ||
+                        a.action.toLowerCase() == 'dealportals'
+                    ? (credits > 0
+                        ? '${a.label} ($credits credits)'
+                        : '${a.label} (no credits)')
+                    : a.label,
+                onPressed: _busy ||
+                        ((a.id == 'deal' ||
+                                a.action.toLowerCase() == 'dealportals') &&
+                            credits < 1)
                     ? null
-                    : () => unawaited(_dealPortals()),
+                    : () => unawaited(_dispatchPanelAction(a)),
                 icon: Icon(
-                  Icons.casino_rounded,
-                  color: credits < 1 ? Colors.white38 : Colors.white70,
+                  _actionIcon(a),
+                  color: (a.id == 'deal' ||
+                              a.action.toLowerCase() == 'dealportals') &&
+                          credits < 1
+                      ? Colors.white38
+                      : Colors.white70,
                 ),
               ),
-            IconButton(
-              tooltip: 'Add portal',
-              onPressed: _busy ? null : () => unawaited(_portalFormDialog()),
-              icon: const Icon(Icons.add_rounded, color: Colors.white70),
-            ),
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: _busy
-                  ? null
-                  : () => ref.invalidate(portalsInventoryProvider(key)),
-              icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-            ),
             IconButton(
               tooltip: 'Close',
               onPressed: widget.onClose,
@@ -823,7 +562,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Add a portal to browse channels.',
+                      'Add or import a portal to browse channels.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white60,
@@ -846,18 +585,26 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
                   onSelect: _busy
                       ? null
                       : () => unawaited(
-                            _run(
-                              'selectPortal',
-                              params: {'key': item.id},
+                            _runAction(
+                              (id) => PortalsHost.select(
+                                pluginId: id,
+                                key: item.id,
+                              ),
                               toastOk: 'Selected',
                             ),
                           ),
                   onFavorite: _busy
                       ? null
                       : () => unawaited(_toggleFavorite(item.id)),
-                  onEdit: _busy
+                  onEdit: _busy || inv?.editForm == null
                       ? null
-                      : () => unawaited(_portalFormDialog(existing: item)),
+                      : () => unawaited(
+                            _runPackForm(
+                              inv!.editForm!,
+                              values: inv.formValues[item.id],
+                              portalKey: item.id,
+                            ),
+                          ),
                   onDelete: _busy
                       ? null
                       : () => unawaited(_deletePortal(item.id)),
@@ -865,9 +612,9 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
                       ? null
                       : () => _shareCodeFor(item.id),
                   onHoverEnter: () =>
-                      _scheduleHealthCheck(item.id, leanback: leanback),
+                      _health.schedule(item.id, leanback: leanback),
                   onHoverExit: () {
-                    _cancelHealthCheck(item.id);
+                    _health.cancel(item.id);
                     if (mounted) setState(() {});
                   },
                 );

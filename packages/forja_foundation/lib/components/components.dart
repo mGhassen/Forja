@@ -10,6 +10,7 @@ export 'package:forja_foundation/components/input.dart';
 export 'package:forja_foundation/components/field.dart';
 export 'package:forja_foundation/components/badge.dart';
 export 'package:forja_foundation/components/dialog.dart';
+export 'package:forja_foundation/components/form_fields_dialog.dart';
 export 'package:forja_foundation/components/sheet.dart';
 export 'package:forja_foundation/components/toast.dart';
 export 'package:forja_foundation/components/empty.dart';

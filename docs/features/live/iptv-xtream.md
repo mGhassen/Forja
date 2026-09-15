@@ -14,8 +14,8 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 ## What you can do
 
 - Switch **Live**, **Movies**, and **Series** from the pack top bar
-- Browse the **category list** on the left and **landscape channel cards** on the right (logos + **NOW** when short EPG is available). Switch **Cards** / **List** / **Timeline** from the top bar; Search and Sort apply to the grid. Timeline `programmes` come from the pack.
-- Open **Portals** from the top bar — add, select, favorite, share, edit, or remove portals (inventory from the pack)
+- Browse the **category list** on the left and **landscape channel cards** on the right (logos + **NOW** when short EPG is available). Switch **Cards** / **EPG** from the top-bar view group; Search and Sort apply to the grid. EPG programmes come from the pack.
+- Open **Portals** from the top bar — add, import a share code, select, favorite, share, edit, or remove portals (forms and inventory from the pack)
 - Open movies/series in shared **hub details** — series episodes come from pack `details` (`meta.videos`); optional TMDB enrich when enabled
 - Play live channels and VOD in the live player (in-player channel guide / search / EPG use shared guide chrome). Progressive live (Xtream `.ts`) opens the CDN URL in MediaKit with ffmpeg reconnect — no local relay.
 - Optional **Forja Sports** matching for Live TV when the toggle is on in Addons → IPTV
@@ -23,7 +23,7 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 ## Setup
 
 1. Get portal URL, username, and password from your IPTV provider
-2. **Portals → Add**, or fill **Settings → Addons → IPTV** (platform / URL / credentials)
+2. **Portals → Add** or **Import** (share code), or fill **Settings → Addons → IPTV** (platform / URL / credentials)
 3. Select the portal and open **Live**, **Movies**, or **Series**
 
 ## Tips

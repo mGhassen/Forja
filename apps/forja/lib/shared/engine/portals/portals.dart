@@ -17,3 +17,4 @@ export 'share/portal_csv.dart';
 export 'share/portal_share.dart';
 export 'store/portal_vault_inventory.dart';
 export 'store/storage.dart';
+export 'portals_host.dart';

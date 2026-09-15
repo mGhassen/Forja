@@ -518,6 +518,7 @@ class EngineService {
       'searchChannels',
       'listPortals',
       'addPortal',
+      'importPortal',
       'editPortal',
       'selectPortal',
       'removePortal',

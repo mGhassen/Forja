@@ -149,6 +149,7 @@ void main() {
               {
                 'id': 'catalog',
                 'label': 'Section',
+                'style': 'shelf',
                 'default': 'live',
                 'items': [
                   {'id': 'live', 'label': 'Live'},
@@ -187,7 +188,7 @@ void main() {
           }),
         ),
       );
-      expect(find.text('Refresh'), findsWidgets);
+      expect(find.byIcon(Icons.refresh_rounded), findsWidgets);
       expect(find.text('Football'), findsWidgets);
       expect(find.text('No matches'), findsOneWidget);
     });
