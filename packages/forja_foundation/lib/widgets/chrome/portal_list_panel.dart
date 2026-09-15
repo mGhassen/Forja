@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// One portal row for [PortalListPanel] — opaque display fields only.
@@ -12,15 +13,29 @@ class PortalListItem {
     this.healthy,
     this.checking = false,
     this.platformLabel,
+    this.expiry,
+    this.activeConnections,
+    this.maxConnections,
+    this.favorite = false,
+    this.isNew = false,
+    this.deleting = false,
   });
 
   final String id;
   final String label;
   final String? subtitle;
   final bool selected;
+
+  /// `true` ok · `false` failed · `null` unchecked.
   final bool? healthy;
   final bool checking;
   final String? platformLabel;
+  final String? expiry;
+  final String? activeConnections;
+  final String? maxConnections;
+  final bool favorite;
+  final bool isNew;
+  final bool deleting;
 }
 
 /// Presentational portals list panel shell — props / slots only (RFC-095).
@@ -99,7 +114,8 @@ class PortalListPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = surfaceColor ?? const Color(0xFF12141A);
+    final surface =
+        surfaceColor ?? ForjaShellColors.cinematic.menuSurface;
 
     Widget? statusChild = status;
     if (statusChild == null && statusText.isNotEmpty) {

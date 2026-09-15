@@ -15,7 +15,7 @@
 - Add a playlist by URL (optional custom User-Agent)
 - Browse live channels by `group-title` in the pack catalog (same Live shelf as Xtream)
 - Play in the IPTV player — in-player guide and search work for live
-- Manage M3U portals in **Portals** (select / remove; edit via Addons fields)
+- Manage M3U portals in **Portals** (select / favorite / share / edit / remove)
 
 ## Setup
 

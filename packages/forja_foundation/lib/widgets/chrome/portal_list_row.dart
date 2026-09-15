@@ -1,0 +1,756 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// Presentational portal inventory row — props / callbacks only (RFC-095).
+///
+/// Visual parity with the former IPTV Portals panel tile: 98px card, health
+/// glyph, expiry / title / platform+URL / seats, hover action rail.
+class PortalListRow extends StatefulWidget {
+  const PortalListRow({
+    super.key,
+    required this.item,
+    this.leanback = false,
+    this.onSelect,
+    this.onFavorite,
+    this.onEdit,
+    this.onDelete,
+    this.onCopyShareCode,
+    this.onHoverEnter,
+    this.onHoverExit,
+  });
+
+  final PortalListItem item;
+  final bool leanback;
+  final VoidCallback? onSelect;
+  final VoidCallback? onFavorite;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  /// Returns a share code string; row shows spinner then the code.
+  final Future<String?> Function()? onCopyShareCode;
+  final VoidCallback? onHoverEnter;
+  final VoidCallback? onHoverExit;
+
+  static const rowHeight = 98.0;
+
+  @override
+  State<PortalListRow> createState() => _PortalListRowState();
+}
+
+class _PortalListRowState extends State<PortalListRow> {
+  static const _actionW = 108.0;
+  static const _statusSlot = 18.0;
+
+  bool _lineHover = false;
+  bool _focused = false;
+  bool _sharing = false;
+  bool _showShareCode = false;
+  bool _confirmingDelete = false;
+  String? _shareCode;
+
+  PortalListItem get item => widget.item;
+
+  bool get _reveal {
+    if (_confirmingDelete) return true;
+    if (item.deleting) return false;
+    if (_lineHover || (_focused && !widget.leanback)) return true;
+    return false;
+  }
+
+  bool get _showStar {
+    if (item.deleting) return false;
+    return _reveal || item.favorite || (!widget.leanback && _focused);
+  }
+
+  bool get _showNewChrome =>
+      !item.deleting && item.isNew && !_reveal && !_showShareCode;
+
+  void _clearHover() {
+    setState(() => _lineHover = false);
+  }
+
+  Future<void> _copy() async {
+    final request = widget.onCopyShareCode;
+    if (request == null || _sharing) return;
+    if (_shareCode != null) {
+      setState(() => _showShareCode = true);
+      await Clipboard.setData(ClipboardData(text: _shareCode!));
+      return;
+    }
+    setState(() => _sharing = true);
+    try {
+      final code = await request();
+      if (!mounted) return;
+      final trimmed = (code ?? '').trim();
+      if (trimmed.isNotEmpty) {
+        await Clipboard.setData(ClipboardData(text: trimmed));
+      }
+      setState(() {
+        _sharing = false;
+        _shareCode = trimmed.isEmpty ? null : trimmed;
+        _showShareCode = _shareCode != null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _sharing = false);
+    }
+  }
+
+  void _onRowTap() {
+    if (_confirmingDelete) {
+      setState(() => _confirmingDelete = false);
+      return;
+    }
+    if (_showShareCode) {
+      setState(() => _showShareCode = false);
+      return;
+    }
+    widget.onSelect?.call();
+  }
+
+  Color _healthColor({required bool checking, required bool? health}) {
+    if (checking) return const Color(0xFF38BDF8);
+    if (health == true) return ForjaShellColors.brandGreen;
+    if (health == false) return const Color(0xFFEF4444);
+    return const Color(0x3DFFFFFF);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final deleting = item.deleting;
+    final isActive = item.selected;
+    final reveal = _reveal;
+    final railAnim =
+        widget.leanback ? Duration.zero : const Duration(milliseconds: 180);
+
+    final fillColor = widget.leanback && _focused
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+        : isActive
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.07)
+            : _showNewChrome
+                ? ForjaShellColors.navUnderline.withValues(alpha: 0.1)
+                : (_lineHover || _focused || _showShareCode)
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.transparent;
+
+    Widget tile = ExcludeFocus(
+      excluding: deleting,
+      child: IgnorePointer(
+        ignoring: deleting,
+        child: Opacity(
+          opacity: deleting ? 0.55 : 1,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: fillColor,
+                  border: _showNewChrome
+                      ? const Border(
+                          left: BorderSide(
+                            color: ForjaShellColors.navUnderline,
+                            width: 3,
+                          ),
+                        )
+                      : null,
+                ),
+                child: SizedBox(
+                  height: PortalListRow.rowHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: _buildMain()),
+                      AnimatedContainer(
+                        duration: railAnim,
+                        curve: Curves.easeOutCubic,
+                        width: reveal ? _actionW : 0,
+                        height: PortalListRow.rowHeight,
+                        child: !reveal
+                            ? const SizedBox.shrink()
+                            : ClipRect(
+                                child: OverflowBox(
+                                  minWidth: _actionW,
+                                  maxWidth: _actionW,
+                                  alignment: Alignment.centerRight,
+                                  child: SizedBox(
+                                    width: _actionW,
+                                    height: PortalListRow.rowHeight,
+                                    child: _buildActionRail(),
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (deleting)
+                const Positioned.fill(
+                  child: CustomPaint(painter: _DeletingStripePainter()),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!widget.leanback) {
+      tile = MouseRegion(
+        onEnter: deleting
+            ? null
+            : (_) {
+                setState(() => _lineHover = true);
+                widget.onHoverEnter?.call();
+              },
+        onExit: deleting
+            ? null
+            : (_) {
+                _clearHover();
+                widget.onHoverExit?.call();
+              },
+        child: tile,
+      );
+    }
+
+    return Focus(
+      canRequestFocus: !deleting,
+      onFocusChange: (f) {
+        if (!mounted) return;
+        setState(() => _focused = f);
+        // Leanback has no hover — dwell probe on focus like the old panel.
+        if (widget.leanback) {
+          if (f) {
+            widget.onHoverEnter?.call();
+          } else {
+            widget.onHoverExit?.call();
+          }
+        }
+      },
+      child: tile,
+    );
+  }
+
+  Widget _buildMain() {
+    final isActive = item.selected;
+    final isFav = item.favorite;
+    final title = item.label;
+    final checking = item.checking;
+    final health = item.healthy;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: _onRowTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.center,
+                child: isActive
+                    ? _activeGlyph(checking: checking, health: health)
+                    : _idleDot(checking: checking, health: health),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _confirmingDelete
+                    ? _deleteConfirmLine()
+                    : _showShareCode || _sharing
+                        ? _shareCodeLine()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _expiryLine(item.expiry),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  if (_showNewChrome) ...[
+                                    _newBadge(),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: isFav
+                                            ? const Color(0xFFFBBF24)
+                                            : isActive
+                                                ? Colors.white
+                                                : _showNewChrome
+                                                    ? ForjaShellColors
+                                                        .navUnderline
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.88,
+                                                      ),
+                                        fontSize: 13,
+                                        fontWeight: isFav ||
+                                                isActive ||
+                                                _showNewChrome
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  if ((item.platformLabel ?? '')
+                                      .trim()
+                                      .isNotEmpty) ...[
+                                    _platformBadge(
+                                      item.platformLabel!.trim(),
+                                      muted: _showNewChrome,
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      item.subtitle ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: _showNewChrome
+                                            ? Colors.white54
+                                            : Colors.white38,
+                                        fontSize: 11,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              _seatsLine(
+                                active: item.activeConnections,
+                                max: item.maxConnections,
+                              ),
+                            ],
+                          ),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: AnimatedOpacity(
+                  opacity: _showStar ? 1 : 0,
+                  duration: widget.leanback
+                      ? Duration.zero
+                      : const Duration(milliseconds: 120),
+                  child: IgnorePointer(
+                    ignoring: !_showStar || widget.onFavorite == null,
+                    child: IconButton(
+                      tooltip: isFav ? 'Unfavorite' : 'Favorite',
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: widget.onFavorite,
+                      icon: Icon(
+                        isFav
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: 16,
+                        color: isFav
+                            ? const Color(0xFFFBBF24)
+                            : Colors.white30,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionRail() {
+    if (_confirmingDelete) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          _RailAction(
+            tooltip: 'Yes',
+            icon: Icons.check_rounded,
+            color: const Color(0xFFEF4444),
+            onTap: () {
+              setState(() => _confirmingDelete = false);
+              widget.onDelete?.call();
+            },
+          ),
+          _RailAction(
+            tooltip: 'No',
+            icon: Icons.close_rounded,
+            color: Colors.white60,
+            onTap: () => setState(() => _confirmingDelete = false),
+          ),
+        ],
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (widget.onCopyShareCode != null)
+          _RailAction(
+            tooltip: 'Copy share code',
+            icon: _sharing
+                ? Icons.hourglass_top_rounded
+                : Icons.copy_rounded,
+            color: Colors.white60,
+            onTap: _sharing ? null : () => unawaited(_copy()),
+          ),
+        if (widget.onEdit != null)
+          _RailAction(
+            tooltip: 'Edit',
+            icon: Icons.edit_rounded,
+            color: Colors.white60,
+            onTap: widget.onEdit,
+          ),
+        if (widget.onDelete != null)
+          _RailAction(
+            tooltip: 'Delete',
+            icon: Icons.delete_rounded,
+            color: const Color(0xFFEF4444),
+            onTap: () => setState(() => _confirmingDelete = true),
+          ),
+      ],
+    );
+  }
+
+  Widget _deleteConfirmLine() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'Delete this portal?',
+        style: GoogleFonts.plusJakartaSans(
+          color: const Color(0xFFEF4444),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+
+  Widget _shareCodeLine() {
+    if (_sharing) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: ForjaShellColors.brandGreen,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Creating share code…',
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white54,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      );
+    }
+    final code = _shareCode ?? '-';
+    final dense = code.length > 12;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'SHARE CODE · TAP ROW TO HIDE',
+          style: GoogleFonts.plusJakartaSans(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          code,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.jetBrainsMono(
+            color: ForjaShellColors.brandGreen,
+            fontSize: dense ? 12 : 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: dense ? 0.4 : 2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _expiryLine(String? expiry) {
+    final tone = portalExpiryTone(expiry);
+    return Row(
+      children: [
+        Icon(Icons.event_rounded, size: 12, color: tone.color),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            tone.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              color: tone.color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seatsLine({String? active, String? max}) {
+    final used = (active ?? '').trim().isEmpty ? '0' : active!.trim();
+    final cap = (max ?? '').trim().isEmpty ? '?' : max!.trim();
+    final activeN = int.tryParse(used);
+    final maxN = int.tryParse(cap);
+    final full =
+        activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
+    final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
+    return Row(
+      children: [
+        Icon(Icons.people_rounded, size: 12, color: color),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            '$used/$cap',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _newBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.navUnderline.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: ForjaShellColors.navUnderline.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Text(
+        'NEW',
+        style: GoogleFonts.plusJakartaSans(
+          color: ForjaShellColors.navUnderline,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          height: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _platformBadge(String label, {required bool muted}) {
+    final color = muted ? Colors.white54 : Colors.white38;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+          height: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _idleDot({required bool checking, required bool? health}) {
+    final color = _healthColor(checking: checking, health: health);
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(
+        child: checking
+            ? SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: color,
+                ),
+              )
+            : Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _activeGlyph({required bool checking, required bool? health}) {
+    final color = _healthColor(checking: checking, health: health);
+    final Widget glyph;
+    if (checking) {
+      glyph = SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      );
+    } else if (health == false) {
+      glyph = Icon(Icons.cancel_rounded, color: color, size: _statusSlot);
+    } else {
+      glyph = Icon(
+        Icons.play_circle_filled_rounded,
+        color: color,
+        size: _statusSlot,
+      );
+    }
+    return SizedBox(
+      width: _statusSlot,
+      height: _statusSlot,
+      child: Center(child: glyph),
+    );
+  }
+}
+
+/// Expiry label + color for portal rows (paint only).
+({Color color, String label}) portalExpiryTone(String? expiry) {
+  final raw = (expiry ?? '').trim();
+  final label = raw.isEmpty ? 'Unknown' : raw;
+  final end = _tryParseExpiry(label);
+  if (end == null) {
+    return (
+      color: const Color(0xFF9CA3AF),
+      label: label == 'Unknown' ? 'Ends: Unknown' : 'Ends: $label',
+    );
+  }
+  final today = DateTime.now();
+  final midnight = DateTime(today.year, today.month, today.day);
+  final days = end.difference(midnight).inDays;
+  final Color color;
+  if (days < 0) {
+    color = const Color(0xFFEF4444);
+  } else if (days <= 7) {
+    color = const Color(0xFFF97316);
+  } else if (days <= 30) {
+    color = const Color(0xFFFB923C);
+  } else {
+    color = const Color(0xFF22C55E);
+  }
+  final prefix = days < 0 ? 'Expired' : 'Ends';
+  return (color: color, label: '$prefix $label');
+}
+
+DateTime? _tryParseExpiry(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return DateTime(iso.year, iso.month, iso.day);
+  final m = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$').firstMatch(s);
+  if (m != null) {
+    var y = int.parse(m.group(3)!);
+    if (y < 100) y += 2000;
+    final a = int.parse(m.group(1)!);
+    final b = int.parse(m.group(2)!);
+    // Prefer D/M/Y when first > 12, else M/D/Y.
+    final day = a > 12 ? a : b;
+    final month = a > 12 ? b : a;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return DateTime(y, month, day);
+    }
+  }
+  return null;
+}
+
+class _RailAction extends StatelessWidget {
+  const _RailAction({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: Icon(icon, size: 16, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeletingStripePainter extends CustomPainter {
+  const _DeletingStripePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.07)
+      ..strokeWidth = 5
+      ..style = PaintingStyle.stroke;
+    const spacing = 12.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DeletingStripePainter oldDelegate) => false;
+}

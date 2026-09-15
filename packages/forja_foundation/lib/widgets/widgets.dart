@@ -69,6 +69,7 @@ export 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 export 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 export 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 export 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+export 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
 export 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 export 'package:forja_foundation/widgets/chrome/settings_player_chrome.dart';
 export 'package:forja_foundation/widgets/guide/channel_guide.dart';

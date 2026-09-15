@@ -15,7 +15,7 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 
 - Switch **Live**, **Movies**, and **Series** from the pack top bar
 - Browse the **category list** on the left and **landscape channel cards** on the right (logos + **NOW** when short EPG is available). Switch **Cards** / **List** / **Timeline** from the top bar; Search and Sort apply to the grid. Timeline `programmes` come from the pack.
-- Open **Portals** from the top bar — add, select, or remove portals (inventory from the pack)
+- Open **Portals** from the top bar — add, select, favorite, share, edit, or remove portals (inventory from the pack)
 - Open movies/series in shared **hub details** — series episodes come from pack `details` (`meta.videos`); optional TMDB enrich when enabled
 - Play live channels and VOD in the live player (in-player channel guide / search / EPG use shared guide chrome). Progressive live (Xtream `.ts`) opens the CDN URL in MediaKit with ffmpeg reconnect — no local relay.
 - Optional **Forja Sports** matching for Live TV when the toggle is on in Addons → IPTV

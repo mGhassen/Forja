@@ -198,7 +198,7 @@ Package composers are the **running** UI. Host maps MetaRuntime / Riverpod / TV 
 | `cinematic_hero.dart` | **kept** (RFC-109 A69) — hub catalog carousel; details stay on `widgets/details/details_hero.dart` | ✅ |
 | `because_section.dart` · `continue_section.dart` · `continue_watching_card.dart` · `mood_section.dart` | **kept** (RFC-109 A69) — hub catalog sections; host mounts via `kit/paint_*.dart` | ✅ |
 | `catalog_hero_section.dart` · `movie_poster*.dart` · `movie_atmosphere.dart` · `kit_event_dense_tile` | **deleted** composers (RFC-111). Keep: `poster_card` / `event_card` / `home_loading_skeleton` under `widgets/catalog/`. | ✅ |
-| `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,side_panel_overlay,portal_list_panel}.dart` | ✅ |
+| `kit_layout_scope.dart` · `kit_stack_widget.dart` · `kit_side_panel_overlay.dart` · `kit_portal_list_panel.dart` | `package:forja_foundation/widgets/chrome/{layout_scope,layout_stack,side_panel_overlay,portal_list_panel,portal_list_row}.dart` | ✅ |
 | `kit_panel_tabs.dart` | `package:forja_foundation/widgets/sources/panel_tabs.dart` | ✅ |
 | `kit_category_circle_meta.dart` | `package:forja_foundation/widgets/catalog/category_circle_meta.dart` | ✅ |
 | `tmdb_paint_gate.dart` | `package:forja_foundation/widgets/details/tmdb_paint_gate.dart` | ✅ |
