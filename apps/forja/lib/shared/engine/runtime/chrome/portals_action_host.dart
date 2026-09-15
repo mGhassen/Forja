@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
+import 'package:forja/shared/player/live/tv_focus.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -59,58 +60,13 @@ abstract final class PortalsActionHost {
         .trim();
     if (hoist.isNotEmpty) registerHoistSource(hoist);
 
-    final key = tabId.trim();
-    final open = ref.watch(portalsPanelOpenProvider(key));
-    // Vault only while closed — never kick pack listPortals (flutter_js mutex
-    // contended with catalog feed). Prefer live inventory once the panel is open.
-    final summary = ref.watch(portalsChipSummaryProvider(key));
-    var label = summary.asData?.value.label ?? 'Portals';
-    var hasPortal = summary.asData?.value.hasPortal ?? false;
-    if (open) {
-      final inv = ref.watch(portalsInventoryProvider(key));
-      final data = inv.asData?.value;
-      if (data != null) {
-        label = data.activeLabel;
-        hasPortal = data.portals.isNotEmpty;
-      }
-    }
-
-    final policy = ShellScope.inputPolicyOf(context);
-    return PortalsChip(
-      label: label,
-      hasPortal: hasPortal,
-      selected: open,
-      tvFocus: policy.useFocusableMoodChips,
-      onTap: () {
-        ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
-        if (!open) {
-          ref.invalidate(portalsInventoryProvider(key));
-        } else {
-          ref.invalidate(portalsChipSummaryProvider(key));
-        }
-      },
-      interactiveBuilder: ({
-        required child,
-        required onTap,
-        onFocusChange,
-        onHoverChange,
-      }) =>
-          shellFocusableTap(
-            context: context,
-            onTap: onTap,
-            borderRadius: 8,
-            scaleOnFocus: 1.0,
-            tvZone: ShellTvZone.topBar,
-            tvTabId: tabId,
-            tvRowId: rowId,
-            tvItemIndex: itemIndex,
-            onLeftEdge: onLeftEdge,
-            onRightEdge: onRightEdge,
-            onDownEdge: onDownEdge,
-            onFocusChange: onFocusChange,
-            onHoverChange: onHoverChange,
-            child: child,
-          ),
+    return _PortalsTopBarChip(
+      tabId: tabId.trim(),
+      rowId: rowId,
+      itemIndex: itemIndex,
+      onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
     );
   }
 
@@ -126,6 +82,164 @@ abstract final class PortalsActionHost {
       tabId: tabId,
       shellTabVisible: shellTabVisible,
       child: child,
+    );
+  }
+}
+
+/// Top-bar Portals chip — hover/focus probes active portal (status + seats).
+class _PortalsTopBarChip extends ConsumerStatefulWidget {
+  const _PortalsTopBarChip({
+    required this.tabId,
+    required this.rowId,
+    required this.itemIndex,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final String tabId;
+  final String rowId;
+  final int itemIndex;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+
+  @override
+  ConsumerState<_PortalsTopBarChip> createState() => _PortalsTopBarChipState();
+}
+
+class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
+  late final PortalHealthTracker _health;
+  bool _hovered = false;
+  bool _focused = false;
+  String _probeKey = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _health = PortalHealthTracker(onChanged: () {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _health.dispose();
+    super.dispose();
+  }
+
+  void _onActiveChange({required bool hovered, required bool focused}) {
+    final key = _probeKey;
+    if (key.isEmpty) return;
+    final leanback = liveLeanbackOnly(context);
+    if (hovered || focused) {
+      _health.schedule(key, leanback: leanback);
+    } else {
+      _health.cancel(key);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final key = widget.tabId;
+    final open = ref.watch(portalsPanelOpenProvider(key));
+    final summary = ref.watch(portalsChipSummaryProvider(key));
+    var label = summary.asData?.value.label ?? 'Portals';
+    var hasPortal = summary.asData?.value.hasPortal ?? false;
+    var portalKey = summary.asData?.value.portalKey ?? '';
+    var seatsUsed = summary.asData?.value.seatsUsed;
+    var seatsMax = summary.asData?.value.seatsMax;
+
+    if (open) {
+      final inv = ref.watch(portalsInventoryProvider(key));
+      final data = inv.asData?.value;
+      if (data != null) {
+        label = data.activeLabel;
+        hasPortal = data.portals.isNotEmpty;
+        portalKey = data.activeKey;
+        for (final p in data.portals) {
+          if (p.id != data.activeKey) continue;
+          seatsUsed = p.activeConnections;
+          seatsMax = p.maxConnections;
+          break;
+        }
+      }
+    }
+
+    if (portalKey != _probeKey) {
+      if (_probeKey.isNotEmpty) _health.cancel(_probeKey);
+      _probeKey = portalKey;
+      if ((_hovered || _focused) && portalKey.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _onActiveChange(hovered: _hovered, focused: _focused);
+        });
+      }
+    }
+
+    final painted = portalKey.isEmpty
+        ? null
+        : _health.paint(
+            PortalListItem(
+              id: portalKey,
+              label: label,
+              selected: false,
+              healthy: null,
+              checking: false,
+              activeConnections: seatsUsed ?? '',
+              maxConnections: seatsMax ?? '',
+            ),
+          );
+    final checking = painted?.checking ?? false;
+    final healthy = painted?.healthy;
+    final used = (painted?.activeConnections ?? seatsUsed ?? '').trim();
+    final max = (painted?.maxConnections ?? seatsMax ?? '').trim();
+
+    final policy = ShellScope.inputPolicyOf(context);
+    return PortalsChip(
+      label: label,
+      hasPortal: hasPortal,
+      selected: open,
+      checking: checking,
+      healthy: healthy,
+      seatsUsed: used.isEmpty ? null : used,
+      seatsMax: max.isEmpty ? null : max,
+      tvFocus: policy.useFocusableMoodChips,
+      onTap: () {
+        // Open/close only — do not invalidate inventory here. keepAlive cache
+        // paints instantly on re-open; mutations + Refresh already invalidate.
+        ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
+      },
+      onFocusChange: (focused) {
+        _focused = focused;
+        _onActiveChange(hovered: _hovered, focused: focused);
+      },
+      onHoverChange: (hovered) {
+        _hovered = hovered;
+        _onActiveChange(hovered: hovered, focused: _focused);
+      },
+      interactiveBuilder: ({
+        required child,
+        required onTap,
+        onFocusChange,
+        onHoverChange,
+      }) =>
+          shellFocusableTap(
+            context: context,
+            onTap: onTap,
+            borderRadius: 8,
+            scaleOnFocus: 1.0,
+            tvZone: ShellTvZone.topBar,
+            tvTabId: widget.tabId,
+            tvRowId: widget.rowId,
+            tvItemIndex: widget.itemIndex,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
+            onDownEdge: widget.onDownEdge,
+            onFocusChange: onFocusChange,
+            onHoverChange: onHoverChange,
+            child: child,
+          ),
     );
   }
 }

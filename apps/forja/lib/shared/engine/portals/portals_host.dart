@@ -102,9 +102,15 @@ abstract final class PortalsHost {
               '')
           .toString()
           .trim();
+      final key = vaultPortalKey(row);
+      final used = (row['activeConnections'] ?? '').toString().trim();
+      final max = (row['maxConnections'] ?? '').toString().trim();
       return PortalsChipSummary(
         label: label.isEmpty ? 'Portals' : label,
         hasPortal: true,
+        portalKey: key,
+        seatsUsed: used.isEmpty ? null : used,
+        seatsMax: max.isEmpty ? null : max,
       );
     } catch (_) {
       return const PortalsChipSummary(label: 'Portals', hasPortal: false);
@@ -428,10 +434,18 @@ class PortalsChipSummary {
   const PortalsChipSummary({
     required this.label,
     required this.hasPortal,
+    this.portalKey = '',
+    this.seatsUsed,
+    this.seatsMax,
   });
 
   final String label;
   final bool hasPortal;
+
+  /// Vault / pack portal key for hover health probe.
+  final String portalKey;
+  final String? seatsUsed;
+  final String? seatsMax;
 }
 
 /// Inventory DTO for foundation paint + pack-declared panel chrome/forms.
@@ -525,6 +539,12 @@ class PortalHealthTracker {
       onChanged?.call();
     }
   }
+
+  bool? healthFor(String portalKey) => _health[portalKey];
+
+  String? seatsActiveFor(String portalKey) => _probeActive[portalKey];
+
+  String? seatsMaxFor(String portalKey) => _probeMax[portalKey];
 
   /// Merge probe state onto a list item for paint.
   PortalListItem paint(PortalListItem p, {bool deleting = false}) {
