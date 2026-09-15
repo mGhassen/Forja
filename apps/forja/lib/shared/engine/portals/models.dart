@@ -467,6 +467,59 @@ abstract final class PortalLiveCatalog {
         watched,
         ...apiCategories,
       ];
+
+  /// Order: Favorites · Already watched · custom order / pins · remaining.
+  /// [input] may already include synthetics; they stay first.
+  static List<PortalCategory> sortCategories(
+    List<PortalCategory> input, {
+    List<String> userPinnedIds = const [],
+    List<String> customOrderIds = const [],
+  }) {
+    if (input.length < 2 &&
+        userPinnedIds.isEmpty &&
+        customOrderIds.isEmpty) {
+      return input;
+    }
+    final synthetic = <PortalCategory>[];
+    final byId = <String, PortalCategory>{};
+    for (final c in input) {
+      if (isSyntheticId(c.id)) {
+        synthetic.add(c);
+      } else {
+        byId[c.id] = c;
+      }
+    }
+
+    if (customOrderIds.isNotEmpty) {
+      final ordered = <PortalCategory>[];
+      final seen = <String>{};
+      for (final id in customOrderIds) {
+        final c = byId[id];
+        if (c == null || !seen.add(id)) continue;
+        ordered.add(c);
+      }
+      for (final c in byId.values) {
+        if (seen.add(c.id)) ordered.add(c);
+      }
+      return [...synthetic, ...ordered];
+    }
+
+    final userPinSet = userPinnedIds.toSet();
+    final userPinnedById = <String, PortalCategory>{};
+    final rest = <PortalCategory>[];
+    for (final c in byId.values) {
+      if (userPinSet.contains(c.id)) {
+        userPinnedById[c.id] = c;
+      } else {
+        rest.add(c);
+      }
+    }
+    final userPinned = [
+      for (final id in userPinnedIds)
+        if (userPinnedById.containsKey(id)) userPinnedById[id]!,
+    ];
+    return [...synthetic, ...userPinned, ...rest];
+  }
 }
 
 /// Portal group ids synthesized by the Rust Xtream client when categories

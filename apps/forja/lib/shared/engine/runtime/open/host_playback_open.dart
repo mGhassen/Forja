@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
+import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
@@ -106,6 +107,16 @@ abstract final class HostPlaybackOpen {
           playUrl: u,
         );
         if (ctx.mounted == false) return false;
+      }
+      final sid = (streamId ?? '').trim();
+      final pk = (portalKey ?? '').trim();
+      if (!vodPlayback && sid.isNotEmpty && pk.isNotEmpty) {
+        unawaited(
+          CategoryBarActionHost.recordWatched(
+            portalKeyOrVaultKey: pk,
+            streamId: sid,
+          ),
+        );
       }
       await openForjaLiveNativePlayer(
         ctx,

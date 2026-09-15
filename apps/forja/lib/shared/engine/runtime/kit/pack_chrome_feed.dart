@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/protocol/filter.dart';
@@ -65,6 +66,12 @@ Map<String, dynamic> packChromeFeedParams(
   final q = (chrome?.eventQuery ?? '').trim();
   if (q.isNotEmpty) params['q'] = q;
 
+  // Live category lists from host store cache (Favorites / pins / order).
+  final liveLists = CategoryBarActionHost.cachedLiveListParams;
+  if (liveLists.isNotEmpty) {
+    params.addAll(liveLists);
+  }
+
   // Do NOT put force/refresh here. refreshEpoch already busts PackLoadedPaint's
   // selection epoch; a permanent force:true wiped live_sports.feed on every
   // sport/horizon change after the user tapped Refresh once.
@@ -105,5 +112,8 @@ String packChromeSelectionEpoch(
     chrome?.eventQuery ?? '',
     '${chrome?.refreshEpoch ?? 0}',
     catalogChromeFilterEpoch(tabId),
+    '${CategoryBarActionHost.cachedLiveListParams['favorites']}',
+    '${CategoryBarActionHost.cachedLiveListParams['pinnedCats']}',
+    '${CategoryBarActionHost.cachedLiveListParams['categoryOrder']}',
   ].join('|');
 }

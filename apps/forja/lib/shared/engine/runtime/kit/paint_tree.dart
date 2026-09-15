@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/details/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
@@ -923,6 +924,41 @@ class PackPaintTree extends StatelessWidget {
     return null;
   }
 
+  /// Live IPTV channel favorite star when open carries portalKey + streamId.
+  Widget? _liveFavoriteAccessory(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  }) {
+    final open = item['open'];
+    Map<String, dynamic>? openMap;
+    if (open is Map) {
+      openMap = Map<String, dynamic>.from(open);
+    }
+    final props = PackPaintArtifact.propsOf(item);
+    final portalKey = (openMap?['portalKey'] ??
+            props['portalKey'] ??
+            item['portalKey'] ??
+            '')
+        .toString()
+        .trim();
+    final streamId = (openMap?['streamId'] ??
+            props['streamId'] ??
+            item['streamId'] ??
+            '')
+        .toString()
+        .trim();
+    final surface = (openMap?['surface'] ?? '').toString().trim();
+    final kind = (openMap?['kind'] ?? '').toString().trim();
+    if (portalKey.isEmpty || streamId.isEmpty) return null;
+    if (surface != 'stream' && kind != 'live') return null;
+    return CategoryBarActionHost.favoriteStar(
+      portalKey: portalKey,
+      streamId: streamId,
+      reveal: active,
+    );
+  }
+
   Widget _mountHero(BuildContext context, Map<String, dynamic> node) {
     final items = node['items'];
     if (items is! List || items.isEmpty) return const SizedBox.shrink();
@@ -1281,6 +1317,7 @@ class PackPaintTree extends StatelessWidget {
                 (spec['emptyDescription'] ?? '').toString().isEmpty
                     ? null
                     : spec['emptyDescription']?.toString(),
+            itemAccessory: _liveFavoriteAccessory,
             onItemTap: (item) {
               if (openMode == 'panel') {
                 chrome?.onSelectListItem(item);
@@ -1557,6 +1594,19 @@ class PackPaintTree extends StatelessWidget {
     if (vertical) {
       final width =
           (spec['width'] is num) ? (spec['width'] as num).toDouble() : 220.0;
+      if (CategoryBarActionHost.featuresEnabled(spec)) {
+        return Consumer(
+          builder: (ctx, ref, _) => CategoryBarActionHost.buildRail(
+            ctx,
+            ref,
+            spec: spec,
+            seedItems: items,
+            selectedId: selected,
+            tabId: tabId,
+            onSelect: (itemId) => scope?.onSelect(id, itemId, toggle: false),
+          ),
+        );
+      }
       return CatalogSideRail(
         items: [for (final e in items) (id: e.id, label: e.label)],
         selectedId: selected,

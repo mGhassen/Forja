@@ -36,6 +36,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.selectedItemId,
     this.gap,
     this.pad,
+    this.itemAccessory,
   });
 
   final List<Map<String, dynamic>> items;
@@ -52,6 +53,13 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Horizontal inset for event/poster grids. Null → catalog density pad.
   final double? pad;
+
+  /// Optional corner control (e.g. live favorite star). [active] = hover/focus.
+  final Widget? Function(
+    BuildContext context,
+    Map<String, dynamic> item, {
+    required bool active,
+  })? itemAccessory;
 
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
@@ -207,6 +215,10 @@ class CatalogCardsGrid extends StatelessWidget {
                   ? (props['rating'] as num).toDouble()
                   : null,
               badge: badge.isEmpty ? null : badge,
+              listPinBuilder: itemAccessory == null
+                  ? null
+                  : ({required bool active}) =>
+                      itemAccessory!(context, item, active: active),
               onTap: () => onItemTap?.call(item),
               aspect: itemLandscape
                   ? PosterAspect.landscape

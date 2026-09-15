@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
@@ -87,7 +88,14 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     ].join('|');
   }
 
-  Future<MetaEnvelope> _run() {
+  Future<MetaEnvelope> _run() async {
+    // Warm host Live list cache (Favorites / pins) before pack feed params.
+    if (widget.action == 'feed' || widget.action == 'rail') {
+      await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+    }
+    if (!mounted) {
+      return const MetaEnvelope(ok: false, action: 'feed', data: {});
+    }
     final chrome = PackChromeScope.maybeOf(context);
     final params = packChromeFeedParams(
       context,

@@ -26,6 +26,7 @@ class InteractivePosterCard extends StatefulWidget {
     this.rank,
     this.badge,
     this.listPin,
+    this.listPinBuilder,
     this.listIndex,
     this.gridIndex,
     this.gridColumns,
@@ -46,6 +47,9 @@ class InteractivePosterCard extends StatefulWidget {
   final int? rank;
   final String? badge;
   final Widget? listPin;
+
+  /// Prefer over [listPin] when the pin should react to hover/focus.
+  final Widget? Function({required bool active})? listPinBuilder;
   final int? listIndex;
   final int? gridIndex;
   final int? gridColumns;
@@ -125,6 +129,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
   Timer? _holdTimer;
   bool _longPressFired = false;
   LogicalKeyboardKey? _holdActivateKey;
+  bool _hovered = false;
+  bool _focused = false;
 
   @override
   void dispose() {
@@ -192,6 +198,12 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
     final radius = InteractivePosterCard.cardBorderRadius(context);
     final inset = InteractivePosterCard.scaled(context, 10).clamp(4.0, 10.0);
     final inGrid = widget.gridIndex != null && widget.gridColumns != null;
+    final active = ShellPaintScope.interactiveActive(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    final pin = widget.listPinBuilder?.call(active: active) ?? widget.listPin;
 
     Widget card = ShellPaintScope.focusableTap(
       context: context,
@@ -208,6 +220,8 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
       onKeyEvent: widget.onLongPress != null ? _onTvKey : null,
       child: PosterCard(
         imageUrl: widget.imageUrl,
@@ -216,7 +230,7 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         rating: widget.rating,
         rank: widget.rank,
         badge: widget.badge,
-        listPin: widget.listPin,
+        listPin: pin,
         aspect: widget.aspect,
         width: w,
         height: h,

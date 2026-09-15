@@ -1,0 +1,686 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/empty.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// One category rail row — props only (pack / host supply state).
+class CatalogCategoryItem {
+  const CatalogCategoryItem({
+    required this.id,
+    required this.label,
+    this.icon,
+    this.pinnable = false,
+    this.pinned = false,
+    this.fixed = false,
+  });
+
+  final String id;
+  final String label;
+  final IconData? icon;
+  final bool pinnable;
+  final bool pinned;
+
+  /// Synthetic / non-draggable (Favorites, Already watched, All).
+  final bool fixed;
+}
+
+/// Vertical category rail with hover, pin, and delayed drag-reorder.
+///
+/// TV: hold OK ~1s reveals pin or enters floating reorder when [canReorder].
+class CatalogCategoryRail extends StatefulWidget {
+  const CatalogCategoryRail({
+    super.key,
+    required this.items,
+    required this.selectedId,
+    this.onSelect,
+    this.onTogglePin,
+    this.onReorder,
+    this.canReorder = false,
+    this.width = 220,
+    this.compact = false,
+    this.tvRowId = 'catalog-categories',
+  });
+
+  final List<CatalogCategoryItem> items;
+  final String? selectedId;
+  final ValueChanged<String>? onSelect;
+  final ValueChanged<String>? onTogglePin;
+
+  /// Movable-slice indices (excludes [CatalogCategoryItem.fixed]).
+  /// [newIndex] already accounts for the removed item ([onReorderItem]).
+  final void Function(int oldIndex, int newIndex)? onReorder;
+  final bool canReorder;
+  final double width;
+  final bool compact;
+  final String tvRowId;
+
+  static const double rowExtentDesktop = 46;
+  static const double rowExtentCompact = 42;
+
+  /// Host Back handlers may call this to dismiss pin / floating chrome.
+  static bool tryConsumeBack() => _CatalogCategoryRowState.tryConsumeBack();
+
+  @override
+  State<CatalogCategoryRail> createState() => _CatalogCategoryRailState();
+}
+
+class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
+  String? _floatingId;
+
+  double get _rowExtent => widget.compact
+      ? CatalogCategoryRail.rowExtentCompact
+      : CatalogCategoryRail.rowExtentDesktop;
+
+  List<CatalogCategoryItem> get _fixed =>
+      [for (final e in widget.items) if (e.fixed) e];
+
+  List<CatalogCategoryItem> get _movable =>
+      [for (final e in widget.items) if (!e.fixed) e];
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.items.isEmpty) {
+      return SizedBox(
+        width: widget.width,
+        child: const Empty(title: 'No categories', size: EmptySize.sm),
+      );
+    }
+
+    final fixed = _fixed;
+    final movable = _movable;
+    final canReorder = widget.canReorder &&
+        widget.onReorder != null &&
+        movable.length > 1;
+
+    Widget rowFor(CatalogCategoryItem item, int listIndex, {int? reorderIndex}) {
+      return _CatalogCategoryRow(
+        key: ValueKey(item.id),
+        item: item,
+        selected: item.id == widget.selectedId,
+        compact: widget.compact,
+        listIndex: listIndex,
+        reorderIndex: canReorder ? reorderIndex : null,
+        floating: _floatingId == item.id,
+        tvRowId: widget.tvRowId,
+        onSelect: widget.onSelect == null
+            ? null
+            : () => widget.onSelect!(item.id),
+        onTogglePin: item.pinnable && widget.onTogglePin != null
+            ? () => widget.onTogglePin!(item.id)
+            : null,
+        onEnterFloating: canReorder && reorderIndex != null
+            ? () => setState(() => _floatingId = item.id)
+            : null,
+        onExitFloating: () {
+          if (_floatingId == item.id) setState(() => _floatingId = null);
+        },
+        onTvReorderUp: canReorder && reorderIndex != null
+            ? () => _moveFloating(-1)
+            : null,
+        onTvReorderDown: canReorder && reorderIndex != null
+            ? () => _moveFloating(1)
+            : null,
+      );
+    }
+
+    return ColoredBox(
+      color: ForjaShellColors.bgDark,
+      child: SizedBox(
+        width: widget.width,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  if (fixed.isNotEmpty)
+                    SliverFixedExtentList(
+                      itemExtent: _rowExtent,
+                      delegate: SliverChildBuilderDelegate(
+                        (context, i) => rowFor(fixed[i], i),
+                        childCount: fixed.length,
+                        addAutomaticKeepAlives: false,
+                      ),
+                    ),
+                  if (movable.isNotEmpty)
+                    canReorder
+                        ? SliverReorderableList(
+                            itemCount: movable.length,
+                            itemExtent: _rowExtent,
+                            proxyDecorator: _reorderProxy,
+                            onReorderItem: (oldIndex, newIndex) {
+                              widget.onReorder?.call(oldIndex, newIndex);
+                            },
+                            itemBuilder: (context, i) => rowFor(
+                              movable[i],
+                              fixed.length + i,
+                              reorderIndex: i,
+                            ),
+                          )
+                        : SliverFixedExtentList(
+                            itemExtent: _rowExtent,
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) =>
+                                  rowFor(movable[i], fixed.length + i),
+                              childCount: movable.length,
+                              addAutomaticKeepAlives: false,
+                            ),
+                          ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _moveFloating(int delta) {
+    final id = _floatingId;
+    if (id == null || widget.onReorder == null) return;
+    final movable = _movable;
+    final oldIndex = movable.indexWhere((e) => e.id == id);
+    if (oldIndex < 0) return;
+    final newIndex = (oldIndex + delta).clamp(0, movable.length - 1);
+    if (newIndex == oldIndex) return;
+    widget.onReorder!(oldIndex, newIndex);
+  }
+
+  static Widget _reorderProxy(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    return _CategoryDragProxyScope(child: child);
+  }
+}
+
+class _CategoryDragProxyScope extends InheritedWidget {
+  const _CategoryDragProxyScope({required super.child});
+
+  static bool isProxy(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_CategoryDragProxyScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(covariant _CategoryDragProxyScope oldWidget) => false;
+}
+
+class _CatalogCategoryRow extends StatefulWidget {
+  const _CatalogCategoryRow({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.compact,
+    required this.listIndex,
+    required this.tvRowId,
+    this.reorderIndex,
+    this.floating = false,
+    this.onSelect,
+    this.onTogglePin,
+    this.onEnterFloating,
+    this.onExitFloating,
+    this.onTvReorderUp,
+    this.onTvReorderDown,
+  });
+
+  final CatalogCategoryItem item;
+  final bool selected;
+  final bool compact;
+  final int listIndex;
+  final String tvRowId;
+  final int? reorderIndex;
+  final bool floating;
+  final VoidCallback? onSelect;
+  final VoidCallback? onTogglePin;
+  final VoidCallback? onEnterFloating;
+  final VoidCallback? onExitFloating;
+  final VoidCallback? onTvReorderUp;
+  final VoidCallback? onTvReorderDown;
+
+  @override
+  State<_CatalogCategoryRow> createState() => _CatalogCategoryRowState();
+}
+
+class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
+    with SingleTickerProviderStateMixin {
+  static _CatalogCategoryRowState? _chromeOwner;
+
+  /// Host Back handlers may call this to dismiss pin / floating chrome.
+  static bool tryConsumeBack() {
+    final s = _chromeOwner;
+    if (s == null || !s.mounted) return false;
+    if (s._pinFocus.hasFocus) {
+      s._rowFocus.requestFocus();
+      return true;
+    }
+    if (s.widget.floating) {
+      s.widget.onExitFloating?.call();
+      return true;
+    }
+    if (s._tvPinRevealed) {
+      s.setState(() => s._tvPinRevealed = false);
+      s._releaseChrome();
+      return true;
+    }
+    return false;
+  }
+
+  bool _hovered = false;
+  bool _focused = false;
+  bool _okHoldFired = false;
+  bool _tvPinRevealed = false;
+  Timer? _okHoldTimer;
+  late final FocusNode _rowFocus;
+  late final FocusNode _pinFocus;
+  late final AnimationController _holdSunrise;
+  final ValueNotifier<Offset?> _holdOriginN = ValueNotifier<Offset?>(null);
+  Offset? _pointerDownGlobal;
+
+  static const _okHoldDelay = Duration(seconds: 1);
+  static const _dragHoldDelay = Duration(milliseconds: 1500);
+
+  bool get _canTvReorder =>
+      widget.reorderIndex != null &&
+      (widget.onTvReorderUp != null || widget.onTvReorderDown != null);
+
+  bool get _canTvPin => widget.onTogglePin != null && widget.item.pinnable;
+
+  bool get _showPin {
+    if (!_canTvPin) return false;
+    final leanback = ShellPaintScope.usesTvDensityOf(context) &&
+        !ShellPaintScope.scaleOnHoverOf(context);
+    if (leanback) {
+      return widget.floating || _tvPinRevealed || _pinFocus.hasFocus;
+    }
+    return widget.item.pinned || _hovered || _focused;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _holdSunrise = AnimationController(vsync: this);
+    _rowFocus = FocusNode(debugLabel: 'catalog-cat-${widget.listIndex}');
+    _pinFocus = FocusNode(debugLabel: 'catalog-cat-pin-${widget.listIndex}');
+    _rowFocus.addListener(() {
+      if (mounted) setState(() => _focused = _rowFocus.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _okHoldTimer?.cancel();
+    _holdOriginN.dispose();
+    _holdSunrise.dispose();
+    _releaseChrome();
+    _pinFocus.dispose();
+    _rowFocus.dispose();
+    super.dispose();
+  }
+
+  void _claimChrome() => _chromeOwner = this;
+
+  void _releaseChrome() {
+    if (_chromeOwner == this) _chromeOwner = null;
+  }
+
+  void _cancelHold() {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _holdOriginN.value = null;
+    _holdSunrise.stop();
+    _holdSunrise.value = 0;
+  }
+
+  KeyEventResult _onRowKey(FocusNode node, KeyEvent event) {
+    final activate = ShellPaintScope.isActivateKeyOf(context, event);
+    final leanback = ShellPaintScope.usesTvDensityOf(context);
+
+    if (widget.floating) {
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.arrowUp) {
+          widget.onTvReorderUp?.call();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowDown) {
+          widget.onTvReorderDown?.call();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowLeft) {
+          if (event is KeyDownEvent) widget.onExitFloating?.call();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowRight) {
+          if (_canTvPin) _pinFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
+        if (activate && event is KeyDownEvent && !_okHoldFired) {
+          widget.onExitFloating?.call();
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.handled;
+    }
+
+    if (_tvPinRevealed) {
+      if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+          event.logicalKey == LogicalKeyboardKey.arrowRight &&
+          _canTvPin) {
+        _pinFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        setState(() => _tvPinRevealed = false);
+        _releaseChrome();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (leanback && (_canTvReorder || _canTvPin)) {
+      if (event is KeyDownEvent && activate) {
+        _okHoldFired = false;
+        _okHoldTimer?.cancel();
+        _holdOriginN.value = Offset(
+          (context.size?.width ?? 100) / 2,
+          (context.size?.height ?? 40) / 2,
+        );
+        _holdSunrise
+          ..duration = _okHoldDelay
+          ..forward(from: 0);
+        _okHoldTimer = Timer(_okHoldDelay, () {
+          if (!mounted) return;
+          _okHoldFired = true;
+          _cancelHold();
+          if (_canTvReorder) {
+            _claimChrome();
+            widget.onEnterFloating?.call();
+          } else if (_canTvPin) {
+            setState(() => _tvPinRevealed = true);
+            _claimChrome();
+          }
+        });
+        return KeyEventResult.handled;
+      }
+      if (event is KeyUpEvent && activate) {
+        _okHoldTimer?.cancel();
+        _okHoldTimer = null;
+        if (_okHoldFired) {
+          _okHoldFired = false;
+          return KeyEventResult.handled;
+        }
+        _cancelHold();
+        widget.onSelect?.call();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final leanback = ShellPaintScope.usesTvDensityOf(context) &&
+        !ShellPaintScope.scaleOnHoverOf(context);
+    final lifted =
+        widget.floating || _CategoryDragProxyScope.isProxy(context);
+    final lit = _focused || lifted || (!leanback && _hovered);
+    final iconColor = _focused || lifted
+        ? ForjaShellColors.brandGreen
+        : lit
+            ? Colors.white
+            : widget.selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.7)
+                : ForjaShellColors.textSecondary;
+    final titleColor = _focused || lifted
+        ? ForjaShellColors.brandGreen
+        : lit
+            ? Colors.white
+            : widget.selected
+                ? Colors.white.withValues(alpha: 0.88)
+                : ForjaShellColors.textSecondary;
+    final leftBar = lifted || _focused
+        ? ForjaShellColors.brandGreen
+        : lit
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+            : widget.selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.4)
+                : Colors.transparent;
+    final fillColor = lifted
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
+        : _focused
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : (!leanback && _hovered)
+                ? ForjaShellColors.inkHover
+                : Colors.transparent;
+
+    Widget rowBody = Container(
+      width: double.infinity,
+      height: widget.compact
+          ? CatalogCategoryRail.rowExtentCompact
+          : CatalogCategoryRail.rowExtentDesktop,
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        color: fillColor,
+        border: Border(left: BorderSide(color: leftBar, width: 2.5)),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: widget.compact ? 10 : 12,
+              right: widget.compact ? 6 : 8,
+            ),
+            child: Row(
+              children: [
+                if (widget.item.icon != null) ...[
+                  Icon(
+                    widget.item.icon,
+                    size: widget.compact ? 18 : 20,
+                    color: iconColor,
+                  ),
+                  SizedBox(width: widget.compact ? 10 : 12),
+                ],
+                Expanded(
+                  child: Text(
+                    widget.item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: titleColor,
+                      fontSize: widget.compact ? 13 : 14,
+                      fontWeight: lit || widget.selected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (_showPin) _buildPin(leanback),
+              ],
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_holdSunrise, _holdOriginN]),
+                builder: (context, _) {
+                  final origin = _holdOriginN.value;
+                  final progress = _holdSunrise.value;
+                  if (origin == null || progress <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return CustomPaint(
+                    painter: _HoldSunrisePainter(
+                      origin: origin,
+                      progress: progress,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Widget row = ShellPaintScope.focusableTap(
+      context: context,
+      onTap: () {
+        _cancelHold();
+        if (widget.floating) {
+          widget.onExitFloating?.call();
+          return;
+        }
+        widget.onSelect?.call();
+      },
+      borderRadius: 0,
+      listIndex: widget.listIndex,
+      navLeftAlways: true,
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.listIndex,
+      focusNode: _rowFocus,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
+      onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
+      onRightEdge: () {
+        if (widget.floating || _tvPinRevealed) {
+          if (_canTvPin) _pinFocus.requestFocus();
+          return;
+        }
+        widget.onSelect?.call();
+      },
+      child: rowBody,
+    );
+
+    final reorderIndex = widget.reorderIndex;
+    if (reorderIndex == null) return row;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (e) {
+        _pointerDownGlobal = e.position;
+        _holdOriginN.value = e.localPosition;
+        _holdSunrise
+          ..duration = _dragHoldDelay
+          ..forward(from: 0);
+      },
+      onPointerMove: (e) {
+        final start = _pointerDownGlobal;
+        if (start == null) return;
+        if ((e.position - start).distance > 12) _cancelHold();
+      },
+      onPointerUp: (_) => _cancelHold(),
+      onPointerCancel: (_) => _cancelHold(),
+      child: _DelayedReorderDragStartListener(
+        index: reorderIndex,
+        child: row,
+      ),
+    );
+  }
+
+  Widget _buildPin(bool leanback) {
+    final pinFocused = leanback && _pinFocus.hasFocus;
+    final icon = Icon(
+      widget.item.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+      size: widget.compact ? 16 : 17,
+      color: pinFocused
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.iconMuted,
+    );
+    if (!leanback) {
+      return Tooltip(
+        message: widget.item.pinned ? 'Unpin category' : 'Pin category',
+        waitDuration: const Duration(milliseconds: 400),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: widget.onTogglePin,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(padding: const EdgeInsets.all(4), child: icon),
+          ),
+        ),
+      );
+    }
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: widget.onTogglePin,
+      borderRadius: 6,
+      focusNode: _pinFocus,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
+      onLeftEdge: () => _rowFocus.requestFocus(),
+      onUpEdge: () => _rowFocus.requestFocus(),
+      onDownEdge: () => _rowFocus.requestFocus(),
+      onRightEdge: () {},
+      child: Padding(padding: const EdgeInsets.all(4), child: icon),
+    );
+  }
+}
+
+class _DelayedReorderDragStartListener extends ReorderableDragStartListener {
+  const _DelayedReorderDragStartListener({
+    required super.child,
+    required super.index,
+  });
+
+  @override
+  MultiDragGestureRecognizer createRecognizer() {
+    return DelayedMultiDragGestureRecognizer(
+      delay: const Duration(milliseconds: 1500),
+      debugOwner: this,
+    );
+  }
+}
+
+class _HoldSunrisePainter extends CustomPainter {
+  _HoldSunrisePainter({required this.origin, required this.progress});
+
+  final Offset origin;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || size.isEmpty) return;
+    final t = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
+    var maxR = 0.0;
+    for (final c in <Offset>[
+      Offset.zero,
+      Offset(size.width, 0),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
+    ]) {
+      maxR = math.max(maxR, (c - origin).distance);
+    }
+    if (maxR <= 0) return;
+    canvas.drawCircle(
+      origin,
+      maxR * t,
+      Paint()..color = Colors.white.withValues(alpha: 0.08 + 0.14 * t),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _HoldSunrisePainter old) =>
+      old.origin != origin || old.progress != progress;
+}
+
+/// Default icons for synthetic Live catalog rows.
+IconData? catalogCategoryIconForId(String id) {
+  switch (id) {
+    case '__favorites__':
+      return Icons.star_rounded;
+    case '__watched__':
+      return Icons.history_rounded;
+    case 'all':
+      return Icons.grid_view_rounded;
+    default:
+      return null;
+  }
+}
