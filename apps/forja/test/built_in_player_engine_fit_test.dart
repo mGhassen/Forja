@@ -4,7 +4,7 @@ import 'package:rust/rust.dart';
 
 void main() {
   group('builtInPlayerEngineUnsuitableReason', () {
-    test('catalog VOD allows AVPlayer / VLC for normal streams', () {
+    test('catalog VOD allows AVPlayer / VLC for normal and DASH streams', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.avPlayer,
@@ -15,42 +15,23 @@ void main() {
       );
       expect(
         builtInPlayerEngineUnsuitableReason(
-          BuiltInPlayerEngine.vlc,
-          surface: BuiltInPlayerMenuSurface.catalogVod,
-          streamUrl: 'https://cdn.example/file.mp4',
-        ),
-        isNull,
-      );
-      expect(
-        builtInPlayerEngineUnsuitableReason(
-          BuiltInPlayerEngine.mediaKit,
-          surface: BuiltInPlayerMenuSurface.catalogVod,
-          streamUrl: 'https://cdn.example/file.mp4',
-        ),
-        isNull,
-      );
-    });
-
-    test('catalog VOD greys AVPlayer for DASH', () {
-      expect(
-        builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.avPlayer,
           surface: BuiltInPlayerMenuSurface.catalogVod,
           streamUrl: 'https://cdn.example/dash/x/index_web.mpd',
         ),
-        'DASH needs MediaKit',
+        isNull,
       );
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.vlc,
           surface: BuiltInPlayerMenuSurface.catalogVod,
-          streamUrl: 'https://cdn.example/dash/x/index_web.mpd',
+          streamUrl: 'https://cdn.example/file.mp4',
         ),
         isNull,
       );
     });
 
-    test('catalog VOD greys AVPlayer / VLC for torrent / dual audio', () {
+    test('hard-blocks torrent / dual audio for AVPlayer / VLC / Exo', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.avPlayer,
@@ -69,9 +50,6 @@ void main() {
         ),
         'Separate audio needs MediaKit',
       );
-    });
-
-    test('catalog VOD greys Exo for torrent / dual audio', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.exoPlayer,
@@ -80,15 +58,6 @@ void main() {
           torrentLocalhost: true,
         ),
         'Torrent streams need MediaKit',
-      );
-      expect(
-        builtInPlayerEngineUnsuitableReason(
-          BuiltInPlayerEngine.exoPlayer,
-          surface: BuiltInPlayerMenuSurface.catalogVod,
-          streamUrl: 'https://cdn.example/a.mp4',
-          separateAudioUrl: true,
-        ),
-        'Separate audio needs MediaKit',
       );
     });
 
@@ -113,14 +82,14 @@ void main() {
       );
     });
 
-    test('IPTV live MPEG-TS greys AVPlayer / VLC; HLS allows them', () {
+    test('IPTV MPEG-TS / HLS are not hard-blocked for AVPlayer / VLC', () {
       expect(
         builtInPlayerEngineUnsuitableReason(
           BuiltInPlayerEngine.avPlayer,
           surface: BuiltInPlayerMenuSurface.iptvLive,
           streamUrl: 'http://portal/live/1/2/3.ts',
         ),
-        'MPEG-TS needs MediaKit',
+        isNull,
       );
       expect(
         builtInPlayerEngineUnsuitableReason(

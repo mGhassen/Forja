@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog VOD slice |
-| **Current slice** | Catalog VOD AVPlayer/VLC + seek/progress — manual Mac/Win XUMO QA still open |
+| **Progress** | **11 / 11** components · **19 / 20** acceptance (1 manual QA) · **5 / 5** catalog · **1 / 1** always-list |
+| **Current slice** | Player menu always lists platform engines — hard unfit toast only |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -29,6 +29,7 @@
 | 8 | R107-C08 | In-player Player menu omits unsuitable engines (no grey/reason) | ✅ |
 | 9 | R107-C09 | Native seek + `progress` events on AVPlayer / VLC bridges | ✅ |
 | 10 | R107-C10 | Catalog VOD `DesktopNativePlayerScreen` (PlayerScreen route) | ✅ |
+| 11 | R107-C11 | Player menu always lists platform engines (fit = hard-block only) | ✅ |
 
 ---
 
@@ -66,11 +67,19 @@
 
 ---
 
+## Acceptance (always-list slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R107-A21 | Player menu always lists platform engines; hard unfit (torrent / dual-audio / DRM) toast on select only | ✅ |
+
+---
+
 ## Summary
 
 IPTV live HLS needs native stack engines: **AVPlayer on macOS** (majority users), **libVLC on Windows** (system VLC install), **Exo on Android**. MediaKit + continuity proxy remains the progressive MPEG-TS path and the universal fallback. User can always pick MediaKit; engines are additive ([no-hide-as-fix](../../.cursor/rules/no-hide-as-fix.mdc)).
 
-**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still require MediaKit / Exo. R107-A13 remains the historical IPTV-era catalog grey row; R107-A19 supersedes that for catalog.
+**Catalog VOD slice:** desktop movies/series can use the same AVPlayer (Mac) / VLC (Mac/Win) engines via a thin native player screen. Seek/progress land on the bridges (also fixes IPTV Movies/Series scrubber). Torrent localhost, separate audio URL, and DRM still hard-block. R107-A13 / A15 are historical omit rows; **R107-A21** supersedes menu omit — always list, try + failover for soft cases (DASH / MPEG-TS).
 
 ### Related
 

@@ -78,20 +78,12 @@ class PlayerAppMenu {
     bool separateAudioUrl = false,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
-    // Unsuitable engines for this stream are omitted (not greyed with a reason).
+    // Always list every platform built-in engine. Hard unfit (torrent / dual-audio /
+    // DRM) still blocks on select via [builtInPlayerEngineUnsuitableReason].
     final showExternal = !PlatformInfo.isAndroidTv;
-    final engines = builtInPlayerEngineOptionsForUi.where((engine) {
-      if (surface == null) return true;
-      return builtInPlayerEngineUnsuitableReason(
-            engine,
-            surface: surface,
-            streamUrl: streamUrl,
-            torrentLocalhost: torrentLocalhost,
-            needsWidevine: needsWidevine,
-            separateAudioUrl: separateAudioUrl,
-          ) ==
-          null;
-    }).toList();
+    final engines = List<BuiltInPlayerEngine>.of(
+      builtInPlayerEngineOptionsForUi,
+    );
     final selectedBuiltIn = resolvePlayerMenuBuiltInSelection(
       usingBuiltIn: usingBuiltIn,
       preferred: builtInEngine,
