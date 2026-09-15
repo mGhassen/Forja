@@ -206,11 +206,12 @@ abstract final class ShellTokens {
   /// Home desktop/TV - page backdrop height (hero chrome + first row on image).
   static const double homeBackdropViewportFraction = 0.90;
 
-  /// Extra inset reserved above the bleed rail for hero text (not a gap under Featured).
+  /// Extra inset reserved above the bleed rail for hero text.
   static const double homePageBottomSectionTopPadding = 8;
 
-  /// Extra backdrop height below the viewport band so Featured can sit on-image.
-  static const double homePageBottomSectionDownOffset = 120;
+  /// Extra backdrop under the hero so the first bleed row can sit on-image.
+  /// Packs may override per hero via `bleedDownOffset`.
+  static const double homePageBottomSectionDownOffset = 100;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).
