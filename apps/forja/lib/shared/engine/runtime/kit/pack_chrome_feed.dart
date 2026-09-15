@@ -57,10 +57,8 @@ Map<String, dynamic> packChromeFeedParams(
   injectMenu('sortMenu', 'sort');
   injectMenu('horizonMenu', 'horizon');
 
-  final viewMenu = (listSpec['viewMenu'] ?? 'view').toString().trim();
-  final viewFromScope = viewMenu.isEmpty ? null : scope?.selectedId(viewMenu);
-  final view = (viewFromScope ?? chrome?.viewStyle ?? '').trim();
-  if (view.isNotEmpty) params['view'] = view;
+  // View (cards / guide / list) is paint-only — do not put it in feed params
+  // (that re-fetched IPTV catalog on every Cards↔EPG flip).
 
   final q = (chrome?.eventQuery ?? '').trim();
   if (q.isNotEmpty) params['q'] = q;
@@ -110,7 +108,7 @@ String packChromeSelectionEpoch(
     sel('catalogMenu'),
     sel('sortMenu'),
     sel('horizonMenu'),
-    sel('viewMenu').isNotEmpty ? sel('viewMenu') : (chrome?.viewStyle ?? ''),
+    // View is paint-only (cards↔EPG) — omit so PackLoadedPaint keeps items.
     chrome?.eventQuery ?? '',
     '${chrome?.refreshEpoch ?? 0}',
     catalogChromeFilterEpoch(tabId),

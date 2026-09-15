@@ -206,8 +206,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       seatsMax: max.isEmpty ? null : max,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
-        // Open/close only — do not invalidate inventory here. keepAlive cache
-        // paints instantly on re-open; mutations + Refresh already invalidate.
+        // Toggle only — inventory keepAlive; mutate/Refresh invalidate.
         ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
       },
       onFocusChange: (focused) {
