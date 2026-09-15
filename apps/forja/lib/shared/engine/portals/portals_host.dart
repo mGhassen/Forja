@@ -61,6 +61,56 @@ abstract final class PortalsHost {
     );
   }
 
+  /// Top-bar chip label from vault only — never runs pack `listPortals`.
+  ///
+  /// Catalog feed and the closed Portals chip must not share the flutter_js
+  /// queue with inventory. Full list loads when the panel opens.
+  static Future<PortalsChipSummary> chipSummary() async {
+    try {
+      await PortalVaultInventory.ensureMigratedFromStore();
+      final raw = await EngineVault.get(PortalVaultKeys.portals);
+      if (raw == null || raw.trim().isEmpty || raw.trim() == '[]') {
+        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+      }
+      final parsed = jsonDecode(raw);
+      if (parsed is! List || parsed.isEmpty) {
+        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+      }
+
+      final activeRaw = await EngineVault.get(PortalVaultKeys.active);
+      final activeKey = (activeRaw ?? '').toString().trim();
+
+      Map<String, dynamic>? hit;
+      Map<String, dynamic>? first;
+      for (final e in parsed) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        first ??= m;
+        if (activeKey.isNotEmpty && vaultPortalKey(m) == activeKey) {
+          hit = m;
+          break;
+        }
+      }
+      final row = hit ?? first;
+      if (row == null) {
+        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+      }
+      final label = (row['label'] ??
+              row['name'] ??
+              row['username'] ??
+              row['url'] ??
+              '')
+          .toString()
+          .trim();
+      return PortalsChipSummary(
+        label: label.isEmpty ? 'Portals' : label,
+        hasPortal: true,
+      );
+    } catch (_) {
+      return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+    }
+  }
+
   /// Inventory for paint — favorites sorted first + pack panel chrome/forms.
   static Future<PortalsInventory> list({String? preferTabId}) async {
     final pluginId = await resolvePluginId(preferTabId: preferTabId);
@@ -371,6 +421,17 @@ class PortalsPanelAction {
   final String action;
   final String icon;
   final FormFieldsSpec? form;
+}
+
+/// Closed Portals chip paint — vault-only, no pack round-trip.
+class PortalsChipSummary {
+  const PortalsChipSummary({
+    required this.label,
+    required this.hasPortal,
+  });
+
+  final String label;
+  final bool hasPortal;
 }
 
 /// Inventory DTO for foundation paint + pack-declared panel chrome/forms.

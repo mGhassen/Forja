@@ -20,7 +20,12 @@ import 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 export 'package:forja/shared/engine/portals/portals_host.dart'
-    show PortalsHost, PortalsInventory, PortalHealthTracker, PortalsPanelAction;
+    show
+        PortalsHost,
+        PortalsChipSummary,
+        PortalsInventory,
+        PortalHealthTracker,
+        PortalsPanelAction;
 
 /// Chrome wire — pack hoist + foundation paint. Services live in [PortalsHost].
 abstract final class PortalsActionHost {
@@ -56,19 +61,32 @@ abstract final class PortalsActionHost {
 
     final key = tabId.trim();
     final open = ref.watch(portalsPanelOpenProvider(key));
-    final inv = ref.watch(portalsInventoryProvider(key));
-    final active = inv.asData?.value.activeLabel ?? 'Portals';
+    // Vault only while closed — never kick pack listPortals (flutter_js mutex
+    // contended with catalog feed). Prefer live inventory once the panel is open.
+    final summary = ref.watch(portalsChipSummaryProvider(key));
+    var label = summary.asData?.value.label ?? 'Portals';
+    var hasPortal = summary.asData?.value.hasPortal ?? false;
+    if (open) {
+      final inv = ref.watch(portalsInventoryProvider(key));
+      final data = inv.asData?.value;
+      if (data != null) {
+        label = data.activeLabel;
+        hasPortal = data.portals.isNotEmpty;
+      }
+    }
 
     final policy = ShellScope.inputPolicyOf(context);
     return PortalsChip(
-      label: active,
-      hasPortal: (inv.asData?.value.portals.isNotEmpty ?? false),
+      label: label,
+      hasPortal: hasPortal,
       selected: open,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
         ref.read(portalsPanelOpenProvider(key).notifier).state = !open;
         if (!open) {
           ref.invalidate(portalsInventoryProvider(key));
+        } else {
+          ref.invalidate(portalsChipSummaryProvider(key));
         }
       },
       interactiveBuilder: ({
@@ -116,12 +134,26 @@ abstract final class PortalsActionHost {
 final portalsPanelOpenProvider =
     StateProvider.family<bool, String>((ref, tabId) => false);
 
+/// Vault-backed chip label — safe to watch on hub open (no pack / flutter_js).
+final portalsChipSummaryProvider = FutureProvider.autoDispose
+    .family<PortalsChipSummary, String>((ref, tabId) async {
+  ref.keepAlive();
+  return PortalsHost.chipSummary();
+});
+
 /// Inventory keyed by shell tab (Live Sports may resolve IPTV `listPortals`).
+/// Watch only when the Portals panel is open — not from the closed chip.
 final portalsInventoryProvider = FutureProvider.autoDispose
     .family<PortalsInventory, String>((ref, tabId) async {
   ref.keepAlive();
   return PortalsHost.list(preferTabId: tabId);
 });
+
+void invalidatePortalsChrome(WidgetRef ref, String tabId) {
+  final key = tabId.trim();
+  ref.invalidate(portalsChipSummaryProvider(key));
+  ref.invalidate(portalsInventoryProvider(key));
+}
 
 /// Back-compat alias — prefer [PortalsHost.resolvePluginId].
 Future<String?> resolvePortalsPluginId({String? preferTabId}) =>
@@ -230,7 +262,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
         return false;
       }
       if (toastOk != null) ForjaToast.success(toastOk);
-      if (refresh) ref.invalidate(portalsInventoryProvider(widget.tabId));
+      if (refresh) invalidatePortalsChrome(ref, widget.tabId);
       return true;
     } catch (e) {
       ForjaToast.error(e.toString());
@@ -283,7 +315,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
   Future<void> _dispatchPanelAction(PortalsPanelAction a) async {
     final verb = a.action.trim().toLowerCase();
     if (verb == 'listportals' || verb == 'refresh') {
-      ref.invalidate(portalsInventoryProvider(widget.tabId));
+      invalidatePortalsChrome(ref, widget.tabId);
       return;
     }
     if (verb == 'dealportals' || a.id == 'deal') {
@@ -335,7 +367,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
           'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',
         );
       }
-      ref.invalidate(portalsInventoryProvider(widget.tabId));
+      invalidatePortalsChrome(ref, widget.tabId);
     } catch (e) {
       ForjaToast.error(e.toString());
     } finally {
@@ -346,7 +378,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
   Future<void> _toggleFavorite(String portalKey) async {
     await PortalsHost.toggleFavorite(portalKey);
     if (!mounted) return;
-    ref.invalidate(portalsInventoryProvider(widget.tabId));
+    invalidatePortalsChrome(ref, widget.tabId);
   }
 
   Future<String?> _shareCodeFor(String portalKey) async {

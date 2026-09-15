@@ -33,6 +33,7 @@ export 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart'
 export 'package:forja_foundation/widgets/catalog/server_grid.dart';
 export 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 export 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
+export 'package:forja_foundation/widgets/catalog/catalog_epg_guide.dart';
 export 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 export 'package:forja_foundation/widgets/catalog/continue_section.dart';
 export 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';

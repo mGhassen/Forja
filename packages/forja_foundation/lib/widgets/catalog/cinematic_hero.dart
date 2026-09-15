@@ -384,11 +384,11 @@ class CinematicHeroState extends State<CinematicHero> {
             ),
           ),
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: layout.scaled(16).clamp(8.0, 20.0),
+            top: 0,
+            bottom: 0,
+            right: layout.scaled(16).clamp(8.0, 20.0),
             child: Center(
-              child: _buildStepIndicators(axis: Axis.horizontal),
+              child: _buildStepIndicators(),
             ),
           ),
           if (widget.galleryOverlayBuilder != null)

@@ -38,19 +38,18 @@ Map<String, dynamic> packChromeFeedParams(
     params['listStatus'] = params['status'];
   }
 
-  injectMenu('kindMenu', 'kind');
-  // Kind selection → categoryId for any kindMenu list (IPTV cats, etc.).
-  // sport / sportFilter only when this list is Live Sports (has horizonMenu).
+  // Live Sports (horizonMenu): kind → feed sportFilter (schedule re-query).
+  // IPTV / My List: kind is client-side only in paint_tree — do not pass
+  // categoryId/kind into feed (that re-ran feed + EPG on every cat flip).
   final kindMenu = (listSpec['kindMenu'] ?? '').toString().trim();
-  if (kindMenu.isNotEmpty) {
+  final horizonMenu = (listSpec['horizonMenu'] ?? '').toString().trim();
+  if (kindMenu.isNotEmpty && horizonMenu.isNotEmpty) {
     final kind = scope?.selectedId(kindMenu);
     if (kind != null && kind.isNotEmpty && kind != 'all') {
+      params['kind'] = kind;
       params['categoryId'] = kind;
-      final horizonMenu = (listSpec['horizonMenu'] ?? '').toString().trim();
-      if (horizonMenu.isNotEmpty) {
-        params['sport'] = kind;
-        params['sportFilter'] = kind;
-      }
+      params['sport'] = kind;
+      params['sportFilter'] = kind;
     }
   }
 
@@ -102,9 +101,12 @@ String packChromeSelectionEpoch(
           listSpec['default']?.toString() ??
           'plantowatch');
 
+  final horizonId = (listSpec['horizonMenu'] ?? '').toString().trim();
+
   return [
     status,
-    sel('kindMenu'),
+    // Sport chips reload feed; IPTV category rail filters in paint only.
+    horizonId.isNotEmpty ? sel('kindMenu') : '',
     sel('catalogMenu'),
     sel('sortMenu'),
     sel('horizonMenu'),
@@ -113,6 +115,7 @@ String packChromeSelectionEpoch(
     '${chrome?.refreshEpoch ?? 0}',
     catalogChromeFilterEpoch(tabId),
     '${CategoryBarActionHost.cachedLiveListParams['favorites']}',
+    '${CategoryBarActionHost.cachedLiveListParams['watched']}',
     '${CategoryBarActionHost.cachedLiveListParams['pinnedCats']}',
     '${CategoryBarActionHost.cachedLiveListParams['categoryOrder']}',
   ].join('|');

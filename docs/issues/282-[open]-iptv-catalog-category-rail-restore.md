@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 8** acceptance (manual QA) |
+| **Progress** | **7 / 7** fix · **0 / 9** acceptance (manual QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I282-T04 | IPTV pack: features props + `__favorites__` / `__watched__` kinds + feed filter | ✅ |
 | 5 | I282-T05 | Channel favorite star + record watched on live play | ✅ |
 | 6 | I282-T06 | SDK / feature doc / changelog | ✅ |
+| 7 | I282-T07 | Category rail filters painted feed in place (no `feed` reload on cat / Favorites / Watched flip) | ✅ |
 
 ---
 
@@ -40,6 +41,7 @@
 | 6 | I282-A06 | Channel star toggles favorites; live play records Already watched (max 30) | ⬜ |
 | 7 | I282-A07 | Pack invokes via `kit.categoryBar` features; Movies/Series stay plain rail | ⬜ |
 | 8 | I282-A08 | SoT is `PortalLiveChannelListsStore` (`pt_iptv_live_*`) — not pack vault prefs | ⬜ |
+| 9 | I282-A09 | Category / Favorites / Watched flip filters the loaded grid instantly (no channel reload / EPG re-hit) | ⬜ |
 
 ---
 
@@ -47,7 +49,7 @@
 
 Pre-wipe Live IPTV sidebar (`_CategorySidebarRow`: pin, drag-reorder, hover, Favorites / Already watched) was deleted with `features/iptv` (`121f0779c`). Thin painter mounts plain `CatalogSideRail` (select + hover only). Store APIs (`PortalLiveCatalog` / `PortalLiveChannelListsStore`) still exist with zero callers.
 
-**Shipped:** pack emits `kit.categoryBar` with `features`; foundation paints `CatalogCategoryRail`; host `CategoryBarActionHost` owns pin/fav/watched/order engines (mirror `PortalsActionHost`).
+**Shipped:** pack emits `kit.categoryBar` with `features`; foundation paints `CatalogCategoryRail`; host `CategoryBarActionHost` owns pin/fav/watched/order engines (mirror `PortalsActionHost`). Category / Favorites / Watched selection filters the painted feed in place (pre-wipe `browserAllStreams`) — does not re-run pack `feed` or short-EPG.
 
 ### Related
 

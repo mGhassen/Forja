@@ -8,12 +8,15 @@ import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/details/kit_list_entry.dart';
 import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/chrome/catalog_epg_guide_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/channel_catalog_health_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -701,6 +704,9 @@ class PackPaintTree extends StatelessWidget {
         container.read(portalsPanelOpenProvider(key).notifier).state = !open;
         if (!open) {
           container.invalidate(portalsInventoryProvider(key));
+        } else {
+          // Closing after select/add — refresh vault chip label without listPortals.
+          container.invalidate(portalsChipSummaryProvider(key));
         }
       } catch (_) {
         ForjaToast.show('Portals unavailable');
@@ -1240,17 +1246,10 @@ class PackPaintTree extends StatelessWidget {
               ? (spec['kind'] ?? '').toString().trim()
               : (LayoutScope.maybeOf(context)?.selectedId(kindMenu) ?? '')
                   .trim();
-          final filtered = kindFilter.isEmpty || kindFilter == 'all'
-              ? items
-              : [
-                  for (final e in items)
-                    if (_itemKind(e).toLowerCase() ==
-                            kindFilter.toLowerCase() ||
-                        _itemKind(e)
-                            .toLowerCase()
-                            .contains(kindFilter.toLowerCase()))
-                      e,
-                ];
+          final filtered = [
+            for (final e in items)
+              if (_itemMatchesKindFilter(e, kindFilter)) e,
+          ];
           var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
           final viewOverride = (chrome?.viewStyle ??
                   LayoutScope.maybeOf(context)?.selectedId('view') ??
@@ -1267,10 +1266,19 @@ class PackPaintTree extends StatelessWidget {
               style = viewOverride;
             }
           }
-          if (style == 'epg' || style == 'guide') style = 'timeline';
+          // Desktop Live catalog EPG grid — not dense timeline list.
+          // TV / compact: fall back to channel cards (old IPTV behaviour).
+          final wantGuide = (style == 'epg' || style == 'guide') &&
+              _itemsLookLikeLiveChannels(filtered) &&
+              !ShellPaintScope.usesTvDensityOf(context) &&
+              constraints.maxWidth >= 760;
+          if ((style == 'epg' || style == 'guide') && !wantGuide) {
+            style = 'grid';
+          }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
           final cardKind = () {
+            if (wantGuide) return 'guide';
             if (packCardKind == 'poster' ||
                 packCardKind == 'event' ||
                 packCardKind == 'eventcard' ||
@@ -1279,6 +1287,8 @@ class PackPaintTree extends StatelessWidget {
                 packCardKind == 'timeline' ||
                 packCardKind == 'channel' ||
                 packCardKind == 'livechannel' ||
+                packCardKind == 'guide' ||
+                packCardKind == 'epg' ||
                 packCardKind == 'cards') {
               if (packCardKind == 'eventcard' || packCardKind == 'cards') {
                 return 'event';
@@ -1287,10 +1297,14 @@ class PackPaintTree extends StatelessWidget {
                 return 'dense';
               }
               if (packCardKind == 'livechannel') return 'channel';
+              if (packCardKind == 'guide' || packCardKind == 'epg') {
+                return 'guide';
+              }
               return packCardKind;
             }
             if (style == 'list' || style == 'timeline') return 'dense';
             if (style == 'cards') return 'event';
+            if (style == 'guide' || style == 'epg') return 'guide';
             if (style == 'grid') {
               if (_itemsLookLikeLiveChannels(filtered)) return 'channel';
               return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
@@ -1329,6 +1343,8 @@ class PackPaintTree extends StatelessWidget {
             bool? Function(Map<String, dynamic>)? healthFor,
             void Function(Map<String, dynamic> item, {required bool active})?
                 onInteractiveActive,
+            Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
+                loadEpgProgrammes,
           }) {
             return CatalogCardsGrid(
               items: filtered,
@@ -1345,21 +1361,31 @@ class PackPaintTree extends StatelessWidget {
               itemAccessory: _liveFavoriteAccessory,
               itemHealth: healthFor,
               onItemInteractiveActive: onInteractiveActive,
+              loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
             );
           }
 
-          Widget grid = cardKind == 'channel'
-              ? ChannelCatalogHealthHost(
-                  builder: (context,
-                      {required healthFor, required onInteractiveActive}) {
-                    return buildGrid(
-                      healthFor: healthFor,
-                      onInteractiveActive: onInteractiveActive,
-                    );
-                  },
-                )
-              : buildGrid();
+          Widget grid;
+          if (cardKind == 'guide') {
+            grid = CatalogEpgGuideHost(
+              builder: (context, {required loadEpgProgrammes}) {
+                return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
+              },
+            );
+          } else if (cardKind == 'channel') {
+            grid = ChannelCatalogHealthHost(
+              builder: (context,
+                  {required healthFor, required onInteractiveActive}) {
+                return buildGrid(
+                  healthFor: healthFor,
+                  onInteractiveActive: onInteractiveActive,
+                );
+              },
+            );
+          } else {
+            grid = buildGrid();
+          }
 
           Widget body = SizedBox(
             width: constraints.maxWidth,
@@ -1515,6 +1541,57 @@ class PackPaintTree extends StatelessWidget {
       }
     }
     return '';
+  }
+
+  String _itemStreamId(Map<String, dynamic> item) {
+    final props = PackPaintArtifact.propsOf(item);
+    final open = item['open'];
+    final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
+    for (final key in [
+      openMap?['streamId'],
+      props['streamId'],
+      item['streamId'],
+      item['id'],
+    ]) {
+      final v = (key ?? '').toString().trim();
+      if (v.isNotEmpty) return v;
+    }
+    return '';
+  }
+
+  bool _idListContains(dynamic raw, String id) {
+    if (id.isEmpty || raw is! List) return false;
+    for (final e in raw) {
+      if (e.toString().trim() == id) return true;
+    }
+    return false;
+  }
+
+  /// IPTV cats / Favorites / Watched + My List kinds — filter painted feed
+  /// in place (pre-wipe browserAllStreams). Live Sports sport uses feed reload.
+  bool _itemMatchesKindFilter(Map<String, dynamic> item, String kindFilter) {
+    final filter = kindFilter.trim();
+    if (filter.isEmpty || filter == 'all') return true;
+    if (filter == '__favorites__' || filter == 'favorites') {
+      return _idListContains(
+        CategoryBarActionHost.cachedLiveListParams['favorites'],
+        _itemStreamId(item),
+      );
+    }
+    if (filter == '__watched__' || filter == 'watched') {
+      return _idListContains(
+        CategoryBarActionHost.cachedLiveListParams['watched'],
+        _itemStreamId(item),
+      );
+    }
+    final needle = filter.toLowerCase();
+    final kind = _itemKind(item).toLowerCase();
+    if (kind == needle || kind.contains(needle)) return true;
+    // My List chips use type/kind movie|tv — [_itemKind] skips those so IPTV
+    // `type: movie` does not steal category matching.
+    final type = (item['type'] ?? '').toString().trim().toLowerCase();
+    final rawKind = (item['kind'] ?? '').toString().trim().toLowerCase();
+    return type == needle || rawKind == needle;
   }
 
   bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {

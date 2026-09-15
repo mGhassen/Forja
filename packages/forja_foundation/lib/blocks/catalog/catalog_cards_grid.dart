@@ -5,6 +5,7 @@ import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_epg_guide.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/event_dense_tile.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
@@ -12,6 +13,7 @@ import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
+import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 
 /// Props map from a pack list `items[]` entry (`paint.props` or flat).
 Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
@@ -40,6 +42,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.itemAccessory,
     this.itemHealth,
     this.onItemInteractiveActive,
+    this.loadEpgProgrammes,
   });
 
   final List<Map<String, dynamic>> items;
@@ -47,7 +50,7 @@ class CatalogCardsGrid extends StatelessWidget {
   final String emptyTitle;
   final String? emptyDescription;
 
-  /// `poster` · `event`/`cards` · `dense`/`list` · `channel`
+  /// `poster` · `event`/`cards` · `dense`/`list` · `channel` · `guide`/`epg`
   final String cardKind;
   final String? selectedItemId;
 
@@ -73,6 +76,10 @@ class CatalogCardsGrid extends StatelessWidget {
     required bool active,
   })? onItemInteractiveActive;
 
+  /// Lazy EPG table fetch for [cardKind] `guide` / `epg`.
+  final Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
+      loadEpgProgrammes;
+
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
     if (v is! List) return const [];
@@ -93,6 +100,8 @@ class CatalogCardsGrid extends StatelessWidget {
   bool get _channel =>
       cardKind == 'channel' || cardKind == 'liveChannel';
 
+  bool get _guide => cardKind == 'guide' || cardKind == 'epg';
+
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
@@ -103,10 +112,81 @@ class CatalogCardsGrid extends StatelessWidget {
       );
     }
 
+    if (_guide) return _epgGuide(context);
     if (_dense) return _denseList(context);
     if (_event) return _eventGrid(context);
     if (_channel) return _channelGrid(context);
     return _posterGrid(context);
+  }
+
+  Widget _epgGuide(BuildContext context) {
+    final channels = <CatalogEpgChannel>[
+      for (final item in items)
+        CatalogEpgChannel(
+          id: _itemId(item),
+          title: _itemTitle(item),
+          imageUrl: _itemImage(item),
+          programmes: CatalogChannelCard.programmesFromRaw(
+            item['programmes'] ?? catalogItemProps(item)['programmes'],
+          ),
+          payload: item,
+        ),
+    ];
+    return CatalogEpgGuide(
+      channels: channels,
+      highlightChannelId: selectedItemId,
+      emptyTitle: emptyTitle,
+      loadProgrammes: loadEpgProgrammes == null
+          ? null
+          : (ch) {
+              final item = ch.payload;
+              if (item is! Map<String, dynamic>) {
+                return Future.value(const <GuideEpgProgramme>[]);
+              }
+              return loadEpgProgrammes!(item);
+            },
+      accessoryBuilder: itemAccessory == null
+          ? null
+          : (ch, {required active}) {
+              final item = ch.payload;
+              if (item is! Map<String, dynamic>) return null;
+              return itemAccessory!(context, item, active: active);
+            },
+      onChannelTap: (ch) {
+        final item = ch.payload;
+        if (item is Map<String, dynamic>) onItemTap?.call(item);
+      },
+    );
+  }
+
+  static String _itemId(Map<String, dynamic> item) {
+    final props = catalogItemProps(item);
+    return (item['id'] ??
+            props['id'] ??
+            item['streamId'] ??
+            props['streamId'] ??
+            '')
+        .toString();
+  }
+
+  static String _itemTitle(Map<String, dynamic> item) {
+    final props = catalogItemProps(item);
+    return (props['title'] ??
+            item['name'] ??
+            item['title'] ??
+            props['name'] ??
+            '')
+        .toString();
+  }
+
+  static String _itemImage(Map<String, dynamic> item) {
+    final props = catalogItemProps(item);
+    return (props['imageUrl'] ??
+            props['poster'] ??
+            item['poster'] ??
+            item['logo'] ??
+            '')
+        .toString();
   }
 
   Widget _channelGrid(BuildContext context) {
