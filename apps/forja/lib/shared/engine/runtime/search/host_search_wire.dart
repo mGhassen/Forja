@@ -1613,16 +1613,18 @@ class _KitSearchPageState extends State<KitSearchPage> {
     );
   }
 
+  String _submitSearchHint() {
+    if (_filtersOpen) return 'Set filters, then tap Search';
+    if (_leanbackTextInput(context)) return 'Press OK to search';
+    return 'Press Enter to search';
+  }
+
   Widget _buildResultsColumn(BuildContext context) {
     final active = _activeSearchQuery.trim();
     if (active.isEmpty) {
       return Align(
         alignment: Alignment.topLeft,
-        child: _buildEmpty(
-          hint: _filtersOpen
-              ? 'Set filters, then tap Search'
-              : 'Start typing to search',
-        ),
+        child: _buildEmpty(hint: _submitSearchHint()),
       );
     }
     if (_error != null) {
@@ -1731,11 +1733,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
     if (_error != null) return _buildError();
     if (active.isEmpty && effective.isEmpty) return _buildEmpty();
     if (active.isEmpty) {
-      return _buildEmpty(
-        hint: _filtersOpen
-            ? 'Set filters, then tap Search'
-            : 'Start typing to search',
-      );
+      return _buildEmpty(hint: _submitSearchHint());
     }
     if (_isSearching && _results.isEmpty) {
       return Center(
