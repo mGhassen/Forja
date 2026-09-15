@@ -338,7 +338,7 @@ class CinematicHeroState extends State<CinematicHero> {
         : desktopTextWidth;
     final heroSlide = slides[_heroIndex % slides.length];
 
-    return SizedBox(
+    final heroBody = SizedBox(
       height: imageHeight,
       width: double.infinity,
       child: Stack(
@@ -402,6 +402,19 @@ class CinematicHeroState extends State<CinematicHero> {
         ],
       ),
     );
+
+    // Narrow layouts: no backdrop bleed — stack Featured under the hero.
+    if (compact && widget.pageBottomChild != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          heroBody,
+          widget.pageBottomChild!,
+        ],
+      );
+    }
+    return heroBody;
   }
 
   Widget _buildCarousel({

@@ -72,12 +72,16 @@ class PackPaintTree extends StatelessWidget {
     required this.pluginId,
     this.packSourceUrl,
     this.tabId,
+    this.pageBottomChild,
   });
 
   final Map<String, dynamic> spec;
   final String pluginId;
   final String? packSourceUrl;
   final String? tabId;
+
+  /// Bleed rail tucked under a hero backdrop (Featured under Spotlight).
+  final Widget? pageBottomChild;
 
   @override
   Widget build(BuildContext context) {
@@ -108,14 +112,23 @@ class PackPaintTree extends StatelessWidget {
           (chrome?.isEagerLoad(id, rail: rail) ?? false) ||
           (chrome?.isPageFeedRail(rail) ?? false);
       final isHero = type == LayoutTypes.hero;
+      final heroBleed = pageBottomChild != null;
+      final heroH = isHero
+          ? homeCinematicHeroBodyHeight(
+              screenHeight: MediaQuery.sizeOf(context).height,
+              compact: MediaQuery.sizeOf(context).width <
+                  ShellTokens.heroDesktopMinBodyWidth,
+              pageBottomBleed: heroBleed,
+            )
+          : 420.0;
       final skeleton = isHero
-          ? homeCinematicHeroShimmer(height: 420)
+          ? homeCinematicHeroShimmer(height: heroH)
           : homeLoadingShimmer(
               homePosterRowSkeleton(topPadding: 12, titleWidth: 140),
             );
       return LazyViewportGate(
         detectorKey: Key('lazy-$pluginId-$id'),
-        placeholderHeight: isHero ? 420 : 220,
+        placeholderHeight: isHero ? heroH : 220,
         placeholder: skeleton,
         eager: eager,
         builder: (ctx) => PackLoadedPaint(
@@ -130,6 +143,7 @@ class PackPaintTree extends StatelessWidget {
             pluginId: pluginId,
             packSourceUrl: packSourceUrl,
             tabId: tabId,
+            pageBottomChild: pageBottomChild,
           ),
         ),
       );
@@ -956,6 +970,7 @@ class PackPaintTree extends StatelessWidget {
 
     return CinematicHero(
       slides: slides,
+      pageBottomChild: pageBottomChild,
       layout: CinematicHeroLayout(
         compact: compact,
         tvDensity: metrics.usesTvDensity,
@@ -965,6 +980,12 @@ class PackPaintTree extends StatelessWidget {
         heroActionUseFittedBox: metrics.heroActionUseFittedBox,
         heroCompactRightInset: metrics.heroCompactRightInset,
         sectionHorizontalPadding: ShellTokens.homeSectionHorizontalPadding,
+        heroHeightFraction: compact
+            ? ShellTokens.heroHeightFractionCompact
+            : ShellTokens.heroHeightFractionDesktop,
+        firstCatalogRowHeight: pageBottomChild == null
+            ? 0
+            : ShellTokens.homeSectionTitleTop + 180 + 40,
       ),
       onHeight: tab.isEmpty
           ? null
@@ -972,43 +993,21 @@ class PackPaintTree extends StatelessWidget {
               ShellBus.hubHeroHeightFor(tab).value = h;
             },
       actionRowBuilder: (ctx, slide, {required isActive}) {
+        if (!isActive) return const SizedBox.shrink();
         final idx = slides.indexWhere((s) => s.id == slide.id);
         final meta = idx >= 0 && idx < slideMetas.length ? slideMetas[idx] : null;
         final details = slide.onDetails;
-        void play() {
-          if (meta == null) {
-            details?.call();
-            return;
-          }
-          unawaited(
-            openMetaItem(
-              ctx,
-              pluginId: pluginId,
-              item: meta,
-              shellTabId: tabId,
-              autoPlay: true,
-            ),
-          );
-        }
-
         final follow = meta == null
             ? null
             : ListFollowTarget.fromMeta(meta: meta, pluginId: pluginId);
-        final playBtn = HeroPillPlayButton(
-          label: 'Play',
-          alwaysShowLabel: true,
-          onTap: isActive ? play : null,
-          autoFocus: tv && isActive && policy.heroPlayAutoFocus,
-          tvTabId: tab.isEmpty ? null : tab,
-          tvRowId: 'hero-play',
-        );
         final detailsBtn = details == null
             ? null
             : HeroPillPlayButton(
                 label: 'View details',
-                tone: HeroPillPlayTone.secondary,
+                icon: Icons.info_outline_rounded,
                 alwaysShowLabel: true,
-                onTap: isActive ? details : null,
+                onTap: details,
+                autoFocus: tv && policy.heroPlayAutoFocus,
                 tvTabId: tab.isEmpty ? null : tab,
                 tvRowId: 'hero-details',
               );
@@ -1016,17 +1015,13 @@ class PackPaintTree extends StatelessWidget {
             ? null
             : KitListStatusButton.follow(
                 followTarget: follow,
-                excludeFromTvTraversal: !isActive,
+                excludeFromTvTraversal: false,
               );
         final row = Row(
           children: [
-            playBtn,
-            if (detailsBtn != null) ...[
-              const SizedBox(width: 12),
-              detailsBtn,
-            ],
+            if (detailsBtn != null) detailsBtn,
             if (pin != null) ...[
-              const SizedBox(width: 12),
+              if (detailsBtn != null) const SizedBox(width: 12),
               pin,
             ],
           ],

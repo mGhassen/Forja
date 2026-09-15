@@ -584,21 +584,20 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       if (type == LayoutTypes.hero &&
           identical(w, heroSpec) &&
           bleedSpec != null) {
-        // Bleed child rides under the hero load as a following rail section.
+        // Featured (etc.) rides inside the hero as pageBottomChild — tall
+        // backdrop + soft fade, not a sibling section below a short hero.
         out.add(
           PackPaintTree(
             spec: w,
             pluginId: widget.pluginId,
             packSourceUrl: widget.packSourceUrl,
             tabId: _pageKey,
-          ),
-        );
-        out.add(
-          PackPaintTree(
-            spec: Map<String, dynamic>.from(bleedSpec)..remove('title'),
-            pluginId: widget.pluginId,
-            packSourceUrl: widget.packSourceUrl,
-            tabId: _pageKey,
+            pageBottomChild: PackPaintTree(
+              spec: Map<String, dynamic>.from(bleedSpec),
+              pluginId: widget.pluginId,
+              packSourceUrl: widget.packSourceUrl,
+              tabId: _pageKey,
+            ),
           ),
         );
         continue;
