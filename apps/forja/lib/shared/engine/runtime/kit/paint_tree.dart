@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/details/kit_list_entry.dart';
 import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
+import 'package:forja/shared/engine/runtime/chrome/channel_catalog_health_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/kit_schedule_window.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
@@ -1276,6 +1277,8 @@ class PackPaintTree extends StatelessWidget {
                 packCardKind == 'dense' ||
                 packCardKind == 'list' ||
                 packCardKind == 'timeline' ||
+                packCardKind == 'channel' ||
+                packCardKind == 'livechannel' ||
                 packCardKind == 'cards') {
               if (packCardKind == 'eventcard' || packCardKind == 'cards') {
                 return 'event';
@@ -1283,11 +1286,13 @@ class PackPaintTree extends StatelessWidget {
               if (packCardKind == 'list' || packCardKind == 'timeline') {
                 return 'dense';
               }
+              if (packCardKind == 'livechannel') return 'channel';
               return packCardKind;
             }
             if (style == 'list' || style == 'timeline') return 'dense';
             if (style == 'cards') return 'event';
             if (style == 'grid') {
+              if (_itemsLookLikeLiveChannels(filtered)) return 'channel';
               return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
             }
             return 'poster';
@@ -1306,32 +1311,55 @@ class PackPaintTree extends StatelessWidget {
           final gap = PackPaintArtifact.packDouble(spec['gap']);
           final pad = PackPaintArtifact.packDouble(spec['pad']);
 
-          final grid = CatalogCardsGrid(
-            items: filtered,
-            cardKind: cardKind,
-            selectedItemId: selectedId,
-            gap: gap,
-            pad: pad,
-            emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
-            emptyDescription:
-                (spec['emptyDescription'] ?? '').toString().isEmpty
-                    ? null
-                    : spec['emptyDescription']?.toString(),
-            itemAccessory: _liveFavoriteAccessory,
-            onItemTap: (item) {
-              if (openMode == 'panel') {
-                chrome?.onSelectListItem(item);
-                return;
-              }
-              PackPaintArtifact.openTap(
-                context,
-                pluginId: pluginId,
-                props: PackPaintArtifact.propsOf(item),
-                open: item['open'],
-                meta: item['meta'],
-              )?.call();
-            },
-          );
+          void onListItemTap(Map<String, dynamic> item) {
+            if (openMode == 'panel') {
+              chrome?.onSelectListItem(item);
+              return;
+            }
+            PackPaintArtifact.openTap(
+              context,
+              pluginId: pluginId,
+              props: PackPaintArtifact.propsOf(item),
+              open: item['open'],
+              meta: item['meta'],
+            )?.call();
+          }
+
+          CatalogCardsGrid buildGrid({
+            bool? Function(Map<String, dynamic>)? healthFor,
+            void Function(Map<String, dynamic> item, {required bool active})?
+                onInteractiveActive,
+          }) {
+            return CatalogCardsGrid(
+              items: filtered,
+              cardKind: cardKind,
+              selectedItemId: selectedId,
+              gap: gap,
+              pad: pad,
+              emptyTitle:
+                  (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
+              emptyDescription:
+                  (spec['emptyDescription'] ?? '').toString().isEmpty
+                      ? null
+                      : spec['emptyDescription']?.toString(),
+              itemAccessory: _liveFavoriteAccessory,
+              itemHealth: healthFor,
+              onItemInteractiveActive: onInteractiveActive,
+              onItemTap: onListItemTap,
+            );
+          }
+
+          Widget grid = cardKind == 'channel'
+              ? ChannelCatalogHealthHost(
+                  builder: (context,
+                      {required healthFor, required onInteractiveActive}) {
+                    return buildGrid(
+                      healthFor: healthFor,
+                      onInteractiveActive: onInteractiveActive,
+                    );
+                  },
+                )
+              : buildGrid();
 
           Widget body = SizedBox(
             width: constraints.maxWidth,
@@ -1500,6 +1528,23 @@ class PackPaintTree extends StatelessWidget {
           props['live'] == true) {
         return true;
       }
+    }
+    return false;
+  }
+
+  bool _itemsLookLikeLiveChannels(List<Map<String, dynamic>> items) {
+    for (final item in items.take(8)) {
+      final open = item['open'];
+      if (open is Map) {
+        final surface = (open['surface'] ?? '').toString().trim();
+        final kind = (open['kind'] ?? '').toString().trim();
+        if (surface == 'stream' && kind == 'live') return true;
+      }
+      final paint = item['paint'];
+      final type = paint is Map ? (paint['type'] ?? '').toString() : '';
+      if (type == 'channelCard' || type == 'channel') return true;
+      final props = PackPaintArtifact.propsOf(item);
+      if ((props['cardKind'] ?? '').toString() == 'channel') return true;
     }
     return false;
   }

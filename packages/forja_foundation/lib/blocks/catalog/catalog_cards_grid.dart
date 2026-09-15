@@ -4,6 +4,7 @@ import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/components/vertical_menu.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
 import 'package:forja_foundation/widgets/catalog/event_dense_tile.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
@@ -37,6 +38,8 @@ class CatalogCardsGrid extends StatelessWidget {
     this.gap,
     this.pad,
     this.itemAccessory,
+    this.itemHealth,
+    this.onItemInteractiveActive,
   });
 
   final List<Map<String, dynamic>> items;
@@ -44,7 +47,7 @@ class CatalogCardsGrid extends StatelessWidget {
   final String emptyTitle;
   final String? emptyDescription;
 
-  /// `poster` · `event`/`cards` · `dense`/`list`
+  /// `poster` · `event`/`cards` · `dense`/`list` · `channel`
   final String cardKind;
   final String? selectedItemId;
 
@@ -60,6 +63,15 @@ class CatalogCardsGrid extends StatelessWidget {
     Map<String, dynamic> item, {
     required bool active,
   })? itemAccessory;
+
+  /// Live channel stream health (`null` unknown).
+  final bool? Function(Map<String, dynamic> item)? itemHealth;
+
+  /// Hover/focus dwell for host URL probe (live channels).
+  final void Function(
+    Map<String, dynamic> item, {
+    required bool active,
+  })? onItemInteractiveActive;
 
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
@@ -78,6 +90,9 @@ class CatalogCardsGrid extends StatelessWidget {
       cardKind == 'eventCard' ||
       cardKind == 'cards';
 
+  bool get _channel =>
+      cardKind == 'channel' || cardKind == 'liveChannel';
+
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
@@ -90,7 +105,73 @@ class CatalogCardsGrid extends StatelessWidget {
 
     if (_dense) return _denseList(context);
     if (_event) return _eventGrid(context);
+    if (_channel) return _channelGrid(context);
     return _posterGrid(context);
+  }
+
+  Widget _channelGrid(BuildContext context) {
+    final cardW = CatalogChannelCard.cardWidth(context);
+    final cardH = CatalogChannelCard.cardHeight(context);
+    final gap = this.gap ??
+        (ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.tvPosterCardRowGap
+            : 10.0);
+    final leading = pad ?? 8.0;
+    final trailing = pad ?? 12.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = CatalogPosterGridLayout.poster(
+          maxWidth: constraints.maxWidth,
+          cardW: cardW,
+          cardH: cardH,
+          gap: gap,
+          leading: leading,
+          trailing: trailing,
+        );
+        return CatalogPosterGrid(
+          layout: layout,
+          itemCount: items.length,
+          itemBuilder: (context, i) {
+            final item = items[i];
+            final props = catalogItemProps(item);
+            final title = (props['title'] ?? item['name'] ?? '').toString();
+            final image = (props['imageUrl'] ??
+                    props['posterUrl'] ??
+                    props['logoUrl'] ??
+                    item['poster'] ??
+                    '')
+                .toString();
+            final programmes = CatalogChannelCard.programmesFromRaw(
+              item['programmes'] ?? props['programmes'],
+            );
+            final id = (item['id'] ?? props['id'] ?? '').toString();
+            return CatalogChannelCard(
+              title: title,
+              imageUrl: image,
+              programmes: programmes,
+              health: itemHealth?.call(item),
+              highlighted: selectedItemId != null &&
+                  selectedItemId!.isNotEmpty &&
+                  selectedItemId == id,
+              width: layout.cardW,
+              height: layout.cardH,
+              gridIndex: i,
+              gridColumns: layout.columns,
+              onTap: onItemTap == null ? null : () => onItemTap!(item),
+              onInteractiveActive: onItemInteractiveActive == null
+                  ? null
+                  : (active) =>
+                      onItemInteractiveActive!(item, active: active),
+              favoriteBuilder: itemAccessory == null
+                  ? null
+                  : ({required bool active}) =>
+                      itemAccessory!(context, item, active: active),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _denseList(BuildContext context) {

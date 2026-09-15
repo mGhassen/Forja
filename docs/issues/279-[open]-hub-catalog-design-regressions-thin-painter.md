@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **28 / 29** verification · A14 manual QA remaining |
+| **Progress** | **29 / 30** verification · A14 manual QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -48,6 +48,7 @@
 | 27 | I279-A27 | IPTV / Live catalog paint: dense list + event grid + landscape poster grid + side-rail hover (pre-wipe chrome restored in foundation) | ✅ |
 | 28 | I279-A28 | Live Sports Providers fan-out restored (`LiveResolveStreams`); Live TV search maps portal hits + paint.props teams | ✅ |
 | 29 | I279-A29 | IPTV / Live / hub page body fill is `bgDark` (`#141414`) like pre-wipe `CatalogShell` — not `surfaceElevated` | ✅ |
+| 30 | I279-A30 | IPTV Live channel grid uses `CatalogChannelCard` (logo contain, title under mark, NOW/NEXT footer, long-press EPG sheet, hover health) — not landscape poster; Movies/Series stay posters | ✅ |
 
 ---
 
@@ -80,6 +81,8 @@ Commit `1d9ff09b4` deleted `pack_layout_host_wire` (~5k) and left a stub `PackPa
 **A28:** Providers tab returned `[]` after `LiveResolveStreams` was deleted — restored RFC-105 fan-out under `engine/unlock/` and wired `ResolveStreamsAdapter`. Live TV game identity also reads `paint.props` teams; IPTV search hits carry `liveSourceKind` + provider label.
 
 **A29:** composition roots (`columnsHeader` / `topBody` / side rail / hub skeleton) painted `surfaceElevated` (`#1C1C1C`) as the page fill — pre-wipe `CatalogShell` used `AppTheme.bgDark` (`#141414`). Restored `ForjaShellColors.bgDark`.
+
+**A30:** Live IPTV cards were forced to landscape `InteractivePosterCard` (badge/subtitle NOW). Restored pre-wipe `_StreamCard` as foundation `CatalogChannelCard` + pack `channelCard` paint; host hover health via `ChannelCatalogHealthHost`.
 
 **Must not mark fixed** until A14 QA passes on all in-scope hubs.
 

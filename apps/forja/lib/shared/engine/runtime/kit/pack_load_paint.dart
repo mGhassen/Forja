@@ -7,6 +7,8 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
+import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
 
 /// Runs an opaque pack [action], merges envelope fields into [fallbackSpec],
@@ -330,6 +332,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       return homeCinematicHeroShimmer(height: 420);
     }
     if (type.contains('list') || type == 'kit.list') {
+      final ticker = _listLoadingTickerCopy();
+      if (ticker != null) {
+        return CatalogLoadingTicker(title: ticker.$1, detail: ticker.$2);
+      }
       return homeLoadingShimmer(
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -358,5 +364,37 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         itemCount: 5,
       ),
     );
+  }
+
+  /// Pack-owned ticker copy (`loading` map / `loadingTitle`). Null → card skeleton.
+  (String, String)? _listLoadingTickerCopy() {
+    final spec = widget.fallbackSpec;
+    final catalogMenu = (spec['catalogMenu'] ?? '').toString().trim();
+    var section = '';
+    if (catalogMenu.isNotEmpty) {
+      section =
+          (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '').trim();
+      if (section.isEmpty) section = 'live';
+    }
+
+    final loading = spec['loading'];
+    if (loading is Map) {
+      final keyed = loading[section] ?? loading['default'] ?? loading['*'];
+      if (keyed is Map) {
+        final title = (keyed['title'] ?? '').toString().trim();
+        final detail = (keyed['detail'] ?? '').toString().trim();
+        if (title.isNotEmpty) {
+          return (
+            title,
+            detail.isEmpty ? 'Fetching catalog…' : detail,
+          );
+        }
+      }
+    }
+
+    final title = (spec['loadingTitle'] ?? '').toString().trim();
+    if (title.isEmpty) return null;
+    final detail = (spec['loadingDetail'] ?? '').toString().trim();
+    return (title, detail.isEmpty ? 'Fetching catalog…' : detail);
   }
 }

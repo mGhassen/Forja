@@ -112,6 +112,7 @@ abstract final class LayoutMap {
     'tabsCards': 'TabsCardsBlock (menu? + tabs + cards)',
     'search': 'CatalogSearchPage (blocks)',
     'posterCard': 'InteractivePosterCard',
+    'channelCard': 'CatalogChannelCard',
     'eventCard': 'EventCard',
   };
 }

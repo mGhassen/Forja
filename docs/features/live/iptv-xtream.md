@@ -13,8 +13,8 @@ The **IPTV** tab comes from the **IPTV hub pack** (install under **Settings → 
 
 ## What you can do
 
-- Switch **Live**, **Movies**, and **Series** from the pack top bar
-- Browse the **category list** on the left and **landscape channel cards** on the right (logos + **NOW** when short EPG is available). On **Live**, the rail includes **Favorites** and **Already watched**; hover a category to **pin** it, or hold-drag to reorder (playlist sort). Star a channel on its card to add it to Favorites; recently played channels land under Already watched (last 30 on this device). Switch **Cards** / **EPG** from the top-bar view group; Search and Sort apply to the grid. EPG programmes come from the pack.
+- Switch **Live**, **Movies**, and **Series** from the pack top bar — while a shelf loads, the grid shows a centered spinner with **Loading channels/movies/series** (not placeholder cards)
+- Browse the **category list** on the left and **channel cards** on the right (logo + title under the mark, **NOW / NEXT** EPG strip when short EPG is available; long-press a card for the programme list). Hover probes stream health (green/red border). On **Live**, the rail includes **Favorites** and **Already watched**; hover a category to **pin** it, or hold-drag to reorder (playlist sort). Star a channel on its card to add it to Favorites; recently played channels land under Already watched (last 30 on this device). Switch **Cards** / **EPG** from the top-bar view group; Search and Sort apply to the grid. EPG programmes come from the pack. **Movies** / **Series** keep poster cards.
 - Open **Portals** from the top bar — add, import a share code, select, favorite, share, edit, or remove portals (forms and inventory from the pack)
 - Open movies/series in shared **hub details** — series episodes come from pack `details` (`meta.videos`); optional TMDB enrich when enabled
 - Play live channels and VOD in the live player (in-player channel guide / search / EPG use shared guide chrome). Progressive live (Xtream `.ts`) opens the CDN URL in MediaKit with ffmpeg reconnect — no local relay.

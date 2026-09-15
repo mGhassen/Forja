@@ -32,6 +32,7 @@ export 'package:forja_foundation/widgets/catalog/catalog_search_filter_lens.dart
 export 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart';
 export 'package:forja_foundation/widgets/catalog/server_grid.dart';
 export 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
+export 'package:forja_foundation/widgets/catalog/catalog_channel_card.dart';
 export 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 export 'package:forja_foundation/widgets/catalog/continue_section.dart';
 export 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
@@ -87,6 +88,7 @@ export 'package:forja_foundation/widgets/guide/channel_search_overlay.dart';
 export 'package:forja_foundation/widgets/guide/player_stats_panel.dart';
 export 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 export 'package:forja_foundation/widgets/feedback/loading_dots.dart';
+export 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 export 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 export 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
 export 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
