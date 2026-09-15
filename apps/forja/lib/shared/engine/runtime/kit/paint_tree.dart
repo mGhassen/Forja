@@ -60,8 +60,8 @@ import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
 import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 import 'package:forja_foundation/widgets/catalog/continue_section.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
-import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
@@ -2362,31 +2362,47 @@ class _BecauseMountState extends State<_BecauseMount> {
                 if (items is! List || items.isEmpty) {
                   return const SizedBox.shrink();
                 }
-                final posterItems = <PosterItem>[];
-                for (final raw in items) {
+                final tab = widget.tabId ??
+                    LayoutScope.maybeOf(ctx)?.tabId ??
+                    TvFocusGraph.tabIdOf(ctx);
+                final cards = <Widget>[];
+                for (var i = 0; i < items.length; i++) {
+                  final raw = items[i];
                   if (raw is! Map) continue;
                   final item = Map<String, dynamic>.from(raw);
-                  final props = PackPaintArtifact.propsOf(item);
-                  final url = (props['imageUrl'] ?? props['posterUrl'] ?? '')
-                      .toString()
-                      .trim();
-                  final title = (props['title'] ?? '').toString();
-                  if (url.isEmpty && title.isEmpty) continue;
-                  posterItems.add(
-                    PosterItem(
-                      url: url,
-                      title: title.isEmpty ? null : title,
-                      onTap: PackPaintArtifact.openTap(
+                  final paint = item['paint'];
+                  if (paint is Map) {
+                    cards.add(
+                      PackPaintArtifact.fromPaint(
                         ctx,
                         pluginId: widget.pluginId,
-                        props: props,
-                        open: item['open'],
-                        meta: item['meta'],
+                        paint: Map<String, dynamic>.from(paint),
+                        open: item['open'] ?? paint['open'],
+                        meta: item['meta'] ?? paint['meta'],
+                        listIndex: i,
+                        tvTabId: tab,
+                        tvRowId: 'because',
                       ),
+                    );
+                    continue;
+                  }
+                  cards.add(
+                    PackPaintArtifact.fromPaint(
+                      ctx,
+                      pluginId: widget.pluginId,
+                      paint: {
+                        'type': 'posterCard',
+                        'props': PackPaintArtifact.propsOf(item),
+                      },
+                      open: item['open'],
+                      meta: item['meta'],
+                      listIndex: i,
+                      tvTabId: tab,
+                      tvRowId: 'because',
                     ),
                   );
                 }
-                if (posterItems.isEmpty) return const SizedBox.shrink();
+                if (cards.isEmpty) return const SizedBox.shrink();
                 final defaultPad = catalogSectionHorizontalPadding(ctx);
                 final pad = PackPaintArtifact.packDouble(
                       widget.spec['pad'] ?? node['pad'],
@@ -2397,15 +2413,11 @@ class _BecauseMountState extends State<_BecauseMount> {
                   ctx,
                 );
                 final canShuffle = node['canShuffle'] == true;
-                final cardW = PackPaintArtifact.packDouble(
-                  widget.spec['cardWidth'] ?? node['cardWidth'],
-                );
-                final cardH = PackPaintArtifact.packDouble(
-                  widget.spec['cardHeight'] ?? node['cardHeight'],
-                );
                 final gap = PackPaintArtifact.packDouble(
-                  widget.spec['gap'] ?? node['gap'],
-                );
+                      widget.spec['gap'] ?? node['gap'],
+                    ) ??
+                    shellPosterCardRowGap(ctx);
+                final cardH = InteractivePosterCard.cardHeight(ctx);
                 return BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
                       ? null
@@ -2413,10 +2425,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                   seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
                       ? null
                       : (node['seedPoster'] ?? '').toString(),
-                  items: posterItems,
-                  cardWidth: cardW,
-                  cardHeight: cardH,
-                  gap: gap,
                   trailing: canShuffle
                       ? IconButton(
                           onPressed: () => setState(() => _shuffleKey++),
@@ -2429,6 +2437,13 @@ class _BecauseMountState extends State<_BecauseMount> {
                     titlePad.top,
                     pad,
                     titlePad.bottom,
+                  ),
+                  rail: HorizontalScroller(
+                    height: cardH,
+                    padding: EdgeInsets.symmetric(horizontal: pad),
+                    itemCount: cards.length,
+                    separatorBuilder: (_, _) => SizedBox(width: gap),
+                    itemBuilder: (_, i) => cards[i],
                   ),
                 );
               },

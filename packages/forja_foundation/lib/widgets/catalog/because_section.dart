@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 
 /// Because-you-watched row paint — props only (RFC-106 Zone A).
@@ -126,8 +127,10 @@ class BecauseSection extends StatelessWidget {
         else
           PosterRail(
             items: children == null ? items : null,
-            itemWidth: cardWidth ?? 120,
-            itemHeight: cardHeight ?? 180,
+            itemWidth:
+                cardWidth ?? InteractivePosterCard.cardWidth(context),
+            itemHeight:
+                cardHeight ?? InteractivePosterCard.cardHeight(context),
             gap: gap,
             children: children,
           ),
