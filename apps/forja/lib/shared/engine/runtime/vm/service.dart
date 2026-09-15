@@ -510,13 +510,22 @@ class EngineService {
 
     // Home/TMDB: EngineJS-first. Live Sports / list / portal hubs call
     // ctx.host.* — EngineJS has no bridge. layout / filters stay EngineJS-first.
+    // Portal inventory + mutations need vault/http; EngineJS returns a valid
+    // empty envelope if these stay off the allowlist (no flutter_js fallback).
     final hostBridgeActions = {
       'feed',
       'rail',
       'searchChannels',
+      'listPortals',
       'addPortal',
+      'editPortal',
       'selectPortal',
       'removePortal',
+      'scrape',
+      'shareEncode',
+      'shareDecode',
+      'prefsLoad',
+      'prefsSave',
     };
     final needsHostFeedBridge =
         plugin.needsHostBridge && hostBridgeActions.contains(action);
