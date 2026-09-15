@@ -62,6 +62,7 @@ import 'package:forja_foundation/widgets/catalog/continue_section.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
@@ -632,64 +633,76 @@ class PackPaintTree extends StatelessWidget {
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.maybeOf(context);
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final layout =
-        tv ? ShellMoodCircleLayout.tvScrollable : ShellMoodCircleLayout.desktop;
     final down = focusDown?.trim() ?? '';
-    return SizedBox(
+    return Padding(
       key: ValueKey('kind-circles-$barId'),
-      height: layout.rowHeight,
-      width: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: 2,
-          bottom: 10,
-          left: ShellTokens.compactChromeLeadingInset(context),
-          right: ShellTokens.bodyHorizontalPadding,
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) SizedBox(width: layout.horizontalGap),
-                  Builder(
-                    builder: (context) {
-                      final item = items[i];
-                      final meta =
-                          kitMoodCircleMeta(id: item.id, icon: item.icon);
-                      final on = selectedId == item.id;
-                      return ShellMoodCircleItem(
-                        layout: layout,
-                        label: catalogKitCategoryLabel(
-                          item.id,
-                          label: item.label,
-                        ),
-                        icon: meta.icon,
-                        accent: meta.accent,
-                        selected: on,
-                        listIndex: i,
-                        tvTabId: tabId,
-                        tvRowId: barId,
-                        onDownEdge: down.isEmpty
-                            ? null
-                            : () => scope?.resolveFocusEdge(down)?.call(),
-                        onTap: () {
-                          onSelect(item.id);
-                          if (down.isNotEmpty) {
-                            scope?.resolveFocusEdge(down)?.call();
-                          }
-                        },
-                      );
-                    },
-                  ),
-                ],
+      padding: EdgeInsets.only(
+        top: 2,
+        bottom: 10,
+        left: ShellTokens.compactChromeLeadingInset(context),
+        right: ShellTokens.bodyHorizontalPadding,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: items.length,
+            maxWidth: constraints.maxWidth,
+          );
+          final row = Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) SizedBox(width: layout.horizontalGap),
+                Builder(
+                  builder: (context) {
+                    final item = items[i];
+                    final meta =
+                        kitMoodCircleMeta(id: item.id, icon: item.icon);
+                    final on = selectedId == item.id;
+                    return ShellMoodCircleItem(
+                      layout: layout,
+                      label: catalogKitCategoryLabel(
+                        item.id,
+                        label: item.label,
+                      ),
+                      icon: meta.icon,
+                      accent: meta.accent,
+                      selected: on,
+                      listIndex: i,
+                      tvTabId: tabId,
+                      tvRowId: barId,
+                      onDownEdge: down.isEmpty
+                          ? null
+                          : () => scope?.resolveFocusEdge(down)?.call(),
+                      onTap: () {
+                        onSelect(item.id);
+                        if (down.isNotEmpty) {
+                          scope?.resolveFocusEdge(down)?.call();
+                        }
+                      },
+                    );
+                  },
+                ),
               ],
-            ),
-          ),
-        ),
+            ],
+          );
+          final fits =
+              layout.contentWidth(items.length) <= constraints.maxWidth;
+          // Overflow: scaleDown (pre-cutover Live Sports) — keep centered.
+          return SizedBox(
+            height: layout.rowHeight,
+            width: double.infinity,
+            child: fits
+                ? Center(child: row)
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: row,
+                  ),
+          );
+        },
       ),
     );
   }
@@ -2163,39 +2176,32 @@ class _MoodMountState extends State<_MoodMount> {
     final options = widget.spec['options'];
     if (options is! List || options.isEmpty) return const SizedBox.shrink();
     final title = (widget.spec['title'] ?? '').toString();
-    final chips = <Widget>[];
+    final parsed = <({
+      String id,
+      String label,
+      IconData icon,
+      Color accent,
+    })>[];
     for (final raw in options) {
       if (raw is! Map) continue;
       final opt = Map<String, dynamic>.from(raw);
       final id = (opt['id'] ?? '').toString();
       if (id.isEmpty) continue;
       final token = kitMoodIconToken(opt['icon']?.toString() ?? id);
-      final accent = _parseMoodAccent(opt['accent']) ?? token.accent;
-      final selected = _selectedId == id;
-      chips.add(
-        ShellMoodCircleItem(
-          layout: MoodCircleLayout.desktop,
-          label: (opt['label'] ?? id).toString(),
-          icon: token.icon,
-          accent: accent,
-          selected: selected,
-          onTap: () => setState(() => _selectedId = id),
-        ),
-      );
+      parsed.add((
+        id: id,
+        label: (opt['label'] ?? id).toString(),
+        icon: token.icon,
+        accent: _parseMoodAccent(opt['accent']) ?? token.accent,
+      ));
     }
-    if (chips.isEmpty) return const SizedBox.shrink();
+    if (parsed.isEmpty) return const SizedBox.shrink();
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad = PackPaintArtifact.packDouble(widget.spec['pad']) ?? defaultPad;
     final titlePad = PackPaintArtifact.titlePadInsets(
       widget.spec['titlePad'],
       context,
     );
-    final layout = MoodCircleLayout.desktop;
-    final rowHeight =
-        PackPaintArtifact.packDouble(widget.spec['rowHeight']) ??
-            layout.rowHeight;
-    final chipGap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
-        layout.horizontalGap;
     Widget? results;
     final load = packLoadSpec(widget.spec['load']);
     if (_selectedId != null && load != null) {
@@ -2224,25 +2230,82 @@ class _MoodMountState extends State<_MoodMount> {
         pad,
         titlePad.bottom,
       ),
-      rowHeight: rowHeight,
-      chipStrip: SizedBox(
-        height: rowHeight,
-        width: double.infinity,
-        child: Center(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: pad),
-            child: Row(
+      chipStrip: LayoutBuilder(
+        builder: (context, constraints) {
+          final layout = ShellMoodCircleLayout.resolve(
+            context,
+            itemCount: parsed.length,
+            maxWidth: constraints.maxWidth,
+          );
+          final rowHeight =
+              PackPaintArtifact.packDouble(widget.spec['rowHeight']) ??
+                  layout.rowHeight;
+          final chipGap =
+              PackPaintArtifact.packDouble(widget.spec['gap']) ??
+                  layout.horizontalGap;
+          Widget chipAt(int i) {
+            final m = parsed[i];
+            return ShellMoodCircleItem(
+              layout: layout,
+              label: m.label,
+              icon: m.icon,
+              accent: m.accent,
+              selected: _selectedId == m.id,
+              listIndex: i,
+              tvTabId: widget.tabId,
+              tvRowId: 'mood-chips',
+              onTap: () => setState(() => _selectedId = m.id),
+            );
+          }
+
+          final tvNav = ShellPaintScope.useTvFocusOf(context);
+          final fits =
+              layout.contentWidth(parsed.length) <= constraints.maxWidth;
+
+          Widget centeredRow({required bool scaleToFit}) {
+            final row = Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < chips.length; i++) ...[
+                for (var i = 0; i < parsed.length; i++) ...[
                   if (i > 0) SizedBox(width: chipGap),
-                  chips[i],
+                  chipAt(i),
                 ],
               ],
-            ),
-          ),
-        ),
+            );
+            return SizedBox(
+              height: rowHeight,
+              width: double.infinity,
+              child: scaleToFit
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: row,
+                    )
+                  : Center(child: row),
+            );
+          }
+
+          if (tvNav) {
+            if (fits) return centeredRow(scaleToFit: true);
+            return HorizontalScroller(
+              height: rowHeight,
+              padding: EdgeInsets.symmetric(horizontal: pad),
+              itemCount: parsed.length,
+              separatorBuilder: (_, _) => SizedBox(width: chipGap),
+              itemBuilder: (context, i) => chipAt(i),
+            );
+          }
+
+          if (fits) return centeredRow(scaleToFit: false);
+          return HorizontalScroller(
+            height: rowHeight,
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            itemCount: parsed.length,
+            separatorBuilder: (_, _) => SizedBox(width: chipGap),
+            itemBuilder: (context, i) => chipAt(i),
+          );
+        },
       ),
       results: results,
     );
