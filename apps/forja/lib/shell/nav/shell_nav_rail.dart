@@ -388,16 +388,19 @@ class _ShellNavRailState extends State<ShellNavRail> {
                     builder: (context, constraints) {
                       final profileIconSize =
                           preferredIconSize * profileAvatarScale;
+                      // Paint at hover size; idle AnimatedScale downscales —
+                      // upscaling a smaller SVG was the stutter/flash.
+                      final profilePaintSize =
+                          profileIconSize * ShellTokens.navRailIconHoverScale;
                       final profileSpacing =
                           isTv ? 4.0 : metrics.navRailItemSpacing;
                       final profileLabelSlot = math.max(
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
-                      // Profile does not hover-scale — reserve exact avatar size.
                       final profileBlockHeight = settingsIndex == null
                           ? 0.0
-                          : profileIconSize +
+                          : profilePaintSize +
                               ShellTokens.navRailIconUnderlineGap +
                               ShellTokens.shellNavUnderlineHeight +
                               ShellTokens.navRailIconLabelGap +
@@ -457,7 +460,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                       : null,
                                   icon: showDesktopProfile
                                       ? ForjaActiveProfileAvatar(
-                                          size: profileIconSize,
+                                          size: profilePaintSize,
                                           showBorder: false,
                                           onProfile: _onActiveProfile,
                                         )
@@ -951,9 +954,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       focused: _focused,
       context: context,
     );
-    // Profile avatar is already sized via customIconSize — do not stack the
-    // tab icon hover grow (AnimatedScale + ColorFilter on SVG stuttered).
-    if (widget.customIconSize != null) return 1;
+    // Profile: painted at hover size; idle downscales (never upscale SVG).
+    if (widget.customIconSize != null) {
+      final idle = 1 / ShellTokens.navRailIconHoverScale;
+      if (itemActive) return _pressed ? 0.92 : 1;
+      return idle;
+    }
     if (itemActive) return _pressed ? big * 0.92 : big;
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
@@ -1008,7 +1014,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         labelSlotHeight: labelSlot,
       );
     }
-    return customIconSize +
+    return customIconSize * ShellTokens.navRailIconHoverScale +
         ShellTokens.navRailIconUnderlineGap +
         ShellTokens.shellNavUnderlineHeight +
         ShellTokens.navRailIconLabelGap +
@@ -1201,10 +1207,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         children: [
                           SizedBox(
                             width: ShellTokens.navRailWidth,
-                            height: widget.customIconSize != null
-                                ? renderedIconSize
-                                : renderedIconSize *
-                                    ShellTokens.navRailIconHoverScale,
+                            height: renderedIconSize *
+                                ShellTokens.navRailIconHoverScale,
                             child: Align(
                               alignment: Alignment.bottomCenter,
                               child: AnimatedScale(
@@ -1214,10 +1218,16 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                 curve: Curves.easeOutCubic,
                                 // Bilinear — Impeller defaults can nearest-neighbor
                                 // the focus grow and make pack PNGs look 8-bit.
-                                filterQuality: FilterQuality.low,
+                                filterQuality: FilterQuality.medium,
                                 child: SizedBox(
-                                  width: renderedIconSize,
-                                  height: renderedIconSize,
+                                  width: widget.customIconSize != null
+                                      ? renderedIconSize *
+                                          ShellTokens.navRailIconHoverScale
+                                      : renderedIconSize,
+                                  height: widget.customIconSize != null
+                                      ? renderedIconSize *
+                                          ShellTokens.navRailIconHoverScale
+                                      : renderedIconSize,
                                   child: Center(child: icon),
                                 ),
                               ),

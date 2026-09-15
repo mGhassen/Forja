@@ -426,8 +426,20 @@ void main() {
     final avatar = tester.widget<ForjaProfileAvatar>(
       find.byType(ForjaProfileAvatar),
     );
-    expect(avatar.size, ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleTv);
-    expect(avatar.size, lessThan(ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleDesktop));
+    expect(
+      avatar.size,
+      ShellTokens.navRailIconSize *
+          ShellTokens.navRailProfileAvatarScaleTv *
+          ShellTokens.navRailIconHoverScale,
+    );
+    expect(
+      avatar.size,
+      lessThan(
+        ShellTokens.navRailIconSize *
+            ShellTokens.navRailProfileAvatarScaleDesktop *
+            ShellTokens.navRailIconHoverScale,
+      ),
+    );
   });
 
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
@@ -451,7 +463,8 @@ void main() {
       shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) *
           shellNavRailProfileAvatarScale(
             tester.element(find.byType(ShellNavRail)),
-          ),
+          ) *
+          ShellTokens.navRailIconHoverScale,
     );
     final avatarScale = tester.widget<AnimatedScale>(
       find
@@ -461,7 +474,7 @@ void main() {
           )
           .first,
     );
-    expect(avatarScale.scale, 1);
+    expect(avatarScale.scale, 1 / ShellTokens.navRailIconHoverScale);
     expect(find.text('Guest'), findsOneWidget);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -480,7 +493,7 @@ void main() {
       tester.widget<ForjaProfileAvatar>(avatarFinder).avatarKey,
       avatar.avatarKey,
     );
-    // Profile stays size-stable — colorize only (no icon hover grow).
+    // Hover grows to painted size (scale 1); idle was downscale only.
     expect(
       tester
           .widget<AnimatedScale>(
