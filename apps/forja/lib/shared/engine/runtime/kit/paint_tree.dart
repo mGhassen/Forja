@@ -1045,6 +1045,11 @@ class PackPaintTree extends StatelessWidget {
             return y.isEmpty ? null : y.split(' • ').first;
           }(),
           badge: (props['badge'] ?? meta?.badge)?.toString(),
+          mediaType: (props['mediaType'] ??
+                  meta?.tmdbMediaType ??
+                  meta?.type ??
+                  '')
+              .toString(),
           genres: props['genres'] is List
               ? [
                   for (final g in props['genres'] as List)
