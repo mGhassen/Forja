@@ -176,11 +176,13 @@ final portalsInventoryProvider = FutureProvider.autoDispose
       pluginId: '',
     );
   }
+  // Always bypass MetaRuntime cache — an early empty vault read must not
+  // stick for EngineCache maxAge (~5m). Refresh only invalidates Riverpod.
   final env = await MetaRuntime.instance.run(
     pluginId: pluginId,
     action: 'listPortals',
     params: const {},
-    forceRefresh: false,
+    forceRefresh: true,
   );
   if (!env.ok) {
     return PortalsInventory(

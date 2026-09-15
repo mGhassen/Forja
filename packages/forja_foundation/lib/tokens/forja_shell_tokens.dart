@@ -210,7 +210,7 @@ abstract final class ShellTokens {
   static const double homePageBottomSectionTopPadding = 8;
 
   /// Extra backdrop height below the viewport band so Featured can sit on-image.
-  static const double homePageBottomSectionDownOffset = 140;
+  static const double homePageBottomSectionDownOffset = 120;
   static const double heroMoodHeaderOverlapFraction = 1 / 3;
 
   /// Fraction of the second Home row visible below the first (desktop cinematic).
