@@ -719,13 +719,22 @@ class PackPaintTree extends StatelessWidget {
       chrome?.onViewStyle(value);
     }
     scope?.onSelect(actionId, value, toggle: false);
-    _persistTopBarChromePref(context, actionId: actionId, value: value);
+    _persistTopBarChromePref(
+      context,
+      actionId: actionId,
+      value: value,
+      action: action,
+    );
   }
 
+  /// Live-schedule host prefs only — never key off bare `id: catalog`
+  /// (IPTV Section and Live Catalog share that id; only Live sets
+  /// `dynamicCatalogs`).
   void _persistTopBarChromePref(
     BuildContext context, {
     required String actionId,
     required String value,
+    Map<String, dynamic>? action,
   }) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty || value.isEmpty) return;
@@ -733,7 +742,7 @@ class PackPaintTree extends StatelessWidget {
     if (key.isEmpty) return;
     try {
       final container = ProviderScope.containerOf(context);
-      if (actionId == 'catalog') {
+      if (action?['dynamicCatalogs'] == true) {
         container.read(kitFeedCatalogFilterProvider(key).notifier).state =
             value;
         unawaited(
@@ -761,8 +770,9 @@ class PackPaintTree extends StatelessWidget {
     final current = (scope?.selectedId(actionId) ??
             (action['default'] ?? '').toString())
         .trim();
-    final isCatalog =
-        actionId == 'catalog' || action['dynamicCatalogs'] == true;
+    // Live Sports only — never treat every `id: catalog` as dynamic
+    // (IPTV Section reuses that id with static items).
+    final dynamicCatalog = action['dynamicCatalogs'] == true;
     final isSchedule = actionId == 'horizon' ||
         actionId == 'schedule' ||
         actionId == 'time';
@@ -776,14 +786,19 @@ class PackPaintTree extends StatelessWidget {
           onChanged: (pref) {
             if (!context.mounted) return;
             scope?.onSelect(actionId, pref, toggle: false);
-            _persistTopBarChromePref(context, actionId: actionId, value: pref);
+            _persistTopBarChromePref(
+              context,
+              actionId: actionId,
+              value: pref,
+              action: action,
+            );
           },
         );
         return;
       }
     }
 
-    if (isCatalog) {
+    if (dynamicCatalog) {
       var options = <({String id, String label, String? subtitle})>[
         for (final e in propsIdLabelList(action, 'items'))
           (id: e.id, label: e.label, subtitle: null),
@@ -815,7 +830,12 @@ class PackPaintTree extends StatelessWidget {
             );
       if (picked == null || !context.mounted) return;
       scope?.onSelect(actionId, picked, toggle: false);
-      _persistTopBarChromePref(context, actionId: actionId, value: picked);
+      _persistTopBarChromePref(
+        context,
+        actionId: actionId,
+        value: picked,
+        action: action,
+      );
       return;
     }
 
@@ -830,7 +850,12 @@ class PackPaintTree extends StatelessWidget {
     );
     if (picked == null || !context.mounted) return;
     scope?.onSelect(actionId, picked, toggle: false);
-    _persistTopBarChromePref(context, actionId: actionId, value: picked);
+    _persistTopBarChromePref(
+      context,
+      actionId: actionId,
+      value: picked,
+      action: action,
+    );
   }
 
   Map<String, Widget> _portalsActionSlots(
@@ -1440,7 +1465,9 @@ class PackPaintTree extends StatelessWidget {
       if (id.isEmpty) continue;
       var selected =
           (scope?.selectedId(id) ?? (a['default'] ?? '').toString()).trim();
-      if (id == 'catalog' && selected.isEmpty) selected = 'all';
+      // Live dynamic catalogs default to All; static menus (IPTV Section) keep
+      // pack `default` / first item — do not force `all` on every `catalog` id.
+      if (a['dynamicCatalogs'] == true && selected.isEmpty) selected = 'all';
       if ((id == 'horizon' || id == 'schedule' || id == 'time') &&
           selected.isEmpty) {
         selected = kKitScheduleDefaultPref;
@@ -1459,7 +1486,9 @@ class PackPaintTree extends StatelessWidget {
       final id = (a['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
       final selected = (selections[id] ?? '').trim();
-      if (id == 'catalog' || a['dynamicCatalogs'] == true) {
+      // Host catalogChipLabel is Live Sports only (`dynamicCatalogs`).
+      // Static `catalog` menus (IPTV Section) use pack item labels.
+      if (a['dynamicCatalogs'] == true) {
         final label = KitTopBarHostHooks.catalogChipLabel?.call(
           selected.isEmpty ? 'all' : selected,
           const [],

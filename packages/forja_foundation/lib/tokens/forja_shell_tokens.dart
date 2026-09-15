@@ -326,7 +326,7 @@ abstract final class ShellTokens {
   static const double tvPosterCardRowGap = 12;
 
   /// Gap between poster cards in hub rails (desktop / non-TV).
-  static const double posterCardRowGap = 16;
+  static const double posterCardRowGap = 24;
 
   /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;
