@@ -478,32 +478,60 @@ class PortalsInventory {
   }
 }
 
-/// Debounced hover/focus health probe session for a portals panel.
+/// Debounced hover health probe — shared TTL cache across chip + panel.
 ///
-/// UI owns one instance; call [dispose] from the widget.
+/// Probe on hover only (callers). Fresh results skip re-probe until [ttl]
+/// expires or [invalidate]. UI owns one instance; call [dispose] from the widget.
 class PortalHealthTracker {
-  PortalHealthTracker({this.onChanged});
+  PortalHealthTracker({this.onChanged}) {
+    _listeners.add(this);
+  }
 
   final VoidCallback? onChanged;
 
-  final Map<String, bool?> _health = {};
-  final Map<String, String> _probeExpiry = {};
-  final Map<String, String> _probeActive = {};
-  final Map<String, String> _probeMax = {};
-  final Set<String> _inFlight = {};
-  final Map<String, Timer> _debounce = {};
+  static final Set<PortalHealthTracker> _listeners = {};
 
+  /// Shared so chip + panel paint the same result and Refresh clears both.
+  static final Map<String, bool?> _health = {};
+  static final Map<String, DateTime> _probedAt = {};
+  static final Map<String, String> _probeExpiry = {};
+  static final Map<String, String> _probeActive = {};
+  static final Map<String, String> _probeMax = {};
+  static final Set<String> _inFlight = {};
+  static final Map<String, Timer> _debounce = {};
+
+  static const ttl = Duration(minutes: 2);
   static const hoverDelay = Duration(milliseconds: 350);
   static const tvDelay = Duration(seconds: 2);
+
+  static void _notify() {
+    for (final t in _listeners) {
+      t.onChanged?.call();
+    }
+  }
+
+  static bool _isFresh(String portalKey) {
+    if (!_health.containsKey(portalKey)) return false;
+    final at = _probedAt[portalKey];
+    if (at == null) return false;
+    return DateTime.now().difference(at) < ttl;
+  }
 
   bool isChecking(String portalKey) =>
       _inFlight.contains(portalKey) || _debounce.containsKey(portalKey);
 
-  void schedule(String portalKey, {required bool leanback}) {
+  /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
+  /// [force] (Refresh).
+  void schedule(
+    String portalKey, {
+    required bool leanback,
+    bool force = false,
+  }) {
     if (portalKey.isEmpty) return;
     if (_inFlight.contains(portalKey)) return;
+    if (!force && _isFresh(portalKey)) return;
     cancel(portalKey);
-    onChanged?.call();
+    _notify();
     _debounce[portalKey] = Timer(
       leanback ? tvDelay : hoverDelay,
       () {
@@ -518,12 +546,39 @@ class PortalHealthTracker {
     _debounce.remove(portalKey);
   }
 
+  /// Drop cached health (all keys, or one). Next hover re-probes.
+  void invalidate([String? portalKey]) {
+    final key = portalKey?.trim() ?? '';
+    if (key.isEmpty) {
+      for (final t in _debounce.values) {
+        t.cancel();
+      }
+      _debounce.clear();
+      _inFlight.clear();
+      _health.clear();
+      _probedAt.clear();
+      _probeExpiry.clear();
+      _probeActive.clear();
+      _probeMax.clear();
+    } else {
+      cancel(key);
+      _inFlight.remove(key);
+      _health.remove(key);
+      _probedAt.remove(key);
+      _probeExpiry.remove(key);
+      _probeActive.remove(key);
+      _probeMax.remove(key);
+    }
+    _notify();
+  }
+
   Future<void> _run(String portalKey) async {
     if (!_inFlight.add(portalKey)) return;
-    onChanged?.call();
+    _notify();
     try {
       final probe = await PortalsHost.probe(portalKey);
       _health[portalKey] = probe.alive;
+      _probedAt[portalKey] = DateTime.now();
       if (probe.expiry.trim().isNotEmpty &&
           probe.expiry.toLowerCase() != 'unknown') {
         _probeExpiry[portalKey] = probe.expiry;
@@ -536,7 +591,7 @@ class PortalHealthTracker {
       }
     } finally {
       _inFlight.remove(portalKey);
-      onChanged?.call();
+      _notify();
     }
   }
 
@@ -568,9 +623,12 @@ class PortalHealthTracker {
   }
 
   void dispose() {
-    for (final t in _debounce.values) {
-      t.cancel();
+    _listeners.remove(this);
+    if (_listeners.isEmpty) {
+      for (final t in _debounce.values) {
+        t.cancel();
+      }
+      _debounce.clear();
     }
-    _debounce.clear();
   }
 }

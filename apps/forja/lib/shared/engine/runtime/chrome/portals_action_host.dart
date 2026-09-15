@@ -132,7 +132,9 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final key = _probeKey;
     if (key.isEmpty) return;
     final leanback = liveLeanbackOnly(context);
-    if (hovered || focused) {
+    // Desktop: hover only — click/focus must not re-probe. TV: focus.
+    final want = leanback ? focused : hovered;
+    if (want) {
       _health.schedule(key, leanback: leanback);
     } else {
       _health.cancel(key);
@@ -428,6 +430,7 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
   Future<void> _dispatchPanelAction(PortalsPanelAction a) async {
     final verb = a.action.trim().toLowerCase();
     if (verb == 'listportals' || verb == 'refresh') {
+      _health.invalidate();
       invalidatePortalsChrome(ref, widget.tabId);
       return;
     }
