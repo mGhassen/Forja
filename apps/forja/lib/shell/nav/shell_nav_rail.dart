@@ -394,12 +394,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
+                      // Profile does not hover-scale — reserve exact avatar size.
                       final profileBlockHeight = settingsIndex == null
                           ? 0.0
-                          : _navRailItemContentHeight(
-                                iconSize: profileIconSize,
-                                labelSlotHeight: profileLabelSlot,
-                              ) +
+                          : profileIconSize +
+                              ShellTokens.navRailIconUnderlineGap +
+                              ShellTokens.shellNavUnderlineHeight +
+                              ShellTokens.navRailIconLabelGap +
+                              profileLabelSlot +
                               profileSpacing;
                       const navPadV = 4.0;
                       final navMaxHeight = math.max(
@@ -949,10 +951,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       focused: _focused,
       context: context,
     );
-    if (widget.customIconSize != null) {
-      if (itemActive) return _pressed ? big * 0.92 : big;
-      return 1;
-    }
+    // Profile avatar is already sized via customIconSize — do not stack the
+    // tab icon hover grow (AnimatedScale + ColorFilter on SVG stuttered).
+    if (widget.customIconSize != null) return 1;
     if (itemActive) return _pressed ? big * 0.92 : big;
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
@@ -1007,7 +1008,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         labelSlotHeight: labelSlot,
       );
     }
-    return customIconSize * ShellTokens.navRailIconHoverScale +
+    return customIconSize +
         ShellTokens.navRailIconUnderlineGap +
         ShellTokens.shellNavUnderlineHeight +
         ShellTokens.navRailIconLabelGap +
@@ -1200,9 +1201,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                         children: [
                           SizedBox(
                             width: ShellTokens.navRailWidth,
-                            height:
-                                renderedIconSize *
-                                ShellTokens.navRailIconHoverScale,
+                            height: widget.customIconSize != null
+                                ? renderedIconSize
+                                : renderedIconSize *
+                                    ShellTokens.navRailIconHoverScale,
                             child: Align(
                               alignment: Alignment.bottomCenter,
                               child: AnimatedScale(

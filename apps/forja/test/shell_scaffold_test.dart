@@ -480,6 +480,20 @@ void main() {
       tester.widget<ForjaProfileAvatar>(avatarFinder).avatarKey,
       avatar.avatarKey,
     );
+    // Profile stays size-stable — colorize only (no icon hover grow).
+    expect(
+      tester
+          .widget<AnimatedScale>(
+            find
+                .ancestor(
+                  of: avatarFinder,
+                  matching: find.byType(AnimatedScale),
+                )
+                .first,
+          )
+          .scale,
+      1,
+    );
   });
 
   testWidgets(

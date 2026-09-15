@@ -80,6 +80,7 @@ class PackPaintTree extends StatelessWidget {
     this.packSourceUrl,
     this.tabId,
     this.pageBottomChild,
+    this.compactSection = false,
   });
 
   final Map<String, dynamic> spec;
@@ -89,6 +90,9 @@ class PackPaintTree extends StatelessWidget {
 
   /// Bleed rail tucked under a hero backdrop (Featured under Spotlight).
   final Widget? pageBottomChild;
+
+  /// Hero-bleed / Because-style rows — compact title top (pre-cutover).
+  final bool compactSection;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +155,7 @@ class PackPaintTree extends StatelessWidget {
             packSourceUrl: packSourceUrl,
             tabId: tabId,
             pageBottomChild: pageBottomChild,
+            compactSection: compactSection,
           ),
         ),
       );
@@ -250,6 +255,7 @@ class PackPaintTree extends StatelessWidget {
           context,
           node: node,
           pluginId: pluginId,
+          compactTop: compactSection || node['compactTop'] == true,
         );
       case LayoutTypes.hero:
         return _mountHero(context, node);
@@ -1099,7 +1105,7 @@ class PackPaintTree extends StatelessWidget {
                 : ShellTokens.heroHeightFractionDesktop),
         firstCatalogRowHeight: pageBottomChild == null
             ? 0
-            : ShellTokens.homeSectionTitleTop + 180 + 40,
+            : ShellTokens.homeSectionTitleTopCompactDesktop + 180 + 40,
         bleedDownOffset: bleedDownOffset,
       ),
       onHeight: tab.isEmpty
@@ -2326,6 +2332,8 @@ class _BecauseMountState extends State<_BecauseMount> {
                 final titlePad = PackPaintArtifact.titlePadInsets(
                   widget.spec['titlePad'] ?? node['titlePad'],
                   ctx,
+                  defaultTop: shellSectionTitleTopCompact(ctx),
+                  defaultBottom: catalogSectionBottomGap(ctx),
                 );
                 final canShuffle = node['canShuffle'] == true;
                 final cardW = PackPaintArtifact.packDouble(

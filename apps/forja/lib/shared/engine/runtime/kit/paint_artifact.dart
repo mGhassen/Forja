@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/details/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -34,26 +36,62 @@ abstract final class PackPaintArtifact {
     Object? open,
     Object? meta,
   }) {
-    final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
+    final item = metaItemOf(props: props, open: open, meta: meta);
+    if (item == null) return null;
+    if (item.id.isEmpty && item.open == null) return null;
+    return () => openMetaItem(context, pluginId: pluginId, item: item);
+  }
+
+  /// Resolve pack item meta for open / list-follow.
+  static MetaItem? metaItemOf({
+    required Map<String, dynamic> props,
+    Object? open,
+    Object? meta,
+  }) {
     final metaMap = meta is Map ? Map<String, dynamic>.from(meta) : null;
-    if (openMap == null && metaMap == null) return null;
-    return () {
-      final item = metaMap != null
-          ? MetaItem.fromJson(metaMap)
-          : MetaItem(
-              id: (openMap?['id'] ?? '').toString(),
-              type: (openMap?['surface'] ?? '').toString(),
-              name: (props['title'] ?? '').toString(),
-              poster:
-                  (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
-              background:
-                  (props['backdropUrl'] ?? props['backgroundUrl'] ?? '')
-                      .toString(),
-              open: openMap != null ? MetaOpen.fromJson(openMap) : null,
-            );
-      if (item.id.isEmpty && item.open == null) return;
-      openMetaItem(context, pluginId: pluginId, item: item);
-    };
+    if (metaMap != null) return MetaItem.fromJson(metaMap);
+    final openMap = open is Map ? Map<String, dynamic>.from(open) : null;
+    if (openMap == null) return null;
+    return MetaItem(
+      id: (openMap['id'] ?? '').toString(),
+      type: (openMap['surface'] ?? props['mediaType'] ?? '').toString(),
+      name: (props['title'] ?? '').toString(),
+      poster: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
+      background:
+          (props['backdropUrl'] ?? props['backgroundUrl'] ?? '').toString(),
+      rating: props['rating'] is num ? (props['rating'] as num).toDouble() : null,
+      releaseInfo: (props['subtitle'] ?? props['year'] ?? '').toString(),
+      tmdbMediaType: props['mediaType']?.toString(),
+      open: MetaOpen.fromJson(openMap),
+    );
+  }
+
+  /// My List pin for poster cards — leanback TV hides via [KitListStatusButton].
+  static Widget? listPinFor({
+    required BuildContext context,
+    required String pluginId,
+    required Map<String, dynamic> props,
+    Object? open,
+    Object? meta,
+    double? cardWidth,
+  }) {
+    final w = cardWidth ??
+        InteractivePosterCard.cardWidth(
+          context,
+          aspect: (props['aspect'] ?? '').toString() == 'landscape'
+              ? PosterAspect.landscape
+              : PosterAspect.portrait,
+        );
+    if (w < 85) return null;
+    final item = metaItemOf(props: props, open: open, meta: meta);
+    if (item == null) return null;
+    final target = ListFollowTarget.fromMeta(pluginId: pluginId, meta: item);
+    if (target == null) return null;
+    return KitListStatusButton.follow(
+      followTarget: target,
+      excludeFromTvTraversal: true,
+      iconSize: InteractivePosterCard.scaled(context, 18).clamp(12.0, 18.0),
+    );
   }
 
   /// Mount a single `paint: { type, props }` artifact.
@@ -74,12 +112,14 @@ abstract final class PackPaintArtifact {
     final props = propsRaw is Map
         ? Map<String, dynamic>.from(propsRaw)
         : <String, dynamic>{};
+    final resolvedOpen = open ?? props['open'];
+    final resolvedMeta = meta ?? props['meta'];
     final onTap = openTap(
       context,
       pluginId: pluginId,
       props: props,
-      open: open ?? props['open'],
-      meta: meta ?? props['meta'],
+      open: resolvedOpen,
+      meta: resolvedMeta,
     );
 
     switch (type) {
@@ -90,6 +130,11 @@ abstract final class PackPaintArtifact {
             : fallbackRank;
         final aspectRaw =
             (props['aspect'] ?? fallbackAspect ?? '').toString();
+        final aspect = aspectRaw == 'landscape'
+            ? PosterAspect.landscape
+            : PosterAspect.portrait;
+        final width =
+            props['width'] is num ? (props['width'] as num).toDouble() : null;
         return InteractivePosterCard(
           imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
           title: (props['title'] ?? '').toString(),
@@ -99,12 +144,18 @@ abstract final class PackPaintArtifact {
               : null,
           rank: rank,
           badge: props['badge']?.toString(),
+          listPin: listPinFor(
+            context: context,
+            pluginId: pluginId,
+            props: props,
+            open: resolvedOpen,
+            meta: resolvedMeta,
+            cardWidth: width,
+          ),
           listIndex: listIndex,
           onTap: onTap ?? () {},
-          aspect: aspectRaw == 'landscape'
-              ? PosterAspect.landscape
-              : PosterAspect.portrait,
-          width: props['width'] is num ? (props['width'] as num).toDouble() : null,
+          aspect: aspect,
+          width: width,
           height:
               props['height'] is num ? (props['height'] as num).toDouble() : null,
           tvTabId: tvTabId,
@@ -154,10 +205,12 @@ abstract final class PackPaintArtifact {
   ///
   /// Pack visual overrides (omit → ShellTokens / catalog density):
   /// `gap`, `rankedGap`, `pad`, `titlePad` (`{ top, bottom }` or number for both).
+  /// [compactTop] — hero-bleed / Because-style title inset (pre-cutover).
   static Widget posterRow(
     BuildContext context, {
     required Map<String, dynamic> node,
     required String pluginId,
+    bool compactTop = false,
   }) {
     final title = (node['title'] ?? node['label'] ?? '').toString();
     final ranked = (node['type'] ?? '').toString() == 'ranked' ||
@@ -172,7 +225,14 @@ abstract final class PackPaintArtifact {
         ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
-    final titlePad = PackPaintArtifact.titlePadInsets(node['titlePad'], context);
+    final useCompact =
+        compactTop || node['compactTop'] == true;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      node['titlePad'],
+      context,
+      defaultTop: catalogSectionTitleTop(context, compact: useCompact),
+      defaultBottom: catalogSectionBottomGap(context),
+    );
     final defaultGap = shellPosterCardRowGap(context);
     final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
     // Ranked uses the same gap unless the pack sets `rankedGap`.

@@ -64,7 +64,11 @@ class MoodSection extends StatelessWidget {
             padding: titlePadding ?? EdgeInsets.zero,
             child: titleStyle != null
                 ? Text(title!, style: titleStyle)
-                : ShellSectionTitle(title: title!),
+                : ShellSectionTitle(
+                    title: title!,
+                    // Outer [titlePadding] owns insets — don't double ShellSectionTitle defaults.
+                    padding: EdgeInsets.zero,
+                  ),
           ),
         chips,
         if (results != null) ...[
