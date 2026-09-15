@@ -49,8 +49,8 @@ import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 import 'package:forja_foundation/widgets/catalog/event_dense_tile.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/ken_burns_backdrop.dart';
-import 'package:forja_foundation/widgets/catalog/poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/catalog/recent_search_helper_tile.dart';
 import 'package:forja_foundation/widgets/catalog/rotating_hero_backdrop.dart';
@@ -482,8 +482,16 @@ Widget? paintFoundationType(
         titleWidth: propsNumOr(props, 'titleWidth', 140),
         itemCount: propsInt(props, 'itemCount') ?? 5,
         showSubtitle: propsBool(props, 'showSubtitle'),
-        cardWidth: propsNumOr(props, 'cardWidth', 120),
-        cardHeight: propsNumOr(props, 'cardHeight', 180),
+        cardWidth: propsNumOr(
+          props,
+          'cardWidth',
+          InteractivePosterCard.cardWidth(context),
+        ),
+        cardHeight: propsNumOr(
+          props,
+          'cardHeight',
+          InteractivePosterCard.cardHeight(context),
+        ),
       );
     case 'categoryCircleMeta':
       // Helper only — paint as MoodCircle using kitMoodCircleMeta.

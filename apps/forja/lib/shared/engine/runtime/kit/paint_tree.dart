@@ -136,11 +136,18 @@ class PackPaintTree extends StatelessWidget {
       final skeleton = isHero
           ? homeCinematicHeroShimmer(height: heroH)
           : homeLoadingShimmer(
-              homePosterRowSkeleton(topPadding: 12, titleWidth: 140),
+              homePosterRowSkeleton(
+                topPadding: 12,
+                titleWidth: 140,
+                cardWidth: InteractivePosterCard.cardWidth(context),
+                cardHeight: InteractivePosterCard.cardHeight(context),
+              ),
             );
       return LazyViewportGate(
         detectorKey: Key('lazy-$pluginId-$id'),
-        placeholderHeight: isHero ? heroH : 220,
+        placeholderHeight: isHero
+            ? heroH
+            : InteractivePosterCard.cardHeight(context) + 48,
         placeholder: skeleton,
         eager: eager,
         builder: (ctx) => PackLoadedPaint(

@@ -9,6 +9,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
+import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/chrome/layout_scope.dart';
 import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 
@@ -127,7 +128,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (!force &&
         feedFuture != null &&
         widget.action == 'rail' &&
-        chrome!.isPageFeedRail(rail)) {
+        chrome!.isPageFeedRail(rail) &&
+        packRailParamsAreFeedShared(runParams)) {
       final key = [
         widget.pluginId,
         'pageFeed',
@@ -366,6 +368,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         topPadding: 12,
         titleWidth: 140,
         itemCount: 5,
+        cardWidth: InteractivePosterCard.cardWidth(context),
+        cardHeight: InteractivePosterCard.cardHeight(context),
       ),
     );
   }

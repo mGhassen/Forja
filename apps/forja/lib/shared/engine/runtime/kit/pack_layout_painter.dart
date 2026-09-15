@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dar
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
@@ -305,7 +306,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (pageMap == null || pageMap['feed'] != true) return const {};
     final declared = catalogLayoutFeedRailIds(pageMap);
     if (declared.isNotEmpty) return declared;
-    // Legacy feed pages: every non-mood/because rail with a load is batched.
+    // Legacy feed pages: batch rail loads that share the feed map key only.
+    // Skip per-instance params (e.g. genreRow) — those must hit action:'rail'.
     final out = <String>{};
     for (final w in widgets) {
       final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
@@ -317,6 +319,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       final load = packLoadSpec(w['load']);
       if (load == null || load.action != 'rail') continue;
+      if (!packRailParamsAreFeedShared(load.params)) continue;
       final rail = (load.params['rail'] ?? w['rail'] ?? '').toString().trim();
       if (rail.isNotEmpty) out.add(rail);
     }

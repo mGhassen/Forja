@@ -13,6 +13,24 @@ bool packChromeKindReloadsFeed(Map<String, dynamic> listSpec) {
   return kindMenu.isNotEmpty && horizonMenu.isNotEmpty;
 }
 
+/// Params safe to satisfy from page `feed.rails[rail]` (no per-row extras
+/// like `genreRow` — those must hit action:`rail` with full params).
+bool packRailParamsAreFeedShared(Map<String, dynamic> params) {
+  const allowed = {
+    'rail',
+    'limit',
+    'page',
+    'filter',
+    'force',
+    'refresh',
+    '_poolPage',
+  };
+  for (final k in params.keys) {
+    if (!allowed.contains(k)) return false;
+  }
+  return true;
+}
+
 /// Merge layout chrome selections + PackChromeScope into opaque feed params.
 Map<String, dynamic> packChromeFeedParams(
   BuildContext context, {

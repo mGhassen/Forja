@@ -59,8 +59,8 @@ Widget homeTitleBarSkeleton({
 }
 
 Widget homeCardSkeleton({
-  double width = 120,
-  double height = 180,
+  double width = 190,
+  double height = 285,
   double borderRadius = 14,
 }) {
   return Skeleton(
@@ -78,8 +78,9 @@ Widget homePosterRowSkeleton({
   double horizontalPadding = ShellTokens.homeSectionHorizontalPadding,
   double titleBottomGap = 16,
   double cardGap = ShellTokens.posterCardRowGap,
-  double cardWidth = 120,
-  double cardHeight = 180,
+  /// Omit → caller should pass [InteractivePosterCard] sizes (desktop ~190×285).
+  double cardWidth = 190,
+  double cardHeight = 285,
   double borderRadius = 14,
 }) {
   return Padding(
@@ -174,8 +175,8 @@ Widget homeCatalogCardRowSkeleton({
   int itemCount = 5,
   double horizontalPadding = ShellTokens.homeSectionHorizontalPadding,
   double cardGap = ShellTokens.posterCardRowGap,
-  double cardWidth = 120,
-  double cardHeight = 180,
+  double cardWidth = 190,
+  double cardHeight = 285,
   double borderRadius = 14,
 }) {
   return SizedBox(
@@ -250,6 +251,8 @@ List<Widget> homeHubLoadingSlivers({
   double rowSpacing = ShellTokens.homeRowSpacing,
 }) {
   final specs = rows ?? kHomeHubDefaultLoadingRows;
+  final cardW = catalogCardWidth ?? 190;
+  final cardH = catalogCardHeight ?? 285;
   return [
     SliverToBoxAdapter(child: heroShimmer),
     SliverToBoxAdapter(
@@ -267,8 +270,8 @@ List<Widget> homeHubLoadingSlivers({
           homePosterRowSkeleton(
             titleWidth: specs[i].width,
             showSubtitle: specs[i].showSubtitle,
-            cardWidth: catalogCardWidth ?? 120,
-            cardHeight: catalogCardHeight ?? 180,
+            cardWidth: cardW,
+            cardHeight: cardH,
           ),
         ),
       ),
