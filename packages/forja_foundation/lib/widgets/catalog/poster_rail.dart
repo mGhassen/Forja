@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/components/poster_frame.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 
 /// Opaque poster item for [PosterRail].
@@ -36,7 +37,7 @@ class PosterRail extends StatelessWidget {
   final double? height;
   final EdgeInsetsGeometry? padding;
 
-  /// Inter-item gap — omit → theme `spaceMd`.
+  /// Inter-item gap — omit → [ShellTokens.posterCardRowGap].
   final double? gap;
 
   @override
@@ -62,7 +63,7 @@ class PosterRail extends StatelessWidget {
         padding: padding ?? EdgeInsets.symmetric(horizontal: theme.spaceLg),
         itemCount: listChildren.length,
         separatorBuilder: (_, _) =>
-            SizedBox(width: gap ?? theme.spaceMd),
+            SizedBox(width: gap ?? ShellTokens.posterCardRowGap),
         itemBuilder: (_, i) => listChildren[i],
       ),
     );

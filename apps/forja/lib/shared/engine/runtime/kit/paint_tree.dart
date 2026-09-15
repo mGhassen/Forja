@@ -2550,7 +2550,8 @@ class _ContinueMountState extends State<_ContinueMount> {
       defaultTop: shellSectionTitleTopCompact(context),
       defaultBottom: 16,
     );
-    final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ?? 14.0;
+    final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
+        shellPosterCardRowGap(context);
     final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
     return TvKitRow(
       tabId: tab,

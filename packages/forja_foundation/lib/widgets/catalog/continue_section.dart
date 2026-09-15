@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
@@ -24,7 +25,7 @@ class ContinueSection extends StatelessWidget {
     this.listPadding,
     this.cardWidth = 280,
     this.cardHeight = 158,
-    this.cardGap = 14,
+    this.cardGap = ShellTokens.posterCardRowGap,
     this.onResume,
     this.onRemove,
     this.onInfo,

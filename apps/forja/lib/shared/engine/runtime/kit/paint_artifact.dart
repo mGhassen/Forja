@@ -175,8 +175,9 @@ abstract final class PackPaintArtifact {
     final titlePad = PackPaintArtifact.titlePadInsets(node['titlePad'], context);
     final defaultGap = shellPosterCardRowGap(context);
     final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
+    // Ranked uses the same gap unless the pack sets `rankedGap`.
     final rankedGap =
-        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap.clamp(3.0, 6.0);
+        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap;
 
     final items = node['items'];
     if (items is! List || items.isEmpty) {

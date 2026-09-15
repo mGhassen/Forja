@@ -66,7 +66,8 @@ class DetailsRailSection extends StatelessWidget {
                 horizontal: ShellTokens.homeSectionHorizontalPadding,
               ),
               itemCount: cards.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: ShellTokens.posterCardRowGap),
               itemBuilder: (context, i) => cards[i],
             ),
           ),
