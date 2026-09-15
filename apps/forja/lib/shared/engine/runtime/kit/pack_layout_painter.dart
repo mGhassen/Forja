@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
+import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
@@ -383,6 +384,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       },
       onBumpRefresh: () {
         _selectedListItem.value = null;
+        PortalChannelGuideOpen.invalidateLiveCatalog();
         setState(() {
           _refreshEpoch++;
           if (_pageFeedRailIds.isNotEmpty) {

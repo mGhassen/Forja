@@ -20,6 +20,7 @@ import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
 import 'package:forja/shared/engine/runtime/kit/list/list_open_mode.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
@@ -1099,7 +1100,10 @@ class PackPaintTree extends StatelessWidget {
             child = HeroPillPlayButton(
               label: action.label ?? 'View details',
               icon: _heroActionIcon(action.icon),
-              tone: action.tone,
+              // Details is the sole hero CTA (Play was removed) — always green
+              // primary like the old Play pill. Pack may still set label/icon.
+              tone: HeroPillPlayTone.primary,
+              primary: true,
               alwaysShowLabel: true,
               onTap: details,
               autoFocus: useAuto,
@@ -1246,10 +1250,27 @@ class PackPaintTree extends StatelessWidget {
               ? (spec['kind'] ?? '').toString().trim()
               : (LayoutScope.maybeOf(context)?.selectedId(kindMenu) ?? '')
                   .trim();
-          final filtered = [
+          var filtered = [
             for (final e in items)
               if (_itemMatchesKindFilter(e, kindFilter)) e,
           ];
+          // IPTV search/sort are paint-only (packChromeFeedParams skips q/sort
+          // when there is no horizon menu). Live Sports still re-queries feed.
+          if (!packChromeKindReloadsFeed(spec)) {
+            final q = (chrome?.eventQuery ?? '').trim();
+            if (q.isNotEmpty) {
+              filtered = [
+                for (final e in filtered)
+                  if (_itemMatchesEventQuery(e, q)) e,
+              ];
+            }
+            final sortMenu = (spec['sortMenu'] ?? '').toString().trim();
+            final sortId = sortMenu.isEmpty
+                ? ''
+                : (LayoutScope.maybeOf(context)?.selectedId(sortMenu) ?? '')
+                    .trim();
+            filtered = _sortCatalogItems(filtered, sortId);
+          }
           var style = (spec['style'] ?? 'grid').toString().trim().toLowerCase();
           final viewOverride = (chrome?.viewStyle ??
                   LayoutScope.maybeOf(context)?.selectedId('view') ??
@@ -1626,6 +1647,47 @@ class PackPaintTree extends StatelessWidget {
     final type = (item['type'] ?? '').toString().trim().toLowerCase();
     final rawKind = (item['kind'] ?? '').toString().trim().toLowerCase();
     return type == needle || rawKind == needle;
+  }
+
+  bool _itemMatchesEventQuery(Map<String, dynamic> item, String query) {
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return true;
+    final name = (item['name'] ?? item['title'] ?? '').toString().toLowerCase();
+    final cat = (item['categoryName'] ?? item['kind'] ?? '')
+        .toString()
+        .toLowerCase();
+    final props = PackPaintArtifact.propsOf(item);
+    final propTitle =
+        (props['title'] ?? props['name'] ?? '').toString().toLowerCase();
+    return name.contains(needle) ||
+        cat.contains(needle) ||
+        propTitle.contains(needle);
+  }
+
+  List<Map<String, dynamic>> _sortCatalogItems(
+    List<Map<String, dynamic>> items,
+    String sortId,
+  ) {
+    final sort = sortId.trim();
+    if (sort.isEmpty || sort == 'playlist' || items.length < 2) {
+      return items;
+    }
+    int nameCmp(Map<String, dynamic> a, Map<String, dynamic> b) {
+      final an = (a['name'] ?? a['title'] ?? '').toString().toLowerCase();
+      final bn = (b['name'] ?? b['title'] ?? '').toString().toLowerCase();
+      return an.compareTo(bn);
+    }
+
+    final copy = List<Map<String, dynamic>>.from(items);
+    if (sort == 'nameAsc' || sort == 'name' || sort == 'az') {
+      copy.sort(nameCmp);
+      return copy;
+    }
+    if (sort == 'nameDesc' || sort == 'za') {
+      copy.sort((a, b) => nameCmp(b, a));
+      return copy;
+    }
+    return items;
   }
 
   bool _itemsLookLikeEvents(List<Map<String, dynamic>> items) {

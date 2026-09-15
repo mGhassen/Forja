@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -91,9 +93,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   }
 
   Future<MetaEnvelope> _run() async {
-    // Warm host Live list cache (Favorites / pins) before pack feed params.
+    // Warm Live lists in background — never block catalog paint on SharedPrefs.
     if (widget.action == 'feed' || widget.action == 'rail') {
-      await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+      unawaited(
+        CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId),
+      );
     }
     if (!mounted) {
       return const MetaEnvelope(ok: false, action: 'feed', data: {});

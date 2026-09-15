@@ -8,9 +8,41 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 abstract final class PortalChannelGuideOpen {
   PortalChannelGuideOpen._();
 
+  /// In-memory live catalog so guide attach does not re-hit the portal every open.
+  static final Map<String, Future<PortalCatalogFetch>> _liveCatalogFutures = {};
+
   /// Pack `iptvPortalKey` shape: `url|username` (lowercased).
   static String packPortalKey(Portal p) =>
       '${p.url.trim().toLowerCase()}|${p.username.trim().toLowerCase()}';
+
+  static Future<PortalCatalogFetch> _liveCatalog(VerifiedPortal verified) {
+    final cacheKey = verified.key;
+    final hit = _liveCatalogFutures[cacheKey];
+    if (hit != null) return hit;
+    final future = PortalClient.catalog(verified.portal, PortalSection.live);
+    _liveCatalogFutures[cacheKey] = future;
+    future.then((fetch) {
+      if (fetch.error != null && fetch.streams.isEmpty) {
+        _liveCatalogFutures.remove(cacheKey);
+      }
+    }).catchError((_) {
+      _liveCatalogFutures.remove(cacheKey);
+    });
+    return future;
+  }
+
+  /// Drop cached catalog (portal switch / Refresh).
+  static void invalidateLiveCatalog({String? portalKey}) {
+    final key = (portalKey ?? '').trim();
+    if (key.isEmpty) {
+      _liveCatalogFutures.clear();
+      return;
+    }
+    final lower = key.toLowerCase();
+    _liveCatalogFutures.removeWhere(
+      (k, _) => k == key || k.toLowerCase() == lower,
+    );
+  }
 
   static Future<ChannelGuide?> build({
     required String portalKey,
@@ -42,10 +74,7 @@ abstract final class PortalChannelGuideOpen {
         return null;
       }
 
-      final fetch = await PortalClient.catalog(
-        verified.portal,
-        PortalSection.live,
-      );
+      final fetch = await _liveCatalog(verified);
       var streams = fetch.streams.where((s) => s.kind == 'live').toList();
       final categories = fetch.categories;
 

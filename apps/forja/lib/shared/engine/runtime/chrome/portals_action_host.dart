@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/open/live_surface_open.dart';
 import 'package:forja/shared/player/live/tv_focus.dart';
@@ -377,7 +378,10 @@ class _PackPortalsPanelState extends ConsumerState<_PackPortalsPanel> {
         return false;
       }
       if (toastOk != null) ForjaToast.success(toastOk);
-      if (refresh) invalidatePortalsChrome(ref, widget.tabId);
+      if (refresh) {
+        PortalChannelGuideOpen.invalidateLiveCatalog();
+        invalidatePortalsChrome(ref, widget.tabId);
+      }
       return true;
     } catch (e) {
       ForjaToast.error(e.toString());
