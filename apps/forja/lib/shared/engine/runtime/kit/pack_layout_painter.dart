@@ -251,7 +251,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final feedIds = _feedRailIdsForPage(pageMap, widgets);
     Future<Map<String, List<dynamic>>>? feedFuture;
     if (feedIds.isNotEmpty) {
-      feedFuture = _fetchPageFeed(forceRefresh: force);
+      // Reuse in-flight / completed page feed when layout soft-reloads so
+      // PackLoadedPaint does not remount every rail (skeleton flash).
+      if (!force &&
+          _pageFeedFuture != null &&
+          setEquals(feedIds, _pageFeedRailIds)) {
+        feedFuture = _pageFeedFuture;
+      } else {
+        feedFuture = _fetchPageFeed(forceRefresh: force);
+      }
     }
 
     setState(() {

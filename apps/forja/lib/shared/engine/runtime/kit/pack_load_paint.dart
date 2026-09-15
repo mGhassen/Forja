@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
@@ -45,6 +46,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Future<MetaEnvelope>? _future;
   String _scopeEpoch = '';
   int _appliedRefreshEpoch = 0;
+
+  /// Last successful paint — keep on screen while a soft reload runs.
+  Widget? _lastPainted;
 
   /// Soft memo so rails don't re-hit the pack when chrome epoch is unchanged.
   static final Map<String, Future<MetaEnvelope>> _memo = {};
@@ -88,8 +92,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         listSpec: widget.fallbackSpec,
         tabId: widget.tabId,
       ),
+      // Top-bar / vertical filters — not in packChromeSelectionEpoch alone.
+      catalogChromeFilterEpoch(widget.tabId),
       '${chrome?.refreshEpoch ?? 0}',
-      '${identityHashCode(chrome?.pageFeedFuture)}',
+      // Do NOT hash pageFeedFuture identity — a reused/replaced Future for the
+      // same refreshEpoch must not remount rails (flash skeletons on tab show).
     ].join('|');
   }
 
@@ -196,16 +203,17 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   Widget build(BuildContext context) {
     final future = _future;
     if (future == null) {
-      return _sectionLoadingSkeleton();
+      return _lastPainted ?? _sectionLoadingSkeleton();
     }
     return FutureBuilder<MetaEnvelope>(
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return _sectionLoadingSkeleton();
+          return _lastPainted ?? _sectionLoadingSkeleton();
         }
         final env = snap.data;
         if (env == null || !env.ok) {
+          if (_lastPainted != null) return _lastPainted!;
           final msg = env?.error?.message.trim();
           return Padding(
             padding: const EdgeInsets.all(24),
@@ -236,7 +244,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         }
         merged.remove('load');
         _publishDynamicKinds(context, merged);
-        return widget.builder(context, merged);
+        final painted = widget.builder(context, merged);
+        _lastPainted = painted;
+        return painted;
       },
     );
   }
