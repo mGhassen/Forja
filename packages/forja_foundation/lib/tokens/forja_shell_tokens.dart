@@ -206,7 +206,7 @@ abstract final class ShellTokens {
   /// Home desktop/TV - page backdrop height (hero chrome + first row on image).
   static const double homeBackdropViewportFraction = 0.90;
 
-  /// Padding above **Featured This Month** when stacked on the hero backdrop.
+  /// Extra inset reserved above the bleed rail for hero text (not a gap under Featured).
   static const double homePageBottomSectionTopPadding = 8;
 
   /// Extra backdrop height below the viewport band so Featured can sit on-image.
