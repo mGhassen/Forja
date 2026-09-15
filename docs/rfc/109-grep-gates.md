@@ -1,6 +1,6 @@
 # Pack-product host grep gates
 
-**RFC:** [109](../rfc/109-[open]-forja-pack-product-host.md) · **Rule:** [forja-pack-product-host.mdc](../../.cursor/rules/forja-pack-product-host.mdc)
+**RFC:** [109](../rfc/109-[open]-forja-pack-product-host.md) · **Rule:** [forja-pack-product-host.mdc](../../.cursor/rules/forja-pack-product-host.mdc) · skill [forja-pack-product-host](../../.cursor/skills/forja-pack-product-host/SKILL.md)
 
 Pre-merge / CI checklist for `apps/forja/lib`:
 

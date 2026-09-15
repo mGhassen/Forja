@@ -10,6 +10,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_tree.dart';
+import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
@@ -70,6 +71,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Set<String> _pageFeedRailIds = const {};
   Future<Map<String, List<dynamic>>>? _pageFeedFuture;
   Listenable? _filterListenable;
+  final KitRowPrefetchLane _rowPrefetch = KitRowPrefetchLane();
 
   String get _pageKey => widget.tabId?.trim() ?? '';
 
@@ -270,6 +272,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _eagerLoadKeys = eager;
       _pageFeedRailIds = feedIds;
       _pageFeedFuture = feedFuture;
+      _rowPrefetch.reset();
       initLayoutTabSelections(_layoutSelections, widgets);
     });
     _rebindChromeFilters();
@@ -389,6 +392,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       eagerLoadKeys: _eagerLoadKeys,
       pageFeedRailIds: _pageFeedRailIds,
       pageFeedFuture: _pageFeedFuture,
+      rowPrefetch: _rowPrefetch,
       onEventQuery: (q) {
         if (_eventQuery == q) return;
         setState(() => _eventQuery = q);
@@ -537,6 +541,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Hero bleed rail (VF registered via [VerticalFiltersRegistry.syncFromLayout]).
   List<Widget> _composeSections() {
+    // Fresh claim order for LazyViewportGate slots this frame.
+    _rowPrefetch.reset();
     Map<String, dynamic>? heroSpec;
     String? bleedKey;
     for (final w in _widgets) {

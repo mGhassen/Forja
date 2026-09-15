@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Playback — host stays generic
 
-Parent: [pack-product host](./forja-pack-product-host.mdc)
+Parent: [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**
 
 `apps/forja/lib/shared/playback/**` orchestrates **playback for any title**: stream probe, engine auto-play race, torrent/Stremio resolve, home TMDB watch history, provider runtime config, stream guards.
 

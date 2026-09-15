@@ -1,6 +1,6 @@
 # Forja RFC Index
 
-**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc)
+**Rules:** [docs law](../../.cursor/rules/docs-rfc-issues.mdc) · skill [forja-docs-rfc-issues](../../.cursor/skills/forja-docs-rfc-issues/SKILL.md)
 
 Every RFC filename includes a status tag matching `**Status:**` in the body.
 

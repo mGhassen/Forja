@@ -211,6 +211,9 @@ abstract final class PortalsHost {
       actions: chrome.actions,
       editForm: chrome.editForm,
       formValues: formValues,
+      emptyTitle: chrome.emptyTitle,
+      emptyDescription: chrome.emptyDescription,
+      searchPlaceholder: chrome.searchPlaceholder,
     );
   }
 
@@ -228,14 +231,31 @@ abstract final class PortalsHost {
     String title,
     List<PortalsPanelAction> actions,
     FormFieldsSpec? editForm,
+    String emptyTitle,
+    String emptyDescription,
+    String searchPlaceholder,
   }) parsePortalListChrome(Map<String, dynamic>? data) {
     final layout = data?['layout'];
     if (layout is! Map) {
-      return (title: 'Portals', actions: const [], editForm: null);
+      return (
+        title: 'Portals',
+        actions: const [],
+        editForm: null,
+        emptyTitle: '',
+        emptyDescription: '',
+        searchPlaceholder: '',
+      );
     }
     final widgets = layout['widgets'];
     if (widgets is! List) {
-      return (title: 'Portals', actions: const [], editForm: null);
+      return (
+        title: 'Portals',
+        actions: const [],
+        editForm: null,
+        emptyTitle: '',
+        emptyDescription: '',
+        searchPlaceholder: '',
+      );
     }
     Map<String, dynamic>? panel;
     for (final w in widgets) {
@@ -248,7 +268,14 @@ abstract final class PortalsHost {
       }
     }
     if (panel == null) {
-      return (title: 'Portals', actions: const [], editForm: null);
+      return (
+        title: 'Portals',
+        actions: const [],
+        editForm: null,
+        emptyTitle: '',
+        emptyDescription: '',
+        searchPlaceholder: '',
+      );
     }
     final title = (panel['title'] ?? 'Portals').toString().trim();
     final actions = <PortalsPanelAction>[];
@@ -283,6 +310,9 @@ abstract final class PortalsHost {
       title: title.isEmpty ? 'Portals' : title,
       actions: actions,
       editForm: editForm,
+      emptyTitle: (panel['emptyTitle'] ?? '').toString().trim(),
+      emptyDescription: (panel['emptyDescription'] ?? '').toString().trim(),
+      searchPlaceholder: (panel['searchPlaceholder'] ?? '').toString().trim(),
     );
   }
 
@@ -458,6 +488,9 @@ class PortalsInventory {
     this.actions = const [],
     this.editForm,
     this.formValues = const {},
+    this.emptyTitle = '',
+    this.emptyDescription = '',
+    this.searchPlaceholder = '',
   });
 
   final List<PortalListItem> portals;
@@ -469,6 +502,10 @@ class PortalsInventory {
 
   /// Opaque field values by portal key (from pack `formValues`).
   final Map<String, Map<String, String>> formValues;
+
+  final String emptyTitle;
+  final String emptyDescription;
+  final String searchPlaceholder;
 
   String get activeLabel {
     for (final p in portals) {

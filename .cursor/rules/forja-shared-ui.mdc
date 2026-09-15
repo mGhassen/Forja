@@ -10,7 +10,7 @@ Extract **presentation** into the design system; keep **state, fetching, navigat
 
 **Source of truth:** [`packages/forja_foundation`](../../packages/forja_foundation) — `Button`, `ButtonGroup`, `VerticalMenu`, `LogoMenuRail`, tokens/theme. Import the file, not the gallery barrel.
 
-Architecture: [pack-product host](./forja-pack-product-host.mdc). DS widgets: props + callbacks only — no feature god objects.
+Architecture: [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**. DS widgets: props + callbacks only — no feature god objects.
 
 ## Folder map
 

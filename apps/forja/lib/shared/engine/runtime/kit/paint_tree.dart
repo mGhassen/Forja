@@ -121,8 +121,9 @@ class PackPaintTree extends StatelessWidget {
       final eager = type == LayoutTypes.hero ||
           (spec['bleed'] != null &&
               (spec['bleed'] as Object).toString().trim().isNotEmpty) ||
-          (chrome?.isEagerLoad(id, rail: rail) ?? false) ||
-          (chrome?.isPageFeedRail(rail) ?? false);
+          (chrome?.isEagerLoad(id, rail: rail) ?? false);
+      // Page-feed membership must NOT force eager — only first-paint keys /
+      // hero / bleed. Off-screen feed rails stay behind LazyViewportGate.
       final isHero = type == LayoutTypes.hero;
       final heroBleed = pageBottomChild != null;
       final heroH = isHero
@@ -263,6 +264,7 @@ class PackPaintTree extends StatelessWidget {
           context,
           node: node,
           pluginId: pluginId,
+          packSourceUrl: packSourceUrl,
           compactTop: compactSection || node['compactTop'] == true,
         );
       case LayoutTypes.hero:
@@ -2226,6 +2228,7 @@ class _MoodMountState extends State<_MoodMount> {
           ctx,
           node: merged,
           pluginId: widget.pluginId,
+          packSourceUrl: widget.packSourceUrl,
         ),
       );
     }

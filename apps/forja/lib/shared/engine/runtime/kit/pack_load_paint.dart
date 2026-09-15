@@ -242,6 +242,25 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (data.containsKey('canShuffle')) {
           merged['canShuffle'] = data['canShuffle'];
         }
+        final pageSize = catalogRailPageSizeFrom(data) ??
+            catalogRailPageSizeFrom(widget.fallbackSpec) ??
+            kMetaRailPageSizeFallback;
+        final items = data['items'];
+        final itemCount = items is List ? items.length : 0;
+        if (data.containsKey('hasMore')) {
+          merged['hasMore'] = data['hasMore'];
+        } else if (itemCount > 0) {
+          // Feed map strips paging — assume more when the first page is full.
+          merged['hasMore'] = itemCount >= pageSize;
+        }
+        merged['pageSize'] = pageSize;
+        // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
+        if (widget.action.trim().isNotEmpty) {
+          merged['pageLoad'] = {
+            'action': widget.action,
+            'params': Map<String, dynamic>.from(widget.params),
+          };
+        }
         merged.remove('load');
         _publishDynamicKinds(context, merged);
         final painted = widget.builder(context, merged);

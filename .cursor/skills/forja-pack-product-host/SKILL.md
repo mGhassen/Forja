@@ -1,0 +1,172 @@
+---
+name: forja-pack-product-host
+description: >-
+  Forja pack-product host architecture detail. Empty shell + engines; packs are
+  product; foundation is design-system paint only; thin kit painter. Use when
+  deciding pack vs host vs foundation placement, editing kit painter, open.surface
+  routing, host Dart product leakage, foundation orchestrators, or when the user
+  mentions pack-product host, RFC-109, or "is this pack or host?".
+---
+
+# Forja pack-product host (detail)
+
+Always-on law stub: [forja-pack-product-host.mdc](../../rules/forja-pack-product-host.mdc)
+
+Specialists: [host tests](../../rules/forja-host-tests-no-pack-contracts.mdc) · [playback](../../rules/forja-playback-host-generic.mdc) · [design system](../../rules/forja-design-system.mdc) · [RFC-109](../../../docs/rfc/109-[open]-forja-pack-product-host.md)
+
+**One-liner:** Empty shell + engines. Packs are product. Foundation is a design system (paint only). Host **validates + paints** pack JSON — it never invents product fields or product verbs.
+
+Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/mGhassen/forja-packs). Treat every pack as replaceable, renameable, absent.
+
+---
+
+## Layers
+
+| Layer | Path | Owns | Forbidden |
+|-------|------|------|-----------|
+| **Pack** | `forja-packs/{hubs,providers,livesports,iptv,torrent,debrid}` | Product tabs, layout/paint JSON, load actions, prefs, chrome, open shaping, enrich, portals product, magnet→URL debrid | Native unlock internals |
+| **Host** | `apps/forja` | **Empty chassis** — pack-nav wire + settings/account/OTA + platform glue; generic engines (`runPlugin`, cache, store, vault, http, unlock, playback); **thin painter** at `shared/engine/runtime/kit/`; opaque search via `runPlugin(…, 'search')` only. `lib/shell/` must not own brand paint, hub chrome, or product tab vocabulary | Product screens, pack-id branches, hub/IPTV/Live/My List product folders, pack inventory, **`shared/host/layout/`**, field mappers (`title`/`poster`/`homeTeam`), product runtimes, **product search engines**, fat shell UI that duplicates the DS |
+| **Foundation** | `packages/forja_foundation` | Tokens (ThemeExtension), components, widgets, blocks, **brand**, empty-shell frame, protocol **types** / paint schemas | Orchestrators, hooks, Riverpod kit session, registries, feed orchestration, product verbs |
+
+```
+Pack JSON  →  schema validate  →  paint foundation widget (props as declared)
+Pack load  →  opaque runPlugin(action, params)  →  re-validate → paint
+```
+
+```
+forja-packs/                ← product
+apps/forja/                 ← empty chassis + engines + thin painter
+packages/forja_foundation/  ← design system (paint + empty shell frame)
+packages/rust/              ← native engine
+```
+
+### Sniff tests
+
+**Host:** If this pack is uninstalled, does this Dart still make sense as a **generic capability**? Yes → host. No → pack (or delete).
+
+**Foundation:** Would this belong in a shadcn-style DS (props in → UI out)? Yes → foundation. No (hooks, registries, `runPlugin`, Riverpod kit session, PackLayoutHost) → host engine or pack.
+
+**Painter:** Does this Dart name schedule / feed / panel / tabs / invent `title`/`poster` heuristics? Yes → illegal. Validate props map → DS mount only.
+
+---
+
+## Pack trees → host entry
+
+| Tree | Role | Host entry |
+|------|------|------------|
+| `hubs/**` | Catalog / tab product | Thin painter + opaque `runPlugin` (action from pack nav / node `load`) |
+| `providers/**` | Stream extract | `EngineService.runPlugin` |
+| `livesports/**` | Live schedule / resolve | Generic unlock + plugin run |
+| `iptv/**` | Portal packs (product in hub JS) | `vault` / `http` / `playback.open` / `plugin.run` — **not** `ctx.host.portals.*` |
+| `torrent/**` | Indexers | Engine torrent APIs |
+| `debrid/**` | Magnet → HTTP resolve | Thin `resolveMagnetForPlayback` fork → `runDebridResolve` |
+
+Pack knowledge (AniList, KissKh, scrapers, hub folder names, enrich, debrid vendors) lives **only in forja-packs**.
+
+---
+
+## Foundation = design system only
+
+| Allowed | Forbidden |
+|---------|-----------|
+| `tokens/`, `components/`, `widgets/`, `blocks/` | `lib/layout/` orchestrators |
+| Protocol / layout / **paint prop** schemas | `*Hooks`, `*Registry`, Riverpod catalog session |
+| Props + callbacks only (RFC-095 / RFC-106) | Host bridges, fake `MetaRuntime`, product chrome verbs |
+
+---
+
+## Host — forbidden
+
+| Do not | Why |
+|--------|-----|
+| Product folders `engine/hub`, `engine/lists`, `engine/live`, `features/iptv` | Root would know those products |
+| `MetaCache` / catalog-meta-specific cache | Use generic `engine/cache` |
+| Product `kit_*` under `shell/` (host frame) | Paint in foundation; product in packs |
+| `ctx.host.liveFeed` / product `myList` / `iptv` / `portals` namespaces | Use `cache`, `store`, `http`, `vault`, `plugin.run`, `playback.open` |
+| Product boots (`KitLiveBoot`, IPTV core nav builder) | Pack `nav` only |
+| Hardcode hub slots / tab inventories / Features maps | Community inventory |
+| Branch on plugin ids / scrapers / `ids.anilist` etc. | Pack ids are not host API |
+| Seed `PlatformDefaults` / `seedBuiltIns` with hub tab ids | Empty host; packs register via `nav` |
+| Host `TmdbApi` / title match / enrich for hubs | Enrich companions in packs |
+| Orchestrators in `forja_foundation` | DS is not an app |
+| Host field mappers (`KitListPaint`, `title`/`poster`/`homeTeam` heuristics) | Pack emits paint props; schema owns keys |
+| Host product runtimes: schedule / feed / panel / tabs chrome sessions | Pack declares; painter paints |
+| `if (action == 'feed'\|'layout'\|'rail')` branches in painter | Opaque `runPlugin` only |
+| Assert shipped packs in host tests | [host tests](../../rules/forja-host-tests-no-pack-contracts.mdc) |
+
+```
+❌ packages/forja_foundation/lib/layout/…
+❌ apps/forja/lib/shared/host/layout/…
+❌ KitListPaint / host title·poster·homeTeam mappers
+❌ live_schedule_feed / PluginFeedSource / HostListRegistry product
+❌ PluginRegistry.officialHubNavIdForSlot = { home, anime, … }
+❌ switch (slot) { case 'live_sports': … }
+❌ KitDetailsScreen → TmdbApi().getRichDetails
+❌ ctx.host.portals.searchChannels
+✅ pack paint JSON → apps/forja/…/engine/runtime/kit/ painter → foundation widgets
+✅ hostNavId: authorTabId \|\| forjaHqSlot(url) \|\| p_<hash>
+✅ node.load → runPlugin(action, params) opaque
+```
+
+### Host — allowed
+
+- App frame: `shell/nav`, `shell/frame`, window, TV focus, account, settings shell
+- Install packs, `runPlugin(pluginId, action, params)` — opaque action strings
+- Generic cache / store / http / vault / unlock / playback open
+- Thin painter under `shared/engine/runtime/kit/` — validate tree → mount DS from props maps
+- Opaque meta / open.surface routing
+- Pack **kind** buckets from URL tree shape (install UI grouping only)
+- `PluginNavRegistry` cache last pack `nav` for flash-free boot (not business logic)
+
+---
+
+## `open.surface` contract
+
+Every openable hub meta:
+
+```json
+"open": {
+  "surface": "anime | drama | tmdb | arabic",
+  "id": "<opaque for that route>",
+  "...": "route extras only"
+}
+```
+
+1. **`openMetaItem`** — switch **only** on `open.surface` → route. Never on pack id / `ids.*`.
+2. Pass through `open.id` + extras.
+3. Details/play use pack (and enrich companion) meta — no second host upstream fetch.
+4. Engine maps `MetaOpen` → JS extract context **once** at `runPlugin` — not in `shared/playback/**`.
+
+Host-only id scheme (not a pack): **`tmdb`** for Home movie/tv when `open` is absent.
+
+Enrich: pack declares `"enrich": "…"`. Enrich mutates `meta` / `meta.videos` / rails. Host merges returned envelope only.
+
+Play flow:
+
+```
+Pack meta → PlayContext(pluginId, meta, open, …) → engine runPlugin → playback probe/open
+```
+
+Playback stays generic — see [playback](../../rules/forja-playback-host-generic.mdc).
+
+---
+
+## Who may know pack / upstream
+
+| May know scrapers / pack ids / hub folders | Must not |
+|-------------------------------------------|----------|
+| `forja-packs/**` only | `apps/forja/**`, `packages/rust/**`, `packages/forja_foundation/**` (except opaque passthrough) |
+
+Legacy feature screens (`features/anime`, …) — do not extend; new hub work = pack JS + host painter.
+
+---
+
+## When adding a hub / provider
+
+1. Change **forja-packs** (manifest, JS, enrich, paint/layout + opaque loads).
+2. New host **route** → one `open.surface` handler only.
+3. Extract needs new context → engine `runPlugin` input, not playback / foundation.
+4. Never teach host open helpers scraper names or pack inventory.
+5. Never add host Dart that reads product fields to build cards — emit `paint.props` from the pack.
+
+Pack authoring workflow: forja-packs skill `create-forja-pack`.

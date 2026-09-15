@@ -802,15 +802,33 @@ Widget? paintFoundationType(
         scrimColor: propsColor(props, 'scrimColor'),
         child: children.isNotEmpty ? children.first : const SizedBox.expand(),
       );
+    case 'portalList':
     case 'portalListPanel':
       return PortalListPanel(
-        width: propsNumOr(props, 'width', 320),
+        width: propsNumOr(props, 'width', 380),
         header: Text(
           propsStringOr(props, 'header', propsStringOr(props, 'title', 'Portals')),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         body: children.isEmpty
-            ? const SizedBox(height: 120, child: Center(child: Text('')))
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    propsStringOr(
+                      props,
+                      'emptyTitle',
+                      propsStringOr(props, 'emptyDescription', ''),
+                    ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ),
+              )
             : children.first,
         searchOpen: propsBool(props, 'searchOpen'),
         statusText: propsStringOr(props, 'statusText', ''),

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/runtime/kit/row_prefetch.dart';
 
 /// Host chrome state for one pack layout tab (search query, refresh, view, dynamic bars).
 ///
@@ -17,6 +18,7 @@ class PackChromeScope extends InheritedWidget {
     required this.eagerLoadKeys,
     required this.pageFeedRailIds,
     required this.pageFeedFuture,
+    required this.rowPrefetch,
     required this.onEventQuery,
     required this.onBumpRefresh,
     required this.onViewStyle,
@@ -45,6 +47,9 @@ class PackChromeScope extends InheritedWidget {
 
   /// One page-level `feed` future → `rails` map. Null when page is not feed-batched.
   final Future<Map<String, List<dynamic>>>? pageFeedFuture;
+
+  /// Vertical row warm lane — visible row activates [ahead] rows below.
+  final KitRowPrefetchLane rowPrefetch;
 
   final void Function(String query) onEventQuery;
   final VoidCallback onBumpRefresh;
@@ -93,6 +98,7 @@ class PackChromeScope extends InheritedWidget {
         !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
         !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||
         !identical(pageFeedFuture, oldWidget.pageFeedFuture) ||
+        !identical(rowPrefetch, oldWidget.rowPrefetch) ||
         !mapEquals(dynamicBarItems, oldWidget.dynamicBarItems);
   }
 }

@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/details/kit_list_status_button.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
+import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/catalog/event_card.dart';
@@ -206,134 +211,37 @@ abstract final class PackPaintArtifact {
   /// Pack visual overrides (omit → ShellTokens / catalog density):
   /// `gap`, `rankedGap`, `pad`, `titlePad` (`{ top, bottom }` or number for both).
   /// [compactTop] — hero-bleed / Because-style title inset (pre-cutover).
+  ///
+  /// With `pageLoad` (from PackLoadedPaint), pages 2+ append via
+  /// [HorizontalScroller.onApproachingEnd] (same `_fetchRailPage` contract).
   static Widget posterRow(
     BuildContext context, {
     required Map<String, dynamic> node,
     required String pluginId,
+    String? packSourceUrl,
     bool compactTop = false,
   }) {
-    final title = (node['title'] ?? node['label'] ?? '').toString();
-    final ranked = (node['type'] ?? '').toString() == 'ranked' ||
-        (node['style'] ?? '').toString() == 'numbered';
-    final aspectFallback = (node['aspect'] ?? '').toString();
-    final rowId = (node['id'] ?? node['rail'] ?? 'rail').toString();
-    final tabId = LayoutScope.maybeOf(context)?.tabId ??
-        TvFocusGraph.tabIdOf(context);
-    final focusUp = LayoutScope.maybeOf(context)
-        ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
-    final focusDown = LayoutScope.maybeOf(context)
-        ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
-    final defaultPad = catalogSectionHorizontalPadding(context);
-    final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
-    final useCompact =
-        compactTop || node['compactTop'] == true;
-    final titlePad = PackPaintArtifact.titlePadInsets(
-      node['titlePad'],
-      context,
-      defaultTop: catalogSectionTitleTop(context, compact: useCompact),
-      defaultBottom: catalogSectionBottomGap(context),
+    return _PackPosterRail(
+      node: node,
+      pluginId: pluginId,
+      packSourceUrl: packSourceUrl,
+      compactTop: compactTop,
     );
-    final defaultGap = shellPosterCardRowGap(context);
-    final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
-    // Ranked uses the same gap unless the pack sets `rankedGap`.
-    final rankedGap =
-        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap;
+  }
 
-    final items = node['items'];
-    if (items is! List || items.isEmpty) {
-      if (title.isEmpty) return const SizedBox.shrink();
-      return ShellSectionTitle(
-        title: title,
-        padding: EdgeInsetsDirectional.only(
-          start: pad,
-          top: titlePad.top,
-          end: pad,
-          bottom: titlePad.bottom,
-        ),
-      );
+  static String paintItemKey(Map<String, dynamic> item) {
+    final meta = item['meta'];
+    if (meta is Map) {
+      final id = (meta['id'] ?? '').toString().trim();
+      if (id.isNotEmpty) return id;
     }
-
-    final cards = <Widget>[];
-    for (var i = 0; i < items.length; i++) {
-      final raw = items[i];
-      if (raw is! Map) continue;
-      final item = Map<String, dynamic>.from(raw);
-      final paint = item['paint'];
-      if (paint is Map) {
-        cards.add(
-          fromPaint(
-            context,
-            pluginId: pluginId,
-            paint: Map<String, dynamic>.from(paint),
-            open: item['open'] ?? paint['open'],
-            meta: item['meta'] ?? paint['meta'],
-            listIndex: i,
-            fallbackRank: ranked ? i + 1 : null,
-            fallbackAspect: aspectFallback,
-            tvTabId: tabId,
-            tvRowId: rowId,
-          ),
-        );
-        continue;
-      }
-      cards.add(
-        fromPaint(
-          context,
-          pluginId: pluginId,
-          paint: {
-            'type': 'posterCard',
-            'props': propsOf(item),
-          },
-          open: item['open'],
-          meta: item['meta'],
-          listIndex: i,
-          fallbackRank: ranked ? i + 1 : null,
-          fallbackAspect: aspectFallback,
-          tvTabId: tabId,
-          tvRowId: rowId,
-        ),
-      );
+    final open = item['open'];
+    if (open is Map) {
+      final id = (open['id'] ?? '').toString().trim();
+      if (id.isNotEmpty) return id;
     }
-    if (cards.isEmpty) return const SizedBox.shrink();
-
-    final aspect = aspectFallback == 'landscape'
-        ? PosterAspect.landscape
-        : PosterAspect.portrait;
-    final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
-    final sep = ranked ? rankedGap : gap;
-
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (title.isNotEmpty)
-          ShellSectionTitle(
-            title: title,
-            padding: EdgeInsetsDirectional.only(
-              start: pad,
-              top: titlePad.top,
-              end: pad,
-              bottom: titlePad.bottom,
-            ),
-          ),
-        HorizontalScroller(
-          height: cardH,
-          padding: EdgeInsets.symmetric(horizontal: pad),
-          itemCount: cards.length,
-          separatorBuilder: (_, _) => SizedBox(width: sep),
-          itemBuilder: (_, i) => cards[i],
-        ),
-      ],
-    );
-
-    return TvKitRow(
-      tabId: tabId,
-      rowId: rowId,
-      sortOrder: 100,
-      itemCount: cards.length,
-      onFocusUp: focusUp,
-      onFocusDown: focusDown,
-      child: body,
-    );
+    final props = propsOf(item);
+    return '${props['title']}|${props['imageUrl'] ?? props['posterUrl']}';
   }
 
   static double? packDouble(Object? raw) {
@@ -385,5 +293,324 @@ abstract final class PackPaintArtifact {
       );
     }
     return (top: top0, bottom: bottom0);
+  }
+}
+
+/// Thin-painter poster rail — page 1 from paint; more pages on scroll approach.
+class _PackPosterRail extends StatefulWidget {
+  const _PackPosterRail({
+    required this.node,
+    required this.pluginId,
+    this.packSourceUrl,
+    this.compactTop = false,
+  });
+
+  final Map<String, dynamic> node;
+  final String pluginId;
+  final String? packSourceUrl;
+  final bool compactTop;
+
+  @override
+  State<_PackPosterRail> createState() => _PackPosterRailState();
+}
+
+class _PackPosterRailState extends State<_PackPosterRail> {
+  late List<Map<String, dynamic>> _items;
+  late int _page;
+  late bool _hasMore;
+  late int _pageSize;
+  int _loadGen = 0;
+  bool _loadingMore = false;
+  String _reloadToken = '';
+
+  Map<String, dynamic> get node => widget.node;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetFromNode();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tabId = LayoutScope.maybeOf(context)?.tabId ??
+        TvFocusGraph.tabIdOf(context);
+    final token = catalogChromeFilterEpoch(tabId);
+    if (_reloadToken.isEmpty) {
+      _reloadToken = token;
+      return;
+    }
+    if (token != _reloadToken) {
+      _reloadToken = token;
+      setState(_resetFromNode);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _PackPosterRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pluginId != widget.pluginId ||
+        oldWidget.packSourceUrl != widget.packSourceUrl ||
+        !_samePage1(oldWidget.node, widget.node) ||
+        oldWidget.node['hasMore'] != widget.node['hasMore'] ||
+        oldWidget.node['pageSize'] != widget.node['pageSize']) {
+      _resetFromNode();
+    }
+  }
+
+  void _resetFromNode() {
+    _loadGen++;
+    _loadingMore = false;
+    _items = _page1Items(node);
+    _page = 1;
+    _pageSize = catalogRailPageSizeFrom(node) ?? kMetaRailPageSizeFallback;
+    final pageLoad = packLoadSpec(node['pageLoad']);
+    _hasMore = pageLoad != null &&
+        (catalogRailHasMoreFrom(node) ??
+            (_items.isNotEmpty && _items.length >= _pageSize));
+  }
+
+  static bool _samePage1(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final ai = a['items'];
+    final bi = b['items'];
+    if (identical(ai, bi)) return true;
+    if (ai is! List || bi is! List || ai.length != bi.length) return false;
+    for (var i = 0; i < ai.length; i++) {
+      final ak = ai[i] is Map
+          ? PackPaintArtifact.paintItemKey(Map<String, dynamic>.from(ai[i] as Map))
+          : '$i';
+      final bk = bi[i] is Map
+          ? PackPaintArtifact.paintItemKey(Map<String, dynamic>.from(bi[i] as Map))
+          : '$i';
+      if (ak != bk) return false;
+    }
+    return true;
+  }
+
+  static List<Map<String, dynamic>> _page1Items(Map<String, dynamic> node) {
+    final raw = node['items'];
+    if (raw is! List) return const [];
+    final out = <Map<String, dynamic>>[];
+    for (final it in raw) {
+      if (it is Map) out.add(Map<String, dynamic>.from(it));
+    }
+    return out;
+  }
+
+  List<Map<String, dynamic>> _merge(
+    List<Map<String, dynamic>> current,
+    List<Map<String, dynamic>> batch,
+  ) {
+    final seen = {for (final i in current) PackPaintArtifact.paintItemKey(i)};
+    final out = [...current];
+    for (final i in batch) {
+      if (seen.add(PackPaintArtifact.paintItemKey(i))) out.add(i);
+    }
+    return out;
+  }
+
+  void _onApproachingEnd() {
+    final pageLoad = packLoadSpec(node['pageLoad']);
+    if (pageLoad == null || !_hasMore || _loadingMore) return;
+    unawaited(_loadPage(_page + 1, pageLoad: pageLoad));
+  }
+
+  Future<void> _loadPage(
+    int page, {
+    required ({String action, Map<String, dynamic> params}) pageLoad,
+  }) async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    final gen = _loadGen;
+    final tabId = LayoutScope.maybeOf(context)?.tabId ??
+        TvFocusGraph.tabIdOf(context);
+    try {
+      final params = <String, dynamic>{
+        ...pageLoad.params,
+        'page': page,
+      };
+      for (final key in ['limit', 'pageSize', 'perPage']) {
+        final v = node[key];
+        if (v != null) params.putIfAbsent(key, () => v);
+      }
+      final envelope = await packOpaqueRun(
+        pluginId: widget.pluginId,
+        packSourceUrl: widget.packSourceUrl,
+        action: pageLoad.action,
+        params: catalogParamsWithFilters(
+          params,
+          filters: catalogChromeFilters(
+            tabId: tabId,
+            pluginId: widget.pluginId,
+          ),
+        ),
+      );
+      if (!mounted || gen != _loadGen) return;
+      if (!envelope.ok) {
+        setState(() {
+          _loadingMore = false;
+          _hasMore = false;
+        });
+        return;
+      }
+      final data = envelope.data ?? const <String, dynamic>{};
+      final raw = data['items'];
+      final batch = <Map<String, dynamic>>[];
+      if (raw is List) {
+        for (final it in raw) {
+          if (it is Map) batch.add(Map<String, dynamic>.from(it));
+        }
+      }
+      final resolvedSize = catalogRailPageSizeFrom(data) ?? _pageSize;
+      setState(() {
+        _items = _merge(_items, batch);
+        _page = page;
+        _pageSize = resolvedSize;
+        _loadingMore = false;
+        _hasMore =
+            catalogRailHasMoreFrom(data) ?? (batch.length >= resolvedSize);
+      });
+    } catch (_) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() {
+        _loadingMore = false;
+        _hasMore = false;
+      });
+    }
+  }
+
+  Widget _cardAt(
+    BuildContext context,
+    Map<String, dynamic> item,
+    int i, {
+    required bool ranked,
+    required String aspectFallback,
+    required String? tabId,
+    required String rowId,
+  }) {
+    final paint = item['paint'];
+    if (paint is Map) {
+      return PackPaintArtifact.fromPaint(
+        context,
+        pluginId: widget.pluginId,
+        paint: Map<String, dynamic>.from(paint),
+        open: item['open'] ?? paint['open'],
+        meta: item['meta'] ?? paint['meta'],
+        listIndex: i,
+        fallbackRank: ranked ? i + 1 : null,
+        fallbackAspect: aspectFallback,
+        tvTabId: tabId,
+        tvRowId: rowId,
+      );
+    }
+    return PackPaintArtifact.fromPaint(
+      context,
+      pluginId: widget.pluginId,
+      paint: {
+        'type': 'posterCard',
+        'props': PackPaintArtifact.propsOf(item),
+      },
+      open: item['open'],
+      meta: item['meta'],
+      listIndex: i,
+      fallbackRank: ranked ? i + 1 : null,
+      fallbackAspect: aspectFallback,
+      tvTabId: tabId,
+      tvRowId: rowId,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (node['title'] ?? node['label'] ?? '').toString();
+    final ranked = (node['type'] ?? '').toString() == 'ranked' ||
+        (node['style'] ?? '').toString() == 'numbered';
+    final aspectFallback = (node['aspect'] ?? '').toString();
+    final rowId = (node['id'] ?? node['rail'] ?? 'rail').toString();
+    final tabId = LayoutScope.maybeOf(context)?.tabId ??
+        TvFocusGraph.tabIdOf(context);
+    final focusUp = LayoutScope.maybeOf(context)
+        ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
+    final focusDown = LayoutScope.maybeOf(context)
+        ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
+    final useCompact = widget.compactTop || node['compactTop'] == true;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      node['titlePad'],
+      context,
+      defaultTop: catalogSectionTitleTop(context, compact: useCompact),
+      defaultBottom: catalogSectionBottomGap(context),
+    );
+    final defaultGap = shellPosterCardRowGap(context);
+    final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
+    final rankedGap =
+        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap;
+    final aspect = aspectFallback == 'landscape'
+        ? PosterAspect.landscape
+        : PosterAspect.portrait;
+    final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+    final sep = ranked ? rankedGap : gap;
+    final pageLoad = packLoadSpec(node['pageLoad']);
+    final canPage = pageLoad != null && _hasMore;
+
+    if (_items.isEmpty) {
+      if (title.isEmpty) return const SizedBox.shrink();
+      return ShellSectionTitle(
+        title: title,
+        padding: EdgeInsetsDirectional.only(
+          start: pad,
+          top: titlePad.top,
+          end: pad,
+          bottom: titlePad.bottom,
+        ),
+      );
+    }
+
+    final cards = <Widget>[
+      for (var i = 0; i < _items.length; i++)
+        _cardAt(
+          context,
+          _items[i],
+          i,
+          ranked: ranked,
+          aspectFallback: aspectFallback,
+          tabId: tabId,
+          rowId: rowId,
+        ),
+    ];
+
+    return TvKitRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: 100,
+      itemCount: cards.length,
+      onFocusUp: focusUp,
+      onFocusDown: focusDown,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (title.isNotEmpty)
+            ShellSectionTitle(
+              title: title,
+              padding: EdgeInsetsDirectional.only(
+                start: pad,
+                top: titlePad.top,
+                end: pad,
+                bottom: titlePad.bottom,
+              ),
+            ),
+          HorizontalScroller(
+            height: cardH,
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            itemCount: cards.length,
+            onApproachingEnd: canPage ? _onApproachingEnd : null,
+            separatorBuilder: (_, _) => SizedBox(width: sep),
+            itemBuilder: (_, i) => cards[i],
+          ),
+        ],
+      ),
+    );
   }
 }

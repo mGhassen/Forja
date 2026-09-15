@@ -1,7 +1,7 @@
 ---
 description: TV profile — supported nav tabs, file map, and D-pad focus requirements
 globs: apps/forja/lib/**/*.dart
-alwaysApply: true
+alwaysApply: false
 ---
 
 # TV scope — supported tabs only

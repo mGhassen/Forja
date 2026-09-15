@@ -1,11 +1,12 @@
 ---
 description: Host tests must not treat shipped plugin ids, hub slots, or pack types as fixed contracts
-alwaysApply: true
+globs: apps/forja/test/**
+alwaysApply: false
 ---
 
 # Host tests — no pack-name contracts
 
-Parent: [pack-product host](./forja-pack-product-host.mdc)
+Parent: [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**
 
 Packs are external. Host tests prove **generic** contracts only — never that a shipped hub/provider id exists.
 

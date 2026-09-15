@@ -2,7 +2,7 @@
 
 User-facing release notes. **One in-progress file per minor line** (`X.Y.x`); frozen to the exact patch on ship.
 
-**Rules:** [changelog](../../.cursor/rules/changelog.mdc) · codenames: [backlog](../backlog/README.md)
+**Rules:** [changelog law](../../.cursor/rules/changelog.mdc) · skill [forja-changelog](../../.cursor/skills/forja-changelog/SKILL.md) · codenames: [backlog](../backlog/README.md)
 
 ## Lifecycle
 
@@ -14,7 +14,7 @@ User-facing release notes. **One in-progress file per minor line** (`X.Y.x`); fr
 
 Changelogs track **releases** (git tags), not individual commits. The draft filename uses **`x`** as a placeholder; the released filename uses the **exact** semver the admin ships. The version number is chosen by the **release admin** (CI bump / tag), and the codename comes from `kReleaseCodename` in `app_version.dart` — the changelog only carries the bullets.
 
-**Groups:** Features · Player · UI · Sources · Live & IPTV · TV — see [rule](../../.cursor/rules/changelog.mdc#thematic-groups-forja).  
+**Groups:** Features · Player · UI · Sources · Live & IPTV · TV — see [skill](../../.cursor/skills/forja-changelog/SKILL.md#thematic-groups-forja).  
 **Line prefixes (bold):** `**Add:**` · `**Change:**` · `**Fix:**` · `**Remove:**`
 
 ## Active

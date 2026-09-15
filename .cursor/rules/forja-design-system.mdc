@@ -8,7 +8,7 @@ alwaysApply: false
 
 **Source of truth (new components):** [`packages/forja_foundation`](../../packages/forja_foundation). Import the **file** you use — not `forja_foundation.dart` (gallery/test barrel). Never `hide Switch, Chip, …` against Material.
 
-Architecture (who owns kit runner / product): [pack-product host](./forja-pack-product-host.mdc). This rule is **paint only** — tokens, components, visual language.
+Architecture (who owns kit runner / product): [pack-product host](./forja-pack-product-host.mdc) · skill **forja-pack-product-host**. This rule is **paint only** — tokens, components, visual language.
 
 Do **not** recreate `apps/forja/lib/shared/foundation/` or `shared/kit/`. Composers: `widgets/` / `components/` / `blocks/` / `brand/`. **Empty app shell** = compose foundation (`ShellBlock` + nav rail/body + brand). `apps/forja/lib/shell/` is chassis wire only (pack nav → body mount, platform, OTA) — **not** a second DS and **not** product chrome. Never add imports to `part of` files.
 

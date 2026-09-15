@@ -1,6 +1,6 @@
 # Issues
 
-**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc) · [honesty](../../.cursor/rules/honesty-and-completion.mdc)
+**Rules:** [docs law](../../.cursor/rules/docs-rfc-issues.mdc) · skill [forja-docs-rfc-issues](../../.cursor/skills/forja-docs-rfc-issues/SKILL.md) · [honesty](../../.cursor/rules/honesty-and-completion.mdc)
 
 Every issue filename includes a status tag matching `**Status:**` in the body.
 

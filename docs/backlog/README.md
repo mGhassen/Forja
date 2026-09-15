@@ -2,7 +2,7 @@
 
 One file **per release version**. Specs live in [RFCs](../rfc/README.md); each file links RFCs, issues, and migration slices for that ship.
 
-**Rules:** [docs-rfc-issues](../../.cursor/rules/docs-rfc-issues.mdc)
+**Rules:** [docs law](../../.cursor/rules/docs-rfc-issues.mdc) · skill [forja-docs-rfc-issues](../../.cursor/skills/forja-docs-rfc-issues/SKILL.md) (do not edit backlog unless asked)
 
 ## Semver
 
