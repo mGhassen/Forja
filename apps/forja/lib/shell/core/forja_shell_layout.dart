@@ -66,7 +66,7 @@ double shellHeroHeightFraction(BuildContext context) =>
 double shellPosterCardRowGap(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
     ? ShellTokens.tvPosterCardRowGap
-    : 14.0;
+    : ShellTokens.posterCardRowGap;
 
 /// Horizontal inset so leanback TV focus scale + border stay inside layout bounds.
 ///
