@@ -31,7 +31,6 @@ import 'package:forja/shared/player/sources/resolve_panel_host.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
-import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_body_block.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
@@ -1046,42 +1045,6 @@ class PackPaintTree extends StatelessWidget {
           child: row,
         );
       },
-      galleryOverlayBuilder: tv && slides.length > 1
-          ? (ctx) {
-              return Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < slides.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: shellFocusableTap(
-                            context: ctx,
-                            onTap: () {},
-                            tvTabId: tab,
-                            tvRowId: 'hero-gallery',
-                            tvItemIndex: i,
-                            onDownEdge: focusDown,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: ForjaShellColors.textPrimary
-                                    .withValues(alpha: 0.55),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          : null,
     );
   }
 
