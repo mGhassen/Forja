@@ -311,7 +311,7 @@ class _LegacyTogglePin extends StatelessWidget {
               ? (inList
                     ? Icons.favorite_rounded
                     : Icons.favorite_border_rounded)
-              : Icons.bookmark_rounded,
+              : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
           size: iconSize ?? (useHeartIcon ? 24 : 20),
           color: inList
               ? (iconColorActive ??
@@ -319,7 +319,7 @@ class _LegacyTogglePin extends StatelessWidget {
               : (iconColor ??
                     (useHeartIcon
                         ? Colors.white70
-                        : ForjaShellColors.iconMuted)),
+                        : Colors.white)),
         );
 
         // Card overlays: compact hit target so pin tops align with score badge.

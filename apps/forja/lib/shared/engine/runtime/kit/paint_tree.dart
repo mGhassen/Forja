@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
-import 'package:forja/shared/engine/details/kit_list_status_button.dart';
+import 'package:forja/shared/engine/details/kit_list_status_hero.dart';
 import 'package:forja/shared/engine/details/kit_details_play.dart';
 import 'package:forja/shared/engine/details/kit_list_entry.dart';
 import 'package:forja/shared/engine/runtime/chrome/category_bar_action_host.dart';
@@ -1100,10 +1100,8 @@ class PackPaintTree extends StatelessWidget {
             child = HeroPillPlayButton(
               label: action.label ?? 'View details',
               icon: _heroActionIcon(action.icon),
-              // Details is the sole hero CTA (Play was removed) — always green
-              // primary like the old Play pill. Pack may still set label/icon.
-              tone: HeroPillPlayTone.primary,
-              primary: true,
+              // Pre-cutover Home: glass details (secondary), not green Play.
+              tone: action.tone,
               alwaysShowLabel: true,
               onTap: details,
               autoFocus: useAuto,
@@ -1112,20 +1110,23 @@ class PackPaintTree extends StatelessWidget {
             );
           } else if (id == 'follow') {
             if (follow == null) continue;
-            child = KitListStatusButton.follow(
-              followTarget: follow,
-              excludeFromTvTraversal: false,
+            // Glass circular pin (expands “My List” on hover) — not bare icon.
+            child = KitListStatusHero(
+              target: follow,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvItemIndexStart: 1,
+              enabled: true,
             );
           } else {
             continue;
           }
           if (children.isNotEmpty) {
-            children.add(const SizedBox(width: 12));
+            children.add(const SizedBox(width: 10));
           }
           children.add(child);
         }
         if (children.isEmpty) return const SizedBox.shrink();
-        final row = Row(children: children);
+        final row = HeroPillActionRow(children: children);
         if (!tv || focusDown == null) return row;
         return Focus(
           skipTraversal: true,
@@ -1143,7 +1144,7 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  /// Pack hero `actions[]` — omit → View details (primary) + follow pin.
+  /// Pack hero `actions[]` — omit → glass View details + glass My List pin.
   static List<_HeroActionSpec> _heroActionSpecs(Object? raw) {
     if (raw is! List || raw.isEmpty) {
       return const [
@@ -1151,7 +1152,7 @@ class PackPaintTree extends StatelessWidget {
           id: 'details',
           label: 'View details',
           icon: 'info',
-          tone: HeroPillPlayTone.primary,
+          tone: HeroPillPlayTone.secondary,
         ),
         _HeroActionSpec(id: 'follow'),
       ];
@@ -1166,7 +1167,13 @@ class PackPaintTree extends StatelessWidget {
           id: id,
           label: e['label']?.toString(),
           icon: e['icon']?.toString(),
-          tone: _heroPillTone(e['tone']),
+          // Details defaults glass; packs may set primary/streaming explicitly.
+          tone: _heroPillTone(
+            e['tone'],
+            fallback: id == 'details'
+                ? HeroPillPlayTone.secondary
+                : HeroPillPlayTone.primary,
+          ),
         ),
       );
     }
@@ -1175,7 +1182,10 @@ class PackPaintTree extends StatelessWidget {
         : List<_HeroActionSpec>.unmodifiable(out);
   }
 
-  static HeroPillPlayTone _heroPillTone(Object? raw) {
+  static HeroPillPlayTone _heroPillTone(
+    Object? raw, {
+    HeroPillPlayTone fallback = HeroPillPlayTone.primary,
+  }) {
     switch ((raw ?? '').toString().trim().toLowerCase()) {
       case 'secondary':
       case 'ghost':
@@ -1184,8 +1194,9 @@ class PackPaintTree extends StatelessWidget {
       case 'white':
         return HeroPillPlayTone.streaming;
       case 'primary':
-      default:
         return HeroPillPlayTone.primary;
+      default:
+        return fallback;
     }
   }
 

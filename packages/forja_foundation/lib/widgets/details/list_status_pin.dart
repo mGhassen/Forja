@@ -61,7 +61,7 @@ const kListStatusOptions = <ListStatusOption>[
 ];
 
 Color listStatusPinColor(String? status) {
-  if (status == null) return ForjaShellColors.iconMuted;
+  if (status == null) return Colors.white;
   for (final s in kListStatusOptions) {
     if (s.id == status) return s.color;
   }
@@ -72,7 +72,8 @@ IconData listStatusPinIcon(String? status) {
   for (final s in kListStatusOptions) {
     if (s.id == status) return s.selectedIcon;
   }
-  return Icons.bookmark_rounded;
+  // Idle / not on a list — glass "+" (not a filled bookmark).
+  return Icons.add_rounded;
 }
 
 String listStatusLabel(String? status, {String fallback = 'My List'}) {
