@@ -52,7 +52,7 @@ MediaDetailsScrollPage(
 ```
 
 - Section spacing: `DetailsTokens.sectionSpacing` — applied inside scroll page, not per screen.
-- Recommendations: `MediaDetailsRecommendationsSection` + screen-specific `onMovieTap`.
+- Recommendations / pack rails: pack emits rail `id: recommendations` → host `buildKitDetailRailSections` → `DetailsRailSection`.
 - Torrent sources overlay: `TorrentSourcesPanel` + filters/tiles; screen wires chip `onChipTap` to existing handlers.
 
 ## Hero overview slots

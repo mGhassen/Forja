@@ -17,6 +17,7 @@ class CatalogChannelCard extends StatefulWidget {
     required this.title,
     required this.imageUrl,
     this.programmes = const [],
+    this.loadProgrammes,
     this.health,
     this.highlighted = false,
     this.width,
@@ -31,6 +32,9 @@ class CatalogChannelCard extends StatefulWidget {
   final String title;
   final String imageUrl;
   final List<GuideEpgProgramme> programmes;
+
+  /// Lazy short-EPG (host). Used when [programmes] is empty / for long-press refresh.
+  final Future<List<GuideEpgProgramme>> Function()? loadProgrammes;
   final bool? health;
   final bool highlighted;
   final double? width;
@@ -92,12 +96,44 @@ class CatalogChannelCard extends StatefulWidget {
 class _CatalogChannelCardState extends State<CatalogChannelCard> {
   bool _hovered = false;
   bool _focused = false;
+  Future<List<GuideEpgProgramme>>? _epgFuture;
 
   bool get _active => ShellPaintScope.interactiveActive(
         context,
         hovered: _hovered,
         focused: _focused,
       );
+
+  bool get _epgEnabled =>
+      widget.programmes.isNotEmpty || widget.loadProgrammes != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _epgFuture = _resolveEpg();
+  }
+
+  @override
+  void didUpdateWidget(covariant CatalogChannelCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.programmes != widget.programmes ||
+        oldWidget.loadProgrammes != widget.loadProgrammes ||
+        oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.title != widget.title) {
+      _epgFuture = _resolveEpg();
+    }
+  }
+
+  Future<List<GuideEpgProgramme>> _resolveEpg() async {
+    if (widget.programmes.isNotEmpty) return widget.programmes;
+    final load = widget.loadProgrammes;
+    if (load == null) return const [];
+    try {
+      return await load();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   void _setHovered(bool v) {
     if (_hovered == v) return;
@@ -137,14 +173,18 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     return const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
   }
 
-  void _showEpgSheet() {
-    if (widget.programmes.isEmpty) return;
-    showModalBottomSheet<void>(
+  Future<void> _showEpgSheet() async {
+    if (!_epgEnabled) return;
+    final future = _epgFuture ?? _resolveEpg();
+    _epgFuture = future;
+    final list = await future;
+    if (!mounted || list.isEmpty) return;
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: ForjaShellColors.surfaceElevated,
       builder: (_) => _ChannelEpgSheet(
         title: widget.title,
-        programmes: widget.programmes,
+        programmes: list,
       ),
     );
   }
@@ -185,7 +225,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
       ),
     );
 
-    if (!tv && widget.programmes.isNotEmpty) {
+    if (!tv && _epgEnabled) {
       card = GestureDetector(
         onLongPress: _showEpgSheet,
         child: card,
@@ -264,7 +304,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
             ),
           ),
         ),
-        _EpgNowFooter(programmes: widget.programmes),
+        _EpgNowFooter(future: _epgFuture),
       ],
     );
   }
@@ -380,9 +420,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 }
 
 class _EpgNowFooter extends StatelessWidget {
-  const _EpgNowFooter({required this.programmes});
+  const _EpgNowFooter({required this.future});
 
-  final List<GuideEpgProgramme> programmes;
+  final Future<List<GuideEpgProgramme>>? future;
 
   static const _slotHeight = 22.0;
 
@@ -390,10 +430,15 @@ class _EpgNowFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: _slotHeight,
-      child: programmes.isEmpty
+      child: future == null
           ? const SizedBox.shrink()
-          : Builder(
-              builder: (_) {
+          : FutureBuilder<List<GuideEpgProgramme>>(
+              future: future,
+              builder: (context, snap) {
+                final programmes = snap.data;
+                if (programmes == null || programmes.isEmpty) {
+                  return const SizedBox.shrink();
+                }
                 var now = programmes.first;
                 for (final e in programmes) {
                   if (e.isNow) {

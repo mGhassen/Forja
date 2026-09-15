@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/portals/guide/guide_epg_cache.dart';
+import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
@@ -15,6 +16,8 @@ class CatalogEpgGuideHost extends StatefulWidget {
     BuildContext context, {
     required Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)
         loadEpgProgrammes,
+    required Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)
+        loadShortEpgProgrammes,
   }) builder;
 
   @override
@@ -29,22 +32,51 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     return _portalsFuture ??= PortalStore.load();
   }
 
+  /// Pack keys are `url|username`; [Portal.key] is `platform|url|user|pass`.
+  VerifiedPortal? _matchPortal(
+    List<VerifiedPortal> portals,
+    String portalKey,
+  ) {
+    final key = portalKey.trim().toLowerCase();
+    if (key.isEmpty) return null;
+    for (final p in portals) {
+      if (p.key.toLowerCase() == key) return p;
+      if (p.credKey.toLowerCase() == key) return p;
+      if (PortalChannelGuideOpen.packPortalKey(p.portal) == key) return p;
+    }
+    // Soft match: key contains url|username or vice versa.
+    for (final p in portals) {
+      final pack = PortalChannelGuideOpen.packPortalKey(p.portal);
+      if (pack.isEmpty) continue;
+      if (key.contains(pack) || pack.contains(key)) return p;
+      final user = p.portal.username.trim().toLowerCase();
+      if (user.isNotEmpty && (key.endsWith('|$user') || key == user)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
   Future<GuideEpgCache?> _cacheFor(String portalKey) async {
     final key = portalKey.trim();
     if (key.isEmpty) return null;
     final existing = _caches[key];
     if (existing != null) return existing;
     final portals = await _portals();
-    VerifiedPortal? match;
-    for (final p in portals) {
-      if (p.key == key) {
-        match = p;
-        break;
-      }
+    var match = _matchPortal(portals, key);
+    // Single EPG portal — still paint when pack key drifted.
+    if (match == null) {
+      final epgCapable = [
+        for (final p in portals)
+          if (p.platform.supportsEpg) p,
+      ];
+      if (epgCapable.length == 1) match = epgCapable.first;
     }
     if (match == null || !match.platform.supportsEpg) return null;
     final cache = GuideEpgCache(match);
     _caches[key] = cache;
+    _caches[match.key] = cache;
+    _caches[PortalChannelGuideOpen.packPortalKey(match.portal)] = cache;
     return cache;
   }
 
@@ -68,11 +100,43 @@ class _CatalogEpgGuideHostState extends State<CatalogEpgGuideHost> {
     );
   }
 
+  Future<List<GuideEpgProgramme>> _loadShort(Map<String, dynamic> item) async {
+    final open = item['open'];
+    final openMap = open is Map ? Map<String, dynamic>.from(open) : const {};
+    final portalKey = (item['portalKey'] ?? openMap['portalKey'] ?? '')
+        .toString()
+        .trim();
+    final streamId =
+        (item['streamId'] ?? openMap['streamId'] ?? '').toString().trim();
+    final epgId = (item['epgChannelId'] ?? openMap['epgChannelId'] ?? '')
+        .toString()
+        .trim();
+    final name = (item['name'] ?? openMap['name'] ?? '').toString();
+    final icon = (item['poster'] ?? openMap['icon'] ?? '').toString();
+    if (streamId.isEmpty && epgId.isEmpty) return const [];
+    final cache = await _cacheFor(portalKey);
+    if (cache == null) return const [];
+    return cache.loadProgrammes(
+      PortalStream(
+        streamId: streamId,
+        name: name,
+        icon: icon,
+        categoryId: (item['categoryId'] ?? openMap['categoryId'] ?? '')
+            .toString(),
+        containerExt: 'ts',
+        kind: 'live',
+        epgChannelId: epgId,
+      ),
+      limit: 3,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return widget.builder(
       context,
       loadEpgProgrammes: _load,
+      loadShortEpgProgrammes: _loadShort,
     );
   }
 }

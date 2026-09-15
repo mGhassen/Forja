@@ -332,7 +332,7 @@ features/media/
 | Widget | Path | Replaces |
 |--------|------|----------|
 | `MediaDetailsScrollPage` | `shared/foundation/components/media_details/media_details_scroll_page.dart` | Inline scroll + `MediaDetailsTvScope` wrapper |
-| `MediaDetailsRecommendationsSection` | `shared/foundation/components/media_details/media_details_recommendations_section.dart` | `_buildRecommendationsSection` |
+| ~~`MediaDetailsRecommendationsSection`~~ | removed — pack rails via `buildKitDetailRailSections` | `_buildRecommendationsSection` |
 | `MediaDetailsTrackerHandlers` | `shared/foundation/components/media_details/media_details_tracker_handlers.dart` | Trakt/Simkl rating, collection, check-in, list (~400 lines) |
 
 **Remaining** (Phase D): `details_webstreaming` mixin/part, `details_episodes` / TV picker; then RFC-026 R26-C03 → `features/media/details/`
@@ -456,7 +456,7 @@ Map and targets only. No Dart changes.
 | PR | Action | Status |
 |----|--------|--------|
 | A1 | Wire `MediaDetailsScrollPage` | Done |
-| A2 | Wire `MediaDetailsRecommendationsSection` | Done |
+| A2 | Wire recommendations (later: pack rails / `buildKitDetailRailSections`) | Done |
 | A3 | Adopt `MediaDetailsTrackerHandlers` | Done |
 
 `details_screen.dart`: 4,509 → 4,061 lines.

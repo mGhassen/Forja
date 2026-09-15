@@ -230,6 +230,9 @@ class CatalogCardsGrid extends StatelessWidget {
               title: title,
               imageUrl: image,
               programmes: programmes,
+              loadProgrammes: loadEpgProgrammes == null
+                  ? null
+                  : () => loadEpgProgrammes!(item),
               health: itemHealth?.call(item),
               highlighted: selectedItemId != null &&
                   selectedItemId!.isNotEmpty &&

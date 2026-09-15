@@ -195,7 +195,6 @@ Checklist (paths only — migrate batches tick these):
 - [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_body.dart`
 - [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_cast_section.dart`
 - [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_hero.dart`
-- [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_recommendations_section.dart`
 - [ ] `apps/forja/lib/shared/foundation/components/media_details/media_details_scroll_page.dart`
 - [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_torrent_action_row.dart`
 - [x] `apps/forja/lib/shared/foundation/components/media_details/media_details_tracker_handlers.dart`

@@ -1277,8 +1277,33 @@ class PackPaintTree extends StatelessWidget {
           }
           final packCardKind =
               (spec['cardKind'] ?? '').toString().trim().toLowerCase();
+          final liveChannels = _itemsLookLikeLiveChannels(filtered);
           final cardKind = () {
             if (wantGuide) return 'guide';
+            // IPTV View "Cards" is style=cards — must not map live rows to
+            // Live Sports event cards (landscape poster + title overlay).
+            if (liveChannels &&
+                (style == 'cards' ||
+                    style == 'grid' ||
+                    packCardKind == 'cards' ||
+                    packCardKind == 'channel' ||
+                    packCardKind == 'livechannel' ||
+                    packCardKind.isEmpty)) {
+              if (packCardKind == 'list' ||
+                  packCardKind == 'timeline' ||
+                  packCardKind == 'dense' ||
+                  style == 'list' ||
+                  style == 'timeline') {
+                return 'dense';
+              }
+              if (packCardKind == 'guide' ||
+                  packCardKind == 'epg' ||
+                  style == 'guide' ||
+                  style == 'epg') {
+                return 'guide';
+              }
+              return 'channel';
+            }
             if (packCardKind == 'poster' ||
                 packCardKind == 'event' ||
                 packCardKind == 'eventcard' ||
@@ -1303,10 +1328,12 @@ class PackPaintTree extends StatelessWidget {
               return packCardKind;
             }
             if (style == 'list' || style == 'timeline') return 'dense';
-            if (style == 'cards') return 'event';
+            if (style == 'cards') {
+              // Live Sports match cards — not IPTV VOD (poster) or live channels.
+              return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
+            }
             if (style == 'guide' || style == 'epg') return 'guide';
             if (style == 'grid') {
-              if (_itemsLookLikeLiveChannels(filtered)) return 'channel';
               return _itemsLookLikeEvents(filtered) ? 'event' : 'poster';
             }
             return 'poster';
@@ -1369,17 +1396,24 @@ class PackPaintTree extends StatelessWidget {
           Widget grid;
           if (cardKind == 'guide') {
             grid = CatalogEpgGuideHost(
-              builder: (context, {required loadEpgProgrammes}) {
+              builder: (context,
+                  {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
                 return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
               },
             );
           } else if (cardKind == 'channel') {
-            grid = ChannelCatalogHealthHost(
+            grid = CatalogEpgGuideHost(
               builder: (context,
-                  {required healthFor, required onInteractiveActive}) {
-                return buildGrid(
-                  healthFor: healthFor,
-                  onInteractiveActive: onInteractiveActive,
+                  {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
+                return ChannelCatalogHealthHost(
+                  builder: (context,
+                      {required healthFor, required onInteractiveActive}) {
+                    return buildGrid(
+                      healthFor: healthFor,
+                      onInteractiveActive: onInteractiveActive,
+                      loadEpgProgrammes: loadShortEpgProgrammes,
+                    );
+                  },
                 );
               },
             );
