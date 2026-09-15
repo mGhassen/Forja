@@ -1105,7 +1105,7 @@ class PackPaintTree extends StatelessWidget {
                 : ShellTokens.heroHeightFractionDesktop),
         firstCatalogRowHeight: pageBottomChild == null
             ? 0
-            : ShellTokens.homeSectionTitleTopCompactDesktop + 180 + 40,
+            : ShellTokens.homeSectionTitleTop + 180 + 40,
         bleedDownOffset: bleedDownOffset,
       ),
       onHeight: tab.isEmpty
@@ -2332,8 +2332,6 @@ class _BecauseMountState extends State<_BecauseMount> {
                 final titlePad = PackPaintArtifact.titlePadInsets(
                   widget.spec['titlePad'] ?? node['titlePad'],
                   ctx,
-                  defaultTop: shellSectionTitleTopCompact(ctx),
-                  defaultBottom: catalogSectionBottomGap(ctx),
                 );
                 final canShuffle = node['canShuffle'] == true;
                 final cardW = PackPaintArtifact.packDouble(
@@ -2555,8 +2553,6 @@ class _ContinueMountState extends State<_ContinueMount> {
     final titlePad = PackPaintArtifact.titlePadInsets(
       widget.spec['titlePad'],
       context,
-      defaultTop: shellSectionTitleTopCompact(context),
-      defaultBottom: 16,
     );
     final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ??
         shellPosterCardRowGap(context);

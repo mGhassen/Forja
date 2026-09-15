@@ -599,7 +599,6 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
               pluginId: widget.pluginId,
               packSourceUrl: widget.packSourceUrl,
               tabId: _pageKey,
-              compactSection: true,
             ),
           ),
         );
