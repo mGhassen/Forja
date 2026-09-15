@@ -1005,6 +1005,7 @@ class PackPaintTree extends StatelessWidget {
             : HeroPillPlayButton(
                 label: 'View details',
                 icon: Icons.info_outline_rounded,
+                tone: HeroPillPlayTone.primary,
                 alwaysShowLabel: true,
                 onTap: details,
                 autoFocus: tv && policy.heroPlayAutoFocus,
