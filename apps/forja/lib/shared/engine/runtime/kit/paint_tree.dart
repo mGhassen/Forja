@@ -262,6 +262,7 @@ class PackPaintTree extends StatelessWidget {
         );
       case LayoutTypes.continueWatching:
         return _ContinueMount(
+          spec: node,
           pluginId: pluginId,
           tabId: tabId,
           mergeHomeWatchHistory: node['mergeHomeWatchHistory'] == true,
@@ -908,11 +909,15 @@ class PackPaintTree extends StatelessWidget {
   Widget _mountHero(BuildContext context, Map<String, dynamic> node) {
     final items = node['items'];
     if (items is! List || items.isEmpty) return const SizedBox.shrink();
+    final slideCap = _packInt(node['slideCap'], 5).clamp(1, 20);
+    final bleedDownOffset = _packDouble(node['bleedDownOffset']);
+    final actionSpecs = _heroActionSpecs(node['actions']);
+
     final slides = <CinematicHeroSlide>[];
     final slideMetas = <MetaItem?>[];
     for (final raw in items) {
       if (raw is! Map) continue;
-      if (slides.length >= 5) break;
+      if (slides.length >= slideCap) break;
       final item = Map<String, dynamic>.from(raw);
       final props = PackPaintArtifact.propsOf(item);
       final meta = item['meta'] is Map
@@ -1006,6 +1011,7 @@ class PackPaintTree extends StatelessWidget {
         firstCatalogRowHeight: pageBottomChild == null
             ? 0
             : ShellTokens.homeSectionTitleTop + 180 + 40,
+        bleedDownOffset: bleedDownOffset,
       ),
       onHeight: tab.isEmpty
           ? null
@@ -1020,33 +1026,42 @@ class PackPaintTree extends StatelessWidget {
         final follow = meta == null
             ? null
             : ListFollowTarget.fromMeta(meta: meta, pluginId: pluginId);
-        final detailsBtn = details == null
-            ? null
-            : HeroPillPlayButton(
-                label: 'View details',
-                icon: Icons.info_outline_rounded,
-                tone: HeroPillPlayTone.primary,
-                alwaysShowLabel: true,
-                onTap: details,
-                autoFocus: tv && policy.heroPlayAutoFocus,
-                tvTabId: tab.isEmpty ? null : tab,
-                tvRowId: 'hero-details',
-              );
-        final pin = follow == null
-            ? null
-            : KitListStatusButton.follow(
-                followTarget: follow,
-                excludeFromTvTraversal: false,
-              );
-        final row = Row(
-          children: [
-            if (detailsBtn != null) detailsBtn,
-            if (pin != null) ...[
-              if (detailsBtn != null) const SizedBox(width: 12),
-              pin,
-            ],
-          ],
-        );
+
+        final children = <Widget>[];
+        var autofocusUsed = false;
+        for (final action in actionSpecs) {
+          final id = action.id;
+          Widget? child;
+          if (id == 'details') {
+            if (details == null) continue;
+            final useAuto = tv && policy.heroPlayAutoFocus && !autofocusUsed;
+            if (useAuto) autofocusUsed = true;
+            child = HeroPillPlayButton(
+              label: action.label ?? 'View details',
+              icon: _heroActionIcon(action.icon),
+              tone: action.tone,
+              alwaysShowLabel: true,
+              onTap: details,
+              autoFocus: useAuto,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvRowId: 'hero-details',
+            );
+          } else if (id == 'follow') {
+            if (follow == null) continue;
+            child = KitListStatusButton.follow(
+              followTarget: follow,
+              excludeFromTvTraversal: false,
+            );
+          } else {
+            continue;
+          }
+          if (children.isNotEmpty) {
+            children.add(const SizedBox(width: 12));
+          }
+          children.add(child);
+        }
+        if (children.isEmpty) return const SizedBox.shrink();
+        final row = Row(children: children);
         if (!tv || focusDown == null) return row;
         return Focus(
           skipTraversal: true,
@@ -1062,6 +1077,74 @@ class PackPaintTree extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Pack hero `actions[]` — omit → View details (primary) + follow pin.
+  static List<_HeroActionSpec> _heroActionSpecs(Object? raw) {
+    if (raw is! List || raw.isEmpty) {
+      return const [
+        _HeroActionSpec(
+          id: 'details',
+          label: 'View details',
+          icon: 'info',
+          tone: HeroPillPlayTone.primary,
+        ),
+        _HeroActionSpec(id: 'follow'),
+      ];
+    }
+    final out = <_HeroActionSpec>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final id = (e['id'] ?? '').toString().trim();
+      if (id.isEmpty) continue;
+      out.add(
+        _HeroActionSpec(
+          id: id,
+          label: e['label']?.toString(),
+          icon: e['icon']?.toString(),
+          tone: _heroPillTone(e['tone']),
+        ),
+      );
+    }
+    return out.isEmpty
+        ? _heroActionSpecs(null)
+        : List<_HeroActionSpec>.unmodifiable(out);
+  }
+
+  static HeroPillPlayTone _heroPillTone(Object? raw) {
+    switch ((raw ?? '').toString().trim().toLowerCase()) {
+      case 'secondary':
+      case 'ghost':
+        return HeroPillPlayTone.secondary;
+      case 'streaming':
+      case 'white':
+        return HeroPillPlayTone.streaming;
+      case 'primary':
+      default:
+        return HeroPillPlayTone.primary;
+    }
+  }
+
+  static IconData _heroActionIcon(String? raw) {
+    switch ((raw ?? 'info').trim().toLowerCase()) {
+      case 'play':
+        return Icons.play_arrow_rounded;
+      case 'info':
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  static int _packInt(Object? raw, int fallback) {
+    if (raw is int) return raw;
+    if (raw is num) return raw.round();
+    return int.tryParse((raw ?? '').toString()) ?? fallback;
+  }
+
+  static double? _packDouble(Object? raw) {
+    if (raw == null) return null;
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(raw.toString());
   }
 
   Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
@@ -1131,7 +1214,24 @@ class PackPaintTree extends StatelessWidget {
             }
           }
           if (style == 'epg' || style == 'guide') style = 'timeline';
+          final packCardKind =
+              (spec['cardKind'] ?? '').toString().trim().toLowerCase();
           final cardKind = () {
+            if (packCardKind == 'poster' ||
+                packCardKind == 'event' ||
+                packCardKind == 'eventcard' ||
+                packCardKind == 'dense' ||
+                packCardKind == 'list' ||
+                packCardKind == 'timeline' ||
+                packCardKind == 'cards') {
+              if (packCardKind == 'eventcard' || packCardKind == 'cards') {
+                return 'event';
+              }
+              if (packCardKind == 'list' || packCardKind == 'timeline') {
+                return 'dense';
+              }
+              return packCardKind;
+            }
             if (style == 'list' || style == 'timeline') return 'dense';
             if (style == 'cards') return 'event';
             if (style == 'grid') {
@@ -1150,11 +1250,15 @@ class PackPaintTree extends StatelessWidget {
                   .toString();
           final wide = constraints.maxWidth >= 900;
           final showPanel = openMode == 'panel' && selected != null && wide;
+          final gap = PackPaintArtifact.packDouble(spec['gap']);
+          final pad = PackPaintArtifact.packDouble(spec['pad']);
 
           final grid = CatalogCardsGrid(
             items: filtered,
             cardKind: cardKind,
             selectedItemId: selectedId,
+            gap: gap,
+            pad: pad,
             emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
             emptyDescription:
                 (spec['emptyDescription'] ?? '').toString().isEmpty
@@ -1578,6 +1682,20 @@ class PackPaintTree extends StatelessWidget {
   }
 }
 
+class _HeroActionSpec {
+  const _HeroActionSpec({
+    required this.id,
+    this.label,
+    this.icon,
+    this.tone = HeroPillPlayTone.primary,
+  });
+
+  final String id;
+  final String? label;
+  final String? icon;
+  final HeroPillPlayTone tone;
+}
+
 /// Resolves kit.list `openSetting` (e.g. matchOpen) then mounts the list body.
 class _ListOpenSettingGate extends StatefulWidget {
   const _ListOpenSettingGate({
@@ -1688,7 +1806,6 @@ class _MoodMountState extends State<_MoodMount> {
     final options = widget.spec['options'];
     if (options is! List || options.isEmpty) return const SizedBox.shrink();
     final title = (widget.spec['title'] ?? '').toString();
-    final pad = catalogSectionHorizontalPadding(context);
     final chips = <Widget>[];
     for (final raw in options) {
       if (raw is! Map) continue;
@@ -1710,6 +1827,16 @@ class _MoodMountState extends State<_MoodMount> {
       );
     }
     if (chips.isEmpty) return const SizedBox.shrink();
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad = PackPaintArtifact.packDouble(widget.spec['pad']) ?? defaultPad;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      widget.spec['titlePad'],
+      context,
+    );
+    final layout = MoodCircleLayout.desktop;
+    final rowHeight =
+        PackPaintArtifact.packDouble(widget.spec['rowHeight']) ??
+            layout.rowHeight;
     Widget? results;
     final load = packLoadSpec(widget.spec['load']);
     if (_selectedId != null && load != null) {
@@ -1730,18 +1857,17 @@ class _MoodMountState extends State<_MoodMount> {
         ),
       );
     }
-    final layout = MoodCircleLayout.desktop;
     return MoodSection(
       title: title.isEmpty ? null : title,
       titlePadding: EdgeInsets.fromLTRB(
         pad,
-        catalogSectionTitleTop(context),
+        titlePad.top,
         pad,
-        catalogSectionBottomGap(context),
+        titlePad.bottom,
       ),
-      rowHeight: layout.rowHeight,
+      rowHeight: rowHeight,
       chipStrip: SizedBox(
-        height: layout.rowHeight,
+        height: rowHeight,
         width: double.infinity,
         child: Center(
           child: SingleChildScrollView(
@@ -1839,7 +1965,15 @@ class _BecauseMountState extends State<_BecauseMount> {
                   );
                 }
                 if (posterItems.isEmpty) return const SizedBox.shrink();
-                final pad = catalogSectionHorizontalPadding(ctx);
+                final defaultPad = catalogSectionHorizontalPadding(ctx);
+                final pad = PackPaintArtifact.packDouble(
+                      widget.spec['pad'] ?? node['pad'],
+                    ) ??
+                    defaultPad;
+                final titlePad = PackPaintArtifact.titlePadInsets(
+                  widget.spec['titlePad'] ?? node['titlePad'],
+                  ctx,
+                );
                 final canShuffle = node['canShuffle'] == true;
                 return BecauseSection(
                   title: (node['heading'] ?? '').toString().isEmpty
@@ -1858,9 +1992,9 @@ class _BecauseMountState extends State<_BecauseMount> {
                       : null,
                   titlePadding: EdgeInsets.fromLTRB(
                     pad,
-                    catalogSectionTitleTop(ctx),
+                    titlePad.top,
                     pad,
-                    catalogSectionBottomGap(ctx),
+                    titlePad.bottom,
                   ),
                 );
               },
@@ -1875,11 +2009,13 @@ class _BecauseMountState extends State<_BecauseMount> {
 /// Host store → foundation [ContinueSection] (callbacks only).
 class _ContinueMount extends StatefulWidget {
   const _ContinueMount({
+    required this.spec,
     required this.pluginId,
     this.tabId,
     this.mergeHomeWatchHistory = false,
   });
 
+  final Map<String, dynamic> spec;
   final String pluginId;
   final String? tabId;
   final bool mergeHomeWatchHistory;
@@ -2031,12 +2167,25 @@ class _ContinueMountState extends State<_ContinueMount> {
     if (_entries.isEmpty) return const SizedBox.shrink();
     final showArrows = ShellScope.inputPolicyOf(context).scaleOnHover;
     final tv = ShellScope.metricsOf(context).usesTvDensity;
-    final cardW = tv
+    final defaultW = tv
         ? 140.0
         : (shellUsesWideLayout(context)
             ? ShellTokens.shellContinueWatchingCardWidthDesktop
             : ShellTokens.shellContinueWatchingCardWidthCompact);
-    final pad = catalogSectionHorizontalPadding(context);
+    final cardW =
+        PackPaintArtifact.packDouble(widget.spec['cardWidth']) ?? defaultW;
+    final cardH = PackPaintArtifact.packDouble(widget.spec['cardHeight']) ??
+        (cardW * 9 / 16);
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad =
+        PackPaintArtifact.packDouble(widget.spec['pad']) ?? defaultPad;
+    final titlePad = PackPaintArtifact.titlePadInsets(
+      widget.spec['titlePad'],
+      context,
+      defaultTop: shellSectionTitleTopCompact(context),
+      defaultBottom: 16,
+    );
+    final gap = PackPaintArtifact.packDouble(widget.spec['gap']) ?? 14.0;
     final tab = (widget.tabId ?? TvFocusGraph.tabIdOf(context)).trim();
     return TvKitRow(
       tabId: tab,
@@ -2048,12 +2197,13 @@ class _ContinueMountState extends State<_ContinueMount> {
         scrollController: _scroll,
         showScrollArrows: showArrows,
         cardWidth: cardW,
-        cardHeight: cardW * 9 / 16,
+        cardHeight: cardH,
+        cardGap: gap,
         titlePadding: EdgeInsets.fromLTRB(
           pad,
-          shellSectionTitleTopCompact(context),
+          titlePad.top,
           pad,
-          16,
+          titlePad.bottom,
         ),
         listPadding: EdgeInsets.symmetric(horizontal: pad),
         entries: [for (final e in _entries) ContinueEntry.fromMap(e)],

@@ -151,6 +151,9 @@ abstract final class PackPaintArtifact {
   }
 
   /// Horizontal rail/ranked row from paint-ready `items[]`.
+  ///
+  /// Pack visual overrides (omit → ShellTokens / catalog density):
+  /// `gap`, `rankedGap`, `pad`, `titlePad` (`{ top, bottom }` or number for both).
   static Widget posterRow(
     BuildContext context, {
     required Map<String, dynamic> node,
@@ -167,17 +170,24 @@ abstract final class PackPaintArtifact {
         ?.resolveFocusEdge((node['focusUp'] ?? '').toString());
     final focusDown = LayoutScope.maybeOf(context)
         ?.resolveFocusEdge((node['focusDown'] ?? '').toString());
+    final defaultPad = catalogSectionHorizontalPadding(context);
+    final pad = PackPaintArtifact.packDouble(node['pad']) ?? defaultPad;
+    final titlePad = PackPaintArtifact.titlePadInsets(node['titlePad'], context);
+    final defaultGap = shellPosterCardRowGap(context);
+    final gap = PackPaintArtifact.packDouble(node['gap']) ?? defaultGap;
+    final rankedGap =
+        PackPaintArtifact.packDouble(node['rankedGap']) ?? gap.clamp(3.0, 6.0);
+
     final items = node['items'];
     if (items is! List || items.isEmpty) {
       if (title.isEmpty) return const SizedBox.shrink();
-      final pad = catalogSectionHorizontalPadding(context);
       return ShellSectionTitle(
         title: title,
         padding: EdgeInsetsDirectional.only(
           start: pad,
-          top: catalogSectionTitleTop(context),
+          top: titlePad.top,
           end: pad,
-          bottom: catalogSectionBottomGap(context),
+          bottom: titlePad.bottom,
         ),
       );
     }
@@ -228,9 +238,8 @@ abstract final class PackPaintArtifact {
     final aspect = aspectFallback == 'landscape'
         ? PosterAspect.landscape
         : PosterAspect.portrait;
-    final pad = catalogSectionHorizontalPadding(context);
-    final gap = shellPosterCardRowGap(context);
     final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
+    final sep = ranked ? rankedGap : gap;
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,17 +249,16 @@ abstract final class PackPaintArtifact {
             title: title,
             padding: EdgeInsetsDirectional.only(
               start: pad,
-              top: catalogSectionTitleTop(context),
+              top: titlePad.top,
               end: pad,
-              bottom: catalogSectionBottomGap(context),
+              bottom: titlePad.bottom,
             ),
           ),
         HorizontalScroller(
           height: cardH,
           padding: EdgeInsets.symmetric(horizontal: pad),
           itemCount: cards.length,
-          separatorBuilder: (_, _) =>
-              SizedBox(width: ranked ? gap.clamp(3.0, 6.0) : gap),
+          separatorBuilder: (_, _) => SizedBox(width: sep),
           itemBuilder: (_, i) => cards[i],
         ),
       ],
@@ -265,5 +273,34 @@ abstract final class PackPaintArtifact {
       onFocusDown: focusDown,
       child: body,
     );
+  }
+
+  static double? packDouble(Object? raw) {
+    if (raw == null) return null;
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(raw.toString());
+  }
+
+  /// Pack `titlePad`: number → both edges; `{ top, bottom }` map; null → density defaults.
+  static ({double top, double bottom}) titlePadInsets(
+    Object? raw,
+    BuildContext context, {
+    double? defaultTop,
+    double? defaultBottom,
+  }) {
+    final top0 = defaultTop ?? catalogSectionTitleTop(context);
+    final bottom0 = defaultBottom ?? catalogSectionBottomGap(context);
+    if (raw == null) return (top: top0, bottom: bottom0);
+    if (raw is num) {
+      final v = raw.toDouble();
+      return (top: v, bottom: v);
+    }
+    if (raw is Map) {
+      return (
+        top: packDouble(raw['top']) ?? top0,
+        bottom: packDouble(raw['bottom']) ?? bottom0,
+      );
+    }
+    return (top: top0, bottom: bottom0);
   }
 }

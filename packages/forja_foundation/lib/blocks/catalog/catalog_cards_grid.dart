@@ -34,6 +34,8 @@ class CatalogCardsGrid extends StatelessWidget {
     this.emptyDescription,
     this.cardKind = 'poster',
     this.selectedItemId,
+    this.gap,
+    this.pad,
   });
 
   final List<Map<String, dynamic>> items;
@@ -44,6 +46,12 @@ class CatalogCardsGrid extends StatelessWidget {
   /// `poster` · `event`/`cards` · `dense`/`list`
   final String cardKind;
   final String? selectedItemId;
+
+  /// Grid spacing. Null → ShellTokens / TV defaults.
+  final double? gap;
+
+  /// Horizontal inset for event/poster grids. Null → catalog density pad.
+  final double? pad;
 
   static List<Map<String, dynamic>> itemsFromProps(Map<String, dynamic> props) {
     final v = props['items'];
@@ -78,8 +86,12 @@ class CatalogCardsGrid extends StatelessWidget {
   }
 
   Widget _denseList(BuildContext context) {
+    final inset = pad ?? ShellTokens.compactChromeLeadingInset(context);
+    final trail = pad ?? ShellTokens.bodyHorizontalPadding;
     return CatalogDenseList(
       itemCount: items.length,
+      leading: inset,
+      trailing: trail,
       itemBuilder: (context, i) {
         final item = items[i];
         final props = catalogItemProps(item);
@@ -111,8 +123,9 @@ class CatalogCardsGrid extends StatelessWidget {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final minW = InteractiveEventCard.cardWidth(context);
     final minH = InteractiveEventCard.cardHeight(context);
-    final gap = (tv ? ShellTokens.tvPosterCardRowGap : 14.0).clamp(8.0, 12.0);
-    final pad = catalogSectionHorizontalPadding(context);
+    final gap = this.gap ??
+        (tv ? ShellTokens.tvPosterCardRowGap : 14.0).clamp(8.0, 12.0);
+    final pad = this.pad ?? catalogSectionHorizontalPadding(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -154,11 +167,12 @@ class CatalogCardsGrid extends StatelessWidget {
         landscape ? PosterAspect.landscape : PosterAspect.portrait;
     final cardW = InteractivePosterCard.cardWidth(context, aspect: aspect);
     final cardH = InteractivePosterCard.cardHeight(context, aspect: aspect);
-    final gap = ShellPaintScope.usesTvDensityOf(context)
-        ? ShellTokens.tvPosterCardRowGap
-        : 14.0;
-    final leading = ShellTokens.compactChromeLeadingInset(context);
-    final trailing = ShellTokens.bodyHorizontalPadding;
+    final gap = this.gap ??
+        (ShellPaintScope.usesTvDensityOf(context)
+            ? ShellTokens.tvPosterCardRowGap
+            : ShellTokens.posterCardRowGap);
+    final leading = pad ?? ShellTokens.compactChromeLeadingInset(context);
+    final trailing = pad ?? ShellTokens.bodyHorizontalPadding;
 
     return LayoutBuilder(
       builder: (context, constraints) {

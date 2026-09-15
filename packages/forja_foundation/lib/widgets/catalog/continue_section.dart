@@ -24,6 +24,7 @@ class ContinueSection extends StatelessWidget {
     this.listPadding,
     this.cardWidth = 280,
     this.cardHeight = 158,
+    this.cardGap = 14,
     this.onResume,
     this.onRemove,
     this.onInfo,
@@ -43,6 +44,7 @@ class ContinueSection extends StatelessWidget {
   final EdgeInsetsGeometry? listPadding;
   final double cardWidth;
   final double cardHeight;
+  final double cardGap;
   final void Function(ContinueEntry entry)? onResume;
   final void Function(ContinueEntry entry)? onRemove;
   final void Function(ContinueEntry entry)? onInfo;
@@ -85,7 +87,7 @@ class ContinueSection extends StatelessWidget {
               padding: listPadding ??
                   const EdgeInsets.symmetric(horizontal: 24),
               itemCount: entryList.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 14),
+              separatorBuilder: (_, _) => SizedBox(width: cardGap),
               itemBuilder: (_, i) {
                 final entry = entryList[i];
                 return _ContinueHoverCard(

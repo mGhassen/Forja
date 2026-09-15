@@ -76,6 +76,7 @@ class CinematicHeroLayout {
     this.rowSpacing = 24,
     this.topBarBleed = 0,
     this.firstCatalogRowHeight = 0,
+    this.bleedDownOffset,
     this.scale = 1.0,
   });
 
@@ -94,9 +95,15 @@ class CinematicHeroLayout {
   final double rowSpacing;
   final double topBarBleed;
   final double firstCatalogRowHeight;
+
+  /// Extra backdrop under the bleed rail. Null → [ShellTokens.homePageBottomSectionDownOffset].
+  final double? bleedDownOffset;
   final double scale;
 
   double scaled(double value) => value * scale;
+
+  double get resolvedBleedDownOffset =>
+      bleedDownOffset ?? ShellTokens.homePageBottomSectionDownOffset;
 }
 
 bool cinematicHeroIsFullBleed({
@@ -273,7 +280,7 @@ class CinematicHeroState extends State<CinematicHero> {
         MediaQuery.sizeOf(context).height *
                 ShellTokens.homeBackdropViewportFraction +
             layout.topBarBleed +
-            ShellTokens.homePageBottomSectionDownOffset,
+            layout.resolvedBleedDownOffset,
       );
     }
     final screenH = MediaQuery.sizeOf(context).height;
@@ -319,7 +326,7 @@ class CinematicHeroState extends State<CinematicHero> {
     final textBottomInset = pageBleed
         ? layout.firstCatalogRowHeight +
             ShellTokens.homePageBottomSectionTopPadding +
-            ShellTokens.homePageBottomSectionDownOffset +
+            layout.resolvedBleedDownOffset +
             textBottom
         : textBottom;
     final textLeft = layout.sectionHorizontalPadding;

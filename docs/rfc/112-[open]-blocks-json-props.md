@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **15 / 16** acceptance · **1** ⏭️ obsolete deferred (mounts shipped A10–A14) |
-| **Current slice** | Blocks mount complete — chrome **behavior** tracked in [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md) |
+| **Progress** | **4 / 4** components · **21 / 23** acceptance · **2** ⏭️ deferred |
+| **Current slice** | Pack visual props complete · atom mounts deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -49,12 +49,30 @@
 
 ---
 
+## Acceptance (visual props slice)
+
+Pack-overridable look on mounted catalog types. ShellTokens = Forja default when pack omits a key. Shell nav stays host-owned.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 17 | R112-A17 | Schema + host: hero `actions`/`tone`/`slideCap`/`bleedDownOffset`; rail `gap`/`rankedGap`/`pad`/`titlePad` — omit → ShellTokens | ✅ |
+| 18 | R112-A18 | Home pack spotlight/featured emit current look (primary details, gap, bleedDownOffset) | ✅ |
+| 19 | R112-A19 | SDK `components.md` + schema inventory of mounted/atom params (pack vs shell-forbidden) | ✅ |
+| 20 | R112-A20 | mood/continue/because: `rowHeight`, `cardWidth`/`cardHeight`, `gap`, `pad`, `titlePad` — omit → defaults | ✅ |
+| 21 | R112-A21 | kit.list: `gap`, `pad`, `cardKind` — omit → ShellTokens / style-derived kind | ✅ |
+| 22 | R112-A22 | details / matchDetails schema + docs: `enableKenBurns`, `contentScrim`, `height`, (+ match layout keys) — Dart `fromProps` already reads | ✅ |
+| 23 | R112-A23 | Mount more atoms (`Button`/`Badge`/…) as pack `type` — only when a pack needs them | ⏭️ |
+
+---
+
 ## Summary
 
 Blocks are **prebuilt composed surfaces** with JSON props (`title`, `backdropUrl`, `overview`, …). Host injects callbacks / action rows only. Hub catalogs share `catalogBody`. Details/match blocks own `DetailsHero` paint — not empty Column shells.
 
 `kit.menu` / `kit.tabs` / `kit.list` / `kit.topBar` / `kit.categoryBar` **mount** in `PackPaintTree`. Remaining IPTV/Live/My List chrome fidelity (selection→feed, dynamic bars, verbs) is [issue 279](../issues/279-[open]-hub-catalog-design-regressions-thin-painter.md), not a blocks remount.
 
+**Visual props:** hero/rail/mood/continue/because/kit.list/details/search may override look via pack JSON. Defaults remain Forja ShellTokens. Atom mounts (`Button`/`Badge`/…) stay deferred (A23) until a pack needs a new `type`.
+
 ## Out of scope
 
-Product-named catalog blocks; `SourcesPanelChrome`. Chrome **behavior** parity is issue 279 (not this RFC).
+Product-named catalog blocks; `SourcesPanelChrome`. Chrome **behavior** parity is issue 279 (not this RFC). Navbar / empty-shell frame / TV focus policy — never pack-styled.
