@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/details/kit_list_status_button.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';

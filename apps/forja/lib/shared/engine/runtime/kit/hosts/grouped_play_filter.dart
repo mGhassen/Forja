@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/runtime/nav/play_filters.dart';
-import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 
 /// Kit grouped play filter — pack `filters.play[]` with `style: grouped`.

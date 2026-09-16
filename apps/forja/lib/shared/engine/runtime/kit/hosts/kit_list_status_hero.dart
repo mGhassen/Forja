@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
-import 'package:forja/shared/engine/details/kit_list_status_button.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
-import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja_foundation/widgets/details/list_status_hero.dart';
 

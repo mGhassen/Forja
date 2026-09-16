@@ -52,9 +52,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   @override
   void initState() {
     super.initState();
-    // Drop empty-shell enter/restore leftovers, then own the Back ladder.
-    // (Empty dispose must not unbind — it runs after this initState.)
-    TvHeroActions.unbind('settings');
+    // Merge pageBack onto SettingsScreen's enter/restore bind — do not unbind
+    // (that wiped OK/→ from the Settings rail). Empty dispose must not unbind
+    // either (it runs after this initState).
     TvHeroActions.bind(
       'settings',
       pageBack: _handlePageBack,

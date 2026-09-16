@@ -1589,6 +1589,74 @@ void main() {
   );
 
   testWidgets(
+    'pageBack-only bind keeps Settings enterFromNav + preferCustom',
+    (tester) async {
+      final settingsNav = FocusNode(debugLabel: 'nav-settings');
+      final category = FocusNode(debugLabel: 'settings-hub-selected');
+      var pageBackCalls = 0;
+      ShellTvFocus.registerNav('settings', settingsNav);
+      ShellTvFocus.currentNavTabId = 'settings';
+      ShellTvFocusCoordinator.setNavOrder(['home', 'settings']);
+
+      // SettingsScreen bind, then SettingsHubScaffold pageBack-only merge.
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        defaultFocus: () => category,
+        enterFromNavFocus: () {
+          if (category.canRequestFocus) category.requestFocus();
+        },
+        restoreFocus: () {
+          if (!category.canRequestFocus) return false;
+          category.requestFocus();
+          return true;
+        },
+        preferCustomRestoreFromNav: true,
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'settings',
+        pageBack: () {
+          pageBackCalls++;
+          return true;
+        },
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: settingsNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: category,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      settingsNav.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.enterTabFromNav('settings');
+      for (var i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+
+      expect(category.hasFocus, isTrue);
+      expect(settingsNav.hasFocus, isFalse);
+      expect(ShellTvFocusCoordinator.tryPageBack('settings'), isTrue);
+      expect(pageBackCalls, 1);
+
+      settingsNav.dispose();
+      category.dispose();
+      ShellTvFocusCoordinator.clearTab('settings');
+    },
+  );
+
+  testWidgets(
     'handleShellBackKey on Settings-only page arms exit (skips nav)',
     (tester) async {
       ShellTvFocusCoordinator.resetBackDebounceForTest();

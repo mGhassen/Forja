@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **1 / 2** acceptance |
+| **Progress** | **5 / 5** fix · **1 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I257-T02 | Empty get-started registers `TvHeroActions` for `settings`; Settings hub discards empty-shell memory on mount | ✅ |
 | 3 | I257-T03 | `restoreTabFocusAfterNav` falls through when row memory’s handle is gone; `focusActiveNavTab` no-ops for single-tab rail; page Back arms exit | ✅ |
 | 4 | I257-T04 | Widget tests: dead empty-shell restore, Settings-only Left no-op, Settings-only Back arms exit | ✅ |
+| 5 | I257-T05 | Settings hub must not `unbind` enter/restore; `registerTabDefaults` merges partial binds (`preferCustomRestoreFromNav` nullable); regression test for pageBack-only bind | ✅ |
 
 ---
 
@@ -41,10 +42,12 @@ Fresh guest install paints a Settings-only nav rail. Cold-start focused the Sett
 
 **Root fix:** body owns first focus when Settings-only; empty gate + Settings hub both register enter/restore; dead row memory falls through; single-tab Back arms exit instead of focusing the lone icon.
 
+**Regression (T05):** `SettingsHubScaffold` called `TvHeroActions.unbind('settings')` then rebound only `pageBack`, wiping `SettingsScreen` enter/restore. Partial `registerTabDefaults` also cleared `preferCustomRestoreFromNav` when omitted. OK/→ on the Settings rail stayed on `nav-settings`. Fix: merge-only pageBack bind; nullable prefer-custom flag.
+
 ## Related
 
 - [navigation](../features/getting-started/navigation.md)
 - [253](253-[open]-starred-home-opens-on-settings.md) — starred Home cold start
-- `apps/forja/lib/shared/foundation/tv/shell_tv_coordinator.dart`
+- `apps/forja/lib/shell/tv/shell_tv_coordinator.dart`
 - `apps/forja/lib/shell/frame/shell_empty_features_screen.dart`
 - `apps/forja/lib/shell/nav/shell_nav_rail.dart`

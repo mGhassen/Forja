@@ -82,7 +82,7 @@ abstract final class TvHeroActions {
     VoidCallback? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
-    bool preferCustomRestoreFromNav = false,
+    bool? preferCustomRestoreFromNav,
   }) {
     ShellTvFocusCoordinator.registerTabDefaults(
       tabId,

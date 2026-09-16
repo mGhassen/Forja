@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/details/kit_details_play.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';

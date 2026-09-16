@@ -91,4 +91,5 @@ Commit `1d9ff09b4` deleted `pack_layout_host_wire` (~5k) and left a stub `PackPa
 
 - [RFC-109](../rfc/109-[open]-forja-pack-product-host.md) A69–A72 (slot paint started)
 - [281](281-[open]-pack-hub-design-parity-all-hubs.md) — pack-side layout / RTL / empty parity
+- [287](287-[open]-hub-structure-stable-loading.md) — follow-on: kill A24 fake page skeleton; sync layout shell + density-matched slot skeletons (no CLS)
 - Baseline commit before wipe: `1d9ff09b4^` (`pack_layout_host.dart` + `pack_layout_host_wire.dart`)

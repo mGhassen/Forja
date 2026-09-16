@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/sources/resolve_panel_host.dart';
-import 'package:forja/shared/engine/details/kit_list_entry.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
 import 'package:forja/shared/player/sources/kit_sources_panel.dart';
 
@@ -10,8 +10,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/engine/details/hero_pill_buttons.dart';
-import 'package:forja/shared/engine/details/kit_details_play_row.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';

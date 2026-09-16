@@ -124,6 +124,10 @@ abstract final class ShellTvFocusCoordinator {
   static bool _detailBackExitArmed = false;
 
   /// Per-tab default focus and hero scroll - survives multi-tab mount order.
+  ///
+  /// Partial updates merge: omitted handlers and a null
+  /// [preferCustomRestoreFromNav] leave existing values alone (Settings hub
+  /// binds `pageBack` after the screen binds enter/restore).
   static void registerTabDefaults(
     String tabId, {
     FocusNode? Function()? defaultFocus,
@@ -131,16 +135,16 @@ abstract final class ShellTvFocusCoordinator {
     VoidCallback? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
-    bool preferCustomRestoreFromNav = false,
+    bool? preferCustomRestoreFromNav,
   }) {
     if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
     if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
     if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
     if (restoreFocus != null) _tabRestoreFocus[tabId] = restoreFocus;
     if (pageBack != null) _tabPageBack[tabId] = pageBack;
-    if (preferCustomRestoreFromNav) {
+    if (preferCustomRestoreFromNav == true) {
       _tabPreferCustomNavRestore.add(tabId);
-    } else {
+    } else if (preferCustomRestoreFromNav == false) {
       _tabPreferCustomNavRestore.remove(tabId);
     }
   }
