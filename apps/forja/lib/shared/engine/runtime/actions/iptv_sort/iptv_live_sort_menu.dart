@@ -6,7 +6,6 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
-import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Exact pre-wipe IPTV Sort popup — Categories + Channels sections.
 class IptvLiveSortMenu extends StatefulWidget {
@@ -137,59 +136,66 @@ class _IptvSortRowState extends State<_IptvSortRow> {
       mouseHover: ShellScope.inputPolicyOf(context).scaleOnHover,
     );
     final highlight = _hovered || _focused;
-    final chrome = playerPopupSelectChrome(
-      selected: widget.selected,
-      highlight: highlight,
-    );
+    // Idle rows stay transparent (pre-wipe Sort menu); hover/selected = green fill.
+    final bg = widget.selected || highlight
+        ? PlayerPopupTokens.accentFill
+        : Colors.transparent;
 
-    final row = Material(
-      color: chrome.bg,
-      borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        canRequestFocus: false,
-        onTap: input.tvFocus ? null : widget.onTap,
+    final row = MouseRegion(
+      onEnter: input.mouseHover
+          ? (_) {
+              if (_hovered) return;
+              setState(() => _hovered = true);
+            }
+          : null,
+      onExit: input.mouseHover
+          ? (_) {
+              if (!_hovered) return;
+              setState(() => _hovered = false);
+            }
+          : null,
+      child: Material(
+        color: bg,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        // Hover is painted via [chrome.bg] — InkWell splash only.
-        hoverColor: Colors.transparent,
-        splashColor: ForjaShellColors.inkSplash,
-        onHover: input.mouseHover
-            ? (h) {
-                if (_hovered == h) return;
-                setState(() => _hovered = h);
-              }
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: 18,
-                color: widget.selected || highlight
-                    ? PlayerPopupTokens.accent
-                    : Colors.white.withValues(alpha: 0.75),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.label,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: widget.selected || highlight
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          canRequestFocus: false,
+          onTap: input.tvFocus ? null : widget.onTap,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
+          hoverColor: Colors.transparent,
+          splashColor: ForjaShellColors.inkSplash,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  widget.icon,
+                  size: 18,
+                  color: widget.selected || highlight
+                      ? PlayerPopupTokens.accent
+                      : Colors.white.withValues(alpha: 0.75),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: widget.selected || highlight
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              if (widget.selected)
-                Icon(
-                  Icons.check_rounded,
-                  size: 18,
-                  color: PlayerPopupTokens.accent,
-                ),
-            ],
+                if (widget.selected)
+                  Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: PlayerPopupTokens.accent,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

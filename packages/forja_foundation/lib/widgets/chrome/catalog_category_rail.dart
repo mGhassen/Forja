@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/empty.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// One category rail row — props only (pack / host supply state).
@@ -72,6 +73,9 @@ class CatalogCategoryRail extends StatefulWidget {
 
 class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
+  final ScrollController _scroll = ScrollController();
+
+  static const _listPadV = 8.0;
 
   double get _rowExtent => widget.compact
       ? CatalogCategoryRail.rowExtentCompact
@@ -82,6 +86,60 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
 
   List<CatalogCategoryItem> get _movable =>
       [for (final e in widget.items) if (!e.fixed) e];
+
+  /// Favorites / Already watched stay out of type-to-jump (old IPTV).
+  List<CatalogCategoryItem> get _jumpItems => _movable;
+
+  bool get _leanbackOnly =>
+      ShellPaintScope.usesTvDensityOf(context) &&
+      !ShellPaintScope.scaleOnHoverOf(context);
+
+  bool get _letterJumpEnabled =>
+      !_leanbackOnly && _floatingId == null && _jumpItems.isNotEmpty;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  int _letterJumpAnchor() {
+    final jump = _jumpItems;
+    if (jump.isEmpty) return -1;
+    final selected = (widget.selectedId ?? '').trim();
+    if (selected.isEmpty) return -1;
+    return jump.indexWhere((e) => e.id == selected);
+  }
+
+  void _letterJump(int jumpIndex) {
+    final jump = _jumpItems;
+    if (jumpIndex < 0 || jumpIndex >= jump.length) return;
+    final id = jump[jumpIndex].id;
+    final fullIdx = widget.items.indexWhere((e) => e.id == id);
+    if (fullIdx < 0) return;
+    widget.onSelect?.call(id);
+    void go() {
+      if (!mounted) return;
+      _scrollToIndex(fullIdx);
+    }
+
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
+  }
+
+  void _scrollToIndex(int index, {int keepAbove = 2}) {
+    if (!_scroll.hasClients || index < 0) return;
+    final position = _scroll.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0) return;
+    final itemTop = _listPadV + index * _rowExtent;
+    final target = (itemTop - keepAbove * _rowExtent).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+    if ((_scroll.offset - target).abs() < 0.5) return;
+    _scroll.jumpTo(target);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +152,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
 
     final fixed = _fixed;
     final movable = _movable;
+    final jump = _jumpItems;
     final canReorder = widget.canReorder &&
         widget.onReorder != null &&
         movable.length > 1;
@@ -129,14 +188,15 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
       );
     }
 
-    return ColoredBox(
+    final list = ColoredBox(
       color: ForjaShellColors.bgDark,
       child: SizedBox(
         width: widget.width,
         child: CustomScrollView(
+          controller: _scroll,
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: _listPadV),
               sliver: SliverMainAxisGroup(
                 slivers: [
                   if (fixed.isNotEmpty)
@@ -178,6 +238,18 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
           ],
         ),
       ),
+    );
+
+    return ListLetterJumpScope(
+      enabled: _letterJumpEnabled,
+      itemCount: jump.length,
+      anchorIndex: _letterJumpAnchor(),
+      labelAt: (i) {
+        final name = jump[i].label.trim();
+        return name.isEmpty ? jump[i].id : name;
+      },
+      onJump: _letterJump,
+      child: list,
     );
   }
 
