@@ -1845,6 +1845,7 @@ class KitSearchScreen extends StatefulWidget {
     this.hintText = 'Search…',
     this.structuredSearch = false,
     this.applyChromeFilters = false,
+    this.searchHelpers = false,
   });
 
   final String pluginId;
@@ -1852,6 +1853,9 @@ class KitSearchScreen extends StatefulWidget {
   final String hintText;
   final bool structuredSearch;
   final bool applyChromeFilters;
+
+  /// Pack declares [PackCapabilities.searchHelpers] → `action: search_helpers`.
+  final bool searchHelpers;
 
   @override
   State<KitSearchScreen> createState() => _KitSearchScreenState();
@@ -1893,13 +1897,39 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
     required String query,
     required List<KitSearchResult> results,
   }) async {
-    if (results.isEmpty) return const [];
-    final titles = <String>[];
+    if (!widget.searchHelpers) return const [];
+
+    final exclude = <String>[
+      for (final r in results)
+        if (r.title.trim().isNotEmpty) r.title.trim(),
+    ];
+    Map<String, dynamic>? seed;
     for (final r in results) {
-      final t = r.title.trim();
-      if (t.isEmpty || titles.contains(t)) continue;
+      final payload = r.payload;
+      if (payload is MetaItem && payload.name.trim().isNotEmpty) {
+        seed = payload.toJson();
+        break;
+      }
+    }
+
+    final env = await MetaRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'search_helpers',
+      params: {
+        'query': query,
+        'limit': 64,
+        if (exclude.isNotEmpty) 'exclude': exclude,
+        ?'seed': seed,
+      },
+    );
+    if (!env.ok) return const [];
+    final titles = <String>[];
+    final seen = <String>{};
+    for (final item in env.items) {
+      final t = item.name.trim();
+      if (t.isEmpty) continue;
+      if (!seen.add(t.toLowerCase())) continue;
       titles.add(t);
-      if (titles.length >= 12) break;
     }
     return titles;
   }

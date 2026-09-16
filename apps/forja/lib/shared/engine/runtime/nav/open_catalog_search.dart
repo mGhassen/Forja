@@ -7,7 +7,8 @@ import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
 /// Open hub Search — same entry for top-bar and Cmd+F (when not already overlay).
 ///
-/// Screen is [KitSearchScreen]. Pack owns search via opaque `action: 'search'`.
+/// Screen is [KitSearchScreen]. Pack owns search via opaque `action: 'search'`
+/// and optional left-column helpers via `action: 'search_helpers'`.
 Future<void> openCatalogSearch(
   BuildContext context, {
   required String pluginId,
@@ -33,6 +34,9 @@ Future<void> openCatalogSearch(
         ),
         applyChromeFilters: plugin.hasCapability(
           PackCapabilities.filters,
+        ),
+        searchHelpers: plugin.hasCapability(
+          PackCapabilities.searchHelpers,
         ),
       ),
     ),

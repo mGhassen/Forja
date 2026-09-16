@@ -7,6 +7,10 @@ class PackCapabilities {
   /// Pack implements `action: 'search'`.
   static const String search = 'search';
 
+  /// Pack implements `action: 'search_helpers'` — idle / contextual title
+  /// suggestions for the search left column (never mirrors result cards).
+  static const String searchHelpers = 'search_helpers';
+
   /// Pack implements `action: 'filters'` and honors `params.filter` on browse/search.
   static const String filters = 'filters';
 
