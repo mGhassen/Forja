@@ -64,6 +64,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
   final ValueNotifier<Map<String, dynamic>?> _selectedListItem =
       ValueNotifier<Map<String, dynamic>?>(null);
+  final ValueNotifier<Set<String>> _searchHitKinds =
+      ValueNotifier<Set<String>>(const {});
+  /// Category selected before opening Search (restored on clear).
+  String? _categoryBeforeSearch;
   bool _layoutRtl = false;
   String? _error;
   bool _loading = true;
@@ -114,6 +118,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
     _selectedListItem.dispose();
+    _searchHitKinds.dispose();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
@@ -422,6 +427,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         Map<String, List<Map<String, dynamic>>>.from(_dynamicBarItems),
       ),
       selectedListItem: _selectedListItem,
+      searchHitKindIds: _searchHitKinds,
       shellTabVisible: shellTabVisible,
       eagerLoadKeys: _eagerLoadKeys,
       pageFeedRailIds: _pageFeedRailIds,
@@ -429,7 +435,28 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       rowPrefetch: _rowPrefetch,
       onEventQuery: (q) {
         if (_eventQuery == q) return;
-        setState(() => _eventQuery = q);
+        final prev = _eventQuery.trim();
+        final next = q.trim();
+        setState(() {
+          _eventQuery = q;
+          // Legacy IPTV: typing Search clears category → global hits; clear
+          // restores the prior category unless the user picked one mid-search.
+          if (prev.isEmpty && next.isNotEmpty) {
+            _categoryBeforeSearch = _layoutSelections['cats'];
+            _layoutSelections.remove('cats');
+            _searchHitKinds.value = const {};
+          } else if (prev.isNotEmpty && next.isEmpty) {
+            final current = (_layoutSelections['cats'] ?? '').trim();
+            if (current.isEmpty) {
+              final restore = (_categoryBeforeSearch ?? '').trim();
+              if (restore.isNotEmpty) {
+                _layoutSelections['cats'] = restore;
+              }
+            }
+            _categoryBeforeSearch = null;
+            _searchHitKinds.value = const {};
+          }
+        });
       },
       onClearCatalog: () {
         _selectedListItem.value = null;

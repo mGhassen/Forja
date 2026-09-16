@@ -21,6 +21,7 @@ class PackChromeScope extends InheritedWidget {
     required this.pageFeedRailIds,
     required this.pageFeedFuture,
     required this.rowPrefetch,
+    required this.searchHitKindIds,
     required this.onEventQuery,
     required this.onBumpRefresh,
     required this.onClearCatalog,
@@ -46,6 +47,9 @@ class PackChromeScope extends InheritedWidget {
   /// List/panel selection — [ValueNotifier] so taps do not InheritedWidget-notify
   /// the whole hub (grids, rails, PackLoadedPaint).
   final ValueNotifier<Map<String, dynamic>?> selectedListItem;
+
+  /// Kind ids with hits for the active [eventQuery] (legacy IPTV sidebar filter).
+  final ValueNotifier<Set<String>> searchHitKindIds;
 
   /// Whether this hub tab is the selected shell tab (KeepAlive may stay mounted).
   final bool shellTabVisible;
@@ -113,6 +117,7 @@ class PackChromeScope extends InheritedWidget {
         catalogHoldEpoch != oldWidget.catalogHoldEpoch ||
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
+        !identical(searchHitKindIds, oldWidget.searchHitKindIds) ||
         shellTabVisible != oldWidget.shellTabVisible ||
         !setEquals(eagerLoadKeys, oldWidget.eagerLoadKeys) ||
         !setEquals(pageFeedRailIds, oldWidget.pageFeedRailIds) ||

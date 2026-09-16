@@ -565,27 +565,73 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       );
     }
 
+    final chrome = PackChromeScope.maybeOf(context);
+    final q = (chrome?.eventQuery ?? '').trim().toLowerCase();
+    final hitListenable = chrome?.searchHitKindIds;
+
+    List<CatalogCategoryItem> applySearchFilter(
+      List<CatalogCategoryItem> raw,
+      Set<String> hits,
+    ) {
+      if (q.isEmpty) return raw;
+      return [
+        for (final c in raw)
+          if (hits.contains(c.id) || c.label.toLowerCase().contains(q)) c,
+      ];
+    }
+
     // Movies/Series/Channels: plain fixed list (no pin/widgets). Prefer cleared _items
     // over stale Live seed until the VOD/Channels feed republishes kinds.
     if (!_isLive) {
       final vodItems = _items.isNotEmpty ? _items : _plainItems();
-      return CatalogCategoryRail(
-        items: vodItems,
-        selectedId: widget.selectedId,
-        width: width,
-        onSelect: widget.onSelect,
-        canReorder: false,
+      if (hitListenable == null) {
+        return CatalogCategoryRail(
+          items: applySearchFilter(vodItems, const {}),
+          selectedId: widget.selectedId,
+          width: width,
+          onSelect: widget.onSelect,
+          canReorder: false,
+        );
+      }
+      return ValueListenableBuilder<Set<String>>(
+        valueListenable: hitListenable,
+        builder: (context, hits, _) {
+          return CatalogCategoryRail(
+            items: applySearchFilter(vodItems, hits),
+            selectedId: widget.selectedId,
+            width: width,
+            onSelect: widget.onSelect,
+            canReorder: false,
+          );
+        },
       );
     }
 
-    return CatalogCategoryRail(
-      items: _items.isEmpty ? _plainItems() : _items,
-      selectedId: widget.selectedId,
-      width: width,
-      onSelect: widget.onSelect,
-      onTogglePin: _wantPin ? _togglePin : null,
-      onReorder: _wantReorder ? _reorder : null,
-      canReorder: _canReorder,
+    final liveItems = _items.isEmpty ? _plainItems() : _items;
+    if (hitListenable == null) {
+      return CatalogCategoryRail(
+        items: applySearchFilter(liveItems, const {}),
+        selectedId: widget.selectedId,
+        width: width,
+        onSelect: widget.onSelect,
+        onTogglePin: _wantPin ? _togglePin : null,
+        onReorder: _wantReorder ? _reorder : null,
+        canReorder: _canReorder,
+      );
+    }
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: hitListenable,
+      builder: (context, hits, _) {
+        return CatalogCategoryRail(
+          items: applySearchFilter(liveItems, hits),
+          selectedId: widget.selectedId,
+          width: width,
+          onSelect: widget.onSelect,
+          onTogglePin: _wantPin ? _togglePin : null,
+          onReorder: _wantReorder ? _reorder : null,
+          canReorder: _canReorder,
+        );
+      },
     );
   }
 }

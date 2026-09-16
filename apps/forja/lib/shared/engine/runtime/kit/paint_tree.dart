@@ -1398,20 +1398,59 @@ class PackPaintTree extends StatelessWidget {
               ? (spec['kind'] ?? '').toString().trim()
               : (LayoutScope.maybeOf(context)?.selectedId(kindMenu) ?? '')
                   .trim();
-          var filtered = [
-            for (final e in items)
-              if (_itemMatchesKindFilter(e, kindFilter)) e,
-          ];
+          final paintOnlySearch = !packChromeKindReloadsFeed(spec);
+          final q = paintOnlySearch
+              ? (chrome?.eventQuery ?? '').trim()
+              : '';
+          final searchActive = q.isNotEmpty;
+
+          // Legacy IPTV Search: match name OR category across the full feed,
+          // then optionally narrow by a category tapped while searching.
+          // Idle (no query): category filter only.
+          List<Map<String, dynamic>> filtered;
+          if (searchActive) {
+            final hits = <Map<String, dynamic>>[
+              for (final e in items)
+                if (_itemMatchesEventQuery(e, q)) e,
+            ];
+            final hitKinds = <String>{
+              for (final e in hits)
+                if (_itemKind(e).isNotEmpty) _itemKind(e),
+            };
+            final notifier = chrome?.searchHitKindIds;
+            if (notifier != null && !setEquals(notifier.value, hitKinds)) {
+              // Defer — setState during build is illegal.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!setEquals(notifier.value, hitKinds)) {
+                  notifier.value = Set<String>.from(hitKinds);
+                }
+              });
+            }
+            if (kindFilter.isNotEmpty && kindFilter != 'all') {
+              filtered = [
+                for (final e in hits)
+                  if (_itemMatchesKindFilter(e, kindFilter)) e,
+              ];
+            } else {
+              filtered = hits;
+            }
+          } else {
+            filtered = [
+              for (final e in items)
+                if (_itemMatchesKindFilter(e, kindFilter)) e,
+            ];
+            final notifier = chrome?.searchHitKindIds;
+            if (notifier != null && notifier.value.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (notifier.value.isNotEmpty) {
+                  notifier.value = const {};
+                }
+              });
+            }
+          }
           // IPTV search/sort are paint-only (packChromeFeedParams skips q/sort
           // when there is no horizon menu). Live Sports still re-queries feed.
-          if (!packChromeKindReloadsFeed(spec)) {
-            final q = (chrome?.eventQuery ?? '').trim();
-            if (q.isNotEmpty) {
-              filtered = [
-                for (final e in filtered)
-                  if (_itemMatchesEventQuery(e, q)) e,
-              ];
-            }
+          if (paintOnlySearch) {
             final sortMenu = (spec['sortMenu'] ?? '').toString().trim();
             final sortId = sortMenu.isEmpty
                 ? ''
