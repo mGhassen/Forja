@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 4** fix · **0 / 4** acceptance |
-| **Current slice** | Sync layout shell + density-matched slot skeletons |
+| **Progress** | **4 / 4** fix · **0 / 4** acceptance (manual QA) |
+| **Current slice** | Code shipped — manual hub QA remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -20,10 +20,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I287-T01 | Sync-apply EngineCache page layout; neutral wait only on cold miss (no `homeHubLoadingSlivers`) | ⬜ |
-| 2 | I287-T02 | Density-aware section skeletons from pack node `type`/`title` + correct `LazyViewportGate` height | ⬜ |
-| 3 | I287-T03 | Foundation density-aware poster-row skeleton helper | ⬜ |
-| 4 | I287-T04 | Changelog draft bullet | ⬜ |
+| 1 | I287-T01 | Sync-apply EngineCache page layout; neutral wait only on cold miss (no `homeHubLoadingSlivers`) | ✅ |
+| 2 | I287-T02 | Density-aware section skeletons from pack node `type`/`title` + correct `LazyViewportGate` height | ✅ |
+| 3 | I287-T03 | Foundation density-aware poster-row skeleton helper | ✅ |
+| 4 | I287-T04 | Changelog draft bullet | ✅ |
 
 ---
 
@@ -41,6 +41,8 @@
 ## Summary
 
 Cold hub open painted a host-invented full-page skeleton (`homeHubLoadingSlivers`), then remounted the pack `layout` tree, then per-rail skeletons with wrong metrics (`topPadding: 12`, undersized gate height). Structure is pack-owned (`nav.page.action` + `_layout.js`); host must paint that tree (from `EngineCache` when warm) and reserve type-matched slots while feed/rail fills.
+
+**Shipped:** `MetaRuntime.peekCached` + `PackLayoutPainter` sync shell; `hubNeutralLoadingSkeleton` on cold miss; `kitSectionLoadingSlot` + foundation density helpers for LazyViewportGate / PackLoadedPaint.
 
 Follow-on to [279](279-[open]-hub-catalog-design-regressions-thin-painter.md) A24/A25 — A24’s fake page skeleton becomes the anti-pattern to remove.
 

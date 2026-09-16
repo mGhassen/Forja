@@ -132,11 +132,15 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   }
 
   // rail / ranked / row / default poster section
+  final titleBarW =
+      title.isEmpty ? 140.0 : title.length * 10.0;
+  final titleBarClamped =
+      titleBarW < 80 ? 80.0 : (titleBarW > 220 ? 220.0 : titleBarW);
   return (
     placeholder: catalogPosterRowSkeleton(
       context: context,
       title: title.isEmpty ? null : title,
-      titleWidth: title.isEmpty ? 140 : (title.length * 10.0).clamp(80, 220),
+      titleWidth: titleBarClamped,
       compact: compact,
       cardWidth: cardW,
       cardHeight: cardH,

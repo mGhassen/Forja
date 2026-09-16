@@ -64,7 +64,6 @@ import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
 import 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 import 'package:forja_foundation/widgets/catalog/continue_section.dart';
-import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/catalog/interactive_poster_card.dart';
 import 'package:forja_foundation/widgets/catalog/mood_section.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
@@ -129,16 +128,7 @@ class PackPaintTree extends StatelessWidget {
           (chrome?.isEagerLoad(id, rail: rail) ?? false);
       // Page-feed membership must NOT force eager — only first-paint keys /
       // hero / bleed. Off-screen feed rails stay behind LazyViewportGate.
-      final isHero = type == LayoutTypes.hero;
       final heroBleed = pageBottomChild != null;
-      final heroH = isHero
-          ? homeCinematicHeroBodyHeight(
-              screenHeight: MediaQuery.sizeOf(context).height,
-              compact: MediaQuery.sizeOf(context).width <
-                  ShellTokens.heroDesktopMinBodyWidth,
-              pageBottomBleed: heroBleed,
-            )
-          : 420.0;
       final loadPaint = PackLoadedPaint(
         pluginId: pluginId,
         packSourceUrl: packSourceUrl,
@@ -159,23 +149,18 @@ class PackPaintTree extends StatelessWidget {
       if (eager) return loadPaint;
       // Static structure only (no pulse) — TickerMode on tab show must not
       // look like a rail reload when the gate is still inactive.
-      final skeleton = isHero
-          ? SizedBox(
-              height: heroH,
-              child: const ColoredBox(color: ForjaShellColors.surfaceElevated),
-            )
-          : homePosterRowSkeleton(
-              topPadding: 12,
-              titleWidth: 140,
-              cardWidth: InteractivePosterCard.cardWidth(context),
-              cardHeight: InteractivePosterCard.cardHeight(context),
-            );
+      final compact = compactSection || spec['compactTop'] == true;
+      final slot = kitSectionLoadingSlot(
+        context,
+        spec,
+        compact: compact,
+        pageBottomBleed: heroBleed,
+        shimmer: false,
+      );
       return LazyViewportGate(
         detectorKey: Key('lazy-$pluginId-$id'),
-        placeholderHeight: isHero
-            ? heroH
-            : InteractivePosterCard.cardHeight(context) + 48,
-        placeholder: skeleton,
+        placeholderHeight: slot.height,
+        placeholder: slot.placeholder,
         eager: false,
         builder: (ctx) => loadPaint,
       );
