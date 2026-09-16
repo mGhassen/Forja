@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/live/lazy_url_health.dart';
 
 /// Hover/focus URL probe for IPTV live catalog channel cards.
+///
+/// Cards subscribe per stream key — a probe result must not rebuild the grid.
 class ChannelCatalogHealthHost extends StatefulWidget {
   const ChannelCatalogHealthHost({
     super.key,
@@ -10,7 +13,8 @@ class ChannelCatalogHealthHost extends StatefulWidget {
 
   final Widget Function(
     BuildContext context, {
-    required bool? Function(Map<String, dynamic> item) healthFor,
+    required ValueListenable<bool?>? Function(Map<String, dynamic> item)
+        healthListenableFor,
     required void Function(
       Map<String, dynamic> item, {
       required bool active,
@@ -56,10 +60,10 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
     return url.isEmpty ? null : url;
   }
 
-  bool? _healthFor(Map<String, dynamic> item) {
+  ValueListenable<bool?>? _healthListenableFor(Map<String, dynamic> item) {
     final key = _probeKey(item);
     if (key == null) return null;
-    return _probe.healthFor(key);
+    return _probe.listenableFor(key);
   }
 
   void _onActive(Map<String, dynamic> item, {required bool active}) {
@@ -67,7 +71,8 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
     final url = _probeUrl(item);
     if (key == null || url == null) return;
     if (active) {
-      _probe.schedule(key, url);
+      // One dwell target — drop timers for channels already left.
+      _probe.schedule(key, url, onlyThis: true);
     } else {
       _probe.cancel(key);
     }
@@ -75,13 +80,10 @@ class _ChannelCatalogHealthHostState extends State<ChannelCatalogHealthHost> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _probe,
-      builder: (context, _) => widget.builder(
-        context,
-        healthFor: _healthFor,
-        onInteractiveActive: _onActive,
-      ),
+    return widget.builder(
+      context,
+      healthListenableFor: _healthListenableFor,
+      onInteractiveActive: _onActive,
     );
   }
 }

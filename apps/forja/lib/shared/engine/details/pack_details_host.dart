@@ -1003,7 +1003,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       tvHeroPlayFocus: _heroPlayFocus,
       tvBackFocus: _backFocus,
       bodyOverlap: 0,
-      topSpacing: DetailsTokens.bodyTopSpacing,
+      // Tighter than [DetailsTokens.bodyTopSpacing] — first body row sits closer
+      // under the hero without overlapping chrome.
+      topSpacing: 24,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
         backdropUrl: backdrop,

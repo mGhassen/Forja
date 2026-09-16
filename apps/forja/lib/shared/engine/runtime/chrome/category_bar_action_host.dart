@@ -304,9 +304,21 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
   @override
   void didUpdateWidget(covariant _CategoryBarRailHost oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.seedItems != widget.seedItems) {
+    if (!_sameSeed(oldWidget.seedItems, widget.seedItems)) {
       unawaited(_reload());
     }
+  }
+
+  static bool _sameSeed(
+    List<({String id, String label, String? icon})> a,
+    List<({String id, String label, String? icon})> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id || a[i].label != b[i].label) return false;
+    }
+    return true;
   }
 
   Future<void> _reload() async {

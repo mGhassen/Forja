@@ -273,7 +273,6 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
   }
 
   bool _hovered = false;
-  bool _focused = false;
   bool _okHoldFired = false;
   bool _tvPinRevealed = false;
   Timer? _okHoldTimer;
@@ -285,6 +284,27 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   static const _okHoldDelay = Duration(seconds: 1);
   static const _dragHoldDelay = Duration(milliseconds: 1500);
+  static const _pinSlotWidth = 28.0;
+
+  bool get _leanbackOnly =>
+      ShellPaintScope.usesTvDensityOf(context) &&
+      !ShellPaintScope.scaleOnHoverOf(context);
+
+  /// Focus / float / pin-reveal — mirrors pre-wipe `_chromeLit`.
+  bool get _chromeLit =>
+      _rowFocus.hasFocus ||
+      _pinFocus.hasFocus ||
+      widget.floating ||
+      _tvPinRevealed;
+
+  bool get _tvFocused =>
+      ShellPaintScope.focusStyledOf(context, focused: _chromeLit);
+
+  bool get _active => ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hovered,
+        focused: _chromeLit,
+      );
 
   bool get _canTvReorder =>
       widget.reorderIndex != null &&
@@ -294,12 +314,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   bool get _showPin {
     if (!_canTvPin) return false;
-    final leanback = ShellPaintScope.usesTvDensityOf(context) &&
-        !ShellPaintScope.scaleOnHoverOf(context);
-    if (leanback) {
+    if (_leanbackOnly) {
       return widget.floating || _tvPinRevealed || _pinFocus.hasFocus;
     }
-    return widget.item.pinned || _hovered || _focused;
+    return widget.item.pinned || _hovered || _tvFocused;
   }
 
   @override
@@ -308,9 +326,13 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     _holdSunrise = AnimationController(vsync: this);
     _rowFocus = FocusNode(debugLabel: 'catalog-cat-${widget.listIndex}');
     _pinFocus = FocusNode(debugLabel: 'catalog-cat-pin-${widget.listIndex}');
-    _rowFocus.addListener(() {
-      if (mounted) setState(() => _focused = _rowFocus.hasFocus);
-    });
+    // Paint from FocusNode — do not lag behind FocusableControl.onFocusChange.
+    _rowFocus.addListener(_onChromeFocusChanged);
+    _pinFocus.addListener(_onChromeFocusChanged);
+  }
+
+  void _onChromeFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -319,6 +341,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
     _holdOriginN.dispose();
     _holdSunrise.dispose();
     _releaseChrome();
+    _pinFocus.removeListener(_onChromeFocusChanged);
+    _rowFocus.removeListener(_onChromeFocusChanged);
     _pinFocus.dispose();
     _rowFocus.dispose();
     super.dispose();
@@ -427,37 +451,44 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   @override
   Widget build(BuildContext context) {
-    final leanback = ShellPaintScope.usesTvDensityOf(context) &&
-        !ShellPaintScope.scaleOnHoverOf(context);
+    final leanback = _leanbackOnly;
+    final selected = widget.selected;
+    // Desktop drag proxy wraps the row — same brighter green as TV floating.
     final lifted =
         widget.floating || _CategoryDragProxyScope.isProxy(context);
-    final lit = _focused || lifted || (!leanback && _hovered);
-    final iconColor = _focused || lifted
+    // Focus / hover / lift own the “lit” look. Selected alone = faint open
+    // tick (not brand-green icon) — leanback skim mutes selected via policy.
+    final lit = _tvFocused || lifted || _active;
+    final iconColor = _tvFocused || lifted
         ? ForjaShellColors.brandGreen
-        : lit
+        : _active
             ? Colors.white
-            : widget.selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.7)
+            : selected
+                ? (leanback
+                    ? ForjaShellColors.textSecondary
+                    : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
                 : ForjaShellColors.textSecondary;
-    final titleColor = _focused || lifted
+    final titleColor = _tvFocused || lifted
         ? ForjaShellColors.brandGreen
-        : lit
+        : _active
             ? Colors.white
-            : widget.selected
-                ? Colors.white.withValues(alpha: 0.88)
+            : selected
+                ? Colors.white.withValues(alpha: leanback ? 0.7 : 0.88)
                 : ForjaShellColors.textSecondary;
-    final leftBar = lifted || _focused
+    final leftBar = lifted || _tvFocused
         ? ForjaShellColors.brandGreen
-        : lit
+        : _active
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-            : widget.selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.4)
+            : selected
+                ? ForjaShellColors.brandGreen
+                    .withValues(alpha: leanback ? 0.22 : 0.4)
                 : Colors.transparent;
+    // Fill only for focus / hover / floating. Snap colors — no fade trail.
     final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
-        : _focused
+        : _tvFocused
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : (!leanback && _hovered)
+            : (!leanback && _active)
                 ? ForjaShellColors.inkHover
                 : Colors.transparent;
 
@@ -497,13 +528,18 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                     style: GoogleFonts.plusJakartaSans(
                       color: titleColor,
                       fontSize: widget.compact ? 13 : 14,
-                      fontWeight: lit || widget.selected
+                      fontWeight: lit || selected
                           ? FontWeight.w700
                           : FontWeight.w500,
                     ),
                   ),
                 ),
-                if (_showPin) _buildPin(leanback),
+                // Reserve pin slot so hover pin does not reflow the label.
+                if (_canTvPin)
+                  SizedBox(
+                    width: _pinSlotWidth,
+                    child: _showPin ? _buildPin(leanback) : null,
+                  ),
               ],
             ),
           ),
@@ -531,6 +567,8 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       ),
     );
 
+    // Flat rail: no FocusableControl scale, no Material ink fade — row paints
+    // snap hover/selection itself (pre-wipe category sidebar contract).
     Widget row = ShellPaintScope.focusableTap(
       context: context,
       onTap: () {
@@ -542,6 +580,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         widget.onSelect?.call();
       },
       borderRadius: 0,
+      scaleOnFocus: 1.0,
+      showFocusFill: false,
+      suppressInkHover: true,
       listIndex: widget.listIndex,
       navLeftAlways: true,
       tvRowId: widget.tvRowId,
@@ -549,8 +590,10 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       focusNode: _rowFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,
       onKeyEvent: ShellPaintScope.useTvFocusOf(context) ? _onRowKey : null,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onHoverChange: (h) => setState(() => _hovered = h),
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
       onRightEdge: () {
         if (widget.floating || _tvPinRevealed) {
           if (_canTvPin) _pinFocus.requestFocus();
@@ -613,6 +656,9 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
       context: context,
       onTap: widget.onTogglePin,
       borderRadius: 6,
+      scaleOnFocus: 1.0,
+      showFocusFill: false,
+      suppressInkHover: true,
       focusNode: _pinFocus,
       ensureVisibleMode: ShellPaintEnsureVisible.off,
       onLeftEdge: () => _rowFocus.requestFocus(),

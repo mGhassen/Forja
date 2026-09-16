@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/components/empty.dart';
@@ -41,6 +42,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.pad,
     this.itemAccessory,
     this.itemHealth,
+    this.itemHealthListenable,
     this.onItemInteractiveActive,
     this.loadEpgProgrammes,
   });
@@ -69,6 +71,10 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Live channel stream health (`null` unknown).
   final bool? Function(Map<String, dynamic> item)? itemHealth;
+
+  /// Per-channel health listenable (preferred over [itemHealth] for grids).
+  final ValueListenable<bool?>? Function(Map<String, dynamic> item)?
+      itemHealthListenable;
 
   /// Hover/focus dwell for host URL probe (live channels).
   final void Function(
@@ -234,6 +240,7 @@ class CatalogCardsGrid extends StatelessWidget {
                   ? null
                   : () => loadEpgProgrammes!(item),
               health: itemHealth?.call(item),
+              healthListenable: itemHealthListenable?.call(item),
               highlighted: selectedItemId != null &&
                   selectedItemId!.isNotEmpty &&
                   selectedItemId == id,

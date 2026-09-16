@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -9,8 +10,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Pre-wipe IPTV live channel tile (logo + title + NOW/NEXT EPG strip).
 ///
-/// Props-only paint — host supplies [health], probe via [onInteractiveActive],
-/// favorite via [favoriteBuilder], programmes for footer + long-press sheet.
+/// Props-only paint — host supplies [health] / [healthListenable], probe via
+/// [onInteractiveActive], favorite via [favoriteBuilder], programmes for
+/// footer + long-press sheet.
 class CatalogChannelCard extends StatefulWidget {
   const CatalogChannelCard({
     super.key,
@@ -19,6 +21,7 @@ class CatalogChannelCard extends StatefulWidget {
     this.programmes = const [],
     this.loadProgrammes,
     this.health,
+    this.healthListenable,
     this.highlighted = false,
     this.width,
     this.height,
@@ -36,6 +39,9 @@ class CatalogChannelCard extends StatefulWidget {
   /// Lazy short-EPG (host). Used when [programmes] is empty / for long-press refresh.
   final Future<List<GuideEpgProgramme>> Function()? loadProgrammes;
   final bool? health;
+
+  /// Per-channel health — preferred so probe results do not rebuild sibling cards.
+  final ValueListenable<bool?>? healthListenable;
   final bool highlighted;
   final double? width;
   final double? height;
@@ -156,21 +162,21 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     super.dispose();
   }
 
-  Color _surface(bool active) {
-    if (widget.health == false) {
+  Color _surface(bool? health, bool active) {
+    if (health == false) {
       return const Color(0xFFEF4444).withValues(alpha: active ? 0.11 : 0.08);
     }
     return Colors.white.withValues(alpha: active ? 0.09 : 0.05);
   }
 
-  Color _border(bool active) {
+  Color _border(bool? health, bool active) {
     if (widget.highlighted && !active) {
       return ForjaShellColors.chipSelectedBorder;
     }
-    if (widget.health == null) {
+    if (health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
-    if (widget.health!) {
+    if (health) {
       return const Color(0xFF22C55E).withValues(alpha: active ? 0.62 : 0.45);
     }
     return const Color(0xFFEF4444).withValues(alpha: active ? 0.72 : 0.55);
@@ -194,24 +200,35 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
 
   @override
   Widget build(BuildContext context) {
+    final listenable = widget.healthListenable;
+    if (listenable != null) {
+      return ValueListenableBuilder<bool?>(
+        valueListenable: listenable,
+        builder: (context, health, _) => _buildCard(context, health: health),
+      );
+    }
+    return _buildCard(context, health: widget.health);
+  }
+
+  Widget _buildCard(BuildContext context, {required bool? health}) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final active = _active;
     final radius = tv ? InteractivePosterCard.cardBorderRadius(context) : 12.0;
     final body = tv
-        ? _buildTvBody(context, active: active)
-        : _buildDesktopBody(context, active: active);
+        ? _buildTvBody(context, active: active, health: health)
+        : _buildDesktopBody(context, active: active, health: health);
 
-    Widget card = AnimatedContainer(
-      duration: tv ? Duration.zero : const Duration(milliseconds: 150),
-      curve: Curves.easeOutCubic,
+    // Instant hover chrome — AnimatedContainer on every tile while sweeping
+    // the mouse is the stutter (grid health rebuilds made it worse).
+    Widget card = Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: tv ? Colors.transparent : _surface(active || widget.highlighted),
+        color: tv ? Colors.transparent : _surface(health, active || widget.highlighted),
         borderRadius: BorderRadius.circular(radius),
         border: tv && !active && !widget.highlighted
             ? Border.all(color: Colors.transparent)
-            : Border.all(color: _border(active)),
+            : Border.all(color: _border(health, active)),
       ),
       child: ShellPaintScope.focusableTap(
         context: context,
@@ -238,7 +255,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     return card;
   }
 
-  Widget _buildDesktopBody(BuildContext context, {required bool active}) {
+  Widget _buildDesktopBody(
+    BuildContext context, {
+    required bool active,
+    required bool? health,
+  }) {
     final fav = widget.favoriteBuilder?.call(active: active);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -253,11 +274,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                 ),
                 child: _logoThumb(contain: true, padding: 10),
               ),
-              Positioned.fill(
-                child: AnimatedOpacity(
-                  opacity: active ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: const DecoratedBox(
+              if (active)
+                const Positioned.fill(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: Color(0x52000000),
                       borderRadius: BorderRadius.vertical(
@@ -266,15 +285,14 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                     ),
                   ),
                 ),
-              ),
               ShellCardPlayOverlay(active: false, visible: active),
               if (fav != null)
                 Positioned(top: 4, left: 4, child: fav),
-              if (widget.health != null)
+              if (health != null)
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: _healthDot(widget.health!),
+                  child: _healthDot(health),
                 ),
             ],
           ),
@@ -295,7 +313,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                   overflow: TextOverflow.ellipsis,
                   softWrap: true,
                   style: GoogleFonts.plusJakartaSans(
-                    color: widget.health == false
+                    color: health == false
                         ? Colors.white54
                         : Colors.white,
                     fontSize: 12,
@@ -312,7 +330,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
     );
   }
 
-  Widget _buildTvBody(BuildContext context, {required bool active}) {
+  Widget _buildTvBody(
+    BuildContext context, {
+    required bool active,
+    required bool? health,
+  }) {
     final radius = InteractivePosterCard.cardBorderRadius(context);
     final inset = InteractivePosterCard.scaled(context, 8).clamp(4.0, 8.0);
     final titleSize = InteractivePosterCard.titleFontSize(context);
@@ -349,7 +371,7 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      color: widget.health == false
+                      color: health == false
                           ? Colors.white54
                           : Colors.white,
                       fontSize: titleSize,
@@ -369,11 +391,11 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
           ),
           if (fav != null)
             Positioned(top: inset, left: inset, child: fav),
-          if (widget.health != null)
+          if (health != null)
             Positioned(
               top: inset,
               right: inset,
-              child: _healthDot(widget.health!, compact: true),
+              child: _healthDot(health, compact: true),
             ),
         ],
       ),

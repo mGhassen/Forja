@@ -21,6 +21,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
   static final Map<String, bool> _sessionHealth = {};
 
   final Map<String, bool> _health = {};
+  final Map<String, ValueNotifier<bool?>> _listenables = {};
   final Set<String> _inFlight = {};
   final List<({String key, String url})> _queue = [];
   final Map<String, Timer> _debounce = {};
@@ -28,6 +29,21 @@ class LazyUrlHealthProbe extends ChangeNotifier
 
   @override
   bool? healthFor(String key) => _health[key] ?? _sessionHealth[key];
+
+  /// Per-key listenable — catalog cards subscribe so one probe does not rebuild
+  /// the whole grid ([ChangeNotifier] still fires for short picker lists).
+  ValueListenable<bool?> listenableFor(String key) {
+    final k = key.trim();
+    return _listenables.putIfAbsent(
+      k,
+      () => ValueNotifier<bool?>(healthFor(k)),
+    );
+  }
+
+  void _publish(String key, bool ok) {
+    final n = _listenables[key];
+    if (n != null && n.value != ok) n.value = ok;
+  }
 
   /// Cache a probe result from a header-aware check (no URL re-fetch).
   @override
@@ -42,6 +58,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
       _health[k] = false;
       _sessionHealth.remove(k);
     }
+    _publish(k, ok);
     notifyListeners();
     onResult?.call(k, ok);
   }
@@ -129,6 +146,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
         _health[key] = false;
         _sessionHealth.remove(key);
       }
+      _publish(key, ok);
       notifyListeners();
       onResult?.call(key, ok);
     } catch (_) {
@@ -136,6 +154,7 @@ class LazyUrlHealthProbe extends ChangeNotifier
       if (_health[key] == false) return;
       _health[key] = false;
       _sessionHealth.remove(key);
+      _publish(key, false);
       notifyListeners();
       onResult?.call(key, false);
     } finally {
@@ -157,6 +176,10 @@ class LazyUrlHealthProbe extends ChangeNotifier
   void dispose() {
     _disposed = true;
     cancelAll();
+    for (final n in _listenables.values) {
+      n.dispose();
+    }
+    _listenables.clear();
     super.dispose();
   }
 }

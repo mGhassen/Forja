@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1480,7 +1481,8 @@ class PackPaintTree extends StatelessWidget {
           }
 
           CatalogCardsGrid buildGrid({
-            bool? Function(Map<String, dynamic>)? healthFor,
+            ValueListenable<bool?>? Function(Map<String, dynamic>)?
+                healthListenableFor,
             void Function(Map<String, dynamic> item, {required bool active})?
                 onInteractiveActive,
             Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
@@ -1499,7 +1501,7 @@ class PackPaintTree extends StatelessWidget {
                       ? null
                       : spec['emptyDescription']?.toString(),
               itemAccessory: _liveFavoriteAccessory,
-              itemHealth: healthFor,
+              itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
@@ -1520,9 +1522,10 @@ class PackPaintTree extends StatelessWidget {
                   {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
                 return ChannelCatalogHealthHost(
                   builder: (context,
-                      {required healthFor, required onInteractiveActive}) {
+                      {required healthListenableFor,
+                      required onInteractiveActive}) {
                     return buildGrid(
-                      healthFor: healthFor,
+                      healthListenableFor: healthListenableFor,
                       onInteractiveActive: onInteractiveActive,
                       loadEpgProgrammes: loadShortEpgProgrammes,
                     );
