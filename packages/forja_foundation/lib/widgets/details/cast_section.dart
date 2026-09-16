@@ -52,33 +52,25 @@ class DetailsCastSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (cast.isEmpty) return const SizedBox.shrink();
 
-    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    const homePad = ShellTokens.homeSectionHorizontalPadding;
     final outdent = outdentHorizontal;
-    final useHomeInsets = outdent > 0;
 
     final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (useHomeInsets)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              homePad,
-              0,
-              homePad,
-              DetailsTokens.sectionTitleGap,
-            ),
-            child: Text(title, style: titleStyle),
-          )
-        else ...[
-          Text(title, style: titleStyle),
-          const SizedBox(height: _titleGap),
-        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            homePad,
+            0,
+            homePad,
+            _titleGap,
+          ),
+          child: Text(title, style: titleStyle),
+        ),
         FocusTraversalGroup(
           child: HorizontalScroller(
             height: _rowHeight,
-            padding: useHomeInsets
-                ? EdgeInsets.only(left: homePad)
-                : EdgeInsets.zero,
+            padding: const EdgeInsets.symmetric(horizontal: homePad),
             itemCount: cast.length,
             separatorBuilder: (_, _) => const SizedBox(
               width: _horizontalGap,

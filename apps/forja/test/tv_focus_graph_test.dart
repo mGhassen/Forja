@@ -518,11 +518,11 @@ void main() {
   );
 
   testWidgets(
-    'settings linear scope: ↓ and → both walk next (vertical list, not sideways)',
+    'settings page: ↑ at top stays in-page; ← exits via onBackwardEdge',
     (tester) async {
       final a = FocusNode(debugLabel: 'a');
       final b = FocusNode(debugLabel: 'b');
-      final c = FocusNode(debugLabel: 'c');
+      var exited = false;
       const meta = ShellTvFocusMeta(
         tabId: 'settings',
         zone: ShellTvZone.settings,
@@ -551,14 +551,17 @@ void main() {
                 enabled: true,
                 child: Scaffold(
                   body: ShellTvContainDpad(
-                    child: ShellTvLinearFocusScope(
+                    child: ShellTvLinearFocusEdges(
+                      onBackwardEdge: () {
+                        exited = true;
+                        return true;
+                      },
                       child: FocusTraversalGroup(
                         policy: ReadingOrderTraversalPolicy(),
                         child: Column(
                           children: [
                             row(a, autoFocus: true),
                             row(b),
-                            row(c),
                           ],
                         ),
                       ),
@@ -573,30 +576,26 @@ void main() {
       await tester.pump();
       expect(a.hasFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pump();
-      expect(b.hasFocus, isTrue);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(c.hasFocus, isTrue, reason: '→ aliases next in linear settings');
-
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(a.hasFocus, isTrue, reason: '↑ must not leave the settings page');
+      expect(exited, isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
       expect(b.hasFocus, isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
-      expect(a.hasFocus, isTrue, reason: '← aliases previous in linear settings');
+      expect(exited, isTrue, reason: '← exits to category rail');
 
       a.dispose();
       b.dispose();
-      c.dispose();
     },
   );
 
   testWidgets(
-    'settings detail wraps ShellTvLinearFocusScope (vertical list)',
+    'settings page wraps ShellTvContainDpad without linear 1D scope',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -607,9 +606,7 @@ void main() {
               config: shellPlatformConfigFor(ShellProfile.tv),
               child: const Scaffold(
                 body: ShellTvContainDpad(
-                  child: ShellTvLinearFocusScope(
-                    child: SizedBox(width: 100, height: 100),
-                  ),
+                  child: SizedBox(width: 100, height: 100),
                 ),
               ),
             ),
@@ -618,7 +615,7 @@ void main() {
       );
       await tester.pump();
       final boxCtx = tester.element(find.byType(SizedBox));
-      expect(ShellTvLinearFocusScope.activeOf(boxCtx), isTrue);
+      expect(ShellTvLinearFocusScope.activeOf(boxCtx), isFalse);
       expect(ShellTvContainDpad.activeOf(boxCtx), isTrue);
     },
   );

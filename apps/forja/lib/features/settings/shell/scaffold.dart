@@ -266,14 +266,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   }
 
   Widget _wrapCompactTvFocus(Widget child) {
-    // Settings lists are vertical reading-order (↑/← prev, ↓/→ next) — not
-    // spatial sideways jumps between side-by-side controls.
+    // Each settings page is its own zone — spatial ↑/↓/←/→, no 1D line.
     return ShellTvContainDpad(
-      child: ShellTvLinearFocusScope(
-        child: FocusTraversalGroup(
-          policy: ReadingOrderTraversalPolicy(),
-          child: child,
-        ),
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: child,
       ),
     );
   }
@@ -362,26 +359,23 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                         child: SettingsDetailEnter(
                           enterToken: _detailEnterToken,
                           child: ShellTvContainDpad(
-                            child: ShellTvLinearFocusScope(
-                              child: ShellTvLinearFocusEdges(
-                                onBackwardEdge: () {
-                                  // ← anywhere in the page → category.
-                                  return _handlePageBack();
-                                },
-                                child: FocusTraversalGroup(
-                                  policy: ReadingOrderTraversalPolicy(),
-                                  child: SettingsAddonsAwareScaffold(
-                                    categoryTitle:
-                                        selectedMeta?.title ?? 'Settings',
-                                    categoryId: widget.selectedId,
-                                    categoryAdminOnly:
-                                        selectedMeta?.adminOnly ?? false,
-                                    scrollable: !(selectedMeta?.fillViewport ??
-                                        false),
-                                    child: buildSettingsCategoryBody(
-                                      widget.selectedId,
-                                      visibility,
-                                    ),
+                            // Spatial 2D inside the page. ← exits to the
+                            // category rail (Back same ladder). ↑ never exits.
+                            child: ShellTvLinearFocusEdges(
+                              onBackwardEdge: () => _handlePageBack(),
+                              child: FocusTraversalGroup(
+                                policy: ReadingOrderTraversalPolicy(),
+                                child: SettingsAddonsAwareScaffold(
+                                  categoryTitle:
+                                      selectedMeta?.title ?? 'Settings',
+                                  categoryId: widget.selectedId,
+                                  categoryAdminOnly:
+                                      selectedMeta?.adminOnly ?? false,
+                                  scrollable: !(selectedMeta?.fillViewport ??
+                                      false),
+                                  child: buildSettingsCategoryBody(
+                                    widget.selectedId,
+                                    visibility,
                                   ),
                                 ),
                               ),

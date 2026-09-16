@@ -50,6 +50,8 @@ abstract final class PackHttp {
         ? uri.port
         : (uri.scheme == 'https' ? 443 : 80);
     final client = HttpClient();
+    // Custom factory must return a SecureSocket for https — plain TCP on :443
+    // makes Dart parse TLS bytes as HTTP → "Invalid request method".
     client.connectionFactory = (url, proxyHost, proxyPort) {
       if (proxyHost != null) {
         return Socket.startConnect(proxyHost, proxyPort!);
@@ -60,7 +62,16 @@ abstract final class PackHttp {
         (a) => a.type == InternetAddressType.IPv4,
         orElse: () => addrs.first,
       );
-      return Socket.startConnect(preferred, port);
+      if (url.scheme != 'https') {
+        return Socket.startConnect(preferred, port);
+      }
+      // Connect to resolved IP, then TLS with SNI = hostname (not the IP).
+      return Socket.startConnect(preferred, port).then((plain) {
+        final secure = plain.socket.then(
+          (s) => SecureSocket.secure(s, host: url.host),
+        );
+        return ConnectionTask.fromSocket(secure, plain.cancel);
+      });
     };
 
     final io = IOClient(client);

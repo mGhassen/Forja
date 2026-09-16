@@ -1861,9 +1861,66 @@ class KitSearchScreen extends StatefulWidget {
   State<KitSearchScreen> createState() => _KitSearchScreenState();
 }
 
+class _KitSearchPageResult {
+  const _KitSearchPageResult({
+    required this.results,
+    required this.hasMore,
+  });
+
+  final List<KitSearchResult> results;
+  final bool hasMore;
+}
+
 class _KitSearchScreenState extends State<KitSearchScreen> {
-  Future<List<KitSearchResult>> _packSearch(String query) async {
-    final base = <String, dynamic>{'query': query, 'limit': 40, 'page': 1};
+  static const _pageSize = 20;
+
+  String _pagingQuery = '';
+  int _pagingPage = 0;
+  Map<String, dynamic>? _pagingSeed;
+  final List<String> _pagingExcludeIds = [];
+  List<KitSearchResult> _pagingResults = const [];
+
+  String? _excludeIdFor(KitSearchResult result) {
+    final payload = result.payload;
+    if (payload is! MetaItem) return null;
+    final tmdb = payload.ids['tmdb'];
+    if (tmdb == null) return null;
+    final type = (payload.tmdbMediaType ?? payload.type).trim();
+    if (type.isEmpty) return null;
+    return '$type:$tmdb'.toLowerCase();
+  }
+
+  Map<String, dynamic>? _seedJsonFor(KitSearchResult? result) {
+    final payload = result?.payload;
+    if (payload is! MetaItem) return null;
+    return payload.toJson();
+  }
+
+  KitSearchResult _resultFromMeta(MetaItem item) {
+    return KitSearchResult(
+      key: item.id,
+      title: item.name,
+      posterUrl: item.poster,
+      backdropUrl: item.background.isEmpty ? null : item.background,
+      subtitle: kitPosterSubtitle(item),
+      rating: item.rating,
+      payload: item,
+    );
+  }
+
+  Future<_KitSearchPageResult> _packSearchPage({
+    required String query,
+    required int page,
+    Map<String, dynamic>? seed,
+    List<String> excludeIds = const [],
+  }) async {
+    final base = <String, dynamic>{
+      'query': query,
+      'limit': _pageSize,
+      'page': page,
+      ?'seed': seed,
+      if (excludeIds.isNotEmpty) 'excludeIds': excludeIds,
+    };
     final params = widget.applyChromeFilters
         ? catalogParamsWithFilters(
             base,
@@ -1878,19 +1935,73 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
       action: 'search',
       params: params,
     );
-    if (!env.ok) return const [];
-    return [
-      for (final item in env.items)
-        KitSearchResult(
-          key: item.id,
-          title: item.name,
-          posterUrl: item.poster,
-          backdropUrl: item.background.isEmpty ? null : item.background,
-          subtitle: kitPosterSubtitle(item),
-          rating: item.rating,
-          payload: item,
-        ),
-    ];
+    if (!env.ok) {
+      return const _KitSearchPageResult(results: [], hasMore: false);
+    }
+    return _KitSearchPageResult(
+      results: [for (final item in env.items) _resultFromMeta(item)],
+      hasMore: catalogRailHasMoreFrom(env.data) ?? false,
+    );
+  }
+
+  Future<List<KitSearchResult>> _packSearch(String query) async {
+    final page = await _packSearchPage(query: query, page: 1);
+    return page.results;
+  }
+
+  Future<void> _packSearchProgressive(
+    String query,
+    KitSearchEmit emit,
+  ) async {
+    _pagingQuery = query;
+    _pagingPage = 1;
+    _pagingSeed = null;
+    _pagingExcludeIds.clear();
+    _pagingResults = const [];
+
+    final page = await _packSearchPage(query: query, page: 1);
+    final results = <KitSearchResult>[];
+    final seen = <String>{};
+    for (final r in page.results) {
+      if (!seen.add(r.key)) continue;
+      results.add(r);
+      final ex = _excludeIdFor(r);
+      if (ex != null) _pagingExcludeIds.add(ex);
+    }
+    _pagingResults = results;
+    _pagingSeed = _seedJsonFor(results.isEmpty ? null : results.first);
+    emit(results, done: true, canLoadMore: page.hasMore);
+  }
+
+  Future<void> _packSearchLoadMore(KitSearchEmit emit) async {
+    if (_pagingQuery.isEmpty || _pagingPage <= 0) {
+      emit(_pagingResults, done: true, canLoadMore: false);
+      return;
+    }
+    final nextPage = _pagingPage + 1;
+    final page = await _packSearchPage(
+      query: _pagingQuery,
+      page: nextPage,
+      seed: _pagingSeed,
+      excludeIds: List<String>.from(_pagingExcludeIds),
+    );
+    final merged = List<KitSearchResult>.from(_pagingResults);
+    final seen = <String>{for (final r in merged) r.key};
+    KitSearchResult? hopSeed;
+    for (final r in page.results) {
+      if (!seen.add(r.key)) continue;
+      merged.add(r);
+      hopSeed ??= r;
+      final ex = _excludeIdFor(r);
+      if (ex != null) _pagingExcludeIds.add(ex);
+    }
+    _pagingPage = nextPage;
+    _pagingResults = merged;
+    // Next related level hops off the first new card — not the same film.
+    if (hopSeed != null) {
+      _pagingSeed = _seedJsonFor(hopSeed);
+    }
+    emit(merged, done: true, canLoadMore: page.hasMore);
   }
 
   Future<List<String>> _packRecommendations({
@@ -1976,6 +2087,8 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
             tvTabId: widget.tabId,
             structuredSearch: structuredSearch,
             onSearch: onSearch,
+            onSearchProgressive: _packSearchProgressive,
+            onSearchLoadMore: _packSearchLoadMore,
             loadRecommendations: loadRecommendations ?? _packRecommendations,
             onOpen: onOpen,
           );

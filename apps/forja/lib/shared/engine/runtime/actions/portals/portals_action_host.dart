@@ -310,7 +310,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
 Future<String?> resolvePortalsPluginId({String? preferTabId}) =>
     PortalsHost.resolvePluginId(preferTabId: preferTabId);
 
-class _PortalsPanelHost extends ConsumerWidget {
+class _PortalsPanelHost extends ConsumerStatefulWidget {
   const _PortalsPanelHost({
     required this.child,
     required this.tabId,
@@ -321,14 +321,34 @@ class _PortalsPanelHost extends ConsumerWidget {
   final String tabId;
   final bool shellTabVisible;
 
+  @override
+  ConsumerState<_PortalsPanelHost> createState() => _PortalsPanelHostState();
+}
+
+class _PortalsPanelHostState extends ConsumerState<_PortalsPanelHost> {
   static const _fallbackWidth = 380.0;
 
+  /// Matches v1.5.36: soft-pull cloud assignments when the IPTV hub is shown,
+  /// not only when the Portals chip is tapped.
+  bool _prepared = false;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (!shellTabVisible) return child;
-    final key = tabId.trim();
+  Widget build(BuildContext context) {
+    if (!widget.shellTabVisible) {
+      _prepared = false;
+      return widget.child;
+    }
+    final key = widget.tabId.trim();
+    if (!_prepared && key.isNotEmpty) {
+      _prepared = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.shellTabVisible) return;
+        preparePortalsPanel(ProviderScope.containerOf(context), key);
+      });
+    }
     final open = ref.watch(portalsPanelOpenProvider(key));
-    final inv = open ? ref.watch(portalsInventoryProvider(key)).asData?.value : null;
+    final inv =
+        open ? ref.watch(portalsInventoryProvider(key)).asData?.value : null;
     final width = (inv?.width ?? _fallbackWidth);
     return SidePanelOverlay(
       open: open,
@@ -345,7 +365,7 @@ class _PortalsPanelHost extends ConsumerWidget {
               },
             )
           : const SizedBox.shrink(),
-      child: child,
+      child: widget.child,
     );
   }
 }

@@ -389,8 +389,10 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       toolbar = TvKitRow(
         tabId: 'settings',
         rowId: _toolbarRowId,
-        sortOrder: 10,
+        // Clear of settings-categories (0). ↑ stays on this install page.
+        sortOrder: 110,
         itemCount: 2,
+        onFocusUp: () {},
         child: toolbar,
       );
     }
@@ -428,7 +430,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       list = TvKitRow(
         tabId: 'settings',
         rowId: _listRowId,
-        sortOrder: 20,
+        sortOrder: 120,
         itemCount: candidates.length,
         orientation: ShellTvRowOrientation.vertical,
         onFocusUp: _focusToolbar,

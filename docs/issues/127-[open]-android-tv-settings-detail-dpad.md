@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) |
+| **Progress** | **8 / 8** fix · **0 / 2** acceptance (legacy ladder) · **1 / 1** acceptance (corrected Back) · **0 / 2** acceptance (Addons ↑ + ← exit) · **0 / 2** acceptance (spatial pages) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I127-T05 | OK/→ from category rail lands focus on first detail control (`SettingsDetailEnter` + scaffold land) | ✅ |
 | 6 | I127-T06 | Addons list: isolate `TvKitRow` from `settings-categories` (`sortOrder` 100+, explicit ↑/↓) so ↑ from IPTV lands on Playback | ✅ |
 | 7 | I127-T07 | Detail ← exit: first linear control + row column-0 call `pageBack` (same ladder as Back) | ✅ |
+| 8 | I127-T08 | Drop settings `ShellTvLinearFocusScope` (spatial pages); ↑ never calls pageBack; packs chip/install rows clear of `settings-categories` | ✅ |
 
 ---
 
@@ -38,17 +39,17 @@
 | 3 | I127-A03 | Back: nested drill → detail list → selected category → nav (no hop to first category); Addons→Stremio restores list focus | ✅ |
 | 4 | I127-A04 | Addons: ↑ from IPTV lands on Playback with green focus chrome (not category rail / invisible) | ⬜ |
 | 5 | I127-A05 | Detail: ↑/↓/→ stay in the right page; ← or Back returns to the selected category (or closes nested drill first) | ⬜ |
+| 6 | I127-A06 | Settings pages are spatial (→ ≠ next-in-list); ↑ on first control stays in-page (Packs install + Playback) | ⬜ |
+| 7 | I127-A07 | Forja Packs chip strip / install checklist ↑ never lands on the category rail | ⬜ |
 
 ---
 
 ## Summary
 
-On **Android TV**, Settings uses a left category rail and a right detail pane. **OK** / **→** should enter the detail; **↑/↓/→** stay in the right page; **←** or **Back** returns to the left rail (nested drill first).
+On **Android TV**, Settings uses a left category rail and a right category page. **OK** / **→** should enter the page; **↑/↓/→** stay in that page (spatial neighbors — not a 1D next/prev line); **←** or **Back** returns to the left rail (nested drill first).
 
-**Regression (Addons):** Addon rows registered `TvKitRow` with `sortOrder: index` (Playback = 0), colliding with `settings-categories` (also 0). ↑ from IPTV called `moveVerticalInTab` and focused the category rail — Addons looked focused while Playback lost chrome (“invisible”).
+**Regression:** wrapping every category page in `ShellTvLinearFocusScope` remapped **→** = next and made **↑** on the first control call `onBackwardEdge` → category rail. Pack chip strips also used `sortOrder: 0` (same as `settings-categories`), so ↑ jumped left.
 
-**Symptom fix:** Trap D-pad inside the detail `FocusScope` + contain; Back / ← ladder is nested drill → detail → selected category → nav (no Profile hop).
-
-**Root fix (T06/T07):** Addons ↑/↓ only walk sibling addon rows (`sortOrder` 100+, `onFocusUp`/`onFocusDown`); ← at column 0 / first linear control runs `pageBack`.
+**Fix (T08):** spatial D-pad inside each page (`ContainDpad` + `FocusScope`); **↑** never pageBack; packs rows at `sortOrder` 100+ with ↑ traps.
 
 **Related:** [RFC-033](../rfc/033-[open]-settings-ux-redesign.md) · [settings overview](../features/settings/overview.md)

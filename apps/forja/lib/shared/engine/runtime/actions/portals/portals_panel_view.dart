@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -114,19 +115,23 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
   }
 
-  /// Wipe portal-blind feed cache, then soft-bump so the active portal loads
-  /// (disk cache OK — no pack `force`). Pair with [onClearCatalog] first when
-  /// the grid must empty before an async select finishes.
+  /// Mutate path (add/edit/delete/deal) — wipe in-memory feed, soft-bump.
+  /// Pack disk catalog still OK (`forceNetwork: false`).
   void _reloadHubCatalog(String pluginId) {
     EngineCache.instance.wipePlugin(pluginId);
     PackLoadedPaint.clearMemosForPlugin(pluginId);
     PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
   }
 
-  /// Before catalog-reload coupling: select only wrote active + refreshed the
-  /// panel (fast). Keep that for the panel; clear + load catalog separately
-  /// without `_busy` so selection is not blocked on flutter_js / feed.
+  /// Soft switch — keep per-portal EngineCache + pack disk; no wipe / clear.
   Future<void> _selectPortal(String portalKey) async {
+    final inv =
+        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    final active = (inv?.activeKey ?? '').trim();
+    if (active.isNotEmpty && PortalsHost.samePortalKey(active, portalKey)) {
+      return;
+    }
+
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
       ForjaToast.error('No portals pack installed');
@@ -134,19 +139,17 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     }
     if (!mounted) return;
 
-    // Instant panel highlight — vault, no pack / catalog queue.
     await PortalsHost.setActiveKey(portalKey);
     if (!mounted) return;
-    PortalChannelGuideOpen.invalidateLiveCatalog();
     invalidatePortalsChrome(ref, widget.tabId);
 
-    // Clean grid + loading now; feed reads vault active (already set).
-    EngineCache.instance.wipePlugin(pluginId);
-    PackLoadedPaint.clearMemosForPlugin(pluginId);
-    PackChromeScope.maybeOf(context)?.onClearCatalog();
-    _reloadHubCatalog(pluginId);
+    // Stamp portalStoreKey into feed params so EngineCache is per-portal.
+    await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
+    if (!mounted) return;
 
-    // Pack selectPortal for pack-side consistency — do not hold panel busy.
+    PackLoadedPaint.clearMemosForPlugin(pluginId);
+    PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+
     unawaited((() async {
       try {
         final env = await PortalsHost.select(
@@ -242,37 +245,18 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _editPortal(String portalKey) async {
-    final portal = await PortalsHost.loadVaultPortal(portalKey);
-    if (portal == null) {
+    VerifiedPortal? verified;
+    for (final v in await PortalsHost.loadVaultVerifiedPortals()) {
+      if (!PortalsHost.samePortalKey(v.key, portalKey)) continue;
+      verified = v;
+      break;
+    }
+    if (verified == null) {
       ForjaToast.error('Portal not found');
       return;
     }
     if (!mounted) return;
-    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
-    String label = '';
-    String name = portal.username;
-    String expiry = '';
-    String max = '';
-    String active = '';
-    for (final p in inv?.portals ?? const <PortalListItem>[]) {
-      if (!PortalsHost.samePortalKey(p.id, portalKey)) continue;
-      label = p.label;
-      name = p.label;
-      expiry = p.expiry ?? '';
-      max = p.maxConnections ?? '';
-      active = p.activeConnections ?? '';
-      break;
-    }
-    await _openPortalForm(
-      existing: VerifiedPortal(
-        portal: portal,
-        label: label,
-        name: name,
-        expiry: expiry,
-        maxConnections: max.isEmpty ? '1' : max,
-        activeConnections: active.isEmpty ? '0' : active,
-      ),
-    );
+    await _openPortalForm(existing: verified);
   }
 
   Future<void> _dispatchPanelAction(PortalsPanelAction a) async {

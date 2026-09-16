@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/portals/store/storage.dart';
 
 /// Per-hub open state — each tab has its own bool.
 final portalsPanelOpenProvider =
@@ -26,6 +27,14 @@ class PortalsInventoryNotifier
   @override
   Future<PortalsInventory> build(String tabId) async {
     ref.keepAlive();
+    // Soft-pull / admin assign / Deal write PortalStore → notify; refresh vault paint.
+    void onStoreRev() {
+      unawaited(softReload());
+      ref.invalidate(portalsChipSummaryProvider(tabId));
+    }
+
+    PortalStore.listRevision.addListener(onStoreRev);
+    ref.onDispose(() => PortalStore.listRevision.removeListener(onStoreRev));
     return PortalsHost.listFromVault(preferTabId: tabId);
   }
 

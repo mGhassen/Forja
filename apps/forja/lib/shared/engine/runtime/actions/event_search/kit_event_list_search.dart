@@ -152,12 +152,14 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
               required controller,
               required focusNode,
               required onChanged,
+              required onSubmitted,
               required onEscape,
             }) {
               return TvBrowseTextField(
                 controller: controller,
                 focusNode: focusNode,
                 onChanged: onChanged,
+                onSubmitted: onSubmitted,
                 onEscape: onEscape,
                 browsePlaceholder: widget.placeholder,
                 browseHintStyle: GoogleFonts.plusJakartaSans(

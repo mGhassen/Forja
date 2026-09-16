@@ -10,8 +10,9 @@ const kEventListSearchExpanded = 260.0;
 
 /// Expanding list search for `kit.topBar` (`action: eventSearch`) — Zone A.
 ///
-/// Circle tool → inline field. Host owns query persistence / TV browse field /
-/// Cmd+F via [onExpand] / [fieldBuilder].
+/// Circle tool → inline field. Typing stays local until Enter / OK / submit
+/// (or clear). Host owns committed query / TV browse field / Cmd+F via
+/// [fieldBuilder].
 class EventListSearch extends StatefulWidget {
   const EventListSearch({
     super.key,
@@ -38,6 +39,8 @@ class EventListSearch extends StatefulWidget {
   });
 
   final String query;
+
+  /// Committed query only — fired on submit / clear, not per keystroke.
   final ValueChanged<String> onQueryChanged;
   final String tooltip;
   final String placeholder;
@@ -54,6 +57,7 @@ class EventListSearch extends StatefulWidget {
     required TextEditingController controller,
     required FocusNode focusNode,
     required ValueChanged<String> onChanged,
+    required ValueChanged<String> onSubmitted,
     required VoidCallback onEscape,
   })? fieldBuilder;
 
@@ -159,11 +163,15 @@ class EventListSearchState extends State<EventListSearch>
     });
   }
 
+  void _commit(String value) {
+    widget.onQueryChanged(value);
+  }
+
   void _close({required bool clearQuery}) {
     _focus.unfocus();
     if (clearQuery) {
       _ctrl.clear();
-      widget.onQueryChanged('');
+      _commit('');
     }
     setState(() => _open = false);
     unawaited(_anim.reverse());
@@ -288,14 +296,21 @@ class EventListSearchState extends State<EventListSearch>
           context,
           controller: _ctrl,
           focusNode: _focus,
-          onChanged: widget.onQueryChanged,
+          onChanged: (_) {},
+          onSubmitted: (v) {
+            _commit(v);
+            _focus.unfocus();
+          },
           onEscape: () => _close(clearQuery: true),
         ) ??
         TextField(
           controller: _ctrl,
           focusNode: _focus,
-          onChanged: widget.onQueryChanged,
-          onSubmitted: (_) => _focus.unfocus(),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (v) {
+            _commit(v);
+            _focus.unfocus();
+          },
           style: TextStyle(color: Colors.white, fontSize: widget.fontSize),
           cursorColor: ForjaShellColors.brandGreen,
           decoration: InputDecoration(

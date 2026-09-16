@@ -69,17 +69,15 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ShellTvContainDpad(
-        child: ShellTvLinearFocusScope(
-          child: FocusTraversalGroup(
-            policy: ReadingOrderTraversalPolicy(),
-            child: SettingsAddonsAwareScaffold(
-              categoryTitle: meta?.title ?? 'Settings',
-              categoryId: widget.categoryId,
-              categoryAdminOnly: meta?.adminOnly ?? false,
-              categoryBack: true,
-              scrollable: !(meta?.fillViewport ?? false),
-              child: buildSettingsCategoryBody(widget.categoryId, visibility),
-            ),
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: SettingsAddonsAwareScaffold(
+            categoryTitle: meta?.title ?? 'Settings',
+            categoryId: widget.categoryId,
+            categoryAdminOnly: meta?.adminOnly ?? false,
+            categoryBack: true,
+            scrollable: !(meta?.fillViewport ?? false),
+            child: buildSettingsCategoryBody(widget.categoryId, visibility),
           ),
         ),
       ),

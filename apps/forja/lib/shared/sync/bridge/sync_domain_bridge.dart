@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -374,6 +375,20 @@ class SyncDomainBridge {
     // before the 3s debounce push (229). Flush first; skip apply if still dirty.
     await flushIptvPushIfDirty();
     if (_iptvLocalGen != _iptvSyncedGen) {
+      // Admin / web assign can land while local is dirty. Flush may refuse
+      // shrink (cloud already larger) — still pull merge; cloud is master.
+      final localCount = (await PortalStore.load()).length;
+      final cloudCount = await SyncService.instance.countUserPortals();
+      if (cloudCount > localCount) {
+        debugPrint(
+          '[Sync] IPTV pull despite dirty — cloud ahead '
+          '($cloudCount > local $localCount)',
+        );
+        _pushTimers.remove(_domainIptv)?.cancel();
+        final ok = await _pullAndApplyUserPortals();
+        if (ok) _iptvSyncedGen = _iptvLocalGen;
+        return ok;
+      }
       debugPrint('[Sync] skip IPTV pull — local inventory still dirty');
       return false;
     }
@@ -1271,6 +1286,11 @@ class SyncDomainBridge {
     // Cloud → local cache only; never schedule a push that could race-wipe.
     await PortalStore.save(portals, scheduleSync: false);
     await PortalStore.saveFavorites(favoriteKeys, scheduleSync: false);
+    // save() mirrors vault unawaited — await here so panel softReload sees it.
+    await PortalVaultInventory.mirrorFromStore(
+      portals: portals,
+      favoriteKeys: favoriteKeys,
+    );
     PortalStore.notifyListChanged();
     return true;
   }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// One trailer card — absolute thumbnail URL + title (props only).
 class DetailsTrailerItem {
@@ -19,7 +20,7 @@ class DetailsTrailerItem {
   final bool official;
 }
 
-/// Horizontal trailers row — host wires play via [onTap].
+/// Horizontal trailers row — same gutters / scroller as Home catalog rails.
 class DetailsTrailersSection extends StatelessWidget {
   const DetailsTrailersSection({
     super.key,
@@ -33,6 +34,7 @@ class DetailsTrailersSection extends StatelessWidget {
   final List<DetailsTrailerItem> trailers;
   final void Function(int index) onTap;
   final String title;
+  /// Cancels parent horizontal padding so row insets match home catalog rows.
   final double outdentHorizontal;
   final Widget Function(
     BuildContext context, {
@@ -52,153 +54,145 @@ class DetailsTrailersSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (trailers.isEmpty) return const SizedBox.shrink();
 
-    final outdent = outdentHorizontal;
-    final useHomeInsets = outdent > 0;
-    final homePad = ShellTokens.homeSectionHorizontalPadding;
+    const homePad = ShellTokens.homeSectionHorizontalPadding;
     const thumbHeight = cardWidth * 9 / 16;
     const textBlock = 8 + 12 * 1.25 * 2;
     final trailerRowHeight =
         thumbHeight * ShellTokens.focusActiveScale + textBlock + 4;
+    final outdent = outdentHorizontal;
 
     final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (useHomeInsets)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              homePad,
-              0,
-              homePad,
-              DetailsTokens.sectionTitleGap,
-            ),
-            child: Text(title, style: titleStyle),
-          )
-        else ...[
-          Text(title, style: titleStyle),
-          const SizedBox(height: DetailsTokens.sectionTitleGap),
-        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            homePad,
+            0,
+            homePad,
+            DetailsTokens.sectionTitleGap,
+          ),
+          child: Text(title, style: titleStyle),
+        ),
         FocusTraversalGroup(
-          child: SizedBox(
+          child: HorizontalScroller(
             height: trailerRowHeight,
-            child: ListView.separated(
-              // Match Home HorizontalScroller / DetailsRailSection — hover
-              // scale paints into section gutters instead of clipping there.
-              clipBehavior: Clip.none,
-              scrollDirection: Axis.horizontal,
-              padding: useHomeInsets
-                  ? EdgeInsets.symmetric(horizontal: homePad)
-                  : EdgeInsets.zero,
-              itemCount: trailers.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final trailer = trailers[index];
-                final thumb = ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: cardWidth,
-                    height: thumbHeight,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ForjaNetworkImage(
-                          url: trailer.thumbnailUrl,
-                          fit: BoxFit.cover,
-                          error: ColoredBox(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            child: const Icon(
-                              Icons.movie_outlined,
-                              color: Colors.white24,
-                            ),
-                          ),
-                        ),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.45),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow_rounded,
-                              color: Colors.black,
-                              size: 26,
-                            ),
-                          ),
-                        ),
-                        if (trailer.official)
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Official',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-                final tappable = itemBuilder != null
-                    ? itemBuilder!(
-                        context,
-                        index: index,
-                        child: thumb,
-                      )
-                    : FocusableTap(
-                        onTap: () => onTap(index),
-                        borderRadius: BorderRadius.circular(10),
-                        child: thumb,
-                      );
-                return SizedBox(
+            padding: const EdgeInsets.symmetric(horizontal: homePad),
+            itemCount: trailers.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: ShellTokens.posterCardRowGap),
+            itemBuilder: (context, index) {
+              final trailer = trailers[index];
+              final thumb = ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
                   width: cardWidth,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  height: thumbHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      tappable,
-                      const SizedBox(height: 8),
-                      Text(
-                        trailer.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25,
+                      ForjaNetworkImage(
+                        url: trailer.thumbnailUrl,
+                        fit: BoxFit.cover,
+                        error: ColoredBox(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          child: const Icon(
+                            Icons.movie_outlined,
+                            color: Colors.white24,
+                          ),
                         ),
                       ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.45),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.black,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                      if (trailer.official)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Official',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+              final tappable = itemBuilder != null
+                  ? itemBuilder!(
+                      context,
+                      index: index,
+                      child: thumb,
+                    )
+                  : ShellPaintScope.focusableTap(
+                      context: context,
+                      onTap: () => onTap(index),
+                      borderRadius: 10,
+                      showFocusBorder: true,
+                      showFocusFill: false,
+                      listIndex: index,
+                      scaleOnFocus: ShellTokens.focusActiveScale,
+                      child: thumb,
+                    );
+              return SizedBox(
+                width: cardWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    tappable,
+                    const SizedBox(height: 8),
+                    Text(
+                      trailer.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],

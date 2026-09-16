@@ -280,11 +280,12 @@ class ShellTvDisableLinearFocus extends InheritedWidget {
       false;
 }
 
-/// Optional edge handlers for linear hosts.
+/// Optional edge handlers for linear hosts / Settings pages.
 ///
-/// Settings detail: [onBackwardEdge] runs on every ← (any control) → category
-/// rail — same ladder as Addons [TvKitRow] column-0 / [TvHeroActions] pageBack.
-/// Catalog hosts omit it (← stays previous in reading order).
+/// Settings category page: [onBackwardEdge] runs on every ← (any control) →
+/// category rail — same ladder as Addons [TvKitRow] column-0 /
+/// [TvHeroActions] pageBack. Catalog hosts omit it (← stays previous in
+/// reading order).
 class ShellTvLinearFocusEdges extends InheritedWidget {
   const ShellTvLinearFocusEdges({
     super.key,
@@ -326,12 +327,12 @@ KeyEventResult shellTvSettingsBackwardEdge({
 /// D-pad inside opt-in [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
 /// Default: ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop].
-/// When [ShellTvLinearFocusEdges.onBackwardEdge] is set (Settings detail), ←
-/// always exits the pane — ↑/↓ still walk the list (parity with Addons rows).
+/// When [ShellTvLinearFocusEdges.onBackwardEdge] is set (Settings pages), ←
+/// exits the page — **↑ never does** (failed ↑ traps in-page).
 /// Outside this scope, callers must use spatial [FocusNode.focusInDirection].
 ///
 /// Vertical holds use [ShellTvHoldAccel.lastStep] (set by the caller via
-/// [ShellTvHoldAccel.note]) so long ↑/↓ accelerates through Settings / menus.
+/// [ShellTvHoldAccel.note]) so long ↑/↓ accelerates through menus.
 KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,
@@ -347,7 +348,7 @@ KeyEventResult shellTvLinearMenuArrows({
   if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
 
   final edges = ShellTvLinearFocusEdges.maybeOf(context);
-  // Settings detail: ← anywhere → category (or close drill), not previous row.
+  // Settings page: ← → category (or close drill), not previous row.
   if (key == LogicalKeyboardKey.arrowLeft && edges?.onBackwardEdge != null) {
     return edges!.onBackwardEdge!()
         ? KeyEventResult.handled
@@ -379,10 +380,16 @@ KeyEventResult shellTvLinearMenuArrows({
       final moved = backward ? scope.previousFocus() : scope.nextFocus();
       if (!moved) {
         if (!movedAny) {
-          final edgeHandler =
-              backward ? edges?.onBackwardEdge : edges?.onForwardEdge;
-          if (edgeHandler != null) {
-            return edgeHandler()
+          // ↑/↓ at the list edge stay in-page. Only ←/→ may run edge exits.
+          if (key == LogicalKeyboardKey.arrowLeft &&
+              edges?.onBackwardEdge != null) {
+            return edges!.onBackwardEdge!()
+                ? KeyEventResult.handled
+                : KeyEventResult.ignored;
+          }
+          if (key == LogicalKeyboardKey.arrowRight &&
+              edges?.onForwardEdge != null) {
+            return edges!.onForwardEdge!()
                 ? KeyEventResult.handled
                 : KeyEventResult.ignored;
           }

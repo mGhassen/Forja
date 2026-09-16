@@ -179,9 +179,8 @@ class _SettingsForjaPacksSectionState
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-      // Settings category is ShellTvLinearFocusScope (↓ === →). This page is a
-      // 2D chrome (cards side-by-side, then Add pack / buttons / Update all) —
-      // opt out so Right ≠ Down. Pack rows already needed the same.
+      // Spatial 2D (cards side-by-side). DisableLinear is belt-and-suspenders
+      // if a parent ever re-wraps linear.
       child: ShellTvDisableLinearFocus(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

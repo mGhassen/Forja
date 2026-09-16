@@ -268,6 +268,7 @@ class TvChipStrip extends StatefulWidget {
     this.tabId,
     this.onFocusLeft,
     this.onFocusRight,
+    this.onFocusUp,
     this.registerWhen = tvFocusGraphShouldRegister,
   });
 
@@ -278,6 +279,8 @@ class TvChipStrip extends StatefulWidget {
   final String resultsRowId;
   final VoidCallback? onFocusLeft;
   final VoidCallback? onFocusRight;
+  /// When set (e.g. Settings packs), ↑ traps instead of walking to another row.
+  final VoidCallback? onFocusUp;
   final bool Function(BuildContext context) registerWhen;
 
   /// Builds the strip UI; use [edgesFor] for each chip index.
@@ -352,6 +355,7 @@ class _TvChipStripState extends State<TvChipStrip> {
       rowId: widget.rowId,
       sortOrder: widget.sortOrder,
       itemCount: widget.itemCount,
+      onFocusUp: widget.onFocusUp,
       owner: this,
     );
     _registeredTabId = tabId;

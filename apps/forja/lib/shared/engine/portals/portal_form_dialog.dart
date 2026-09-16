@@ -152,8 +152,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     super.initState();
     final e = widget.existing;
     _platform = e?.portal.platform ?? PortalPlatform.xtream;
-    // Match the panel card: prefer user label, else account name / username.
-    _labelCtrl = TextEditingController(text: e?.displayLabel ?? '');
+    // Optional portal name only — panel falls back to username when empty.
+    _labelCtrl = TextEditingController(text: e?.label.trim() ?? '');
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
     final initialUser = e?.portal.username ?? '';
     _userCtrl = TextEditingController(

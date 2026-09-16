@@ -41,9 +41,10 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
   focus zone). Detail rows use the **same green left bar + tint** on hover /
-  D-pad focus (not a bordered box). **↑/↓** (and **→** as next where the page
-  is a vertical list) walk controls **inside that page only** — they never jump
-  to the category rail. Long lists (e.g. Playback) scroll so the focused row
+  D-pad focus (not a bordered box). **↑/↓/→** walk controls **inside that
+  page only** (spatial neighbors — not a single next/prev line). They never
+  jump to the category rail or another settings page. Long lists (e.g.
+  Playback) scroll so the focused row
   stays visible; focusing the **first** control (or any control near the top of
   the page) snaps the detail scroll back to the top so the category title and
   section labels stay on screen; holding **↑/↓** speeds up the further you hold.
@@ -51,7 +52,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   Stremio** returns to the Addons list), then the selected category on the left
   rail, then the nav rail — selection stays on that category (no hop to the
   first item). **←** on the first category
-  also returns to the nav rail. **OK** in the detail pane flips a toggle or
+  also returns to the nav rail. **OK** in the page flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
   Nested switches on ordinary toggle rows do not steal focus (**OK** flips the
   row). **Addons** and **Forja Packs**: **OK** on the row activates; **→** then

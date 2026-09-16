@@ -173,6 +173,10 @@ String packChromeSelectionEpoch(
   final vodPaged = packChromeVodPagedFeed(listSpec, scope);
   final kindBustsFeed = kindReloadsFeed || vodPaged;
 
+  final portalStoreKey =
+      (CategoryBarActionHost.cachedLiveListParams['portalStoreKey'] ?? '')
+          .toString();
+
   return [
     status,
     // Sport chips + IPTV VOD cats reload feed; IPTV Live cats stay paint-only.
@@ -183,6 +187,7 @@ String packChromeSelectionEpoch(
     // View is paint-only (cards↔EPG) — omit so PackLoadedPaint keeps items.
     kindBustsFeed ? (chrome?.eventQuery ?? '') : '',
     '${chrome?.refreshEpoch ?? 0}',
+    portalStoreKey,
     catalogChromeFilterEpoch(tabId),
     // Fav/pin lists: paint filters Favorites/Watched; pin order is rail-only.
     // Do not bust catalog feed when lists warm or a star toggles.

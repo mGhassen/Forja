@@ -623,9 +623,11 @@ class _SettingsEngineCategoryTabStrip extends StatelessWidget {
     return TvChipStrip(
       tabId: 'settings',
       rowId: tabRowId,
-      sortOrder: 0,
+      // Clear of settings-categories (sortOrder 0). ↑ traps in-page.
+      sortOrder: 100,
       itemCount: groups.length,
       resultsRowId: 'engine-pack-row',
+      onFocusUp: () {},
       builder: (context, edgesFor) {
         return Wrap(
           spacing: 8,

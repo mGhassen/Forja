@@ -104,14 +104,8 @@ abstract final class PortalsHost {
           hasPortal: true,
         );
       }
-      final label = (hit['label'] ??
-              hit['name'] ??
-              hit['username'] ??
-              hit['url'] ??
-              '')
-          .toString()
-          .trim();
       final key = vaultPortalKey(hit);
+      final label = portalRowDisplayName(hit, key: key);
       final used = (hit['activeConnections'] ?? '').toString().trim();
       final max = (hit['maxConnections'] ?? '').toString().trim();
       return PortalsChipSummary(
@@ -293,13 +287,12 @@ abstract final class PortalsHost {
           .trim();
       final resolvedKey = key.isEmpty ? vaultPortalKey(m) : key;
       if (resolvedKey.isEmpty || resolvedKey == '|') continue;
-      final label = (m['label'] ??
-              m['title'] ??
-              m['name'] ??
-              m['username'] ??
-              resolvedKey)
-          .toString()
-          .trim();
+      final label = portalRowDisplayName(m, key: resolvedKey);
+      final storedRaw = _nonEmpty(m['label']);
+      final storedLabel = storedRaw != null &&
+              storedRaw.toLowerCase() != resolvedKey.toLowerCase()
+          ? storedRaw
+          : '';
       final url = (m['url'] ?? m['subtitle'] ?? m['description'] ?? '')
           .toString()
           .trim();
@@ -312,7 +305,7 @@ abstract final class PortalsHost {
       items.add(
         PortalListItem(
           id: resolvedKey,
-          label: label.isEmpty ? resolvedKey : label,
+          label: label,
           subtitle: url.isEmpty ? null : url,
           selected: samePortalKey(resolvedKey, active) ||
               selectedFlag == true ||
@@ -336,7 +329,7 @@ abstract final class PortalsHost {
         formValues[resolvedKey] = {
           'url': url,
           if (user.isNotEmpty) 'username': user,
-          'label': label.isEmpty ? resolvedKey : label,
+          'label': storedLabel,
         };
       }
     }
@@ -541,6 +534,32 @@ abstract final class PortalsHost {
     return '$url|$user';
   }
 
+  /// Panel / chip title: portal name if set, else username — never `url|user`.
+  static String portalRowDisplayName(
+    Map<String, dynamic> m, {
+    String? key,
+  }) {
+    final resolvedKey = (key ?? vaultPortalKey(m)).trim();
+    final label = _nonEmpty(m['label']);
+    if (label != null &&
+        label.toLowerCase() != resolvedKey.toLowerCase()) {
+      return label;
+    }
+    final name = _nonEmpty(m['name']) ?? _nonEmpty(m['title']);
+    if (name != null &&
+        name.toLowerCase() != resolvedKey.toLowerCase()) {
+      return name;
+    }
+    final user = _nonEmpty(m['username']);
+    if (user != null) return user;
+    return 'Portal';
+  }
+
+  static String? _nonEmpty(Object? v) {
+    final s = (v ?? '').toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
   /// Pack / vault active key form: `url|username` (not host `Portal.key`).
   static String packPortalKey(Portal p) =>
       '${p.url.trim().toLowerCase()}|${p.username.trim().toLowerCase()}';
@@ -624,11 +643,16 @@ abstract final class PortalsHost {
         if (portal.url.trim().isEmpty) continue;
         final key = vaultPortalKey(m);
         if (key.isEmpty || !seen.add(key)) continue;
-        final name = (m['name'] ?? m['label'] ?? portal.username).toString();
+        final storedLabel = _nonEmpty(m['label']);
+        final label = storedLabel != null &&
+                storedLabel.toLowerCase() != key.toLowerCase()
+            ? storedLabel
+            : '';
+        final name = (m['name'] ?? portal.username).toString();
         out.add(
           VerifiedPortal(
             portal: portal,
-            label: (m['label'] ?? '').toString(),
+            label: label,
             name: name,
             expiry: (m['expiry'] ?? '').toString(),
             maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
