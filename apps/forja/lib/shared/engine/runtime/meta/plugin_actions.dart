@@ -489,9 +489,8 @@ class MetaRuntime {
     return merged;
   }
 
-  /// Kit sets `_hubTmdbEnriched` on meta after [hubApplyTmdbHit]. Skip repeat
-  /// companion enrich on cache hits when that marker (or legacy TMDB backdrop)
-  /// is already present.
+  /// Kit sets `_hubTmdbEnriched` on meta after [hubApplyTmdbHit] / Home details
+  /// chrome. Skip repeat companion enrich on cache hits when that marker is set.
   @visibleForTesting
   static bool envelopeAlreadyEnriched(
     String action,
@@ -531,13 +530,9 @@ class MetaRuntime {
   }
 
   static bool _metaTmdbEnriched(Map<String, dynamic> meta) {
-    if (meta['_hubTmdbEnriched'] == true) return true;
-    final ids = meta['ids'];
-    if (ids is! Map) return false;
-    final raw = ids['tmdb'];
-    if (raw == null || int.tryParse(raw.toString()) == null) return false;
-    final bg = (meta['background'] ?? '').toString();
-    return bg.contains('image.tmdb.org/t/p/w1280');
+    // Only the kit marker — KissKH/AniList/Home often ship TMDB art URLs
+    // before companion enrich fills logo / cast / facts.
+    return meta['_hubTmdbEnriched'] == true;
   }
 
   static bool _itemsTmdbEnriched(List items, {required int limit}) {

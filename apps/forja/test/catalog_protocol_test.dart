@@ -483,7 +483,7 @@ void main() {
       );
     });
 
-    test('spotlight rail skips on legacy tmdb backdrop', () {
+    test('spotlight rail does not skip on legacy tmdb backdrop alone', () {
       expect(
         MetaRuntime.envelopeAlreadyEnriched(
           'rail',
@@ -499,7 +499,7 @@ void main() {
           },
           const {'rail': 'spotlight'},
         ),
-        isTrue,
+        isFalse,
       );
     });
 
