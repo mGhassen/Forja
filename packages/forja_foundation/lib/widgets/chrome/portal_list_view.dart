@@ -444,18 +444,26 @@ class _PortalListViewState extends State<PortalListView> {
             onEdit: widget.busy || widget.onEdit == null
                 ? null
                 : () => widget.onEdit!(item),
-            onDelete: widget.busy || widget.onDelete == null
-                ? null
-                : () => widget.onDelete!(item),
             onCopyShareCode: widget.busy || widget.onCopyShareCode == null
                 ? null
                 : () => widget.onCopyShareCode!(item),
-            onHoverEnter: widget.onHoverEnter == null
-                ? null
-                : () => widget.onHoverEnter!(item),
+            onHoverEnter: () {
+              // Mouse/trackpad hover = pointer browse (I147) — not only scroll.
+              widget.onListPointerBrowse?.call();
+              widget.onHoverEnter?.call(item);
+            },
             onHoverExit: widget.onHoverExit == null
                 ? null
                 : () => widget.onHoverExit!(item),
+            onDelete: widget.busy || widget.onDelete == null
+                ? null
+                : () {
+                    // Delete Yes is a click — skip inventory focus restore.
+                    if (!widget.leanback) {
+                      widget.onListPointerBrowse?.call();
+                    }
+                    widget.onDelete!(item);
+                  },
             onUpEdge: !_tv
                 ? null
                 : index == 0

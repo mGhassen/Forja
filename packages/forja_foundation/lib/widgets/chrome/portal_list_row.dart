@@ -276,9 +276,9 @@ class _PortalListRowState extends State<PortalListRow> {
   void _onRowFocusChange(bool focused) {
     if (focused) {
       widget.onTvFocus?.call();
-      if (widget.leanback) {
-        widget.onHoverEnter?.call();
-      }
+      // Health probe on focus (leanback D-pad + desktop hybrid keyboard).
+      widget.onHoverEnter?.call();
+      if (!widget.leanback) _scheduleDetailCard();
       if (!_focused || widget.leanback) {
         setState(() => _focused = true);
       }
@@ -287,7 +287,11 @@ class _PortalListRowState extends State<PortalListRow> {
     void clear() {
       if (!mounted) return;
       if (_focused) setState(() => _focused = false);
-      if (widget.leanback) widget.onHoverExit?.call();
+      // Keep probe/detail while the pointer is still over the row.
+      if (!_lineHover) {
+        widget.onHoverExit?.call();
+        _hideDetailCard();
+      }
     }
 
     if (widget.leanback) {
@@ -357,13 +361,18 @@ class _PortalListRowState extends State<PortalListRow> {
     final railAnim =
         widget.leanback ? Duration.zero : const Duration(milliseconds: 180);
 
-    final fillColor = widget.leanback && _focused
+    // Desktop hybrid: focus fill only when keyboard chrome is on — raw
+    // `_focused` stays true after mouse delete + inventory re-focus restore.
+    final focusFill = widget.leanback
+        ? _focused
+        : ShellPaintScope.focusStyledOf(context, focused: _focused);
+    final fillColor = widget.leanback && focusFill
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
         : isActive
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.07)
             : _showNewChrome
                 ? ForjaShellColors.navUnderline.withValues(alpha: 0.1)
-                : (_lineHover || _focused || _showShareCode)
+                : (_lineHover || focusFill || _showShareCode)
                     ? Colors.white.withValues(alpha: 0.04)
                     : Colors.transparent;
 

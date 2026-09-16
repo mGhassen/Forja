@@ -66,7 +66,13 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
 
   bool _handleFindShortcut() {
     if (!mounted) return false;
-    _searchKey.currentState?.openSearch();
+    // KeepAlive hubs stay mounted offstage — only the active tab may consume.
+    final tab = (widget.tvTabId ?? '').trim();
+    if (tab.isEmpty || tab != ShellBus.activeShellTabId) return false;
+    if (ShellBus.shellOverlayHasPage.value) return false;
+    final search = _searchKey.currentState;
+    if (search == null) return false;
+    search.openSearch();
     return true;
   }
 

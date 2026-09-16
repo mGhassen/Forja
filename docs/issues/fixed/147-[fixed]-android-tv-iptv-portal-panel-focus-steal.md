@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 5** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I147-T07 | Scrape/health notify: skip scroll + restore list focus when `_lastFocusedPortalIndex` set (rebuild focus flicker) | ✅ |
 | 8 | I147-T08 | Desktop pointer/trackpad scroll: set browsing flag; skip auto scroll-to-active and stale focus restore until D-pad `_focusPortalAt` | ✅ |
 | 9 | I147-T09 | Re-wire into pack-product Portals panel (`PortalListView` + host `PortalsPanelTvFocus`) after `portals_ui` removal | ✅ |
+| 10 | I147-T10 | Desktop mouse hover/delete: mark pointer browse + gate row fill on `focusStyled` so inventory rebuild after delete does not show focus chrome | ✅ |
 
 ---
 
@@ -40,6 +41,7 @@
 | 3 | I147-A03 | ↑ from a row to the header, then ↓ — focus returns to that row, not the playing portal | ⬜ |
 | 4 | I147-A04 | Hold ↓ through the Portals list — only the focused row shows a green fill; no desktop hover star/rail on rows you skim past | ⬜ |
 | 5 | I147-A05 | Desktop: open Portals, scroll with mouse/trackpad — list does not jump back to the top / playing portal when status probes notify | ⬜ |
+| 6 | I147-A06 | Desktop: delete a portal with the mouse — no focus fill/chrome appears on another row after the list refreshes | ⬜ |
 
 ---
 

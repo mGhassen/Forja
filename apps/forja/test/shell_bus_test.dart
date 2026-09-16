@@ -57,6 +57,29 @@ void main() {
     expect(ShellBus.invokeFindShortcut(), isFalse);
   });
 
+  test('ShellBus find shortcut continues when newest handler declines', () {
+    var declined = 0;
+    var accepted = 0;
+    bool decline() {
+      declined++;
+      return false;
+    }
+
+    bool accept() {
+      accepted++;
+      return true;
+    }
+
+    ShellBus.registerFindShortcutHandler(accept);
+    ShellBus.registerFindShortcutHandler(decline);
+    expect(ShellBus.invokeFindShortcut(), isTrue);
+    expect(declined, 1);
+    expect(accepted, 1);
+
+    ShellBus.unregisterFindShortcutHandler(decline);
+    ShellBus.unregisterFindShortcutHandler(accept);
+  });
+
   test('ShellBus.requestTab can be set and read', () {
     ShellBus.requestTab.value = 'search';
     expect(ShellBus.requestTab.value, 'search');

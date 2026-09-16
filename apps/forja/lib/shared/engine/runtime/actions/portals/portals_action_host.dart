@@ -155,7 +155,11 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final key = _probeKey;
     if (key.isEmpty) return;
     final leanback = liveLeanbackOnly(context);
-    final want = leanback ? focused : (hovered && _armHoverProbe);
+    // Leanback: focus only. Desktop hybrid: keyboard focus OR intentional hover
+    // (mount-under-cursor is gated by [_armHoverProbe]).
+    final want = leanback
+        ? focused
+        : (focused || (hovered && _armHoverProbe));
     if (want) {
       // Soft refresh — keep painted green/red; update when probe lands.
       _health.schedule(key, leanback: leanback, force: true);
