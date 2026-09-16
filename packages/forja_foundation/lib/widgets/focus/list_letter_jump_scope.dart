@@ -353,9 +353,8 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     _hovered = true;
     _active = this;
     _bindHandler();
-    if (widget.enabled && widget.itemCount > 0) {
-      _focusNode.requestFocus();
-    }
+    // Never requestFocus here — steals focus from category rows / channel cards
+    // (grid jumps, hover chrome drops). Hardware handler is enough while hovered.
   }
 
   void _scheduleDeactivate() {
@@ -371,15 +370,11 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
           if (!mounted || _hovered) return;
           _matcher.reset();
           _unbindHandler();
-          if (_focusNode.hasFocus) _focusNode.unfocus();
         });
         return;
       }
       _matcher.reset();
       _unbindHandler();
-      if (_focusNode.hasFocus) {
-        _focusNode.unfocus();
-      }
     });
   }
 
@@ -435,7 +430,8 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
   Widget build(BuildContext context) {
     return Focus(
       focusNode: _focusNode,
-      canRequestFocus: widget.enabled,
+      canRequestFocus: false,
+      skipTraversal: true,
       onKeyEvent: _onFocusKey,
       child: MouseRegion(
         hitTestBehavior: HitTestBehavior.translucent,

@@ -112,14 +112,18 @@ class DetailsHero extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Backdrop must not steal hits from body rows pulled into the
+            // overlap band (seasons / cast / etc.).
             if (!chromeOnly)
-              DetailsHeroSurface(
-                backdropUrl: backdropUrl,
-                backdropUrls: backdropUrls,
-                height: h,
-                bodyOverlap: resolvedOverlap,
-                softFade: overlapsFirstRow,
-                enableKenBurns: enableKenBurns,
+              IgnorePointer(
+                child: DetailsHeroSurface(
+                  backdropUrl: backdropUrl,
+                  backdropUrls: backdropUrls,
+                  height: h,
+                  bodyOverlap: resolvedOverlap,
+                  softFade: overlapsFirstRow,
+                  enableKenBurns: enableKenBurns,
+                ),
               ),
             Positioned(
               left: 0,

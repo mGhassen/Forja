@@ -170,7 +170,9 @@ class _CatalogChannelCardState extends State<CatalogChannelCard> {
   }
 
   Color _border(bool? health, bool active) {
-    if (widget.highlighted && !active) {
+    // Letter-jump / panel selection — keep selected chrome even while hovered
+    // (same idea as category rail selected row).
+    if (widget.highlighted) {
       return ForjaShellColors.chipSelectedBorder;
     }
     if (health == null) {

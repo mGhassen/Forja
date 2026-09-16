@@ -244,6 +244,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           engineCategory: widget.engineCategory,
           preferredEnginePluginId: widget.preferredEnginePluginId,
           animeAudioCategory: widget.animeAudioCategory,
+          detailsHost: detailsHost,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
           onClose: widget.onClose,
@@ -275,6 +276,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.engineCategory,
     this.preferredEnginePluginId,
     this.animeAudioCategory,
+    this.detailsHost = false,
   });
 
   final Movie movie;
@@ -294,6 +296,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? engineCategory;
   final String? preferredEnginePluginId;
   final String? animeAudioCategory;
+  final bool detailsHost;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -3759,7 +3762,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _searching,
             TorrentStreamService().activeStats()?.loadedBytes,
           ),
-          filterEnableBlur: false,
+          // Match Sources shell: frosted on details, flat translucent in-player.
+          filterEnableBlur: widget.detailsHost,
           onReloadKind: _reloadKind,
           sourcesPanelOpen: true,
           onProvideListFocusUp: (cb) => _tvListFocusUp = cb,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Horizontal cast row under a details hero — props only.
 class DetailsCastSection extends StatelessWidget {
@@ -17,7 +19,7 @@ class DetailsCastSection extends StatelessWidget {
   final String title;
   /// Cancels parent horizontal padding so row insets match home catalog rows.
   final double outdentHorizontal;
-  /// Optional host wrap (TV focus / shellFocusableTap). Defaults to [FocusableTap].
+  /// Optional host wrap (TV focus / shellFocusableTap). Defaults to paint scope.
   final Widget Function(
     BuildContext context, {
     required int index,
@@ -72,81 +74,78 @@ class DetailsCastSection extends StatelessWidget {
           const SizedBox(height: _titleGap),
         ],
         FocusTraversalGroup(
-          child: SizedBox(
+          child: HorizontalScroller(
             height: _rowHeight,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: useHomeInsets
-                  ? EdgeInsets.only(left: homePad)
-                  : EdgeInsets.zero,
-              itemCount: cast.length,
-              separatorBuilder: (_, _) => const SizedBox(
-                width: _horizontalGap,
-              ),
-              itemBuilder: (_, i) {
-                final m = cast[i];
-                final profilePath = m['profilePath'] ?? '';
-                final name = m['name'] ?? '';
-                final character = m['character'] ?? '';
-                final avatar = ClipOval(
-                  child: profilePath.startsWith('http')
-                      ? ForjaNetworkImage(
-                          url: profilePath,
-                          width: _avatarSize,
-                          height: _avatarSize,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          width: _avatarSize,
-                          height: _avatarSize,
-                          color: Colors.white.withValues(alpha: 0.08),
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white.withValues(alpha: 0.24),
-                            size: 36,
-                          ),
+            padding: useHomeInsets
+                ? EdgeInsets.only(left: homePad)
+                : EdgeInsets.zero,
+            itemCount: cast.length,
+            separatorBuilder: (_, _) => const SizedBox(
+              width: _horizontalGap,
+            ),
+            itemBuilder: (context, i) {
+              final m = cast[i];
+              final profilePath = m['profilePath'] ?? '';
+              final name = m['name'] ?? '';
+              final character = m['character'] ?? '';
+              final avatar = ClipOval(
+                child: profilePath.startsWith('http')
+                    ? ForjaNetworkImage(
+                        url: profilePath,
+                        width: _avatarSize,
+                        height: _avatarSize,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: _avatarSize,
+                        height: _avatarSize,
+                        color: Colors.white.withValues(alpha: 0.08),
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.white.withValues(alpha: 0.24),
+                          size: 36,
                         ),
-                );
-                final focusChild = itemBuilder != null
-                    ? itemBuilder!(context, index: i, child: avatar)
-                    : avatar;
-                return SizedBox(
-                  width: _itemWidth,
-                  child: Column(
-                    children: [
-                      focusChild,
-                      const SizedBox(height: _avatarNameGap),
+                      ),
+              );
+              final focusChild = itemBuilder != null
+                  ? itemBuilder!(context, index: i, child: avatar)
+                  : _defaultAvatarTap(context, index: i, child: avatar);
+              return SizedBox(
+                width: _itemWidth,
+                child: Column(
+                  children: [
+                    focusChild,
+                    const SizedBox(height: _avatarNameGap),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (character.isNotEmpty) ...[
+                      const SizedBox(height: _nameCharacterGap),
                       Text(
-                        name,
+                        character,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 12,
                           height: 1.2,
                         ),
                       ),
-                      if (character.isNotEmpty) ...[
-                        const SizedBox(height: _nameCharacterGap),
-                        Text(
-                          character,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 12,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
-                );
-              },
-            ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -163,6 +162,22 @@ class DetailsCastSection extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  static Widget _defaultAvatarTap(
+    BuildContext context, {
+    required int index,
+    required Widget child,
+  }) {
+    return ShellPaintScope.focusableTap(
+      context: context,
+      borderRadius: _avatarSize / 2,
+      showFocusBorder: true,
+      showFocusFill: false,
+      listIndex: index,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      child: child,
     );
   }
 }

@@ -410,7 +410,10 @@ class _ChannelLetterJumpGrid extends StatefulWidget {
 
 class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
   final ScrollController _scroll = ScrollController();
+  final Map<int, GlobalKey> _itemKeys = {};
   CatalogPosterGridLayout? _layout;
+  /// Same role as category [selectedId] — letter-jump selection chrome + anchor.
+  int _selectedIndex = -1;
 
   bool get _leanbackOnly =>
       ShellPaintScope.usesTvDensityOf(context) &&
@@ -422,6 +425,15 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant _ChannelLetterJumpGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.items, widget.items)) {
+      _selectedIndex = -1;
+      _itemKeys.clear();
+    }
+  }
+
   String _titleAt(int i) {
     final item = widget.items[i];
     final props = catalogItemProps(item);
@@ -431,7 +443,10 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     return t.isEmpty ? CatalogCardsGrid._itemId(item) : t;
   }
 
-  int _anchorIndex() {
+  int _letterJumpAnchor() {
+    if (_selectedIndex >= 0 && _selectedIndex < widget.items.length) {
+      return _selectedIndex;
+    }
     final sel = (widget.selectedItemId ?? '').trim();
     if (sel.isEmpty) return -1;
     for (var i = 0; i < widget.items.length; i++) {
@@ -442,8 +457,19 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
 
   void _letterJump(int index) {
     if (index < 0 || index >= widget.items.length) return;
+    // Mirror category rail: select first (chrome), then scroll into place.
+    setState(() => _selectedIndex = index);
     void go() {
       if (!mounted) return;
+      final ctx = _itemKeys[index]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.15,
+          duration: Duration.zero,
+        );
+        return;
+      }
       _scrollToIndex(index);
     }
 
@@ -500,6 +526,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         final grid = CatalogPosterGrid(
           layout: layout,
           controller: _scroll,
+          useAspectRatio: false,
           itemCount: widget.items.length,
           itemBuilder: (context, i) {
             final item = widget.items[i];
@@ -515,35 +542,43 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
               item['programmes'] ?? props['programmes'],
             );
             final id = (item['id'] ?? props['id'] ?? '').toString();
-            return CatalogChannelCard(
-              title: title,
-              imageUrl: image,
-              programmes: programmes,
-              loadProgrammes: widget.loadEpgProgrammes == null
-                  ? null
-                  : () => widget.loadEpgProgrammes!(item),
-              health: widget.itemHealth?.call(item),
-              healthListenable: widget.itemHealthListenable?.call(item),
-              highlighted: widget.selectedItemId != null &&
-                  widget.selectedItemId!.isNotEmpty &&
-                  widget.selectedItemId == id,
-              width: layout.cardW,
-              height: layout.cardH,
-              gridIndex: i,
-              gridColumns: layout.columns,
-              onTap: widget.onItemTap == null
-                  ? null
-                  : () => widget.onItemTap!(item),
-              onInteractiveActive: widget.onItemInteractiveActive == null
-                  ? null
-                  : (active) => widget.onItemInteractiveActive!(
-                        item,
-                        active: active,
-                      ),
-              favoriteBuilder: widget.itemAccessory == null
-                  ? null
-                  : ({required bool active}) =>
-                      widget.itemAccessory!(context, item, active: active),
+            final key = _itemKeys.putIfAbsent(i, GlobalKey.new);
+            final panelSelected = widget.selectedItemId != null &&
+                widget.selectedItemId!.isNotEmpty &&
+                widget.selectedItemId == id;
+            return KeyedSubtree(
+              key: key,
+              child: CatalogChannelCard(
+                title: title,
+                imageUrl: image,
+                programmes: programmes,
+                loadProgrammes: widget.loadEpgProgrammes == null
+                    ? null
+                    : () => widget.loadEpgProgrammes!(item),
+                health: widget.itemHealth?.call(item),
+                healthListenable: widget.itemHealthListenable?.call(item),
+                highlighted: panelSelected || i == _selectedIndex,
+                width: layout.cardW,
+                height: layout.cardH,
+                gridIndex: i,
+                gridColumns: layout.columns,
+                onTap: widget.onItemTap == null
+                    ? null
+                    : () {
+                        setState(() => _selectedIndex = i);
+                        widget.onItemTap!(item);
+                      },
+                onInteractiveActive: widget.onItemInteractiveActive == null
+                    ? null
+                    : (active) => widget.onItemInteractiveActive!(
+                          item,
+                          active: active,
+                        ),
+                favoriteBuilder: widget.itemAccessory == null
+                    ? null
+                    : ({required bool active}) =>
+                        widget.itemAccessory!(context, item, active: active),
+              ),
             );
           },
         );
@@ -551,7 +586,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
         return ListLetterJumpScope(
           enabled: !_leanbackOnly && widget.items.isNotEmpty,
           itemCount: widget.items.length,
-          anchorIndex: _anchorIndex(),
+          anchorIndex: _letterJumpAnchor(),
           labelAt: _titleAt,
           onJump: _letterJump,
           child: grid,

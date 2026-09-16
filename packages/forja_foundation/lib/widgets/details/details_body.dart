@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -64,10 +65,11 @@ class DetailsBody extends StatelessWidget {
     );
 
     if (overlap > 0) {
-      // Translate paints the first row onto the backdrop. Add matching bottom
-      // extent so end-of-scroll doesn't leave a blank overlap-sized hole.
-      return Transform.translate(
-        offset: Offset(0, -overlap),
+      // Pull paint onto the backdrop. Stock Transform.translate fails hit tests
+      // in the overflow band (y < 0) — seasons/cast never see hover. Use a
+      // render object that hit-tests the painted bounds.
+      return _OverlapPullUp(
+        overlap: overlap,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -88,3 +90,82 @@ class DetailsBody extends StatelessWidget {
 
 /// Host alias — same paint as [DetailsBody].
 typedef MediaDetailsBody = DetailsBody;
+
+/// Paints [child] shifted up by [overlap] and hit-tests that painted region.
+class _OverlapPullUp extends SingleChildRenderObjectWidget {
+  const _OverlapPullUp({
+    required this.overlap,
+    required Widget child,
+  }) : super(child: child);
+
+  final double overlap;
+
+  @override
+  _RenderOverlapPullUp createRenderObject(BuildContext context) {
+    return _RenderOverlapPullUp(overlap: overlap);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderOverlapPullUp renderObject,
+  ) {
+    renderObject.overlap = overlap;
+  }
+}
+
+class _RenderOverlapPullUp extends RenderProxyBox {
+  _RenderOverlapPullUp({required double overlap}) : _overlap = overlap;
+
+  double _overlap;
+  double get overlap => _overlap;
+  set overlap(double value) {
+    if (_overlap == value) return;
+    _overlap = value;
+    markNeedsPaint();
+  }
+
+  Matrix4 get _paintTransform =>
+      Matrix4.translationValues(0, -_overlap, 0);
+
+  @override
+  bool get alwaysNeedsCompositing => _overlap != 0;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (_overlap == 0) {
+      super.paint(context, offset);
+      return;
+    }
+    layer = context.pushTransform(
+      needsCompositing,
+      offset,
+      _paintTransform,
+      super.paint,
+      oldLayer: layer as TransformLayer?,
+    );
+  }
+
+  @override
+  void applyPaintTransform(RenderObject child, Matrix4 transform) {
+    transform.translateByDouble(0, -_overlap, 0, 1);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    // Painted y-range is [-overlap, size.height - overlap).
+    if (position.dx < 0 ||
+        position.dx >= size.width ||
+        position.dy < -_overlap ||
+        position.dy >= size.height - _overlap) {
+      return false;
+    }
+    return result.addWithPaintTransform(
+      transform: _paintTransform,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child?.hitTest(result, position: transformed) ?? false;
+      },
+    );
+  }
+}

@@ -1320,7 +1320,9 @@ class _TorrentSourceSearchToolbarState
 
   void _openFiltersSidePanel() {
     if (_filtersEntry != null) return;
-    final overlay = Overlay.of(context, rootOverlay: true);
+    // Same Overlay as Sources — rootOverlay can sit above a nested navigator
+    // Overlay and then BackdropFilter never samples the frosted Sources shell.
+    final overlay = Overlay.of(context);
     final tv = SourcesPanelTv.isTv(context);
     late OverlayEntry entry;
 
@@ -2169,6 +2171,7 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     // Occupy only the region LEFT of Sources. A full-screen Stack overlay
     // (even with an "empty" Sources strip) can still win the gesture arena on
     // desktop and block Torrents / Stremio / Nuvio row taps.
+    final playerFrost = !widget.enableBlur;
     return Positioned(
       top: 0,
       bottom: 0,
@@ -2185,7 +2188,11 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
             child: GestureDetector(
               onTap: widget.onClose,
               behavior: HitTestBehavior.opaque,
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.12)),
+              child: ColoredBox(
+                color: Colors.black.withValues(
+                  alpha: playerFrost ? 0.22 : 0.54,
+                ),
+              ),
             ),
           ),
           Positioned(

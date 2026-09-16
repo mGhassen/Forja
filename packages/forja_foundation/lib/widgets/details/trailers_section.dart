@@ -81,9 +81,12 @@ class DetailsTrailersSection extends StatelessWidget {
           child: SizedBox(
             height: trailerRowHeight,
             child: ListView.separated(
+              // Match Home HorizontalScroller / DetailsRailSection — hover
+              // scale paints into section gutters instead of clipping there.
+              clipBehavior: Clip.none,
               scrollDirection: Axis.horizontal,
               padding: useHomeInsets
-                  ? EdgeInsets.only(left: homePad)
+                  ? EdgeInsets.symmetric(horizontal: homePad)
                   : EdgeInsets.zero,
               itemCount: trailers.length,
               separatorBuilder: (_, _) => const SizedBox(width: 12),
