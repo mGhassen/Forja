@@ -8,6 +8,7 @@ import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dar
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
@@ -25,6 +26,19 @@ enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
     instantChrome: p.instantFocusChrome,
   );
 }
+
+/// Desktop: mouse → hover; keyboard/D-pad → focus chrome.
+bool _popupHighlight(
+  BuildContext context, {
+  required bool hovered,
+  required bool focused,
+}) =>
+    ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: hovered,
+      focused: focused,
+      context: context,
+    );
 
 Color playerSourceBadgeColor(String? badge) {
   switch (badge?.toUpperCase()) {
@@ -701,7 +715,11 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
-    final highlight = _hovered || _focused;
+    final highlight = _popupHighlight(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
     // Match select-card close: green X + border idle; brighter on hover/focus.
     final borderColor = highlight
         ? PlayerPopupTokens.accent
@@ -836,7 +854,11 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
-    final highlight = _focused || _hovered;
+    final highlight = _popupHighlight(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
     final chrome = playerPopupSelectChrome(
       selected: widget.selected,
       highlight: highlight,
@@ -1016,7 +1038,12 @@ class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
     final selected = widget.selected;
-    final highlight = !widget.disabled && (_focused || _hovered);
+    final highlight = !widget.disabled &&
+        _popupHighlight(
+          context,
+          hovered: _hovered,
+          focused: _focused,
+        );
     final chromeDuration = input.instantChrome
         ? Duration.zero
         : const Duration(milliseconds: 120);
@@ -1182,7 +1209,11 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
     final selected = widget.selected;
-    final highlight = _hovered || _focused;
+    final highlight = _popupHighlight(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
     // Select-card chrome: selected = green tint; hover/focus on idle uses
     // the same accent recipe so header chips match list cards.
     final chrome = playerPopupSelectChrome(
@@ -1319,8 +1350,16 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
   void _setInteractive({bool? hovered, bool? focused}) {
     final nextHovered = hovered ?? _hovered;
     final nextFocused = focused ?? _focused;
-    final wasActive = _hovered || _focused;
-    final nextActive = nextHovered || nextFocused;
+    final wasActive = _popupHighlight(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    final nextActive = _popupHighlight(
+      context,
+      hovered: nextHovered,
+      focused: nextFocused,
+    );
     if (hovered != null) _hovered = hovered;
     if (focused != null) _focused = focused;
     if (wasActive != nextActive) {
@@ -1375,7 +1414,11 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     final input = _popupInput(context);
     final tvFocus = input.tvFocus;
     final mouseHover = input.mouseHover;
-    final highlight = _focused || _hovered;
+    final highlight = _popupHighlight(
+      context,
+      hovered: _hovered,
+      focused: _focused,
+    );
     final chromeDuration = input.instantChrome
         ? Duration.zero
         : const Duration(milliseconds: 120);

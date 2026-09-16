@@ -13,6 +13,9 @@ class VerticalMenu extends StatelessWidget {
     this.padding,
     this.backgroundColor,
     this.clipBehavior = Clip.antiAlias,
+    this.minHeight = 40,
+    this.fontSize = 14,
+    this.leadingSize = 28,
   });
 
   final List<Widget> children;
@@ -22,6 +25,9 @@ class VerticalMenu extends StatelessWidget {
 
   /// Host rails that hover-scale tiles need [Clip.none] so scale can paint into pad.
   final Clip clipBehavior;
+  final double minHeight;
+  final double fontSize;
+  final double leadingSize;
 
   /// One selectable row in a [VerticalMenu].
   static Widget item({
@@ -47,23 +53,50 @@ class VerticalMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
-    return Material(
-      color: backgroundColor ?? ForjaShellColors.bgDark,
-      borderRadius: BorderRadius.circular(theme.radiusMd),
-      clipBehavior: clipBehavior,
-      child: SizedBox(
-        width: width,
-        child: Padding(
-          padding: padding ?? EdgeInsets.symmetric(vertical: theme.spaceSm),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
+    return _VerticalMenuStyle(
+      minHeight: minHeight,
+      fontSize: fontSize,
+      leadingSize: leadingSize,
+      child: Material(
+        color: backgroundColor ?? ForjaShellColors.bgDark,
+        borderRadius: BorderRadius.circular(theme.radiusMd),
+        clipBehavior: clipBehavior,
+        child: SizedBox(
+          width: width,
+          child: Padding(
+            padding: padding ?? EdgeInsets.symmetric(vertical: theme.spaceSm),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _VerticalMenuStyle extends InheritedWidget {
+  const _VerticalMenuStyle({
+    required this.minHeight,
+    required this.fontSize,
+    required this.leadingSize,
+    required super.child,
+  });
+
+  final double minHeight;
+  final double fontSize;
+  final double leadingSize;
+
+  static _VerticalMenuStyle? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_VerticalMenuStyle>();
+
+  @override
+  bool updateShouldNotify(covariant _VerticalMenuStyle oldWidget) =>
+      minHeight != oldWidget.minHeight ||
+      fontSize != oldWidget.fontSize ||
+      leadingSize != oldWidget.leadingSize;
 }
 
 class _VerticalMenuItem extends StatefulWidget {
@@ -94,6 +127,10 @@ class _VerticalMenuItemState extends State<_VerticalMenuItem> {
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
+    final style = _VerticalMenuStyle.maybeOf(context);
+    final minHeight = style?.minHeight ?? 40;
+    final fontSize = style?.fontSize ?? 14;
+    final leadingSize = style?.leadingSize ?? 28;
     final lit = widget.selected || (widget.accentHover && _hovered);
     final fg = lit ? theme.textPrimary : theme.textSecondary;
     final fill = widget.selected
@@ -115,7 +152,7 @@ class _VerticalMenuItemState extends State<_VerticalMenuItem> {
         ),
       ),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 40),
+        constraints: BoxConstraints(minHeight: minHeight),
         padding: EdgeInsets.symmetric(
           horizontal: theme.spaceMd,
           vertical: theme.spaceSm,
@@ -123,7 +160,11 @@ class _VerticalMenuItemState extends State<_VerticalMenuItem> {
         child: Row(
           children: [
             if (widget.leading != null) ...[
-              SizedBox(width: 28, height: 28, child: widget.leading),
+              SizedBox(
+                width: leadingSize,
+                height: leadingSize,
+                child: widget.leading,
+              ),
               SizedBox(width: theme.spaceSm),
             ],
             Expanded(
@@ -133,7 +174,7 @@ class _VerticalMenuItemState extends State<_VerticalMenuItem> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: 14,
+                  fontSize: fontSize,
                   fontWeight: lit ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),

@@ -14,6 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class PlayerSubtitleSettingsValues {
@@ -710,12 +711,12 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
 
   @override
   Widget build(BuildContext context) {
-    final ring = _focused
+    final focusChrome = ShellScope.inputPolicyOf(context)
+        .focusChromeVisible(context, focused: _focused);
+    final ring = focusChrome || widget.selected
         ? ForjaShellColors.brandGreen
-        : widget.selected
-            ? ForjaShellColors.brandGreen
-            : Colors.white24;
-    final ringWidth = (_focused || widget.selected) ? 3.0 : 1.0;
+        : Colors.white24;
+    final ringWidth = (focusChrome || widget.selected) ? 3.0 : 1.0;
     final swatch = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       width: 34,
@@ -724,7 +725,7 @@ class _SubColorSwatchState extends State<_SubColorSwatch> {
         color: widget.color,
         shape: BoxShape.circle,
         border: Border.all(color: ring, width: ringWidth),
-        boxShadow: _focused
+        boxShadow: focusChrome
             ? [
                 BoxShadow(
                   color: ForjaShellColors.brandGreen.withValues(alpha: 0.65),
@@ -1001,7 +1002,12 @@ class _PopupSettingsCloseButtonState extends State<_PopupSettingsCloseButton> {
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
     final mouseHover = policy.scaleOnHover;
-    final highlight = _hovered || _focused;
+    final highlight = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
     final face = Container(
       width: 28,
       height: 28,
@@ -1084,7 +1090,12 @@ class _SelectFontChipState extends State<_SelectFontChip> {
   Widget build(BuildContext context) {
     final mouseHover =
         ShellScope.inputPolicyOf(context).scaleOnHover;
-    final highlight = _hovered || _focused;
+    final highlight = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
     final chrome = playerPopupSelectChrome(
       selected: widget.selected,
       highlight: highlight,

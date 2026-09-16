@@ -16,6 +16,10 @@ class EventDenseTile extends StatelessWidget {
     this.focused = false,
     this.hovered = false,
     this.onTap,
+    this.fontSize = 14,
+    this.metaFontSize = 12,
+    this.pad = const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    this.iconSize = 20,
   });
 
   final String title;
@@ -27,6 +31,10 @@ class EventDenseTile extends StatelessWidget {
   final bool focused;
   final bool hovered;
   final VoidCallback? onTap;
+  final double fontSize;
+  final double metaFontSize;
+  final EdgeInsetsGeometry pad;
+  final double iconSize;
 
   bool get _chrome => focused || hovered;
 
@@ -61,7 +69,7 @@ class EventDenseTile extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: pad,
         child: Row(
           children: [
             if (airing)
@@ -86,7 +94,7 @@ class EventDenseTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: titleColor,
-                      fontSize: 14,
+                      fontSize: fontSize,
                       fontWeight: titleWeight,
                     ),
                   ),
@@ -99,7 +107,7 @@ class EventDenseTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
-                          fontSize: 12,
+                          fontSize: metaFontSize,
                         ),
                       ),
                     ),
@@ -116,7 +124,7 @@ class EventDenseTile extends StatelessWidget {
                         ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
                         : ForjaShellColors.textSecondary
                             .withValues(alpha: 0.85),
-                    fontSize: 12,
+                    fontSize: metaFontSize,
                   ),
                 ),
               ),
@@ -126,7 +134,7 @@ class EventDenseTile extends StatelessWidget {
                 child: Icon(
                   Icons.chevron_right_rounded,
                   color: accent,
-                  size: 20,
+                  size: iconSize,
                 ),
               ),
           ],

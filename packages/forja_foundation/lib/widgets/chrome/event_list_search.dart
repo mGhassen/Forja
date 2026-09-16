@@ -24,6 +24,11 @@ class EventListSearch extends StatefulWidget {
     this.focusNode,
     this.debugLabel = 'event-list-search',
     this.fieldBuilder,
+    this.collapsedSize = kEventListSearchCollapsed,
+    this.expandedWidth = kEventListSearchExpanded,
+    this.fontSize = 13,
+    this.iconSize = 20,
+    this.fieldIconSize = 18,
     this.tvTabId,
     this.tvRowId,
     this.tvItemIndex,
@@ -51,6 +56,12 @@ class EventListSearch extends StatefulWidget {
     required ValueChanged<String> onChanged,
     required VoidCallback onEscape,
   })? fieldBuilder;
+
+  final double collapsedSize;
+  final double expandedWidth;
+  final double fontSize;
+  final double iconSize;
+  final double fieldIconSize;
 
   final String? tvTabId;
   final String? tvRowId;
@@ -168,11 +179,12 @@ class EventListSearchState extends State<EventListSearch>
       animation: _expand,
       builder: (context, _) {
         final t = _expand.value;
-        final width = kEventListSearchCollapsed +
-            (kEventListSearchExpanded - kEventListSearchCollapsed) * t;
+        final collapsed = widget.collapsedSize;
+        final expanded = widget.expandedWidth;
+        final width = collapsed + (expanded - collapsed) * t;
         return SizedBox(
           width: width,
-          height: kEventListSearchCollapsed,
+          height: collapsed,
           child: Stack(
             alignment: Alignment.centerRight,
             children: [
@@ -180,10 +192,10 @@ class EventListSearchState extends State<EventListSearch>
                 Opacity(
                   opacity: t.clamp(0.0, 1.0),
                   child: OverflowBox(
-                    maxWidth: kEventListSearchExpanded,
+                    maxWidth: expanded,
                     alignment: Alignment.centerRight,
                     child: SizedBox(
-                      width: kEventListSearchExpanded,
+                      width: expanded,
                       child: _fieldChrome(),
                     ),
                   ),
@@ -211,11 +223,12 @@ class EventListSearchState extends State<EventListSearch>
         hasQuery;
     final tvFocused = _tv && _toolFocused;
     final idleAlpha = hasQuery ? 0.12 : 0.08;
+    final size = widget.collapsedSize;
     final child = Tooltip(
       message: widget.tooltip,
       child: Container(
-        width: kEventListSearchCollapsed,
-        height: kEventListSearchCollapsed,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.white.withValues(
             alpha: active || tvFocused ? 0.16 : idleAlpha,
@@ -239,7 +252,7 @@ class EventListSearchState extends State<EventListSearch>
           color: active || tvFocused || hasQuery
               ? Colors.white
               : Colors.white60,
-          size: 20,
+          size: widget.iconSize,
         ),
       ),
     );
@@ -247,7 +260,7 @@ class EventListSearchState extends State<EventListSearch>
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: () => openSearch(),
-      borderRadius: kEventListSearchCollapsed / 2,
+      borderRadius: size / 2,
       scaleOnFocus: 1.0,
       suppressInkHover: true,
       showFocusFill: false,
@@ -283,7 +296,7 @@ class EventListSearchState extends State<EventListSearch>
           focusNode: _focus,
           onChanged: widget.onQueryChanged,
           onSubmitted: (_) => _focus.unfocus(),
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: TextStyle(color: Colors.white, fontSize: widget.fontSize),
           cursorColor: ForjaShellColors.brandGreen,
           decoration: InputDecoration(
             isDense: true,
@@ -291,24 +304,28 @@ class EventListSearchState extends State<EventListSearch>
             hintText: widget.placeholder,
             hintStyle: TextStyle(
               color: Colors.white.withValues(alpha: 0.38),
-              fontSize: 13,
+              fontSize: widget.fontSize,
             ),
             contentPadding: const EdgeInsets.symmetric(vertical: 10),
           ),
         );
 
     return Container(
-      height: kEventListSearchCollapsed,
+      height: widget.collapsedSize,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(kEventListSearchCollapsed / 2),
+        borderRadius: BorderRadius.circular(widget.collapsedSize / 2),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       padding: const EdgeInsets.only(left: 4, right: 4),
       child: Row(
         children: [
           const SizedBox(width: 8),
-          const Icon(Icons.search_rounded, color: Colors.white70, size: 18),
+          Icon(
+            Icons.search_rounded,
+            color: Colors.white70,
+            size: widget.fieldIconSize,
+          ),
           const SizedBox(width: 6),
           Expanded(child: field),
           ShellPaintScope.focusableTap(
@@ -326,7 +343,7 @@ class EventListSearchState extends State<EventListSearch>
               padding: const EdgeInsets.all(6),
               child: Icon(
                 Icons.close_rounded,
-                size: 18,
+                size: widget.fieldIconSize,
                 color: closeActive || closeTv ? Colors.white : Colors.white54,
               ),
             ),

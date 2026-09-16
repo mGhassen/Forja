@@ -8,9 +8,10 @@ import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
 ///
 /// Foundation paints; this owns coordinator calls + scroll jump.
 class PortalsPanelTvFocus {
-  PortalsPanelTvFocus({required this.tabId});
+  PortalsPanelTvFocus({required this.tabId, this.rowHeight});
 
   final String tabId;
+  double? rowHeight;
   final listScroll = ScrollController();
 
   /// Open-time focus handoff consumed once — later notifies must not re-steal.
@@ -74,8 +75,8 @@ class PortalsPanelTvFocus {
     final position = listScroll.position;
     final viewport = position.viewportDimension;
     if (viewport <= 0) return;
-    final itemTop = index * PortalListRow.rowHeight;
-    final itemBottom = itemTop + PortalListRow.rowHeight;
+    final itemTop = index * (rowHeight ?? PortalListRow.rowHeight);
+    final itemBottom = itemTop + (rowHeight ?? PortalListRow.rowHeight);
     final viewTop = position.pixels;
     final viewBottom = viewTop + viewport;
     double? target;

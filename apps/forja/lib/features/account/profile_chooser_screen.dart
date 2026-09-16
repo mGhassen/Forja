@@ -15,6 +15,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 enum ProfileChooserMode { choose, manage }
@@ -666,7 +668,13 @@ class _ChooserActionState extends State<_ChooserAction> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
-    final highlighted = enabled && (_focused || _hovered);
+    final highlighted = enabled &&
+        ShellInputPolicy.interactiveActive(
+          ShellScope.inputPolicyOf(context),
+          hovered: _hovered,
+          focused: _focused,
+          context: context,
+        );
     final fg = widget.primary
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textPrimary;
@@ -724,7 +732,12 @@ class _AddProfileTileState extends State<_AddProfileTile> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered;
+    final highlighted = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
     final m = widget.metrics;
     return ExcludeFocus(
       excluding: !widget.enabled,
@@ -823,7 +836,12 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered;
+    final highlighted = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
     final selected = highlighted || (!widget.managing && widget.active);
     final m = widget.metrics;
     return ExcludeFocus(
@@ -1087,7 +1105,13 @@ class _ProfileAvatarPickState extends State<_ProfileAvatarPick> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _focused || _hovered || widget.selected;
+    final highlighted = widget.selected ||
+        ShellInputPolicy.interactiveActive(
+          ShellScope.inputPolicyOf(context),
+          hovered: _hovered,
+          focused: _focused,
+          context: context,
+        );
     return ExcludeFocus(
       excluding: !widget.enabled,
       child: FocusableControl(

@@ -657,9 +657,7 @@ class _KindTabState extends State<_KindTab> {
             onEnter: (_) => setState(() => _reloadHovered = true),
             onExit: (_) => setState(() => _reloadHovered = false),
             child: AnimatedOpacity(
-              opacity: _hovered || selected || _focused || _reloadFocused
-                  ? 1
-                  : 0.7,
+              opacity: emphasize ? 1 : 0.7,
               duration: const Duration(milliseconds: 160),
               child: AnimatedRotation(
                 turns: _reloadHovered || _reloadFocused ? 0.5 : 0,

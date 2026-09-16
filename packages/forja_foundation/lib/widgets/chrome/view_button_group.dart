@@ -23,12 +23,16 @@ class ViewButtonGroup extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     this.height = 36,
+    this.iconSize = 18,
+    this.dividerHeight = 16,
   });
 
   final List<ViewButtonItem> items;
   final String? selectedId;
   final ValueChanged<String> onSelect;
   final double height;
+  final double iconSize;
+  final double dividerHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +53,7 @@ class ViewButtonGroup extends StatelessWidget {
             if (i > 0)
               Container(
                 width: 1,
-                height: 16,
+                height: dividerHeight,
                 color: Colors.white.withValues(alpha: 0.14),
               ),
             _ViewButtonSlot(
@@ -59,6 +63,7 @@ class ViewButtonGroup extends StatelessWidget {
               isLast: i == items.length - 1,
               height: height,
               radius: r,
+              iconSize: iconSize,
               listIndex: i,
               onTap: () => onSelect(items[i].id),
             ),
@@ -77,6 +82,7 @@ class _ViewButtonSlot extends StatefulWidget {
     required this.isLast,
     required this.height,
     required this.radius,
+    required this.iconSize,
     required this.listIndex,
     required this.onTap,
   });
@@ -87,6 +93,7 @@ class _ViewButtonSlot extends StatefulWidget {
   final bool isLast;
   final double height;
   final Radius radius;
+  final double iconSize;
   final int listIndex;
   final VoidCallback onTap;
 
@@ -117,7 +124,15 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: _active
-            ? Colors.white.withValues(alpha: _hovered || _focused ? 0.16 : 0.10)
+            ? Colors.white.withValues(
+                alpha: ShellPaintScope.interactiveActive(
+                  context,
+                  hovered: _hovered,
+                  focused: _focused,
+                )
+                    ? 0.16
+                    : 0.10,
+              )
             : Colors.transparent,
         borderRadius: BorderRadius.horizontal(
           left: widget.isFirst ? widget.radius : Radius.zero,
@@ -126,7 +141,7 @@ class _ViewButtonSlotState extends State<_ViewButtonSlot> {
       ),
       child: Icon(
         widget.item.icon,
-        size: 18,
+        size: widget.iconSize,
         color: widget.selected ? Colors.white : Colors.white60,
       ),
     );

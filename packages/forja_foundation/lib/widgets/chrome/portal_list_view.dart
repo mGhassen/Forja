@@ -52,6 +52,9 @@ class PortalListView extends StatefulWidget {
     this.leanback = false,
     this.tvTabId,
     this.listScrollController,
+    this.titleFontSize = 18,
+    this.pad = const EdgeInsets.fromLTRB(12, 12, 8, 8),
+    this.rowHeight = PortalListRow.rowHeight,
     this.onClose,
     this.onSelect,
     this.onFavorite,
@@ -91,6 +94,9 @@ class PortalListView extends StatefulWidget {
   /// Host tab id for TV row registration (`iptv`, `live_sports`, …).
   final String? tvTabId;
   final ScrollController? listScrollController;
+  final double titleFontSize;
+  final EdgeInsetsGeometry pad;
+  final double rowHeight;
 
   final VoidCallback? onClose;
   final void Function(PortalListItem item)? onSelect;
@@ -308,7 +314,7 @@ class _PortalListViewState extends State<PortalListView> {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+      padding: widget.pad,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
@@ -320,7 +326,7 @@ class _PortalListViewState extends State<PortalListView> {
             widget.title.trim().isEmpty ? 'Portals' : widget.title,
             style: GoogleFonts.plusJakartaSans(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: widget.titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -414,9 +420,9 @@ class _PortalListViewState extends State<PortalListView> {
       child: ListView.builder(
         controller: widget.listScrollController,
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        itemExtent: PortalListRow.rowHeight,
+        itemExtent: widget.rowHeight,
         scrollCacheExtent: ScrollCacheExtent.pixels(
-          PortalListRow.rowHeight * 14,
+          widget.rowHeight * 14,
         ),
         addAutomaticKeepAlives: false,
         itemCount: filtered.length,
@@ -426,6 +432,7 @@ class _PortalListViewState extends State<PortalListView> {
             key: ValueKey<String>(item.id),
             item: item,
             leanback: widget.leanback,
+            height: widget.rowHeight,
             tvTabId: _tv ? tab : null,
             listIndex: index,
             onSelect: widget.busy || widget.onSelect == null
@@ -514,7 +521,9 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   Color get _fg {
     final enabled = widget.onPressed != null;
     if (!enabled) return Colors.white.withValues(alpha: 0.38);
-    if (_tv && _focused) return ForjaShellColors.brandGreen;
+    if (ShellPaintScope.focusStyledOf(context, focused: _focused)) {
+      return ForjaShellColors.brandGreen;
+    }
     return widget.color ?? Colors.white;
   }
 

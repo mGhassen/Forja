@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Exact pre-wipe IPTV Sort popup — Categories + Channels sections.
@@ -135,7 +136,12 @@ class _IptvSortRowState extends State<_IptvSortRow> {
       tvFocus: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
       mouseHover: ShellScope.inputPolicyOf(context).scaleOnHover,
     );
-    final highlight = _hovered || _focused;
+    final highlight = ShellInputPolicy.interactiveActive(
+      ShellScope.inputPolicyOf(context),
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
     // Idle rows stay transparent (pre-wipe Sort menu); hover/selected = green fill.
     final bg = widget.selected || highlight
         ? PlayerPopupTokens.accentFill

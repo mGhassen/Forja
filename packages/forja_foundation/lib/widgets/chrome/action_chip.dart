@@ -14,6 +14,13 @@ class ForjaActionChip extends StatefulWidget {
     this.icon,
     this.selected = false,
     this.iconOnly = false,
+    this.height = 40,
+    this.radius = 20,
+    this.maxWidth = 220,
+    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    this.fontSize = 11.5,
+    this.iconSize,
+    this.gap = 6,
     this.tvTabId,
     this.tvRowId,
     this.tvItemIndex,
@@ -28,6 +35,17 @@ class ForjaActionChip extends StatefulWidget {
   final bool selected;
   /// Icon-only control (e.g. Live Sports Refresh).
   final bool iconOnly;
+
+  /// Icon-only circle size.
+  final double height;
+  final double radius;
+  final double maxWidth;
+  final EdgeInsetsGeometry padding;
+  final double fontSize;
+
+  /// Label chip icon (default 14) / iconOnly (default 20).
+  final double? iconSize;
+  final double gap;
   final String? tvTabId;
   final String? tvRowId;
   final int? tvItemIndex;
@@ -40,7 +58,6 @@ class ForjaActionChip extends StatefulWidget {
 }
 
 class _ForjaActionChipState extends State<ForjaActionChip> {
-  static const _radius = 20.0;
   bool _focused = false;
   bool _hovered = false;
 
@@ -55,10 +72,10 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
   @override
   Widget build(BuildContext context) {
     final active = _active || widget.selected;
-    final tvFocused = _tv && _focused;
+    final tvFocused = ShellPaintScope.focusStyledOf(context, focused: _focused);
 
     if (widget.iconOnly) {
-      const size = 40.0;
+      final size = widget.height;
       final fg = active || tvFocused ? Colors.white : Colors.white70;
       final idleAlpha = widget.selected ? 0.12 : 0.08;
       final circle = Container(
@@ -80,7 +97,11 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
             width: tvFocused ? 1.5 : 1,
           ),
         ),
-        child: Icon(widget.icon ?? Icons.refresh_rounded, color: fg, size: 20),
+        child: Icon(
+          widget.icon ?? Icons.refresh_rounded,
+          color: fg,
+          size: widget.iconSize ?? 20,
+        ),
       );
       return ShellPaintScope.focusableTap(
         context: context,
@@ -122,19 +143,19 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
     final chip = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOutCubic,
-      constraints: const BoxConstraints(maxWidth: 220),
+      constraints: BoxConstraints(maxWidth: widget.maxWidth),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(_radius),
+        borderRadius: BorderRadius.circular(widget.radius),
         border: Border.all(color: border, width: tvFocused ? 1.5 : 1),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: widget.padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: 14, color: fg),
-            if (widget.label.isNotEmpty) const SizedBox(width: 6),
+            Icon(widget.icon, size: widget.iconSize ?? 14, color: fg),
+            if (widget.label.isNotEmpty) SizedBox(width: widget.gap),
           ],
           if (widget.label.isNotEmpty)
             Flexible(
@@ -144,7 +165,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: 11.5,
+                  fontSize: widget.fontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -158,7 +179,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: shellRoundedInkHost(
-          radius: _radius,
+          radius: widget.radius,
           onTap: widget.onTap,
           child: chip,
         ),
@@ -168,7 +189,7 @@ class _ForjaActionChipState extends State<ForjaActionChip> {
     return ShellPaintScope.focusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: _radius,
+      borderRadius: widget.radius,
       scaleOnFocus: 1.0,
       suppressInkHover: true,
       showFocusFill: false,

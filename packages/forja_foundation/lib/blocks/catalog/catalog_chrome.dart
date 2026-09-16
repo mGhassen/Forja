@@ -9,6 +9,12 @@ import 'package:forja_foundation/widgets/chrome/widget_shelf.dart';
 
 export 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 
+/// Optional double from pack action / props maps (`height`, `fontSize`, …).
+double? propsOptDouble(Map m, String key) {
+  final v = m[key];
+  return v is num ? v.toDouble() : null;
+}
+
 /// `{ id, label }` rows from pack JSON lists.
 List<({String id, String label})> propsIdLabelList(
   Map<String, dynamic> props,
@@ -145,6 +151,7 @@ class CatalogTopChrome extends StatelessWidget {
     this.center,
     this.height,
     this.padding,
+    this.gap,
   });
 
   final List<Map<String, dynamic>> actions;
@@ -164,6 +171,9 @@ class CatalogTopChrome extends StatelessWidget {
   /// Pack `height` / `pad` — omit → [TopBarActions] ShellTokens defaults.
   final double? height;
   final EdgeInsetsGeometry? padding;
+
+  /// Pack `gap` between leading/trailing chips — omit → 8.
+  final double? gap;
 
   static bool _isTrailing(Map<String, dynamic> action) {
     if (action['trailing'] == true) return true;
@@ -241,6 +251,11 @@ class CatalogTopChrome extends StatelessWidget {
       onReload: !allowReload || onSelect == null
           ? null
           : (id) => onSelect!(actionId, '__reload__:$id'),
+      height: propsOptDouble(action, 'height') ?? 36,
+      radius: propsOptDouble(action, 'radius') ?? 8,
+      fontSize: propsOptDouble(action, 'fontSize') ?? 12.5,
+      iconSize: propsOptDouble(action, 'iconSize') ?? 16,
+      pad: propsOptDouble(action, 'pad') ?? 14,
       items: [
         for (final m in maps)
           WidgetShelfItem(
@@ -264,6 +279,9 @@ class CatalogTopChrome extends StatelessWidget {
       onSelect: onSelect == null
           ? (_) {}
           : (id) => onSelect!(actionId, id),
+      height: propsOptDouble(action, 'height') ?? 36,
+      iconSize: propsOptDouble(action, 'iconSize') ?? 18,
+      dividerHeight: propsOptDouble(action, 'dividerHeight') ?? 16,
       items: [
         for (final m in maps)
           ViewButtonItem(
@@ -368,6 +386,12 @@ class CatalogTopChrome extends StatelessWidget {
                         : Icons.refresh_rounded),
             iconOnly: true,
             selected: isSortIcon && _isSelectedMenu(action, selections),
+            height: propsOptDouble(action, 'height') ?? 40,
+            radius: propsOptDouble(action, 'radius') ?? 20,
+            maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
+            fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+            iconSize: propsOptDouble(action, 'iconSize'),
+            gap: propsOptDouble(action, 'gap') ?? 6,
             onTap: onSelect == null
                 ? () {}
                 : () => onSelect!(
@@ -385,6 +409,12 @@ class CatalogTopChrome extends StatelessWidget {
             label: _selectedLabel(action, selections, selectionLabels),
             icon: icon,
             selected: _isSelectedMenu(action, selections),
+            height: propsOptDouble(action, 'height') ?? 40,
+            radius: propsOptDouble(action, 'radius') ?? 20,
+            maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
+            fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+            iconSize: propsOptDouble(action, 'iconSize'),
+            gap: propsOptDouble(action, 'gap') ?? 6,
             onTap: onSelect == null
                 ? () {}
                 // Host opens the real Catalog / Schedule sheet (not a flat fallback).
@@ -399,6 +429,12 @@ class CatalogTopChrome extends StatelessWidget {
           label: (action['label'] ?? actionId).toString(),
           icon: icon,
           selected: false,
+          height: propsOptDouble(action, 'height') ?? 40,
+          radius: propsOptDouble(action, 'radius') ?? 20,
+          maxWidth: propsOptDouble(action, 'maxWidth') ?? 220,
+          fontSize: propsOptDouble(action, 'fontSize') ?? 11.5,
+          iconSize: propsOptDouble(action, 'iconSize'),
+          gap: propsOptDouble(action, 'gap') ?? 6,
           onTap: onSelect == null
               ? () {}
               : () => onSelect!(actionId, actionId),
@@ -411,6 +447,7 @@ class CatalogTopChrome extends StatelessWidget {
       trailing: trailing,
       center: center,
       height: height,
+      gap: gap ?? 8,
       padding: padding ??
           EdgeInsets.fromLTRB(
             ShellTokens.compactChromeLeadingInset(context),

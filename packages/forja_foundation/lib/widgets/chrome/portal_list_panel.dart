@@ -3,6 +3,28 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Probe fields for the desktop hover detail card — opaque strings only.
+class PortalProbeDetail {
+  const PortalProbeDetail({
+    this.statusLabel,
+    this.alive,
+    this.message,
+    this.protocol,
+    this.ports,
+    this.timezone,
+  });
+
+  /// Account / probe status line (`Active`, `Banned`, `Unreachable`, …).
+  final String? statusLabel;
+  final bool? alive;
+  final String? message;
+  final String? protocol;
+
+  /// Pre-joined ports line (`8080 · https 443 · rtmp 1935`).
+  final String? ports;
+  final String? timezone;
+}
+
 /// One portal row for [PortalListPanel] — opaque display fields only.
 class PortalListItem {
   const PortalListItem({
@@ -19,6 +41,7 @@ class PortalListItem {
     this.favorite = false,
     this.isNew = false,
     this.deleting = false,
+    this.probeDetail,
   });
 
   final String id;
@@ -36,6 +59,9 @@ class PortalListItem {
   final bool favorite;
   final bool isNew;
   final bool deleting;
+
+  /// Desktop 1s-hover card; null until a probe has run.
+  final PortalProbeDetail? probeDetail;
 }
 
 /// Presentational portals list panel shell — props / slots only (RFC-095).
@@ -59,6 +85,8 @@ class PortalListPanel extends StatelessWidget {
     this.itemBuilder,
     this.focusNode,
     this.onEscape,
+    this.pad,
+    this.statusFontSize = 11,
   }) : assert(
           body != null || (items != null && itemBuilder != null),
           'PortalListPanel requires body, or items + itemBuilder',
@@ -90,6 +118,10 @@ class PortalListPanel extends StatelessWidget {
   final FocusNode? focusNode;
   final VoidCallback? onEscape;
 
+  /// Status line padding. Null → h12 v4.
+  final EdgeInsetsGeometry? pad;
+  final double statusFontSize;
+
   Widget _resolvedBody(BuildContext context) {
     if (body != null) return body!;
     final list = items!;
@@ -120,12 +152,13 @@ class PortalListPanel extends StatelessWidget {
     Widget? statusChild = status;
     if (statusChild == null && statusText.isNotEmpty) {
       statusChild = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: pad ??
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Text(
           statusText,
           style: GoogleFonts.plusJakartaSans(
             color: Colors.white54,
-            fontSize: 11,
+            fontSize: statusFontSize,
           ),
         ),
       );

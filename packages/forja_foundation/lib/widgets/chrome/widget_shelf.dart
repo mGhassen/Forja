@@ -33,6 +33,9 @@ class WidgetShelf extends StatelessWidget {
     this.onReload,
     this.height = 36,
     this.radius = 8,
+    this.fontSize = 12.5,
+    this.iconSize = 16,
+    this.pad = 14,
     this.tvRowId = 'widget-shelf',
     this.onDownEdge,
   });
@@ -45,6 +48,9 @@ class WidgetShelf extends StatelessWidget {
   final ValueChanged<String>? onReload;
   final double height;
   final double radius;
+  final double fontSize;
+  final double iconSize;
+  final double pad;
   final String tvRowId;
   final VoidCallback? onDownEdge;
 
@@ -70,6 +76,9 @@ class WidgetShelf extends StatelessWidget {
               isLast: i == items.length - 1,
               height: height,
               radius: radius,
+              fontSize: fontSize,
+              iconSize: iconSize,
+              pad: pad,
               tvRowId: tvRowId,
               onTap: () => onSelect(items[i].id),
               onReload: onReload == null
@@ -92,6 +101,9 @@ class _WidgetShelfTab extends StatefulWidget {
     required this.isLast,
     required this.height,
     required this.radius,
+    required this.fontSize,
+    required this.iconSize,
+    required this.pad,
     required this.tvRowId,
     required this.onTap,
     this.onReload,
@@ -105,6 +117,9 @@ class _WidgetShelfTab extends StatefulWidget {
   final bool isLast;
   final double height;
   final double radius;
+  final double fontSize;
+  final double iconSize;
+  final double pad;
   final String tvRowId;
   final VoidCallback onTap;
   final VoidCallback? onReload;
@@ -131,11 +146,20 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
   bool get _tv => ShellPaintScope.useTvFocusOf(context);
 
   bool get _paintActive =>
-      _hover || _focused || _reloadChipFocused || _tvReloadRevealed;
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hover,
+        focused: _focused,
+      ) ||
+      _reloadChipFocused ||
+      _tvReloadRevealed;
 
   bool get _expandActive =>
-      _hover ||
-      (_focused && !_tv) ||
+      ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hover,
+        focused: _focused,
+      ) ||
       (_tv && (_tvReloadRevealed || _reloadChipFocused));
 
   bool get _revealReload =>
@@ -298,20 +322,20 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
     final tabBody = SizedBox(
       height: widget.height,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: EdgeInsets.symmetric(horizontal: widget.pad),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (widget.item.icon != null) ...[
-              Icon(widget.item.icon, size: 16, color: ink),
+              Icon(widget.item.icon, size: widget.iconSize, color: ink),
               const SizedBox(width: 6),
             ],
             Text(
               widget.item.label,
               style: GoogleFonts.plusJakartaSans(
                 color: ink,
-                fontSize: 12.5,
+                fontSize: widget.fontSize,
                 fontWeight:
                     invert || showGradient ? FontWeight.w800 : FontWeight.w500,
               ),
@@ -407,7 +431,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                             message: 'Reload ${widget.item.label}',
                             child: Icon(
                               Icons.refresh_rounded,
-                              size: 16,
+                              size: widget.iconSize,
                               color: invert
                                   ? accent
                                   : (showGradient || _revealReload

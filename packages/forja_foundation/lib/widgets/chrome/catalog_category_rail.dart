@@ -45,6 +45,12 @@ class CatalogCategoryRail extends StatefulWidget {
     this.canReorder = false,
     this.width = 220,
     this.compact = false,
+    this.rowHeight,
+    this.fontSize,
+    this.iconSize,
+    this.rowPadH,
+    this.listPadV = 8,
+    this.pinSlotWidth = 28,
     this.tvRowId = 'catalog-categories',
   });
 
@@ -59,6 +65,16 @@ class CatalogCategoryRail extends StatefulWidget {
   final bool canReorder;
   final double width;
   final bool compact;
+
+  /// Row extent override. Null → compact 42 / desktop 46.
+  final double? rowHeight;
+  final double? fontSize;
+  final double? iconSize;
+
+  /// Horizontal row padding (left & right). Null → compact 10/6 / desktop 12/8.
+  final double? rowPadH;
+  final double listPadV;
+  final double pinSlotWidth;
   final String tvRowId;
 
   static const double rowExtentDesktop = 46;
@@ -75,11 +91,13 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   String? _floatingId;
   final ScrollController _scroll = ScrollController();
 
-  static const _listPadV = 8.0;
+  double get _listPadV => widget.listPadV;
 
-  double get _rowExtent => widget.compact
-      ? CatalogCategoryRail.rowExtentCompact
-      : CatalogCategoryRail.rowExtentDesktop;
+  double get _rowExtent =>
+      widget.rowHeight ??
+      (widget.compact
+          ? CatalogCategoryRail.rowExtentCompact
+          : CatalogCategoryRail.rowExtentDesktop);
 
   List<CatalogCategoryItem> get _fixed =>
       [for (final e in widget.items) if (e.fixed) e];
@@ -167,6 +185,11 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
         reorderIndex: canReorder ? reorderIndex : null,
         floating: _floatingId == item.id,
         tvRowId: widget.tvRowId,
+        rowExtent: _rowExtent,
+        fontSize: widget.fontSize,
+        iconSize: widget.iconSize,
+        rowPadH: widget.rowPadH,
+        pinSlotWidth: widget.pinSlotWidth,
         onSelect: widget.onSelect == null
             ? null
             : () => widget.onSelect!(item.id),
@@ -196,7 +219,7 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
           controller: _scroll,
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(vertical: _listPadV),
+              padding: EdgeInsets.symmetric(vertical: _listPadV),
               sliver: SliverMainAxisGroup(
                 slivers: [
                   if (fixed.isNotEmpty)
@@ -292,6 +315,11 @@ class _CatalogCategoryRow extends StatefulWidget {
     required this.compact,
     required this.listIndex,
     required this.tvRowId,
+    required this.rowExtent,
+    required this.pinSlotWidth,
+    this.fontSize,
+    this.iconSize,
+    this.rowPadH,
     this.reorderIndex,
     this.floating = false,
     this.onSelect,
@@ -307,6 +335,11 @@ class _CatalogCategoryRow extends StatefulWidget {
   final bool compact;
   final int listIndex;
   final String tvRowId;
+  final double rowExtent;
+  final double pinSlotWidth;
+  final double? fontSize;
+  final double? iconSize;
+  final double? rowPadH;
   final int? reorderIndex;
   final bool floating;
   final VoidCallback? onSelect;
@@ -356,7 +389,6 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
   static const _okHoldDelay = Duration(seconds: 1);
   static const _dragHoldDelay = Duration(milliseconds: 1500);
-  static const _pinSlotWidth = 28.0;
 
   bool get _leanbackOnly =>
       ShellPaintScope.usesTvDensityOf(context) &&
@@ -568,9 +600,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
 
     Widget rowBody = Container(
       width: double.infinity,
-      height: widget.compact
-          ? CatalogCategoryRail.rowExtentCompact
-          : CatalogCategoryRail.rowExtentDesktop,
+      height: widget.rowExtent,
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: fillColor,
@@ -581,15 +611,15 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
         children: [
           Padding(
             padding: EdgeInsets.only(
-              left: widget.compact ? 10 : 12,
-              right: widget.compact ? 6 : 8,
+              left: widget.rowPadH ?? (widget.compact ? 10 : 12),
+              right: widget.rowPadH ?? (widget.compact ? 6 : 8),
             ),
             child: Row(
               children: [
                 if (widget.item.icon != null) ...[
                   Icon(
                     widget.item.icon,
-                    size: widget.compact ? 18 : 20,
+                    size: widget.iconSize ?? (widget.compact ? 18 : 20),
                     color: iconColor,
                   ),
                   SizedBox(width: widget.compact ? 10 : 12),
@@ -601,7 +631,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       color: titleColor,
-                      fontSize: widget.compact ? 13 : 14,
+                      fontSize: widget.fontSize ?? (widget.compact ? 13 : 14),
                       fontWeight: lit || selected
                           ? FontWeight.w700
                           : FontWeight.w500,
@@ -611,7 +641,7 @@ class _CatalogCategoryRowState extends State<_CatalogCategoryRow>
                 // Reserve pin slot so hover pin does not reflow the label.
                 if (_canTvPin)
                   SizedBox(
-                    width: _pinSlotWidth,
+                    width: widget.pinSlotWidth,
                     child: _showPin ? _buildPin(leanback) : null,
                   ),
               ],

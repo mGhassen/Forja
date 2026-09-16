@@ -137,6 +137,7 @@ Widget? paintFoundationType(
         expand: propsBool(props, 'expand'),
         compact: propsBool(props, 'compact'),
         height: propsNum(props, 'height'),
+        fontSize: propsNum(props, 'fontSize'),
         color: propsColor(props, 'color'),
         variant: _buttonVariant(propsString(props, 'variant')),
         size: _buttonSize(propsString(props, 'size')),
@@ -153,6 +154,9 @@ Widget? paintFoundationType(
       return VerticalMenu(
         width: propsNumOr(props, 'width', 220),
         backgroundColor: propsColor(props, 'backgroundColor'),
+        minHeight: propsNumOr(props, 'minHeight', 40),
+        fontSize: propsNumOr(props, 'fontSize', 14),
+        leadingSize: propsNumOr(props, 'leadingSize', 28),
         children: kids().isEmpty
             ? [
                 VerticalMenu.item(
@@ -546,6 +550,9 @@ Widget? paintFoundationType(
         viewers: propsInt(props, 'viewers') ?? 0,
         selected: propsBool(props, 'selected'),
         playable: propsBool(props, 'playable', true),
+        fontSize: propsNumOr(props, 'fontSize', 14),
+        metaFontSize: propsNumOr(props, 'metaFontSize', 12),
+        iconSize: propsNumOr(props, 'iconSize', 20),
         onTap: () {},
       );
     case 'catalogSearchResultCard':
@@ -763,6 +770,8 @@ Widget? paintFoundationType(
       return ShellSectionTitle(
         title: propsStringOr(props, 'title', ''),
         subtitle: propsString(props, 'subtitle'),
+        fontSize: propsNumOr(props, 'fontSize', 20),
+        subtitleFontSize: propsNumOr(props, 'subtitleFontSize', 11),
         trailing: children.isEmpty ? null : kids(),
       );
     case 'shellTabHeader':
@@ -779,6 +788,7 @@ Widget? paintFoundationType(
         arrowOffset: propsNumOr(props, 'arrowOffset', 8),
       );
     case 'shellChip':
+      final padN = propsNum(props, 'pad') ?? propsNum(props, 'padding');
       return ForjaShellChip(
         label: propsStringOr(props, 'label', ''),
         selected: propsBool(props, 'selected'),
@@ -787,6 +797,10 @@ Widget? paintFoundationType(
         accentHover: propsBool(props, 'accentHover'),
         fontSize: propsNumOr(props, 'fontSize', 12.5),
         radius: propsNumOr(props, 'radius', 20),
+        iconSize: propsNumOr(props, 'iconSize', 14),
+        padding: padN != null
+            ? EdgeInsets.symmetric(horizontal: padN, vertical: padN * 0.57)
+            : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       );
     case 'sidePanelOverlay':
       return SidePanelOverlay(
@@ -804,8 +818,11 @@ Widget? paintFoundationType(
       );
     case 'portalList':
     case 'portalListPanel':
+      final panelPad = propsNum(props, 'pad');
       return PortalListPanel(
         width: propsNumOr(props, 'width', 380),
+        pad: panelPad != null ? EdgeInsets.all(panelPad) : null,
+        statusFontSize: propsNumOr(props, 'statusFontSize', 11),
         header: Text(
           propsStringOr(props, 'header', propsStringOr(props, 'title', 'Portals')),
           style: const TextStyle(
@@ -847,6 +864,13 @@ Widget? paintFoundationType(
         seatsMax: propsString(props, 'seatsMax'),
         compact: propsBool(props, 'compact'),
         width: chipW != null && chipW > 0 ? chipW : null,
+        height: propsNumOr(props, 'height', 40),
+        radius: propsNumOr(props, 'radius', 8),
+        pad: propsNum(props, 'pad'),
+        fontSize: propsNumOr(props, 'fontSize', 12.5),
+        iconSize: propsNumOr(props, 'iconSize', 16),
+        chevronSize: propsNumOr(props, 'chevronSize', 18),
+        seatsFontSize: propsNumOr(props, 'seatsFontSize', 12),
         accentColor: propsColor(props, 'accentColor'),
       );
     case 'catalogPosterGrid':
@@ -1185,13 +1209,20 @@ Widget? paintFoundationType(
         onTap: () {},
       );
     case 'catalogFilterSheet':
+      final sheetPad = propsNum(props, 'padding') ?? propsNum(props, 'pad');
       return CatalogFilterSheet(
         current: propsStringOr(props, 'current', ''),
         options: _filterSheetOptions(props),
         tvFocus: propsBool(props, 'tvFocus'),
         autofocusFirst: propsBool(props, 'autofocusFirst'),
+        radius: propsNumOr(props, 'radius', 12),
+        fontSize: propsNumOr(props, 'fontSize', 16),
+        padding: sheetPad != null
+            ? EdgeInsets.all(sheetPad)
+            : const EdgeInsets.fromLTRB(24, 20, 24, 32),
       );
     case 'filterSheetOption':
+      final optPad = propsNum(props, 'padding') ?? propsNum(props, 'pad');
       return FilterSheetOption(
         label: propsStringOr(props, 'label', ''),
         subtitle: propsString(props, 'subtitle'),
@@ -1200,6 +1231,11 @@ Widget? paintFoundationType(
         onSelected: () {},
         scaleOnHover: propsBool(props, 'scaleOnHover', true),
         tvFocus: propsBool(props, 'tvFocus'),
+        radius: propsNumOr(props, 'radius', 12),
+        fontSize: propsNum(props, 'fontSize'),
+        padding: optPad != null
+            ? EdgeInsets.symmetric(vertical: optPad)
+            : const EdgeInsets.symmetric(vertical: 2),
       );
 
     case 'searchBlock':
@@ -1300,6 +1336,12 @@ Widget? paintFoundationType(
             : _filterSheetIcon(propsString(props, 'icon')),
         selected: propsBool(props, 'selected'),
         iconOnly: propsBool(props, 'iconOnly'),
+        height: propsNumOr(props, 'height', 40),
+        radius: propsNumOr(props, 'radius', 20),
+        maxWidth: propsNumOr(props, 'maxWidth', 220),
+        fontSize: propsNumOr(props, 'fontSize', 11.5),
+        iconSize: propsNum(props, 'iconSize'),
+        gap: propsNumOr(props, 'gap', 6),
       );
     case 'catalogListEmpty':
       return CatalogListEmpty(
@@ -1408,6 +1450,7 @@ Widget? paintFoundationType(
         leading: lead,
         trailing: trail,
         height: propsNum(props, 'height'),
+        gap: propsNumOr(props, 'gap', 8),
       );
     case 'viewButtonGroup':
       final items = _viewButtonItems(props);
@@ -1422,6 +1465,8 @@ Widget? paintFoundationType(
             (items.isEmpty ? 'cards' : items.first.id),
         onSelect: (_) {},
         height: propsNumOr(props, 'height', 36),
+        iconSize: propsNumOr(props, 'iconSize', 18),
+        dividerHeight: propsNumOr(props, 'dividerHeight', 16),
       );
     case 'widgetShelf':
       final shelf = _widgetShelfItems(props);
@@ -1437,6 +1482,9 @@ Widget? paintFoundationType(
         onSelect: (_) {},
         height: propsNumOr(props, 'height', 36),
         radius: propsNumOr(props, 'radius', 8),
+        fontSize: propsNumOr(props, 'fontSize', 12.5),
+        iconSize: propsNumOr(props, 'iconSize', 16),
+        pad: propsNumOr(props, 'pad', 14),
       );
     case 'catalogSideRail':
       final side = _idLabelList(props, 'items');
@@ -1465,6 +1513,12 @@ Widget? paintFoundationType(
           onSelect: (_) {},
           width: propsNumOr(props, 'width', 220),
           compact: propsBool(props, 'compact'),
+          rowHeight: propsNum(props, 'rowHeight'),
+          fontSize: propsNum(props, 'fontSize'),
+          iconSize: propsNum(props, 'iconSize'),
+          rowPadH: propsNum(props, 'rowPadH'),
+          listPadV: propsNumOr(props, 'listPadV', 8),
+          pinSlotWidth: propsNumOr(props, 'pinSlotWidth', 28),
         ),
       );
     case 'catalogSearchTypeSegment':

@@ -54,9 +54,12 @@ bool liveFocusActive(
         context: context,
     );
 
-/// TV D-pad focus - green highlight like player chrome controls.
-bool liveTvFocused(BuildContext context, {required bool focused}) =>
-    liveUseTvFocus(context) && focused;
+/// TV D-pad / keyboard focus chrome — not mouse-retained focus on desktop.
+bool liveTvFocused(BuildContext context, {required bool focused}) {
+  if (!liveUseTvFocus(context) || !focused) return false;
+  return ShellScope.inputPolicyOf(context)
+      .focusChromeVisible(context, focused: focused);
+}
 
 /// Focus a registered live/portal row item (restores last index when [index] is null).
 bool liveFocusRowItem(String rowId, [int? index]) {

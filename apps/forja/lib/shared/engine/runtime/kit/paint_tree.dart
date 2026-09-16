@@ -1054,6 +1054,11 @@ class PackPaintTree extends StatelessWidget {
         tvTabId: tab,
         tvRowId: 'chrome',
         tvItemIndex: 0,
+        collapsedSize: PackPaintArtifact.packDouble(searchAction['collapsedSize']),
+        expandedWidth: PackPaintArtifact.packDouble(searchAction['expandedWidth']),
+        fontSize: PackPaintArtifact.packDouble(searchAction['fontSize']),
+        iconSize: PackPaintArtifact.packDouble(searchAction['iconSize']),
+        fieldIconSize: PackPaintArtifact.packDouble(searchAction['fieldIconSize']),
       );
     }
     if (sortAction != null) {
@@ -1076,7 +1081,16 @@ class PackPaintTree extends StatelessWidget {
               portalsAction['source'] ??
               '')
           .toString();
-      final rawW = portalsAction['width'];
+      final sizeKeys = const [
+        'width',
+        'height',
+        'radius',
+        'pad',
+        'fontSize',
+        'iconSize',
+        'chevronSize',
+        'seatsFontSize',
+      ];
       out['portals'] = Consumer(
         builder: (ctx, ref, _) => PortalsActionHost.buildPortalsChip(
           ctx,
@@ -1086,7 +1100,8 @@ class PackPaintTree extends StatelessWidget {
           itemIndex: 0,
           action: {
             if (hoist.isNotEmpty) 'hoistSource': hoist,
-            if (rawW is num) 'width': rawW,
+            for (final k in sizeKeys)
+              if (portalsAction![k] is num) k: portalsAction[k],
           },
         ),
       );
@@ -2250,6 +2265,7 @@ class PackPaintTree extends StatelessWidget {
     final actions = propsActionMaps(spec);
     final selections = _topBarSelections(scope, actions);
     final height = PackPaintArtifact.packDouble(spec['height']);
+    final gap = PackPaintArtifact.packDouble(spec['gap']);
     final padRaw = spec['pad'] ?? spec['padding'];
     final padding = padRaw == null
         ? null
@@ -2269,6 +2285,7 @@ class PackPaintTree extends StatelessWidget {
       selections: selections,
       selectionLabels: _topBarSelectionLabels(selections, actions),
       height: height,
+      gap: gap,
       padding: padding,
       onSelect: (actionId, value) {
         _dispatchTopBarAction(

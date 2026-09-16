@@ -23,15 +23,18 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 part 'player_chrome_overlay_hero.dart';
 
 /// D-pad / hover highlight for player chrome - works even without [ShellScope].
+/// Desktop: mouse → hover only; keyboard/D-pad → focus chrome.
 bool playerChromeFocusActive(
   BuildContext context, {
   required bool tvFocusable,
   required bool hovered,
   required bool focused,
 }) {
-  if (tvFocusable && focused) return true;
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+  if (!tvFocusable) {
+    return policy.scaleOnHover && hovered;
+  }
   return ShellInputPolicy.interactiveActive(
     policy,
     hovered: hovered,
@@ -40,10 +43,16 @@ bool playerChromeFocusActive(
   );
 }
 
-bool playerChromeTvFocused({
+bool playerChromeTvFocused(
+  BuildContext context, {
   required bool tvFocusable,
   required bool focused,
-}) => tvFocusable && focused;
+}) {
+  if (!tvFocusable || !focused) return false;
+  final policy =
+      ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+  return policy.focusChromeVisible(context, focused: focused);
+}
 
 Color playerChromeIconColor({
   required bool enabled,
@@ -134,7 +143,11 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
   );
 
   bool get _tvFocused =>
-      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
+      playerChromeTvFocused(
+        context,
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
 
   Color get _iconColor => playerChromeIconColor(
     enabled: true,
@@ -293,7 +306,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
   );
 
   bool get _tvFocused =>
-      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
+      playerChromeTvFocused(
+        context,
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +467,11 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
   );
 
   bool get _tvFocused =>
-      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
+      playerChromeTvFocused(
+        context,
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -628,7 +649,11 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
   bool _hovered = false;
 
   bool get _tvFocused =>
-      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
+      playerChromeTvFocused(
+        context,
+        tvFocusable: widget.tvFocusable,
+        focused: _focused,
+      );
 
   bool get _highlight => playerChromeFocusActive(
     context,

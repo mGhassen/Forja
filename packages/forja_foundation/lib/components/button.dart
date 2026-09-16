@@ -40,6 +40,8 @@ class Button extends StatelessWidget {
     this.iconSize,
     this.compact = false,
     this.height,
+    this.fontSize,
+    this.padding,
     this.onKeyEvent,
   }) : assert(child != null || label != null || icon != null);
 
@@ -58,13 +60,20 @@ class Button extends StatelessWidget {
   final double? iconSize;
   final bool compact;
   final double? height;
+  final double? fontSize;
+  final EdgeInsetsGeometry? padding;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
     final enabled = onPressed != null && !loading;
-    final dims = _dims(compact ? ButtonSize.sm : size, height: height);
+    final dims = _dims(
+      compact ? ButtonSize.sm : size,
+      height: height,
+      fontSize: fontSize,
+      padding: padding,
+    );
     final colors = _resolveColors(theme, variant, enabled, color);
 
     Widget content;
@@ -157,7 +166,12 @@ class Button extends StatelessWidget {
     return button;
   }
 
-  static _ButtonDims _dims(ButtonSize size, {double? height}) {
+  static _ButtonDims _dims(
+    ButtonSize size, {
+    double? height,
+    double? fontSize,
+    EdgeInsetsGeometry? padding,
+  }) {
     final base = switch (size) {
         ButtonSize.sm => const _ButtonDims(
             height: 32,
@@ -184,12 +198,12 @@ class Button extends StatelessWidget {
             padding: EdgeInsets.zero,
           ),
       };
-    if (height == null) return base;
+    if (height == null && fontSize == null && padding == null) return base;
     return _ButtonDims(
-      height: height,
-      fontSize: base.fontSize,
+      height: height ?? base.height,
+      fontSize: fontSize ?? base.fontSize,
       iconSize: base.iconSize,
-      padding: base.padding,
+      padding: padding ?? base.padding,
     );
   }
 

@@ -87,12 +87,17 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
 
   @override
   Widget build(BuildContext context) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
     final canReload = widget.onReload != null && !widget.isReloading;
     final showReloadGlyph = widget.showReload &&
-        (tvFocus
-            ? _focused || _reloadFocused || _hovered
-            : _hovered || _reloadFocused);
+        (_reloadFocused ||
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: _hovered,
+              focused: _focused,
+              context: context,
+            ));
     final playingColor = PlayerPopupTokens.accent;
 
     final labelColor = widget.isPlaying
@@ -406,10 +411,16 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     final isUp = widget.status == PlayerSourceStatus.ready ||
         widget.status == PlayerSourceStatus.active;
     final canPlay = widget.onPlay != null && !widget.isPlaying && isUp;
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    // Up rows: idle ✓, hover/focus → play arrow (same trailing slot).
-    final showPlayOnUp =
-        canPlay && (_hovered || (tvFocus && _focused));
+    final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
+    // Up rows: idle ✓, hover/keyboard focus → play arrow (same trailing slot).
+    final showPlayOnUp = canPlay &&
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+          context: context,
+        );
 
     VoidCallback? trailingTap;
     if (widget.isPlaying && widget.onTogglePlayPause != null) {

@@ -270,6 +270,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         focused: _focused,
       );
       final tvFocused = playerChromeTvFocused(
+        context,
         tvFocusable: true,
         focused: _focused,
       );

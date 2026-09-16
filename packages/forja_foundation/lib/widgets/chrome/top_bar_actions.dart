@@ -13,6 +13,7 @@ class TopBarActions extends StatelessWidget {
     this.wrapRow,
     this.height,
     this.padding,
+    this.gap = 8,
   });
 
   final List<Widget> leading;
@@ -23,6 +24,7 @@ class TopBarActions extends StatelessWidget {
   final Widget Function(Widget child)? wrapRow;
   final double? height;
   final EdgeInsetsGeometry? padding;
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +37,12 @@ class TopBarActions extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < leading.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
+            if (i > 0) SizedBox(width: gap),
             leading[i],
           ],
           const Spacer(),
           for (var i = 0; i < trailing.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
+            if (i > 0) SizedBox(width: gap),
             trailing[i],
           ],
         ],

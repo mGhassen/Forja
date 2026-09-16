@@ -42,6 +42,9 @@ class CatalogFilterSheet extends StatefulWidget {
     this.autofocusFirst = false,
     this.wrapBody,
     this.optionInteractiveBuilder,
+    this.radius = 12,
+    this.fontSize = 16,
+    this.padding = const EdgeInsets.fromLTRB(24, 20, 24, 32),
   });
 
   final String current;
@@ -56,6 +59,9 @@ class CatalogFilterSheet extends StatefulWidget {
     ValueChanged<bool>? onHoverChange,
     FocusNode? focusNode,
   })? optionInteractiveBuilder;
+  final double radius;
+  final double fontSize;
+  final EdgeInsetsGeometry padding;
 
   @override
   State<CatalogFilterSheet> createState() => _CatalogFilterSheetState();
@@ -90,7 +96,7 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
 
     final body = SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        padding: widget.padding,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
           child: SingleChildScrollView(
@@ -109,18 +115,21 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Catalog',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: widget.fontSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Filter the schedule by catalog:',
-                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: widget.fontSize - 3,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 for (var i = 0; i < widget.options.length; i++)
@@ -136,6 +145,7 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
                     tvFocus: widget.tvFocus,
                     focusNode: i == 0 ? _firstFocus : null,
                     interactiveBuilder: widget.optionInteractiveBuilder,
+                    radius: widget.radius,
                   ),
               ],
             ),

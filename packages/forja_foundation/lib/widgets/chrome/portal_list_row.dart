@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/widgets/chrome/portal_probe_detail_card.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -24,6 +25,10 @@ class PortalListRow extends StatefulWidget {
     this.leanback = false,
     this.tvTabId,
     this.listIndex = 0,
+    this.height = rowHeight,
+    this.actionWidth = 108,
+    this.fontSize = 13,
+    this.metaFontSize = 11,
     this.onSelect,
     this.onFavorite,
     this.onEdit,
@@ -37,10 +42,16 @@ class PortalListRow extends StatefulWidget {
     this.onTvFocus,
   });
 
+  static const rowHeight = 98.0;
+
   final PortalListItem item;
   final bool leanback;
   final String? tvTabId;
   final int listIndex;
+  final double height;
+  final double actionWidth;
+  final double fontSize;
+  final double metaFontSize;
   final VoidCallback? onSelect;
   final VoidCallback? onFavorite;
   final VoidCallback? onEdit;
@@ -53,15 +64,13 @@ class PortalListRow extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onTvFocus;
 
-  static const rowHeight = 98.0;
-
   @override
   State<PortalListRow> createState() => _PortalListRowState();
 }
 
 class _PortalListRowState extends State<PortalListRow> {
-  static const _actionW = 108.0;
   static const _statusSlot = 18.0;
+  static const _detailHoverDelay = Duration(seconds: 1);
 
   bool _lineHover = false;
   bool _focused = false;
@@ -69,6 +78,10 @@ class _PortalListRowState extends State<PortalListRow> {
   bool _showShareCode = false;
   bool _confirmingDelete = false;
   String? _shareCode;
+
+  final LayerLink _detailLink = LayerLink();
+  Timer? _detailTimer;
+  OverlayEntry? _detailOverlay;
 
   late final FocusNode _rowFocus;
   late final FocusNode _favoriteFocus;
@@ -95,13 +108,20 @@ class _PortalListRowState extends State<PortalListRow> {
   /// Leanback: keep rail closed while ↑/↓ skims — open only on → / action focus.
   bool get _reveal {
     if (_confirmingDelete || _actionChromeFocused) return true;
-    if (_lineHover || (_focused && !widget.leanback)) return true;
+    if (_lineHover) return true;
+    if (!widget.leanback &&
+        ShellPaintScope.focusStyledOf(context, focused: _focused)) {
+      return true;
+    }
     return false;
   }
 
   bool get _showStar {
     if (item.deleting) return false;
-    return _reveal || item.favorite || (!widget.leanback && _focused);
+    return _reveal ||
+        item.favorite ||
+        (!widget.leanback &&
+            ShellPaintScope.focusStyledOf(context, focused: _focused));
   }
 
   bool get _showNewChrome =>
@@ -132,7 +152,16 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   @override
+  void didUpdateWidget(covariant PortalListRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_detailOverlay != null) {
+      _detailOverlay!.markNeedsBuild();
+    }
+  }
+
+  @override
   void dispose() {
+    _hideDetailCard();
     for (final node in [
       _favoriteFocus,
       _copyFocus,
@@ -154,6 +183,54 @@ class _PortalListRowState extends State<PortalListRow> {
 
   void _clearHover() {
     setState(() => _lineHover = false);
+    _hideDetailCard();
+  }
+
+  void _scheduleDetailCard() {
+    if (widget.leanback) return;
+    _detailTimer?.cancel();
+    _detailTimer = Timer(_detailHoverDelay, () {
+      if (!mounted || !_lineHover) return;
+      _showDetailCard();
+    });
+  }
+
+  void _showDetailCard() {
+    if (widget.leanback) return;
+    if (_detailOverlay != null) {
+      _detailOverlay!.markNeedsBuild();
+      return;
+    }
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    _detailOverlay = OverlayEntry(
+      builder: (ctx) {
+        // UnconstrainedBox: Overlay gives max constraints; without this the
+        // card expands into a full-screen slab.
+        return CompositedTransformFollower(
+          link: _detailLink,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.centerLeft,
+          followerAnchor: Alignment.centerRight,
+          offset: const Offset(-10, 0),
+          child: UnconstrainedBox(
+            alignment: Alignment.centerRight,
+            child: Material(
+              type: MaterialType.transparency,
+              child: PortalProbeDetailCard(item: item),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(_detailOverlay!);
+  }
+
+  void _hideDetailCard() {
+    _detailTimer?.cancel();
+    _detailTimer = null;
+    _detailOverlay?.remove();
+    _detailOverlay = null;
   }
 
   void _focusAction(FocusNode node) {
@@ -282,7 +359,7 @@ class _PortalListRowState extends State<PortalListRow> {
                       : null,
                 ),
                 child: SizedBox(
-                  height: PortalListRow.rowHeight,
+                  height: widget.height,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -290,18 +367,18 @@ class _PortalListRowState extends State<PortalListRow> {
                       AnimatedContainer(
                         duration: railAnim,
                         curve: Curves.easeOutCubic,
-                        width: reveal ? _actionW : 0,
-                        height: PortalListRow.rowHeight,
+                        width: reveal ? widget.actionWidth : 0,
+                        height: widget.height,
                         child: !reveal
                             ? const SizedBox.shrink()
                             : ClipRect(
                                 child: OverflowBox(
-                                  minWidth: _actionW,
-                                  maxWidth: _actionW,
+                                  minWidth: widget.actionWidth,
+                                  maxWidth: widget.actionWidth,
                                   alignment: Alignment.centerRight,
                                   child: SizedBox(
-                                    width: _actionW,
-                                    height: PortalListRow.rowHeight,
+                                    width: widget.actionWidth,
+                                    height: widget.height,
                                     child: _buildActionRail(),
                                   ),
                                 ),
@@ -328,6 +405,7 @@ class _PortalListRowState extends State<PortalListRow> {
             : (_) {
                 setState(() => _lineHover = true);
                 widget.onHoverEnter?.call();
+                _scheduleDetailCard();
               },
         onExit: deleting
             ? null
@@ -337,6 +415,7 @@ class _PortalListRowState extends State<PortalListRow> {
               },
         child: tile,
       );
+      tile = CompositedTransformTarget(link: _detailLink, child: tile);
     }
 
     if (_tv && reveal) {
@@ -408,7 +487,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                                 : Colors.white.withValues(
                                                     alpha: 0.88,
                                                   ),
-                                    fontSize: 13,
+                                    fontSize: widget.fontSize,
                                     fontWeight: isFav ||
                                             isActive ||
                                             _showNewChrome
@@ -441,7 +520,7 @@ class _PortalListRowState extends State<PortalListRow> {
                                     color: _showNewChrome
                                         ? Colors.white54
                                         : Colors.white38,
-                                    fontSize: 11,
+                                    fontSize: widget.metaFontSize,
                                     height: 1.25,
                                   ),
                                 ),
@@ -658,7 +737,7 @@ class _PortalListRowState extends State<PortalListRow> {
         'Delete this portal?',
         style: GoogleFonts.plusJakartaSans(
           color: const Color(0xFFEF4444),
-          fontSize: 13,
+          fontSize: widget.fontSize,
           fontWeight: FontWeight.w600,
           height: 1.25,
         ),
@@ -734,7 +813,7 @@ class _PortalListRowState extends State<PortalListRow> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
               color: tone.color,
-              fontSize: 11,
+              fontSize: widget.metaFontSize,
               fontWeight: FontWeight.w600,
               height: 1.25,
             ),
@@ -763,7 +842,7 @@ class _PortalListRowState extends State<PortalListRow> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
               color: color,
-              fontSize: 11,
+              fontSize: widget.metaFontSize,
               fontWeight: FontWeight.w600,
               height: 1.25,
             ),

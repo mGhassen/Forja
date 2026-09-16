@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Presentational Portals chip — props only (RFC-095 / Zone A).
@@ -20,6 +21,13 @@ class PortalsChip extends StatefulWidget {
     this.seatsMax,
     this.compact = false,
     this.width,
+    this.height = 40,
+    this.radius = 8,
+    this.pad,
+    this.fontSize = 12.5,
+    this.iconSize = 16,
+    this.chevronSize = 18,
+    this.seatsFontSize = 12,
     this.accentColor,
     this.tvFocus = false,
     this.interactiveBuilder,
@@ -42,6 +50,15 @@ class PortalsChip extends StatefulWidget {
   /// Pack-owned min width. Omit → intrinsic (compact idle = square).
   /// Seats / long labels may still grow past this.
   final double? width;
+  final double height;
+  final double radius;
+
+  /// Horizontal padding. Null → compact ? 10 : 14.
+  final double? pad;
+  final double fontSize;
+  final double iconSize;
+  final double chevronSize;
+  final double seatsFontSize;
   final Color? accentColor;
   final bool tvFocus;
   final ValueChanged<bool>? onFocusChange;
@@ -59,18 +76,20 @@ class PortalsChip extends StatefulWidget {
 }
 
 class _PortalsChipState extends State<PortalsChip> {
-  static const _height = 40.0;
-  static const _radius = 8.0;
-
   bool _focused = false;
   bool _hovered = false;
 
   Color get _accent => widget.accentColor ?? ForjaShellColors.brandGreen;
 
-  bool get _revealSeats => widget.hasPortal && (_hovered || _focused);
+  bool get _chromeActive => ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
-  bool get _active =>
-      widget.tvFocus ? _focused : (_hovered || _focused);
+  bool get _revealSeats => widget.hasPortal && _chromeActive;
+
+  bool get _active => _chromeActive;
 
   Color _statusColor() {
     if (widget.checking) return const Color(0xFF38BDF8);
@@ -81,10 +100,11 @@ class _PortalsChipState extends State<PortalsChip> {
 
   @override
   Widget build(BuildContext context) {
-    final tvFocused = widget.tvFocus && _focused;
+    final tvFocused = widget.tvFocus &&
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
     final showHighlight = widget.selected || _active;
 
-    final chipRadius = BorderRadius.circular(_radius);
+    final chipRadius = BorderRadius.circular(widget.radius);
     final borderColor = tvFocused
         ? ForjaShellColors.brandGreen
         : !widget.hasPortal
@@ -98,17 +118,89 @@ class _PortalsChipState extends State<PortalsChip> {
         : _active
             ? Colors.white
             : Colors.white60;
-    final hPad = widget.compact ? 10.0 : 14.0;
+    final hPad = widget.pad ?? (widget.compact ? 10.0 : 14.0);
     final packWidth = widget.width;
     final minW = packWidth ??
-        (widget.compact && !_revealSeats ? _height : 0.0);
-    // Chrome around the label (pads + status + gaps + chevron).
-    final labelMax = packWidth != null
-        ? (packWidth - (hPad * 2) - 14 - 8 - 6 - 18).clamp(48.0, 280.0)
+        (widget.compact && !_revealSeats ? widget.height : 0.0);
+    // Pack body column (inside pads). Seats prepend left of this so the chip
+    // grows left while the body/chevron right edge stays put.
+    final bodyW = packWidth != null ? (packWidth - hPad * 2) : null;
+    final labelMax = bodyW != null
+        ? (bodyW - 14 - 8 - widget.chevronSize).clamp(48.0, 280.0)
         : 160.0;
 
-    // Pack [width] = minWidth. Seats / long labels may grow past it so the
-    // trailing top-bar row still pushes Search/Sort left (right edge stays).
+    final labelText = Text(
+      widget.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.plusJakartaSans(
+        color: fg,
+        fontSize: widget.fontSize,
+        fontWeight: FontWeight.w600,
+        height: 1,
+      ),
+    );
+
+    final status = SizedBox(
+      width: 14,
+      height: 14,
+      child: Center(
+        child: widget.hasPortal
+            ? _statusDot()
+            : Icon(
+                Icons.add_link_rounded,
+                size: widget.iconSize,
+                color: tvFocused
+                    ? ForjaShellColors.brandGreen
+                    : _active
+                        ? Colors.white
+                        : _accent,
+              ),
+      ),
+    );
+
+    final chevron = Icon(
+      widget.selected
+          ? Icons.expand_less_rounded
+          : Icons.expand_more_rounded,
+      size: widget.chevronSize,
+      color: fgMuted,
+    );
+
+    // Body: status + label + chevron (chevron flush right when pack width set).
+    final Widget body;
+    if (widget.compact) {
+      body = status;
+    } else if (bodyW != null) {
+      body = SizedBox(
+        width: bodyW,
+        child: Row(
+          children: [
+            status,
+            const SizedBox(width: 8),
+            Expanded(child: labelText),
+            chevron,
+          ],
+        ),
+      );
+    } else {
+      body = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          status,
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: labelMax),
+            child: labelText,
+          ),
+          const SizedBox(width: 6),
+          chevron,
+        ],
+      );
+    }
+
+    // Seats prepend left of [body]; AnimatedSize centerRight keeps the chip's
+    // right edge fixed (Search/Sort shift left).
     final chip = AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
@@ -116,7 +208,7 @@ class _PortalsChipState extends State<PortalsChip> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        height: _height,
+        height: widget.height,
         constraints: BoxConstraints(minWidth: minW),
         padding: EdgeInsets.symmetric(horizontal: hPad),
         decoration: BoxDecoration(
@@ -137,48 +229,7 @@ class _PortalsChipState extends State<PortalsChip> {
               _seats(),
               SizedBox(width: widget.compact ? 6 : 8),
             ],
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: Center(
-                child: widget.hasPortal
-                    ? _statusDot()
-                    : Icon(
-                        Icons.add_link_rounded,
-                        size: 16,
-                        color: tvFocused
-                            ? ForjaShellColors.brandGreen
-                            : _active
-                                ? Colors.white
-                                : _accent,
-                      ),
-              ),
-            ),
-            if (!widget.compact) ...[
-              const SizedBox(width: 8),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: labelMax),
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: fg,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                widget.selected
-                    ? Icons.expand_less_rounded
-                    : Icons.expand_more_rounded,
-                size: 18,
-                color: fgMuted,
-              ),
-            ],
+            body,
           ],
         ),
       ),
@@ -248,7 +299,7 @@ class _PortalsChipState extends State<PortalsChip> {
       maxLines: 1,
       style: GoogleFonts.plusJakartaSans(
         color: color,
-        fontSize: 12,
+        fontSize: widget.seatsFontSize,
         fontWeight: FontWeight.w700,
         height: 1,
       ),

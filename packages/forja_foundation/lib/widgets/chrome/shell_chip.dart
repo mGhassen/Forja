@@ -141,6 +141,7 @@ class ForjaShellChip extends StatefulWidget {
     this.radius = 20,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = 12.5,
+    this.iconSize = 14,
     this.focusNode,
     this.listIndex,
     this.tvTabId,
@@ -168,6 +169,7 @@ class ForjaShellChip extends StatefulWidget {
   final double radius;
   final EdgeInsetsGeometry padding;
   final double fontSize;
+  final double iconSize;
   final FocusNode? focusNode;
   final int? listIndex;
   final String? tvTabId;
@@ -304,7 +306,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.icon != null) ...[
-            Icon(widget.icon, size: 14, color: fg),
+            Icon(widget.icon, size: widget.iconSize, color: fg),
             const SizedBox(width: 6),
           ],
           Text(
@@ -339,7 +341,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                     curve: Curves.easeOutCubic,
                     child: Icon(
                       Icons.refresh_rounded,
-                      size: 14,
+                      size: widget.iconSize,
                       color: reloadColor,
                     ),
                   ),

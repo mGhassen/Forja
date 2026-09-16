@@ -167,6 +167,8 @@ abstract final class PortalsHost {
         emptyDescription: _panelChrome?.emptyDescription ?? '',
         searchPlaceholder: _panelChrome?.searchPlaceholder ?? '',
         width: _panelChrome?.width ?? 380,
+        rowHeight: _panelChrome?.rowHeight,
+        titleFontSize: _panelChrome?.titleFontSize,
       );
     }
   }
@@ -354,6 +356,8 @@ abstract final class PortalsHost {
       emptyDescription: chrome?.emptyDescription ?? '',
       searchPlaceholder: chrome?.searchPlaceholder ?? '',
       width: chrome?.width ?? 380,
+      rowHeight: chrome?.rowHeight,
+      titleFontSize: chrome?.titleFontSize,
     );
   }
 
@@ -421,18 +425,25 @@ abstract final class PortalsHost {
         editForm = formFromActionMap(Map<String, dynamic>.from(edit));
       }
     }
-    final widthRaw = panel['width'];
+    final panelMap = panel;
+    final widthRaw = panelMap['width'];
     final width = widthRaw is num
         ? widthRaw.toDouble()
         : double.tryParse('$widthRaw') ?? 380.0;
+    double? opt(String key) {
+      final v = panelMap[key];
+      return v is num ? v.toDouble() : null;
+    }
     return _PortalListChrome(
       title: title,
       actions: actions,
       editForm: editForm,
-      emptyTitle: (panel['emptyTitle'] ?? '').toString().trim(),
-      emptyDescription: (panel['emptyDescription'] ?? '').toString().trim(),
-      searchPlaceholder: (panel['searchPlaceholder'] ?? '').toString().trim(),
+      emptyTitle: (panelMap['emptyTitle'] ?? '').toString().trim(),
+      emptyDescription: (panelMap['emptyDescription'] ?? '').toString().trim(),
+      searchPlaceholder: (panelMap['searchPlaceholder'] ?? '').toString().trim(),
       width: width > 0 ? width : 380.0,
+      rowHeight: opt('rowHeight'),
+      titleFontSize: opt('titleFontSize'),
     );
   }
 
@@ -742,6 +753,8 @@ class _PortalListChrome {
     required this.emptyDescription,
     required this.searchPlaceholder,
     required this.width,
+    this.rowHeight,
+    this.titleFontSize,
   });
 
   final String title;
@@ -751,6 +764,8 @@ class _PortalListChrome {
   final String emptyDescription;
   final String searchPlaceholder;
   final double width;
+  final double? rowHeight;
+  final double? titleFontSize;
 }
 
 /// Closed Portals chip paint — vault-only, no pack round-trip.
@@ -786,6 +801,8 @@ class PortalsInventory {
     this.emptyDescription = '',
     this.searchPlaceholder = '',
     this.width = 380,
+    this.rowHeight,
+    this.titleFontSize,
   });
 
   final List<PortalListItem> portals;
@@ -802,6 +819,8 @@ class PortalsInventory {
   final String emptyDescription;
   final String searchPlaceholder;
   final double width;
+  final double? rowHeight;
+  final double? titleFontSize;
 
   String get activeLabel {
     for (final p in portals) {
@@ -833,6 +852,7 @@ class PortalHealthTracker {
   static final Map<String, String> _probeExpiry = {};
   static final Map<String, String> _probeActive = {};
   static final Map<String, String> _probeMax = {};
+  static final Map<String, PortalProbeResult> _probes = {};
   static final Set<String> _inFlight = {};
   static final Map<String, Timer> _debounce = {};
 
@@ -904,6 +924,7 @@ class PortalHealthTracker {
       _probeExpiry.clear();
       _probeActive.clear();
       _probeMax.clear();
+      _probes.clear();
     } else {
       cancel(key);
       _inFlight.remove(key);
@@ -912,6 +933,7 @@ class PortalHealthTracker {
       _probeExpiry.remove(key);
       _probeActive.remove(key);
       _probeMax.remove(key);
+      _probes.remove(key);
     }
     _notify();
   }
@@ -922,6 +944,7 @@ class PortalHealthTracker {
     try {
       final probe = await PortalsHost.probe(portalKey);
       _health[portalKey] = probe.alive;
+      _probes[portalKey] = probe;
       _probedAt[portalKey] = DateTime.now();
       if (probe.expiry.trim().isNotEmpty &&
           probe.expiry.toLowerCase() != 'unknown') {
@@ -945,9 +968,36 @@ class PortalHealthTracker {
 
   bool? healthFor(String portalKey) => _health[portalKey];
 
+  PortalProbeResult? probeFor(String portalKey) => _probes[portalKey];
+
   String? seatsActiveFor(String portalKey) => _probeActive[portalKey];
 
   String? seatsMaxFor(String portalKey) => _probeMax[portalKey];
+
+  static String? _portsLine(PortalServerInfo server) {
+    final ports = <String>[
+      if (server.port.isNotEmpty) server.port,
+      if (server.httpsPort.isNotEmpty) 'https ${server.httpsPort}',
+      if (server.rtmpPort.isNotEmpty) 'rtmp ${server.rtmpPort}',
+    ];
+    if (ports.isEmpty) return null;
+    return ports.join(' · ');
+  }
+
+  static PortalProbeDetail? _detailFor(PortalProbeResult? probe) {
+    if (probe == null) return null;
+    final message = probe.message.trim();
+    final protocol = probe.server.protocol.trim();
+    final timezone = probe.server.timezone.trim();
+    return PortalProbeDetail(
+      statusLabel: probe.statusLabel,
+      alive: probe.alive,
+      message: message.isEmpty ? null : message,
+      protocol: protocol.isEmpty ? null : protocol,
+      ports: _portsLine(probe.server),
+      timezone: timezone.isEmpty ? null : timezone,
+    );
+  }
 
   /// Merge probe state onto a list item for paint.
   PortalListItem paint(
@@ -971,6 +1021,7 @@ class PortalHealthTracker {
       favorite: p.favorite,
       isNew: p.isNew,
       deleting: deleting,
+      probeDetail: _detailFor(_probes[p.id]) ?? p.probeDetail,
     );
   }
 

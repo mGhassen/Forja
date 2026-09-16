@@ -38,13 +38,24 @@ abstract final class PortalsActionHost {
     VoidCallback? onLeftEdge,
     VoidCallback? onRightEdge,
   }) {
-    final rawW = action?['width'];
-    final width = rawW is num ? rawW.toDouble() : null;
+    double? d(String key) {
+      final raw = action?[key];
+      return raw is num ? raw.toDouble() : null;
+    }
+
+    final width = d('width');
     return _PortalsTopBarChip(
       tabId: tabId.trim(),
       rowId: rowId,
       itemIndex: itemIndex,
       width: width != null && width > 0 ? width : null,
+      height: d('height'),
+      radius: d('radius'),
+      pad: d('pad'),
+      fontSize: d('fontSize'),
+      iconSize: d('iconSize'),
+      chevronSize: d('chevronSize'),
+      seatsFontSize: d('seatsFontSize'),
       onDownEdge: onDownEdge,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
@@ -73,6 +84,13 @@ class _PortalsTopBarChip extends ConsumerStatefulWidget {
     required this.rowId,
     required this.itemIndex,
     this.width,
+    this.height,
+    this.radius,
+    this.pad,
+    this.fontSize,
+    this.iconSize,
+    this.chevronSize,
+    this.seatsFontSize,
     this.onDownEdge,
     this.onLeftEdge,
     this.onRightEdge,
@@ -82,6 +100,13 @@ class _PortalsTopBarChip extends ConsumerStatefulWidget {
   final String rowId;
   final int itemIndex;
   final double? width;
+  final double? height;
+  final double? radius;
+  final double? pad;
+  final double? fontSize;
+  final double? iconSize;
+  final double? chevronSize;
+  final double? seatsFontSize;
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -222,6 +247,13 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
       seatsUsed: used.isEmpty ? null : used,
       seatsMax: max.isEmpty ? null : max,
       width: widget.width,
+      height: widget.height ?? 40,
+      radius: widget.radius ?? 8,
+      pad: widget.pad,
+      fontSize: widget.fontSize ?? 12.5,
+      iconSize: widget.iconSize ?? 16,
+      chevronSize: widget.chevronSize ?? 18,
+      seatsFontSize: widget.seatsFontSize ?? 12,
       tvFocus: policy.useFocusableMoodChips,
       onTap: () {
         final opening = !open;

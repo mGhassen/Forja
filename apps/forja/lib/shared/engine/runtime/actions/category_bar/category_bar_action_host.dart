@@ -570,9 +570,7 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       ref.watch(liveCategoryListsEpochProvider(tab));
     }
     final categorySort = ref.watch(iptvLiveCategorySortProvider);
-    final width = (widget.spec['width'] is num)
-        ? (widget.spec['width'] as num).toDouble()
-        : 220.0;
+    final width = _d('width') ?? 220.0;
 
     if (_loading && _items.isEmpty) {
       return SizedBox(
@@ -596,27 +594,44 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
       ];
     }
 
+    CatalogCategoryRail rail({
+      required List<CatalogCategoryItem> items,
+      ValueChanged<String>? onTogglePin,
+      void Function(int oldIndex, int newIndex)? onReorder,
+      required bool canReorder,
+    }) {
+      return CatalogCategoryRail(
+        items: items,
+        selectedId: widget.selectedId,
+        width: width,
+        rowHeight: _d('rowHeight'),
+        fontSize: _d('fontSize'),
+        iconSize: _d('iconSize'),
+        rowPadH: _d('rowPadH'),
+        listPadV: _d('listPadV') ?? 8,
+        pinSlotWidth: _d('pinSlotWidth') ?? 28,
+        onSelect: widget.onSelect,
+        onTogglePin: onTogglePin,
+        onReorder: onReorder,
+        canReorder: canReorder,
+      );
+    }
+
     // Movies/Series/Channels: plain fixed list (no pin/widgets). Prefer cleared _items
     // over stale Live seed until the VOD/Channels feed republishes kinds.
     if (!_isLive) {
       final vodItems = _items.isNotEmpty ? _items : _plainItems();
       if (hitListenable == null) {
-        return CatalogCategoryRail(
+        return rail(
           items: applySearchFilter(vodItems, const {}),
-          selectedId: widget.selectedId,
-          width: width,
-          onSelect: widget.onSelect,
           canReorder: false,
         );
       }
       return ValueListenableBuilder<Set<String>>(
         valueListenable: hitListenable,
         builder: (context, hits, _) {
-          return CatalogCategoryRail(
+          return rail(
             items: applySearchFilter(vodItems, hits),
-            selectedId: widget.selectedId,
-            width: width,
-            onSelect: widget.onSelect,
             canReorder: false,
           );
         },
@@ -631,11 +646,8 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
             sort: categorySort,
           );
     if (hitListenable == null) {
-      return CatalogCategoryRail(
+      return rail(
         items: applySearchFilter(liveItems, const {}),
-        selectedId: widget.selectedId,
-        width: width,
-        onSelect: widget.onSelect,
         onTogglePin: _wantPin ? _togglePin : null,
         onReorder: _wantReorder ? _reorder : null,
         canReorder: _canReorder,
@@ -644,17 +656,19 @@ class _CategoryBarRailHostState extends ConsumerState<_CategoryBarRailHost> {
     return ValueListenableBuilder<Set<String>>(
       valueListenable: hitListenable,
       builder: (context, hits, _) {
-        return CatalogCategoryRail(
+        return rail(
           items: applySearchFilter(liveItems, hits),
-          selectedId: widget.selectedId,
-          width: width,
-          onSelect: widget.onSelect,
           onTogglePin: _wantPin ? _togglePin : null,
           onReorder: _wantReorder ? _reorder : null,
           canReorder: _canReorder,
         );
       },
     );
+  }
+
+  double? _d(String k) {
+    final raw = widget.spec[k];
+    return raw is num ? raw.toDouble() : null;
   }
 }
 

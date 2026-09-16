@@ -9,6 +9,7 @@ import 'package:rust/rust.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class TorrentSourceTile extends StatelessWidget {
@@ -549,7 +550,12 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   int _probeGen = 0;
   Timer? _hoverProbeTimer;
 
-  bool get _hover => _hovered || _focused;
+  bool get _hover => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+        context: context,
+      );
 
   @override
   void initState() {

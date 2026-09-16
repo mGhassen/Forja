@@ -1612,7 +1612,12 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _chromeActive => _focused || _hovered;
+  bool get _chromeActive => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+        context: context,
+      );
 
   void _nudge(double delta) {
     final span = widget.max - widget.min;

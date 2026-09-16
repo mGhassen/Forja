@@ -22,6 +22,11 @@ class KitEventListSearch extends StatefulWidget {
     this.onLeftEdge,
     this.onRightEdge,
     this.onDownEdge,
+    this.collapsedSize,
+    this.expandedWidth,
+    this.fontSize,
+    this.iconSize,
+    this.fieldIconSize,
   });
 
   final String tooltip;
@@ -32,6 +37,11 @@ class KitEventListSearch extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
+  final double? collapsedSize;
+  final double? expandedWidth;
+  final double? fontSize;
+  final double? iconSize;
+  final double? fieldIconSize;
 
   @override
   State<KitEventListSearch> createState() => _KitEventListSearchState();
@@ -125,6 +135,11 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
       onDownEdge: widget.onDownEdge,
+      collapsedSize: widget.collapsedSize ?? kEventListSearchCollapsed,
+      expandedWidth: widget.expandedWidth ?? kEventListSearchExpanded,
+      fontSize: widget.fontSize ?? 13,
+      iconSize: widget.iconSize ?? 20,
+      fieldIconSize: widget.fieldIconSize ?? 18,
       fieldBuilder: !useTv
           ? null
           : (ctx, {
@@ -141,12 +156,12 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
                 browsePlaceholder: widget.placeholder,
                 browseHintStyle: GoogleFonts.plusJakartaSans(
                   color: Colors.white38,
-                  fontSize: 13,
+                  fontSize: widget.fontSize ?? 13,
                 ),
                 caretHeight: 16,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: widget.fontSize ?? 13,
                 ),
                 decoration: const InputDecoration(
                   isDense: true,

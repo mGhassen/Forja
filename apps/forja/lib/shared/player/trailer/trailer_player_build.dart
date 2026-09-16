@@ -830,7 +830,12 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
   static const double _h = 158;
   static const double _radius = 12;
 
-  bool get _active => _hovered || _focused;
+  bool get _active => ShellInputPolicy.interactiveActive(
+        ShellScope.inputPolicyOf(context),
+        hovered: _hovered,
+        focused: _focused,
+        context: context,
+      );
 
   @override
   void didUpdateWidget(covariant _TrailerMoreVideosCard oldWidget) {

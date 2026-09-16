@@ -14,12 +14,16 @@ class ShellSectionTitle extends StatelessWidget {
       bottom: 16,
     ),
     this.trailing,
+    this.fontSize = 20,
+    this.subtitleFontSize = 11,
   });
 
   final String title;
   final String? subtitle;
   final EdgeInsetsGeometry padding;
   final List<Widget>? trailing;
+  final double fontSize;
+  final double subtitleFontSize;
 
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
@@ -28,9 +32,10 @@ class ShellSectionTitle extends StatelessWidget {
     letterSpacing: -0.3,
   );
 
-  static TextStyle subtitleStyle(BuildContext context) => TextStyle(
+  static TextStyle subtitleStyle(BuildContext context, {double fontSize = 11}) =>
+      TextStyle(
         color: Colors.white.withValues(alpha: 0.3),
-        fontSize: 11,
+        fontSize: fontSize,
       );
 
   static EdgeInsetsDirectional defaultPadding(BuildContext context) {
@@ -55,7 +60,7 @@ class ShellSectionTitle extends StatelessWidget {
             )
             ? defaultPadding(context)
             : padding;
-    final resolvedTitleStyle = titleStyle;
+    final resolvedTitleStyle = titleStyle.copyWith(fontSize: fontSize);
     final titleBlock = subtitle == null
         ? Text(title, style: resolvedTitleStyle)
         : Column(
@@ -63,7 +68,10 @@ class ShellSectionTitle extends StatelessWidget {
             children: [
               Text(title, style: resolvedTitleStyle),
               const SizedBox(height: 2),
-              Text(subtitle!, style: subtitleStyle(context)),
+              Text(
+                subtitle!,
+                style: subtitleStyle(context, fontSize: subtitleFontSize),
+              ),
             ],
           );
 

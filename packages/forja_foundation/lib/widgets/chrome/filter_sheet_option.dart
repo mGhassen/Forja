@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Flat list row for catalog / schedule filter sheets (Zone A paint).
 ///
@@ -16,6 +17,9 @@ class FilterSheetOption extends StatefulWidget {
     this.focusNode,
     this.scaleOnHover = true,
     this.tvFocus = false,
+    this.radius = 12,
+    this.fontSize,
+    this.padding = const EdgeInsets.symmetric(vertical: 2),
     this.interactiveBuilder,
   });
 
@@ -27,6 +31,9 @@ class FilterSheetOption extends StatefulWidget {
   final FocusNode? focusNode;
   final bool scaleOnHover;
   final bool tvFocus;
+  final double radius;
+  final double? fontSize;
+  final EdgeInsetsGeometry padding;
 
   /// When set, wraps [body] for host TV/focus chrome.
   final Widget Function({
@@ -45,14 +52,15 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _highlight {
-    if (widget.tvFocus) return _focused;
-    return _hovered || _focused;
-  }
+  bool get _highlight => ShellPaintScope.interactiveActive(
+        context,
+        hovered: _hovered,
+        focused: _focused,
+      );
 
   @override
   Widget build(BuildContext context) {
-    const radius = 12.0;
+    final radius = widget.radius;
 
     final tile = ListTile(
       leading: Icon(
@@ -65,6 +73,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
         widget.label,
         style: TextStyle(
           color: Colors.white,
+          fontSize: widget.fontSize,
           fontWeight:
               _highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
         ),
@@ -89,7 +98,7 @@ class _FilterSheetOptionState extends State<FilterSheetOption> {
     );
 
     final padded = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: widget.padding,
       child: body,
     );
 
