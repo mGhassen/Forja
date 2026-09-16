@@ -131,16 +131,24 @@ class ColumnsHeaderBlock extends StatelessWidget {
           cardKind: 'poster',
         );
 
+    // Pre-wipe CatalogSplit hairline between categories and channels.
+    const divider = VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: Color(0xFF2A2A2A),
+    );
     Widget row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (sideOnLeading) ...[
           SizedBox(width: sideWidth, child: side),
+          divider,
           if (sideGap > 0) SizedBox(width: sideGap),
         ],
         Expanded(child: grid),
         if (!sideOnLeading) ...[
           if (sideGap > 0) SizedBox(width: sideGap),
+          divider,
           SizedBox(width: sideWidth, child: side),
         ],
       ],

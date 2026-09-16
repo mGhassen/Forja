@@ -42,34 +42,29 @@ class DetailsBody extends StatelessWidget {
     final overlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final top = topSpacing ?? DetailsTokens.bodyTopSpacing;
 
+    // Translate pulls the first row into the hero fade. Do not add a matching
+    // top spacer — that cancelled the pull-up and left seasons too low.
     return Transform.translate(
       offset: Offset(0, -overlap),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: overlap),
-          ColoredBox(
-            color: shellBg,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: ShellTokens.bodyMaxWidthDesktop,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    0,
-                    top,
-                    0,
-                    DetailsTokens.bodyBottomSpacing,
-                  ),
-                  child: child,
-                ),
+      child: ColoredBox(
+        color: shellBg,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: ShellTokens.bodyMaxWidthDesktop,
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                0,
+                top,
+                0,
+                DetailsTokens.bodyBottomSpacing,
               ),
+              child: child,
             ),
           ),
-        ],
+        ),
       ),
     );
   }

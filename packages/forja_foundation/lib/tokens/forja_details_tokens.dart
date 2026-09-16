@@ -58,15 +58,23 @@ abstract final class DetailsTokens {
   /// Cinematic hero band (~82% viewport) - see media-details feature doc.
   static const double heroViewportFraction = 0.82;
 
+  /// Shorter hero when seasons/episodes are the first body section — keeps
+  /// the first poster row under Play like the old in-hero bleed layout.
+  static const double heroViewportFractionWithEpisodes = 0.58;
+
   /// Hero chrome height (title / actions only). Prefer [viewportHeight] from a
   /// [LayoutBuilder] when the overlay width differs from [MediaQuery].
   static double heroHeight(
     BuildContext context, {
     double? viewportHeight,
+    bool compactForEpisodes = false,
   }) {
     final size = MediaQuery.sizeOf(context);
     final height = viewportHeight ?? size.height;
     final resolved = height.isFinite && height > 0 ? height : size.height;
-    return resolved * heroViewportFraction;
+    final fraction = compactForEpisodes
+        ? heroViewportFractionWithEpisodes
+        : heroViewportFraction;
+    return resolved * fraction;
   }
 }

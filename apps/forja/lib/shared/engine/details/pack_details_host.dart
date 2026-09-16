@@ -1002,10 +1002,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       scrollController: _scrollController,
       tvHeroPlayFocus: _heroPlayFocus,
       tvBackFocus: _backFocus,
-      bodyOverlap: 0,
-      // Tighter than [DetailsTokens.bodyTopSpacing] — first body row sits closer
-      // under the hero without overlapping chrome.
-      topSpacing: 24,
+      // Pull first body row (seasons/episodes or cast) into the hero fade.
+      bodyOverlap: DetailsTokens.heroBodyOverlap,
+      topSpacing: 0,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
         backdropUrl: backdrop,
@@ -1024,7 +1023,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           durationMs: heroDurMs,
         ),
         logoUrl: hubMetaLogoUrl(show),
-        height: DetailsTokens.heroHeight(context),
+        height: DetailsTokens.heroHeight(
+          context,
+          compactForEpisodes: hasEpisodes,
+        ),
         progressBar: heroPosMs != null && heroDurMs != null
             ? WatchProgressBar(
                 positionMs: heroPosMs,

@@ -344,7 +344,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       onSelect: (item) => unawaited(
             _runAction(
               (id) => PortalsHost.select(pluginId: id, key: item.id),
-              toastOk: 'Selected',
               reloadCatalog: true,
             ),
           ),

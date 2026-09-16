@@ -68,10 +68,9 @@ class _PortalsChipState extends State<PortalsChip> {
       widget.tvFocus ? _focused : (_hovered || _focused);
 
   Color _statusColor() {
-    // Keep last known green/red while a background refresh runs.
+    if (widget.checking) return const Color(0xFF38BDF8);
     if (widget.healthy == true) return ForjaShellColors.brandGreen;
     if (widget.healthy == false) return const Color(0xFFEF4444);
-    if (widget.checking) return const Color(0xFF38BDF8);
     return const Color(0x3DFFFFFF);
   }
 
@@ -204,9 +203,9 @@ class _PortalsChipState extends State<PortalsChip> {
   }
 
   Widget _statusDot() {
-    // Unknown health + checking → spinner. Known health stays painted while
-    // a soft refresh runs in the background.
-    if (widget.checking && widget.healthy == null) {
+    // Always spin while probing — including soft-refresh after a known
+    // green/red (otherwise the pin looks frozen on hover recheck).
+    if (widget.checking) {
       return SizedBox(
         width: 14,
         height: 14,
