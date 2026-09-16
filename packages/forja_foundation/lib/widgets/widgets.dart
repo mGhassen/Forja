@@ -72,6 +72,7 @@ export 'package:forja_foundation/widgets/chrome/layout_stack.dart';
 export 'package:forja_foundation/widgets/chrome/side_panel_overlay.dart';
 export 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 export 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
+export 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
 export 'package:forja_foundation/widgets/chrome/portals_chip.dart';
 export 'package:forja_foundation/widgets/chrome/catalog_category_rail.dart';
 export 'package:forja_foundation/widgets/chrome/live_favorite_star.dart';

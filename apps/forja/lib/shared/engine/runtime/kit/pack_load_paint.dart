@@ -403,13 +403,25 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         ),
       );
     }
+    final cardW = InteractivePosterCard.cardWidth(context);
+    final cardH = InteractivePosterCard.cardHeight(context);
+    if (type == 'because' || type.contains('because')) {
+      return homeLoadingShimmer(
+        homeBecauseRowSkeleton(
+          topPadding: 12,
+          itemCount: 5,
+          cardWidth: cardW,
+          cardHeight: cardH,
+        ),
+      );
+    }
     return homeLoadingShimmer(
       homePosterRowSkeleton(
         topPadding: 12,
         titleWidth: 140,
         itemCount: 5,
-        cardWidth: InteractivePosterCard.cardWidth(context),
-        cardHeight: InteractivePosterCard.cardHeight(context),
+        cardWidth: cardW,
+        cardHeight: cardH,
       ),
     );
   }

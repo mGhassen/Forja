@@ -126,6 +126,77 @@ Widget homePosterRowSkeleton({
   );
 }
 
+/// Matches [BecauseSection] header: 36×50 seed poster + two title lines.
+Widget homeBecauseTitleSkeleton() {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Skeleton(
+        width: 36,
+        height: 50,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      const SizedBox(width: 12),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // "Because you watched" — 11.5 / w700
+          homeTitleBarSkeleton(width: 118, height: 12),
+          const SizedBox(height: 2),
+          // Seed title — 19 / w800
+          homeTitleBarSkeleton(width: 168, height: 19),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Because row shimmer — seed+title header structure + poster cards.
+Widget homeBecauseRowSkeleton({
+  int itemCount = 5,
+  double topPadding = 36,
+  double horizontalPadding = ShellTokens.homeSectionHorizontalPadding,
+  double titleBottomGap = 16,
+  double cardGap = ShellTokens.posterCardRowGap,
+  double cardWidth = 190,
+  double cardHeight = 285,
+  double borderRadius = 14,
+}) {
+  return Padding(
+    padding: EdgeInsets.only(top: topPadding),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            0,
+            horizontalPadding,
+            titleBottomGap,
+          ),
+          child: homeBecauseTitleSkeleton(),
+        ),
+        SizedBox(
+          height: cardHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            itemCount: itemCount,
+            separatorBuilder: (_, _) => SizedBox(width: cardGap),
+            itemBuilder: (_, _) => homeCardSkeleton(
+              width: cardWidth,
+              height: cardHeight,
+              borderRadius: borderRadius,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 Widget homeContinueWatchingSkeleton({
   double topPadding = 36,
   double horizontalPadding = ShellTokens.homeSectionHorizontalPadding,

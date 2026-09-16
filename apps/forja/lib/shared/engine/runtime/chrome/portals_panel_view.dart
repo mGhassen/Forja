@@ -11,15 +11,10 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/components/form_fields_dialog.dart';
-import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
-import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
 
-/// Pack `portalList` paint — inventory chrome + [PortalsHost] callbacks.
-///
-/// Host chrome only mounts this inside [SidePanelOverlay]; it does not invent
-/// product actions/copy (those come from pack `listPortals` layout).
+/// Thin host wire — pack inventory → [PortalListView] props + [PortalsHost].
 class PortalsPanelView extends ConsumerStatefulWidget {
   const PortalsPanelView({
     super.key,
@@ -37,10 +32,7 @@ class PortalsPanelView extends ConsumerStatefulWidget {
 }
 
 class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
   bool _busy = false;
-  bool _searchOpen = false;
   final Set<String> _deletingKeys = {};
   late final PortalHealthTracker _health;
 
@@ -55,7 +47,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   @override
   void dispose() {
     _health.dispose();
-    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -161,18 +152,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     );
   }
 
-  IconData _actionIcon(PortalsPanelAction a) {
-    final raw = a.icon.trim().isNotEmpty ? a.icon : a.id;
-    final id = raw.trim().toLowerCase();
-    return switch (id) {
-      'add' => Icons.add_rounded,
-      'import' || 'content_paste' || 'paste' => Icons.content_paste_rounded,
-      'casino' || 'deal' => Icons.casino_rounded,
-      'refresh' => Icons.refresh_rounded,
-      _ => Icons.circle_outlined,
-    };
-  }
-
   Future<void> _dealPortals() async {
     if (!AccountFeatures.instance.isDealPortalEnabled) {
       ForjaToast.error('Deal is not enabled on this account');
@@ -240,251 +219,83 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Widget build(BuildContext context) {
     final key = widget.tabId;
     final asyncInv = ref.watch(portalsInventoryProvider(key));
-    final q = _query.trim().toLowerCase();
-    final items = asyncInv.asData?.value.portals ?? const <PortalListItem>[];
-    final filtered = q.isEmpty
-        ? items
-        : [
-            for (final p in items)
-              if (p.label.toLowerCase().contains(q) ||
-                  (p.subtitle?.toLowerCase().contains(q) ?? false) ||
-                  (p.platformLabel?.toLowerCase().contains(q) ?? false))
-                p,
-          ];
     final inv = asyncInv.asData?.value;
-    final panelTitle =
-        (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals';
-    final emptyTitle = inv?.emptyTitle ?? '';
-    final emptyDescription = inv?.emptyDescription ?? '';
-    final searchHint = (inv?.searchPlaceholder.trim().isNotEmpty ?? false)
-        ? inv!.searchPlaceholder
-        : 'Search…';
+    final items = [
+      for (final p in inv?.portals ?? const <PortalListItem>[])
+        _health.paint(p, deleting: _deletingKeys.contains(p.id)),
+    ];
     final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
     final credits = AccountFeatures.instance.iptvCredits;
     final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
 
-    final painted = [
-      for (final p in filtered)
-        _health.paint(p, deleting: _deletingKeys.contains(p.id)),
-    ];
-
-    final visibleActions = <PortalsPanelAction>[
+    final headerActions = <PortalListHeaderAction>[
       for (final a in inv?.actions ?? const <PortalsPanelAction>[])
         if (a.id != 'deal' && a.action.toLowerCase() != 'dealportals')
-          a
+          PortalListHeaderAction(
+            id: a.id,
+            label: a.label,
+            icon: a.icon,
+            enabled: !_busy,
+            onPressed: () => unawaited(_dispatchPanelAction(a)),
+          )
         else if (canDeal)
-          a,
+          PortalListHeaderAction(
+            id: a.id,
+            label: a.label,
+            icon: a.icon,
+            enabled: !_busy && credits >= 1,
+            tooltip: credits > 0
+                ? '${a.label} ($credits credits)'
+                : '${a.label} (no credits)',
+            onPressed: () => unawaited(_dispatchPanelAction(a)),
+          ),
     ];
 
-    return PortalListPanel(
+    final statusText = _busy
+        ? 'Working…'
+        : asyncInv.isLoading
+            ? 'Loading…'
+            : '';
+
+    return PortalListView(
       width: widget.width,
-      surfaceColor: ForjaShellColors.cinematic.menuSurface,
-      header: Container(
-        padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              panelTitle,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (canDeal) ...[
-              const SizedBox(width: 8),
-              Text(
-                '$credits cr',
-                style: TextStyle(
-                  color: credits > 0
-                      ? ForjaShellColors.brandGreen
-                      : Colors.white38,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const Spacer(),
-            IconButton(
-              tooltip: _searchOpen ? 'Close search' : 'Search portals',
-              onPressed: () {
-                setState(() {
-                  _searchOpen = !_searchOpen;
-                  if (!_searchOpen) {
-                    _searchCtrl.clear();
-                    _query = '';
-                  }
-                });
-              },
-              icon: Icon(
-                _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-                color: _searchOpen
-                    ? ForjaShellColors.brandGreen
-                    : Colors.white70,
-              ),
-            ),
-            for (final a in visibleActions)
-              IconButton(
-                tooltip: a.id == 'deal' ||
-                        a.action.toLowerCase() == 'dealportals'
-                    ? (credits > 0
-                        ? '${a.label} ($credits credits)'
-                        : '${a.label} (no credits)')
-                    : a.label,
-                onPressed: _busy ||
-                        ((a.id == 'deal' ||
-                                a.action.toLowerCase() == 'dealportals') &&
-                            credits < 1)
-                    ? null
-                    : () => unawaited(_dispatchPanelAction(a)),
-                icon: Icon(
-                  _actionIcon(a),
-                  color: (a.id == 'deal' ||
-                              a.action.toLowerCase() == 'dealportals') &&
-                          credits < 1
-                      ? Colors.white38
-                      : Colors.white70,
-                ),
-              ),
-            IconButton(
-              tooltip: 'Close',
-              onPressed: widget.onClose,
-              icon: const Icon(Icons.close_rounded, color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-      searchOpen: _searchOpen,
-      search: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-        child: TextField(
-          controller: _searchCtrl,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white,
-            fontSize: 13,
-          ),
-          decoration: InputDecoration(
-            hintText: searchHint,
-            hintStyle: GoogleFonts.plusJakartaSans(
-              color: Colors.white38,
-              fontSize: 13,
-            ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: Colors.white54,
-              size: 20,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
-            isDense: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
+      title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
+      items: items,
+      badgeLabel: canDeal ? '$credits cr' : null,
+      badgeMuted: canDeal && credits < 1,
+      headerActions: headerActions,
+      searchPlaceholder: inv?.searchPlaceholder ?? '',
+      emptyTitle: inv?.emptyTitle ?? '',
+      emptyDescription: inv?.emptyDescription ?? '',
+      statusText: statusText,
+      busy: _busy,
+      leanback: leanback,
+      onClose: widget.onClose,
+      onSelect: (item) => unawaited(
+            _runAction(
+              (id) => PortalsHost.select(pluginId: id, key: item.id),
+              toastOk: 'Selected',
             ),
           ),
-          onChanged: (v) => setState(() => _query = v),
-        ),
-      ),
-      statusText: _busy
-          ? 'Working…'
-          : asyncInv.isLoading
-              ? 'Loading…'
-              : '${filtered.length} portal${filtered.length == 1 ? '' : 's'}',
-      body: painted.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.satellite_alt_rounded,
-                      size: 48,
-                      color: ForjaShellColors.brandGreen,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      emptyTitle,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      emptyDescription,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white60,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+      onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
+      onEdit: inv?.editForm == null
+          ? null
+          : (item) => unawaited(
+                _runPackForm(
+                  inv!.editForm!,
+                  values: inv.formValues[item.id],
+                  portalKey: item.id,
                 ),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-              itemExtent: PortalListRow.rowHeight,
-              itemCount: painted.length,
-              itemBuilder: (context, index) {
-                final item = painted[index];
-                return PortalListRow(
-                  item: item,
-                  leanback: leanback,
-                  onSelect: _busy
-                      ? null
-                      : () => unawaited(
-                            _runAction(
-                              (id) => PortalsHost.select(
-                                pluginId: id,
-                                key: item.id,
-                              ),
-                              toastOk: 'Selected',
-                            ),
-                          ),
-                  onFavorite: _busy
-                      ? null
-                      : () => unawaited(_toggleFavorite(item.id)),
-                  onEdit: _busy || inv?.editForm == null
-                      ? null
-                      : () => unawaited(
-                            _runPackForm(
-                              inv!.editForm!,
-                              values: inv.formValues[item.id],
-                              portalKey: item.id,
-                            ),
-                          ),
-                  onDelete: _busy
-                      ? null
-                      : () => unawaited(_deletePortal(item.id)),
-                  onCopyShareCode: _busy
-                      ? null
-                      : () => _shareCodeFor(item.id),
-                  onHoverEnter: () =>
-                      _health.schedule(item.id, leanback: leanback),
-                  onHoverExit: () {
-                    _health.cancel(item.id);
-                    if (mounted) setState(() {});
-                  },
-                );
-              },
-            ),
+      onDelete: (item) => unawaited(_deletePortal(item.id)),
+      onCopyShareCode: (item) => _shareCodeFor(item.id),
+      onHoverEnter: (item) =>
+          _health.schedule(item.id, leanback: leanback),
+      onHoverExit: (item) {
+        _health.cancel(item.id);
+        if (mounted) setState(() {});
+      },
     );
   }
 }

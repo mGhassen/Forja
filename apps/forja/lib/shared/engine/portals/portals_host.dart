@@ -15,7 +15,7 @@ import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 
 /// Host portals API — pack actions + vault / share / probe / deal.
 ///
-/// Paint stays in foundation (`PortalListPanel` / `PortalListRow` / `PortalsChip`).
+/// Paint stays in foundation (`PortalListView` / `PortalListRow` / `PortalsChip`).
 /// Chrome wire maps these callables → props / callbacks.
 abstract final class PortalsHost {
   PortalsHost._();
