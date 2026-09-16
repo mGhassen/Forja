@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Desktop hover peek — status, seats, ports, timezone (RFC-075).
+///
+/// Same translucent shell as [GuideEpgCard] floating peek (`surfaceMuted`,
+/// not solid `menuSurface`).
 class PortalProbeDetailCard extends StatelessWidget {
   const PortalProbeDetailCard({
     super.key,
@@ -56,11 +60,9 @@ class PortalProbeDetailCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            color: ForjaShellColors.cinematic.menuSurface,
+            color: GuideChromeStyle.surfaceMuted,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: ForjaShellColors.cinematic.borderSubtle,
-            ),
+            border: Border.all(color: GuideChromeStyle.border),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

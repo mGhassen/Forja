@@ -154,9 +154,19 @@ class _PortalListRowState extends State<PortalListRow> {
   @override
   void didUpdateWidget(covariant PortalListRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_detailOverlay != null) {
-      _detailOverlay!.markNeedsBuild();
-    }
+    if (_detailOverlay == null) return;
+    // OverlayEntry lives under Overlay, not this row. Sync markNeedsBuild
+    // during list rebuild asserts "wrong build scope" and poisons Tooltips.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final entry = _detailOverlay;
+      if (entry == null) return;
+      if (!entry.mounted) {
+        _detailOverlay = null;
+        return;
+      }
+      entry.markNeedsBuild();
+    });
   }
 
   @override
@@ -197,13 +207,28 @@ class _PortalListRowState extends State<PortalListRow> {
 
   void _showDetailCard() {
     if (widget.leanback) return;
-    if (_detailOverlay != null) {
-      _detailOverlay!.markNeedsBuild();
-      return;
+    final existing = _detailOverlay;
+    if (existing != null) {
+      if (!existing.mounted) {
+        _detailOverlay = null;
+      } else {
+        // Defer — may be called from hover mid-parent rebuild.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final entry = _detailOverlay;
+          if (entry == null || !entry.mounted) {
+            _detailOverlay = null;
+            return;
+          }
+          entry.markNeedsBuild();
+        });
+        return;
+      }
     }
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
-    _detailOverlay = OverlayEntry(
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
       builder: (ctx) {
         // UnconstrainedBox: Overlay gives max constraints; without this the
         // card expands into a full-screen slab.
@@ -223,14 +248,19 @@ class _PortalListRowState extends State<PortalListRow> {
         );
       },
     );
-    overlay.insert(_detailOverlay!);
+    _detailOverlay = entry;
+    overlay.insert(entry);
   }
 
   void _hideDetailCard() {
     _detailTimer?.cancel();
     _detailTimer = null;
-    _detailOverlay?.remove();
+    final entry = _detailOverlay;
     _detailOverlay = null;
+    if (entry == null) return;
+    if (entry.mounted) {
+      entry.remove();
+    }
   }
 
   void _focusAction(FocusNode node) {
