@@ -168,7 +168,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [145-[canceled]-…](canceled/145-[canceled]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | canceled | Canceled — embed path gone | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [147-[fixed]-…](fixed/147-[fixed]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | fixed | Complete · 8/8 · A 0/5 | — |
 | [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 24/24 · A 0/19 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match + cache tiers) | P2 | Medium | open | 4/6 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |

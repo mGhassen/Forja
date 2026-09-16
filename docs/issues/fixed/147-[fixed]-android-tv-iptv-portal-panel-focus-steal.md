@@ -1,6 +1,6 @@
 # 147 — Android TV Portals panel steals D-pad focus back to the active portal
 
-**Status:** open  
+**Status:** fixed  
 **Priority:** P2  
 **Severity:** Medium  
 **Area:** IPTV Portals panel · Android TV D-pad focus
@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 5** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 6 | I147-T06 | ↓ from header retries while scrape list is still empty (first portal mounting) | ✅ |
 | 7 | I147-T07 | Scrape/health notify: skip scroll + restore list focus when `_lastFocusedPortalIndex` set (rebuild focus flicker) | ✅ |
 | 8 | I147-T08 | Desktop pointer/trackpad scroll: set browsing flag; skip auto scroll-to-active and stale focus restore until D-pad `_focusPortalAt` | ✅ |
+| 9 | I147-T09 | Re-wire into pack-product Portals panel (`PortalListView` + host `PortalsPanelTvFocus`) after `portals_ui` removal | ✅ |
 
 ---
 
@@ -48,13 +49,12 @@ On Android TV, scrolling the Portals panel with the D-pad threw focus back to th
 
 **Root cause:** `_IptvPortalPanelState.initState` scheduled the open-time `_focusPanelHeader()` but never set `_didFocusHeaderOnOpen`. The flag was only set inside `_onCtrlChanged`, so the **first** `notifyListeners()` after the panel opened re-focused the header **Add (+)** button — and the panel guarantees one: focusing a row schedules a 2s portal health probe (`schedulePortalHealthCheck`), which notifies on start, on merge, and on completion. The user's next ↓ then ran `_focusPortalsFromHeader`, which always targeted `iptvActivePortalFocusIndex` — the playing portal.
 
-**Root fix:** the open handoff is consumed in `initState`, `_focusPanelHeader` refuses to take focus that is already inside the panel, scroll-to-active/new-portal is skipped while a portal row is focused, and header ↓ restores the row the user left.
+**Root fix (classic panel):** the open handoff is consumed in `initState`, `_focusPanelHeader` refuses to take focus that is already inside the panel, scroll-to-active/new-portal is skipped while a portal row is focused, and header ↓ restores the row the user left.
 
-**Follow-up (I147-T05):** D-pad ↑/↓ through the list still painted desktop hover (white fill + star, often on two rows for a frame). Same treatment as category rail [I136-T15](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md): no `MouseRegion` on TV, sync-clear `_focused`, one brand-green fill, list jump owns scroll (`ensureVisible` off). NEW chrome clears on OK, not on skim.
+**Pack-product re-wire (I147-T09):** after `portals_ui` deletion, the same graph lives in foundation `PortalListView` / `PortalListRow` (`ShellPaintScope` taps + vertical `portals` row) and host `PortalsPanelTvFocus` + `PortalsPanelView` (`ShellTvContainDpad`, jump-then-focus, no-steal on health rebuild, ← header, → action rail).
 
 ## Related
 
-- `apps/forja/lib/features/iptv/screens/iptv_catalog_portal_panel.dart`
-- `iptvRowHasFocus` — `apps/forja/lib/features/iptv/iptv_tv_focus.dart`
-- [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) — health TTL that drives the notify storm
-- [iptv-xtream](../features/live/iptv-xtream.md) — Portals panel D-pad map
+- `packages/forja_foundation/lib/widgets/chrome/portal_list_*.dart`
+- `apps/forja/lib/shared/engine/runtime/actions/portals/portals_panel_tv.dart`
+- [144](../144-[open]-iptv-catalog-stream-health-never-reprobes.md) — health TTL that drives the notify storm

@@ -20,6 +20,7 @@ void installShellPaintHostAdapters() {
       required int itemCount,
       VoidCallback? onFocusUp,
       VoidCallback? onFocusDown,
+      ShellPaintTvRowAxis axis = ShellPaintTvRowAxis.horizontal,
       required Widget child,
     }) {
       return TvKitRow(
@@ -29,6 +30,9 @@ void installShellPaintHostAdapters() {
         itemCount: itemCount,
         onFocusUp: onFocusUp,
         onFocusDown: onFocusDown,
+        orientation: axis == ShellPaintTvRowAxis.vertical
+            ? ShellTvRowOrientation.vertical
+            : ShellTvRowOrientation.horizontal,
         child: child,
       );
     },
@@ -59,6 +63,7 @@ void installShellPaintHostAdapters() {
       bool showFocusFill = true,
       bool showFocusRail = false,
       bool suppressInkHover = false,
+      bool allowNestedFocus = false,
       FocusOnKeyEventCallback? onKeyEvent,
     }) {
       return shellFocusableTap(
@@ -90,6 +95,7 @@ void installShellPaintHostAdapters() {
         showFocusFill: showFocusFill,
         showFocusRail: showFocusRail,
         suppressInkHover: suppressInkHover,
+        allowNestedFocus: allowNestedFocus,
         onKeyEvent: onKeyEvent,
       );
     },

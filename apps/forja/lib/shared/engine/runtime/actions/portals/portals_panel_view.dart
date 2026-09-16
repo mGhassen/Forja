@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
+import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
@@ -14,6 +15,7 @@ import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
@@ -39,10 +41,19 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   bool _busy = false;
   final Set<String> _deletingKeys = {};
   late final PortalHealthTracker _health;
+  late final PortalsPanelTvFocus _tv;
+  Set<String> _knownPortalKeys = {};
+  int _headerActionCount = 0;
+  int _filteredLength = 0;
+  int _activeIndex = -1;
+  String? _activeKey;
+  bool _tvInventoryScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    _tv = PortalsPanelTvFocus(tabId: widget.tabId);
+    _tv.didFocusOnOpen = true;
     _health = PortalHealthTracker(onChanged: () {
       if (mounted) setState(() {});
     });
@@ -52,12 +63,45 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       unawaited(
         ref.read(portalsInventoryProvider(widget.tabId).notifier).prepare(),
       );
+      _tv.focusPanelOnOpen(
+        filteredLength: _filteredLength,
+        activeIndex: _activeIndex,
+        headerActionCount: _headerActionCount,
+        mounted: mounted,
+        searchOpen: false,
+      );
+    });
+  }
+
+  void _scheduleTvInventoryPass({
+    required Set<String> currentKeys,
+    required int activeIdx,
+    required int itemCount,
+  }) {
+    if (_tvInventoryScheduled) return;
+    _tvInventoryScheduled = true;
+    final knownSnapshot = {..._knownPortalKeys};
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tvInventoryScheduled = false;
+      if (!mounted) return;
+      _tv.onInventoryChanged(
+        panelOpen: true,
+        searchOpen: false,
+        filteredLength: itemCount,
+        activeKey: _activeKey,
+        activeIndex: activeIdx,
+        currentKeys: currentKeys,
+        knownKeys: knownSnapshot,
+        setKnownKeys: (next) => _knownPortalKeys = next,
+        mounted: mounted,
+      );
     });
   }
 
   @override
   void dispose() {
     _health.dispose();
+    _tv.dispose();
     super.dispose();
   }
 
@@ -409,7 +453,27 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
             ? 'Loading…'
             : '';
 
-    return PortalListView(
+    final currentKeys = {for (final p in items) p.id};
+    final activeIdx = activeKey.isEmpty
+        ? -1
+        : items.indexWhere((p) => PortalsHost.samePortalKey(p.id, activeKey));
+    _filteredLength = items.length;
+    _activeIndex = activeIdx;
+    _activeKey = activeKey.isEmpty ? null : activeKey;
+    _headerActionCount = headerActions.length;
+    if (_knownPortalKeys.isEmpty && currentKeys.isNotEmpty) {
+      _knownPortalKeys = {...currentKeys};
+    }
+    final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (useTv) {
+      _scheduleTvInventoryPass(
+        currentKeys: currentKeys,
+        activeIdx: activeIdx,
+        itemCount: items.length,
+      );
+    }
+
+    Widget panel = PortalListView(
       width: widget.width,
       title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
       items: items,
@@ -422,6 +486,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       statusText: statusText,
       busy: _busy,
       leanback: leanback,
+      tvTabId: useTv ? widget.tabId : null,
+      listScrollController: _tv.listScroll,
       onClose: widget.onClose,
       onSelect: (item) => unawaited(_selectPortal(item.id)),
       onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
@@ -438,6 +504,35 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
         _health.cancel(item.id);
         if (mounted) setState(() {});
       },
+      onHeaderUp: useTv ? _tv.exitUpToChip : null,
+      onHeaderDown: useTv
+          ? () => _tv.focusPortalsFromHeader(
+                filteredLength: items.length,
+                activeIndex: activeIdx,
+                mounted: mounted,
+              )
+          : null,
+      onHeaderFocusAt: useTv ? _tv.focusHeaderAt : null,
+      onPortalLeft: useTv ? _tv.onPortalLeft : null,
+      onPortalMove: useTv
+          ? (from, deltaSign) => _tv.onPortalMove(
+                fromIndex: from,
+                deltaSign: deltaSign,
+                total: items.length,
+                mounted: mounted,
+              )
+          : null,
+      onPortalExitUp: useTv
+          ? () => _tv.focusHeaderAdd(headerActionCount: headerActions.length)
+          : null,
+      onPortalExitDown: useTv ? _tv.exitDownToCatalog : null,
+      onPortalTvFocus: useTv ? _tv.markPortalTvFocus : null,
+      onListPointerBrowse: useTv ? _tv.onListPointerBrowse : null,
     );
+
+    if (useTv) {
+      panel = ShellTvContainDpad(child: panel);
+    }
+    return panel;
   }
 }

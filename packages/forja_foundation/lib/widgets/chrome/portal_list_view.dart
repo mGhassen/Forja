@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_row.dart';
@@ -30,6 +31,9 @@ class PortalListHeaderAction {
 ///
 /// Owns search chrome + empty/list composition. Host wires inventory → props
 /// and callbacks → engines; pack owns copy / action ids.
+///
+/// When [tvTabId] is set, header + rows register into the host TV focus graph
+/// via [ShellPaintScope] (no coordinator imports in foundation).
 class PortalListView extends StatefulWidget {
   const PortalListView({
     super.key,
@@ -46,6 +50,8 @@ class PortalListView extends StatefulWidget {
     this.statusText = '',
     this.busy = false,
     this.leanback = false,
+    this.tvTabId,
+    this.listScrollController,
     this.onClose,
     this.onSelect,
     this.onFavorite,
@@ -54,6 +60,15 @@ class PortalListView extends StatefulWidget {
     this.onCopyShareCode,
     this.onHoverEnter,
     this.onHoverExit,
+    this.onHeaderUp,
+    this.onHeaderDown,
+    this.onHeaderFocusAt,
+    this.onPortalLeft,
+    this.onPortalMove,
+    this.onPortalExitUp,
+    this.onPortalExitDown,
+    this.onPortalTvFocus,
+    this.onListPointerBrowse,
   });
 
   final double width;
@@ -72,6 +87,11 @@ class PortalListView extends StatefulWidget {
   final String statusText;
   final bool busy;
   final bool leanback;
+
+  /// Host tab id for TV row registration (`iptv`, `live_sports`, …).
+  final String? tvTabId;
+  final ScrollController? listScrollController;
+
   final VoidCallback? onClose;
   final void Function(PortalListItem item)? onSelect;
   final void Function(PortalListItem item)? onFavorite;
@@ -80,6 +100,36 @@ class PortalListView extends StatefulWidget {
   final Future<String?> Function(PortalListItem item)? onCopyShareCode;
   final void Function(PortalListItem item)? onHoverEnter;
   final void Function(PortalListItem item)? onHoverExit;
+
+  /// ↑ from header icons (e.g. Portals chip).
+  final VoidCallback? onHeaderUp;
+
+  /// ↓ from header → portal list (host owns exact index / retry).
+  final VoidCallback? onHeaderDown;
+
+  /// L/R between header icons — host focuses registered item index.
+  final void Function(int index)? onHeaderFocusAt;
+
+  /// ← from any portal row → header (stays in panel).
+  final VoidCallback? onPortalLeft;
+
+  /// ↑/↓ within the list — host applies hold-accel stride + jump-then-focus.
+  final void Function(int fromIndex, int delta)? onPortalMove;
+
+  /// ↑ from the first portal → header.
+  final VoidCallback? onPortalExitUp;
+
+  /// ↓ past the last portal (optional catalog handoff).
+  final VoidCallback? onPortalExitDown;
+
+  /// Row gained TV focus — host tracks last index (I147).
+  final void Function(int index)? onPortalTvFocus;
+
+  /// Mouse/trackpad scroll while panel open.
+  final VoidCallback? onListPointerBrowse;
+
+  static const headerRowId = 'portal-header';
+  static const portalsRowId = 'portals';
 
   @override
   State<PortalListView> createState() => _PortalListViewState();
@@ -108,6 +158,11 @@ class _PortalListViewState extends State<PortalListView> {
     ];
   }
 
+  bool get _tv {
+    final tab = (widget.tvTabId ?? '').trim();
+    return tab.isNotEmpty && ShellPaintScope.useTvFocusOf(context);
+  }
+
   IconData _iconFor(PortalListHeaderAction a) {
     final raw = a.icon.trim().isNotEmpty ? a.icon : a.id;
     return switch (raw.trim().toLowerCase()) {
@@ -123,6 +178,13 @@ class _PortalListViewState extends State<PortalListView> {
     };
   }
 
+  bool _onListScrollNotification(ScrollNotification notification) {
+    if (notification is! UserScrollNotification) return false;
+    if (notification.direction == ScrollDirection.idle) return false;
+    widget.onListPointerBrowse?.call();
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
@@ -132,6 +194,34 @@ class _PortalListViewState extends State<PortalListView> {
     final status = widget.statusText.trim().isNotEmpty
         ? widget.statusText
         : '${filtered.length}';
+    final tab = (widget.tvTabId ?? '').trim();
+
+    Widget header = _buildHeader(context, tab: tab);
+    Widget body = filtered.isEmpty
+        ? _buildEmpty()
+        : _buildList(filtered, tab: tab);
+
+    if (_tv && tab.isNotEmpty) {
+      header = ShellPaintScope.tvRow(
+        context: context,
+        tabId: tab,
+        rowId: PortalListView.headerRowId,
+        sortOrder: 0,
+        itemCount: 1 + widget.headerActions.length,
+        child: header,
+      );
+      if (filtered.isNotEmpty) {
+        body = ShellPaintScope.tvRow(
+          context: context,
+          tabId: tab,
+          rowId: PortalListView.portalsRowId,
+          sortOrder: 2,
+          itemCount: filtered.length,
+          axis: ShellPaintTvRowAxis.vertical,
+          child: body,
+        );
+      }
+    }
 
     return PortalListPanel(
       width: widget.width,
@@ -140,60 +230,7 @@ class _PortalListViewState extends State<PortalListView> {
       searchOpen: _searchOpen,
       statusText: status,
       onEscape: widget.onClose,
-      header: Container(
-        padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              widget.title.trim().isEmpty ? 'Portals' : widget.title,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if ((widget.badgeLabel ?? '').trim().isNotEmpty) ...[
-              const SizedBox(width: 8),
-              Text(
-                widget.badgeLabel!.trim(),
-                style: TextStyle(
-                  color: widget.badgeMuted
-                      ? Colors.white38
-                      : ForjaShellColors.brandGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const Spacer(),
-            // R→L: Add · Deal · Scrape · Search  ⇒  L→R paint: Search · Scrape · Deal · Add
-            _PortalHeaderIcon(
-              tooltip: _searchOpen ? 'Close search' : 'Search portals',
-              icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-              onPressed: () {
-                setState(() {
-                  _searchOpen = !_searchOpen;
-                  if (!_searchOpen) {
-                    _searchCtrl.clear();
-                    _query = '';
-                  }
-                });
-              },
-            ),
-            for (final a in widget.headerActions)
-              _PortalHeaderIcon(
-                tooltip: a.tooltip ?? a.label,
-                icon: _iconFor(a),
-                onPressed: widget.busy || !a.enabled ? null : a.onPressed,
-              ),
-          ],
-        ),
-      ),
+      header: header,
       search: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
         child: TextField(
@@ -232,77 +269,203 @@ class _PortalListViewState extends State<PortalListView> {
           onChanged: (v) => setState(() => _query = v),
         ),
       ),
-      body: filtered.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.inbox_outlined,
-                      size: 48,
-                      color: Colors.white38,
-                    ),
-                    if (widget.emptyTitle.trim().isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        widget.emptyTitle,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    if (widget.emptyDescription.trim().isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.emptyDescription,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
+      body: body,
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, {required String tab}) {
+    // L→R paint: Search · Scrape · Deal · Add  (indices for TV L/R).
+    final actions = widget.headerActions;
+    final searchIndex = 0;
+    final actionBase = 1;
+    final lastHeader = actionBase + actions.length - 1;
+
+    Widget iconAt({
+      required int index,
+      required String tooltip,
+      required IconData icon,
+      required VoidCallback? onPressed,
+      Color? color,
+    }) {
+      final left = index > searchIndex
+          ? () => widget.onHeaderFocusAt?.call(index - 1)
+          : null;
+      final right = index < lastHeader
+          ? () => widget.onHeaderFocusAt?.call(index + 1)
+          : null;
+      return _PortalHeaderIcon(
+        tooltip: tooltip,
+        icon: icon,
+        color: color,
+        onPressed: onPressed,
+        tvTabId: _tv ? tab : null,
+        tvItemIndex: _tv ? index : null,
+        onUpEdge: widget.onHeaderUp,
+        onDownEdge: widget.onHeaderDown,
+        onLeftEdge: left,
+        onRightEdge: right,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            widget.title.trim().isEmpty ? 'Portals' : widget.title,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if ((widget.badgeLabel ?? '').trim().isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text(
+              widget.badgeLabel!.trim(),
+              style: TextStyle(
+                color: widget.badgeMuted
+                    ? Colors.white38
+                    : ForjaShellColors.brandGreen,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const Spacer(),
+          iconAt(
+            index: searchIndex,
+            tooltip: _searchOpen ? 'Close search' : 'Search portals',
+            icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+            color: _searchOpen ? ForjaShellColors.brandGreen : null,
+            onPressed: () {
+              setState(() {
+                _searchOpen = !_searchOpen;
+                if (!_searchOpen) {
+                  _searchCtrl.clear();
+                  _query = '';
+                }
+              });
+            },
+          ),
+          for (var i = 0; i < actions.length; i++)
+            iconAt(
+              index: actionBase + i,
+              tooltip: actions[i].tooltip ?? actions[i].label,
+              icon: _iconFor(actions[i]),
+              onPressed: widget.busy || !actions[i].enabled
+                  ? null
+                  : actions[i].onPressed,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inbox_outlined,
+              size: 48,
+              color: Colors.white38,
+            ),
+            if (widget.emptyTitle.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                widget.emptyTitle,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-              itemExtent: PortalListRow.rowHeight,
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final item = filtered[index];
-                return PortalListRow(
-                  item: item,
-                  leanback: widget.leanback,
-                  onSelect: widget.busy || widget.onSelect == null
-                      ? null
-                      : () => widget.onSelect!(item),
-                  onFavorite: widget.busy || widget.onFavorite == null
-                      ? null
-                      : () => widget.onFavorite!(item),
-                  onEdit: widget.busy || widget.onEdit == null
-                      ? null
-                      : () => widget.onEdit!(item),
-                  onDelete: widget.busy || widget.onDelete == null
-                      ? null
-                      : () => widget.onDelete!(item),
-                  onCopyShareCode: widget.busy || widget.onCopyShareCode == null
-                      ? null
-                      : () => widget.onCopyShareCode!(item),
-                  onHoverEnter: widget.onHoverEnter == null
-                      ? null
-                      : () => widget.onHoverEnter!(item),
-                  onHoverExit: widget.onHoverExit == null
-                      ? null
-                      : () => widget.onHoverExit!(item),
-                );
-              },
-            ),
+            ],
+            if (widget.emptyDescription.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                widget.emptyDescription,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(List<PortalListItem> filtered, {required String tab}) {
+    final last = filtered.length - 1;
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onListScrollNotification,
+      child: ListView.builder(
+        controller: widget.listScrollController,
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+        itemExtent: PortalListRow.rowHeight,
+        scrollCacheExtent: ScrollCacheExtent.pixels(
+          PortalListRow.rowHeight * 14,
+        ),
+        addAutomaticKeepAlives: false,
+        itemCount: filtered.length,
+        itemBuilder: (context, index) {
+          final item = filtered[index];
+          return PortalListRow(
+            key: ValueKey<String>(item.id),
+            item: item,
+            leanback: widget.leanback,
+            tvTabId: _tv ? tab : null,
+            listIndex: index,
+            onSelect: widget.busy || widget.onSelect == null
+                ? null
+                : () => widget.onSelect!(item),
+            onFavorite: widget.busy || widget.onFavorite == null
+                ? null
+                : () => widget.onFavorite!(item),
+            onEdit: widget.busy || widget.onEdit == null
+                ? null
+                : () => widget.onEdit!(item),
+            onDelete: widget.busy || widget.onDelete == null
+                ? null
+                : () => widget.onDelete!(item),
+            onCopyShareCode: widget.busy || widget.onCopyShareCode == null
+                ? null
+                : () => widget.onCopyShareCode!(item),
+            onHoverEnter: widget.onHoverEnter == null
+                ? null
+                : () => widget.onHoverEnter!(item),
+            onHoverExit: widget.onHoverExit == null
+                ? null
+                : () => widget.onHoverExit!(item),
+            onUpEdge: !_tv
+                ? null
+                : index == 0
+                    ? widget.onPortalExitUp
+                    : () => widget.onPortalMove?.call(index, -1),
+            onDownEdge: !_tv
+                ? null
+                : index >= last
+                    ? widget.onPortalExitDown
+                    : () => widget.onPortalMove?.call(index, 1),
+            onLeftEdge: _tv ? widget.onPortalLeft : null,
+            onTvFocus: _tv
+                ? () => widget.onPortalTvFocus?.call(index)
+                : null,
+          );
+        },
+      ),
     );
   }
 }
@@ -313,11 +476,25 @@ class _PortalHeaderIcon extends StatefulWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.color,
+    this.tvTabId,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final Color? color;
+  final String? tvTabId;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_PortalHeaderIcon> createState() => _PortalHeaderIconState();
@@ -338,7 +515,7 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
     final enabled = widget.onPressed != null;
     if (!enabled) return Colors.white.withValues(alpha: 0.38);
     if (_tv && _focused) return ForjaShellColors.brandGreen;
-    return Colors.white;
+    return widget.color ?? Colors.white;
   }
 
   Widget _icon() => Padding(
@@ -349,8 +526,9 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
   @override
   Widget build(BuildContext context) {
     final body = Tooltip(message: widget.tooltip, child: _icon());
+    final tab = (widget.tvTabId ?? '').trim();
 
-    if (_tv) {
+    if (_tv && tab.isNotEmpty) {
       return ShellPaintScope.focusableTap(
         context: context,
         onTap: widget.onPressed,
@@ -358,7 +536,14 @@ class _PortalHeaderIconState extends State<_PortalHeaderIcon> {
         scaleOnFocus: 1.0,
         suppressInkHover: true,
         showFocusFill: false,
+        tvTabId: tab,
+        tvRowId: PortalListView.headerRowId,
+        tvItemIndex: widget.tvItemIndex,
         tvZone: ShellPaintTvZone.topBar,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
         onFocusChange: (f) => setState(() => _focused = f),
         onHoverChange: (h) => setState(() => _hovered = h),
         child: body,

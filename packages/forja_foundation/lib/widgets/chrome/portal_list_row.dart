@@ -4,17 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+/// Matches [PortalListView.portalsRowId] — keep in sync (avoid import cycle).
+const _kPortalsRowId = 'portals';
+
 
 /// Presentational portal inventory row — props / callbacks only (RFC-095).
 ///
 /// Visual parity with the former IPTV Portals panel tile: 98px card, health
 /// glyph, expiry / title / platform+URL / seats, hover action rail.
+///
+/// When [tvTabId] is set, the row + action chrome register via [ShellPaintScope].
 class PortalListRow extends StatefulWidget {
   const PortalListRow({
     super.key,
     required this.item,
     this.leanback = false,
+    this.tvTabId,
+    this.listIndex = 0,
     this.onSelect,
     this.onFavorite,
     this.onEdit,
@@ -22,19 +31,27 @@ class PortalListRow extends StatefulWidget {
     this.onCopyShareCode,
     this.onHoverEnter,
     this.onHoverExit,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onTvFocus,
   });
 
   final PortalListItem item;
   final bool leanback;
+  final String? tvTabId;
+  final int listIndex;
   final VoidCallback? onSelect;
   final VoidCallback? onFavorite;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
-
-  /// Returns a share code string; row shows spinner then the code.
   final Future<String?> Function()? onCopyShareCode;
   final VoidCallback? onHoverEnter;
   final VoidCallback? onHoverExit;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onTvFocus;
 
   static const rowHeight = 98.0;
 
@@ -53,11 +70,31 @@ class _PortalListRowState extends State<PortalListRow> {
   bool _confirmingDelete = false;
   String? _shareCode;
 
+  late final FocusNode _rowFocus;
+  late final FocusNode _favoriteFocus;
+  late final FocusNode _copyFocus;
+  late final FocusNode _editFocus;
+  late final FocusNode _deleteFocus;
+  late final FocusNode _confirmYesFocus;
+  late final FocusNode _confirmNoFocus;
+
   PortalListItem get item => widget.item;
 
+  bool get _tv =>
+      (widget.tvTabId ?? '').trim().isNotEmpty &&
+      ShellPaintScope.useTvFocusOf(context);
+
+  bool get _actionChromeFocused =>
+      _favoriteFocus.hasFocus ||
+      _copyFocus.hasFocus ||
+      _editFocus.hasFocus ||
+      _deleteFocus.hasFocus ||
+      _confirmYesFocus.hasFocus ||
+      _confirmNoFocus.hasFocus;
+
+  /// Leanback: keep rail closed while ↑/↓ skims — open only on → / action focus.
   bool get _reveal {
-    if (_confirmingDelete) return true;
-    if (item.deleting) return false;
+    if (_confirmingDelete || _actionChromeFocused) return true;
     if (_lineHover || (_focused && !widget.leanback)) return true;
     return false;
   }
@@ -70,8 +107,87 @@ class _PortalListRowState extends State<PortalListRow> {
   bool get _showNewChrome =>
       !item.deleting && item.isNew && !_reveal && !_showShareCode;
 
+  String get _actionsRowId => 'portal-${widget.listIndex}-actions';
+
+  @override
+  void initState() {
+    super.initState();
+    _rowFocus = FocusNode(debugLabel: 'portal-row');
+    _favoriteFocus = FocusNode(debugLabel: 'portal-favorite');
+    _copyFocus = FocusNode(debugLabel: 'portal-copy');
+    _editFocus = FocusNode(debugLabel: 'portal-edit');
+    _deleteFocus = FocusNode(debugLabel: 'portal-delete');
+    _confirmYesFocus = FocusNode(debugLabel: 'portal-delete-yes');
+    _confirmNoFocus = FocusNode(debugLabel: 'portal-delete-no');
+    for (final node in [
+      _favoriteFocus,
+      _copyFocus,
+      _editFocus,
+      _deleteFocus,
+      _confirmYesFocus,
+      _confirmNoFocus,
+    ]) {
+      node.addListener(_onActionFocusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final node in [
+      _favoriteFocus,
+      _copyFocus,
+      _editFocus,
+      _deleteFocus,
+      _confirmYesFocus,
+      _confirmNoFocus,
+    ]) {
+      node.removeListener(_onActionFocusChanged);
+      node.dispose();
+    }
+    _rowFocus.dispose();
+    super.dispose();
+  }
+
+  void _onActionFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
   void _clearHover() {
     setState(() => _lineHover = false);
+  }
+
+  void _focusAction(FocusNode node) {
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
+    if (!node.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) node.requestFocus();
+      });
+    }
+  }
+
+  void _onRowFocusChange(bool focused) {
+    if (focused) {
+      widget.onTvFocus?.call();
+      if (widget.leanback) {
+        widget.onHoverEnter?.call();
+      }
+      if (!_focused || widget.leanback) {
+        setState(() => _focused = true);
+      }
+      return;
+    }
+    void clear() {
+      if (!mounted) return;
+      if (_focused) setState(() => _focused = false);
+      if (widget.leanback) widget.onHoverExit?.call();
+    }
+
+    if (widget.leanback) {
+      clear();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => clear());
   }
 
   Future<void> _copy() async {
@@ -120,8 +236,6 @@ class _PortalListRowState extends State<PortalListRow> {
     return const Color(0x3DFFFFFF);
   }
 
-  /// Selected row = classic “active” chrome: green play until probe fails.
-  /// Idle rows stay unchecked-gray until health lands.
   Color _selectedStatusColor({required bool checking, required bool? health}) {
     if (checking) return const Color(0xFF38BDF8);
     if (health == false) return const Color(0xFFEF4444);
@@ -225,22 +339,19 @@ class _PortalListRowState extends State<PortalListRow> {
       );
     }
 
-    return Focus(
-      canRequestFocus: !deleting,
-      onFocusChange: (f) {
-        if (!mounted) return;
-        setState(() => _focused = f);
-        // Leanback has no hover — dwell probe on focus like the old panel.
-        if (widget.leanback) {
-          if (f) {
-            widget.onHoverEnter?.call();
-          } else {
-            widget.onHoverExit?.call();
-          }
-        }
-      },
-      child: tile,
-    );
+    if (_tv && reveal) {
+      final tab = widget.tvTabId!.trim();
+      tile = ShellPaintScope.tvRow(
+        context: context,
+        tabId: tab,
+        rowId: _actionsRowId,
+        sortOrder: 200 + widget.listIndex,
+        itemCount: _confirmingDelete ? 3 : 4,
+        child: tile,
+      );
+    }
+
+    return tile;
   }
 
   Widget _buildMain() {
@@ -249,138 +360,202 @@ class _PortalListRowState extends State<PortalListRow> {
     final title = item.label;
     final checking = item.checking;
     final health = item.healthy;
+    final tab = (widget.tvTabId ?? '').trim();
+    final deleting = item.deleting;
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: isActive
+                ? _activeGlyph(checking: checking, health: health)
+                : _idleDot(checking: checking, health: health),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _confirmingDelete
+                ? _deleteConfirmLine()
+                : _showShareCode || _sharing
+                    ? _shareCodeLine()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _expiryLine(item.expiry),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              if (_showNewChrome) ...[
+                                _newBadge(),
+                                const SizedBox(width: 6),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: isFav
+                                        ? const Color(0xFFFBBF24)
+                                        : isActive
+                                            ? Colors.white
+                                            : _showNewChrome
+                                                ? ForjaShellColors.navUnderline
+                                                : Colors.white.withValues(
+                                                    alpha: 0.88,
+                                                  ),
+                                    fontSize: 13,
+                                    fontWeight: isFav ||
+                                            isActive ||
+                                            _showNewChrome
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              if ((item.platformLabel ?? '')
+                                  .trim()
+                                  .isNotEmpty) ...[
+                                _platformBadge(
+                                  item.platformLabel!.trim(),
+                                  muted: _showNewChrome,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  item.subtitle ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: _showNewChrome
+                                        ? Colors.white54
+                                        : Colors.white38,
+                                    fontSize: 11,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          _seatsLine(
+                            active: item.activeConnections,
+                            max: item.maxConnections,
+                          ),
+                        ],
+                      ),
+          ),
+          Align(
+            alignment: Alignment.center,
+            child: AnimatedOpacity(
+              opacity: _showStar ? 1 : 0,
+              duration: widget.leanback
+                  ? Duration.zero
+                  : const Duration(milliseconds: 120),
+              child: IgnorePointer(
+                ignoring: !_showStar || widget.onFavorite == null,
+                child: _tv
+                    ? ShellPaintScope.focusableTap(
+                        context: context,
+                        onTap: widget.onFavorite,
+                        borderRadius: 16,
+                        scaleOnFocus: 1.0,
+                        showFocusFill: false,
+                        suppressInkHover: true,
+                        focusNode: _favoriteFocus,
+                        tvTabId: tab,
+                        tvRowId: _actionsRowId,
+                        tvItemIndex: 0,
+                        ensureVisibleMode: ShellPaintEnsureVisible.off,
+                        onLeftEdge: () => _focusAction(_rowFocus),
+                        onRightEdge: () => _focusAction(
+                          _confirmingDelete ? _confirmYesFocus : _copyFocus,
+                        ),
+                        onUpEdge: widget.onUpEdge,
+                        onDownEdge: widget.onDownEdge,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            isFav
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            size: 16,
+                            color: isFav || _favoriteFocus.hasFocus
+                                ? const Color(0xFFFBBF24)
+                                : Colors.white30,
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        tooltip: isFav ? 'Unfavorite' : 'Favorite',
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        onPressed: widget.onFavorite,
+                        icon: Icon(
+                          isFav
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 16,
+                          color: isFav
+                              ? const Color(0xFFFBBF24)
+                              : Colors.white30,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (_tv) {
+      return ShellPaintScope.focusableTap(
+        context: context,
+        onTap: _onRowTap,
+        borderRadius: 0,
+        scaleOnFocus: 1.0,
+        showFocusFill: false,
+        suppressInkHover: true,
+        focusNode: _rowFocus,
+        listIndex: widget.listIndex,
+        tvTabId: tab,
+        tvRowId: _kPortalsRowId,
+        tvItemIndex: widget.listIndex,
+        tvZone: ShellPaintTvZone.row,
+        allowNestedFocus: !deleting,
+        ensureVisibleMode: ShellPaintEnsureVisible.off,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: deleting
+            ? null
+            : () => _focusAction(
+                  _confirmingDelete ? _confirmYesFocus : _favoriteFocus,
+                ),
+        onFocusChange: _onRowFocusChange,
+        child: content,
+      );
+    }
 
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: _onRowTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.center,
-                child: isActive
-                    ? _activeGlyph(checking: checking, health: health)
-                    : _idleDot(checking: checking, health: health),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _confirmingDelete
-                    ? _deleteConfirmLine()
-                    : _showShareCode || _sharing
-                        ? _shareCodeLine()
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _expiryLine(item.expiry),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  if (_showNewChrome) ...[
-                                    _newBadge(),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: isFav
-                                            ? const Color(0xFFFBBF24)
-                                            : isActive
-                                                ? Colors.white
-                                                : _showNewChrome
-                                                    ? ForjaShellColors
-                                                        .navUnderline
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.88,
-                                                      ),
-                                        fontSize: 13,
-                                        fontWeight: isFav ||
-                                                isActive ||
-                                                _showNewChrome
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                        height: 1.25,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  if ((item.platformLabel ?? '')
-                                      .trim()
-                                      .isNotEmpty) ...[
-                                    _platformBadge(
-                                      item.platformLabel!.trim(),
-                                      muted: _showNewChrome,
-                                    ),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      item.subtitle ?? '',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: _showNewChrome
-                                            ? Colors.white54
-                                            : Colors.white38,
-                                        fontSize: 11,
-                                        height: 1.25,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              _seatsLine(
-                                active: item.activeConnections,
-                                max: item.maxConnections,
-                              ),
-                            ],
-                          ),
-              ),
-              Align(
-                alignment: Alignment.center,
-                child: AnimatedOpacity(
-                  opacity: _showStar ? 1 : 0,
-                  duration: widget.leanback
-                      ? Duration.zero
-                      : const Duration(milliseconds: 120),
-                  child: IgnorePointer(
-                    ignoring: !_showStar || widget.onFavorite == null,
-                    child: IconButton(
-                      tooltip: isFav ? 'Unfavorite' : 'Favorite',
-                      padding: const EdgeInsets.all(4),
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
-                      onPressed: widget.onFavorite,
-                      icon: Icon(
-                        isFav
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        size: 16,
-                        color: isFav
-                            ? const Color(0xFFFBBF24)
-                            : Colors.white30,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: content,
       ),
     );
   }
@@ -398,12 +573,27 @@ class _PortalListRowState extends State<PortalListRow> {
               setState(() => _confirmingDelete = false);
               widget.onDelete?.call();
             },
+            tvTabId: _tv ? widget.tvTabId : null,
+            tvRowId: _actionsRowId,
+            tvItemIndex: 1,
+            focusNode: _confirmYesFocus,
+            onLeftEdge: () => _focusAction(_favoriteFocus),
+            onRightEdge: () => _focusAction(_confirmNoFocus),
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
           ),
           _RailAction(
             tooltip: 'No',
             icon: Icons.close_rounded,
             color: Colors.white60,
             onTap: () => setState(() => _confirmingDelete = false),
+            tvTabId: _tv ? widget.tvTabId : null,
+            tvRowId: _actionsRowId,
+            tvItemIndex: 2,
+            focusNode: _confirmNoFocus,
+            onLeftEdge: () => _focusAction(_confirmYesFocus),
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
           ),
         ],
       );
@@ -419,6 +609,14 @@ class _PortalListRowState extends State<PortalListRow> {
                 : Icons.copy_rounded,
             color: Colors.white60,
             onTap: _sharing ? null : () => unawaited(_copy()),
+            tvTabId: _tv ? widget.tvTabId : null,
+            tvRowId: _actionsRowId,
+            tvItemIndex: 1,
+            focusNode: _copyFocus,
+            onLeftEdge: () => _focusAction(_favoriteFocus),
+            onRightEdge: () => _focusAction(_editFocus),
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
           ),
         if (widget.onEdit != null)
           _RailAction(
@@ -426,6 +624,14 @@ class _PortalListRowState extends State<PortalListRow> {
             icon: Icons.edit_rounded,
             color: Colors.white60,
             onTap: widget.onEdit,
+            tvTabId: _tv ? widget.tvTabId : null,
+            tvRowId: _actionsRowId,
+            tvItemIndex: 2,
+            focusNode: _editFocus,
+            onLeftEdge: () => _focusAction(_copyFocus),
+            onRightEdge: () => _focusAction(_deleteFocus),
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
           ),
         if (widget.onDelete != null)
           _RailAction(
@@ -433,6 +639,13 @@ class _PortalListRowState extends State<PortalListRow> {
             icon: Icons.delete_rounded,
             color: const Color(0xFFEF4444),
             onTap: () => setState(() => _confirmingDelete = true),
+            tvTabId: _tv ? widget.tvTabId : null,
+            tvRowId: _actionsRowId,
+            tvItemIndex: 3,
+            focusNode: _deleteFocus,
+            onLeftEdge: () => _focusAction(_editFocus),
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
           ),
       ],
     );
@@ -538,7 +751,6 @@ class _PortalListRowState extends State<PortalListRow> {
     final maxN = int.tryParse(cap);
     final full =
         activeN != null && maxN != null && maxN > 0 && activeN >= maxN;
-    // Blue = free capacity · gray = full (avoid expiry green/orange).
     final color = full ? const Color(0xFF9CA3AF) : const Color(0xFF60A5FA);
     return Row(
       children: [
@@ -640,8 +852,7 @@ class _PortalListRowState extends State<PortalListRow> {
   }
 
   Widget _activeGlyph({required bool checking, required bool? health}) {
-    final color =
-        _selectedStatusColor(checking: checking, health: health);
+    final color = _selectedStatusColor(checking: checking, health: health);
     final Widget glyph;
     if (checking) {
       glyph = SizedBox(
@@ -800,35 +1011,72 @@ DateTime? _tryParseExpiry(String raw) {
   return null;
 }
 
+
 class _RailAction extends StatelessWidget {
   const _RailAction({
     required this.tooltip,
     required this.icon,
     required this.color,
     this.onTap,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String tooltip;
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndex;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
+    final body = SizedBox(
+      width: 32,
+      height: 32,
+      child: Icon(icon, size: 16, color: color),
+    );
+    final tab = (tvTabId ?? '').trim();
+    final child = Tooltip(message: tooltip, child: body);
+    if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) {
+      return Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: Icon(icon, size: 16, color: color),
-          ),
+          child: child,
         ),
-      ),
+      );
+    }
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 6,
+      scaleOnFocus: 1.0,
+      showFocusFill: false,
+      suppressInkHover: true,
+      focusNode: focusNode,
+      tvTabId: tab,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      ensureVisibleMode: ShellPaintEnsureVisible.off,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
+      child: child,
     );
   }
 }

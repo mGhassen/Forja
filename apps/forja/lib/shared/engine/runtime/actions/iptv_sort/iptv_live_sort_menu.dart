@@ -6,6 +6,7 @@ import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Exact pre-wipe IPTV Sort popup — Categories + Channels sections.
 class IptvLiveSortMenu extends StatefulWidget {
@@ -62,7 +63,7 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
           children: [
             _sectionLabel('Categories'),
             for (final (sort, label, icon) in _options)
-              _sortRow(
+              _IptvSortRow(
                 icon: icon,
                 label: label,
                 selected: _categorySort == sort,
@@ -77,7 +78,7 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
             ),
             _sectionLabel('Channels'),
             for (final (sort, label, icon) in _options)
-              _sortRow(
+              _IptvSortRow(
                 icon: icon,
                 label: label,
                 selected: _contentSort == sort,
@@ -106,47 +107,83 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
       ),
     );
   }
+}
 
-  Widget _sortRow({
-    required IconData icon,
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+class _IptvSortRow extends StatefulWidget {
+  const _IptvSortRow({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_IptvSortRow> createState() => _IptvSortRowState();
+}
+
+class _IptvSortRowState extends State<_IptvSortRow> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final input = (
+      tvFocus: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+      mouseHover: ShellScope.inputPolicyOf(context).scaleOnHover,
+    );
+    final highlight = _hovered || _focused;
+    final chrome = playerPopupSelectChrome(
+      selected: widget.selected,
+      highlight: highlight,
+    );
+
     final row = Material(
-      color: selected ? PlayerPopupTokens.accentFill : Colors.transparent,
+      color: chrome.bg,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
-        onTap: tvFocus ? null : onTap,
+        onTap: input.tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        hoverColor: ForjaShellColors.inkHover,
+        // Hover is painted via [chrome.bg] — InkWell splash only.
+        hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
+        onHover: input.mouseHover
+            ? (h) {
+                if (_hovered == h) return;
+                setState(() => _hovered = h);
+              }
+            : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
             children: [
               Icon(
-                icon,
+                widget.icon,
                 size: 18,
-                color: selected
+                color: widget.selected || highlight
                     ? PlayerPopupTokens.accent
                     : Colors.white.withValues(alpha: 0.75),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  label,
+                  widget.label,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 13,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: widget.selected || highlight
+                        ? FontWeight.w700
+                        : FontWeight.w500,
                   ),
                 ),
               ),
-              if (selected)
+              if (widget.selected)
                 Icon(
                   Icons.check_rounded,
                   size: 18,
@@ -157,20 +194,35 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
         ),
       ),
     );
-    if (!tvFocus) {
-      return Padding(padding: const EdgeInsets.only(bottom: 4), child: row);
-    }
+
+    final padded = Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: row,
+    );
+
+    if (!input.tvFocus) return padded;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: FocusableControl(
-        autoFocus:
-            selected && PlayerPopupListFocusScope.claimAutofocus(context),
-        onTap: onTap,
+        autoFocus: widget.selected &&
+            PlayerPopupListFocusScope.claimAutofocus(context),
+        onTap: widget.onTap,
         borderRadius: PlayerPopupTokens.cardRadius,
         scaleOnFocus: 1.0,
         showFocusBorder: false,
         showFocusFill: false,
         ensureVisibleMode: ShellPaintEnsureVisible.item,
+        onFocusChange: (f) {
+          if (_focused == f) return;
+          setState(() => _focused = f);
+        },
+        onHoverChange: input.mouseHover
+            ? (h) {
+                if (_hovered == h) return;
+                setState(() => _hovered = h);
+              }
+            : null,
         child: row,
       ),
     );

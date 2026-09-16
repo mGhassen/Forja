@@ -7,6 +7,9 @@ enum ShellPaintTvZone { nav, hero, topBar, chipStrip, row, grid, settings }
 /// Scroll-into-view mode when a paint widget takes focus.
 enum ShellPaintEnsureVisible { off, row, item }
 
+/// Row axis for host [TvKitRow] registration (vertical lists vs rails).
+enum ShellPaintTvRowAxis { horizontal, vertical }
+
 /// Host-provided focus tap (typically wraps app `shellFocusableTap`).
 typedef ShellPaintFocusableTap = Widget Function({
   required BuildContext context,
@@ -35,6 +38,7 @@ typedef ShellPaintFocusableTap = Widget Function({
   bool showFocusFill,
   bool showFocusRail,
   bool suppressInkHover,
+  bool allowNestedFocus,
   FocusOnKeyEventCallback? onKeyEvent,
 });
 
@@ -46,6 +50,7 @@ typedef ShellPaintTvRowWrap = Widget Function({
   required int itemCount,
   VoidCallback? onFocusUp,
   VoidCallback? onFocusDown,
+  ShellPaintTvRowAxis axis,
   required Widget child,
 });
 
@@ -150,6 +155,7 @@ class ShellPaintScope extends InheritedWidget {
     bool showFocusFill = true,
     bool showFocusRail = false,
     bool suppressInkHover = false,
+    bool allowNestedFocus = false,
     FocusOnKeyEventCallback? onKeyEvent,
   }) {
     final scope = maybeOf(context);
@@ -182,6 +188,7 @@ class ShellPaintScope extends InheritedWidget {
         showFocusFill: showFocusFill,
         showFocusRail: showFocusRail,
         suppressInkHover: suppressInkHover,
+        allowNestedFocus: allowNestedFocus,
         onKeyEvent: onKeyEvent,
       );
     }
@@ -220,6 +227,7 @@ class ShellPaintScope extends InheritedWidget {
     required int itemCount,
     VoidCallback? onFocusUp,
     VoidCallback? onFocusDown,
+    ShellPaintTvRowAxis axis = ShellPaintTvRowAxis.horizontal,
     required Widget child,
   }) {
     final wrap = maybeOf(context)?.wrapTvRow;
@@ -231,6 +239,7 @@ class ShellPaintScope extends InheritedWidget {
       itemCount: itemCount,
       onFocusUp: onFocusUp,
       onFocusDown: onFocusDown,
+      axis: axis,
       child: child,
     );
   }
