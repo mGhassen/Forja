@@ -89,31 +89,31 @@ abstract final class PortalsHost {
       final activeKey = (activeRaw ?? '').toString().trim();
 
       Map<String, dynamic>? hit;
-      Map<String, dynamic>? first;
       for (final e in parsed) {
         if (e is! Map) continue;
         final m = Map<String, dynamic>.from(e);
-        first ??= m;
         if (activeKey.isNotEmpty &&
             samePortalKey(vaultPortalKey(m), activeKey)) {
           hit = m;
           break;
         }
       }
-      final row = hit ?? first;
-      if (row == null) {
-        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+      if (hit == null) {
+        return PortalsChipSummary(
+          label: 'Portals',
+          hasPortal: true,
+        );
       }
-      final label = (row['label'] ??
-              row['name'] ??
-              row['username'] ??
-              row['url'] ??
+      final label = (hit['label'] ??
+              hit['name'] ??
+              hit['username'] ??
+              hit['url'] ??
               '')
           .toString()
           .trim();
-      final key = vaultPortalKey(row);
-      final used = (row['activeConnections'] ?? '').toString().trim();
-      final max = (row['maxConnections'] ?? '').toString().trim();
+      final key = vaultPortalKey(hit);
+      final used = (hit['activeConnections'] ?? '').toString().trim();
+      final max = (hit['maxConnections'] ?? '').toString().trim();
       return PortalsChipSummary(
         label: label.isEmpty ? 'Portals' : label,
         hasPortal: true,
@@ -244,11 +244,8 @@ abstract final class PortalsHost {
                 (await EngineVault.get(PortalVaultKeys.active) ?? '')
                     .toString()
                     .trim();
-            var activePack = packActiveKeyAmong(vaultActive, portals);
-            if (activePack.isEmpty) {
-              final last = await PortalStore.loadLastPortalKey();
-              activePack = packActiveKeyAmong(last ?? '', portals);
-            }
+            // No last-key fallback — empty/missing active stays unselected.
+            final activePack = packActiveKeyAmong(vaultActive, portals);
             await PortalVaultInventory.mirrorFromStore(
               portals: portals,
               favoriteKeys: favs,
@@ -471,12 +468,22 @@ abstract final class PortalsHost {
   static Future<MetaEnvelope> remove({
     required String pluginId,
     required String key,
-  }) =>
-      run(
-        pluginId: pluginId,
-        action: 'removePortal',
-        params: {'key': key},
-      );
+  }) async {
+    final before =
+        (await EngineVault.get(PortalVaultKeys.active) ?? '').toString().trim();
+    final env = await run(
+      pluginId: pluginId,
+      action: 'removePortal',
+      params: {'key': key},
+    );
+    if (env.ok &&
+        before.isNotEmpty &&
+        samePortalKey(before, key)) {
+      // Pack clears vault active; keep store last-key in sync (no fallback).
+      await PortalStore.clearLastPortalKey();
+    }
+    return env;
+  }
 
   static Future<Set<String>> loadFavoriteKeys() async {
     try {
@@ -773,17 +780,16 @@ class PortalsInventory {
       if (PortalsHost.samePortalKey(p.id, activeKey)) return p.label;
     }
     final t = title.trim();
-    return portals.isEmpty
-        ? (t.isEmpty ? 'Portals' : t)
-        : portals.first.label;
+    return t.isEmpty ? 'Portals' : t;
   }
 }
 
 /// Debounced health probe — shared TTL cache across chip + panel.
 ///
-/// Callers: hub-open chip preload ([immediate]), hover/focus dwell, panel
-/// open / Refresh ([force]). Fresh results skip re-probe until [ttl] expires
-/// or [invalidate]. UI owns one instance; call [dispose] from the widget.
+  /// Callers: hub-open chip preload ([immediate]), hover/focus dwell,
+  /// Refresh ([force]). Chip tap must not probe. Fresh results skip re-probe
+  /// until [ttl] expires or [invalidate]. UI owns one instance; call [dispose]
+  /// from the widget.
 class PortalHealthTracker {
   PortalHealthTracker({this.onChanged}) {
     _listeners.add(this);
@@ -822,7 +828,7 @@ class PortalHealthTracker {
   bool isChecking(String portalKey) => _inFlight.contains(portalKey);
 
   /// Schedule a probe after hover debounce. No-op while TTL is fresh unless
-  /// [force] (hover soft-refresh / panel open / Refresh).
+  /// [force] (hover soft-refresh / Refresh).
   ///
   /// Does **not** clear last painted health — UI keeps green/red until the
   /// new result lands. [force] ignores TTL; [immediate] starts now (else

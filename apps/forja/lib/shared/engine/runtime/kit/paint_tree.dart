@@ -17,6 +17,7 @@ import 'package:forja/shared/engine/runtime/chrome/portals_action_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/top_bar_host_hooks.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_filter_sheet.dart';
+import 'package:forja_foundation/widgets/chrome/filter_sheet_option.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:forja/shared/engine/runtime/kit/lazy_viewport_gate.dart';
@@ -953,14 +954,62 @@ class PackPaintTree extends StatelessWidget {
       return;
     }
 
+    // Static menus (e.g. My List status) — titled sheet. Sort/icon menus open
+    // as an anchored dropdown in CatalogTopChrome (not this path).
     final nested = propsIdLabelList(action, 'items');
     if (nested.isEmpty) return;
-    final picked = await showCatalogFilterSheet(
-      context,
-      current: current.isEmpty ? nested.first.id : current,
-      options: [
-        for (final e in nested) (id: e.id, label: e.label, subtitle: null),
-      ],
+    final title = (action['label'] ?? actionId).toString().trim();
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: ForjaShellColors.surfaceElevated,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final selected = current.isEmpty ? nested.first.id : current;
+        final maxHeight = MediaQuery.sizeOf(ctx).height * 0.7;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      title.isEmpty ? 'Options' : title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    for (final e in nested)
+                      FilterSheetOption(
+                        label: e.label,
+                        selected: e.id == selected,
+                        icon: Icons.tune_rounded,
+                        onSelected: () => Navigator.pop(ctx, e.id),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
     if (picked == null || !context.mounted) return;
     scope?.onSelect(actionId, picked, toggle: false);

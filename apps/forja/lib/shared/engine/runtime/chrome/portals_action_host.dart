@@ -160,9 +160,6 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
             portalKey = p.id;
             break;
           }
-          if (portalKey.isEmpty && data.portals.isNotEmpty) {
-            portalKey = data.portals.first.id;
-          }
         }
         for (final p in data.portals) {
           if (p.id != portalKey) continue;
@@ -211,7 +208,6 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final max = (painted?.maxConnections ?? seatsMax ?? '').trim();
 
     final policy = ShellScope.inputPolicyOf(context);
-    final leanback = liveLeanbackOnly(context);
     return PortalsChip(
       label: label,
       hasPortal: hasPortal,
@@ -226,14 +222,6 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
         ref.read(portalsPanelOpenProvider(key).notifier).state = opening;
         if (opening) {
           preparePortalsPanel(ProviderScope.containerOf(context), key);
-          if (_probeKey.isNotEmpty) {
-            _health.schedule(
-              _probeKey,
-              leanback: leanback,
-              force: true,
-              immediate: true,
-            );
-          }
         }
       },
       onFocusChange: (focused) {

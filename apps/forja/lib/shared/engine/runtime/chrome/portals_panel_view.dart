@@ -39,7 +39,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   bool _busy = false;
   final Set<String> _deletingKeys = {};
   late final PortalHealthTracker _health;
-  String _probedSelectedKey = '';
 
   @override
   void initState() {
@@ -52,30 +51,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       if (!mounted) return;
       unawaited(
         ref.read(portalsInventoryProvider(widget.tabId).notifier).prepare(),
-      );
-    });
-  }
-
-  void _probeSelectedIfNeeded(List<PortalListItem> items, {required bool leanback}) {
-    String selectedId = '';
-    for (final p in items) {
-      if (!p.selected) continue;
-      selectedId = p.id;
-      break;
-    }
-    if (selectedId.isEmpty) {
-      _probedSelectedKey = '';
-      return;
-    }
-    if (selectedId == _probedSelectedKey) return;
-    _probedSelectedKey = selectedId;
-    // Post-frame — schedule/_run notifies listeners (setState).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _probedSelectedKey != selectedId) return;
-      _health.schedule(
-        selectedId,
-        leanback: leanback,
-        immediate: true,
       );
     });
   }
@@ -259,7 +234,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final verb = a.action.trim().toLowerCase();
     final id = a.id.trim().toLowerCase();
     if (verb == 'listportals' || verb == 'refresh') {
-      _probedSelectedKey = '';
       _health.invalidate();
       unawaited(
         ref.read(portalsInventoryProvider(widget.tabId).notifier).prepare(),
@@ -340,6 +314,14 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Future<void> _deletePortal(String portalKey) async {
     setState(() => _deletingKeys.add(portalKey));
     try {
+      final inv =
+          ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+      final wasActive = inv != null &&
+          inv.activeKey.isNotEmpty &&
+          PortalsHost.samePortalKey(inv.activeKey, portalKey);
+      if (wasActive && mounted) {
+        PackChromeScope.maybeOf(context)?.onClearCatalog();
+      }
       await _runAction(
         (id) => PortalsHost.remove(pluginId: id, key: portalKey),
         toastOk: 'Removed',
@@ -369,7 +351,6 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
                   PortalsHost.samePortalKey(p.id, activeKey)),
         ),
     ];
-    _probeSelectedIfNeeded(items, leanback: leanback);
     final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
     final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;

@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// Empty / missing cloud payload means all boolean features off. Guests and
 /// signed-out sessions stay disabled until a signed-in pull applies enabled
 /// keys. Portal cap defaults to [defaultMaxPortals] when
-/// `features.maxPortals` is omitted (admins unlimited).
+/// `features.maxIptvPortals` is omitted (admins unlimited).
 class AccountFeatures {
   AccountFeatures._();
   static final AccountFeatures instance = AccountFeatures._();
@@ -46,7 +46,7 @@ class AccountFeatures {
   /// admin-gated.
   bool get isAdmin => _isAdmin;
 
-  /// Configured max portals per profile (`features.maxPortals`, default 5).
+  /// Configured max portals per profile (`features.maxIptvPortals`, default 5).
   /// Ignored when [hasUnlimitedPortals].
   int get maxPortals => _maxPortals;
 
@@ -80,7 +80,8 @@ class AccountFeatures {
 
   static int _parseMaxPortals(Map<String, dynamic>? raw) {
     if (raw == null) return defaultMaxPortals;
-    final v = raw['maxPortals'];
+    // Cloud / admin / SQL lean key (RFC-036).
+    final v = raw['maxIptvPortals'];
     final n = switch (v) {
       int i => i,
       num n => n.toInt(),
@@ -92,7 +93,7 @@ class AccountFeatures {
   }
 
   /// Apply lean cloud JSON
-  /// (`{}` or `{ "iptvScrape": true, "dealPortal": true, "maxPortals": 20 }`).
+  /// (`{}` or `{ "iptvScrape": true, "dealPortal": true, "maxIptvPortals": 20 }`).
   void applyRemote(
     Map<String, dynamic>? raw, {
     int? iptvCredits,
