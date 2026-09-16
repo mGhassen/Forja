@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
+import 'package:forja/shared/engine/portals/models.dart';
+import 'package:forja/shared/engine/portals/portal_form_dialog.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/chrome/portals_providers.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_chrome_scope.dart';
@@ -13,7 +15,6 @@ import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja_foundation/components/form_fields_dialog.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_view.dart';
 
@@ -180,49 +181,83 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     }
   }
 
-  Future<void> _runPackForm(
-    FormFieldsSpec form, {
-    Map<String, String>? values,
-    String? portalKey,
-  }) async {
-    final filled = values == null ? form : form.withValues(values);
-    final result = await showFormFieldsDialog(
-      context: context,
-      spec: filled,
-    );
-    if (result == null || !mounted) return;
-    final action = filled.action.trim();
-    if (action.isEmpty) {
-      ForjaToast.error('Form has no action');
+  Future<void> _afterPortalMutated({required String pluginId}) async {
+    PortalChannelGuideOpen.invalidateLiveCatalog();
+    invalidatePortalsChrome(ref, widget.tabId);
+    _reloadHubCatalog(pluginId);
+  }
+
+  Future<void> _openPortalForm({VerifiedPortal? existing}) async {
+    final pluginId = await _pluginId();
+    if (pluginId == null || pluginId.isEmpty) {
+      ForjaToast.error('No portals pack installed');
       return;
     }
-    final params = <String, dynamic>{
-      for (final e in result.entries) e.key: e.value,
-    };
-    if (portalKey != null && portalKey.isNotEmpty) {
-      params['key'] = portalKey;
+    if (!mounted) return;
+    if (existing == null &&
+        !AccountFeatures.instance.canAddPortal(
+          ref.read(portalsInventoryProvider(widget.tabId)).asData?.value.portals.length ??
+              0,
+        )) {
+      ForjaToast.warning(AccountFeatures.instance.iptvPortalLimitReachedMessage());
+      return;
     }
-    for (final f in filled.fields) {
-      final t = f.type.toLowerCase();
-      if ((t == 'password' || t == 'secret') &&
-          (params[f.id] ?? '').toString().isEmpty) {
-        params.remove(f.id);
-      }
+    final count = ref
+            .read(portalsInventoryProvider(widget.tabId))
+            .asData
+            ?.value
+            .portals
+            .length ??
+        0;
+    final ok = await showPortalFormDialog(
+      context,
+      existing: existing,
+      pluginId: pluginId,
+      tabId: widget.tabId,
+      currentPortalCount: count,
+    );
+    if (ok == true && mounted) {
+      await _afterPortalMutated(pluginId: pluginId);
     }
-    final toast = filled.toastOk.trim();
-    await _runAction(
-      (id) => PortalsHost.run(
-        pluginId: id,
-        action: action,
-        params: params,
+  }
+
+  Future<void> _editPortal(String portalKey) async {
+    final portal = await PortalsHost.loadVaultPortal(portalKey);
+    if (portal == null) {
+      ForjaToast.error('Portal not found');
+      return;
+    }
+    if (!mounted) return;
+    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    String label = '';
+    String name = portal.username;
+    String expiry = '';
+    String max = '';
+    String active = '';
+    for (final p in inv?.portals ?? const <PortalListItem>[]) {
+      if (!PortalsHost.samePortalKey(p.id, portalKey)) continue;
+      label = p.label;
+      name = p.label;
+      expiry = p.expiry ?? '';
+      max = p.maxConnections ?? '';
+      active = p.activeConnections ?? '';
+      break;
+    }
+    await _openPortalForm(
+      existing: VerifiedPortal(
+        portal: portal,
+        label: label,
+        name: name,
+        expiry: expiry,
+        maxConnections: max.isEmpty ? '1' : max,
+        activeConnections: active.isEmpty ? '0' : active,
       ),
-      toastOk: toast.isEmpty ? null : toast,
-      reloadCatalog: true,
     );
   }
 
   Future<void> _dispatchPanelAction(PortalsPanelAction a) async {
     final verb = a.action.trim().toLowerCase();
+    final id = a.id.trim().toLowerCase();
     if (verb == 'listportals' || verb == 'refresh') {
       _probedSelectedKey = '';
       _health.invalidate();
@@ -231,17 +266,19 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       );
       return;
     }
-    if (verb == 'dealportals' || a.id == 'deal') {
+    if (verb == 'dealportals' || id == 'deal') {
       await _dealPortals();
       return;
     }
-    final form = a.form;
-    if (form != null) {
-      await _runPackForm(form);
+    if (id == 'add' ||
+        verb == 'addportal' ||
+        id == 'import' ||
+        verb == 'importportal') {
+      await _openPortalForm();
       return;
     }
     await _runAction(
-      (id) => PortalsHost.run(pluginId: id, action: a.action),
+      (pid) => PortalsHost.run(pluginId: pid, action: a.action),
       toastOk: a.label,
     );
   }
@@ -338,12 +375,17 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
     final credits = AccountFeatures.instance.iptvCredits;
 
-    // Pack order L→R after Search: Scrape · Deal · Import · Add.
+    // Pack order L→R after Search: Scrape · Deal · Add (+ opens Add/Import dialog).
+    // Import is folded into + — do not paint a separate Import header icon.
     final headerActions = <PortalListHeaderAction>[];
     for (final a in inv?.actions ?? const <PortalsPanelAction>[]) {
       final id = a.id.trim().toLowerCase();
       final verb = a.action.trim().toLowerCase();
-      if (id == 'refresh' || verb == 'listportals' || verb == 'refresh') {
+      if (id == 'import' ||
+          id == 'refresh' ||
+          verb == 'importportal' ||
+          verb == 'listportals' ||
+          verb == 'refresh') {
         continue;
       }
       if ((id == 'deal' || verb == 'dealportals') && !canDeal) continue;
@@ -396,15 +438,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       onClose: widget.onClose,
       onSelect: (item) => unawaited(_selectPortal(item.id)),
       onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
-      onEdit: inv?.editForm == null
-          ? null
-          : (item) => unawaited(
-                _runPackForm(
-                  inv!.editForm!,
-                  values: inv.formValues[item.id],
-                  portalKey: item.id,
-                ),
-              ),
+      onEdit: (item) => unawaited(_editPortal(item.id)),
       onDelete: (item) => unawaited(_deletePortal(item.id)),
       onCopyShareCode: (item) => _shareCodeFor(item.id),
       onHoverEnter: (item) => _health.schedule(

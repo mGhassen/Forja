@@ -576,7 +576,7 @@ abstract final class PortalsHost {
       for (final e in parsed) {
         if (e is! Map) continue;
         final m = Map<String, dynamic>.from(e);
-        if (vaultPortalKey(m) != portalKey) continue;
+        if (!samePortalKey(vaultPortalKey(m), portalKey)) continue;
         return Portal.fromJson(m);
       }
     } catch (_) {}
